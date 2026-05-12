@@ -36,6 +36,15 @@ const MITM_CA_BUNDLE_MARKER_PATH = "/etc/dust/.ca-bundle.merged";
 const MITM_SYSTEM_CA_DEST = "/usr/local/share/ca-certificates/dust-egress.crt";
 const MITM_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
 
+// Read by dsbx at startup. Must match
+// `cli/dust-sandbox/src/commands/forward/mod.rs:DISABLE_MITM_ENV`.
+export const DSBX_DISABLE_MITM_ENV = "DSBX_DISABLE_MITM";
+
+// Used by both setupEgressForwarder (restart path) and the operator
+// engage_egress_kill_switch script (force-respawn path). Kept in one place so
+// the SIGKILL contract stays consistent across callers.
+export const KILL_DSBX_COMMAND = "pkill -KILL dsbx >/dev/null 2>&1 || true";
+
 const REGION_PROXY_PREFIX = {
   "europe-west1": "eu",
   "us-central1": "us",
@@ -273,10 +282,15 @@ export async function setupEgressForwarder(
   sandbox: SandboxResource,
   { restartExisting = false }: { restartExisting?: boolean } = {}
 ): Promise<Result<void, Error>> {
-  const logContext = {
-    event: "egress.setup",
+  const workspace = auth.getNonNullableWorkspace();
+  const baseLogContext = {
     providerId: sandbox.providerId,
     sandboxId: sandbox.sId,
+    workspaceId: workspace.sId,
+  };
+  const logContext = {
+    ...baseLogContext,
+    event: "egress.setup",
   };
 
   let proxyAddr: string;
@@ -286,10 +300,7 @@ export async function setupEgressForwarder(
     return new Err(normalizeError(error));
   }
 
-  const token = mintEgressJwt(
-    sandbox.providerId,
-    auth.getNonNullableWorkspace().sId
-  );
+  const token = mintEgressJwt(sandbox.providerId, workspace.sId);
   const tokenWriteResult = await sandbox.writeFile(
     auth,
     EGRESS_TOKEN_PATH,
@@ -331,11 +342,14 @@ export async function setupEgressForwarder(
   // forge-and-tunnel loop). The list intentionally overshoots
   // buildSandboxEnvVars (-u on an unset var is a harmless no-op) so this
   // stays correct if a future env var gets added there.
+  const disableMitm = config.getEgressDisableMitm();
+
   const startForwarderCommand =
     "nohup env " +
     "-u SSL_CERT_FILE -u SSL_CERT_DIR -u CURL_CA_BUNDLE " +
     "-u REQUESTS_CA_BUNDLE -u AWS_CA_BUNDLE -u GIT_SSL_CAINFO " +
     "-u NODE_EXTRA_CA_CERTS -u DENO_CERT -u DENO_TLS_CA_STORE " +
+    (disableMitm ? `${DSBX_DISABLE_MITM_ENV}=1 ` : "") +
     "/opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
     `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +
@@ -353,6 +367,13 @@ export async function setupEgressForwarder(
   );
   if (startResult.isErr()) {
     return startResult;
+  }
+
+  if (disableMitm) {
+    logger.warn(
+      { ...baseLogContext, event: "egress.mitm_kill_switch_engaged" },
+      "Sandbox egress MITM kill switch engaged"
+    );
   }
 
   for (let i = 0; i < EGRESS_SETUP_WAIT_RETRIES; i++) {
@@ -382,12 +403,7 @@ async function killEgressForwarder(
   // Restarts only happen when no client is using dsbx (after wake, before the
   // agent loop runs; or after a failed health check, when the listener isn't
   // serving anyway). SIGKILL is fine, no graceful shutdown needed.
-  return runSuccessfulSandboxCommand(
-    auth,
-    sandbox,
-    "pkill -KILL dsbx >/dev/null 2>&1 || true",
-    "root"
-  );
+  return runSuccessfulSandboxCommand(auth, sandbox, KILL_DSBX_COMMAND, "root");
 }
 
 // Produces a merged bundle (system roots + dsbx persistent CA) so replace-style

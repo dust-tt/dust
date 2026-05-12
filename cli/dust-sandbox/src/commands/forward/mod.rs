@@ -38,6 +38,7 @@ const MITM_CA_CERT_PATH: &str = "/run/dust/egress-ca.pem";
 const MITM_CA_KEY_PATH: &str = "/run/dust/egress-ca.key";
 // Must match `front/lib/api/sandbox/egress_secrets.ts:EGRESS_SECRETS_PATH`.
 const EGRESS_SECRETS_PATH: &str = "/run/dust/egress-secrets.json";
+const DISABLE_MITM_ENV: &str = "DSBX_DISABLE_MITM";
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct ForwardArgs {
@@ -71,6 +72,9 @@ struct ForwardRuntime {
     // request rewriter in Slice 6.
     #[allow(dead_code)]
     secret_table: Arc<SecretTable>,
+    // Plumbed in Slice 4.5; consumed by SNI-scoped MITM in Slice 5.
+    #[allow(dead_code)]
+    disable_mitm: bool,
     tls_connector: TlsConnector,
 }
 
@@ -90,6 +94,7 @@ struct DomainExtraction {
 pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
     let token = load_token(&args.token_file).await?;
     let tls_connector = build_tls_connector()?;
+    let disable_mitm = read_disable_mitm_from_env();
 
     // The CA must be loaded/generated BEFORE we bind the listener. Front uses
     // "port 9990 is LISTEN" as the readiness signal and, the moment that's
@@ -109,6 +114,10 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
     // on sandbox wake; live reload/inotify is deferred to a later phase.
     let secret_table =
         SecretTable::load(&args.secrets_file).context("failed to load egress secrets table")?;
+
+    if disable_mitm {
+        info!(env_var = DISABLE_MITM_ENV, "mitm.disabled_by_kill_switch");
+    }
 
     let listener = TcpListener::bind(args.listen)
         .await
@@ -131,6 +140,7 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
         proxy_tls_name: Arc::<str>::from(args.proxy_tls_name),
         deny_log: Arc::new(args.deny_log),
         secret_table: Arc::new(secret_table),
+        disable_mitm,
         tls_connector,
     };
 
@@ -194,6 +204,36 @@ fn build_tls_connector() -> Result<TlsConnector> {
         .with_no_client_auth();
 
     Ok(TlsConnector::from(Arc::new(config)))
+}
+
+fn read_disable_mitm_from_env() -> bool {
+    parse_disable_mitm_env(std::env::var(DISABLE_MITM_ENV).ok().as_deref())
+}
+
+fn parse_disable_mitm_env(value: Option<&str>) -> bool {
+    match value.map(str::trim) {
+        Some("1") => true,
+        Some(value) if value.eq_ignore_ascii_case("true") => true,
+        _ => false,
+    }
+}
+
+// Slice 4.5 pins the rollback contract before the MITM branch lands: even if a
+// domain is in the secret allowlist union, the kill switch forces the 443 path
+// to remain TCP-splice. Slice 5 wires this predicate into handle_connection
+// (either as a free helper sourced off ForwardRuntime fields, or as a thin
+// `&self` method that delegates here).
+#[allow(dead_code)]
+fn should_mitm_https_connection(
+    secret_table: &SecretTable,
+    disable_mitm: bool,
+    original_port: u16,
+    domain: &str,
+) -> bool {
+    original_port == 443
+        && !disable_mitm
+        && !secret_table.is_empty()
+        && secret_table.sni_match_set.matches(domain)
 }
 
 async fn handle_connection(
@@ -376,5 +416,72 @@ where
             _ => ProxyDecision::ProtocolError,
         },
         Ok(Err(_)) | Err(_) => ProxyDecision::ProtocolError,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use anyhow::{Context, Result};
+
+    use super::{parse_disable_mitm_env, should_mitm_https_connection, SecretTable};
+
+    #[test]
+    fn parses_disable_mitm_env_values() {
+        assert!(parse_disable_mitm_env(Some("1")));
+        assert!(parse_disable_mitm_env(Some("true")));
+        assert!(parse_disable_mitm_env(Some(" TRUE ")));
+
+        assert!(!parse_disable_mitm_env(None));
+        assert!(!parse_disable_mitm_env(Some("0")));
+        assert!(!parse_disable_mitm_env(Some("false")));
+        assert!(!parse_disable_mitm_env(Some("yes")));
+    }
+
+    #[test]
+    fn kill_switch_forces_https_connections_off_mitm_scope() -> Result<()> {
+        let dir = tempfile::tempdir().context("failed to create tempdir")?;
+        let path = dir.path().join("egress-secrets.json");
+        fs::write(
+            &path,
+            r#"[
+              {
+                "name": "OPENAI_API_KEY",
+                "placeholder": "__DSEC_0123456789abcdef0123456789abcdef__",
+                "value": "sk-test",
+                "allowedDomains": ["api.openai.com"]
+              }
+            ]"#,
+        )
+        .context("failed to write test secrets file")?;
+        let table = SecretTable::load(&path)?;
+
+        assert!(should_mitm_https_connection(
+            &table,
+            false,
+            443,
+            "api.openai.com"
+        ));
+        assert!(!should_mitm_https_connection(
+            &table,
+            true,
+            443,
+            "api.openai.com"
+        ));
+        assert!(!should_mitm_https_connection(
+            &table,
+            false,
+            80,
+            "api.openai.com"
+        ));
+        assert!(!should_mitm_https_connection(
+            &table,
+            false,
+            443,
+            "example.com"
+        ));
+
+        Ok(())
     }
 }

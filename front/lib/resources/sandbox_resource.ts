@@ -25,6 +25,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -42,6 +43,11 @@ interface EnsureSandboxResult {
   freshlyCreated: boolean;
   sandbox: SandboxResource;
   wokeFromSleep: boolean;
+}
+
+export interface RunningSandboxWithWorkspace {
+  sandbox: SandboxResource;
+  workspace: WorkspaceResource;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -212,6 +218,102 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     });
 
     return row ? new this(this.model, row.get()) : null;
+  }
+
+  /**
+   * List currently running sandboxes across workspaces, paired with their
+   * workspace resource. Used by operator runbooks (initially the MITM
+   * kill-switch script) that need to act on active sandboxes without an
+   * authenticator.
+   *
+   * / WORKSPACE_ISOLATION_BYPASS: Operator runbooks intentionally operate
+   * across active sandboxes (e.g. oncall restarting dsbx after flipping
+   * DSBX_DISABLE_MITM).
+   */
+  static async dangerouslyListRunningAcrossWorkspaces({
+    workspaceIds,
+    limit = 500,
+  }: {
+    workspaceIds?: string[];
+    limit?: number;
+  } = {}): Promise<RunningSandboxWithWorkspace[]> {
+    // Caller is operator scripts driven by makeScript; throw is fine, yargs
+    // surfaces it cleanly. Not part of any request path so no Result needed.
+    if (!Number.isInteger(limit) || limit <= 0) {
+      throw new Error("limit must be a positive integer");
+    }
+
+    const uniqueWorkspaceIds = workspaceIds
+      ? [...new Set(workspaceIds)]
+      : undefined;
+    const scopedWorkspaces =
+      uniqueWorkspaceIds && uniqueWorkspaceIds.length > 0
+        ? await WorkspaceResource.fetchByIds(uniqueWorkspaceIds)
+        : undefined;
+
+    if (
+      scopedWorkspaces &&
+      uniqueWorkspaceIds &&
+      scopedWorkspaces.length !== uniqueWorkspaceIds.length
+    ) {
+      const foundWorkspaceIds = new Set(scopedWorkspaces.map((w) => w.sId));
+      const missingWorkspaceIds = uniqueWorkspaceIds.filter(
+        (workspaceId) => !foundWorkspaceIds.has(workspaceId)
+      );
+      throw new Error(
+        `Could not find workspace(s): ${missingWorkspaceIds.join(", ")}`
+      );
+    }
+
+    const scopedWorkspaceModelIds = scopedWorkspaces?.map(
+      (workspace) => workspace.id
+    );
+    const rows = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: {
+        status: "running",
+        ...(scopedWorkspaceModelIds
+          ? { workspaceId: { [Op.in]: scopedWorkspaceModelIds } }
+          : {}),
+      },
+      order: [["lastActivityAt", "DESC"]],
+      limit,
+    });
+
+    const sandboxes = rows.map((row) => new this(this.model, row.get()));
+    if (sandboxes.length === 0) {
+      return [];
+    }
+
+    const workspaceModelIds = [
+      ...new Set(sandboxes.map((sandbox) => sandbox.workspaceId)),
+    ];
+    const workspaces =
+      scopedWorkspaces ??
+      (await WorkspaceResource.fetchByModelIds(workspaceModelIds));
+    const workspacesByModelId = new Map(
+      workspaces.map((workspace) => [workspace.id, workspace])
+    );
+
+    const result: RunningSandboxWithWorkspace[] = [];
+    for (const sandbox of sandboxes) {
+      const workspace = workspacesByModelId.get(sandbox.workspaceId);
+      if (!workspace) {
+        logger.warn(
+          {
+            sandboxId: sandbox.sId,
+            workspaceModelId: sandbox.workspaceId,
+          },
+          "Skipping sandbox with missing workspace during cross-workspace listing"
+        );
+        continue;
+      }
+
+      result.push({ sandbox, workspace });
+    }
+
+    return result;
   }
 
   async updateStatus(

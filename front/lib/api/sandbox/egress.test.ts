@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGetEgressProxyHost,
+  mockGetEgressDisableMitm,
   mockGetEgressProxyJwtSecret,
   mockGetEgressProxyPort,
   mockGetEgressProxyTlsName,
@@ -15,6 +16,7 @@ const {
   mockWriteEgressSecretsFile,
 } = vi.hoisted(() => ({
   mockGetEgressProxyHost: vi.fn(),
+  mockGetEgressDisableMitm: vi.fn(),
   mockGetEgressProxyJwtSecret: vi.fn(),
   mockGetEgressProxyPort: vi.fn(),
   mockGetEgressProxyTlsName: vi.fn(),
@@ -29,6 +31,7 @@ const {
 vi.mock("@app/lib/api/config", () => ({
   default: {
     getEgressProxyHost: mockGetEgressProxyHost,
+    getEgressDisableMitm: mockGetEgressDisableMitm,
     getEgressProxyJwtSecret: mockGetEgressProxyJwtSecret,
     getEgressProxyPort: mockGetEgressProxyPort,
     getEgressProxyTlsName: mockGetEgressProxyTlsName,
@@ -78,6 +81,7 @@ describe("sandbox egress helpers", () => {
     vi.clearAllMocks();
 
     mockGetEgressProxyHost.mockReturnValue(undefined);
+    mockGetEgressDisableMitm.mockReturnValue(false);
     mockGetEgressProxyJwtSecret.mockReturnValue("egress-secret");
     mockGetEgressProxyPort.mockReturnValue(4443);
     mockGetEgressProxyTlsName.mockReturnValue(undefined);
@@ -154,6 +158,8 @@ describe("sandbox egress helpers", () => {
       expect.stringContaining("--secrets-file '/run/dust/egress-secrets.json'"),
       { user: "root" }
     );
+    const startCall = sandbox.exec.mock.calls[1][1] as string;
+    expect(startCall).not.toContain("DSBX_DISABLE_MITM=1");
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       5,
       auth,
@@ -169,6 +175,45 @@ describe("sandbox egress helpers", () => {
         sandboxId: "sandbox-id",
       }),
       "Sandbox egress forwarder is healthy"
+    );
+  });
+
+  it("exports the dsbx MITM kill switch and emits an observability event when enabled", async () => {
+    mockGetEgressDisableMitm.mockReturnValue(true);
+
+    // setupEgressForwarder calls exec four times here:
+    //   [0] chmod the token file
+    //   [1] start dsbx (the call whose command we assert on)
+    //   [2] health probe
+    //   [3] installMitmTrustBundle
+    // Keep the mock count in sync if the function gains/loses exec calls.
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+        )
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await setupEgressForwarder(auth, sandbox as never);
+
+    expect(result).toEqual(new Ok(undefined));
+    const startCall = sandbox.exec.mock.calls[1][1] as string;
+    expect(startCall).toContain("DSBX_DISABLE_MITM=1 /opt/bin/dsbx forward");
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "egress.mitm_kill_switch_engaged",
+        providerId: "provider-sandbox-id",
+        sandboxId: "sandbox-id",
+        workspaceId: "workspace-id",
+      }),
+      "Sandbox egress MITM kill switch engaged"
     );
   });
 

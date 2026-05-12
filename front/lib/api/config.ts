@@ -30,6 +30,11 @@ export function getDefaultInit(): Promise<RequestInit> | null {
   return defaultInitResolver?.() ?? null;
 }
 
+function isEnabledEnvVar(value: string | undefined): boolean {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "1" || normalized === "true";
+}
+
 const config = {
   // Dynamic API base URL: uses a custom resolver when set (SPA region switching),
   // otherwise falls back to getClientFacingUrl().
@@ -217,6 +222,11 @@ const config = {
   },
   getEgressProxyTlsName: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_TLS_NAME");
+  },
+  getEgressDisableMitm: (): boolean => {
+    return isEnabledEnvVar(
+      EnvironmentConfig.getOptionalEnvVariable("DSBX_DISABLE_MITM")
+    );
   },
   getEgressPolicyBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("EGRESS_PROXY_POLICY_BUCKET");
