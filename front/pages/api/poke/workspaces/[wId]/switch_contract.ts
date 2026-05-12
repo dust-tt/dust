@@ -4,7 +4,11 @@ import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { listMetronomePackages } from "@app/lib/metronome/client";
+import {
+  ceilToHourISO,
+  floorToHourISO,
+  listMetronomePackages,
+} from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
@@ -19,6 +23,7 @@ import {
 import { getStripeCustomer } from "@app/lib/plans/stripe";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -323,6 +328,36 @@ async function handler(
     });
   }
   const { metronomeContractId } = provisionResult.value;
+
+  // Match `provisionMetronomeContract`'s internal alignment so the pending
+  // subscription's startDate matches the Metronome contract's starting_at.
+  const alignedStart = new Date(
+    swapAt === "current-hour"
+      ? floorToHourISO(startingAtDate)
+      : ceilToHourISO(startingAtDate)
+  );
+
+  // Persist the future-state subscription in `created_backend_only`; the
+  // `contract.start` webhook flips it to `active` (and ends the current one).
+  // Any prior pending sub for this workspace is ended in the same txn.
+  try {
+    await SubscriptionResource.createPendingMetronomeContract({
+      workspaceModelId: owner.id,
+      planCode: body.planCode,
+      metronomeContractId,
+      startDate: alignedStart,
+    });
+  } catch (err) {
+    const errorMessage =
+      `Provisioned Metronome contract ${metronomeContractId} but failed to ` +
+      `create pending subscription: ${err instanceof Error ? err.message : String(err)}. ` +
+      "Manual cleanup may be required.";
+    await pluginRun.recordError(errorMessage);
+    return apiError(req, res, {
+      status_code: 502,
+      api_error: { type: "internal_server_error", message: errorMessage },
+    });
+  }
 
   await pluginRun.recordResult({
     display: "text",

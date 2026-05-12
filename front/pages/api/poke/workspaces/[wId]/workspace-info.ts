@@ -33,6 +33,7 @@ export type PokeGetWorkspaceInfo = {
   hasMetronomeFeature: boolean;
   membersCount: number;
   metronomeCustomerId: string | null;
+  pendingSubscription: SubscriptionType | null;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeCustomerId: string | null;
   stripeSubscription: Stripe.Subscription | null;
@@ -108,6 +109,12 @@ async function handler(
 
       const hasMetronomeFeature = await isMetronomeBillingEnabled(auth);
 
+      const pendingSubscriptionResource =
+        await SubscriptionResource.fetchPendingByWorkspaceModelId(
+          workspaceResource.id
+        );
+      const pendingSubscription = pendingSubscriptionResource?.toJSON() ?? null;
+
       const membersCount = await MembershipResource.getMembersCountForWorkspace(
         {
           workspace: owner,
@@ -149,6 +156,7 @@ async function handler(
         hasMetronomeFeature,
         membersCount,
         metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
+        pendingSubscription,
         stripeCustomerId,
         stripeSubscription,
         subscriptions,
