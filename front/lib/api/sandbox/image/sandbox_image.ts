@@ -15,8 +15,6 @@ import type {
   SandboxResources,
   ToolEntry,
 } from "@app/lib/api/sandbox/image/types";
-import fs from "fs";
-import path from "path";
 
 const DEFAULT_RESOURCES: SandboxResources = {
   vcpu: 1,
@@ -162,24 +160,6 @@ export class SandboxImage {
     return this.clone({
       operations: [...this.operations, operation],
     });
-  }
-
-  copyDir(
-    srcDir: string,
-    destDir: string,
-    options?: { user?: string }
-  ): SandboxImage {
-    return fs
-      .readdirSync(srcDir)
-      .reduce<SandboxImage>(
-        (img, filename) =>
-          img.copy(
-            () => fs.readFileSync(path.join(srcDir, filename)),
-            `${destDir}/${filename}`,
-            options
-          ),
-        this
-      );
   }
 
   setWorkdir(path: string): SandboxImage {
