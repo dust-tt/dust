@@ -125,3 +125,33 @@ export interface MetronomeUsageWithGroupsResponse {
   value: number | null;
   group: Record<string, string> | null;
 }
+
+export interface MetronomeSeatBalance {
+  seat_id: string;
+  balances: Array<{
+    credit_type_id: string;
+    balance: number;
+    starting_balance: number;
+  }>;
+}
+
+export function isMetronomeSeatBalance(v: unknown): v is MetronomeSeatBalance {
+  if (typeof v !== "object" || v === null) {
+    return false;
+  }
+  const obj = v as Record<string, unknown>;
+  if (typeof obj["seat_id"] !== "string") {
+    return false;
+  }
+  if (!Array.isArray(obj["balances"])) {
+    return false;
+  }
+  return obj["balances"].every(
+    (b) =>
+      typeof b === "object" &&
+      b !== null &&
+      typeof (b as Record<string, unknown>)["credit_type_id"] === "string" &&
+      typeof (b as Record<string, unknown>)["balance"] === "number" &&
+      typeof (b as Record<string, unknown>)["starting_balance"] === "number"
+  );
+}

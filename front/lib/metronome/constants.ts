@@ -148,6 +148,16 @@ export const getProductSeatSubscriptionCreditsId = () =>
     PROD_PRODUCT_SEAT_SUBSCRIPTION_CREDITS
   );
 
+export const getSeatProductIds = (): Set<string> =>
+  new Set([
+    getProductSeatSubscriptionCreditsId(),
+    getProductWorkspaceSeatId(),
+    getProductRegularSeatId(),
+    getProductProSeatId(),
+    getProductMaxSeatId(),
+    ...getProductRegularSeatTierIds(),
+  ]);
+
 // tier product accessors — ordered array for indexed access.
 export const MAX_MAU_TIERS = 6;
 

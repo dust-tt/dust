@@ -1,16 +1,23 @@
-import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import {
   ceilToMidnightUTC,
   floorToMidnightUTC,
   listMetronomeDraftInvoices,
+  listMetronomeSeatBalances,
   listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
-import { getMetricLlmProviderCostAwuId } from "@app/lib/metronome/constants";
+import {
+  getCreditTypeAwuId,
+  getMetricLlmProviderCostAwuId,
+} from "@app/lib/metronome/constants";
 import { METRONOME_USER_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
-import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
+import {
+  MembershipResource,
+  type MembershipsPaginationParams,
+} from "@app/lib/resources/membership_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -20,6 +27,10 @@ export type MemberUsageType = {
   name: string;
   email: string | null;
   image: string | null;
+  seatType: MembershipSeatType | null;
+  // Percentage of seat allocation consumed (0–100), null when seat balances are unavailable.
+  seatUsagePercent: number | null;
+  // Pool consumption only: total usage minus what was covered by the seat credit.
   consumedMicroUsd: number;
 };
 
@@ -163,24 +174,97 @@ export async function handleGetMembersUsageRequest(
       const workspace = auth.getNonNullableWorkspace();
       const subscription = auth.subscription();
       const { metronomeCustomerId } = workspace;
+      const metronomeContractId = subscription?.metronomeContractId ?? null;
 
-      const [membersResult, perUserUsageMicroUsd] = await Promise.all([
-        getMembers(auth, { activeOnly: true }, paginationParams),
-        fetchPerUserUsageMicroUsd({
-          metronomeCustomerId: metronomeCustomerId ?? null,
-          metronomeContractId: subscription?.metronomeContractId ?? null,
-        }),
-      ]);
+      const [membershipsResult, perUserTotalMicroUsd, seatBalancesResult] =
+        await Promise.all([
+          MembershipResource.getActiveMemberships({
+            workspace,
+            paginationParams,
+          }),
+          fetchPerUserUsageMicroUsd({
+            metronomeCustomerId: metronomeCustomerId ?? null,
+            metronomeContractId,
+          }),
+          metronomeCustomerId && metronomeContractId
+            ? listMetronomeSeatBalances({
+                metronomeCustomerId,
+                metronomeContractId,
+              })
+            : Promise.resolve(null),
+        ]);
 
-      const { members, total, nextPageParams } = membersResult;
+      const { memberships, total, nextPageParams } = membershipsResult;
 
-      const membersUsage: MemberUsageType[] = members.map((m) => ({
-        sId: m.sId,
-        name: m.fullName,
-        email: m.email ?? null,
-        image: m.image ?? null,
-        consumedMicroUsd: perUserUsageMicroUsd.get(m.sId) ?? 0,
-      }));
+      if (seatBalancesResult !== null && seatBalancesResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Failed to retrieve Metronome seat balances: ${seatBalancesResult.error.message}`,
+          },
+        });
+      }
+
+      // Build seat_id → balance map. seat_id is the user's sId.
+      // Each entry has a `balances` array; we pick the AWU credit type entry.
+      const awuCreditTypeId = getCreditTypeAwuId();
+      const seatBalanceByUserId = new Map<
+        string,
+        { balance: number; startingBalance: number }
+      >();
+      if (seatBalancesResult !== null) {
+        for (const entry of seatBalancesResult.value) {
+          const awuBalance = entry.balances.find(
+            (b) => b.credit_type_id === awuCreditTypeId
+          );
+          if (awuBalance) {
+            seatBalanceByUserId.set(entry.seat_id, {
+              balance: awuBalance.balance,
+              startingBalance: awuBalance.starting_balance,
+            });
+          }
+        }
+      }
+
+      const membersUsage: MemberUsageType[] = memberships.flatMap((m) => {
+        if (!m.user) {
+          return [];
+        }
+        const userId = m.user.sId;
+        const totalMicroUsd = perUserTotalMicroUsd.get(userId) ?? 0;
+        const seat = seatBalanceByUserId.get(userId) ?? null;
+
+        let seatUsagePercent: number | null = null;
+        let poolConsumedMicroUsd = totalMicroUsd;
+
+        if (seat !== null && seat.startingBalance > 0) {
+          const seatConsumed = seat.startingBalance - seat.balance;
+          seatUsagePercent = Math.min(
+            100,
+            (seatConsumed / seat.startingBalance) * 100
+          );
+          // Pool usage is total minus what was covered by the seat credit.
+          const seatConsumedMicroUsd =
+            seatConsumed * METRONOME_USER_CREDIT_TO_MICRO_USD;
+          poolConsumedMicroUsd = Math.max(
+            0,
+            totalMicroUsd - seatConsumedMicroUsd
+          );
+        }
+
+        return [
+          {
+            sId: userId,
+            name: m.user.name,
+            email: m.user.email ?? null,
+            image: m.user.imageUrl ?? null,
+            seatType: m.seatType ?? null,
+            seatUsagePercent,
+            consumedMicroUsd: poolConsumedMicroUsd,
+          },
+        ];
+      });
 
       return res.status(200).json({
         members: membersUsage,
