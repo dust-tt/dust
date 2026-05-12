@@ -49,23 +49,22 @@ const LOGO_SETS = {
     { name: "Profound", src: "/static/landing/logos/gray/profound.svg" },
   ],
   // 🇬🇧 UK — UK HQ/office + high ARR + brand recognition
-  // TODO: add paddle.svg, truelayer.svg, birdie.svg to /public/static/landing/logos/gray/
   gb: [
-    // { name: "Paddle", src: "/static/landing/logos/gray/paddle.svg" },
-    // { name: "TrueLayer", src: "/static/landing/logos/gray/truelayer.svg" },
-    { name: "Back Market", src: "/static/landing/logos/gray/backmarket.svg" },
-    { name: "Alan", src: "/static/landing/logos/gray/alan.svg" },
-    { name: "Mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
-    { name: "Spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
-    { name: "Watershed", src: "/static/landing/logos/gray/watershed.svg" },
-    { name: "Datadog", src: "/static/landing/logos/gray/datadog.svg" },
-    { name: "SumUp", src: "/static/landing/logos/gray/Sumup.svg" },
+    { name: "Paddle", src: "/static/landing/logos/gray/paddle.svg" },
+    { name: "Vanta", src: "/static/landing/logos/gray/vanta.svg" },
+    { name: "Kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
+    { name: "TrueLayer", src: "/static/landing/logos/gray/truelayer.svg" },
     {
       name: "Contentsquare",
       src: "/static/landing/logos/gray/contentsquare.svg",
     },
-    { name: "Vanta", src: "/static/landing/logos/gray/vanta.svg" },
-    // { name: "Birdie", src: "/static/landing/logos/gray/birdie.svg" },
+    { name: "Datadog", src: "/static/landing/logos/gray/datadog.svg" },
+    { name: "Spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
+    { name: "Back Market", src: "/static/landing/logos/gray/backmarket.svg" },
+    { name: "Causaly", src: "/static/landing/logos/gray/causaly.svg" },
+    { name: "Clay", src: "/static/landing/logos/gray/clay.svg" },
+    { name: "1Password", src: "/static/landing/logos/gray/1password.svg" },
+    { name: "Watershed", src: "/static/landing/logos/gray/watershed.svg" },
   ],
   // 🇫🇷 FR — French-native companies, most with customer stories
   fr: [
