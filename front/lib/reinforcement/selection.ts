@@ -106,7 +106,7 @@ async function fetchEligibleSkillIds(
   // Filter out skills that have reached their per-skill consumption cap.
   const { cycleStart } = await getCurrentPeriod(auth);
   const skillConsumptionMap =
-    await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
+    await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDateForSkills(
       auth,
       {
         createdAfter: cycleStart,
