@@ -18,9 +18,11 @@ import {
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
   DEV_CREDIT_TYPE_PROG_USD_ID,
+  MAX_SEAT_CREDIT_NAME,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
+  PRO_SEAT_CREDIT_NAME,
 } from "@app/lib/metronome/constants";
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import {
@@ -1254,12 +1256,12 @@ function getPackages(): PackageDef[] {
         getPerSeatIndividualAwuCredits({
           subscriptionTemporaryId: PRO_SEAT_SUBSCRIPTION_TEMPORARY_ID,
           quantityPerSeat: PRO_SEAT_MONTHLY_AWU_CREDITS,
-          name: "Pro Seat Credits",
+          name: PRO_SEAT_CREDIT_NAME,
         }),
         getPerSeatIndividualAwuCredits({
           subscriptionTemporaryId: MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID,
           quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
-          name: "Max Seat Credits",
+          name: MAX_SEAT_CREDIT_NAME,
         }),
       ],
       ...BILLING_CYCLE_CONFIG,
@@ -1275,12 +1277,12 @@ function getPackages(): PackageDef[] {
         getPerSeatIndividualAwuCredits({
           subscriptionTemporaryId: PRO_SEAT_SUBSCRIPTION_TEMPORARY_ID,
           quantityPerSeat: PRO_SEAT_MONTHLY_AWU_CREDITS,
-          name: "Pro Seat Credits",
+          name: PRO_SEAT_CREDIT_NAME,
         }),
         getPerSeatIndividualAwuCredits({
           subscriptionTemporaryId: MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID,
           quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
-          name: "Max Seat Credits",
+          name: MAX_SEAT_CREDIT_NAME,
         }),
       ],
       ...BILLING_CYCLE_CONFIG,
