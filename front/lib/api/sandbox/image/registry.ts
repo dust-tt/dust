@@ -13,7 +13,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.5";
+const DUST_BASE_IMAGE_VERSION = "0.8.7";
 const DSBX_CLI_VERSION = "0.1.7";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
@@ -440,11 +440,11 @@ SHELLEOF`,
   .registerTool({
     name: "pptx_inspect",
     description:
-      "Inspect .pptx structure: slides, layouts, shapes, text, charts, tables, embedded media. Use before editing a deck to map layouts and shape positions without rendering to PDF/images",
+      "Inspect .pptx structure: slides, layouts, shapes, text, charts, tables, embedded media. Use before editing a deck to map layouts and shape positions. --render rasterizes slides to JPEG via soffice + pdftoppm for visual QA",
     usage:
-      "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] [--max-shapes N] [--offset N]",
+      "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] [--render] [--max-shapes N] [--offset N]",
     returns:
-      "Deck overview, or one shape per line in slide view: '<id>  <kind>  <left,top WxH>  [ph=<type>]  <summary>' with paragraphs indented. Layouts/text/media views emit format-specific listings",
+      "Deck overview, or one shape per line in slide view: '<id>  <kind>  <left,top WxH>  [ph=<type>]  <summary>' with paragraphs indented. Layouts/text/media views emit format-specific listings. --render prints one absolute JPEG path per slide",
     runtime: "system",
   })
   // --- docx_inspect: structural inspection of .docx documents ---

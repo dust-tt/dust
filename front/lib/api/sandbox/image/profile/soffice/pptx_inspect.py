@@ -25,14 +25,13 @@ from pptx.slide import Slide
 from utils import (
     TEXT_PREVIEW_LIMIT,
     ellipsize,
+    flatten_text,
     format_size,
     pad,
     safe_output,
 )
 
-A_NS = ooxml.NS["a"]
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
-THEME_NS = {"a": A_NS, "p": P_NS}
 
 DEFAULT_MAX_SHAPES = 200
 EMU_PER_INCH = 914_400
@@ -448,7 +447,7 @@ def text_frame_lines(shape: BaseShape, indent: str = "  ") -> List[str]:
     is_placeholder = placeholder_type(shape) is not None
     lines: List[str] = []
     for paragraph in shape.text_frame.paragraphs:
-        text = (paragraph.text or "").strip()
+        text = flatten_text(paragraph.text or "").strip()
         if not text:
             continue
         level = paragraph.level or 0
@@ -497,11 +496,11 @@ def chart_summary(shape: BaseShape) -> str:
     title = ""
     if getattr(chart, "has_title", False):
         try:
-            title = (chart.chart_title.text_frame.text or "").strip()
+            title = flatten_text(chart.chart_title.text_frame.text or "").strip()
         except (AttributeError, ValueError):
             title = ""
     if not title:
-        title = chart_title_via_zip(shape)
+        title = flatten_text(chart_title_via_zip(shape)).strip()
     if title:
         parts.append(f'title:"{ellipsize(title, TEXT_PREVIEW_LIMIT)}"')
     return "  ".join(parts)
@@ -539,7 +538,7 @@ def table_summary(shape: BaseShape) -> Tuple[str, List[str]]:
     cell_lines: List[str] = []
     for r, row in enumerate(rows):
         for c, cell in enumerate(row.cells):
-            text = (cell.text or "").strip().replace("\n", " ")
+            text = flatten_text(cell.text or "").strip()
             if not text:
                 continue
             cell_lines.append(
@@ -552,7 +551,7 @@ def slide_title(slide: Slide) -> str:
     title_shape = slide.shapes.title
     if title_shape is None or not title_shape.has_text_frame:
         return ""
-    return (title_shape.text_frame.text or "").strip().replace("\n", " ")
+    return flatten_text(title_shape.text_frame.text or "").strip()
 
 
 def slide_is_hidden(slide: Slide) -> bool:
@@ -607,10 +606,56 @@ def count_shapes_by_kind(shapes: Iterable[BaseShape]) -> dict:
     return counts
 
 
+CoverRect = Tuple[int, int, int, int, int]  # (shape_id, left, top, width, height)
+
+
+def _cover_candidates(shapes: Iterable[BaseShape]) -> List[CoverRect]:
+    """Bounding boxes of non-placeholder shapes on the slide, used to decide
+    whether an empty placeholder is actually covered by visible content."""
+    out: List[CoverRect] = []
+    for shape in shapes:
+        if placeholder_type(shape) is not None:
+            continue
+        left, top, width, height = (
+            shape.left,
+            shape.top,
+            shape.width,
+            shape.height,
+        )
+        if None in (left, top, width, height):
+            continue
+        out.append((shape.shape_id, left, top, width, height))
+    return out
+
+
+def _find_covering_shape(
+    placeholder: BaseShape, candidates: List[CoverRect]
+) -> Optional[int]:
+    """Return the shape_id of a non-placeholder shape whose bounding box
+    covers ≥50% of the placeholder's box, or None if no shape does. Used to
+    flip the empty-placeholder marker from "populate" to "delete"."""
+    pl_left = placeholder.left
+    pl_top = placeholder.top
+    pl_w = placeholder.width
+    pl_h = placeholder.height
+    if None in (pl_left, pl_top, pl_w, pl_h) or pl_w <= 0 or pl_h <= 0:
+        return None
+    pl_right = pl_left + pl_w
+    pl_bottom = pl_top + pl_h
+    pl_area = pl_w * pl_h
+    for shape_id, left, top, w, h in candidates:
+        ix = max(0, min(pl_right, left + w) - max(pl_left, left))
+        iy = max(0, min(pl_bottom, top + h) - max(pl_top, top))
+        if ix * iy * 2 >= pl_area:
+            return shape_id
+    return None
+
+
 def describe_shape(
     shape: BaseShape,
     *,
     ctx: Optional[SlideContext] = None,
+    cover_candidates: Optional[List[CoverRect]] = None,
     indent: str = "",
 ) -> List[str]:
     kind = shape_kind(shape)
@@ -634,6 +679,9 @@ def describe_shape(
         nested = list(shape.shapes)
         summary = f"shapes:{len(nested)}"
         for inner in nested:
+            # Cover detection doesn't translate into groups: children's
+            # coordinates are group-local, and "siblings" inside the group
+            # are typically arranged on purpose. Drop the candidate list.
             sub_lines.extend(describe_shape(inner, ctx=ctx, indent="    "))
         if shape.has_text_frame:
             sub_lines.extend(text_frame_lines(shape, indent="  "))
@@ -648,7 +696,7 @@ def describe_shape(
 
     if summary:
         parts.append(summary)
-    for marker in _shape_warning_markers(shape, ph, ctx):
+    for marker in _shape_warning_markers(shape, ph, ctx, cover_candidates):
         parts.append(marker)
 
     head = indent + "  ".join(parts).rstrip()
@@ -659,6 +707,7 @@ def _shape_warning_markers(
     shape: BaseShape,
     ph: Optional[str],
     ctx: Optional[SlideContext],
+    cover_candidates: Optional[List[CoverRect]] = None,
 ) -> List[str]:
     markers: List[str] = []
     if ctx is not None:
@@ -679,61 +728,194 @@ def _shape_warning_markers(
             (p.text or "").strip() for p in shape.text_frame.paragraphs
         )
         if not has_text:
-            markers.append(
-                "[!] EMPTY PLACEHOLDER — will render layout prompt text"
+            cover_id = (
+                _find_covering_shape(shape, cover_candidates)
+                if cover_candidates
+                else None
             )
+            if cover_id is not None:
+                markers.append(
+                    f"[!] EMPTY PLACEHOLDER COVERED BY shape #{cover_id} — "
+                    "delete the placeholder"
+                )
+            else:
+                markers.append(
+                    "[!] EMPTY PLACEHOLDER — will render layout prompt text"
+                )
     return markers
 
 
+TITLE_PH_TYPES = frozenset({"title", "ctr_title", "center_title", "centertitle"})
+BODY_PH_TYPES = frozenset({"body", "subtitle", "obj"})
+
+
 def _theme_summary_line(file_path: str) -> Optional[str]:
-    """One-line theme summary for the overview: name, major/minor font,
-    bg/text/accent colors. Returns None if the package isn't readable."""
+    """One-line theme summary for the overview: name, bg/tx/accent colors.
+    Fonts are reported separately by `_deck_fonts_line` so the agent does
+    not conflate the theme's fallback typeface with the deck's actual one.
+    Returns None if the package isn't readable."""
     try:
         zf = zipfile.ZipFile(file_path)
     except (zipfile.BadZipFile, OSError):
         return None
-    try:
-        with zf:
-            pres_rels = ooxml.read_xml(
-                zf, ooxml.rels_path_for("ppt/presentation.xml"))
-            if pres_rels is None:
-                return None
-            master_path: Optional[str] = None
-            for rel in pres_rels.findall("pr:Relationship", ooxml.NS):
-                if rel.attrib.get("Type", "").endswith("/slideMaster"):
-                    master_path = ooxml.resolve_rel_target(
-                        ooxml.rels_path_for("ppt/presentation.xml"),
-                        rel.attrib["Target"],
-                    )
-                    break
-            if not master_path:
-                return None
-            master_xml = ooxml.read_xml(zf, master_path)
-            theme_path, theme_xml = _read_theme_for_master(zf, master_path)
-            if theme_xml is None:
-                return None
-            clr_map = _read_clr_map(master_xml)
-            theme_colors = ooxml.theme_colors_by_name(theme_xml)
-            major = ooxml.theme_font(theme_xml, "major")
-            minor = ooxml.theme_font(theme_xml, "minor")
-            theme_name = theme_xml.attrib.get("name") or "?"
+    with zf:
+        pres_rels = ooxml.read_xml(
+            zf, ooxml.rels_path_for("ppt/presentation.xml"))
+        if pres_rels is None:
+            return None
+        master_path: Optional[str] = None
+        for rel in pres_rels.findall("pr:Relationship", ooxml.NS):
+            if rel.attrib.get("Type", "").endswith("/slideMaster"):
+                master_path = ooxml.resolve_rel_target(
+                    ooxml.rels_path_for("ppt/presentation.xml"),
+                    rel.attrib["Target"],
+                )
+                break
+        if not master_path:
+            return None
+        master_xml = ooxml.read_xml(zf, master_path)
+        _, theme_xml = _read_theme_for_master(zf, master_path)
+        if theme_xml is None:
+            return None
+        clr_map = _read_clr_map(master_xml)
+        theme_colors = ooxml.theme_colors_by_name(theme_xml)
+        theme_name = theme_xml.attrib.get("name") or "?"
 
-            def _resolved(token: str) -> str:
-                hx = _resolve_scheme_color(token, clr_map, theme_colors)
-                return f"#{hx}" if hx else "—"
+        def _resolved(token: str) -> str:
+            hx = _resolve_scheme_color(token, clr_map, theme_colors)
+            return f"#{hx}" if hx else "—"
 
-            accents = " ".join(_resolved(f"accent{i}") for i in range(1, 7))
-            parts = [
-                f"theme:{theme_name}",
-                f"major:{major or '—'}",
-                f"minor:{minor or '—'}",
-                f"bg1:{_resolved('bg1')}",
-                f"tx1:{_resolved('tx1')}",
-                f"accents:{accents}",
-            ]
-            return "[" + " | ".join(parts) + "]"
-    except Exception:
+        accents = " ".join(_resolved(f"accent{i}") for i in range(1, 7))
+        parts = [
+            f"theme:{theme_name}",
+            f"bg1:{_resolved('bg1')}",
+            f"tx1:{_resolved('tx1')}",
+            f"accents:{accents}",
+        ]
+        return "[" + " | ".join(parts) + "]"
+
+
+def _format_font_key(
+    key: Tuple[Optional[str], Optional[float], bool], varies: bool
+) -> Optional[str]:
+    typeface, size_pt, bold = key
+    parts: List[str] = []
+    if typeface:
+        parts.append(typeface)
+    if size_pt is not None:
+        if float(size_pt).is_integer():
+            parts.append(f"{int(size_pt)}pt")
+        else:
+            parts.append(f"{size_pt:.1f}pt")
+    if bold:
+        parts.append("bold")
+    if not parts:
         return None
+    rendered = " ".join(parts)
+    return f"{rendered} (varies)" if varies else rendered
+
+
+def _deck_fonts_line(prs: PresentationType, file_path: str) -> Optional[str]:
+    """Resolve the dominant title and body placeholder typography across all
+    layouts and report them alongside the theme's major/minor fallback.
+
+    The theme's `major:`/`minor:` typefaces from <a:fontScheme> are only what
+    runs outside placeholders inherit — many decks (e.g. the Dust template)
+    declare Arial there but override every layout with Lexend. Reporting
+    them as the deck's font misleads the agent into picking Arial for
+    custom shapes. So we surface what the layouts actually resolve to, and
+    keep the theme fallback only when it diverges from what the layouts use.
+    """
+    try:
+        zf = zipfile.ZipFile(file_path)
+    except (zipfile.BadZipFile, OSError):
+        return None
+
+    title_counts: Dict[Tuple[Optional[str], Optional[float], bool], int] = {}
+    body_counts: Dict[Tuple[Optional[str], Optional[float], bool], int] = {}
+    fallback_major: Optional[str] = None
+    fallback_minor: Optional[str] = None
+
+    with zf:
+        for master in prs.slide_masters:
+            for layout in master.slide_layouts:
+                layout_path = _layout_part_path(layout)
+                if not layout_path:
+                    continue
+                (
+                    layout_xml,
+                    master_xml,
+                    theme_xml,
+                    clr_map,
+                    theme_colors,
+                ) = _read_layout_chain(zf, layout_path)
+                if fallback_major is None:
+                    fallback_major = ooxml.theme_font(theme_xml, "major")
+                if fallback_minor is None:
+                    fallback_minor = ooxml.theme_font(theme_xml, "minor")
+                if layout_xml is None:
+                    continue
+                for ph in layout.placeholders:
+                    ph_name = placeholder_type(ph) or ""
+                    if ph_name not in TITLE_PH_TYPES and ph_name not in BODY_PH_TYPES:
+                        continue
+                    pf = ph.placeholder_format
+                    ph_idx = pf.idx if pf else None
+                    defaults = resolve_placeholder_defaults(
+                        layout_xml,
+                        master_xml,
+                        theme_xml,
+                        clr_map,
+                        theme_colors,
+                        ph_idx=ph_idx,
+                        ph_type=ph_name,
+                    )
+                    key = (
+                        defaults.get("typeface"),
+                        defaults.get("size_pt"),
+                        bool(defaults.get("bold")),
+                    )
+                    bucket = title_counts if ph_name in TITLE_PH_TYPES else body_counts
+                    bucket[key] = bucket.get(key, 0) + 1
+
+    def _dominant(
+        counts: Dict[Tuple[Optional[str], Optional[float], bool], int],
+    ) -> Tuple[Optional[Tuple[Optional[str], Optional[float], bool]], bool]:
+        if not counts:
+            return None, False
+        top_key = max(counts.items(), key=lambda kv: kv[1])[0]
+        return top_key, len(counts) > 1
+
+    title_key, title_varies = _dominant(title_counts)
+    body_key, body_varies = _dominant(body_counts)
+
+    title_str = _format_font_key(title_key, title_varies) if title_key else None
+    body_str = _format_font_key(body_key, body_varies) if body_key else None
+
+    title_face = title_key[0] if title_key else None
+    body_face = body_key[0] if body_key else None
+    title_matches_fallback = (
+        fallback_major is not None and title_face == fallback_major
+    )
+    body_matches_fallback = (
+        fallback_minor is not None and body_face == fallback_minor
+    )
+    show_fallback = bool(fallback_major or fallback_minor) and not (
+        title_matches_fallback and body_matches_fallback
+    )
+
+    parts: List[str] = []
+    if title_str:
+        parts.append(f"title={title_str}")
+    if body_str:
+        parts.append(f"body={body_str}")
+    if show_fallback:
+        parts.append(
+            f"theme-fallback={fallback_major or '—'}/{fallback_minor or '—'}"
+        )
+    if not parts:
+        return None
+    return "[fonts: " + " | ".join(parts) + "]"
 
 
 def print_overview(prs: PresentationType, file_path: str) -> str:
@@ -756,6 +938,9 @@ def print_overview(prs: PresentationType, file_path: str) -> str:
     theme_line = _theme_summary_line(file_path)
     if theme_line:
         lines.append(theme_line)
+    fonts_line = _deck_fonts_line(prs, file_path)
+    if fonts_line:
+        lines.append(fonts_line)
     for idx, slide in enumerate(prs.slides, start=1):
         layout = slide.slide_layout.name or "?"
         title = slide_title(slide)
@@ -818,9 +1003,12 @@ def print_slide(
         width_emu=prs.slide_width or 0,
         height_emu=prs.slide_height or 0,
     )
+    cover_candidates = _cover_candidates(shapes)
     end = min(total, offset + max_shapes)
     for shape in shapes[offset:end]:
-        lines.extend(describe_shape(shape, ctx=ctx))
+        lines.extend(
+            describe_shape(shape, ctx=ctx, cover_candidates=cover_candidates)
+        )
 
     if end < total:
         lines.append("")
@@ -835,7 +1023,7 @@ def print_slide(
             lines.append("")
             lines.append("[Notes]")
             for paragraph in notes.split("\n"):
-                paragraph = paragraph.strip()
+                paragraph = flatten_text(paragraph).strip()
                 if paragraph:
                     lines.append(
                         f"  {ellipsize(paragraph, TEXT_PREVIEW_LIMIT)}")
@@ -919,7 +1107,9 @@ def print_text(prs: PresentationType) -> str:
         for shape in slide.shapes:
             slide_lines.extend(_collect_text(shape))
         if slide.has_notes_slide:
-            notes = (slide.notes_slide.notes_text_frame.text or "").strip()
+            notes = flatten_text(
+                slide.notes_slide.notes_text_frame.text or ""
+            ).strip()
             if notes:
                 slide_lines.append(
                     f"  [notes] {ellipsize(notes, TEXT_PREVIEW_LIMIT)}")
@@ -952,12 +1142,13 @@ def _collect_text(shape: BaseShape, indent: str = "  ") -> List[str]:
         return lines
     if shape.has_text_frame:
         for paragraph in shape.text_frame.paragraphs:
-            text = (paragraph.text or "").strip()
+            text = flatten_text(paragraph.text or "").strip()
             if not text:
                 continue
             level = paragraph.level or 0
-            lines.append(f"{indent}p{level}: {
-                         ellipsize(text, TEXT_PREVIEW_LIMIT)}")
+            lines.append(
+                f"{indent}p{level}: {ellipsize(text, TEXT_PREVIEW_LIMIT)}"
+            )
     return lines
 
 

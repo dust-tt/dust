@@ -43,10 +43,14 @@ pptx_inspect /files/conversation/deck.pptx --media         # embedded images / a
 \`\`\`
 
 The overview reports the deck's **theme** on its own line (theme name,
-major/minor fallback typefaces, background, main text color, six accent
-colors) and the **word-density envelope** the template uses:
+background, main text color, six accent colors), the deck's **fonts** on a
+second line (the dominant title and body typefaces resolved from the
+layouts, plus the theme's major/minor fallback used for runs outside
+placeholders), and the **word-density envelope** the template uses:
 \`words/slide: avg=X max=Y\` at the deck level and \`words:N\` per slide.
-You'll use those numbers as your density ceiling in section 4.
+Use the fonts line as your typography contract — \`theme-fallback\` only
+applies to custom shapes that bypass placeholder inheritance. Use the
+word-density numbers as your ceiling in section 4.
 
 \`--layouts\` reports, for every placeholder of every layout, the resolved
 typeface, size, weight, color, and alignment. This is what tells you the
@@ -60,6 +64,16 @@ explicit warnings prefixed with \`[!]\`:
   placeholder exists but is empty; PowerPoint will draw "Click to add
   title" / "Click to add Text" on top of your slide. Populate it
   (section 3) before moving on.
+- \`[!] EMPTY PLACEHOLDER COVERED BY shape #N — delete the placeholder\` —
+  same problem, but another shape on the slide (the named one) already
+  fills that region with intentional content (a chart image, a table, a
+  callout). Populating the placeholder would stack text behind that shape
+  and re-introduce the "Click to add …" prompt if the cover shape ever
+  moves. Delete the placeholder instead:
+  \`\`\`python
+  sp = slide.placeholders[idx]    # idx reported by --layouts
+  sp.element.getparent().remove(sp.element)
+  \`\`\`
 - \`[!] manual bullet glyph in placeholder — remove\` — you typed
   \`•\`, \`·\`, \`-\`, \`–\`, or \`*\` at the start of a paragraph in a
   placeholder whose layout already renders bullets. The result is a

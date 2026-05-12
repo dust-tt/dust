@@ -8,6 +8,17 @@ MAX_OUTPUT_BYTES = 48_000
 TEXT_PREVIEW_LIMIT = 80
 
 
+def flatten_text(text: str) -> str:
+    """Collapse OOXML/python-pptx soft and hard breaks to single spaces.
+
+    python-pptx joins paragraphs in `.text` with "\\n" and soft line breaks
+    (<a:br/>) with "\\v" (vertical tab). Both must be collapsed when the
+    text is rendered as a one-line preview, otherwise "team<br/>up" prints
+    as "teamup" (the \\v is invisible) and the agent gets the wrong title.
+    """
+    return text.replace("\v", " ").replace("\n", " ")
+
+
 def ellipsize(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
