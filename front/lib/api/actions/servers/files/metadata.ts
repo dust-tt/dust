@@ -17,25 +17,56 @@ export const CAT_LINES_MAX = 500;
 export const GREP_MATCHES_MAX = 50;
 export const CREATE_CONTENT_MAX_BYTES = 50 * 1024; // 50 KB (~12K tokens).
 
-export const FILES_TOOLS_METADATA = createToolsRecord({
-  [FILES_LIST_ACTION_NAME]: {
-    description:
-      "List all files in the conversation file system. " +
-      "Returns one entry per file with its scoped path (e.g. `conversation/chart.png`), " +
-      "content type, and size in KB. " +
-      "Scoped paths can be used to reference or display a file in a response, " +
-      "or passed to other tools that accept a file path. " +
-      "Some files have an auto-generated `*.processed.<ext>` sibling carrying a " +
-      "model-friendly representation of their source: a resized version for images, " +
-      "a transcript for audio, or extracted text for PDFs and other documents. " +
-      `Read the sibling with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to access the content of binary sources.`,
-    schema: {},
-    stake: "never_ask",
-    displayLabels: {
-      running: "Listing available files",
-      done: "Listed available files",
-    },
+// Shared `list` description that opens with the generic capability — the file-system listing —
+// followed by a context-specific suffix injected by the conversation-only or project-aware
+// metadata. The suffix replaces the placeholder before being concatenated into the final string.
+const LIST_DESCRIPTION_PREFIX =
+  "List files in the file system. " +
+  "Returns one entry per file with its scoped path (e.g. `conversation/chart.png`), " +
+  "content type, and size in KB. " +
+  "Scoped paths can be used to reference or display a file in a response, " +
+  "or passed to other tools that accept a file path. " +
+  "Some files have an auto-generated `*.processed.<ext>` sibling carrying a " +
+  "model-friendly representation of their source: a resized version for images, " +
+  "a transcript for audio, or extracted text for PDFs and other documents. " +
+  `Read the sibling with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to access the content of binary sources.`;
+
+// `list` tool variants. The conversation-only build is the default — it takes no parameter and
+// always lists conversation files. The project-aware build accepts `scope: "conversation" |
+// "project"` and is only registered when the conversation belongs to a project.
+const LIST_CONVERSATION_ONLY_TOOL = {
+  description: `${LIST_DESCRIPTION_PREFIX} Lists the conversation's files.`,
+  schema: {},
+  stake: "never_ask" as const,
+  displayLabels: {
+    running: "Listing available files",
+    done: "Listed available files",
   },
+};
+
+const LIST_PROJECT_AWARE_TOOL = {
+  description:
+    `${LIST_DESCRIPTION_PREFIX} ` +
+    "Defaults to the conversation's files. Pass `scope: \"project\"` to list the project's " +
+    "shared files (visible to every conversation in the same project) instead.",
+  schema: {
+    scope: z
+      .enum(["conversation", "project"])
+      .optional()
+      .describe(
+        "Which file system to list. Defaults to `conversation`. Pass `project` to list the project's shared files."
+      ),
+  },
+  stake: "never_ask" as const,
+  displayLabels: {
+    running: "Listing available files",
+    done: "Listed available files",
+  },
+};
+
+// Stake levels in this record are typed via `as const` so the object can be spread into
+// `createToolsRecord`, which expects the narrowed `MCPToolStakeLevelType` literal.
+const FILES_TOOLS_COMMON_METADATA = {
   [FILES_CAT_ACTION_NAME]: {
     description:
       "Read the content of a file. " +
@@ -67,7 +98,7 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
           `Maximum number of lines to return (default ${CAT_LINES_DEFAULT}, max ${CAT_LINES_MAX})`
         ),
     },
-    stake: "never_ask",
+    stake: "never_ask" as const,
     displayLabels: {
       running: "Reading file",
       done: "Read file",
@@ -91,7 +122,7 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
           "Regular expression to search for (case-sensitive; use `(?i)` prefix for case-insensitive)"
         ),
     },
-    stake: "never_ask",
+    stake: "never_ask" as const,
     displayLabels: {
       running: "Searching file",
       done: "Searched file",
@@ -117,7 +148,7 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
           "MIME content type (e.g. `text/plain`, `application/json`, `text/csv`, `text/markdown`)"
         ),
     },
-    stake: "never_ask",
+    stake: "never_ask" as const,
     displayLabels: {
       running: "Writing file",
       done: "Write file",
@@ -134,12 +165,22 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
           `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation/output.json\`)`
         ),
     },
-    stake: "medium",
+    stake: "medium" as const,
     displayLabels: {
       running: "Deleting file",
       done: "Deleted file",
     },
   },
+};
+
+export const FILES_TOOLS_METADATA = createToolsRecord({
+  [FILES_LIST_ACTION_NAME]: LIST_CONVERSATION_ONLY_TOOL,
+  ...FILES_TOOLS_COMMON_METADATA,
+});
+
+export const FILES_TOOLS_METADATA_WITH_PROJECT = createToolsRecord({
+  [FILES_LIST_ACTION_NAME]: LIST_PROJECT_AWARE_TOOL,
+  ...FILES_TOOLS_COMMON_METADATA,
 });
 
 export const FILES_SERVER = {

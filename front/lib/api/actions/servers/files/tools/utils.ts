@@ -114,7 +114,25 @@ export async function resolveMountPoint(
     );
   }
 
-  switch (parsed.prefix) {
+  return resolveMountByUseCase(auth, conversation, {
+    useCase: parsed.prefix,
+    access,
+  });
+}
+
+/**
+ * Resolve the mount point for a given scope use case, without going through a path. Used by tools
+ * that operate on a whole mount (e.g. `list`).
+ */
+export async function resolveMountByUseCase(
+  auth: Authenticator,
+  conversation: ConversationType,
+  {
+    useCase,
+    access,
+  }: { useCase: GCSMountPoint["useCase"]; access: Access }
+): Promise<Result<MountPoint, MCPError>> {
+  switch (useCase) {
     case "conversation":
       return new Ok(buildConversationMountPoint(auth, conversation));
 
@@ -122,7 +140,7 @@ export async function resolveMountPoint(
       return buildProjectMountPoint(auth, conversation, { access });
 
     default:
-      assertNever(parsed.prefix);
+      assertNever(useCase);
   }
 }
 

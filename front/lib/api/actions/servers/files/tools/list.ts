@@ -3,7 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { GCSMountPoint } from "@app/lib/api/files/gcs_mount/files";
+import { resolveMountByUseCase } from "@app/lib/api/actions/servers/files/tools/utils";
 import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
 import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
 import { stripMimeParameters } from "@app/types/files";
@@ -23,7 +23,7 @@ function getDirAndFileName(path: string): { dir: string; fileName: string } {
 }
 
 export async function listHandler(
-  _params: Record<string, never>,
+  { scope }: { scope?: "conversation" | "project" },
   extra: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   const conversation = extra.agentLoopContext?.runContext?.conversation;
@@ -33,11 +33,16 @@ export async function listHandler(
     );
   }
 
-  const scope: GCSMountPoint = {
-    useCase: "conversation",
-    conversationId: conversation.sId,
-  };
-  const entries = await listGCSMountFiles(extra.auth, scope, {
+  const useCase = scope ?? "conversation";
+  const mountRes = await resolveMountByUseCase(extra.auth, conversation, {
+    useCase,
+    access: "read",
+  });
+  if (mountRes.isErr()) {
+    return mountRes;
+  }
+
+  const entries = await listGCSMountFiles(extra.auth, mountRes.value.scope, {
     includeProcessed: true,
   });
 
