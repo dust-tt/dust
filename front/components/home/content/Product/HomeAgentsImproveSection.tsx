@@ -193,7 +193,7 @@ function HoverImageCard({ card, index }: HoverImageCardProps) {
               loop
               playsInline
               preload="metadata"
-              className="h-[260px] w-[260px] rounded-2xl bg-slate-100 object-cover shadow-xl ring-1 ring-black/5"
+              className="h-[260px] w-[260px] rounded-2xl object-cover shadow-xl ring-1 ring-black/5"
             />
           </div>
         </div>
@@ -229,7 +229,7 @@ export function HomeAgentsImproveSection() {
             </P>
           </HomeReveal>
         </div>
-        <div className="grid grid-cols-1 gap-px rounded-3xl bg-border md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-px rounded-3xl md:grid-cols-2">
           {CARDS.map((card, index) => (
             <HoverImageCard key={card.title} card={card} index={index} />
           ))}

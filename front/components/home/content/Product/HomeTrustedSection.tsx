@@ -121,33 +121,15 @@ const MARQUEE_CSS = `
     animation-play-state: paused;
   }
 
-  /* Case study chip — drops from above */
+  /* Case study chip — always visible for logos that have a URL. Color
+     deepens on hover (handled by Tailwind hover:text-foreground). */
   .home-trusted-chip {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.95);
-    transform-origin: top center;
-    transition: opacity 180ms cubic-bezier(0.165, 0.84, 0.44, 1),
-                transform 180ms cubic-bezier(0.165, 0.84, 0.44, 1);
-    will-change: opacity, transform;
-  }
-  @media (hover: hover) and (pointer: fine) {
-    .home-trusted-item:hover .home-trusted-chip {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
+    transition: color 180ms cubic-bezier(0.165, 0.84, 0.44, 1);
   }
 
   @media (prefers-reduced-motion: reduce) {
     .home-trusted-track { animation: none; }
-    .home-trusted-chip {
-      transition: opacity 100ms ease;
-      transform: none;
-    }
-    @media (hover: hover) and (pointer: fine) {
-      .home-trusted-item:hover .home-trusted-chip {
-        transform: none;
-      }
-    }
+    .home-trusted-chip { transition: none; }
   }
 `;
 
@@ -199,12 +181,10 @@ export function HomeTrustedSection() {
                 idx < logos.length
                   ? CASE_STUDIES[logo.name.toLowerCase().replace(/\s+/g, "")]
                   : undefined;
-              return (
-                <div
-                  key={`${logo.name}-${idx}`}
-                  className="home-trusted-item flex flex-shrink-0 flex-col items-center gap-1"
-                  aria-hidden={idx >= logos.length}
-                >
+              const itemClassName =
+                "home-trusted-item flex flex-shrink-0 flex-col items-center gap-1";
+              const inner = (
+                <>
                   <div className="flex h-14 items-center justify-center opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-16">
                     <Image
                       alt={idx >= logos.length ? "" : logo.name}
@@ -214,22 +194,39 @@ export function HomeTrustedSection() {
                       className="h-auto max-h-14 w-auto object-contain md:max-h-16"
                     />
                   </div>
-                  {/* Reserve a fixed height for the chip so all items share the
-                      same total height — no layout shift when chip appears. */}
-                  <div className="h-6">
+                  {/* Reserve a fixed-height slot so items with and without a
+                      chip share the same total height. Flex-center the chip
+                      so it sits snug under the logo rather than floating in
+                      the middle of an over-tall line box. */}
+                  <div className="flex h-4 items-center justify-center">
                     {caseStudyUrl && (
-                      <Link
-                        href={caseStudyUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        tabIndex={idx >= logos.length ? -1 : undefined}
-                        className="home-trusted-chip inline-flex items-center gap-1 rounded-full border border-foreground/10 bg-white px-2.5 py-1 text-[11px] font-medium leading-none text-foreground/60 shadow-sm hover:text-foreground"
-                      >
+                      <span className="home-trusted-chip inline-flex items-center gap-1 text-[11px] font-medium leading-none text-foreground/40 [.home-trusted-item:hover_&]:text-foreground/80">
                         Case study
                         <ExternalArrowIcon />
-                      </Link>
+                      </span>
                     )}
                   </div>
+                </>
+              );
+              return caseStudyUrl ? (
+                <Link
+                  key={`${logo.name}-${idx}`}
+                  href={caseStudyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  tabIndex={idx >= logos.length ? -1 : undefined}
+                  aria-hidden={idx >= logos.length}
+                  className={itemClassName}
+                >
+                  {inner}
+                </Link>
+              ) : (
+                <div
+                  key={`${logo.name}-${idx}`}
+                  className={itemClassName}
+                  aria-hidden={idx >= logos.length}
+                >
+                  {inner}
                 </div>
               );
             })}
