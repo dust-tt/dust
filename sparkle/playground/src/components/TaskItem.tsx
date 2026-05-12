@@ -227,7 +227,11 @@ export function TaskItem({
         {showCheckbox && (
           <Checkbox
             size="sm"
-            className={cn("s-mt-0.5", checkboxClassName)}
+            className={cn(
+              "s-mt-0.5",
+              !isEditable && "s-pointer-events-none",
+              checkboxClassName
+            )}
             isMutedAfterCheck={isMutedAfterCheck}
             checked={isChecked}
             disabled={isDisabled}

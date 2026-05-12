@@ -2,7 +2,7 @@ import {
   AnimatedText,
   ArchiveIcon,
   ArrowDownOnSquareIcon,
-  ArrowUpIcon,
+  ArrowRightIcon,
   ArrowUpOnSquareIcon,
   Avatar,
   Button,
@@ -3660,7 +3660,7 @@ export function GroupConversationView({
                                           </DropdownMenuContent>
                                         </DropdownMenu>
                                         <Button
-                                          icon={ArrowUpIcon}
+                                          icon={ArrowRightIcon}
                                           size="xs"
                                           variant="highlight"
                                           tooltip="Start working on task"
