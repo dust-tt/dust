@@ -18,7 +18,11 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  PaginationState,
+} from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
 interface ReinforcementSkillsSectionProps {
@@ -94,36 +98,23 @@ const COLUMNS: ColumnDef<RowData, unknown>[] = [
     header: "Enabled",
     accessorKey: "enabled",
     cell: (info: CellContext<RowData, unknown>) => {
-      const { enabled, pendingEnabled, isEnabledUpdating, onToggleEnabled } =
-        info.row.original;
+      const {
+        enabled,
+        pendingEnabled,
+        isEnabledUpdating,
+        lock,
+        pendingLock,
+        onToggleEnabled,
+      } = info.row.original;
       const selected = pendingEnabled ?? enabled;
+      const isLocked = pendingLock ?? lock;
       return (
         <DataTable.CellContent>
           <SliderToggle
             size="xs"
             selected={selected}
-            disabled={isEnabledUpdating}
+            disabled={isEnabledUpdating || isLocked}
             onClick={onToggleEnabled}
-          />
-        </DataTable.CellContent>
-      );
-    },
-    meta: { className: "w-24" },
-  },
-  {
-    header: "Lock State",
-    accessorKey: "lock",
-    cell: (info: CellContext<RowData, unknown>) => {
-      const { lock, pendingLock, isLockUpdating, onToggleLock } =
-        info.row.original;
-      const selected = pendingLock ?? lock;
-      return (
-        <DataTable.CellContent>
-          <SliderToggle
-            size="xs"
-            selected={selected}
-            disabled={isLockUpdating}
-            onClick={onToggleLock}
           />
         </DataTable.CellContent>
       );
@@ -165,6 +156,26 @@ const COLUMNS: ColumnDef<RowData, unknown>[] = [
       );
     },
     meta: { className: "w-32" },
+  },
+  {
+    header: "Lock State",
+    accessorKey: "lock",
+    cell: (info: CellContext<RowData, unknown>) => {
+      const { lock, pendingLock, isLockUpdating, onToggleLock } =
+        info.row.original;
+      const selected = pendingLock ?? lock;
+      return (
+        <DataTable.CellContent>
+          <SliderToggle
+            size="xs"
+            selected={selected}
+            disabled={isLockUpdating}
+            onClick={onToggleLock}
+          />
+        </DataTable.CellContent>
+      );
+    },
+    meta: { className: "w-24" },
   },
 ];
 
@@ -299,6 +310,10 @@ export function ReinforcementSkillsSection({
   );
 
   const [filter, setFilter] = useState("");
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 25,
+  });
 
   const sortedSkills = useMemo(
     () =>
@@ -393,6 +408,8 @@ export function ReinforcementSkillsSection({
           columns={COLUMNS}
           filter={filter}
           filterColumn="name"
+          pagination={pagination}
+          setPagination={setPagination}
         />
       )}
     </Page.Vertical>

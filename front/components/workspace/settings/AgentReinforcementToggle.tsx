@@ -11,13 +11,10 @@ import {
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  CardIcon,
   ContextItem,
   Input,
   Page,
   SliderToggle,
-  SparklesIcon,
-  Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -36,7 +33,7 @@ export function ReinforcementSection({ owner }: ReinforcementSectionProps) {
         <div className="h-full border-b border-border dark:border-border-night" />
         <ContextItem
           title="Allow self-improving skills"
-          visual={<SparklesIcon className="h-6 w-6 shrink-0" />}
+          visual={<></>}
           hasSeparatorIfLast={true}
           action={
             <SliderToggle
@@ -63,7 +60,7 @@ function ReinforcementBatchModeToggle({ owner }: ReinforcementSectionProps) {
   return (
     <ContextItem
       title="Enable batch processing"
-      visual={<Square3Stack3DIcon className="h-6 w-6 shrink-0" />}
+      visual={<></>}
       hasSeparatorIfLast={true}
       action={
         <SliderToggle
@@ -104,7 +101,7 @@ function SelfImprovementCapPerSkillItem({ owner }: ReinforcementSectionProps) {
   return (
     <ContextItem
       title="Default cost cap per skill"
-      visual={<CardIcon className="h-6 w-6 shrink-0" />}
+      visual={<></>}
       hasSeparatorIfLast={true}
       action={
         <form
@@ -171,7 +168,7 @@ function ReinforcementCapItem({ owner }: ReinforcementSectionProps) {
   return (
     <ContextItem
       title="Global spending cap"
-      visual={<CardIcon className="h-6 w-6 shrink-0" />}
+      visual={<></>}
       hasSeparatorIfLast={true}
       action={
         <form

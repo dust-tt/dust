@@ -98,26 +98,28 @@ export function ReinforcementPage() {
   };
 
   return (
-    <Page.Vertical gap="xl" align="stretch">
-      <Page.Header
-        title="Self-Improving Skills"
-        icon={SparklesIcon}
-        description={
-          <span>
-            Configure self-improving skills settings for this workspace.{" "}
-            <a
-              href="https://docs.dust.tt/docs/reinforcement"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-highlight dark:text-highlight-night underline"
-            >
-              Learn more
-            </a>
-            .
-          </span>
-        }
-      />
-      {renderBody()}
-    </Page.Vertical>
+    <div className="mb-4">
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Self-Improving Skills"
+          icon={SparklesIcon}
+          description={
+            <span>
+              Configure self-improving skills settings for this workspace.{" "}
+              <a
+                href="https://docs.dust.tt/docs/reinforcement"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-highlight dark:text-highlight-night underline"
+              >
+                Learn more
+              </a>
+              .
+            </span>
+          }
+        />
+        {renderBody()}
+      </Page.Vertical>
+    </div>
   );
 }
