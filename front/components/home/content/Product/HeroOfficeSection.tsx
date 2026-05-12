@@ -1,5 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 
+import { HomeReveal } from "@app/components/home/content/Product/HomeReveal";
 import { homeScenarios } from "@app/components/home/content/Product/heroOfficeScenario";
 import { mountFloorScene } from "@app/components/home/content/Product/heroOfficeScene";
 import type { TeamMember } from "@app/components/home/content/shared/team";
@@ -129,51 +130,62 @@ export function HeroOfficeSection() {
     <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-background pb-12">
       <div className="relative mx-auto flex w-full max-w-[1600px] flex-col-reverse items-stretch gap-10 px-6 pt-16 lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:pt-24">
         <div className="z-10 flex w-full flex-col items-start gap-6 lg:w-[42%] lg:pr-8">
-          <span className="label-xs inline-flex h-8 items-center gap-2 rounded-full border border-border bg-background/85 px-3 text-muted-foreground backdrop-blur-md">
-            <span
-              className="h-1.5 w-1.5 rounded-full bg-success-dark"
-              style={{ boxShadow: "0 0 0 3px rgba(65,139,92,0.18)" }}
-            />
-            <span>{EYEBROW_COPY}</span>
-          </span>
-          <h1
-            className="m-0 text-balance text-[clamp(40px,4.8vw,76px)] font-semibold leading-[90%] tracking-[-0.04em] text-foreground"
-            style={{ fontFamily: "var(--font-sans, inherit)" }}
-          >
-            {HEADLINE_LINE_1}
-            <br />
-            {HEADLINE_LINE_2}
-          </h1>
-          <p className="copy-lg max-w-[520px] text-pretty leading-[1.55] text-muted-foreground">
-            {LEAD_COPY}
-          </p>
-          <div className="flex flex-row flex-wrap justify-start gap-3">
-            <Link href="/home/contact">
-              <Button
-                variant="highlight"
-                size="md"
-                label="Try for free"
-                onClick={withTracking(TRACKING_AREAS.HOME, "hero_book_demo")}
+          <HomeReveal>
+            <span className="label-xs inline-flex h-8 items-center gap-2 rounded-full border border-border bg-background/85 px-3 text-muted-foreground backdrop-blur-md">
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-success-dark"
+                style={{ boxShadow: "0 0 0 3px rgba(65,139,92,0.18)" }}
               />
-            </Link>
-            <Link href="/sign-up">
-              <Button
-                variant="ghost-secondary"
-                size="md"
-                label="See how it works →"
-                onClick={withTracking(TRACKING_AREAS.HOME, "hero_start_free")}
-              />
-            </Link>
-          </div>
+              <span>{EYEBROW_COPY}</span>
+            </span>
+          </HomeReveal>
+          <HomeReveal delay={80}>
+            <h1
+              className="m-0 text-balance text-[clamp(40px,4.8vw,76px)] font-semibold leading-[90%] tracking-[-0.04em] text-foreground"
+              style={{ fontFamily: "var(--font-sans, inherit)" }}
+            >
+              {HEADLINE_LINE_1}
+              <br />
+              {HEADLINE_LINE_2}
+            </h1>
+          </HomeReveal>
+          <HomeReveal delay={160}>
+            <p className="copy-lg max-w-[520px] text-pretty leading-[1.55] text-muted-foreground">
+              {LEAD_COPY}
+            </p>
+          </HomeReveal>
+          <HomeReveal delay={240}>
+            <div className="flex flex-row flex-wrap justify-start gap-3">
+              <Link href="/home/contact">
+                <Button
+                  variant="highlight"
+                  size="md"
+                  label="Try for free"
+                  onClick={withTracking(TRACKING_AREAS.HOME, "hero_book_demo")}
+                />
+              </Link>
+              <Link href="/sign-up">
+                <Button
+                  variant="ghost-secondary"
+                  size="md"
+                  label="See how it works →"
+                  onClick={withTracking(TRACKING_AREAS.HOME, "hero_start_free")}
+                />
+              </Link>
+            </div>
+          </HomeReveal>
         </div>
 
-        <div className="relative hidden w-full lg:block lg:w-[58%]">
+        <HomeReveal
+          delay={80}
+          className="relative hidden w-full lg:block lg:w-[58%]"
+        >
           <div
             ref={sceneRef}
             className="dust-floor-host w-full lg:h-[min(86vh,900px)]"
             aria-hidden="true"
           />
-        </div>
+        </HomeReveal>
       </div>
     </section>
   );

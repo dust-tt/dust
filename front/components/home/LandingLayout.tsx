@@ -1,6 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { AnnouncementBanner } from "@app/components/home/AnnouncementBanner";
 import { A } from "@app/components/home/ContentComponents";
+import { DevGeoSwitcher } from "@app/components/home/DevGeoSwitcher";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
@@ -246,6 +247,7 @@ export default function LandingLayout({
         )}
         {!hideNavigation && <FooterNavigation />}
       </main>
+      <DevGeoSwitcher />
     </>
   );
 }

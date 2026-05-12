@@ -1,4 +1,5 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { HomeReveal } from "@app/components/home/content/Product/HomeReveal";
 import { useGeolocation } from "@app/lib/swr/geo";
 import Image from "next/image";
 import Link from "next/link";
@@ -160,77 +161,82 @@ export function HomeTrustedSection() {
     <section className="flex w-full items-center justify-center bg-gradient-to-b from-background via-blue-50/40 to-blue-100/60 pb-20 pt-12">
       <style dangerouslySetInnerHTML={{ __html: MARQUEE_CSS }} />
       <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center justify-center gap-12 text-center">
-        <h2 className="m-0 text-balance px-6 text-center text-xl font-semibold tracking-[-0.02em] text-foreground md:text-2xl">
-          Trusted among AI Operators
-          <br />
-          at <span className="text-blue-500">5,000+</span> global organizations
-        </h2>
-        <div
-          className="relative w-full overflow-hidden"
-          style={{
-            maskImage:
-              "linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%)",
-            WebkitMaskImage:
-              "linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%)",
-          }}
-        >
-          <div className="home-trusted-track flex w-max items-end gap-x-16 sm:gap-x-20 lg:gap-x-24">
-            {marqueeLogos.map((logo, idx) => {
-              const caseStudyUrl =
-                idx < logos.length
-                  ? CASE_STUDIES[logo.name.toLowerCase().replace(/\s+/g, "")]
-                  : undefined;
-              const itemClassName =
-                "home-trusted-item flex flex-shrink-0 flex-col items-center gap-1";
-              const inner = (
-                <>
-                  <div className="flex h-14 items-center justify-center opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-16">
-                    <Image
-                      alt={idx >= logos.length ? "" : logo.name}
-                      src={logo.src}
-                      width={220}
-                      height={64}
-                      className="h-auto max-h-14 w-auto object-contain md:max-h-16"
-                    />
-                  </div>
-                  {/* Reserve a fixed-height slot so items with and without a
+        <HomeReveal>
+          <h2 className="m-0 text-balance px-6 text-center text-xl font-semibold tracking-[-0.02em] text-foreground md:text-2xl">
+            Trusted among AI Operators
+            <br />
+            at <span className="text-blue-500">5,000+</span> global
+            organizations
+          </h2>
+        </HomeReveal>
+        <HomeReveal delay={120} className="w-full">
+          <div
+            className="relative w-full overflow-hidden"
+            style={{
+              maskImage:
+                "linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%)",
+              WebkitMaskImage:
+                "linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%)",
+            }}
+          >
+            <div className="home-trusted-track flex w-max items-end gap-x-16 sm:gap-x-20 lg:gap-x-24">
+              {marqueeLogos.map((logo, idx) => {
+                const caseStudyUrl =
+                  idx < logos.length
+                    ? CASE_STUDIES[logo.name.toLowerCase().replace(/\s+/g, "")]
+                    : undefined;
+                const itemClassName =
+                  "home-trusted-item flex flex-shrink-0 flex-col items-center gap-1";
+                const inner = (
+                  <>
+                    <div className="flex h-14 items-center justify-center opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-16">
+                      <Image
+                        alt={idx >= logos.length ? "" : logo.name}
+                        src={logo.src}
+                        width={220}
+                        height={64}
+                        className="h-auto max-h-14 w-auto object-contain md:max-h-16"
+                      />
+                    </div>
+                    {/* Reserve a fixed-height slot so items with and without a
                       chip share the same total height. Flex-center the chip
                       so it sits snug under the logo rather than floating in
                       the middle of an over-tall line box. */}
-                  <div className="flex h-4 items-center justify-center">
-                    {caseStudyUrl && (
-                      <span className="home-trusted-chip inline-flex items-center gap-1 text-[11px] font-medium leading-none text-foreground/40 [.home-trusted-item:hover_&]:text-foreground/80">
-                        Case study
-                        <ExternalArrowIcon />
-                      </span>
-                    )}
+                    <div className="flex h-4 items-center justify-center">
+                      {caseStudyUrl && (
+                        <span className="home-trusted-chip inline-flex items-center gap-1 text-[11px] font-medium leading-none text-foreground/40 [.home-trusted-item:hover_&]:text-foreground/80">
+                          Case study
+                          <ExternalArrowIcon />
+                        </span>
+                      )}
+                    </div>
+                  </>
+                );
+                return caseStudyUrl ? (
+                  <Link
+                    key={`${logo.name}-${idx}`}
+                    href={caseStudyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    tabIndex={idx >= logos.length ? -1 : undefined}
+                    aria-hidden={idx >= logos.length}
+                    className={itemClassName}
+                  >
+                    {inner}
+                  </Link>
+                ) : (
+                  <div
+                    key={`${logo.name}-${idx}`}
+                    className={itemClassName}
+                    aria-hidden={idx >= logos.length}
+                  >
+                    {inner}
                   </div>
-                </>
-              );
-              return caseStudyUrl ? (
-                <Link
-                  key={`${logo.name}-${idx}`}
-                  href={caseStudyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  tabIndex={idx >= logos.length ? -1 : undefined}
-                  aria-hidden={idx >= logos.length}
-                  className={itemClassName}
-                >
-                  {inner}
-                </Link>
-              ) : (
-                <div
-                  key={`${logo.name}-${idx}`}
-                  className={itemClassName}
-                  aria-hidden={idx >= logos.length}
-                >
-                  {inner}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </HomeReveal>
       </div>
     </section>
   );
