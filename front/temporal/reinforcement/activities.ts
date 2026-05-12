@@ -396,7 +396,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
     ...new Set(conversationsWithSkills.flatMap(({ skillIds }) => skillIds)),
   ];
   const skills = await SkillResource.fetchByIds(auth, allSkillIds);
-  const skillModelIdBySId = new Map(
+  const skillModelIdById = new Map(
     skills
       .filter((skill) => isResourceSId("skill", skill.sId))
       .map((skill) => [skill.sId, skill.id])
@@ -430,7 +430,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
       usages.push({
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
-        skillId: skillModelIdBySId.get(skillIds[i]) ?? null,
+        skillId: skillModelIdById.get(skillIds[i]) ?? null,
         conversationId: conversation.id,
         priceMicroUsd: prices[i],
       });
@@ -1026,7 +1026,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
     auth,
     reinforcementConversationIds
   );
-  const reinforcementConvBySId = new Map(
+  const reinforcementConvById = new Map(
     reinforcementConversations.map((c) => [c.sId, c])
   );
 
@@ -1037,7 +1037,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
     const analysedConvId =
       reinforcementToAnalysed.get(reinforcementConvId) ?? reinforcementConvId;
 
-    const reinforcementConv = reinforcementConvBySId.get(reinforcementConvId);
+    const reinforcementConv = reinforcementConvById.get(reinforcementConvId);
     if (!reinforcementConv) {
       logger.warn(
         { reinforcementConvId, batchId },
