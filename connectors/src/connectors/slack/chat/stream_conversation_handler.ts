@@ -290,7 +290,7 @@ async function streamAgentAnswerToSlack(
     },
   };
 
-  function clearUserActionTimeout() {
+  const clearUserActionTimeout = () => {
     if (userActionTimeoutHandle) {
       clearTimeout(userActionTimeoutHandle);
       userActionTimeoutHandle = null;
@@ -310,9 +310,9 @@ async function streamAgentAnswerToSlack(
     );
 
     pendingUserActionType = null;
-  }
+  };
 
-  function startUserActionTimeout(actionType: SlackUserActionType) {
+  const startUserActionTimeout = (actionType: SlackUserActionType) => {
     clearUserActionTimeout();
 
     pendingUserActionType = actionType;
@@ -341,7 +341,7 @@ async function streamAgentAnswerToSlack(
       },
       "Starting user-action idle timeout for Slack stream."
     );
-  }
+  };
 
   async function* eventStreamWithTimeoutCleanup() {
     try {
