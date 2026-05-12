@@ -1,5 +1,5 @@
-import { parse } from "@babel/parser";
-import traverse from "@babel/traverse";
+import ts from "typescript";
+
 import logger from "@viz/app/lib/logger";
 
 export type FileRef =
@@ -28,48 +28,52 @@ export function extractFileRefs(code: string): FileRef[] {
   }
 
   try {
-    const ast = parse(code, {
-      sourceType: "module",
-      plugins: ["jsx", "typescript"],
-      strictMode: false,
-      // AI-generated viz code occasionally contains spec-level syntax errors
-      // (e.g. `a ?? b || c` without parens). Recover and still walk the valid
-      // portions so we can prefetch refs.
-      errorRecovery: true,
-    });
+    // TypeScript's parser is tolerant by design It produces a (partial) AST even for code with
+    // syntax errors (errors are reported via parseDiagnostics rather than thrown), which is what
+    // we want for AI-generated frame code.
+    const sourceFile = ts.createSourceFile(
+      "frame.tsx",
+      code,
+      ts.ScriptTarget.Latest,
+      false,
+      ts.ScriptKind.TSX
+    );
 
-    traverse(ast, {
-      // Extract useFile() calls.
-      CallExpression(path) {
-        if (
-          path.node.callee.type === "Identifier" &&
-          path.node.callee.name === "useFile" &&
-          path.node.arguments.length > 0
-        ) {
-          const arg = path.node.arguments[0];
-          if (arg.type === "StringLiteral") {
-            add(arg.value);
-          }
-        }
-      },
-      // Extract file refs from JSX props like fileId="fil_xxx".
-      JSXAttribute(path) {
-        if (
-          path.node.name.type === "JSXIdentifier" &&
-          path.node.name.name === "fileId" &&
-          path.node.value?.type === "StringLiteral"
-        ) {
-          add(path.node.value.value);
-        }
-      },
-      // Extract fil_xxx patterns and scoped paths from all string literals.
-      StringLiteral(path) {
-        const value = path.node.value;
-        if (typeof value === "string") {
-          add(value);
-        }
-      },
-    });
+    const visit = (node: ts.Node): void => {
+      // Extract useFile("X") calls.
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === "useFile" &&
+        node.arguments.length > 0 &&
+        ts.isStringLiteral(node.arguments[0])
+      ) {
+        add(node.arguments[0].text);
+      }
+
+      // Extract fileId="X" JSX attributes.
+      if (
+        ts.isJsxAttribute(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === "fileId" &&
+        node.initializer &&
+        ts.isStringLiteral(node.initializer)
+      ) {
+        add(node.initializer.text);
+      }
+
+      // Extract fil_xxx / scoped paths from any string literal.
+      if (
+        ts.isStringLiteral(node) ||
+        ts.isNoSubstitutionTemplateLiteral(node)
+      ) {
+        add(node.text);
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(sourceFile);
   } catch (err) {
     logger.warn({ err }, "Failed to parse frame code:");
   }

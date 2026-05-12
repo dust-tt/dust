@@ -1,4 +1,4 @@
-name: Lint & Build (viz)
+name: Lint & Build & Test (viz)
 
 on:
   push:
@@ -22,3 +22,13 @@ jobs:
           node-version: "24.14.0"
       - name: Build
         run: npm -w viz run build
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "24.14.0"
+      - name: Test
+        run: npm -w viz run test
