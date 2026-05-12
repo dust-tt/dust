@@ -27,14 +27,12 @@ import {
   buildSkillAnalysisSystemPrompt,
   buildSkillConversationAnalysisBatchMap,
 } from "@app/lib/reinforcement/analyze_conversation";
+import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
 } from "@app/lib/reinforcement/constants";
-import {
-  getCurrentPeriod,
-  getReinforcementMonthlyCapMicroUsd,
-} from "@app/lib/reinforcement/consumption";
+import { getReinforcementMonthlyCapMicroUsd } from "@app/lib/reinforcement/consumption";
 import {
   buildReinforcedSkillsSpecifications,
   classifySkillToolCalls,

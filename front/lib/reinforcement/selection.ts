@@ -1,5 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import { getCurrentPeriod } from "@app/lib/reinforcement/consumption";
+import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
