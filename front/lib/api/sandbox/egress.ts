@@ -349,7 +349,7 @@ export async function setupEgressForwarder(
     "-u SSL_CERT_FILE -u SSL_CERT_DIR -u CURL_CA_BUNDLE " +
     "-u REQUESTS_CA_BUNDLE -u AWS_CA_BUNDLE -u GIT_SSL_CAINFO " +
     "-u NODE_EXTRA_CA_CERTS -u DENO_CERT -u DENO_TLS_CA_STORE " +
-    (disableMitm ? `${DSBX_DISABLE_MITM_ENV}=1 ` : "") +
+    (disableMitm ? `${DSBX_DISABLE_MITM_ENV}=true ` : "") +
     "/opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
     `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +

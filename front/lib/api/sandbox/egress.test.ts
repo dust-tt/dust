@@ -159,7 +159,7 @@ describe("sandbox egress helpers", () => {
       { user: "root" }
     );
     const startCall = sandbox.exec.mock.calls[1][1] as string;
-    expect(startCall).not.toContain("DSBX_DISABLE_MITM=1");
+    expect(startCall).not.toContain("DSBX_DISABLE_MITM=");
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       5,
       auth,
@@ -205,7 +205,7 @@ describe("sandbox egress helpers", () => {
 
     expect(result).toEqual(new Ok(undefined));
     const startCall = sandbox.exec.mock.calls[1][1] as string;
-    expect(startCall).toContain("DSBX_DISABLE_MITM=1 /opt/bin/dsbx forward");
+    expect(startCall).toContain("DSBX_DISABLE_MITM=true /opt/bin/dsbx forward");
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "egress.mitm_kill_switch_engaged",
