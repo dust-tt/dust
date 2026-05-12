@@ -21,11 +21,13 @@ import { useState } from "react";
 interface ReinforcementSectionProps {
   owner: WorkspaceType;
   onCapSaved?: (capMicroUsd: number) => void;
+  onDefaultCapPerSkillSaved?: (microUsd: number) => void;
 }
 
 export function ReinforcementSection({
   owner,
   onCapSaved,
+  onDefaultCapPerSkillSaved,
 }: ReinforcementSectionProps) {
   const { isEnabled, isChanging, doToggleReinforcement } =
     useReinforcementToggle({ owner });
@@ -51,7 +53,10 @@ export function ReinforcementSection({
         </ContextItem>
         <ReinforcementBatchModeToggle owner={owner} />
         <ReinforcementCapItem owner={owner} onCapSaved={onCapSaved} />
-        <SelfImprovementCapPerSkillItem owner={owner} />
+        <SelfImprovementCapPerSkillItem
+          owner={owner}
+          onSaved={onDefaultCapPerSkillSaved}
+        />
       </ContextItem.List>
     </Page.Vertical>
   );
@@ -79,7 +84,15 @@ function ReinforcementBatchModeToggle({ owner }: ReinforcementSectionProps) {
   );
 }
 
-function SelfImprovementCapPerSkillItem({ owner }: ReinforcementSectionProps) {
+interface SelfImprovementCapPerSkillItemProps {
+  owner: WorkspaceType;
+  onSaved?: (microUsd: number) => void;
+}
+
+function SelfImprovementCapPerSkillItem({
+  owner,
+  onSaved,
+}: SelfImprovementCapPerSkillItemProps) {
   const { capDollars, isSaving, saveCapDollars } =
     useSelfImprovementCapPerSkillSetting({ owner });
   const [inputValue, setInputValue] = useState<string>(() =>
@@ -99,7 +112,10 @@ function SelfImprovementCapPerSkillItem({ owner }: ReinforcementSectionProps) {
     if (!isInputDollarsValid) {
       return;
     }
-    await saveCapDollars(parsedInputDollars);
+    const ok = await saveCapDollars(parsedInputDollars);
+    if (ok) {
+      onSaved?.(Math.round(parsedInputDollars * 1_000_000));
+    }
   };
 
   return (

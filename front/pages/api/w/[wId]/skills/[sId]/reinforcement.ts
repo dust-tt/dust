@@ -15,7 +15,12 @@ const PatchSkillReinforcementBodySchema = z
   .object({
     reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
     selfImprovementLock: z.boolean().optional(),
-    selfImprovementCostsCapMicroUsd: z.number().int().nonnegative().optional(),
+    selfImprovementCostsCapMicroUsd: z
+      .number()
+      .int()
+      .nonnegative()
+      .nullable() // use default
+      .optional(), // not updated
   })
   .refine(
     (b) =>
