@@ -463,7 +463,7 @@ async function handler(
 
         const validateUserMessageContextRes = isUserMessageContextValid(
           auth,
-          req,
+          req.headers,
           ctx
         );
         if (!validateUserMessageContextRes) {

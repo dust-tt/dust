@@ -1,0 +1,20 @@
+{
+  "name": "@dust-tt/front-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx ./server.ts",
+    "start": "NODE_ENV=production tsx ./server.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.10",
+    "@hono/zod-validator": "^0.7.6",
+    "hono": "^4.12.15",
+    "next": "^14.2.35",
+    "zod": "^3.25.76",
+    "zod-validation-error": "^3.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  }
+}

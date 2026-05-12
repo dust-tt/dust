@@ -1132,8 +1132,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     billingPeriod: BillingPeriod,
     {
       useMetronomeBilling,
+      couponCode,
     }: {
       useMetronomeBilling: boolean;
+      couponCode?: string;
     }
   ): Promise<CheckoutUrlResult> {
     const isBusiness = !!owner.metadata?.isBusiness;
@@ -1174,6 +1176,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           planCode,
           metronomePackageAlias,
           allowedPaymentMethods,
+          couponCode,
         });
       return {
         mode: "embedded",

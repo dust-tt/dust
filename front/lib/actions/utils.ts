@@ -36,8 +36,6 @@ export function getRetrievalTopK({
     (tool) =>
       isServerSideMCPToolConfigurationWithName(tool, "search") ||
       (isServerSideMCPToolConfigurationWithName(tool, "conversation_files") &&
-        tool.originalName === "semantic_search") ||
-      (isServerSideMCPToolConfigurationWithName(tool, "project_manager") &&
         tool.originalName === "semantic_search")
   );
 

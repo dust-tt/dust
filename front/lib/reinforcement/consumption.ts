@@ -28,17 +28,3 @@ export function getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(
     ? workspace.metadata.selfImprovementCapPerSkillMicroUsd
     : DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD;
 }
-
-/**
- * Return the start of the current reinforcement billing period.
- *
- * Currently the period is a calendar month in UTC. This helper exists so the
- * notion of "current period" can evolve (e.g., aligned to workspace billing
- * date) without callers having to change.
- */
-export function getCurrentPeriodStart(): Date {
-  const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0)
-  );
-}

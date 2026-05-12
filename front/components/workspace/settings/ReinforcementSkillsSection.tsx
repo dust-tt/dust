@@ -14,6 +14,7 @@ import {
   DataTable,
   Input,
   Page,
+  SearchInput,
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -297,9 +298,20 @@ export function ReinforcementSkillsSection({
     [capInputBySkillId, updateSkillReinforcement]
   );
 
+  const [filter, setFilter] = useState("");
+
   const sortedSkills = useMemo(
-    () => [...skillsWithRelations].sort((a, b) => a.name.localeCompare(b.name)),
-    [skillsWithRelations]
+    () =>
+      [...skillsWithRelations].sort((a, b) => {
+        const spentA = spentMicroUsdBySkillId[a.sId] ?? 0;
+        const spentB = spentMicroUsdBySkillId[b.sId] ?? 0;
+        // Sort by currently spent descending, then by name ascending as tiebreaker.
+        if (spentB !== spentA) {
+          return spentB - spentA;
+        }
+        return a.name.localeCompare(b.name);
+      }),
+    [skillsWithRelations, spentMicroUsdBySkillId]
   );
 
   const rows: RowData[] = useMemo(
@@ -361,6 +373,12 @@ export function ReinforcementSkillsSection({
   return (
     <Page.Vertical align="stretch" gap="md">
       <Page.SectionHeader title="Skills" />
+      <SearchInput
+        name="skill-search"
+        placeholder="Search skills..."
+        value={filter}
+        onChange={setFilter}
+      />
       {isSkillsWithRelationsLoading ? (
         <div className="flex justify-center py-8">
           <Spinner />
@@ -370,7 +388,12 @@ export function ReinforcementSkillsSection({
           No active skills.
         </div>
       ) : (
-        <DataTable data={rows} columns={COLUMNS} />
+        <DataTable
+          data={rows}
+          columns={COLUMNS}
+          filter={filter}
+          filterColumn="name"
+        />
       )}
     </Page.Vertical>
   );

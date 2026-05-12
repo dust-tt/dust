@@ -31,6 +31,7 @@ export function ReinforcementSection({ owner }: ReinforcementSectionProps) {
 
   return (
     <Page.Vertical align="stretch" gap="md">
+      <Page.SectionHeader title="Settings" />
       <ContextItem.List>
         <div className="h-full border-b border-border dark:border-border-night" />
         <ContextItem

@@ -8,7 +8,6 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -120,26 +119,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     expect(res._getStatusCode()).toBe(405);
   });
 
-  it("returns 403 when the sessions branching feature flag is disabled", async () => {
-    const { req, res } = await createPrivateApiMockRequest({
-      method: "POST",
-    });
-
-    req.query.cId = "conv_test";
-    req.body = {};
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData().error.type).toBe("feature_flag_not_found");
-  });
-
   it("creates a fork and returns the child conversation id", async () => {
     const { req, res, auth, globalSpace } = await createPrivateApiMockRequest({
       method: "POST",
     });
-
-    await FeatureFlagFactory.basic(auth, "sessions_branching");
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
@@ -187,8 +170,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
       method: "POST",
     });
 
-    await FeatureFlagFactory.basic(auth, "sessions_branching");
-
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
@@ -232,8 +213,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
       method: "POST",
     });
 
-    await FeatureFlagFactory.basic(auth, "sessions_branching");
-
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
@@ -260,8 +239,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
       await createPrivateApiMockRequest({
         method: "POST",
       });
-
-    await FeatureFlagFactory.basic(auth, "sessions_branching");
 
     const projectSpace = await SpaceFactory.project(workspace);
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(

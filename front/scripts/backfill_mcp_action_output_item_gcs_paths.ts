@@ -172,7 +172,10 @@ makeScript(
 
               await AgentMCPActionOutputItemModel.update(
                 { contentGcsPath: newPath },
-                { where: { id: item.id, workspaceId: workspaceModelId } }
+                {
+                  where: { id: item.id, workspaceId: workspaceModelId },
+                  silent: true,
+                }
               );
 
               // Best-effort cleanup of the legacy object. Do not fail the row if delete errors
