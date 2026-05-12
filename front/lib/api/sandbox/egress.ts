@@ -6,6 +6,7 @@ import {
   writeEgressSecretsFile,
 } from "@app/lib/api/sandbox/egress_secrets";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
@@ -28,13 +29,13 @@ const MAX_DENY_LOG_LINES_PER_EXEC = 20;
 // it's present; load_or_generate handles a missing file by minting a new CA.
 const MITM_CA_PATH = "/run/dust/egress-ca.pem";
 const MITM_CA_BUNDLE_PATH = "/etc/dust/ca-bundle.pem";
+const MITM_TRUST_BUNDLE_INSTALLER_PATH =
+  "/usr/local/bin/dust-install-trust-bundle";
 // Sentinel written atomically alongside the merged bundle so the health probe
 // can distinguish "installMitmTrustBundle ran successfully" from "image-seeded
 // system-only placeholder". Without it, [ -s ca-bundle.pem ] is true the
 // moment the sandbox boots and the bundle self-heal never fires.
 const MITM_CA_BUNDLE_MARKER_PATH = "/etc/dust/.ca-bundle.merged";
-const MITM_SYSTEM_CA_DEST = "/usr/local/share/ca-certificates/dust-egress.crt";
-const MITM_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
 
 const REGION_PROXY_PREFIX = {
   "europe-west1": "eu",
@@ -324,18 +325,17 @@ export async function setupEgressForwarder(
     }
   }
 
-  // Strip every trust-bundle env var we (or any agent runtime) might set on
-  // the sandbox process from dsbx's own environment. dsbx talks to the
-  // central proxy with a vendored TLS root and must NOT be reconfigured to
-  // trust the merged ca-bundle.pem (which contains its own CA, opening a
-  // forge-and-tunnel loop). The list intentionally overshoots
-  // buildSandboxEnvVars (-u on an unset var is a harmless no-op) so this
-  // stays correct if a future env var gets added there.
+  // Strip every trust-bundle env var we set on the sandbox process from
+  // dsbx's own environment. dsbx talks to the central proxy with a vendored
+  // TLS root and must NOT be reconfigured to trust the merged ca-bundle.pem
+  // (which contains its own CA, opening a forge-and-tunnel loop). The strip
+  // list is derived from SANDBOX_TRUST_ENV_VARS so adding a new trust env
+  // var can't drift the two sites out of sync.
+  const trustEnvStripFlags = Object.keys(SANDBOX_TRUST_ENV_VARS)
+    .map((k) => `-u ${k}`)
+    .join(" ");
   const startForwarderCommand =
-    "nohup env " +
-    "-u SSL_CERT_FILE -u SSL_CERT_DIR -u CURL_CA_BUNDLE " +
-    "-u REQUESTS_CA_BUNDLE -u AWS_CA_BUNDLE -u GIT_SSL_CAINFO " +
-    "-u NODE_EXTRA_CA_CERTS -u DENO_CERT -u DENO_TLS_CA_STORE " +
+    `nohup env ${trustEnvStripFlags} ` +
     "/opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
     `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +
@@ -390,13 +390,15 @@ async function killEgressForwarder(
   );
 }
 
-// Produces a merged bundle (system roots + dsbx persistent CA) so replace-style
-// trust env vars can point at one file without breaking public HTTPS. Callers
-// must only invoke this once dsbx is up; if the CA file is missing we fail
-// rather than silently leaving the sandbox with system-roots-only trust.
-// The system-store install is allowed to fail on images without
-// update-ca-certificates. The marker file is written last so the bundle and
-// its "merged" status flip atomically from the health-probe's point of view.
+// Produces a merged bundle (system roots + dsbx persistent CA) and installs
+// runtime-specific trust hooks such as the Java keystore import. Callers must
+// only invoke this once dsbx is up; if the CA file is missing we fail rather
+// than silently leaving the sandbox with system-roots-only trust. The marker
+// file is written last so the bundle and its "merged" status flip atomically
+// from the health-probe's point of view. The marker write lives here (outside
+// the helper script) so a failed marker write does not strand the sandbox: the
+// merged bundle is on disk but the sentinel is missing, and the split-health
+// probe's bundle/sentinel branch retries the install idempotently.
 async function installMitmTrustBundle(
   auth: Authenticator,
   sandbox: SandboxResource
@@ -404,12 +406,7 @@ async function installMitmTrustBundle(
   const command =
     `[ -s ${shellEscape(MITM_CA_PATH)} ] || ` +
     `{ echo "dsbx CA file ${MITM_CA_PATH} missing or empty" >&2; exit 1; }; ` +
-    `mkdir -p ${shellEscape("/etc/dust")} ${shellEscape("/usr/local/share/ca-certificates")} && ` +
-    `((cp ${shellEscape(MITM_CA_PATH)} ${shellEscape(MITM_SYSTEM_CA_DEST)} && update-ca-certificates >/dev/null 2>&1) || true) && ` +
-    `_bundle_tmp=${shellEscape("/etc/dust/.ca-bundle.pem.tmp")} && ` +
-    `cat ${shellEscape(MITM_SYSTEM_CA_BUNDLE)} ${shellEscape(MITM_CA_PATH)} > "$_bundle_tmp" && ` +
-    `chmod 644 "$_bundle_tmp" && ` +
-    `mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)} && ` +
+    `${shellEscape(MITM_TRUST_BUNDLE_INSTALLER_PATH)} && ` +
     `: > ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)}`;
 
   return runSuccessfulSandboxCommand(auth, sandbox, command, "root");

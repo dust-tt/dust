@@ -14,6 +14,7 @@ import type {
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
+import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
@@ -359,24 +360,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return httpsSecretEnvResult;
     }
 
-    // Point curl-family clients at /etc/dust/ca-bundle.pem. The image seeds
-    // this path with the system roots at build time, and installMitmTrustBundle
-    // atomically replaces it with (system roots + dsbx CA) once the forwarder
-    // is up. Safe to set unconditionally: the file always exists, even before
-    // egress setup runs and in dev-unrestricted mode where it never runs.
-    //
-    // TODO: cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT, etc.) per
-    // design_docs/SECRET_SWAP_DESIGN.md, "Client-language agnosticism".
-    const trustBundleEnv: Record<string, string> = {
-      SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",
-      CURL_CA_BUNDLE: "/etc/dust/ca-bundle.pem",
-    };
+    // Trust defaults for mainstream HTTPS stacks. Replace-style clients point
+    // at the image-seeded bundle; installMitmTrustBundle later rebuilds it as
+    // system roots + dsbx CA. Append-style clients point at dsbx's single CA.
+    // These are also baked into the image via /etc/environment and
+    // /etc/profile.d, but provider env injection covers early non-login
+    // processes started directly from the sandbox runtime. The key set is
+    // canonical in trust_env.ts so dsbx's `env -u` strip list can't drift.
 
     return new Ok({
       ...workspaceEnvResult.value,
       ...httpsSecretEnvResult.value,
       ...imageEnvVars,
-      ...trustBundleEnv,
+      ...SANDBOX_TRUST_ENV_VARS,
       DD_API_KEY: config.getDatadogApiKey() ?? "",
       DD_HOST: "http-intake.logs.datadoghq.eu",
       CONVERSATION_ID: conversation.sId,

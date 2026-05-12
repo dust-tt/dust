@@ -2,13 +2,17 @@ import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry
 import type { Operation } from "@app/lib/api/sandbox/image/types";
 import { describe, expect, test } from "vitest";
 
-function getDustBaseImageOperations(): readonly Operation[] {
+function getDustBaseImage() {
   const imageResult = getSandboxImageFromRegistry({ name: "dust-base" });
   if (imageResult.isErr()) {
     throw imageResult.error;
   }
 
-  return imageResult.value.operations;
+  return imageResult.value;
+}
+
+function getDustBaseImageOperations(): readonly Operation[] {
+  return getDustBaseImage().operations;
 }
 
 function getRunCommands(operations: readonly Operation[]): string[] {
@@ -44,6 +48,13 @@ function getCopiedContent(
 }
 
 describe("sandbox image registry", () => {
+  test("bumps the base image for the trust-matrix rollout", () => {
+    expect(getDustBaseImage().imageId).toEqual({
+      imageName: "dust-base",
+      tag: "0.8.11",
+    });
+  });
+
   test("creates the dormant proxied user and shared-path permissions", () => {
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);
@@ -120,5 +131,66 @@ describe("sandbox image registry", () => {
     expect(nftablesScript).toContain(
       "nft add rule ip6 dust-egress filter_output meta skuid $PROXIED_UID drop"
     );
+  });
+
+  test("installs trust env defaults and the runtime trust helper", () => {
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+    const copyOperations = getCopyOperations(operations);
+    const environment = getCopiedContent(
+      copyOperations,
+      "/etc/dust/dust-trust.environment"
+    );
+    const profileScript = getCopiedContent(
+      copyOperations,
+      "/etc/profile.d/dust-trust.sh"
+    );
+    const tmpfilesConfig = getCopiedContent(
+      copyOperations,
+      "/etc/tmpfiles.d/dust-run-dust.conf"
+    );
+    const installer = getCopiedContent(
+      copyOperations,
+      "/usr/local/bin/dust-install-trust-bundle"
+    );
+
+    expect(runCommands).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "cat /etc/dust/dust-trust.environment >> /etc/environment"
+        ),
+        "chmod 644 /etc/profile.d/dust-trust.sh",
+        "chmod 755 /usr/local/bin/dust-install-trust-bundle",
+      ])
+    );
+
+    expect(environment).toContain("SSL_CERT_FILE=/etc/dust/ca-bundle.pem");
+    expect(environment).toContain("SSL_CERT_DIR=/etc/ssl/certs");
+    expect(environment).toContain("CURL_CA_BUNDLE=/etc/dust/ca-bundle.pem");
+    expect(environment).toContain(
+      "REQUESTS_CA_BUNDLE=/etc/dust/ca-bundle.pem"
+    );
+    expect(environment).toContain("AWS_CA_BUNDLE=/etc/dust/ca-bundle.pem");
+    expect(environment).toContain("GIT_SSL_CAINFO=/etc/dust/ca-bundle.pem");
+    expect(environment).toContain(
+      "NODE_EXTRA_CA_CERTS=/run/dust/egress-ca.pem"
+    );
+    expect(environment).toContain("DENO_CERT=/run/dust/egress-ca.pem");
+    expect(environment).toContain("DENO_TLS_CA_STORE=system,mozilla");
+
+    expect(profileScript).toContain(
+      "export REQUESTS_CA_BUNDLE=/etc/dust/ca-bundle.pem"
+    );
+    expect(profileScript).toContain(
+      "export NODE_EXTRA_CA_CERTS=/run/dust/egress-ca.pem"
+    );
+    expect(profileScript).toContain("export DENO_TLS_CA_STORE=system,mozilla");
+
+    expect(tmpfilesConfig).toBe("d /run/dust 0755 root root -\n");
+    expect(installer).toContain("update-ca-certificates");
+    expect(installer).toContain("cat \"$SYSTEM_CA_BUNDLE\"");
+    expect(installer).toContain("cat \"$CA_PATH\"");
+    expect(installer).toContain("keytool -importcert -noprompt -trustcacerts");
+    expect(installer).toContain("already exists");
   });
 });
