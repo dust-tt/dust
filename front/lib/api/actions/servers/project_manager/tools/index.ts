@@ -44,7 +44,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
-import logger from "@app/logger/logger";
 import {
   isUserMessageType,
   type UserMessageOrigin,
