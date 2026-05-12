@@ -9,4 +9,5 @@ grep_files()   { run_dust_tool --profile gemini grep_files "$@"; }
 glob()         { run_dust_tool --profile gemini glob "$@"; }
 list_dir()     { run_dust_tool --profile gemini list_dir "$@"; }
 xlsx_inspect() { /opt/venv/bin/python3 "$SCRIPT_DIR/soffice/xlsx_inspect.py" "$@"; }
-export -f read_file write_file edit_file grep_files glob list_dir xlsx_inspect
+pptx_inspect() { /opt/venv/bin/python3 "$SCRIPT_DIR/soffice/pptx_inspect.py" "$@"; }
+export -f read_file write_file edit_file grep_files glob list_dir xlsx_inspect pptx_inspect

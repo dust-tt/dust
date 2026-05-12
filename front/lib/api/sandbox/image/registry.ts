@@ -287,6 +287,12 @@ SHELLEOF`,
     { user: "root" }
   )
   .runCmd(`chmod +x ${PROFILE_DIR}/soffice/xlsx_inspect.py`, { user: "root" })
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "soffice/pptx_inspect.py"),
+    `${PROFILE_DIR}/soffice/pptx_inspect.py`,
+    { user: "root" }
+  )
+  .runCmd(`chmod +x ${PROFILE_DIR}/soffice/pptx_inspect.py`, { user: "root" })
   // Telemetry configs for fluent-bit
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.conf"),
@@ -422,6 +428,17 @@ SHELLEOF`,
       "xlsx_inspect <file> [--sheet NAME] [--range A1:Z50] [--grep PATTERN [--regex] [--meta]] [--names] [--limit N] [--offset N]",
     returns:
       "Workbook overview, or one cell per line: '<address>  <formula or value>  [cached result]  numFmt: <fmt>  [font: <color>]  [fill: <color>]'. Empty cells skipped",
+    runtime: "system",
+  })
+  // --- pptx_inspect: structural inspection of .pptx decks ---
+  .registerTool({
+    name: "pptx_inspect",
+    description:
+      "Inspect .pptx structure: slides, layouts, shapes, text, charts, tables, embedded media. Use before editing a deck to map layouts and shape positions without rendering to PDF/images",
+    usage:
+      "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] [--max-shapes N] [--offset N]",
+    returns:
+      "Deck overview, or one shape per line in slide view: '<id>  <kind>  <left,top WxH>  [ph=<type>]  <summary>' with paragraphs indented. Layouts/text/media views emit format-specific listings",
     runtime: "system",
   })
   .withCapability("gcsfuse")

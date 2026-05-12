@@ -124,8 +124,7 @@ Also verify zero formula errors. \`#REF!\`, \`#DIV/0!\`, \`#VALUE!\`, \`#N/A\`,
 export const xlsxSkill = {
   sId: "xlsx",
   name: "Spreadsheets",
-  userFacingDescription:
-    "Read, edit, and create spreadsheets (.xlsx, .csv) in the sandbox.",
+  userFacingDescription: "Read, edit, and create spreadsheets (.xlsx, .csv)",
   agentFacingDescription:
     "Work with .xlsx, .xlsm, .csv, and .tsv files in the sandbox. Includes " +
     "the xlsx_inspect tool for paginated structural inspection of workbooks " +
