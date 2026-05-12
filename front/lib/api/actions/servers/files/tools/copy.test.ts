@@ -1,11 +1,11 @@
-import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { copyHandler } from "@app/lib/api/actions/servers/files/tools/copy";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
@@ -24,20 +24,17 @@ async function setupProjectConversation(
   role: "admin" | "user" = "admin"
 ): Promise<{
   auth: Authenticator;
-  workspaceSId: string;
   conversation: ConversationType;
-  projectSId: string;
 }> {
   const { authenticator: auth, workspace } = await createResourceTest({ role });
-  const userId = auth.getNonNullableUser().id;
-  const userSId = auth.getNonNullableUser().sId;
+  const user = auth.getNonNullableUser();
 
-  const space = await SpaceFactory.project(workspace, userId);
-  const addRes = await space.addMembers(auth, { userIds: [userSId] });
+  const space = await SpaceFactory.project(workspace, user.id);
+  const addRes = await space.addMembers(auth, { userIds: [user.sId] });
   assert(addRes.isOk(), "Failed to add user to project space");
 
   const projectAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    userSId,
+    user.sId,
     workspace.sId
   );
 
@@ -49,9 +46,7 @@ async function setupProjectConversation(
 
   return {
     auth: projectAuth,
-    workspaceSId: workspace.sId,
     conversation,
-    projectSId: space.sId,
   };
 }
 
