@@ -416,22 +416,26 @@ async function recurseUpdateParents(
         updateBatch.push(update);
       };
 
-      const shouldUpdateInitialFolder = await recurseUpdateParentsInner(
+      await recurseUpdateParentsInner(
         connector,
         file,
         parentIds,
         logger,
-        enqueueUpdate,
-        true
+        enqueueUpdate
       );
+      const initialFolderUpdate = updateBatch.pop();
       await flushUpdateBatch();
 
-      if (!shouldUpdateInitialFolder) {
+      if (!initialFolderUpdate) {
         return;
       }
 
-      await heartbeat();
-      await updateParentsField(connector, file, parentIds, logger);
+      await updateParentsField(
+        connector,
+        initialFolderUpdate.file,
+        initialFolderUpdate.parentIds,
+        logger
+      );
     }
   );
 }
@@ -441,9 +445,8 @@ async function recurseUpdateParentsInner(
   file: GoogleDriveFilesModel,
   parentIds: string[],
   logger: Logger,
-  enqueueUpdate: EnqueueParentsUpdate,
-  isInitialFolder = false
-): Promise<boolean> {
+  enqueueUpdate: EnqueueParentsUpdate
+) {
   await heartbeat();
   const children = await GoogleDriveFilesModel.findAll({
     where: {
@@ -475,7 +478,7 @@ async function recurseUpdateParentsInner(
       },
       "Infinite parent loop."
     );
-    return false;
+    return;
   }
 
   for (const child of children) {
@@ -488,11 +491,7 @@ async function recurseUpdateParentsInner(
     );
   }
 
-  if (!isInitialFolder) {
-    await enqueueUpdate({ file, parentIds });
-  }
-
-  return true;
+  await enqueueUpdate({ file, parentIds });
 }
 
 async function updateParentsFieldForBatch(
@@ -500,14 +499,9 @@ async function updateParentsFieldForBatch(
   updateBatch: ParentsUpdate[],
   logger: Logger
 ) {
-  if (updateBatch.length === 0) {
-    return;
-  }
-
   await concurrentExecutor(
     updateBatch,
     async ({ file, parentIds }) => {
-      await heartbeat();
       await updateParentsField(connector, file, parentIds, logger);
     },
     { concurrency: UPDATE_PARENTS_CONCURRENCY, onBatchComplete: heartbeat }
