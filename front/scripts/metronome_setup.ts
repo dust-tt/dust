@@ -20,9 +20,9 @@ import {
   DEV_CREDIT_TYPE_PROG_USD_ID,
   MAX_SEAT_CREDIT_NAME,
   PLAN_CODE_CUSTOM_FIELD_KEY,
+  PRO_SEAT_CREDIT_NAME,
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
-  PRO_SEAT_CREDIT_NAME,
 } from "@app/lib/metronome/constants";
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import {
