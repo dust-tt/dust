@@ -68,6 +68,13 @@ export function AgentDetailsButtonBar({
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
 
+  const handleNewConversation = async () => {
+    onClose();
+    await router.push(
+      getConversationRoute(owner.sId, "new", `agent=${agentConfiguration.sId}`)
+    );
+  };
+
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
       <div className="group">
@@ -110,16 +117,7 @@ export function AgentDetailsButtonBar({
           size="sm"
           variant="outline"
           tooltip="New conversation"
-          onClick={async () => {
-            onClose();
-            await router.push(
-              getConversationRoute(
-                owner.sId,
-                "new",
-                `agent=${agentConfiguration.sId}`
-              )
-            );
-          }}
+          onClick={handleNewConversation}
         />
       )}
 
