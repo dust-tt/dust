@@ -420,9 +420,9 @@ let packageListCache: {
 } | null = null;
 
 const TIER_SORT_ORDER: Record<MetronomePackageTier, number> = {
-  pro: 0,
+  enterprise: 0,
   business: 1,
-  enterprise: 2,
+  pro: 2,
 };
 const CURRENCY_SORT_ORDER: Record<SupportedCurrency, number> = {
   usd: 0,

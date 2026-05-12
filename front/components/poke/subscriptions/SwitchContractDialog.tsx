@@ -120,16 +120,28 @@ export default function SwitchContractDialog({
     disabled: !open,
   });
 
-  const packageOptions = useMemo(
-    () =>
-      metronomePackages
-        .filter((p) => p.currency === resolvedCurrency)
-        .map((p) => ({
-          value: p.id,
-          display: `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
-        })),
-    [metronomePackages, resolvedCurrency]
-  );
+  // Split packages into Current vs Legacy sections (name contains "legacy",
+  // case-insensitive). Each section preserves the lib-side sort order.
+  const packageGroups = useMemo(() => {
+    const inCurrency = metronomePackages.filter(
+      (p) => p.currency === resolvedCurrency
+    );
+    const isLegacy = (name: string) => /\blegacy\b/i.test(name);
+    const toOption = (p: (typeof inCurrency)[number]) => ({
+      value: p.id,
+      display: `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
+    });
+    return [
+      {
+        label: "Current",
+        options: inCurrency.filter((p) => !isLegacy(p.name)).map(toOption),
+      },
+      {
+        label: "Legacy",
+        options: inCurrency.filter((p) => isLegacy(p.name)).map(toOption),
+      },
+    ];
+  }, [metronomePackages, resolvedCurrency]);
 
   const selectedPackageId = form.watch("metronomePackageId");
   const selectedPackage = useMemo(
@@ -301,7 +313,7 @@ export default function SwitchContractDialog({
                       name="metronomePackageId"
                       title={`Metronome Package (${resolvedCurrency.toUpperCase()})`}
                       mountPortalContainer={portalContainer}
-                      options={packageOptions}
+                      groups={packageGroups}
                     />
                   )}
                 {selectedTier === "enterprise" && (
