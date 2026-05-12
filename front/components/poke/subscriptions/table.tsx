@@ -23,7 +23,10 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
-import { isSubscriptionMetronomeBilled } from "@app/types/plan";
+import {
+  isSubscriptionMetronomeBilled,
+  isSubscriptionStripeBilled,
+} from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WorkspaceType } from "@app/types/user";
@@ -200,6 +203,15 @@ export function ActiveSubscriptionTable({
   const status = getSubscriptionDisplayStatus(subscription);
   const { chipColor, chipLabel, cardClass } = STATUS_CONFIG[status];
 
+  // For workspaces with no paid subscription yet, the flow is selected by the
+  // Metronome billing feature; otherwise it follows the active billing rail.
+  const hasNoBillingYet =
+    !isSubscriptionStripeBilled(subscription) &&
+    !isSubscriptionMetronomeBilled(subscription);
+  const useMetronomeFlow =
+    isSubscriptionMetronomeBilled(subscription) ||
+    (hasNoBillingYet && hasMetronomeBillingFeature);
+
   return (
     <div className="flex flex-col">
       <div className="flex justify-between gap-3">
@@ -216,7 +228,7 @@ export function ActiveSubscriptionTable({
                 subscriptions={subscriptions}
               />
             </div>
-            {!isSubscriptionMetronomeBilled(subscription) && (
+            {!useMetronomeFlow && (
               <UpgradeDowngradeModal
                 owner={owner}
                 subscription={subscription}
@@ -226,7 +238,7 @@ export function ActiveSubscriptionTable({
               />
             )}
           </div>
-          {isSubscriptionMetronomeBilled(subscription) && (
+          {useMetronomeFlow && (
             <div className="flex flex-wrap items-center gap-2 pb-4">
               <SwitchContractDialog
                 owner={owner}

@@ -1,8 +1,11 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
-import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import {
+  isMetronomeBillingEnabled,
+  restoreWorkspaceAfterSubscription,
+} from "@app/lib/api/subscription";
+import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import {
   ceilToHourISO,
@@ -151,13 +154,13 @@ async function handler(
   const body = validation.data;
 
   // Workspace must be Metronome-billed (current sub Metronome-only) or
-  // freshly Metronome-eligible (metronome_billing flag + no Stripe sub).
+  // freshly Metronome-eligible (Metronome billing enabled + no Stripe sub).
   const currentSubscription = auth.subscriptionResource();
   const isCurrentlyMetronomeOnlyBilled =
     currentSubscription?.isMetronomeOnlyBilled ?? false;
-  const hasMetronomeFlag = await hasFeatureFlag(auth, "metronome_billing");
+  const metronomeBillingEnabled = await isMetronomeBillingEnabled(auth);
   const canStartFreshMetronomeContract =
-    hasMetronomeFlag && !currentSubscription?.stripeSubscriptionId;
+    metronomeBillingEnabled && !currentSubscription?.stripeSubscriptionId;
   if (!isCurrentlyMetronomeOnlyBilled && !canStartFreshMetronomeContract) {
     const errorMessage =
       "switch_contract is only available for Metronome-billed workspaces. " +

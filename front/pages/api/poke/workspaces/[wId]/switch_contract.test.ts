@@ -50,9 +50,15 @@ vi.mock("@app/lib/metronome/contracts", async () => {
   };
 });
 
-vi.mock("@app/lib/api/subscription", () => ({
-  restoreWorkspaceAfterSubscription: vi.fn(),
-}));
+vi.mock("@app/lib/api/subscription", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/api/subscription")
+  >("@app/lib/api/subscription");
+  return {
+    ...actual,
+    restoreWorkspaceAfterSubscription: vi.fn(),
+  };
+});
 
 vi.mock("@app/lib/metronome/plan_type", async () => {
   const actual = await vi.importActual<
