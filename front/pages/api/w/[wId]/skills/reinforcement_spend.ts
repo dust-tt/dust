@@ -39,7 +39,7 @@ async function handler(
       });
 
       const spentByModelId =
-        await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
+        await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDateForSkills(
           auth,
           {
             createdAfter: (await getCurrentPeriod(auth)).cycleStart,

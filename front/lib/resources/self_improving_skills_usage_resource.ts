@@ -92,8 +92,7 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
 
   static async getSumPriceMicroUsdAfterDate(
     auth: Authenticator,
-    createdAfter: Date,
-    { applyMarkup = true }: { applyMarkup?: boolean } = {}
+    createdAfter: Date
   ): Promise<number> {
     const sum = await this.model.sum("priceMicroUsd", {
       where: {
@@ -102,8 +101,17 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       },
     });
 
-    const raw = sum ?? 0;
-    return applyMarkup ? raw * MARKUP_MULTIPLIER : raw;
+    return sum ?? 0;
+  }
+
+  static async getSumPriceMicroUsdWithMarkupAfterDate(
+    auth: Authenticator,
+    createdAfter: Date
+  ): Promise<number> {
+    return (
+      (await this.getSumPriceMicroUsdAfterDate(auth, createdAfter)) *
+      MARKUP_MULTIPLIER
+    );
   }
 
   static async getSumPriceMicroUsdAfterDateForSkills(
@@ -111,11 +119,9 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
     {
       createdAfter,
       skillModelIds,
-      applyMarkup = true,
     }: {
       createdAfter: Date;
       skillModelIds: ModelId[];
-      applyMarkup?: boolean;
     }
   ): Promise<Map<ModelId, number>> {
     const uniqueSkillIds = [...new Set(skillModelIds)];
@@ -137,10 +143,27 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
     });
 
     return new Map(
-      rows.map((row) => [
-        row.skillId as ModelId,
-        Number(row.priceMicroUsd) * (applyMarkup ? MARKUP_MULTIPLIER : 1),
-      ])
+      rows.map((row) => [row.skillId as ModelId, Number(row.priceMicroUsd)])
+    );
+  }
+
+  static async getSumPriceMicroUsdWithMarkupAfterDateForSkills(
+    auth: Authenticator,
+    {
+      createdAfter,
+      skillModelIds,
+    }: {
+      createdAfter: Date;
+      skillModelIds: ModelId[];
+    }
+  ): Promise<Map<ModelId, number>> {
+    const raw = await this.getSumPriceMicroUsdAfterDateForSkills(auth, {
+      createdAfter,
+      skillModelIds,
+    });
+
+    return new Map(
+      [...raw.entries()].map(([id, value]) => [id, value * MARKUP_MULTIPLIER])
     );
   }
 

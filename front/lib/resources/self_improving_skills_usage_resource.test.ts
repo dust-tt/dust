@@ -56,8 +56,7 @@ describe("SelfImprovingSkillsUsageResource", () => {
     const sum =
       await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
         authenticator,
-        cutoff,
-        { applyMarkup: false }
+        cutoff
       );
 
     expect(usages).toHaveLength(3);
@@ -102,18 +101,14 @@ describe("SelfImprovingSkillsUsageResource", () => {
     const sums =
       await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
         authenticator,
-        {
-          createdAfter: cutoff,
-          skillModelIds: [skill.id, otherSkill.id],
-          applyMarkup: false,
-        }
+        { createdAfter: cutoff, skillModelIds: [skill.id, otherSkill.id] }
       );
 
     expect(sums.get(skill.id)).toBe(100);
     expect(sums.get(otherSkill.id)).toBe(200);
   });
 
-  it("applies markup multiplier by default and can be disabled", async () => {
+  it("applies markup multiplier in WithMarkup variants", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const skill = await SkillFactory.create(authenticator, {
       name: "Markup Test Skill",
@@ -137,32 +132,27 @@ describe("SelfImprovingSkillsUsageResource", () => {
     ]);
 
     const sumWithMarkup =
-      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
+      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDate(
         authenticator,
         cutoff
       );
     const sumWithoutMarkup =
       await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
         authenticator,
-        cutoff,
-        { applyMarkup: false }
+        cutoff
       );
 
     expect(sumWithMarkup).toBe(sumWithoutMarkup * MARKUP_MULTIPLIER);
 
     const sumsWithMarkup =
-      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
+      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDateForSkills(
         authenticator,
         { createdAfter: cutoff, skillModelIds: [skill.id] }
       );
     const sumsWithoutMarkup =
       await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
         authenticator,
-        {
-          createdAfter: cutoff,
-          skillModelIds: [skill.id],
-          applyMarkup: false,
-        }
+        { createdAfter: cutoff, skillModelIds: [skill.id] }
       );
 
     expect(sumsWithMarkup.get(skill.id)).toBe(
