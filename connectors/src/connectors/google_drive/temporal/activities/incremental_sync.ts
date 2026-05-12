@@ -50,6 +50,7 @@ const UPDATE_PARENTS_CONCURRENCY = 8;
 
 type ParentsUpdateQueueItem = {
   file: GoogleDriveFilesModel;
+  isBaseFile: boolean;
   parentIds: string[];
   skipBatchUpdate: boolean;
 };
@@ -419,10 +420,11 @@ async function updateParentsForAllChildren(
   // Keep the moved folder parent update last: its local parentId is the retry
   // marker that tells subsequent activity attempts to refresh descendants.
   let queue: ParentsUpdateQueueItem[] = [
-    { file: baseFile, parentIds, skipBatchUpdate: true },
+    { file: baseFile, isBaseFile: true, parentIds, skipBatchUpdate: true },
   ];
   let traversalCursor = 0;
   let updateCursor = 0;
+  let shouldUpdateBaseFile = true;
 
   while (traversalCursor < queue.length) {
     while (
@@ -441,6 +443,9 @@ async function updateParentsForAllChildren(
       const { file, parentIds } = item;
       if (parentIds.slice(1).includes(file.dustFileId)) {
         item.skipBatchUpdate = true;
+        if (item.isBaseFile) {
+          shouldUpdateBaseFile = false;
+        }
         logger.warn(
           {
             fileId: file.driveFileId,
@@ -473,6 +478,7 @@ async function updateParentsForAllChildren(
       queue.push(
         ...children.map((child) => ({
           file: child,
+          isBaseFile: false,
           parentIds: [child.dustFileId, ...parentIds],
           skipBatchUpdate: false,
         }))
@@ -498,6 +504,10 @@ async function updateParentsForAllChildren(
     queue = queue.slice(updateCursor);
     traversalCursor -= updateCursor;
     updateCursor = 0;
+  }
+
+  if (!shouldUpdateBaseFile) {
+    return;
   }
 
   await heartbeat();

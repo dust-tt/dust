@@ -519,6 +519,75 @@ describe("google drive incremental sync folder metadata", () => {
     );
   });
 
+  it("skips moved folder parent update when its new parent chain is cyclic", async () => {
+    const suffix = randomUUID();
+    const folderId = `folder-${suffix}`;
+    const oldParentId = `old-parent-${suffix}`;
+    const childFolderId = `child-folder-${suffix}`;
+    const connector = await makeConnector(suffix);
+
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: folderId,
+      dustFileId: `gdrive-${folderId}`,
+      mimeType: "application/vnd.google-apps.folder",
+      name: "Board Presentations",
+      parentId: oldParentId,
+    });
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: childFolderId,
+      dustFileId: `gdrive-${childFolderId}`,
+      mimeType: "application/vnd.google-apps.folder",
+      name: "Q1",
+      parentId: folderId,
+    });
+
+    const driveFile = makeGoogleDriveFolder({
+      id: folderId,
+      name: "Board Presentations",
+      parent: childFolderId,
+    });
+
+    mocks.changeList.mockResolvedValue({
+      data: {
+        changes: [makeFolderChange(driveFile)],
+        newStartPageToken: "sync-token",
+        nextPageToken: undefined,
+      },
+      status: 200,
+    });
+    mocks.driveObjectToDustType.mockResolvedValue(driveFile);
+    mocks.getFileParentsMemoized.mockResolvedValue([
+      folderId,
+      childFolderId,
+      folderId,
+    ]);
+
+    const result = await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      Date.now(),
+      "page-token"
+    );
+
+    const movedFolder = await GoogleDriveFilesModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveFileId: folderId,
+      },
+    });
+
+    expect(result).toEqual({
+      newFolders: [],
+      nextPageToken: undefined,
+    });
+    expect(movedFolder?.parentId).toBe(oldParentId);
+    expect(mocks.upsertDataSourceFolder).not.toHaveBeenCalled();
+    expect(mocks.updateDataSourceDocumentParents).not.toHaveBeenCalled();
+  });
+
   it("does not update the moved folder parent marker before descendants", async () => {
     const suffix = randomUUID();
     const folderId = `folder-${suffix}`;
