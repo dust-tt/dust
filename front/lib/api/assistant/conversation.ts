@@ -1598,6 +1598,8 @@ export async function createAgentMessageFromText(
       await AgentStepContentToolExecutionModel.create(
         {
           workspaceId: owner.id,
+          conversationId: conversation.id,
+          agentMessageId: agentMessageRow.id,
           agentMCPActionId: createdAction.id,
           stepContentId: functionCallStepContent.id,
         },

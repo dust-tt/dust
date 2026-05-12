@@ -160,8 +160,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async makeNew(
     auth: Authenticator,
-    // TODO(2026-05-11 SANDBOX) Use conversation id when creating the action row.
-    _conversation: ConversationWithoutContentType,
+    conversation: ConversationWithoutContentType,
     blob: Omit<CreationAttributes<AgentMCPActionModel>, "workspaceId">,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMCPActionResource> {
@@ -190,6 +189,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     await AgentStepContentToolExecutionModel.create({
       workspaceId: workspace.id,
+      agentMessageId: blob.agentMessageId,
+      conversationId: conversation.id,
       agentMCPActionId: action.id,
       stepContentId: stepContent.id,
     });

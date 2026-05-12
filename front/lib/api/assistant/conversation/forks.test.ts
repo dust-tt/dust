@@ -210,6 +210,8 @@ async function createAgentMessage(
 
   await AgentStepContentToolExecutionModel.create({
     workspaceId: workspace.id,
+    conversationId: conversation.id,
+    agentMessageId: agentMessage.id,
     agentMCPActionId: action.id,
     stepContentId: stepContent.id,
   });

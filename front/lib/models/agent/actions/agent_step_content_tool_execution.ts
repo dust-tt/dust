@@ -1,5 +1,9 @@
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import {
+  AgentMessageModel,
+  ConversationModel,
+} from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
@@ -9,6 +13,9 @@ export class AgentStepContentToolExecutionModel extends WorkspaceAwareModel<Agen
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
+  declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
 
   declare agentMCPActionId: ForeignKey<AgentMCPActionModel["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
@@ -30,6 +37,14 @@ AgentStepContentToolExecutionModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    conversationId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+    },
+    agentMessageId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     agentMCPActionId: {
       type: DataTypes.BIGINT,
@@ -57,6 +72,11 @@ AgentStepContentToolExecutionModel.init(
         concurrently: true,
         name: "agent_step_content_tool_executions_workspace_step_content",
       },
+      {
+        fields: ["workspaceId", "conversationId", "agentMessageId"],
+        concurrently: true,
+        name: "agent_sc_te_workspace_conversation_message",
+      },
     ],
   }
 );
@@ -68,5 +88,14 @@ AgentStepContentToolExecutionModel.belongsTo(AgentMCPActionModel, {
 
 AgentStepContentToolExecutionModel.belongsTo(AgentStepContentModel, {
   foreignKey: { name: "stepContentId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+
+AgentStepContentToolExecutionModel.belongsTo(AgentMessageModel, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+AgentStepContentToolExecutionModel.belongsTo(ConversationModel, {
+  foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "RESTRICT",
 });

@@ -165,6 +165,8 @@ describe("listBlockedActionsForConversation", () => {
 
     await AgentStepContentToolExecutionModel.create({
       workspaceId: workspace.id,
+      conversationId: conversation.id,
+      agentMessageId,
       agentMCPActionId: action.id,
       stepContentId: stepContent.id,
     });
