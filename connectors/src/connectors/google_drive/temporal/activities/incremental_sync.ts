@@ -51,7 +51,7 @@ const UPDATE_PARENTS_CONCURRENCY = 8;
 type ParentsUpdateQueueItem = {
   file: GoogleDriveFilesModel;
   parentIds: string[];
-  skipUpdate: boolean;
+  skipBatchUpdate: boolean;
 };
 
 export async function incrementalSync(
@@ -416,8 +416,10 @@ async function updateParentsForAllChildren(
   parentIds: string[],
   logger: Logger
 ) {
+  // Keep the moved folder parent update last: its local parentId is the retry
+  // marker that tells subsequent activity attempts to refresh descendants.
   let queue: ParentsUpdateQueueItem[] = [
-    { file: baseFile, parentIds, skipUpdate: false },
+    { file: baseFile, parentIds, skipBatchUpdate: true },
   ];
   let traversalCursor = 0;
   let updateCursor = 0;
@@ -438,7 +440,7 @@ async function updateParentsForAllChildren(
 
       const { file, parentIds } = item;
       if (parentIds.slice(1).includes(file.dustFileId)) {
-        item.skipUpdate = true;
+        item.skipBatchUpdate = true;
         logger.warn(
           {
             fileId: file.driveFileId,
@@ -472,14 +474,14 @@ async function updateParentsForAllChildren(
         ...children.map((child) => ({
           file: child,
           parentIds: [child.dustFileId, ...parentIds],
-          skipUpdate: false,
+          skipBatchUpdate: false,
         }))
       );
     }
 
     const updateBatch = queue
       .slice(updateCursor, traversalCursor)
-      .filter((item) => !item.skipUpdate);
+      .filter((item) => !item.skipBatchUpdate);
     updateCursor = traversalCursor;
 
     await concurrentExecutor(
@@ -497,6 +499,9 @@ async function updateParentsForAllChildren(
     traversalCursor -= updateCursor;
     updateCursor = 0;
   }
+
+  await heartbeat();
+  await updateParentsField(connector, baseFile, parentIds, logger);
 }
 
 async function alreadySeenAndIgnored({

@@ -518,4 +518,69 @@ describe("google drive incremental sync folder metadata", () => {
       })
     );
   });
+
+  it("does not update the moved folder parent marker before descendants", async () => {
+    const suffix = randomUUID();
+    const folderId = `folder-${suffix}`;
+    const oldParentId = `old-parent-${suffix}`;
+    const newParentId = `new-parent-${suffix}`;
+    const rootId = `root-${suffix}`;
+    const childDocumentId = `child-document-${suffix}`;
+    const connector = await makeConnector(suffix);
+
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: folderId,
+      dustFileId: `gdrive-${folderId}`,
+      mimeType: "application/vnd.google-apps.folder",
+      name: "Board Presentations",
+      parentId: oldParentId,
+    });
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: childDocumentId,
+      dustFileId: `gdrive-${childDocumentId}`,
+      mimeType: "application/pdf",
+      name: "Roadmap.pdf",
+      parentId: folderId,
+    });
+
+    const driveFile = makeGoogleDriveFolder({
+      id: folderId,
+      name: "Board Presentations",
+      parent: newParentId,
+    });
+
+    mocks.changeList.mockResolvedValue({
+      data: {
+        changes: [makeFolderChange(driveFile)],
+        newStartPageToken: "sync-token",
+        nextPageToken: undefined,
+      },
+      status: 200,
+    });
+    mocks.driveObjectToDustType.mockResolvedValue(driveFile);
+    mocks.getFileParentsMemoized.mockResolvedValue([
+      folderId,
+      newParentId,
+      rootId,
+    ]);
+    mocks.updateDataSourceDocumentParents.mockRejectedValueOnce(
+      new Error("transient descendant update failure")
+    );
+
+    await expect(
+      incrementalSync(connector.id, "drive-1", false, Date.now(), "page-token")
+    ).rejects.toThrow("transient descendant update failure");
+
+    const movedFolder = await GoogleDriveFilesModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveFileId: folderId,
+      },
+    });
+
+    expect(movedFolder?.parentId).toBe(oldParentId);
+    expect(mocks.upsertDataSourceFolder).not.toHaveBeenCalled();
+  });
 });
