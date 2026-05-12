@@ -6,7 +6,10 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
-import { getReinforcementMonthlyCapMicroUsd } from "@app/lib/reinforcement/consumption";
+import {
+  getReinforcementMonthlyCapMicroUsd,
+  getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
+} from "@app/lib/reinforcement/consumption";
 import {
   ContentMessage,
   InformationCircleIcon,
@@ -24,6 +27,10 @@ export function ReinforcementPage() {
 
   const [capMicroUsd, setCapMicroUsd] = useState(() =>
     getReinforcementMonthlyCapMicroUsd(owner)
+  );
+
+  const [defaultCapPerSkillMicroUsd, setDefaultCapPerSkillMicroUsd] = useState(
+    () => getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner)
   );
 
   const renderBody = () => {
@@ -59,12 +66,19 @@ export function ReinforcementPage() {
           </LinkWrapper>{" "}
           to share some feedback about this feature.
         </ContentMessage>
-        <ReinforcementSection owner={owner} onCapSaved={setCapMicroUsd} />
+        <ReinforcementSection
+          owner={owner}
+          onCapSaved={setCapMicroUsd}
+          onDefaultCapPerSkillSaved={setDefaultCapPerSkillMicroUsd}
+        />
         <SelfImprovingSkillsConsumptionSection
           owner={owner}
           capMicroUsd={capMicroUsd}
         />
-        <ReinforcementSkillsSection owner={owner} />
+        <ReinforcementSkillsSection
+          owner={owner}
+          defaultCapPerSkillMicroUsd={defaultCapPerSkillMicroUsd}
+        />
       </>
     );
   };

@@ -218,6 +218,22 @@ describe("PATCH /api/w/[wId]/skills/[sId]/reinforcement", () => {
     expect(updated?.selfImprovementCostsCapMicroUsd).toBe(25_000_000);
   });
 
+  it("sets selfImprovementCostsCapMicroUsd to null (use default)", async () => {
+    const { req, res, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    // First set a custom cap.
+    await skill.updateSelfImprovementCostsCap(10_000_000);
+
+    req.body = { selfImprovementCostsCapMicroUsd: null };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const updated = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(updated?.selfImprovementCostsCapMicroUsd).toBeNull();
+  });
+
   it("updates multiple fields in a single request", async () => {
     const { req, res, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
@@ -226,7 +242,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/reinforcement", () => {
     req.body = {
       reinforcement: "off",
       selfImprovementLock: true,
-      selfImprovementCostsCapMicroUsd: 0,
+      selfImprovementCostsCapMicroUsd: 5_000_000,
     };
     await handler(req, res);
 
@@ -234,7 +250,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/reinforcement", () => {
     const updated = await SkillResource.fetchById(requestUserAuth, skill.sId);
     expect(updated?.reinforcement).toBe("off");
     expect(updated?.selfImprovementLock).toBe(true);
-    expect(updated?.selfImprovementCostsCapMicroUsd).toBe(0);
+    expect(updated?.selfImprovementCostsCapMicroUsd).toBe(5_000_000);
   });
 
   it("returns 403 when a non-admin tries to set selfImprovementLock", async () => {

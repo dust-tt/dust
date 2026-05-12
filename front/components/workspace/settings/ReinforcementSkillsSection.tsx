@@ -27,6 +27,7 @@ import { useCallback, useMemo, useState } from "react";
 
 interface ReinforcementSkillsSectionProps {
   owner: LightWorkspaceType;
+  defaultCapPerSkillMicroUsd: number;
 }
 
 type RowData = {
@@ -42,6 +43,7 @@ type RowData = {
   isLockUpdating: boolean;
   currentSpentDollars: number;
   capInputValue: string;
+  capPlaceholder: string;
   isCapUpdating: boolean;
   onToggleEnabled: () => void;
   onToggleLock: () => void;
@@ -135,13 +137,20 @@ const COLUMNS: ColumnDef<RowData, unknown>[] = [
     header: "Cap ($)",
     accessorKey: "capInputValue",
     cell: (info: CellContext<RowData, unknown>) => {
-      const { sId, capInputValue, isCapUpdating, onCapChange, onCapCommit } =
-        info.row.original;
+      const {
+        sId,
+        capInputValue,
+        capPlaceholder,
+        isCapUpdating,
+        onCapChange,
+        onCapCommit,
+      } = info.row.original;
       return (
         <DataTable.CellContent>
           <Input
             name={`cap-${sId}`}
             value={capInputValue}
+            placeholder={capPlaceholder}
             disabled={isCapUpdating}
             onChange={(e) => onCapChange(e.target.value)}
             onBlur={onCapCommit}
@@ -206,6 +215,7 @@ function withoutSkill<T>(
 
 export function ReinforcementSkillsSection({
   owner,
+  defaultCapPerSkillMicroUsd,
 }: ReinforcementSkillsSectionProps) {
   const { skillsWithRelations, isSkillsWithRelationsLoading } =
     useSkillsWithRelations({ owner, status: "active", onlyCustom: true });
@@ -279,16 +289,37 @@ export function ReinforcementSkillsSection({
   );
 
   const handleCapCommit = useCallback(
-    async (skillId: string, savedDollars: number) => {
+    async (skillId: string, savedCapMicroUsd: number | null) => {
       const inputValue = capInputBySkillId[skillId];
       if (inputValue === undefined) {
         return;
       }
 
-      const parsed = Number(inputValue);
-      const isInvalid =
-        inputValue.trim() === "" || !Number.isFinite(parsed) || parsed < 0;
-      const isUnchanged = parsed === savedDollars;
+      const trimmed = inputValue.trim();
+
+      // Empty input resets to default (null).
+      if (trimmed === "") {
+        if (savedCapMicroUsd === null) {
+          // Already using default — just drop the local override.
+          setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+          return;
+        }
+        setCapUpdatingBySkillId((prev) => ({ ...prev, [skillId]: true }));
+        const ok = await updateSkillReinforcement(skillId, {
+          selfImprovementCostsCapMicroUsd: null,
+        });
+        setCapUpdatingBySkillId((prev) => withoutSkill(prev, skillId));
+        if (ok) {
+          setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+        }
+        return;
+      }
+
+      const parsed = Number(trimmed);
+      const isInvalid = !Number.isFinite(parsed) || parsed < 0;
+      const isUnchanged =
+        savedCapMicroUsd !== null &&
+        parsed === microUsdToDollars(savedCapMicroUsd);
       if (isInvalid || isUnchanged) {
         // Drop the local input override so the field falls back to the server value.
         setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
@@ -329,16 +360,19 @@ export function ReinforcementSkillsSection({
     [skillsWithRelations, spentMicroUsdBySkillId]
   );
 
+  const defaultCapPlaceholder = `${formatDollars(microUsdToDollars(defaultCapPerSkillMicroUsd))} (default)`;
+
   const rows: RowData[] = useMemo(
     () =>
       sortedSkills.map((skill: SkillWithRelationsType) => {
         const enabled = isReinforcementEnabled(skill.reinforcement);
         const lock = skill.selfImprovementLock;
-        const savedCapDollars = microUsdToDollars(
-          skill.selfImprovementCostsCapMicroUsd
-        );
+        const savedCapMicroUsd = skill.selfImprovementCostsCapMicroUsd;
         const capInput =
-          capInputBySkillId[skill.sId] ?? formatDollars(savedCapDollars);
+          capInputBySkillId[skill.sId] ??
+          (savedCapMicroUsd !== null
+            ? formatDollars(microUsdToDollars(savedCapMicroUsd))
+            : "");
 
         return {
           sId: skill.sId,
@@ -355,6 +389,7 @@ export function ReinforcementSkillsSection({
             spentMicroUsdBySkillId[skill.sId] ?? 0
           ),
           capInputValue: capInput,
+          capPlaceholder: defaultCapPlaceholder,
           isCapUpdating: capUpdatingBySkillId[skill.sId] ?? false,
           onToggleEnabled: () => {
             void handleToggleEnabled(skill.sId, enabled);
@@ -366,12 +401,13 @@ export function ReinforcementSkillsSection({
             setCapInputBySkillId((prev) => ({ ...prev, [skill.sId]: value }));
           },
           onCapCommit: () => {
-            void handleCapCommit(skill.sId, savedCapDollars);
+            void handleCapCommit(skill.sId, savedCapMicroUsd);
           },
         };
       }),
     [
       sortedSkills,
+      defaultCapPlaceholder,
       pendingEnabledBySkillId,
       enabledUpdatingBySkillId,
       pendingLockBySkillId,

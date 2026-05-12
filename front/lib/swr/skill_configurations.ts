@@ -288,7 +288,7 @@ export function useArchiveSkill({
 type SkillReinforcementUpdate = {
   reinforcement?: SkillReinforcementMode;
   selfImprovementLock?: boolean;
-  selfImprovementCostsCapMicroUsd?: number;
+  selfImprovementCostsCapMicroUsd?: number | null;
 };
 
 export function useUpdateSkillReinforcement({

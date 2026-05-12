@@ -118,7 +118,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 
   declare reinforcement: CreationOptional<SkillReinforcementMode>;
   declare lastReinforcementAnalysisAt: CreationOptional<Date | null>;
-  declare selfImprovementCostsCapMicroUsd: CreationOptional<number>;
+  declare selfImprovementCostsCapMicroUsd: CreationOptional<number | null>;
   // Lock toggling of self-improvement to admin only.
   declare selfImprovementLock: CreationOptional<boolean>;
 
@@ -140,8 +140,8 @@ SkillConfigurationModel.init(
     },
     selfImprovementCostsCapMicroUsd: {
       type: DataTypes.BIGINT,
-      allowNull: false,
-      defaultValue: 0,
+      allowNull: true,
+      defaultValue: null,
     },
     selfImprovementLock: {
       type: DataTypes.BOOLEAN,
