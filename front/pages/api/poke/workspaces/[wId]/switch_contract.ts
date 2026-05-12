@@ -454,18 +454,11 @@ async function handleProOrBusinessSwitch({
     });
   }
 
-  const currentMetronomeContractId = currentSubscription.metronomeContractId;
-  if (!currentMetronomeContractId) {
-    const errorMessage =
-      "Workspace has no current Metronome contract. Fresh Pro/Business " +
-      "provisioning via Poke is not yet supported — the user must complete " +
-      "the regular checkout flow first.";
-    await pluginRun.recordError(errorMessage);
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: { type: "invalid_request_error", message: errorMessage },
-    });
-  }
+  // When the workspace has no Metronome contract yet, fall through to the
+  // same call with `oldContractId: null` — `switchMetronomeContractPackage`
+  // skips the end-of-old step and just creates the first contract.
+  const currentMetronomeContractId =
+    currentSubscription.metronomeContractId ?? null;
 
   const switchResult = await switchMetronomeContractPackage({
     metronomeCustomerId,
