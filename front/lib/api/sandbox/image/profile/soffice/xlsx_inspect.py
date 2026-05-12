@@ -23,10 +23,15 @@ import ooxml
 import openpyxl
 from openpyxl.workbook.workbook import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
+from utils import (
+    TEXT_PREVIEW_LIMIT as VALUE_PREVIEW_LIMIT,
+    ellipsize,
+    format_size,
+    pad,
+    safe_output,
+)
 
-MAX_OUTPUT_BYTES = 48_000
 DEFAULT_LIMIT = 1000
-VALUE_PREVIEW_LIMIT = 80
 
 EMU_PER_PIXEL = 9525
 DEFAULT_COLUMN_PIXELS = 64
@@ -71,12 +76,6 @@ class CellRange(NamedTuple):
     end_col: int
 
 
-def ellipsize(text: str, limit: int) -> str:
-    if len(text) <= limit:
-        return text
-    return text[: limit - 1] + "…"
-
-
 def quote_string(value) -> str:
     if not isinstance(value, str):
         value = str(value)
@@ -96,14 +95,6 @@ def format_scalar(value) -> str:
     if callable(iso):
         return iso()[:10]
     return str(value)
-
-
-def format_size(num_bytes: int) -> str:
-    if num_bytes < 1024:
-        return f"{num_bytes} B"
-    if num_bytes < 1024 * 1024:
-        return f"{num_bytes / 1024:.1f} KB"
-    return f"{num_bytes / (1024 * 1024):.1f} MB"
 
 
 _ASCII_A = ord("A")
@@ -307,12 +298,6 @@ def fill_argb(cell, theme_palette: Dict[int, str]) -> Optional[str]:
     if getattr(fill, "patternType", None) != "solid":
         return None
     return resolve_color(getattr(fill, "fgColor", None), theme_palette)
-
-
-def pad(text: str, width: int) -> str:
-    if len(text) >= width:
-        return text
-    return text + " " * (width - len(text))
 
 
 def describe_cell(cell, evaluated_value, theme_palette: Dict[int, str]) -> str:
@@ -845,20 +830,6 @@ def print_grep(
         out.append("")
         out.append(f"[Use --offset {offset + shown} for the next page.]")
     return "\n".join(out)
-
-
-def safe_output(text: str) -> Tuple[str, bool]:
-    if len(text.encode("utf-8")) <= MAX_OUTPUT_BYTES:
-        return text, False
-    out_lines = []
-    out_bytes = 0
-    for line in text.split("\n"):
-        line_bytes = len((line + "\n").encode("utf-8"))
-        if out_bytes + line_bytes > MAX_OUTPUT_BYTES:
-            return "\n".join(out_lines), True
-        out_lines.append(line)
-        out_bytes += line_bytes
-    return "\n".join(out_lines), False
 
 
 def main() -> int:

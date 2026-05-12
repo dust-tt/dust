@@ -75,3 +75,45 @@ def parse_chart_title(zf: zipfile.ZipFile, chart_path: str) -> Optional[str]:
         return None
     chunks = [t.text for t in title.iter(f"{{{NS['a']}}}t") if t.text]
     return "".join(chunks).strip() or None
+
+
+def qa(local: str) -> str:
+    """Clark-notation tag in the DrawingML `a:` namespace."""
+    return f"{{{NS['a']}}}{local}"
+
+
+def theme_font(theme_xml, kind: str) -> Optional[str]:
+    """Latin typeface for the theme's `majorFont` or `minorFont`.
+    `kind` is "major" or "minor". Returns None if the theme is missing or
+    has no latin entry for that font slot."""
+    if theme_xml is None:
+        return None
+    latin = theme_xml.find(
+        f"{qa('themeElements')}/{qa('fontScheme')}/{qa(kind + 'Font')}/{qa('latin')}"
+    )
+    if latin is None:
+        return None
+    return latin.attrib.get("typeface") or None
+
+
+def theme_colors_by_name(theme_xml) -> dict:
+    """Map color-scheme token (`dk1`, `lt1`, `accent1`...) to a 6-char hex
+    string. Reads `themeElements/clrScheme`, falling back to `sysClr.lastClr`
+    when a slot uses a system color. Used by docx and pptx; xlsx indexes by
+    position with tint and keeps its own loader."""
+    if theme_xml is None:
+        return {}
+    out = {}
+    scheme = theme_xml.find(f"{qa('themeElements')}/{qa('clrScheme')}")
+    if scheme is None:
+        return out
+    for child in scheme:
+        token = child.tag.split("}", 1)[-1]
+        srgb = child.find(qa("srgbClr"))
+        if srgb is not None:
+            out[token] = (srgb.attrib.get("val") or "").upper()
+            continue
+        sysclr = child.find(qa("sysClr"))
+        if sysclr is not None:
+            out[token] = (sysclr.attrib.get("lastClr") or "").upper()
+    return out
