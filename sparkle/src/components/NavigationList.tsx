@@ -353,6 +353,7 @@ NavigationListCompactLabel.displayName = "NavigationListCompactLabel";
 interface NavigationListCollapsibleSectionProps
   extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
+  icon?: React.ComponentType;
   action?: React.ReactNode;
   actionOnHover?: boolean;
   defaultOpen?: boolean;
@@ -407,6 +408,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
   (
     {
       label,
+      icon,
       action,
       actionOnHover = true,
       children,
@@ -429,18 +431,25 @@ const NavigationListCollapsibleSection = React.forwardRef<
     const hasPartialCollapse =
       visibleItems !== undefined && visibleItems < childArray.length;
 
-    const visibleChildrenSlice =
-      hasPartialCollapse && !isShowingAll
-        ? childArray.slice(0, visibleItems)
-        : childArray;
+    const visibleChildrenSlice = hasPartialCollapse
+      ? childArray.slice(0, visibleItems)
+      : childArray;
 
-    const overflowChildren =
-      hasPartialCollapse && !isShowingAll ? childArray.slice(visibleItems) : [];
+    const overflowChildren = hasPartialCollapse
+      ? childArray.slice(visibleItems)
+      : [];
 
     const isCollapsible = type !== "static";
     const labelElement = (
       <div className={collapseableStyles({ variant, isCollapsible })}>
-        {label}
+        {icon ? (
+          <span className="s-flex s-items-center s-gap-1.5">
+            <Icon visual={icon} size="xs" />
+            <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
+          </span>
+        ) : (
+          label
+        )}
       </div>
     );
 
