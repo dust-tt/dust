@@ -93,12 +93,15 @@ export class UserProjectNotificationPreferenceResource extends BaseResource<User
         workspaceId: auth.getNonNullableWorkspace().id,
         spaceId: spaceModelId,
         userId: { [Op.in]: userModelIds },
+        preference: { [Op.ne]: null },
       },
     });
 
     const preferenceMap = new Map<ModelId, NotificationCondition>();
     for (const result of results) {
-      preferenceMap.set(result.userId, result.preference);
+      if (result.preference !== null) {
+        preferenceMap.set(result.userId, result.preference);
+      }
     }
 
     return preferenceMap;
