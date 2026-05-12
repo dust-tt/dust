@@ -1159,6 +1159,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     try {
       const workspaceId = auth.getNonNullableWorkspace().id;
 
+      await AgentStepContentToolExecutionModel.destroy({
+        where: {
+          agentMessageId: { [Op.in]: params.agentMessageIds },
+          workspaceId,
+        },
+        transaction: params.transaction,
+      });
+
       await AgentMCPActionModel.destroy({
         where: {
           agentMessageId: { [Op.in]: params.agentMessageIds },
