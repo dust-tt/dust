@@ -6,8 +6,10 @@ import {
   agentYAMLConfigSchema,
   agentYAMLGenerationSettingsSchema,
 } from "@app/lib/agent_yaml_converter/schemas";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationAsYAMLConfig } from "@app/lib/api/assistant/configuration/yaml_export";
+import {
+  convertAgentConfigurationToYAMLConfig,
+  getAgentConfigurationForExport,
+} from "@app/lib/api/assistant/configuration/yaml_export";
 import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -247,12 +249,22 @@ export async function patchAgentConfigurationFromJSON(
 
   const patch = parsed.data;
 
-  const existingResult = await getAgentConfigurationAsYAMLConfig(auth, agentId);
-  if (existingResult.isErr()) {
-    return existingResult;
+  const agentResult = await getAgentConfigurationForExport(auth, agentId);
+  if (agentResult.isErr()) {
+    return agentResult;
   }
 
-  const existing = existingResult.value;
+  const agentConfiguration = agentResult.value;
+
+  const yamlConfigResult = await convertAgentConfigurationToYAMLConfig(
+    auth,
+    agentConfiguration
+  );
+  if (yamlConfigResult.isErr()) {
+    return yamlConfigResult;
+  }
+
+  const existing = yamlConfigResult.value;
 
   const merged: AgentYAMLConfig = {
     ...existing,
@@ -266,18 +278,9 @@ export async function patchAgentConfigurationFromJSON(
 
   // When the patch does not include toolset, preserve the existing actions
   // directly from the agent config to avoid the YAML round-trip
-  let resolvedActions: AgentConfigurationType["actions"] | undefined;
-
-  if (!patch.toolset) {
-    const agentConfig = await getAgentConfiguration(auth, {
-      agentId,
-      variant: "full",
-    });
-
-    if (agentConfig) {
-      resolvedActions = agentConfig.actions;
-    }
-  }
+  const resolvedActions = !patch.toolset
+    ? agentConfiguration.actions
+    : undefined;
 
   return importAgentConfiguration(auth, merged, agentId, resolvedActions);
 }

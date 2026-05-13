@@ -17,6 +17,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -24,10 +25,10 @@ import type { UserType } from "@app/types/user";
 
 const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 
-export async function getAgentConfigurationAsYAMLConfig(
+export async function getAgentConfigurationForExport(
   auth: Authenticator,
   agentId: string
-): Promise<Result<AgentYAMLConfig, APIErrorWithStatusCode>> {
+): Promise<Result<AgentConfigurationType, APIErrorWithStatusCode>> {
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId,
     variant: "full",
@@ -56,6 +57,13 @@ export async function getAgentConfigurationAsYAMLConfig(
     });
   }
 
+  return new Ok(agentConfiguration);
+}
+
+export async function convertAgentConfigurationToYAMLConfig(
+  auth: Authenticator,
+  agentConfiguration: AgentConfigurationType
+): Promise<Result<AgentYAMLConfig, APIErrorWithStatusCode>> {
   const { dataSourceViews, mcpServerViews } =
     await getAccessibleSourcesAndAppsForActions(auth);
   const skills = await SkillResource.listByAgentConfiguration(
@@ -183,18 +191,22 @@ export async function exportAgentConfigurationAsYAML(
 ): Promise<
   Result<{ yamlContent: string; filename: string }, APIErrorWithStatusCode>
 > {
-  const yamlConfigResult = await getAgentConfigurationAsYAMLConfig(
-    auth,
-    agentId
-  );
+  const agentResult = await getAgentConfigurationForExport(auth, agentId);
+  if (agentResult.isErr()) {
+    return agentResult;
+  }
 
+  const yamlConfigResult = await convertAgentConfigurationToYAMLConfig(
+    auth,
+    agentResult.value
+  );
   if (yamlConfigResult.isErr()) {
     return yamlConfigResult;
   }
 
-  const yamlStringResult = AgentYAMLConverter.toYAMLString(
-    yamlConfigResult.value
-  );
+  const yamlConfig = yamlConfigResult.value;
+
+  const yamlStringResult = AgentYAMLConverter.toYAMLString(yamlConfig);
 
   if (yamlStringResult.isErr()) {
     return new Err({
@@ -206,7 +218,7 @@ export async function exportAgentConfigurationAsYAML(
     });
   }
 
-  const sanitizedName = yamlConfigResult.value.agent.handle.replace(
+  const sanitizedName = yamlConfig.agent.handle.replace(
     AGENT_NAME_SANITATION_REGEX,
     "_"
   );
