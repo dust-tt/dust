@@ -50,10 +50,10 @@ const config = {
     }
 
     // Using process.env here to make sure the function is usable on the client side.
-    if (!process.env.NEXT_PUBLIC_DUST_API_URL) {
-      throw new Error("NEXT_PUBLIC_DUST_API_URL is not set");
+    if (!process.env.NEXT_PUBLIC_DUST_API_URL2) {
+      throw new Error("NEXT_PUBLIC_DUST_API_URL2 is not set");
     }
-    return process.env.NEXT_PUBLIC_DUST_API_URL;
+    return process.env.NEXT_PUBLIC_DUST_API_URL2;
   },
 
   getStaticWebsiteUrl: (): string => {
