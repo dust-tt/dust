@@ -75,10 +75,8 @@ async function handler(
       });
 
       if (result.isErr()) {
-        const statusCode =
-          result.error.type === "no_seats_available" ? 409 : 404;
         return apiError(req, res, {
-          status_code: statusCode,
+          status_code: 404,
           api_error: {
             type: result.error.type,
             message: result.error.message,

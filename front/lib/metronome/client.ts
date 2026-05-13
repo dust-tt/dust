@@ -954,7 +954,7 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
   metronomeCustomerId: string;
   contractId: string;
   subscriptionId: string;
-}): Promise<Result<{ assignedSeatIds: string[]; unassignedSeats: number }, Error>> {
+}): Promise<Result<string[], Error>> {
   try {
     const response =
       await getMetronomeClient().post<SubscriptionSeatsHistoryResponse>(
@@ -968,11 +968,7 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
           },
         }
       );
-    const entry = response.data[0];
-    return new Ok({
-      assignedSeatIds: entry?.seat_ids ?? [],
-      unassignedSeats: entry?.unassigned_seats ?? 0,
-    });
+    return new Ok(response.data[0]?.seat_ids ?? []);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
