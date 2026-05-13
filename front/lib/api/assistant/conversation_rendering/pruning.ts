@@ -1,13 +1,10 @@
 import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
 
-const CURRENT_INTERACTION_PRUNED_RESULT_PLACEHOLDER =
-  "<dust_system>This function result is no longer available." +
-  " Warning: the content of this function result was pruned to prevent context window overflow.</dust_system>";
-const CURRENT_INTERACTION_PRUNED_TOOL_RESULT_TOKENS = 40;
-
-const PREVIOUS_INTERACTIONS_PRUNED_RESULT_PLACEHOLDER =
-  "<dust_system>This function result is no longer available.</dust_system>";
-const PREVIOUS_INTERACTIONS_PRUNED_TOOL_RESULT_TOKENS = 20;
+const PRUNED_TOOL_RESULT_PLACEHOLDER =
+  "<dust_system>" +
+  "This tool result is no longer available (pruned to prevent context window overflow)." +
+  "</dust_system>";
+const PRUNED_TOOL_RESULT_TOKENS = 24;
 
 export type MessageWithTokens = ModelMessageTypeMultiActions & {
   tokenCount: number;
@@ -35,8 +32,8 @@ export function pruneAllToolResults(
     if (msg.role === "function") {
       return {
         ...msg,
-        content: PREVIOUS_INTERACTIONS_PRUNED_RESULT_PLACEHOLDER,
-        tokenCount: PREVIOUS_INTERACTIONS_PRUNED_TOOL_RESULT_TOKENS,
+        content: PRUNED_TOOL_RESULT_PLACEHOLDER,
+        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
       };
     }
     return msg;
@@ -57,8 +54,8 @@ export function getInteractionTokenCount(
 }
 
 /**
- * Progressively prune tool results from an interaction to meet token budget.
- * Prunes from oldest to newest tool results until the interaction fits.
+ * Progressively prune tool results from an interaction to meet token budget. Prunes from oldest to
+ * newest tool results until the interaction fits.
  */
 export function progressivelyPruneInteraction(
   interaction: InteractionWithTokens,
@@ -92,8 +89,8 @@ export function progressivelyPruneInteraction(
       prunedMessages = [...prunedMessages];
       prunedMessages[index] = {
         ...message,
-        content: CURRENT_INTERACTION_PRUNED_RESULT_PLACEHOLDER,
-        tokenCount: CURRENT_INTERACTION_PRUNED_TOOL_RESULT_TOKENS,
+        content: PRUNED_TOOL_RESULT_PLACEHOLDER,
+        tokenCount: PRUNED_TOOL_RESULT_TOKENS,
       };
 
       // Check if we've pruned enough.
@@ -114,9 +111,9 @@ export function progressivelyPruneInteraction(
 }
 
 /**
- * Prunes all tool results from a list of interactions, attempting to fully preserve up to n interactions (starting from the last).
- * As soon as we reach n interactions, or as soon as an interaction does not fit within the token budget,
- * we'll fully prune the remaining interactions.
+ * Prunes all tool results from a list of interactions, attempting to fully preserve up to n
+ * interactions (starting from the last). As soon as we reach n interactions, or as soon as an
+ * interaction does not fit within the token budget, we'll fully prune the remaining interactions.
  */
 export function prunePreviousInteractions(
   inputInteractions: InteractionWithTokens[],
@@ -128,32 +125,22 @@ export function prunePreviousInteractions(
   let shouldPrune = false;
   let availableTokens = maxTokens;
   for (let i = interactions.length - 1; i >= 0; i--) {
-    // We prune if we've pruned the last interaction, or if we've reached the number of interactions to preserve.
+    // We prune if we've pruned the last interaction, or if we've reached the number of interactions
+    // to preserve.
     shouldPrune =
       shouldPrune || i < interactions.length - interactionsToPreserve;
 
-    const interaction = interactions[i];
-    if (shouldPrune) {
-      // We are pruning all previous interactions.
-      // We simply prune all tool results and update the available tokens.
-      interactions[i] = pruneAllToolResults(interaction);
-      availableTokens -= getInteractionTokenCount(interaction);
-      continue;
+    let interactionTokens = getInteractionTokenCount(interactions[i]);
+    if (interactionTokens > availableTokens) {
+      // If the interaction does not fit the context we prune it and prune all the ones after.
+      shouldPrune = true;
     }
 
-    // We check if the interaction fits fully.
-    // If so, we leave it untouched.
-    // Otherwise, we prune it along all previous interactions.
-    let interactionTokens = getInteractionTokenCount(interaction);
-    if (interactionTokens > availableTokens) {
-      // Interaction does not fit within the token budget.
-      // We prune it, and will prune all previous interactions as well.
-      interactions[i] = pruneAllToolResults(interaction);
-      interactionTokens = getInteractionTokenCount(interaction);
-      shouldPrune = true;
-    } else {
-      // Interaction fits within the token budget.
-      // We keep it as-is
+    if (shouldPrune) {
+      // We are pruning all previous interactions. We simply prune all tool results and update the
+      // available tokens.
+      interactions[i] = pruneAllToolResults(interactions[i]);
+      interactionTokens = getInteractionTokenCount(interactions[i]);
     }
 
     // We update the available tokens.
