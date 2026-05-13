@@ -163,7 +163,7 @@ export async function renderConversationForModel(
       contextSize: model.contextSize,
       generationTokensCount: model.generationTokensCount,
       tokenCountAdjustment: model.tokenCountAdjustment,
-      tokenier: model.tokenizer,
+      tokenizer: model.tokenizer,
     },
     baseTokens,
     promptCount,
