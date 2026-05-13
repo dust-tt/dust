@@ -148,10 +148,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   },
   get_document_structure: {
     description:
-      "Get the full structure of a Google Docs document including text, headers, footers, tables, and element indices. " +
-      "Useful when you need to inspect the document content before deciding what changes to make. " +
-      "Not required before calling update_document — the server fetches structure automatically for writes. " +
-      "Supports pagination for large documents.",
+      "Get the full structure of a Google Docs document including text, headers, footers, tables, and element indices. Supports pagination for large documents.",
     schema: {
       documentId: z
         .string()
@@ -179,10 +176,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   },
   get_presentation_structure: {
     description:
-      "Get the full structure of a Google Slides presentation including slides, shapes, tables, text content, and object IDs. " +
-      "Useful when you need to inspect slide content before deciding what changes to make. " +
-      "Not required before calling update_presentation — the server fetches structure automatically for writes. " +
-      "Supports pagination for large presentations.",
+      "Get the full structure of a Google Slides presentation including slides, shapes, tables, text content, and object IDs. Supports pagination for large presentations.",
     schema: {
       presentationId: z
         .string()
@@ -223,10 +217,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   },
   get_worksheet: {
     description:
-      "Get cell values from a specific range in a Google Sheets spreadsheet. " +
-      "Useful when you need to read current cell values before deciding what to update. " +
-      "Not required before calling update_spreadsheet — the server resolves sheet names and ranges automatically. " +
-      "Returns cell values in the specified format (formatted, unformatted, or formulas).",
+      "Get cell values from a specific range in a Google Sheets spreadsheet. Returns values in the specified format (formatted, unformatted, or formulas).",
     schema: {
       spreadsheetId: z.string().describe("The ID of the spreadsheet."),
       range: z
@@ -400,22 +391,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_document: {
     description:
-      "Update a Google Docs document using simplified operations. The server automatically fetches the current document structure and resolves all indices — you do not need to call get_document_structure first.\n\n" +
-      "Operations available:\n" +
-      "• replaceText — find and replace text document-wide (preserves formatting)\n" +
-      "• insertText — insert text at start, end, or after a text anchor\n" +
-      "• deleteText — delete text matching a pattern\n" +
-      "• formatText — apply bold, italic, underline, fontSize to matched text\n" +
-      "• insertTable — insert a new table at start, end, or after a text anchor\n" +
-      "• replaceTableCell — replace content in a specific table cell by table/row/column index\n" +
-      "• insertInTableCell — insert text into a table cell\n" +
-      "• insertTableRow / insertTableColumn — add rows or columns\n" +
-      "• deleteTableRow / deleteTableColumn — remove rows or columns\n" +
-      "• replaceHeaderFooterText — find/replace text in a specific header or footer\n" +
-      "• insertInHeaderFooter — insert text into a header or footer\n" +
-      "• raw — pass any valid Google Docs batchUpdate request directly (for operations not covered above)\n\n" +
-      "When working with templates, prefer replaceText or replaceTableCell over raw operations. The server handles index ordering and batching automatically. " +
-      "When replacing content in cells that have existing bullet or numbered list formatting, the server automatically strips redundant markers and drops blank lines from your content to prevent double-formatting and empty list items.",
+      "Update a Google Docs document by applying one or more operations (text find/replace, position-based insert/delete/format, table cell and row/column edits, header/footer edits). The server fetches the current document state and resolves text anchors and table coordinates automatically, so you do not need to call get_document_structure first. Use a `raw` operation as an escape hatch for any Google Docs batchUpdate request the named ops don't cover. When replacing content in cells that already have bullet or numbered list formatting, the server automatically strips redundant markers and drops blank lines to prevent double-formatting and empty list items.",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
       capabilities: capabilitiesSchema,
@@ -466,15 +442,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_spreadsheet: {
     description:
-      "Update a Google Sheets spreadsheet using simplified operations. The server automatically resolves sheet names to sheet IDs — you do not need to call get_spreadsheet first for sheetId lookups.\n\n" +
-      "Operations available:\n" +
-      "• updateCells — write values to a range by sheet name and A1 reference\n" +
-      "• formatCells — apply formatting (bold, colors, alignment, number format) to a range\n" +
-      "• findReplace — find and replace text across one sheet or all sheets\n" +
-      "• mergeCells / insertRows / deleteRows / insertColumns / deleteColumns / sortRange / autoResizeColumns — structural operations by sheet name\n" +
-      "• addSheet / deleteSheet — add or remove sheets by title\n" +
-      "• raw — pass any valid Google Sheets batchUpdate request directly (for operations not covered above, e.g., data validation, conditional formatting, charts)\n\n" +
-      "For simply appending rows to the end of existing data, use append_to_spreadsheet instead — it's simpler and doesn't require sheet name resolution.",
+      "Update a Google Sheets spreadsheet by applying one or more operations (write cells, format ranges, find/replace, merge, sort, insert/delete rows and columns, add/delete sheets). Operations address cells by sheet name + A1 range and the server resolves sheet names to sheetIds automatically, so you do not need to call get_spreadsheet first. Use a `raw` operation as an escape hatch for any Google Sheets batchUpdate request the named ops don't cover (e.g. data validation, conditional formatting, charts). For appending rows to the end of existing data, use append_to_spreadsheet instead — it's simpler and skips sheet-name resolution.",
     schema: {
       spreadsheetId: z
         .string()
@@ -492,18 +460,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_presentation: {
     description:
-      "Update a Google Slides presentation using simplified operations. The server automatically fetches the current presentation structure and resolves all object IDs — you do not need to call get_presentation_structure first.\n\n" +
-      "Operations available:\n" +
-      "• replaceAllText — find and replace text across the entire presentation or specific slides (preserves formatting). Best for template variable replacement. Pass slideNumbers (1-indexed) to scope to specific slides.\n" +
-      "• replaceShapeText — replace all text in a specific shape, identified by slide number and either text content, shape index, or shape type (TITLE, SUBTITLE, BODY, TEXT_BOX)\n" +
-      "• insertInShape — insert text at the start or end of a shape's existing text\n" +
-      "• replaceSlideTableCell — replace content in a table cell on a specific slide\n" +
-      "• replaceNotes — replace speaker notes on a slide\n" +
-      "• addSlide / deleteSlide — add or remove slides\n" +
-      "• addTextBox — create a new text box on a slide\n" +
-      "• deleteElement — remove an element identified by a text snippet it contains\n" +
-      "• raw — pass any valid Google Slides batchUpdate request directly\n\n" +
-      "When populating templates, use replaceAllText with {{placeholder}} patterns for the simplest approach. Use replaceShapeText when you need to target a specific shape.",
+      "Update a Google Slides presentation by applying one or more operations (find/replace, shape text replacement and insertion, table cell edits, speaker notes, add/delete slides and elements). Operations address slides by 1-indexed number and shapes by text content, index, or placeholder/shape type; the server resolves these to objectIds automatically, so you do not need to call get_presentation_structure first. Use a `raw` operation as an escape hatch for any Google Slides batchUpdate request the named ops don't cover. For populating templates, replaceAllText with `{{placeholder}}` patterns is the simplest approach.",
     schema: {
       presentationId: z
         .string()
