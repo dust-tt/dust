@@ -450,11 +450,39 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok({ sandbox, freshlyCreated: true, wokeFromSleep: false });
       }
 
-      const { status } = existing;
+      let effectiveStatus: SandboxStatus = existing.status;
       let freshlyCreated = false;
       let wokeFromSleep = false;
 
-      switch (status) {
+      // If a kill was requested, destroy the existing sandbox at the provider
+      // (best-effort) and fall through to recreation. This races with the
+      // reaper's killRequested phase; the lifecycle lock keeps it serialised.
+      if (existing.killRequestedAt && existing.status !== "deleted") {
+        logger.info(
+          { sandbox: existing.toLogJSON() },
+          "Sandbox has killRequestedAt — destroying and recreating."
+        );
+        const destroyResult = await provider.destroy(
+          existing.providerId,
+          tracingOpts
+        );
+        if (destroyResult.isErr()) {
+          if (!(destroyResult.error instanceof SandboxNotFoundError)) {
+            logger.error(
+              {
+                sandbox: existing.toLogJSON(),
+                error: destroyResult.error.message,
+              },
+              "Failed to destroy kill-requested sandbox at provider — proceeding with recreation."
+            );
+          }
+        } else {
+          SandboxResource.deleteEgressPolicyAfterDestroy(existing);
+        }
+        effectiveStatus = "deleted";
+      }
+
+      switch (effectiveStatus) {
         case "running":
           break;
 
@@ -531,6 +559,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             providerId: createResult.value.providerId,
             baseImage: createConfig.imageId.imageName,
             version: createConfig.imageId.tag,
+            killRequestedAt: null,
           });
           freshlyCreated = true;
 
@@ -558,7 +587,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         default:
-          assertNever(status);
+          assertNever(effectiveStatus);
       }
 
       await existing.updateStatus("running", { ctx });
@@ -730,6 +759,99 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
+   * Return conversation sIds for sandboxes with `killRequestedAt` set and not
+   * yet deleted. The kill-requester workflow marks rows; the reaper (and the
+   * bash path) is responsible for actually destroying them.
+   *
+   * WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
+   */
+  static async dangerouslyGetKillRequestedConversationIds(opts: {
+    limit: number;
+  }): Promise<Array<{ conversationId: string; workspaceModelId: ModelId }>> {
+    const rows = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: {
+        killRequestedAt: { [Op.ne]: null },
+        status: { [Op.ne]: "deleted" },
+      },
+      include: [
+        {
+          model: ConversationModel,
+          attributes: ["sId", "workspaceId"],
+          required: true,
+        },
+      ],
+      order: [["killRequestedAt", "ASC"]],
+      limit: opts.limit,
+    });
+
+    return rows.map((r) => ({
+      conversationId: r.conversation.sId,
+      workspaceModelId: r.conversation.workspaceId,
+    }));
+  }
+
+  /**
+   * Destroy a sandbox that has a kill request set, regardless of its current
+   * status. Acquires the lifecycle lock, re-fetches the sandbox, and only
+   * destroys if it is non-deleted and still has `killRequestedAt`. Treats
+   * `SandboxNotFoundError` as success.
+   *
+   * WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
+   */
+  static async dangerouslyDestroyIfKillRequested(
+    auth: Authenticator,
+    conversationId: string
+  ): Promise<Result<void, Error>> {
+    return this.withLifecycleLock(conversationId, async (provider) => {
+      const sandbox =
+        await SandboxResource.dangerouslyFetchByConversationId(conversationId);
+      if (
+        !sandbox ||
+        sandbox.status === "deleted" ||
+        !sandbox.killRequestedAt
+      ) {
+        return new Ok(undefined);
+      }
+
+      const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
+      const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
+
+      const result = await provider.destroy(sandbox.providerId, tracingOpts);
+      if (result.isErr()) {
+        if (result.error instanceof SandboxNotFoundError) {
+          logger.info(
+            { sandbox: sandbox.toLogJSON() },
+            "Kill-requested sandbox not found at provider — marking deleted."
+          );
+          await sandbox.updateStatus("deleted", { ctx });
+          SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
+          return new Ok(undefined);
+        }
+        return result;
+      }
+
+      await sandbox.updateStatus("deleted", { ctx });
+      SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
+      recordLifecycleOperation("destroy", ctx);
+
+      void revokeAllExecTokensForSandbox(sandbox.sId).catch((err) =>
+        logger.error(
+          { error: err },
+          "Failed to revoke exec tokens on kill-requested sandbox destroy"
+        )
+      );
+
+      logger.info(
+        { sandbox: sandbox.toLogJSON() },
+        "Kill-requested sandbox destroyed."
+      );
+      return new Ok(undefined);
+    });
+  }
+
+  /**
    * Execute a command in this sandbox.
    */
   async exec(
@@ -867,6 +989,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       providerId: this.providerId,
       status: this.status,
       lastActivityAt: this.lastActivityAt.toISOString(),
+      baseImage: this.baseImage,
+      version: this.version,
+      killRequestedAt: this.killRequestedAt?.toISOString() ?? null,
     };
   }
 }
