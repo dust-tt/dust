@@ -56,6 +56,10 @@ type AuditAction =
   // Projects.
   | "project.joined"
   | "project.left"
+  // Self-improvement.
+  | "self_improvement.enabled"
+  | "self_improvement.batch_mode_updated"
+  | "skill.self_improvement_updated"
   // Sandbox.
   | "sandbox_egress_policy.agent_requests_setting_updated"
   | "sandbox_egress_policy.sandbox_updated"

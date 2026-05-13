@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -123,6 +128,19 @@ async function handler(
 
       if (reinforcement !== undefined) {
         await skill.updateReinforcement(reinforcement);
+
+        void emitAuditLogEvent({
+          auth,
+          action: "skill.self_improvement_updated",
+          targets: [
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            { type: "skill", id: skill.sId, name: skill.name },
+          ],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            reinforcement: String(reinforcement),
+          },
+        });
       }
       if (selfImprovementLock !== undefined) {
         await skill.updateSelfImprovementLock(selfImprovementLock);
