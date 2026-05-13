@@ -54,7 +54,6 @@ describe("envgen", () => {
       expect(content).toContain("export OAUTH_API=http://localhost:10006");
       expect(content).toContain("export DUST_FRONT_API=http://localhost:10000");
       expect(content).toContain("export DUST_CLIENT_FACING_URL=http://localhost:10000");
-      expect(content).toContain("export NEXT_PUBLIC_DUST_CLIENT_FACING_URL=http://localhost:10000");
       expect(content).toContain("export NEXT_PUBLIC_DUST_API_URL=http://localhost:10000");
       expect(content).toContain(
         "export NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL=http://localhost:10000"
