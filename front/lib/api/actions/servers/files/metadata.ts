@@ -18,7 +18,7 @@ export const CAT_LINES_MAX = 500;
 export const GREP_MATCHES_MAX = 50;
 export const CREATE_CONTENT_MAX_BYTES = 50 * 1024; // 50 KB (~12K tokens).
 
-// Shared `list` description that opens with the generic capability — the file-system listing —
+// Shared `list` description that opens with the generic file-system listing capability and is
 // followed by a context-specific suffix injected by the conversation-only or project-aware
 // metadata.
 const LIST_DESCRIPTION_PREFIX =
@@ -98,7 +98,7 @@ const COPY_CONVERSATION_ONLY_TOOL = {
 const COPY_PROJECT_AWARE_TOOL = {
   description:
     `${COPY_DESCRIPTION_BASE} ` +
-    "Since this conversation belongs to a project, you can also copy between scopes — " +
+    "Since this conversation belongs to a project, you can also copy between scopes, " +
     "e.g. `conversation/report.pdf` -> `project/report.pdf` to promote a file into the project, " +
     "or `project/spec.md` -> `conversation/spec.md` to pull it into the conversation.",
   schema: {
@@ -131,7 +131,7 @@ const FILES_TOOLS_COMMON_METADATA = {
       "When the output is truncated, a footer indicates the next offset to use. " +
       "For images (JPEG, PNG, GIF), returns a vision block the model can inspect directly. " +
       "For binary sources such as PDFs, scanned documents, or audio files, prefer the " +
-      `\`*.processed.<ext>\` sibling listed in \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` — it carries the extracted text or transcript.`,
+      `\`*.processed.<ext>\` sibling listed in \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\`. It carries the extracted text or transcript.`,
     schema: {
       path: z
         .string()

@@ -503,7 +503,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "project_manager": {
     "add_content_node": "never_ask",
     "add_message_to_conversation": "medium",
-    "attach_to_conversation": "never_ask",
     "create_conversation": "medium",
     "create_project": "low",
     "edit_description": "low",

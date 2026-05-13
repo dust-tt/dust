@@ -5,7 +5,13 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  FILES_LIST_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
+import { listProjectFiles } from "@app/lib/api/actions/servers/files/tools/utils";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
 import {
   buildProjectRetrieveDataSources,
@@ -20,7 +26,7 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { renderAttachmentXml } from "@app/lib/api/assistant/conversation/attachments";
+import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getConversation,
   getLightConversation,
@@ -28,7 +34,6 @@ import {
 import config from "@app/lib/api/config";
 import {
   addContentNodeToProject,
-  fetchLatestProjectContextFileContentFragment,
   listProjectContextAttachments,
   removeContentNodeFromProject,
 } from "@app/lib/api/projects/context";
@@ -207,58 +212,6 @@ export function createProjectManagerTools(
       }, "Failed to remove linked content from project");
     },
 
-    attach_to_conversation: async (params) => {
-      return withErrorHandling(async () => {
-        if (!agentLoopContext?.runContext?.conversation) {
-          return new Err(
-            new MCPError("No conversation context available", {
-              tracked: false,
-            })
-          );
-        }
-
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const { fileId } = params;
-
-        const projectFile = await fetchLatestProjectContextFileContentFragment(
-          auth,
-          space,
-          fileId
-        );
-        if (!projectFile) {
-          return new Err(
-            new MCPError("File not found in this project context", {
-              tracked: false,
-            })
-          );
-        }
-        const { file } = projectFile;
-
-        return new Ok([
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              uri: file.getPublicUrl(auth),
-              fileId: file.sId,
-              title: file.fileName,
-              contentType: file.contentType,
-              snippet: file.snippet,
-              text: `File "${file.fileName}" (${file.sId}) attached to the current conversation.`,
-            },
-          },
-        ]);
-      }, "Failed to attach project file to conversation");
-    },
-
     edit_description: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
@@ -317,7 +270,25 @@ export function createProjectManagerTools(
           space
         );
 
+        // Linked content nodes (Company Data references) have no other discovery surface, so we
+        // surface them here. Project files do (they live under `project/<rel>` scoped paths and
+        // are discovered through the `files` MCP server), so we only report a count plus a hint.
         const attachments = await listProjectContextAttachments(auth, space);
+        const contentNodes = attachments
+          .filter(isContentNodeAttachmentType)
+          .map((node) => ({
+            name: node.title,
+            nodeId: node.nodeId,
+            dataSourceViewId: node.nodeDataSourceViewId,
+          }));
+
+        const projectFilesRes = await listProjectFiles(auth, space);
+        if (projectFilesRes.isErr()) {
+          return projectFilesRes;
+        }
+        const projectFileCount = projectFilesRes.value.filter(
+          (e) => !e.isDirectory
+        ).length;
 
         // Construct project URL
         const projectPath = getProjectRoute(owner.sId, space.sId);
@@ -331,20 +302,10 @@ export function createProjectManagerTools(
               name: space.name,
               url: projectUrl,
               description: metadata?.description ?? null,
-              context: {
-                count: attachments.length,
-                attachments: attachments
-                  .map((a) =>
-                    renderAttachmentXml({
-                      attachment: a,
-                      content: "",
-                      // When in the project context, the flags might be misleading, version is useless (it's always the latest)
-                      // eg: a csv might have been uploaded in a convo (becoming queryable) but then moved to the project context.
-                      // This will be obsolete once we run query directly in the sandbox.
-                      hideFlagsAndVersion: true,
-                    })
-                  )
-                  .join("\n"),
+              contentNodes,
+              files: {
+                count: projectFileCount,
+                hint: `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` with \`scope: "project"\` to enumerate.`,
               },
             },
             message: "Successfully retrieved project information",

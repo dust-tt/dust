@@ -112,7 +112,7 @@ export async function listHandler(
     const mimeType = stripMimeParameters(file.contentType);
     const kb = Math.ceil(file.sizeBytes / 1024);
     const annotation = sourcePath
-      ? ` — processed version of ${sourcePath}`
+      ? ` (processed version of ${sourcePath})`
       : "";
     lines.push(`${file.path} (${mimeType}, ${kb} KB)${annotation}`);
   }

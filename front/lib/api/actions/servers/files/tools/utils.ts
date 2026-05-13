@@ -1,7 +1,9 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
+  type GCSMountEntry,
   type GCSMountPoint,
   getGCSPathFromScopedPath,
+  listGCSMountFiles,
 } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
@@ -139,6 +141,35 @@ export async function resolveMountByUseCase(
     default:
       assertNever(useCase);
   }
+}
+
+/**
+ * List the files mounted under a project's GCS prefix. Verifies `space.canRead(auth)` before
+ * touching the bucket. Use this from callers that already hold a `SpaceResource` so the
+ * file-listing path stays funneled through the same helper as `files__list`.
+ */
+export async function listProjectFiles(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<Result<GCSMountEntry[], MCPError>> {
+  if (!space.isProject) {
+    return new Err(new MCPError("Space is not a project.", { tracked: false }));
+  }
+
+  if (!space.canRead(auth)) {
+    return new Err(
+      new MCPError("You do not have read permissions for this project.", {
+        tracked: false,
+      })
+    );
+  }
+
+  const entries = await listGCSMountFiles(auth, {
+    useCase: "project",
+    projectId: space.sId,
+  });
+
+  return new Ok(entries);
 }
 
 /**
