@@ -37,7 +37,8 @@ export async function resumeAncestorConversations(
 
     const [parentConversation] = await ConversationResource.fetchByModelIds(
       auth,
-      [parentAgentMessage.conversationId]
+      [parentAgentMessage.conversationId],
+      { loadSpaces: true }
     );
     if (!parentConversation) {
       break;

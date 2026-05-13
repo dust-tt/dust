@@ -251,11 +251,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       excludeTest,
       updatedAfter,
       includeForkingData,
+      loadSpaces,
     }: {
       transaction?: Transaction;
       excludeTest?: boolean;
       updatedAfter?: Date;
       includeForkingData?: boolean;
+      loadSpaces?: boolean;
     } = {}
   ): Promise<ConversationResource[]> {
     if (ids.length === 0) {
@@ -280,22 +282,27 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     });
 
-    const uniqueSpaceIds = uniq(
-      removeNulls(conversations.map((c) => c.spaceId))
-    );
-    const spaces =
-      uniqueSpaceIds.length === 0
-        ? []
-        : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds, {
-            transaction,
-          });
-    const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
+    let spaceIdToSpaceMap: Map<ModelId, SpaceResource> = new Map();
+    if (loadSpaces) {
+      const uniqueSpaceIds = uniq(
+        removeNulls(conversations.map((c) => c.spaceId))
+      );
+      const spaces =
+        uniqueSpaceIds.length === 0
+          ? []
+          : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds, {
+              transaction,
+            });
+      spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
+    }
 
     // Note: no permission filtering here. Callers must ensure the auth is allowed.
     return conversations.map((c) =>
       this.fromModel(
         c,
-        c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+        loadSpaces && c.spaceId
+          ? (spaceIdToSpaceMap.get(c.spaceId) ?? null)
+          : null
       )
     );
   }
