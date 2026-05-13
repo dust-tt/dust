@@ -8,6 +8,7 @@ const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
 const sseAckLabel = "sse-ack";
 const skipMigrationCheckLabel = "skip-migration-check";
+const sandboxImageAckLabel = "sandbox-image-ack";
 
 const REMOVE_INDEX_WARNING =
   "\n\nBefore deleting an index, make sure it is actually not used by running:" +
@@ -318,6 +319,39 @@ async function checkWorkspaceAwareModels(filePaths: string[]) {
   }
 }
 
+function failSandboxImageAck() {
+  fail(
+    "Files in `front/lib/api/sandbox/image/` have been modified. " +
+      "Live sandboxes pin the registered (baseImage, version) tuple at " +
+      "creation time, so any image change must be paired with:\n" +
+      "  1. A bump to the corresponding image `tag` in the registry " +
+      "(e.g. `DUST_BASE_IMAGE_VERSION`).\n" +
+      "  2. After deploy, opening `/poke/kill` (Kill Switches) and " +
+      "requesting a kill of older versions for the affected image so " +
+      "existing conversations get fresh sandboxes.\n\n" +
+      `Please add the \`${sandboxImageAckLabel}\` label to acknowledge ` +
+      "that both steps will be done."
+  );
+}
+
+function warnSandboxImageAck() {
+  warn(
+    "Files in `front/lib/api/sandbox/image/` have been modified and the " +
+      `PR has the \`${sandboxImageAckLabel}\` label. After deploy, open ` +
+      "`/poke/kill` (Kill Switches) and trigger a kill request for the " +
+      "affected image so existing conversations recreate against the new " +
+      "version."
+  );
+}
+
+function checkSandboxImageLabel() {
+  if (!hasLabel(sandboxImageAckLabel)) {
+    failSandboxImageAck();
+  } else {
+    warnSandboxImageAck();
+  }
+}
+
 /**
  * Triggers related checks based on modified files
  */
@@ -484,6 +518,16 @@ async function checkDiffFiles() {
   });
   if (modifiedWorkflowFiles.length > 0) {
     warnTriggersWorkflowChanges();
+  }
+
+  // Sandbox image registry/build changes — bumping a registered image's
+  // version requires an operator kill request after deploy so existing
+  // conversations cycle onto the new image.
+  const modifiedSandboxImageFiles = diffFiles.filter((path) => {
+    return path.startsWith("front/lib/api/sandbox/image/");
+  });
+  if (modifiedSandboxImageFiles.length > 0) {
+    checkSandboxImageLabel();
   }
 
   // SSE endpoint files — changes here require a front-sse deploy too.
