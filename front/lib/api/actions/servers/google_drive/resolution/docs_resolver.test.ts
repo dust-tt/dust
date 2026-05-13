@@ -202,8 +202,10 @@ describe("resolveDocOperations", () => {
   });
 
   describe("table operations", () => {
+    type CellSpec = string | { text: string; bullet?: boolean };
+
     function makeDocWithTable(
-      cellContents: string[][]
+      cellContents: CellSpec[][]
     ): docs_v1.Schema$Document {
       // Build a doc with a single table. Each cell holds a single text run.
       // Indices are synthesised to mimic the Google Docs API shape:
@@ -212,7 +214,9 @@ describe("resolveDocOperations", () => {
       let cursor = 2;
       const tableRows: docs_v1.Schema$TableRow[] = cellContents.map(
         (row): docs_v1.Schema$TableRow => {
-          const tableCells: docs_v1.Schema$TableCell[] = row.map((text) => {
+          const tableCells: docs_v1.Schema$TableCell[] = row.map((spec) => {
+            const text = typeof spec === "string" ? spec : spec.text;
+            const bullet = typeof spec === "string" ? false : !!spec.bullet;
             const cellStart = cursor;
             const insertIndex = cellStart + 1;
             const endIndex = insertIndex + text.length + 1; // +1 for cell newline
@@ -232,6 +236,9 @@ describe("resolveDocOperations", () => {
                         textRun: { content: text },
                       },
                     ],
+                    ...(bullet
+                      ? { bullet: { listId: "kix-list-1", nestingLevel: 0 } }
+                      : {}),
                   },
                 },
               ],
@@ -355,6 +362,146 @@ describe("resolveDocOperations", () => {
         const req = res.value[0].deleteTableColumn;
         expect(req?.tableCellLocation?.columnIndex).toBe(1);
         expect(req?.tableCellLocation?.tableStartLocation?.index).toBe(1);
+      }
+    });
+
+    it("should strip bullet markers when replacing a bulleted cell", () => {
+      const doc = makeDocWithTable([[{ text: "old", bullet: true }]]);
+      const res = resolveDocOperations(doc, [
+        {
+          type: "replaceTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 0,
+          content: "• item one\n• item two",
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        const insertReq = res.value.find((r) => r.insertText);
+        expect(insertReq?.insertText?.text).toBe("item one\nitem two");
+      }
+    });
+
+    it("should strip numbered markers when replacing a numbered cell", () => {
+      const doc = makeDocWithTable([[{ text: "old", bullet: true }]]);
+      const res = resolveDocOperations(doc, [
+        {
+          type: "replaceTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 0,
+          content: "1. First\n2. Second",
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        const insertReq = res.value.find((r) => r.insertText);
+        expect(insertReq?.insertText?.text).toBe("First\nSecond");
+      }
+    });
+
+    it("should preserve content as-is when the cell has no bullet styling", () => {
+      const doc = makeDocWithTable([["plain"]]);
+      const res = resolveDocOperations(doc, [
+        {
+          type: "replaceTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 0,
+          content: "• item one",
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        const insertReq = res.value.find((r) => r.insertText);
+        expect(insertReq?.insertText?.text).toBe("• item one");
+      }
+    });
+
+    it("should NOT strip digits that aren't followed by a period+space", () => {
+      const doc = makeDocWithTable([[{ text: "old", bullet: true }]]);
+      const res = resolveDocOperations(doc, [
+        {
+          type: "replaceTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 0,
+          content: "5 years of experience",
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        const insertReq = res.value.find((r) => r.insertText);
+        expect(insertReq?.insertText?.text).toBe("5 years of experience");
+      }
+    });
+
+    it("should pass plain text through unchanged into a bulleted cell", () => {
+      const doc = makeDocWithTable([[{ text: "old", bullet: true }]]);
+      const res = resolveDocOperations(doc, [
+        {
+          type: "replaceTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 0,
+          content: "Just plain text",
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        const insertReq = res.value.find((r) => r.insertText);
+        expect(insertReq?.insertText?.text).toBe("Just plain text");
+      }
+    });
+
+    it("should NOT strip markers when using insertInTableCell", () => {
+      const doc = makeDocWithTable([[{ text: "old", bullet: true }]]);
+      const res = resolveDocOperations(doc, [
+        {
+          type: "insertInTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 0,
+          content: "• appended",
+          position: "end",
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        const insertReq = res.value.find((r) => r.insertText);
+        expect(insertReq?.insertText?.text).toBe("• appended");
+      }
+    });
+
+    it("should strip selectively in a mixed batch", () => {
+      const doc = makeDocWithTable([
+        [{ text: "bulleted_old", bullet: true }, "plain_old"],
+      ]);
+      const res = resolveDocOperations(doc, [
+        {
+          type: "replaceTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 0,
+          content: "• stripped",
+        },
+        {
+          type: "replaceTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 1,
+          content: "• preserved",
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        const insertReqs = res.value.filter((r) => r.insertText);
+        const texts = insertReqs
+          .map((r) => r.insertText?.text)
+          .filter((t): t is string => !!t);
+        expect(texts).toContain("stripped");
+        expect(texts).toContain("• preserved");
       }
     });
   });

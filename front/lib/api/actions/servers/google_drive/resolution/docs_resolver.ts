@@ -295,6 +295,13 @@ type ResolvedCell = {
    */
   endIndex: number;
   hasContent: boolean;
+  /**
+   * True if at least one paragraph in the cell has bullet/numbered list
+   * styling applied (paragraph.bullet != null). When true, callers replacing
+   * the cell content should strip leading list markers from their text so
+   * that Google Docs doesn't render them on top of the cell's own bullets.
+   */
+  hasBulletStyle: boolean;
 };
 
 function resolveTableCell(
@@ -341,7 +348,45 @@ function resolveTableCell(
   const insertIndex = cell.startIndex + 1;
   const endIndex = cell.endIndex;
   const hasContent = endIndex - 1 > insertIndex;
-  return new Ok({ tableStartIndex, insertIndex, endIndex, hasContent });
+  const hasBulletStyle =
+    cell.content?.some((el) => el.paragraph?.bullet != null) ?? false;
+  return new Ok({
+    tableStartIndex,
+    insertIndex,
+    endIndex,
+    hasContent,
+    hasBulletStyle,
+  });
+}
+
+/**
+ * Strips leading bullet / numbered-list markers from each line of `content`.
+ * Used when writing into a cell whose paragraphs already have list styling —
+ * Google Docs applies the cell's bullet to every inserted paragraph, so any
+ * markers the model included would render on top of the cell's own glyph.
+ *
+ * Rules:
+ *   - Bullet glyphs and dash-likes at line start are stripped.
+ *   - Numbered prefixes ("1. ", "a) ", "iv. ", etc.) require the punctuation
+ *     to be followed by whitespace, so legitimate content like
+ *     "5 years of experience" is left alone.
+ *   - Empty / whitespace-only lines are preserved unchanged.
+ *   - If stripping would empty a non-empty line, the original is preserved
+ *     (the marker itself was the line's content).
+ */
+function stripListMarkers(content: string): string {
+  return content
+    .split("\n")
+    .map((line) => {
+      if (line.trim().length === 0) {
+        return line;
+      }
+      const stripped = line
+        .replace(/^\s*[•‣◦⁃∙·●○■□▪▫\-–—]\s*/, "")
+        .replace(/^\s*[a-zA-Z0-9]+[.)]\s+/, "");
+      return stripped.length === 0 ? line : stripped;
+    })
+    .join("\n");
 }
 
 function resolveTableStartIndex(
@@ -534,7 +579,8 @@ export function resolveDocOperations(
         if (cellResult.isErr()) {
           return prefixErr("replaceTableCell", cellResult.error);
         }
-        const { insertIndex, endIndex, hasContent } = cellResult.value;
+        const { insertIndex, endIndex, hasContent, hasBulletStyle } =
+          cellResult.value;
         if (hasContent) {
           indexedOps.push({
             request: {
@@ -545,9 +591,13 @@ export function resolveDocOperations(
             sortKey: insertIndex,
           });
         }
+        // Google Docs reapplies the cell's existing paragraph bullet to every
+        // inserted paragraph. Strip the model's leading markers so we don't
+        // end up with double-formatted lines like "1. 1. ..." or "● • ...".
+        const text = hasBulletStyle ? stripListMarkers(op.content) : op.content;
         indexedOps.push({
           request: {
-            insertText: { text: op.content, location: { index: insertIndex } },
+            insertText: { text, location: { index: insertIndex } },
           },
           sortKey: insertIndex,
         });
