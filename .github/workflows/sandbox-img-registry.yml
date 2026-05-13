@@ -19,7 +19,7 @@ permissions:
   id-token: write
 
 jobs:
-  check:
+  check-and-build:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -125,8 +125,8 @@ jobs:
         run: rm -f /tmp/service-account.json
 
   summary:
-    needs: [check]
-    if: always() && needs.check.result == 'success'
+    needs: [check-and-build]
+    if: always() && needs['check-and-build'].result == 'success'
     runs-on: ubuntu-latest
     outputs:
       built-count: ${{ steps.count.outputs.built }}
