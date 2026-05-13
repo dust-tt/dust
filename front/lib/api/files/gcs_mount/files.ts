@@ -191,7 +191,23 @@ export async function listGCSMountFiles(
   const prefix = resolvePrefix(owner, scope);
 
   const bucket = getPrivateUploadBucket();
-  const gcsFiles = await bucket.getFiles({ prefix, maxResults: 200 });
+  const { files: gcsFiles, pageFetchCount } = await bucket.getAllFilesByPrefix({
+    prefix,
+    pageSize: 200,
+  });
+
+  if (pageFetchCount > 1) {
+    logger.warn(
+      {
+        workspaceId: owner.sId,
+        prefix,
+        scope,
+        pageFetchCount,
+        objectCount: gcsFiles.length,
+      },
+      "GCS mount file listing required multiple list requests; prefix has many objects."
+    );
+  }
 
   // GCS folder placeholders are zero-byte objects whose path ends with "/".
   const folderPlaceholders = gcsFiles.filter((f) => f.name.endsWith("/"));
