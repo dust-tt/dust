@@ -17,12 +17,12 @@ import { grepHandler } from "@app/lib/api/actions/servers/files/tools/grep";
 import { listHandler } from "@app/lib/api/actions/servers/files/tools/list";
 
 const HANDLERS = {
-  [FILES_LIST_ACTION_NAME]: listHandler,
   [FILES_CAT_ACTION_NAME]: catHandler,
-  [FILES_GREP_ACTION_NAME]: grepHandler,
+  [FILES_COPY_ACTION_NAME]: copyHandler,
   [FILES_CREATE_ACTION_NAME]: createHandler,
   [FILES_DELETE_ACTION_NAME]: deleteHandler,
-  [FILES_COPY_ACTION_NAME]: copyHandler,
+  [FILES_GREP_ACTION_NAME]: grepHandler,
+  [FILES_LIST_ACTION_NAME]: listHandler,
 };
 
 export const TOOLS = buildTools(FILES_TOOLS_METADATA, HANDLERS);
