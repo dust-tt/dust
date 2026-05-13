@@ -346,6 +346,8 @@ const NOTION_NOT_FOUND_ERROR_CODES = ["object_not_found"];
 
 const NOTION_RETRIABLE_ERRORS = ["rate_limited", "internal_server_error"];
 
+type NotionRetryProgressCallback = () => Promise<void>;
+
 async function retryWithBackoff<T>(
   operation: () => Promise<T>,
   {
@@ -353,12 +355,14 @@ async function retryWithBackoff<T>(
     backoffFactor = 2,
     baseWaitTime = 10000,
     logger,
+    onProgress,
     operationName,
   }: {
     maxTries?: number;
     backoffFactor?: number;
     baseWaitTime?: number;
     logger: Logger;
+    onProgress?: NotionRetryProgressCallback;
     operationName: string;
   }
 ): Promise<T> {
@@ -397,14 +401,21 @@ async function retryWithBackoff<T>(
           tryLogger.error({ error: e }, "Error parsing Retry-After header.");
         }
 
+        tries += 1;
+        if (tries >= maxTries) {
+          throw e;
+        }
+
         tryLogger.info(
           { waitTime, usingHeader },
           "Got potentially transient error. Trying again."
         );
+        if (onProgress) {
+          await onProgress();
+        }
         await new Promise((resolve) => setTimeout(resolve, waitTime));
-        tries += 1;
-        if (tries >= maxTries) {
-          throw e;
+        if (onProgress) {
+          await onProgress();
         }
         continue;
       }
@@ -421,7 +432,11 @@ export async function isAccessibleAndUnarchived(
   notionAccessToken: string,
   objectId: string,
   objectType: "page" | "database",
-  localLogger?: Logger
+  localLogger?: Logger,
+  retryOptions?: {
+    maxTries?: number;
+    onProgress?: NotionRetryProgressCallback;
+  }
 ): Promise<boolean> {
   const notionClient = new Client({
     auth: notionAccessToken,
@@ -439,6 +454,8 @@ export async function isAccessibleAndUnarchived(
           ),
         {
           logger: loggerToUse,
+          maxTries: retryOptions?.maxTries,
+          onProgress: retryOptions?.onProgress,
           operationName: "retrieve_page",
         }
       );
@@ -458,6 +475,8 @@ export async function isAccessibleAndUnarchived(
           ),
         {
           logger: loggerToUse,
+          maxTries: retryOptions?.maxTries,
+          onProgress: retryOptions?.onProgress,
           operationName: "retrieve_database",
         }
       );
