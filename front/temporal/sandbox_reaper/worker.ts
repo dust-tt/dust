@@ -5,8 +5,9 @@ import {
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
-import * as activities from "@app/temporal/sandbox_reaper/activities";
+import * as reaperActivities from "@app/temporal/sandbox_reaper/activities";
 import { launchSandboxReaperSchedule } from "@app/temporal/sandbox_reaper/client";
+import * as killRequesterActivities from "@app/temporal/sandbox_reaper/kill_requester/activities";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
@@ -19,7 +20,7 @@ export async function runSandboxReaperWorker() {
       workerName: "sandbox_reaper",
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
-    activities,
+    activities: { ...reaperActivities, ...killRequesterActivities },
     taskQueue: QUEUE_NAME,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     connection,

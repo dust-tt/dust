@@ -15,3 +15,5 @@ export async function sandboxReaperWorkflow(): Promise<void> {
     hasMore = await reapStaleSandboxesActivity();
   }
 }
+
+export { sandboxKillRequesterWorkflow } from "@app/temporal/sandbox_reaper/kill_requester/workflows";
