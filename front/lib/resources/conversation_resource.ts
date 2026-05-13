@@ -60,6 +60,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import isEqual from "lodash/isEqual";
@@ -279,8 +280,24 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     });
 
+    const uniqueSpaceIds = uniq(
+      removeNulls(conversations.map((c) => c.spaceId))
+    );
+    const spaces =
+      uniqueSpaceIds.length === 0
+        ? []
+        : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds, {
+            transaction,
+          });
+    const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
+
     // Note: no permission filtering here. Callers must ensure the auth is allowed.
-    return conversations.map((c) => this.fromModel(c, null));
+    return conversations.map((c) =>
+      this.fromModel(
+        c,
+        c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
+      )
+    );
   }
 
   get forkingData(): ConversationForkingDataType | undefined {
