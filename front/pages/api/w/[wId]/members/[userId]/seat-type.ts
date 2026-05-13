@@ -8,6 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
@@ -75,15 +76,27 @@ async function handler(
       });
 
       if (result.isErr()) {
-        const statusCode =
-          result.error.type === "membership_revoked" ? 409 : 404;
-        return apiError(req, res, {
-          status_code: statusCode,
-          api_error: {
-            type: result.error.type,
-            message: result.error.message,
-          },
-        });
+        switch (result.error.type) {
+          case "workspace_user_not_found":
+          case "not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "workspace_user_not_found",
+                message: "Could not find the user or their active membership.",
+              },
+            });
+          case "membership_revoked":
+            return apiError(req, res, {
+              status_code: 409,
+              api_error: {
+                type: "membership_revoked",
+                message: "User's membership is revoked.",
+              },
+            });
+          default:
+            assertNever(result.error.type);
+        }
       }
 
       return res.status(200).json(result.value);

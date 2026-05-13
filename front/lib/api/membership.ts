@@ -373,15 +373,12 @@ export async function updateMemberSeatType(
 ): Promise<
   Result<
     { seatType: MembershipSeatType },
-    { type: "workspace_user_not_found" | "membership_revoked"; message: string }
+    { type: "workspace_user_not_found" | "not_found" | "membership_revoked" }
   >
 > {
   const user = await getUserForWorkspace(auth, { userId });
   if (!user) {
-    return new Err({
-      type: "workspace_user_not_found",
-      message: "Could not find the user.",
-    });
+    return new Err({ type: "workspace_user_not_found" });
   }
 
   const result = await updateMembershipSeatAndTrack({
@@ -392,16 +389,7 @@ export async function updateMemberSeatType(
   });
 
   if (result.isErr()) {
-    if (result.error.type === "membership_revoked") {
-      return new Err({
-        type: "membership_revoked",
-        message: "User's membership is revoked.",
-      });
-    }
-    return new Err({
-      type: "workspace_user_not_found",
-      message: "Could not find an active membership for this user.",
-    });
+    return new Err(result.error);
   }
 
   return new Ok({ seatType: result.value.newSeatType });
