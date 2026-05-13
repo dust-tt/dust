@@ -11,15 +11,14 @@ import {
   getMetricLlmProviderCostAwuId,
   getSeatProductIds,
 } from "@app/lib/metronome/constants";
-import { METRONOME_USER_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type AwuPoolSummaryResponseBody = {
-  totalAmountMicroUsd: number;
-  consumedByUsersMicroUsd: number;
-  consumedByProgrammaticMicroUsd: number;
+  totalCredits: number;
+  consumedByUsersCredits: number;
+  consumedByProgrammaticCredits: number;
   resetDate: string;
 };
 
@@ -96,9 +95,9 @@ export async function handleAwuPoolSummaryRequest(
 
       if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
         return res.status(200).json({
-          totalAmountMicroUsd: 0,
-          consumedByUsersMicroUsd: 0,
-          consumedByProgrammaticMicroUsd: 0,
+          totalCredits: 0,
+          consumedByUsersCredits: 0,
+          consumedByProgrammaticCredits: 0,
           resetDate: "",
         });
       }
@@ -116,17 +115,12 @@ export async function handleAwuPoolSummaryRequest(
           !seatProductIds.has(entry.product.id)
       );
 
-      // Sum total allocated from active schedule items.
-      let totalAmountMicroUsd = 0;
+      // Sum remaining balance across active AWU entries. Using entry.balance
+      // so that consumption outside the billing window (e.g. usage
+      // from a prior period) is correctly reflected in the remaining balance.
+      let balanceCredits = 0;
       for (const entry of awuBalances) {
-        for (const item of entry.access_schedule?.schedule_items ?? []) {
-          const itemStartMs = new Date(item.starting_at).getTime();
-          const itemEndMs = new Date(item.ending_before).getTime();
-          if (itemStartMs <= now && now < itemEndMs) {
-            totalAmountMicroUsd +=
-              item.amount * METRONOME_USER_CREDIT_TO_MICRO_USD;
-          }
-        }
+        balanceCredits += entry.balance ?? 0;
       }
 
       // Query the AWU metric grouped by is_programmatic_usage to split consumption.
@@ -155,22 +149,26 @@ export async function handleAwuPoolSummaryRequest(
         });
       }
 
-      let consumedByUsersMicroUsd = 0;
-      let consumedByProgrammaticMicroUsd = 0;
+      let consumedByUsersCredits = 0;
+      let consumedByProgrammaticCredits = 0;
       for (const row of usageResult.value) {
-        const awu = row.value ?? 0;
-        const microUsd = awu * METRONOME_USER_CREDIT_TO_MICRO_USD;
+        const credits = row.value ?? 0;
         if (row.group?.["is_programmatic_usage"] === "true") {
-          consumedByProgrammaticMicroUsd += microUsd;
+          consumedByProgrammaticCredits += credits;
         } else {
-          consumedByUsersMicroUsd += microUsd;
+          consumedByUsersCredits += credits;
         }
       }
 
+      // totalCredits = balance + consumed_in_period so that
+      // totalCredits - consumed = balance (the actual remaining).
+      const totalCredits =
+        balanceCredits + consumedByUsersCredits + consumedByProgrammaticCredits;
+
       return res.status(200).json({
-        totalAmountMicroUsd,
-        consumedByUsersMicroUsd,
-        consumedByProgrammaticMicroUsd,
+        totalCredits,
+        consumedByUsersCredits,
+        consumedByProgrammaticCredits,
         resetDate,
       });
     }

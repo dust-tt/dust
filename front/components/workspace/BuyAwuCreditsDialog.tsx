@@ -295,7 +295,7 @@ export function BuyAwuCreditsDialog({
                       <Input
                         id="amount"
                         type="number"
-                        placeholder="10"
+                        placeholder="0"
                         value={amountDollars}
                         onChange={(e) => {
                           const val = e.target.value;

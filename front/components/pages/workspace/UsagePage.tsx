@@ -8,7 +8,6 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
-import { METRONOME_USER_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useAwuPoolSummary, useCreditPurchaseInfo } from "@app/lib/swr/credits";
@@ -37,10 +36,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
-function formatCredits(amountMicroUsd: number): string {
-  return Math.round(
-    amountMicroUsd / METRONOME_USER_CREDIT_TO_MICRO_USD
-  ).toLocaleString("en-US");
+function formatCredits(credits: number): string {
+  return Math.round(credits).toLocaleString("en-US");
 }
 
 function getOrdinalSuffix(day: number): string {
@@ -74,24 +71,24 @@ function getResetDateLabel(resetDate: string): string {
 }
 
 interface CreditPoolUsageBarProps {
-  totalAmountMicroUsd: number;
-  consumedByUsersMicroUsd: number;
-  consumedByProgrammaticMicroUsd: number;
+  totalCredits: number;
+  consumedByUsersCredits: number;
+  consumedByProgrammaticCredits: number;
 }
 
 function CreditPoolUsageBar({
-  totalAmountMicroUsd,
-  consumedByUsersMicroUsd,
-  consumedByProgrammaticMicroUsd,
+  totalCredits,
+  consumedByUsersCredits,
+  consumedByProgrammaticCredits,
 }: CreditPoolUsageBarProps) {
   const usersPercentage =
-    totalAmountMicroUsd > 0
-      ? Math.min((consumedByUsersMicroUsd / totalAmountMicroUsd) * 100, 100)
+    totalCredits > 0
+      ? Math.min((consumedByUsersCredits / totalCredits) * 100, 100)
       : 0;
   const programmaticPercentage =
-    totalAmountMicroUsd > 0
+    totalCredits > 0
       ? Math.min(
-          (consumedByProgrammaticMicroUsd / totalAmountMicroUsd) * 100,
+          (consumedByProgrammaticCredits / totalCredits) * 100,
           100 - usersPercentage
         )
       : 0;
@@ -150,9 +147,9 @@ export function UsagePage() {
   }, [hasFeature, router, owner.sId]);
 
   const {
-    totalAmountMicroUsd,
-    consumedByUsersMicroUsd,
-    consumedByProgrammaticMicroUsd,
+    totalCredits,
+    consumedByUsersCredits,
+    consumedByProgrammaticCredits,
     resetDate,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
@@ -196,12 +193,9 @@ export function UsagePage() {
     [plan, subscription.paymentFailingSince, hasAvailableSeats]
   );
 
-  const totalConsumedMicroUsd =
-    consumedByUsersMicroUsd + consumedByProgrammaticMicroUsd;
-  const currentBalanceCredits = Math.round(
-    (totalAmountMicroUsd - totalConsumedMicroUsd) /
-      METRONOME_USER_CREDIT_TO_MICRO_USD
-  );
+  const totalConsumedCredits =
+    consumedByUsersCredits + consumedByProgrammaticCredits;
+  const currentBalanceCredits = Math.round(totalCredits - totalConsumedCredits);
 
   const resetDateLabel = getResetDateLabel(resetDate);
 
@@ -251,8 +245,8 @@ export function UsagePage() {
                     size="sm"
                     className="text-muted-foreground dark:text-muted-foreground-night"
                   />
-                  {formatCredits(totalConsumedMicroUsd)} /{" "}
-                  {formatCredits(totalAmountMicroUsd)}
+                  {formatCredits(totalConsumedCredits)} /{" "}
+                  {formatCredits(totalCredits)}
                 </span>
                 <button
                   className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
@@ -284,9 +278,9 @@ export function UsagePage() {
 
           {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
             <CreditPoolUsageBar
-              totalAmountMicroUsd={totalAmountMicroUsd}
-              consumedByUsersMicroUsd={consumedByUsersMicroUsd}
-              consumedByProgrammaticMicroUsd={consumedByProgrammaticMicroUsd}
+              totalCredits={totalCredits}
+              consumedByUsersCredits={consumedByUsersCredits}
+              consumedByProgrammaticCredits={consumedByProgrammaticCredits}
             />
           )}
 

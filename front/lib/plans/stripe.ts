@@ -51,7 +51,7 @@ export function getStripeCheckoutSessionProductId(owner: WorkspaceType) {
 }
 
 export function getCreditPurchasePriceId() {
-  const devCreditPurchasePriceId = "price_1SUoyQDKd2JRwZF6FBHIGbwC";
+  const devCreditPurchasePriceId = "price_1TWh7AFldu6ZBnHblc08V2YP";
   const prodCreditPurchasePriceId = "price_1SVYsjDKd2JRwZF6zdIW29mC";
 
   return isDevelopment() ? devCreditPurchasePriceId : prodCreditPurchasePriceId;

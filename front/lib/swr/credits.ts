@@ -219,9 +219,9 @@ export function useAwuPoolSummary({
   );
 
   return {
-    totalAmountMicroUsd: data?.totalAmountMicroUsd ?? 0,
-    consumedByUsersMicroUsd: data?.consumedByUsersMicroUsd ?? 0,
-    consumedByProgrammaticMicroUsd: data?.consumedByProgrammaticMicroUsd ?? 0,
+    totalCredits: data?.totalCredits ?? 0,
+    consumedByUsersCredits: data?.consumedByUsersCredits ?? 0,
+    consumedByProgrammaticCredits: data?.consumedByProgrammaticCredits ?? 0,
     resetDate: data?.resetDate ?? "",
     isAwuPoolSummaryLoading: !error && !data && !disabled,
     isAwuPoolSummaryError: error,
