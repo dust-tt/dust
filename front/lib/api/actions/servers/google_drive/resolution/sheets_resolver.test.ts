@@ -1,7 +1,7 @@
 import type { sheets_v4 } from "googleapis";
 import { describe, expect, it } from "vitest";
 
-import { resolveSpreadsheetOperations } from "./resolve_spreadsheet_operations";
+import { resolveSpreadsheetOperations } from "./sheets_resolver";
 
 function makeSpreadsheet(
   sheets: Array<{ title: string; sheetId: number }>

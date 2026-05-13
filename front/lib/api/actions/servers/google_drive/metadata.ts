@@ -1,8 +1,8 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { DocumentOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolve_document_operations";
-import { PresentationOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolve_presentation_operations";
-import { SpreadsheetOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolve_spreadsheet_operations";
+import { DocumentOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/docs_resolver";
+import { SpreadsheetOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/sheets_resolver";
+import { PresentationOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/slides_resolver";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";

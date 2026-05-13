@@ -1,7 +1,7 @@
 import type { slides_v1 } from "googleapis";
 import { describe, expect, it } from "vitest";
 
-import { resolvePresentationOperations } from "./resolve_presentation_operations";
+import { resolvePresentationOperations } from "./slides_resolver";
 
 function makePresentation(
   slides: Array<{

@@ -29,9 +29,9 @@ import {
   MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/api/actions/servers/google_drive/metadata";
-import { resolveDocOperations } from "@app/lib/api/actions/servers/google_drive/resolve_document_operations";
-import { resolvePresentationOperations } from "@app/lib/api/actions/servers/google_drive/resolve_presentation_operations";
-import { resolveSpreadsheetOperations } from "@app/lib/api/actions/servers/google_drive/resolve_spreadsheet_operations";
+import { resolveDocOperations } from "@app/lib/api/actions/servers/google_drive/resolution/docs_resolver";
+import { resolveSpreadsheetOperations } from "@app/lib/api/actions/servers/google_drive/resolution/sheets_resolver";
+import { resolvePresentationOperations } from "@app/lib/api/actions/servers/google_drive/resolution/slides_resolver";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
