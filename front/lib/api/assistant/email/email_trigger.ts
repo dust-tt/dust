@@ -625,6 +625,7 @@ export async function triggerFromEmail(
 
   if (restOfThread.length > 0) {
     const cfRes = await toFileContentFragment(auth, {
+      conversation,
       contentFragment: {
         title: `Email thread: ${email.subject}`,
         content: restOfThread,

@@ -344,6 +344,7 @@ async function handler(
 
         if (isContentFragmentInputWithInlinedContent(contentFragment)) {
           const contentFragmentRes = await toFileContentFragment(auth, {
+            conversation,
             contentFragment,
           });
           if (contentFragmentRes.isErr()) {
