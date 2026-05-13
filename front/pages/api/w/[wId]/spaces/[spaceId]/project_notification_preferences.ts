@@ -162,10 +162,17 @@ async function handler(
           auth,
           space.id
         );
+      const serialized = preference?.toJSON();
       return res.status(200).json({
-        userProjectNotificationPreference: preference
-          ? preference.toJSON()
-          : null,
+        userProjectNotificationPreference:
+          serialized && serialized.preference !== null
+            ? {
+                sId: serialized.sId,
+                spaceId: serialized.spaceId,
+                userId: serialized.userId,
+                preference: serialized.preference,
+              }
+            : null,
       });
     }
 
@@ -194,8 +201,17 @@ async function handler(
           preference: body.preference,
         });
 
+      const serialized = preferenceResource.toJSON();
       return res.status(200).json({
-        userProjectNotificationPreference: preferenceResource.toJSON(),
+        userProjectNotificationPreference:
+          serialized.preference !== null
+            ? {
+                sId: serialized.sId,
+                spaceId: serialized.spaceId,
+                userId: serialized.userId,
+                preference: serialized.preference,
+              }
+            : null,
       });
     }
 

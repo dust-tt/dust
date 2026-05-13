@@ -15,7 +15,8 @@ export class UserProjectNotificationPreferenceModel extends WorkspaceAwareModel<
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare spaceId: ForeignKey<SpaceModel["id"]>;
-  declare preference: NotificationCondition;
+  declare preference: NotificationCondition | null;
+  declare isStarred: boolean | null;
 }
 
 UserProjectNotificationPreferenceModel.init(
@@ -32,10 +33,15 @@ UserProjectNotificationPreferenceModel.init(
     },
     preference: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       validate: {
         isIn: [NOTIFICATION_CONDITION_OPTIONS],
       },
+    },
+    isStarred: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
