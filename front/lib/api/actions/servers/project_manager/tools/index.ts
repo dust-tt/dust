@@ -5,7 +5,13 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  FILES_LIST_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
+import { listProjectFiles } from "@app/lib/api/actions/servers/files/tools/utils";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
 import {
   buildProjectRetrieveDataSources,
@@ -14,12 +20,6 @@ import {
   makeSuccessResponse,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/project_manager/helpers";
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
-import {
-  FILES_LIST_ACTION_NAME,
-  FILES_SERVER_NAME,
-} from "@app/lib/api/actions/servers/files/metadata";
-import { listProjectFiles } from "@app/lib/api/actions/servers/files/tools/utils";
 import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import {
@@ -34,7 +34,6 @@ import {
 import config from "@app/lib/api/config";
 import {
   addContentNodeToProject,
-  fetchLatestProjectContextFileContentFragment,
   listProjectContextAttachments,
   removeContentNodeFromProject,
 } from "@app/lib/api/projects/context";
