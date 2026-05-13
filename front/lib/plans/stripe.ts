@@ -282,6 +282,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   metronomePackageAlias,
   owner,
   planCode,
+  seatCount,
+  pricePerSeatCents,
   user,
 }: {
   allowedPaymentMethods?: SupportedPaymentMethod[];
@@ -289,6 +291,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   metronomePackageAlias: string;
   owner: WorkspaceType;
   planCode: string;
+  seatCount?: number;
+  pricePerSeatCents?: number;
   user: UserType;
 }): Promise<{ clientSecret: string; sessionId: string }> => {
   const stripe = getStripeClient();
@@ -300,6 +304,12 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   };
   if (couponCode) {
     metadata.couponCode = couponCode;
+  }
+  if (seatCount !== undefined) {
+    metadata.seatCount = String(seatCount);
+  }
+  if (pricePerSeatCents !== undefined) {
+    metadata.pricePerSeatCents = String(pricePerSeatCents);
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -332,6 +342,100 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
 
   return { clientSecret: session.client_secret, sessionId: session.id };
 };
+
+export async function calculateTax({
+  stripeCustomerId,
+  amountCents,
+  currency,
+}: {
+  stripeCustomerId: string;
+  amountCents: number;
+  currency: SupportedCurrency;
+}): Promise<
+  Result<{ taxCents: number; totalCents: number }, { error_message: string }>
+> {
+  const stripe = getStripeClient();
+  try {
+    const calculation = await stripe.tax.calculations.create({
+      currency,
+      customer: stripeCustomerId,
+      line_items: [{ amount: amountCents, reference: "subscription" }],
+    });
+    return new Ok({
+      taxCents: calculation.tax_amount_exclusive,
+      totalCents: calculation.amount_total,
+    });
+  } catch (error) {
+    logger.error(
+      {
+        stripeCustomerId,
+        stripeError: true,
+        error: normalizeError(error).message,
+      },
+      "[Stripe] Failed to calculate tax"
+    );
+    return new Err({
+      error_message: `Failed to calculate tax: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+export async function makeFirstPeriodInvoiceForCustomer({
+  stripeCustomerId,
+  paymentMethodId,
+  subtotalCents,
+  seatCount,
+  setupSessionId,
+  currency,
+}: {
+  stripeCustomerId: string;
+  paymentMethodId: string;
+  subtotalCents: number;
+  seatCount: number;
+  setupSessionId: string;
+  currency: SupportedCurrency;
+}): Promise<Result<Stripe.Invoice, { error_message: string }>> {
+  const stripe = getStripeClient();
+  try {
+    const invoice = await stripe.invoices.create(
+      {
+        customer: stripeCustomerId,
+        collection_method: "charge_automatically",
+        default_payment_method: paymentMethodId,
+        currency,
+        automatic_tax: { enabled: true },
+        auto_advance: false,
+        metadata: {
+          metronome_first_period: "true",
+          setup_session_id: setupSessionId,
+        },
+      },
+      { idempotencyKey: `first-period-invoice-${setupSessionId}` }
+    );
+
+    await stripe.invoiceItems.create({
+      customer: stripeCustomerId,
+      amount: subtotalCents,
+      currency,
+      description: `Subscription first period — ${seatCount} seat${seatCount > 1 ? "s" : ""}`,
+      invoice: invoice.id,
+    });
+
+    return new Ok(invoice);
+  } catch (error) {
+    logger.error(
+      {
+        stripeCustomerId,
+        stripeError: true,
+        error: normalizeError(error).message,
+      },
+      "[Stripe] Failed to create first-period invoice"
+    );
+    return new Err({
+      error_message: `Failed to create invoice: ${normalizeError(error).message}`,
+    });
+  }
+}
 
 /**
  * Calls the Stripe API to create a customer portal session for a given workspace/plan.
@@ -739,6 +843,13 @@ export function getDefaultPaymentMethodId(
  */
 export function isCreditPurchaseInvoice(invoice: Stripe.Invoice): boolean {
   return invoice.metadata?.credit_purchase === "true";
+}
+
+/**
+ * Checks if a Stripe invoice is for a credit purchase.
+ */
+export function isFirstPeriodInvoice(invoice: Stripe.Invoice): boolean {
+  return invoice.metadata?.metronome_first_period === "true";
 }
 
 /**

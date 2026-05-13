@@ -35,6 +35,8 @@ import type {
   GetSubscriptionsResponseBody,
   PostSubscriptionResponseBody,
 } from "@app/pages/api/w/[wId]/subscriptions";
+import type { PostCheckoutPaymentResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout/payment";
+import type { GetPreparePaymentResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout/prepare-payment";
 import type { GetCheckoutStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout-status";
 import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
 import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
@@ -1055,6 +1057,65 @@ export function useCreateCheckoutSession({
   );
 
   return { createSession, isCreating };
+}
+
+export function usePreparePayment({
+  workspaceId,
+  setupSessionId,
+  disabled,
+}: {
+  workspaceId: string;
+  setupSessionId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const preparePaymentFetcher: Fetcher<GetPreparePaymentResponseBody> = fetcher;
+
+  const url =
+    disabled || !setupSessionId
+      ? null
+      : `/api/w/${workspaceId}/subscriptions/checkout/prepare-payment?setup_session_id=${setupSessionId}`;
+
+  const { data, error } = useSWRWithDefaults(url, preparePaymentFetcher);
+
+  return {
+    preparePayment: data ?? null,
+    isPreparePaymentLoading: !error && !data && !disabled && !!setupSessionId,
+    isPreparePaymentError: !!error,
+  };
+}
+
+export function useConfirmPayment({ workspaceId }: { workspaceId: string }) {
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  const confirmPayment = useCallback(
+    async ({
+      setupSessionId,
+    }: {
+      setupSessionId: string;
+    }): Promise<PostCheckoutPaymentResponseBody | null> => {
+      setIsConfirming(true);
+      try {
+        const res = await clientFetch(
+          `/api/w/${workspaceId}/subscriptions/checkout/payment`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ setupSessionId }),
+          }
+        );
+        if (!res.ok) {
+          return null;
+        }
+        return res.json() as Promise<PostCheckoutPaymentResponseBody>;
+      } finally {
+        setIsConfirming(false);
+      }
+    },
+    [workspaceId]
+  );
+
+  return { confirmPayment, isConfirming };
 }
 
 export function useValidateCoupon({ workspaceId }: { workspaceId: string }) {
