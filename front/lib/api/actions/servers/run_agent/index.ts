@@ -54,6 +54,7 @@ import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { getHeaderFromUserEmail } from "@app/types/user";
 import type {
@@ -72,9 +73,19 @@ import type z from "zod";
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
 
 function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
-  return (
-    (agent.status === "active" || agent.status === "draft") && agent.canRead
-  );
+  switch (agent.status) {
+    case "active":
+    case "draft":
+      return agent.canRead;
+    case "disabled_free_workspace":
+    case "disabled_missing_datasource":
+    case "disabled_by_admin":
+    case "archived":
+    case "pending":
+      return false;
+    default:
+      assertNever(agent.status);
+  }
 }
 
 function makeChildAgentUnavailableError(childAgentName: string): MCPError {
