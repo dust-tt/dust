@@ -30,6 +30,8 @@ export default async function setup() {
     REDIS_CACHE_URI: process.env.REDIS_CACHE_URI,
     REDIS_URI: process.env.REDIS_URI,
     NEXT_PUBLIC_DUST_CLIENT_FACING_URL: "http://fake-url",
+    NEXT_PUBLIC_DUST_API_URL: "http://fake-url",
+    NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL: "http://fake-url",
     NEXT_PUBLIC_DUST_APP_URL: "http://fake-url",
     ENABLE_BOT_CRAWLING: process.env.ENABLE_BOT_CRAWLING,
     DUST_US_URL: "http://fake-url",
