@@ -1,4 +1,5 @@
 import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
+import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetCreditPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/credits/purchase";
@@ -226,5 +227,29 @@ export function useAwuPoolSummary({
     isAwuPoolSummaryLoading: !error && !data && !disabled,
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
+  };
+}
+
+export function useSeatPlan({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const seatPlanFetcher: Fetcher<SeatPlanResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/seats/plan`,
+    seatPlanFetcher,
+    { disabled }
+  );
+
+  return {
+    proSeatInfo: data?.pro ?? null,
+    maxSeatInfo: data?.max ?? null,
+    isSeatPlanLoading: !error && !data && !disabled,
+    isSeatPlanError: error,
   };
 }

@@ -1,7 +1,9 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
   useAuth,
   useFeatureFlags,
@@ -32,6 +34,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
+import { mutate } from "swr";
 
 function formatAmount(amountMicroUsd: number): string {
   const amountDollars = amountMicroUsd / 1_000_000;
@@ -134,6 +137,8 @@ export function UsagePage() {
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
   >(null);
+  const [changeSeatMember, setChangeSeatMember] =
+    useState<MemberUsageType | null>(null);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
@@ -321,6 +326,7 @@ export function UsagePage() {
           isLoading={isMembersUsageLoading}
           searchTerm={searchTerm}
           seatTypeFilter={seatTypeFilter}
+          onChangeSeat={setChangeSeatMember}
         />
       </Page.Vertical>
 
@@ -332,6 +338,18 @@ export function UsagePage() {
           subscription={subscription}
           owner={owner}
           code={inviteBlockedPopupReason}
+        />
+      )}
+
+      {changeSeatMember && (
+        <ChangeSeatModal
+          isOpen={true}
+          onClose={() => setChangeSeatMember(null)}
+          member={changeSeatMember}
+          owner={owner}
+          onSeatChanged={() => {
+            void mutate(`/api/w/${owner.sId}/credits/members-usage`);
+          }}
         />
       )}
 
