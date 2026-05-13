@@ -245,20 +245,43 @@ export async function getAuthObject(
   connectionId: string
 ): Promise<OAuth2Client> {
   const oauth2Client = new google.auth.OAuth2();
-  const token = await getOAuthConnectionAccessTokenWithThrow({
-    logger,
-    provider: "google_drive",
-    connectionId,
-  });
 
-  oauth2Client.setCredentials({
+  oauth2Client.refreshHandler = async () => {
+    const token = await getOAuthConnectionAccessTokenWithThrow({
+      logger,
+      provider: "google_drive",
+      connectionId,
+    });
+
+    return getGoogleDriveOAuthCredentials(token);
+  };
+
+  oauth2Client.setCredentials(
+    getGoogleDriveOAuthCredentials(
+      await getOAuthConnectionAccessTokenWithThrow({
+        logger,
+        provider: "google_drive",
+        connectionId,
+      })
+    )
+  );
+
+  return oauth2Client;
+}
+
+function getGoogleDriveOAuthCredentials(
+  token: Awaited<ReturnType<typeof getOAuthConnectionAccessTokenWithThrow>>
+) {
+  if (token.access_token_expiry === null) {
+    throw new Error("Google Drive access token expiry is missing");
+  }
+
+  return {
     access_token: token.access_token,
     scope: (token.scrubbed_raw_json as { scope: string }).scope,
     token_type: (token.scrubbed_raw_json as { token_type: string }).token_type,
     expiry_date: token.access_token_expiry,
-  });
-
-  return oauth2Client;
+  };
 }
 
 export async function getDriveClient(
