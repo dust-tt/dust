@@ -195,7 +195,7 @@ export function NewFileExplorer({
   };
 
   const previewIndex = previewFile
-     ? filesAtLevel.findIndex((f) => f.path === previewFile.path)
+    ? filesAtLevel.findIndex((f) => f.path === previewFile.path)
     : -1;
 
   const handlePreviewPrev = () => {

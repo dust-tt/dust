@@ -310,7 +310,10 @@ interface CardGridProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const CardGrid = React.forwardRef<HTMLDivElement, CardGridProps>(
-  ({ children, className, gridClassName, adaptColumns = false, ...props }, ref) => {
+  (
+    { children, className, gridClassName, adaptColumns = false, ...props },
+    ref
+  ) => {
     return (
       <div ref={ref} className={cn("s-@container", className)} {...props}>
         <div

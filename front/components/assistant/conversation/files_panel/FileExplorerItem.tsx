@@ -166,10 +166,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
   );
 }
 
-function getFileSubtitle(
-  entry: GCSMountFileEntry,
-  viewMode: ViewMode
-): string {
+function getFileSubtitle(entry: GCSMountFileEntry, viewMode: ViewMode): string {
   const typeLabel = getSingularFileCategoryLabelForContentType(
     entry.contentType
   );
