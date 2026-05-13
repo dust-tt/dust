@@ -39,10 +39,18 @@ const config = {
       return url;
     }
 
-    // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
+    // We override the NEXT_PUBLIC_DUST_API_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
     // public API URL.
-    const override = EnvironmentConfig.getOptionalEnvVariable(
+    let override = EnvironmentConfig.getOptionalEnvVariable(
+      "DUST_INTERNAL_API_URL"
+    );
+    if (override) {
+      return override;
+    }
+
+    // Remove this when transitioned to DUST_INTERNAL_API_URL
+    override = EnvironmentConfig.getOptionalEnvVariable(
       "DUST_INTERNAL_CLIENT_FACING_URL"
     );
     if (override) {
@@ -50,10 +58,10 @@ const config = {
     }
 
     // Using process.env here to make sure the function is usable on the client side.
-    if (!process.env.NEXT_PUBLIC_DUST_API_URL2) {
-      throw new Error("NEXT_PUBLIC_DUST_API_URL2 is not set");
+    if (!process.env.NEXT_PUBLIC_DUST_API_URL) {
+      throw new Error("NEXT_PUBLIC_DUST_API_URL is not set");
     }
-    return process.env.NEXT_PUBLIC_DUST_API_URL2;
+    return process.env.NEXT_PUBLIC_DUST_API_URL;
   },
 
   getStaticWebsiteUrl: (): string => {
