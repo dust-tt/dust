@@ -1,4 +1,6 @@
-import { getSeatSubscriptionIdFromContract } from "@app/lib/metronome/seats";
+import type { CachedContract } from "@app/lib/metronome/plan_type";
+import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
+import type { Subscription } from "@metronome/sdk/resources";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/metronome/client", () => ({
@@ -7,37 +9,60 @@ vi.mock("@app/lib/metronome/client", () => ({
 }));
 
 vi.mock("@app/lib/metronome/constants", () => ({
-  getProductWorkspaceSeatId: () => "workspace-seat-product",
+  getSeatTypeForProductId: (product: Subscription.SubscriptionRate.Product) => {
+    if (product.id === "workspace-seat-product") {
+      return "workspace";
+    }
+    if (product.id === "pro-seat-product") {
+      return "pro";
+    }
+    if (product.id === "max-seat-product") {
+      return "max";
+    }
+    return undefined;
+  },
 }));
 
-describe("getSeatSubscriptionIdFromContract", () => {
-  it("returns the seat subscription ID when the contract contains the seat product", () => {
+// SDK's Subscription has many required fields we don't exercise; cast partial
+// fixtures through `unknown` so the test stays focused on the product/id pair
+// the function actually reads.
+function makeContract(
+  subscriptions: Array<{ id: string; productId: string }>
+): CachedContract {
+  return {
+    subscriptions: subscriptions.map(({ id, productId }) => ({
+      id,
+      subscription_rate: { product: { id: productId, name: productId } },
+    })),
+  } as unknown as CachedContract;
+}
+
+describe("hasContractSeatSubscription", () => {
+  it("returns true when the contract contains a workspace seat product", () => {
     expect(
-      getSeatSubscriptionIdFromContract({
-        subscriptions: [
-          {
-            id: "sub_1",
-            subscription_rate: { product: { id: "workspace-seat-product" } },
-          },
-        ],
-      })
-    ).toBe("sub_1");
+      hasContractSeatSubscription(
+        makeContract([{ id: "sub_1", productId: "workspace-seat-product" }])
+      )
+    ).toBe(true);
   });
 
-  it("returns undefined when the contract does not contain the seat product", () => {
+  it("returns true for pro/max seat products", () => {
     expect(
-      getSeatSubscriptionIdFromContract({
-        subscriptions: [
-          {
-            id: "sub_1",
-            subscription_rate: { product: { id: "other-product" } },
-          },
-        ],
-      })
-    ).toBeUndefined();
+      hasContractSeatSubscription(
+        makeContract([{ id: "sub_pro", productId: "pro-seat-product" }])
+      )
+    ).toBe(true);
   });
 
-  it("returns undefined when the contract has no subscriptions", () => {
-    expect(getSeatSubscriptionIdFromContract({})).toBeUndefined();
+  it("returns false when the contract does not contain a seat product", () => {
+    expect(
+      hasContractSeatSubscription(
+        makeContract([{ id: "sub_1", productId: "other-product" }])
+      )
+    ).toBe(false);
+  });
+
+  it("returns false when the contract has no subscriptions", () => {
+    expect(hasContractSeatSubscription(makeContract([]))).toBe(false);
   });
 });

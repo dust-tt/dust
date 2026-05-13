@@ -925,6 +925,128 @@ export async function updateSubscriptionQuantity({
   }
 }
 
+// Response shape for POST /v1/contracts/getSubscriptionSeatsHistory. The
+// Metronome Node SDK (3.5.0, latest) has no typed binding for this endpoint —
+// `retrieveSubscriptionQuantityHistory` is the closest and returns quantity
+// totals, not seat IDs. So we route through the SDK client's generic post(),
+// which still gives us auth + retries + error handling.
+interface SubscriptionSeatsHistoryResponse {
+  data: Array<{
+    starting_at: string;
+    ending_before?: string | null;
+    seat_ids: string[];
+    unassigned_seats?: number;
+  }>;
+}
+
+/**
+ * Fetch the currently assigned seat IDs on a SEAT_BASED subscription. Returns
+ * the seat IDs in the schedule segment that covers `now` — i.e. the live
+ * state.
+ */
+export async function getMetronomeSubscriptionAssignedSeatIds({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+}): Promise<Result<string[], Error>> {
+  try {
+    const response =
+      await getMetronomeClient().post<SubscriptionSeatsHistoryResponse>(
+        "/v1/contracts/getSubscriptionSeatsHistory",
+        {
+          body: {
+            customer_id: metronomeCustomerId,
+            contract_id: contractId,
+            subscription_id: subscriptionId,
+            covering_date: new Date().toISOString(),
+          },
+        }
+      );
+    return new Ok(response.data[0]?.seat_ids ?? []);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, subscriptionId },
+      "[Metronome] Failed to fetch subscription seats"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Add and/or remove specific seat IDs on a SEAT_BASED subscription, balancing
+ * unassigned seats so the total subscription quantity stays stable: every
+ * removed assigned seat is replaced by an unassigned seat, and every new
+ * assigned seat consumes an unassigned seat. Both arrays may be empty
+ * (no-op). Pass `startingAt` to anchor the change to a specific hour
+ * boundary; defaults to the current hour.
+ */
+export async function updateSubscriptionSeats({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+  addSeatIds,
+  removeSeatIds,
+  startingAt,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+  addSeatIds: string[];
+  removeSeatIds: string[];
+  startingAt?: string;
+}): Promise<Result<void, Error>> {
+  if (addSeatIds.length === 0 && removeSeatIds.length === 0) {
+    return new Ok(undefined);
+  }
+  const now = startingAt ?? floorToHourISO(new Date());
+
+  try {
+    await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+      update_subscriptions: [
+        {
+          subscription_id: subscriptionId,
+          seat_updates: {
+            ...(addSeatIds.length > 0
+              ? {
+                  add_seat_ids: [{ seat_ids: addSeatIds, starting_at: now }],
+                  remove_unassigned_seats: [
+                    { quantity: addSeatIds.length, starting_at: now },
+                  ],
+                }
+              : {}),
+            ...(removeSeatIds.length > 0
+              ? {
+                  remove_seat_ids: [
+                    { seat_ids: removeSeatIds, starting_at: now },
+                  ],
+                  add_unassigned_seats: [
+                    { quantity: removeSeatIds.length, starting_at: now },
+                  ],
+                }
+              : {}),
+          },
+        },
+      ],
+    });
+
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, subscriptionId },
+      "[Metronome] Failed to update subscription seats"
+    );
+    return new Err(error);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Commits
 // ---------------------------------------------------------------------------
