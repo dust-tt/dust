@@ -1,4 +1,3 @@
-import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
 import { ActivityFailure, RetryState } from "@temporalio/common";
 import { proxyActivities } from "@temporalio/workflow";
 
@@ -28,20 +27,17 @@ export async function agentTriggerWorkflow({
   userId,
   workspaceId,
   triggerId,
-  contentFragment,
   webhookRequestId,
 }: {
   userId: string;
   workspaceId: string;
   triggerId: string;
-  contentFragment?: ContentFragmentInputWithFileIdType;
   webhookRequestId?: number;
 }) {
   await runTriggeredAgentsActivity({
     userId,
     workspaceId,
     triggerId,
-    contentFragment,
     webhookRequestId,
   });
 }
