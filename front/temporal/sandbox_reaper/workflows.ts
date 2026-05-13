@@ -16,4 +16,4 @@ export async function sandboxReaperWorkflow(): Promise<void> {
   }
 }
 
-export { sandboxKillRequesterWorkflow } from "@app/temporal/sandbox_reaper/kill_requester/workflows";
+export { sandboxKillRequesterWorkflow } from "./kill_requester/workflows";

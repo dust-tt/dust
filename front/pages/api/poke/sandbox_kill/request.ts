@@ -1,6 +1,6 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { config } from "@app/lib/api/regions/config";
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
@@ -21,11 +21,7 @@ const RequestBodySchema = z.object({
 });
 
 function buildTemporalLink(workflowId: string): string {
-  const currentRegion = config.getCurrentRegion();
-  const temporalNamespace =
-    currentRegion === "europe-west1"
-      ? "eu-dust-front-prod.gmnlm"
-      : "dust-front-prod.gmnlm";
+  const temporalNamespace = config.getTemporalFrontNamespace() ?? "";
   return `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${encodeURIComponent(
     workflowId
   )}`;

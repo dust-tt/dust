@@ -23,7 +23,6 @@ import { PlansPage } from "@dust-tt/front/components/poke/pages/PlansPage";
 import { PluginsPage } from "@dust-tt/front/components/poke/pages/PluginsPage";
 import { PokefyPage } from "@dust-tt/front/components/poke/pages/PokefyPage";
 import { ProductionChecksPage } from "@dust-tt/front/components/poke/pages/ProductionChecksPage";
-import { SandboxKillPage } from "@dust-tt/front/components/poke/pages/SandboxKillPage";
 import { SkillDetailsPage } from "@dust-tt/front/components/poke/pages/SkillDetailsPage";
 import { SkillSuggestionDetailsPage } from "@dust-tt/front/components/poke/pages/SkillSuggestionDetailsPage";
 import { SpaceDataSourceViewPage } from "@dust-tt/front/components/poke/pages/SpaceDataSourceViewPage";
@@ -72,7 +71,6 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <DashboardPage /> },
           { path: "kill", element: <KillPage /> },
-          { path: "sandbox-kill", element: <SandboxKillPage /> },
           { path: "plans", element: <PlansPage /> },
           { path: "coupons", element: <CouponsPage /> },
           { path: "pokefy", element: <PokefyPage /> },
