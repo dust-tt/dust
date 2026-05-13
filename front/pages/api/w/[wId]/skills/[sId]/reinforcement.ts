@@ -133,15 +133,12 @@ async function handler(
           auth,
           action: "skill.self_improvement_updated",
           targets: [
-            buildAuditLogTarget(
-              "workspace",
-              auth.getNonNullableWorkspace()
-            ),
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
             { type: "skill", id: skill.sId, name: skill.name },
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
-            reinforcement,
+            reinforcement: String(reinforcement),
           },
         });
       }
