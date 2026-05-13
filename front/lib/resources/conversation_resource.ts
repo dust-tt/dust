@@ -2701,24 +2701,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Resolve the parent conversation and parent agent message that spawned the
-   * given agent message in this conversation via run_agent / agent_handover.
+   * Resolve the parent agent message that spawned the given agent message in
+   * this conversation via run_agent / agent_handover.
    *
    * Walks the agent message → its parent user message (in the same conversation)
    * → that user message's `agenticOriginMessageId` (the parent agent message,
    * possibly in another conversation).
    *
    * Returns null when the agent message has no agentic origin (root
-   * conversation), when the parent message can no longer be found, or when the
-   * caller does not have access to the parent conversation.
+   * conversation) or when the parent message can no longer be found.
    */
   async findAgenticParent(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
-  ): Promise<{
-    conversation: ConversationResource;
-    agentMessageId: string;
-  } | null> {
+  ): Promise<MessageModel | null> {
     const owner = auth.getNonNullableWorkspace();
 
     const agentMessage = await MessageModel.findOne({
@@ -2737,6 +2733,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const parentMessage = await MessageModel.findOne({
       where: {
         workspaceId: owner.id,
+        conversationId: this.id,
         id: agentMessage.parentId,
       },
       attributes: [],
@@ -2756,39 +2753,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return null;
     }
 
-    const ancestorMessage = await MessageModel.findOne({
+    const agenticOriginMessage = await MessageModel.findOne({
       where: {
         workspaceId: owner.id,
         sId: agenticOriginMessageId,
       },
-      attributes: [],
-      include: [
-        {
-          model: ConversationModel,
-          as: "conversation",
-          required: true,
-          attributes: ["sId"],
-        },
-      ],
     });
 
-    if (!ancestorMessage?.conversation) {
-      return null;
-    }
-
-    const parentConversation = await ConversationResource.fetchById(
-      auth,
-      ancestorMessage.conversation.sId
-    );
-
-    if (!parentConversation) {
-      return null;
-    }
-
-    return {
-      conversation: parentConversation,
-      agentMessageId: agenticOriginMessageId,
-    };
+    return agenticOriginMessage;
   }
 
   /**
