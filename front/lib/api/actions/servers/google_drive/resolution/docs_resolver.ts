@@ -360,33 +360,36 @@ function resolveTableCell(
 }
 
 /**
- * Strips leading bullet / numbered-list markers from each line of `content`.
- * Used when writing into a cell whose paragraphs already have list styling —
- * Google Docs applies the cell's bullet to every inserted paragraph, so any
- * markers the model included would render on top of the cell's own glyph.
+ * Strips leading bullet / numbered-list markers from each line of `content`,
+ * and drops whitespace-only lines. Used when writing into a cell whose
+ * paragraphs already have list styling — Google Docs applies the cell's
+ * bullet to every inserted paragraph, so any markers the model included
+ * would render on top of the cell's own glyph, and any blank line between
+ * items would render as an empty numbered/bulleted paragraph
+ * ("1. content\n\n2. more" rendering as "1. content / 2. / 3. more").
  *
  * Rules:
  *   - Bullet glyphs and dash-likes at line start are stripped.
  *   - Numbered prefixes ("1. ", "a) ", "iv. ", etc.) require the punctuation
  *     to be followed by whitespace, so legitimate content like
  *     "5 years of experience" is left alone.
- *   - Empty / whitespace-only lines are preserved unchanged.
+ *   - Whitespace-only / empty lines are dropped (they would otherwise
+ *     become empty list items in the cell's list).
  *   - If stripping would empty a non-empty line, the original is preserved
  *     (the marker itself was the line's content).
  */
 function stripListMarkers(content: string): string {
-  return content
-    .split("\n")
-    .map((line) => {
-      if (line.trim().length === 0) {
-        return line;
-      }
-      const stripped = line
-        .replace(/^\s*[•‣◦⁃∙·●○■□▪▫\-–—]\s*/, "")
-        .replace(/^\s*[a-zA-Z0-9]+[.)]\s+/, "");
-      return stripped.length === 0 ? line : stripped;
-    })
-    .join("\n");
+  const out: string[] = [];
+  for (const line of content.split("\n")) {
+    if (line.trim().length === 0) {
+      continue;
+    }
+    const stripped = line
+      .replace(/^\s*[•‣◦⁃∙·●○■□▪▫\-–—]\s*/, "")
+      .replace(/^\s*[a-zA-Z0-9]+[.)]\s+/, "");
+    out.push(stripped.length === 0 ? line : stripped);
+  }
+  return out.join("\n");
 }
 
 function resolveTableStartIndex(

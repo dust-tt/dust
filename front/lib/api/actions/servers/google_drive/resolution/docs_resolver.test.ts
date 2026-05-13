@@ -474,6 +474,26 @@ describe("resolveDocOperations", () => {
       }
     });
 
+    it("should drop blank lines between items in a bulleted cell", () => {
+      const doc = makeDocWithTable([[{ text: "old", bullet: true }]]);
+      const res = resolveDocOperations(doc, [
+        {
+          type: "replaceTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 0,
+          content: "1. content\n\n2. more content\n   \n3. last",
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        const insertReq = res.value.find((r) => r.insertText);
+        // Blank/whitespace-only lines are dropped — otherwise Docs would
+        // render them as empty numbered paragraphs ("2." between items).
+        expect(insertReq?.insertText?.text).toBe("content\nmore content\nlast");
+      }
+    });
+
     it("should strip selectively in a mixed batch", () => {
       const doc = makeDocWithTable([
         [{ text: "bulleted_old", bullet: true }, "plain_old"],
