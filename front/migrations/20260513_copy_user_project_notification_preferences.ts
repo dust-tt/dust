@@ -37,7 +37,7 @@ makeScript({}, async ({ execute }, logger) => {
        ("createdAt", "updatedAt", "notificationPreference", "isStarred", "workspaceId", "userId", "spaceId")
      SELECT "createdAt", "updatedAt", "preference", "isStarred", "workspaceId", "userId", "spaceId"
        FROM "user_project_notification_preferences"
-     ON CONFLICT ON CONSTRAINT "user_project_preferences_workspace_user_space_unique" DO NOTHING`
+     ON CONFLICT ("workspaceId", "userId", "spaceId") DO NOTHING`
   );
 
   logger.info({}, "Copy done");
