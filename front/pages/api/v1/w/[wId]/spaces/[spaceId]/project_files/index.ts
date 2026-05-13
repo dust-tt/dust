@@ -1,10 +1,14 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import {
   type GCSMountEntry,
+  getConversationFileMountSignedUrl,
+  getGCSPathFromScopedPath,
   listGCSMountFiles,
 } from "@app/lib/api/files/gcs_mount/files";
+import { getProjectFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -96,7 +100,40 @@ async function handler(
         files = files.filter((e) => e.lastModifiedMs >= updatedSinceFilter);
       }
 
-      return res.status(200).json({ files });
+      const owner = auth.getNonNullableWorkspace();
+      const gcsPrefix = getProjectFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: space.sId,
+      });
+
+      const filesWithSignedUrls = await concurrentExecutor(
+        files,
+        async (entry) => {
+          if (entry.isDirectory) {
+            return entry;
+          }
+          const gcsPath = getGCSPathFromScopedPath({
+            prefix: gcsPrefix,
+            scopedPath: entry.path,
+            useCase: "project",
+          });
+          if (!gcsPath) {
+            return { ...entry, signedDownloadUrl: null };
+          }
+          const signed = await getConversationFileMountSignedUrl(
+            auth,
+            { useCase: "project", projectId: space.sId },
+            gcsPath
+          );
+          return {
+            ...entry,
+            signedDownloadUrl: signed.isOk() ? signed.value : null,
+          };
+        },
+        { concurrency: 8 }
+      );
+
+      return res.status(200).json({ files: filesWithSignedUrls });
     }
 
     default:

@@ -1,18 +1,30 @@
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
 const listGCSMountFilesMock = vi.hoisted(() => vi.fn());
+const getConversationFileMountSignedUrlMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@app/lib/api/files/gcs_mount/files", () => ({
-  listGCSMountFiles: listGCSMountFilesMock,
-}));
+vi.mock("@app/lib/api/files/gcs_mount/files", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/files/gcs_mount/files")>();
+  return {
+    ...actual,
+    listGCSMountFiles: listGCSMountFilesMock,
+    getConversationFileMountSignedUrl: getConversationFileMountSignedUrlMock,
+  };
+});
 
 describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
   beforeEach(() => {
     listGCSMountFilesMock.mockReset();
+    getConversationFileMountSignedUrlMock.mockReset();
+    getConversationFileMountSignedUrlMock.mockResolvedValue(
+      new Ok("https://signed.example/read")
+    );
   });
 
   it("returns 403 if not system key", async () => {
@@ -129,6 +141,11 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
       thumbnailUrl: null,
     };
 
+    const mockFileWithUrl = {
+      ...mockFile,
+      signedDownloadUrl: "https://signed.example/read",
+    };
+
     listGCSMountFilesMock.mockResolvedValue([
       mockFile,
       {
@@ -151,7 +168,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
       projectId: space.sId,
     });
     expect(res._getJSONData()).toEqual({
-      files: [mockFile],
+      files: [mockFileWithUrl],
     });
   });
 });
