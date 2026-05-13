@@ -11,20 +11,19 @@ function isScopedPath(value: string): boolean {
 }
 
 export function extractFileRefs(code: string): FileRef[] {
-  const seen = new Set<string>();
-  const refs: FileRef[] = [];
+  const refs = new Map<string, FileRef>();
 
-  function add(value: string) {
-    if (seen.has(value)) {
+  const add = (value: string) => {
+    if (refs.has(value)) {
       return;
     }
-    seen.add(value);
+
     if (/^fil_[a-zA-Z0-9]{10,}$/.test(value)) {
-      refs.push({ type: "fileId", fileId: value });
+      refs.set(value, { type: "fileId", fileId: value });
     } else if (isScopedPath(value)) {
-      refs.push({ type: "path", scopedPath: value });
+      refs.set(value, { type: "path", scopedPath: value });
     }
-  }
+  };
 
   try {
     // TypeScript's parser is tolerant by design It produces a (partial) AST even for code with
@@ -77,5 +76,5 @@ export function extractFileRefs(code: string): FileRef[] {
     logger.warn({ err }, "Failed to parse frame code:");
   }
 
-  return refs;
+  return Array.from(refs.values());
 }
