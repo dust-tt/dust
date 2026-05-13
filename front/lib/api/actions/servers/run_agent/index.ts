@@ -39,6 +39,7 @@ import {
   getCitationsFromActions,
   getRefs,
 } from "@app/lib/api/assistant/citations";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { cancelAgentLoop } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
@@ -48,10 +49,12 @@ import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { getHeaderFromUserEmail } from "@app/types/user";
 import type {
@@ -68,6 +71,52 @@ import _ from "lodash";
 import type z from "zod";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
+
+function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
+  switch (agent.status) {
+    case "active":
+    case "draft":
+      return agent.canRead;
+    case "disabled_free_workspace":
+    case "disabled_missing_datasource":
+    case "disabled_by_admin":
+    case "archived":
+    case "pending":
+      return false;
+    default:
+      assertNever(agent.status);
+  }
+}
+
+function makeChildAgentUnavailableError(childAgentName: string): MCPError {
+  return new MCPError(
+    `Agent @${childAgentName} is not available to the user running this conversation. ` +
+      "Ask a workspace admin to grant access to the agent and its spaces.",
+    { tracked: false }
+  );
+}
+
+async function checkChildAgentCanRun(
+  auth: Authenticator,
+  {
+    agentId,
+    childAgentName,
+  }: {
+    agentId: string;
+    childAgentName: string;
+  }
+): Promise<Result<void, MCPError>> {
+  const childAgent = await getAgentConfiguration(auth, {
+    agentId,
+    variant: "extra_light",
+  });
+
+  if (!childAgent || !canRunChildAgent(childAgent)) {
+    return new Err(makeChildAgentUnavailableError(childAgentName));
+  }
+
+  return new Ok(undefined);
+}
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
@@ -154,6 +203,14 @@ const runAgent = async (
     );
   }
   const parsedChildAgentId = parsedChildAgentIdRes.value;
+
+  const childAgentAccessRes = await checkChildAgentCanRun(auth, {
+    agentId: parsedChildAgentId,
+    childAgentName: childAgentBlob.name,
+  });
+  if (childAgentAccessRes.isErr()) {
+    return finalizeAndReturn(childAgentAccessRes);
+  }
 
   const user = auth.user();
 
@@ -258,18 +315,13 @@ const runAgent = async (
     userMessageId
   );
 
-  const requestChildCancellation = () => {
-    if (!agentMessage) {
-      logger.warn(
-        {
-          childConversationId: conversation.sId,
-          conversationId: mainConversation.sId,
-        },
-        "run_agent cancellation error: No agent message found."
-      );
-      return;
-    }
+  if (!agentMessage) {
+    return finalizeAndReturn(
+      new Err(makeChildAgentUnavailableError(childAgentBlob.name))
+    );
+  }
 
+  const requestChildCancellation = () => {
     /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */
     if (!childCancellationPromise) {
       childCancellationPromise = cancelAgentLoop(auth, {
