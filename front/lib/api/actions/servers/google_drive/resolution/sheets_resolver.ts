@@ -11,36 +11,120 @@ const CellValueSchema = z
 const A1RangeSchema = z
   .string()
   .describe(
-    "A1 notation range, e.g. 'Sheet1!A1:D10', 'A1:D10', or 'Sheet1!A:A'. The sheet name is optional; if omitted, the first sheet is used."
+    "A1 range WITHOUT the sheet name prefix, e.g. 'A1:D10', 'A:A', '1:10', or 'A1'."
   );
 
-const HexColorSchema = z
-  .string()
-  .regex(/^#[0-9A-Fa-f]{6}$/)
-  .describe("Hex color, e.g. '#FF0000'.");
+const RgbColorSchema = z.object({
+  red: z.number().min(0).max(1).optional(),
+  green: z.number().min(0).max(1).optional(),
+  blue: z.number().min(0).max(1).optional(),
+});
+
+const CellFormatSchema = z
+  .object({
+    bold: z.boolean().optional(),
+    italic: z.boolean().optional(),
+    fontSize: z.number().positive().optional(),
+    backgroundColor: RgbColorSchema.optional(),
+    textColor: RgbColorSchema.optional(),
+    horizontalAlignment: z.enum(["LEFT", "CENTER", "RIGHT"]).optional(),
+    numberFormat: z
+      .object({
+        type: z.enum([
+          "TEXT",
+          "NUMBER",
+          "PERCENT",
+          "CURRENCY",
+          "DATE",
+          "TIME",
+          "SCIENTIFIC",
+        ]),
+        pattern: z.string().optional(),
+      })
+      .optional(),
+  })
+  .describe("Formatting to apply to all cells in the range.");
+
+const SortSpecSchema = z.object({
+  columnIndex: z
+    .number()
+    .int()
+    .min(0)
+    .describe("0-indexed column to sort by (relative to the range start)."),
+  ascending: z.boolean().default(true),
+});
 
 export const SpreadsheetOperationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("updateCells"),
+    sheetName: z
+      .string()
+      .describe(
+        "Human-readable sheet/tab name (e.g. 'Sheet1', 'Budget Q4'). Server resolves to numeric sheetId."
+      ),
     range: A1RangeSchema,
     values: z
       .array(z.array(CellValueSchema))
-      .describe("Row-major values. Use null to clear a cell."),
+      .describe("2D array of cell values. Each sub-array is a row."),
   }),
   z.object({
-    type: z.literal("formatRange"),
+    type: z.literal("formatCells"),
+    sheetName: z.string(),
     range: A1RangeSchema,
-    bold: z.boolean().optional(),
-    italic: z.boolean().optional(),
-    backgroundColorHex: HexColorSchema.optional(),
-    textColorHex: HexColorSchema.optional(),
-    horizontalAlignment: z.enum(["LEFT", "CENTER", "RIGHT"]).optional(),
-    numberFormat: z
+    format: CellFormatSchema,
+  }),
+  z.object({
+    type: z.literal("findReplace"),
+    find: z.string(),
+    replace: z.string(),
+    sheetName: z
       .string()
       .optional()
-      .describe(
-        "Number format pattern, e.g. '0.00', '#,##0', '0.00%', 'yyyy-mm-dd'."
-      ),
+      .describe("Scope to a specific sheet. If omitted, searches all sheets."),
+    matchCase: z.boolean().default(false),
+    matchEntireCell: z.boolean().default(false),
+  }),
+  z.object({
+    type: z.literal("mergeCells"),
+    sheetName: z.string(),
+    range: A1RangeSchema,
+    mergeType: z
+      .enum(["MERGE_ALL", "MERGE_COLUMNS", "MERGE_ROWS"])
+      .default("MERGE_ALL"),
+  }),
+  z.object({
+    type: z.literal("insertRows"),
+    sheetName: z.string(),
+    startIndex: z
+      .number()
+      .int()
+      .min(0)
+      .describe("0-indexed row to insert before."),
+    count: z.number().int().min(1).describe("Number of rows to insert."),
+  }),
+  z.object({
+    type: z.literal("deleteRows"),
+    sheetName: z.string(),
+    startIndex: z.number().int().min(0),
+    endIndex: z.number().int().min(1).describe("0-indexed exclusive end row."),
+  }),
+  z.object({
+    type: z.literal("insertColumns"),
+    sheetName: z.string(),
+    startIndex: z.number().int().min(0),
+    count: z.number().int().min(1),
+  }),
+  z.object({
+    type: z.literal("deleteColumns"),
+    sheetName: z.string(),
+    startIndex: z.number().int().min(0),
+    endIndex: z.number().int().min(1),
+  }),
+  z.object({
+    type: z.literal("sortRange"),
+    sheetName: z.string(),
+    range: A1RangeSchema,
+    sortSpecs: z.array(SortSpecSchema).min(1),
   }),
   z.object({
     type: z.literal("addSheet"),
@@ -51,51 +135,11 @@ export const SpreadsheetOperationSchema = z.discriminatedUnion("type", [
     title: z.string().describe("Title of the sheet to delete."),
   }),
   z.object({
-    type: z.literal("mergeCells"),
-    range: A1RangeSchema,
-    mergeType: z
-      .enum(["MERGE_ALL", "MERGE_COLUMNS", "MERGE_ROWS"])
-      .default("MERGE_ALL"),
-  }),
-  z.object({
     type: z.literal("autoResizeColumns"),
+    sheetName: z.string(),
     range: A1RangeSchema.describe(
       "Range whose columns should be auto-resized. Only the column span matters."
     ),
-  }),
-  z.object({
-    type: z.literal("insertDimension"),
-    sheetTitle: z.string(),
-    dimension: z.enum(["ROWS", "COLUMNS"]),
-    startIndex: z.number().int().nonnegative(),
-    endIndex: z.number().int().positive(),
-  }),
-  z.object({
-    type: z.literal("deleteDimension"),
-    sheetTitle: z.string(),
-    dimension: z.enum(["ROWS", "COLUMNS"]),
-    startIndex: z.number().int().nonnegative(),
-    endIndex: z.number().int().positive(),
-  }),
-  z.object({
-    type: z.literal("sortRange"),
-    range: A1RangeSchema,
-    columnIndex: z
-      .number()
-      .int()
-      .nonnegative()
-      .describe("Zero-based column index within the range to sort by."),
-    order: z.enum(["ASCENDING", "DESCENDING"]).default("ASCENDING"),
-  }),
-  z.object({
-    type: z.literal("findReplace"),
-    find: z.string(),
-    replace: z.string(),
-    sheetTitle: z
-      .string()
-      .optional()
-      .describe("Restrict to a sheet; if omitted, applies to all sheets."),
-    matchCase: z.boolean().optional(),
   }),
   z.object({
     type: z.literal("raw"),
@@ -122,45 +166,28 @@ function columnLettersToIndex(letters: string): number {
 }
 
 type A1Parsed = {
-  sheetName: string | null;
   startRowIndex: number | null;
   endRowIndex: number | null;
   startColumnIndex: number | null;
   endColumnIndex: number | null;
 };
 
-function parseA1(range: string): Result<A1Parsed, Error> {
-  let cellPart = range;
-  let sheetName: string | null = null;
-
-  // We split on the last `!` — this is correct for typical A1 input. A quoted
-  // sheet name that contains an unescaped `!` would mis-split, but Google's
-  // own A1 parser requires `!` inside a sheet name to be quoted with `''`
-  // anyway, so this matches Google's own behavior.
-  const bangIdx = range.lastIndexOf("!");
-  if (bangIdx > -1) {
-    let prefix = range.slice(0, bangIdx);
-    cellPart = range.slice(bangIdx + 1);
-    if (prefix.startsWith("'") && prefix.endsWith("'")) {
-      prefix = prefix.slice(1, -1).replace(/''/g, "'");
-    }
-    sheetName = prefix;
+/**
+ * Parses an A1 range string WITHOUT a sheet prefix.
+ * Accepts: "A1:D10", "A1", "A:D", "1:10".
+ * Returns null indices for omitted axes (whole column / whole row).
+ */
+export function parseA1Range(range: string): Result<A1Parsed, Error> {
+  if (range.includes("!")) {
+    return new Err(
+      new Error(
+        `parseA1Range expects a range without the sheet prefix; got "${range}". Pass sheetName separately.`
+      )
+    );
   }
-
-  // If only a sheet name is given (no cell part), treat as the entire sheet.
-  if (cellPart.length === 0) {
-    return new Ok({
-      sheetName,
-      startRowIndex: null,
-      endRowIndex: null,
-      startColumnIndex: null,
-      endColumnIndex: null,
-    });
-  }
-
-  const parts = cellPart.split(":");
+  const parts = range.split(":");
   if (parts.length < 1 || parts.length > 2) {
-    return new Err(new Error(`Invalid A1 range: ${cellPart}`));
+    return new Err(new Error(`Invalid A1 range: ${range}`));
   }
 
   const parseAnchor = (
@@ -190,7 +217,6 @@ function parseA1(range: string): Result<A1Parsed, Error> {
   const end = endResult.value;
 
   return new Ok({
-    sheetName,
     startRowIndex: start.row,
     endRowIndex: end.row != null ? end.row + 1 : null,
     startColumnIndex: start.col,
@@ -200,32 +226,31 @@ function parseA1(range: string): Result<A1Parsed, Error> {
 
 function getSheetIdByTitle(
   spreadsheet: sheets_v4.Schema$Spreadsheet,
-  title: string | null
+  title: string
 ): Result<number, Error> {
-  const sheets = spreadsheet.sheets ?? [];
-  const match =
-    title == null
-      ? sheets[0]
-      : sheets.find((s) => s.properties?.title === title);
-  if (!match || match.properties?.sheetId == null) {
-    return new Err(new Error(`Sheet not found: ${title ?? "(first sheet)"}`));
+  const sheet = (spreadsheet.sheets ?? []).find(
+    (s) => s.properties?.title === title
+  );
+  if (!sheet || sheet.properties?.sheetId == null) {
+    return new Err(new Error(`Sheet not found: "${title}".`));
   }
-  return new Ok(match.properties.sheetId);
+  return new Ok(sheet.properties.sheetId);
 }
 
 function toGridRange(
   spreadsheet: sheets_v4.Schema$Spreadsheet,
+  sheetName: string,
   range: string
 ): Result<sheets_v4.Schema$GridRange, Error> {
-  const parsedResult = parseA1(range);
+  const parsedResult = parseA1Range(range);
   if (parsedResult.isErr()) {
     return new Err(parsedResult.error);
   }
-  const parsed = parsedResult.value;
-  const sheetIdResult = getSheetIdByTitle(spreadsheet, parsed.sheetName);
+  const sheetIdResult = getSheetIdByTitle(spreadsheet, sheetName);
   if (sheetIdResult.isErr()) {
     return new Err(sheetIdResult.error);
   }
+  const parsed = parsedResult.value;
   const gridRange: sheets_v4.Schema$GridRange = {
     sheetId: sheetIdResult.value,
   };
@@ -244,11 +269,17 @@ function toGridRange(
   return new Ok(gridRange);
 }
 
-function hexToRgb(hex: string): { red: number; green: number; blue: number } {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  return { red: r, green: g, blue: b };
+function quoteSheetName(name: string): string {
+  // Google's A1 syntax requires quoting when the sheet name contains anything
+  // other than letters, digits, and underscores, or starts with a digit.
+  if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    return name;
+  }
+  return `'${name.replace(/'/g, "''")}'`;
+}
+
+function buildFullA1(sheetName: string, range: string): string {
+  return `${quoteSheetName(sheetName)}!${range}`;
 }
 
 export type ResolvedSpreadsheetOps = {
@@ -269,49 +300,58 @@ export function resolveSpreadsheetOperations(
   for (const op of operations) {
     switch (op.type) {
       case "updateCells": {
-        valueUpdates.push({ range: op.range, values: op.values });
+        // Validate the sheet exists so the model gets a clear error instead
+        // of a generic 400 from the values.batchUpdate API.
+        const sheetCheck = getSheetIdByTitle(spreadsheet, op.sheetName);
+        if (sheetCheck.isErr()) {
+          return new Err(new Error(`updateCells: ${sheetCheck.error.message}`));
+        }
+        valueUpdates.push({
+          range: buildFullA1(op.sheetName, op.range),
+          values: op.values,
+        });
         break;
       }
-      case "formatRange": {
-        const gridResult = toGridRange(spreadsheet, op.range);
+      case "formatCells": {
+        const gridResult = toGridRange(spreadsheet, op.sheetName, op.range);
         if (gridResult.isErr()) {
-          return new Err(new Error(`formatRange: ${gridResult.error.message}`));
-        }
-        const textFormat: sheets_v4.Schema$TextFormat = {};
-        if (op.bold !== undefined) {
-          textFormat.bold = op.bold;
-        }
-        if (op.italic !== undefined) {
-          textFormat.italic = op.italic;
-        }
-        if (op.textColorHex !== undefined) {
-          textFormat.foregroundColor = hexToRgb(op.textColorHex);
+          return new Err(new Error(`formatCells: ${gridResult.error.message}`));
         }
         const userEnteredFormat: sheets_v4.Schema$CellFormat = {};
         const fieldParts: string[] = [];
+        const textFormat: sheets_v4.Schema$TextFormat = {};
+        if (op.format.bold !== undefined) {
+          textFormat.bold = op.format.bold;
+        }
+        if (op.format.italic !== undefined) {
+          textFormat.italic = op.format.italic;
+        }
+        if (op.format.fontSize !== undefined) {
+          textFormat.fontSize = op.format.fontSize;
+        }
+        if (op.format.textColor !== undefined) {
+          textFormat.foregroundColor = op.format.textColor;
+        }
         if (Object.keys(textFormat).length > 0) {
           userEnteredFormat.textFormat = textFormat;
           fieldParts.push("userEnteredFormat.textFormat");
         }
-        if (op.backgroundColorHex !== undefined) {
-          userEnteredFormat.backgroundColor = hexToRgb(op.backgroundColorHex);
+        if (op.format.backgroundColor !== undefined) {
+          userEnteredFormat.backgroundColor = op.format.backgroundColor;
           fieldParts.push("userEnteredFormat.backgroundColor");
         }
-        if (op.horizontalAlignment !== undefined) {
-          userEnteredFormat.horizontalAlignment = op.horizontalAlignment;
+        if (op.format.horizontalAlignment !== undefined) {
+          userEnteredFormat.horizontalAlignment = op.format.horizontalAlignment;
           fieldParts.push("userEnteredFormat.horizontalAlignment");
         }
-        if (op.numberFormat !== undefined) {
-          userEnteredFormat.numberFormat = {
-            type: "NUMBER",
-            pattern: op.numberFormat,
-          };
+        if (op.format.numberFormat !== undefined) {
+          userEnteredFormat.numberFormat = op.format.numberFormat;
           fieldParts.push("userEnteredFormat.numberFormat");
         }
         if (fieldParts.length === 0) {
           return new Err(
             new Error(
-              "formatRange: at least one formatting property must be set."
+              "formatCells: at least one formatting property must be set."
             )
           );
         }
@@ -321,6 +361,136 @@ export function resolveSpreadsheetOperations(
             cell: { userEnteredFormat },
             fields: fieldParts.join(","),
           },
+        });
+        break;
+      }
+      case "findReplace": {
+        const req: sheets_v4.Schema$FindReplaceRequest = {
+          find: op.find,
+          replacement: op.replace,
+          matchCase: op.matchCase,
+          matchEntireCell: op.matchEntireCell,
+        };
+        if (op.sheetName) {
+          const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetName);
+          if (sheetIdResult.isErr()) {
+            return new Err(
+              new Error(`findReplace: ${sheetIdResult.error.message}`)
+            );
+          }
+          req.sheetId = sheetIdResult.value;
+        } else {
+          req.allSheets = true;
+        }
+        batchRequests.push({ findReplace: req });
+        break;
+      }
+      case "mergeCells": {
+        const gridResult = toGridRange(spreadsheet, op.sheetName, op.range);
+        if (gridResult.isErr()) {
+          return new Err(new Error(`mergeCells: ${gridResult.error.message}`));
+        }
+        batchRequests.push({
+          mergeCells: {
+            range: gridResult.value,
+            mergeType: op.mergeType,
+          },
+        });
+        break;
+      }
+      case "insertRows": {
+        const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetName);
+        if (sheetIdResult.isErr()) {
+          return new Err(
+            new Error(`insertRows: ${sheetIdResult.error.message}`)
+          );
+        }
+        batchRequests.push({
+          insertDimension: {
+            range: {
+              sheetId: sheetIdResult.value,
+              dimension: "ROWS",
+              startIndex: op.startIndex,
+              endIndex: op.startIndex + op.count,
+            },
+          },
+        });
+        break;
+      }
+      case "deleteRows": {
+        const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetName);
+        if (sheetIdResult.isErr()) {
+          return new Err(
+            new Error(`deleteRows: ${sheetIdResult.error.message}`)
+          );
+        }
+        batchRequests.push({
+          deleteDimension: {
+            range: {
+              sheetId: sheetIdResult.value,
+              dimension: "ROWS",
+              startIndex: op.startIndex,
+              endIndex: op.endIndex,
+            },
+          },
+        });
+        break;
+      }
+      case "insertColumns": {
+        const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetName);
+        if (sheetIdResult.isErr()) {
+          return new Err(
+            new Error(`insertColumns: ${sheetIdResult.error.message}`)
+          );
+        }
+        batchRequests.push({
+          insertDimension: {
+            range: {
+              sheetId: sheetIdResult.value,
+              dimension: "COLUMNS",
+              startIndex: op.startIndex,
+              endIndex: op.startIndex + op.count,
+            },
+          },
+        });
+        break;
+      }
+      case "deleteColumns": {
+        const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetName);
+        if (sheetIdResult.isErr()) {
+          return new Err(
+            new Error(`deleteColumns: ${sheetIdResult.error.message}`)
+          );
+        }
+        batchRequests.push({
+          deleteDimension: {
+            range: {
+              sheetId: sheetIdResult.value,
+              dimension: "COLUMNS",
+              startIndex: op.startIndex,
+              endIndex: op.endIndex,
+            },
+          },
+        });
+        break;
+      }
+      case "sortRange": {
+        const gridResult = toGridRange(spreadsheet, op.sheetName, op.range);
+        if (gridResult.isErr()) {
+          return new Err(new Error(`sortRange: ${gridResult.error.message}`));
+        }
+        const grid = gridResult.value;
+        // dimensionIndex on sortRange is absolute on the sheet, not relative
+        // to the range — offset each spec by the range's start column.
+        const rangeStartColumn = grid.startColumnIndex ?? 0;
+        const sortSpecs: sheets_v4.Schema$SortSpec[] = op.sortSpecs.map(
+          (spec) => ({
+            dimensionIndex: rangeStartColumn + spec.columnIndex,
+            sortOrder: spec.ascending ? "ASCENDING" : "DESCENDING",
+          })
+        );
+        batchRequests.push({
+          sortRange: { range: grid, sortSpecs },
         });
         break;
       }
@@ -342,21 +512,8 @@ export function resolveSpreadsheetOperations(
         });
         break;
       }
-      case "mergeCells": {
-        const gridResult = toGridRange(spreadsheet, op.range);
-        if (gridResult.isErr()) {
-          return new Err(new Error(`mergeCells: ${gridResult.error.message}`));
-        }
-        batchRequests.push({
-          mergeCells: {
-            range: gridResult.value,
-            mergeType: op.mergeType,
-          },
-        });
-        break;
-      }
       case "autoResizeColumns": {
-        const gridResult = toGridRange(spreadsheet, op.range);
+        const gridResult = toGridRange(spreadsheet, op.sheetName, op.range);
         if (gridResult.isErr()) {
           return new Err(
             new Error(`autoResizeColumns: ${gridResult.error.message}`)
@@ -375,88 +532,6 @@ export function resolveSpreadsheetOperations(
             },
           },
         });
-        break;
-      }
-      case "insertDimension": {
-        const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetTitle);
-        if (sheetIdResult.isErr()) {
-          return new Err(
-            new Error(`insertDimension: ${sheetIdResult.error.message}`)
-          );
-        }
-        batchRequests.push({
-          insertDimension: {
-            range: {
-              sheetId: sheetIdResult.value,
-              dimension: op.dimension,
-              startIndex: op.startIndex,
-              endIndex: op.endIndex,
-            },
-          },
-        });
-        break;
-      }
-      case "deleteDimension": {
-        const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetTitle);
-        if (sheetIdResult.isErr()) {
-          return new Err(
-            new Error(`deleteDimension: ${sheetIdResult.error.message}`)
-          );
-        }
-        batchRequests.push({
-          deleteDimension: {
-            range: {
-              sheetId: sheetIdResult.value,
-              dimension: op.dimension,
-              startIndex: op.startIndex,
-              endIndex: op.endIndex,
-            },
-          },
-        });
-        break;
-      }
-      case "sortRange": {
-        const gridResult = toGridRange(spreadsheet, op.range);
-        if (gridResult.isErr()) {
-          return new Err(new Error(`sortRange: ${gridResult.error.message}`));
-        }
-        const grid = gridResult.value;
-        // The Sheets API sortRange.sortSpecs.dimensionIndex is absolute on the
-        // sheet (not relative to the range), so offset by the range's start
-        // column.
-        const absoluteColumnIndex =
-          (grid.startColumnIndex ?? 0) + op.columnIndex;
-        batchRequests.push({
-          sortRange: {
-            range: grid,
-            sortSpecs: [
-              {
-                dimensionIndex: absoluteColumnIndex,
-                sortOrder: op.order,
-              },
-            ],
-          },
-        });
-        break;
-      }
-      case "findReplace": {
-        const req: sheets_v4.Schema$FindReplaceRequest = {
-          find: op.find,
-          replacement: op.replace,
-          ...(op.matchCase !== undefined ? { matchCase: op.matchCase } : {}),
-        };
-        if (op.sheetTitle) {
-          const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetTitle);
-          if (sheetIdResult.isErr()) {
-            return new Err(
-              new Error(`findReplace: ${sheetIdResult.error.message}`)
-            );
-          }
-          req.sheetId = sheetIdResult.value;
-        } else {
-          req.allSheets = true;
-        }
-        batchRequests.push({ findReplace: req });
         break;
       }
       case "raw": {
