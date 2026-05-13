@@ -107,6 +107,7 @@ const SKIP_DELETION_CONNECTOR_ID_HASHES = new Set<string>([
   "pDddXWMzWYw4oN/acYfLiOwxB3tlp51IH6MuMYD3YXQ=",
 ]);
 const MIN_ATTEMPTS_BEFORE_SKIPPING_UNHEALTHY_NOTION_RESOURCE = 15;
+const RETRIABLE_NOTION_ERROR_CODES_AFTER_SKIP_THRESHOLD = ["rate_limited"];
 
 const wrapWithErrorCheck = async <T>(
   callback: () => Promise<T>,
@@ -926,7 +927,11 @@ export async function garbageCollectBatch({
       Context.current().info.attempt >=
       MIN_ATTEMPTS_BEFORE_SKIPPING_UNHEALTHY_NOTION_RESOURCE;
     const accessibilityCheckRetryOptions = shouldSkipUnhealthyNotionResource
-      ? { maxTries: 1, onProgress: heartbeat }
+      ? {
+          onProgress: heartbeat,
+          retriableErrorCodes:
+            RETRIABLE_NOTION_ERROR_CODES_AFTER_SKIP_THRESHOLD,
+        }
       : { onProgress: heartbeat };
 
     let resourceIsAccessible: boolean;

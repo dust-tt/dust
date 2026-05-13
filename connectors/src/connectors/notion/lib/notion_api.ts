@@ -357,6 +357,7 @@ async function retryWithBackoff<T>(
     logger,
     onProgress,
     operationName,
+    retriableErrorCodes = NOTION_RETRIABLE_ERRORS,
   }: {
     maxTries?: number;
     backoffFactor?: number;
@@ -364,6 +365,7 @@ async function retryWithBackoff<T>(
     logger: Logger;
     onProgress?: NotionRetryProgressCallback;
     operationName: string;
+    retriableErrorCodes?: string[];
   }
 ): Promise<T> {
   let tries = 0;
@@ -380,7 +382,7 @@ async function retryWithBackoff<T>(
     } catch (e) {
       if (
         APIResponseError.isAPIResponseError(e) &&
-        NOTION_RETRIABLE_ERRORS.includes(e.code)
+        retriableErrorCodes.includes(e.code)
       ) {
         let waitTime = baseWaitTime * backoffFactor ** tries;
         let usingHeader = false;
@@ -436,6 +438,7 @@ export async function isAccessibleAndUnarchived(
   retryOptions?: {
     maxTries?: number;
     onProgress?: NotionRetryProgressCallback;
+    retriableErrorCodes?: string[];
   }
 ): Promise<boolean> {
   const notionClient = new Client({
@@ -457,6 +460,7 @@ export async function isAccessibleAndUnarchived(
           maxTries: retryOptions?.maxTries,
           onProgress: retryOptions?.onProgress,
           operationName: "retrieve_page",
+          retriableErrorCodes: retryOptions?.retriableErrorCodes,
         }
       );
       if (!isFullPage(page)) {
@@ -478,6 +482,7 @@ export async function isAccessibleAndUnarchived(
           maxTries: retryOptions?.maxTries,
           onProgress: retryOptions?.onProgress,
           operationName: "retrieve_database",
+          retriableErrorCodes: retryOptions?.retriableErrorCodes,
         }
       );
       if (!isFullDatabase(db)) {
