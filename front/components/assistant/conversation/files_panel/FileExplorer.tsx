@@ -28,7 +28,6 @@ import {
   Breadcrumbs,
   Button,
   CardGrid,
-  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -41,13 +40,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useRef, useState } from "react";
 
-const cardGridClasses = cn(
-  "grid-cols-2",
-  "@xxs:grid-cols-3",
-  "@sm:grid-cols-4",
-  "@md:grid-cols-5",
-  "@lg:grid-cols-6",
-);
+const cardGridClasses =
+  "grid-cols-2 @xxs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5 @lg:grid-cols-6";
 
 // TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
 interface FileExplorerBreadcrumbProps {
