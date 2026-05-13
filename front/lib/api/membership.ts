@@ -8,6 +8,7 @@ import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
+  getAvailableSeatsForType,
   hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
@@ -365,7 +366,7 @@ export type UpdateMemberSeatTypeInput = z.infer<
 >;
 
 export interface UpdateMemberSeatTypeError {
-  type: "workspace_user_not_found";
+  type: "workspace_user_not_found" | "no_seats_available";
   message: string;
 }
 
@@ -378,6 +379,26 @@ export async function updateMemberSeatType(
 ): Promise<
   Result<{ seatType: MembershipSeatType }, UpdateMemberSeatTypeError>
 > {
+  const workspace = auth.getNonNullableWorkspace();
+  const subscription = auth.getNonNullableSubscriptionResource();
+
+  if (workspace.metronomeCustomerId && subscription.metronomeContractId) {
+    const availabilityResult = await getAvailableSeatsForType({
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      contractId: subscription.metronomeContractId,
+      seatType,
+    });
+    if (availabilityResult.isOk()) {
+      const available = availabilityResult.value;
+      if (available !== null && available === 0) {
+        return new Err({
+          type: "no_seats_available",
+          message: `No ${seatType} seats available. Purchase more seats to assign this seat type.`,
+        });
+      }
+    }
+  }
+
   const user = await getUserForWorkspace(auth, { userId });
   if (!user) {
     return new Err({
@@ -388,7 +409,7 @@ export async function updateMemberSeatType(
 
   const result = await updateMembershipSeatAndTrack({
     user,
-    workspace: auth.getNonNullableWorkspace(),
+    workspace,
     newSeatType: seatType,
     author: auth.user()?.toJSON() ?? "no-author",
   });

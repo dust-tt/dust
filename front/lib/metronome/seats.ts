@@ -171,9 +171,9 @@ export async function syncSeatCount({
       }
 
       const desired = new Set(sIds);
-      const current = new Set(currentResult.value);
+      const current = new Set(currentResult.value.assignedSeatIds);
       const addSeatIds = sIds.filter((id) => !current.has(id));
-      const removeSeatIds = currentResult.value.filter(
+      const removeSeatIds = currentResult.value.assignedSeatIds.filter(
         (id) => !desired.has(id)
       );
 
@@ -230,4 +230,53 @@ export async function syncSeatCount({
   }
 
   return new Ok(undefined);
+}
+
+/**
+ * Returns the number of unassigned seats available for the given seat type on
+ * the workspace's active contract, or null if the subscription uses
+ * QUANTITY_ONLY billing (no pre-purchased seat limit).
+ * Fails open (returns null) when the contract or subscription cannot be found.
+ */
+export async function getAvailableSeatsForType({
+  metronomeCustomerId,
+  contractId,
+  seatType,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  seatType: "pro" | "max";
+}): Promise<Result<number | null, Error>> {
+  const contractResult = await fetchCachedContract({
+    metronomeCustomerId,
+    metronomeContractId: contractId,
+  });
+  if (contractResult.isErr()) {
+    return new Ok(null);
+  }
+
+  const subscription = (contractResult.value.subscriptions ?? []).find(
+    (s) =>
+      getSeatTypeForProductId(s.subscription_rate.product) === seatType &&
+      s.id
+  );
+
+  if (!subscription?.id) {
+    return new Ok(null);
+  }
+
+  if ((subscription.quantity_management_mode ?? "QUANTITY_ONLY") !== "SEAT_BASED") {
+    return new Ok(null);
+  }
+
+  const seatResult = await getMetronomeSubscriptionAssignedSeatIds({
+    metronomeCustomerId,
+    contractId,
+    subscriptionId: subscription.id,
+  });
+  if (seatResult.isErr()) {
+    return new Err(seatResult.error);
+  }
+
+  return new Ok(seatResult.value.unassignedSeats);
 }

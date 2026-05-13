@@ -166,6 +166,8 @@ const API_ERROR_TYPES = [
   "agent_suggestion_not_found",
   // Wake-ups
   "wakeup_not_found",
+  // Seats
+  "no_seats_available",
 ] as const;
 
 export type RegionRedirectError = {
