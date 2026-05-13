@@ -145,7 +145,7 @@ export function HomeSecuritySection() {
       <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-12 px-6">
         <div className="flex flex-col gap-6">
           <HomeReveal>
-            <HomeEyebrow label="Enterprise ready, obviously" />
+            <HomeEyebrow label="Enterprise-ready" />
           </HomeReveal>
           <HomeReveal delay={80}>
             <H2 className="max-w-[820px] text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">

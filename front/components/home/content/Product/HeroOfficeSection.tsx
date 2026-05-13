@@ -9,11 +9,10 @@ import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 
-const HEADLINE_LINE_1 = "AI for the people";
-const HEADLINE_LINE_2 = "who run the work.";
+const HEADLINE_LINE_1 = "Multiplayer AI for";
+const HEADLINE_LINE_2 = "human-agent collaboration.";
 const LEAD_COPY =
-  "Turn scattered knowledge into coordinated execution. AI agents your team builds, owns, and runs — alongside the humans who know the work.";
-const EYEBROW_COPY = "Run on Dust · live in 47 companies right now";
+  "Dust is where people and agents collaborate as co-contributors, so that work doesn't just get done -- it gets rewired.";
 
 const OFFICE_FIRST_NAMES = [
   "Aisha",
@@ -131,15 +130,6 @@ export function HeroOfficeSection() {
       <div className="relative mx-auto flex w-full max-w-[1600px] flex-col-reverse items-stretch gap-10 px-6 pt-16 lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:pt-24">
         <div className="z-10 flex w-full flex-col items-start gap-6 lg:w-[42%] lg:pr-8">
           <HomeReveal>
-            <span className="label-xs inline-flex h-8 items-center gap-2 rounded-full border border-border bg-background/85 px-3 text-muted-foreground backdrop-blur-md">
-              <span
-                className="h-1.5 w-1.5 rounded-full bg-success-dark"
-                style={{ boxShadow: "0 0 0 3px rgba(65,139,92,0.18)" }}
-              />
-              <span>{EYEBROW_COPY}</span>
-            </span>
-          </HomeReveal>
-          <HomeReveal delay={80}>
             <h1
               className="m-0 text-balance text-[clamp(40px,4.8vw,76px)] font-semibold leading-[90%] tracking-[-0.04em] text-foreground"
               style={{ fontFamily: "var(--font-sans, inherit)" }}
@@ -149,18 +139,18 @@ export function HeroOfficeSection() {
               {HEADLINE_LINE_2}
             </h1>
           </HomeReveal>
-          <HomeReveal delay={160}>
+          <HomeReveal delay={80}>
             <p className="copy-lg max-w-[520px] text-pretty leading-[1.55] text-muted-foreground">
               {LEAD_COPY}
             </p>
           </HomeReveal>
-          <HomeReveal delay={240}>
+          <HomeReveal delay={160}>
             <div className="flex flex-row flex-wrap justify-start gap-3">
               <Link href="/home/contact">
                 <Button
                   variant="highlight"
                   size="md"
-                  label="Try for free"
+                  label="Request a demo"
                   onClick={withTracking(TRACKING_AREAS.HOME, "hero_book_demo")}
                 />
               </Link>
@@ -168,7 +158,7 @@ export function HeroOfficeSection() {
                 <Button
                   variant="ghost-secondary"
                   size="md"
-                  label="See how it works →"
+                  label="Try for free →"
                   onClick={withTracking(TRACKING_AREAS.HOME, "hero_start_free")}
                 />
               </Link>

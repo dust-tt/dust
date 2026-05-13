@@ -10,14 +10,15 @@ export function HomeCoordinatedSection() {
       <div className="mx-auto flex w-full max-w-[1180px] flex-col items-center gap-12 px-6 lg:flex-row-reverse lg:items-center lg:gap-20">
         <div className="flex w-full flex-col gap-6 lg:w-1/2">
           <HomeReveal>
-            <HomeEyebrow label="The platform for AI Operators" />
+            <HomeEyebrow label="Intelligent context layer" />
           </HomeReveal>
           <HomeReveal delay={80}>
             <H2 className="text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
-              Turn scattered{" "}
-              <span className="whitespace-nowrap">knowledge and tools</span>
+              Your company's knowledge,
               <br />
-              into <span className="text-blue-500">coordinated execution</span>
+              <span className="text-blue-500">
+                deeply understood and actioned on
+              </span>
             </H2>
           </HomeReveal>
           <HomeReveal delay={160}>
@@ -25,11 +26,9 @@ export function HomeCoordinatedSection() {
               size="sm"
               className="max-w-[480px] leading-[1.6] text-muted-foreground"
             >
-              Your team runs on dozens of tools and knowledge sources operating
-              in isolation. Dust connects across all of them, pulling the right
-              context from the right source and taking action in the right
-              place, at the right time. Not a chatbot sitting on top of your
-              stack; a coordination layer running through it.
+              Any tool can pull from Slack or your CRM. Dust goes further — a
+              semantic layer that synthesizes your company's knowledge so agents
+              don't just retrieve information, they understand it.
             </P>
           </HomeReveal>
         </div>

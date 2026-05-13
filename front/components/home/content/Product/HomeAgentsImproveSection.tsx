@@ -208,11 +208,11 @@ export function HomeAgentsImproveSection() {
       <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-16 px-6">
         <div className="flex flex-col items-center gap-6 text-center">
           <HomeReveal>
-            <HomeEyebrow label="How dust agents improve with you" />
+            <HomeEyebrow label="Self-improving AI" />
           </HomeReveal>
           <HomeReveal delay={80}>
             <H2 className="max-w-[820px] text-balance text-center font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
-              Agents that understand how you work and get smarter over time
+              Agents that get smarter the more you use them
             </H2>
           </HomeReveal>
           <HomeReveal delay={160}>
@@ -220,11 +220,9 @@ export function HomeAgentsImproveSection() {
               size="sm"
               className="max-w-[680px] text-center text-muted-foreground"
             >
-              Dust agents don&apos;t just search your data; your teams encode
-              how you work in agents. With Skills and reinforcement
-              capabilities, agents learn and evolve through repeated use. Best
-              practices consolidate into shared skills, improvements spread to
-              every agent automatically, and your fiftieth workflow is easier to
+              Dust agents don&apos;t just search your data — they learn how you
+              work. Best practices consolidate into shared skills, improvements
+              spread automatically, and your fiftieth workflow is easier to
               build than your fifth.
             </P>
           </HomeReveal>

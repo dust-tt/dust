@@ -83,17 +83,10 @@ export function HomeAIOperatorsCTASection() {
             They build it with judgment, deploy it, and run it for their whole
             team. We call them AI Operators.
           </p>
-          <p className="m-0 text-base leading-[1.6]">
-            At companies like Datadog, 1Password, Cursor, Vanta, Persona, Clay,
-            and Qonto, thousands of AI Operators have deployed over 300,000
-            agents. They&apos;ve rewired how their teams work, achieved 70%
-            weekly active usage, and expanded every single renewal.
-          </p>
           <p className="m-0 text-base leading-[1.6] text-white/85">
-            Work is being rewritten. The pen is in the hands of AI Operators and
-            their leaders.
+            Work is being rewritten. The pen is in the hands of AI Operators.
             <br />
-            We&apos;re building the platform they choose.
+            We&apos;re building the platform for them.
           </p>
         </HomeReveal>
         <HomeReveal
@@ -120,7 +113,7 @@ export function HomeAIOperatorsCTASection() {
             <span aria-hidden="true">→</span>
           </Link>
         </HomeReveal>
-        <div className="mt-12 grid w-full max-w-[760px] grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-white/10">
+        <div className="mt-12 hidden w-full max-w-[760px] grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-white/10">
           {STATS.map((stat, index) => {
             const theme = STAT_THEME[stat.accent];
             return (

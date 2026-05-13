@@ -67,9 +67,9 @@ export function IntroSection() {
         <HeroOfficeSection />
         <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] flex w-screen flex-col">
           <HomeTrustedSection />
-          <HomeCoordinatedSection />
-          <HomeQuotesSection quotes={QUOTES} />
           <HomeTeamSportSection />
+          <HomeQuotesSection quotes={QUOTES} />
+          <HomeCoordinatedSection />
           <HomeAgentsImproveSection />
           <HomeTeamUsageSection />
           <HomeNewsSection />

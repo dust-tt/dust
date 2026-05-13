@@ -17,11 +17,12 @@ export function HomeTeamSportSection() {
         <div className="flex flex-col items-stretch gap-12 lg:flex-row lg:items-center lg:gap-20">
           <div className="flex w-full flex-col gap-6 lg:w-1/2">
             <HomeReveal>
-              <HomeEyebrow label="The platform for AI Operators" />
+              <HomeEyebrow label="Multiplayer collaboration surface" />
             </HomeReveal>
             <HomeReveal delay={80}>
               <H2 className="text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
-                AI that rewires your company, not just your to-do list.
+                A new kind of workspace where people and agents collaborate as
+                equal co-contributors
               </H2>
             </HomeReveal>
             <HomeReveal delay={160}>
@@ -29,12 +30,9 @@ export function HomeTeamSportSection() {
                 size="sm"
                 className="max-w-[480px] leading-[1.6] text-muted-foreground"
               >
-                AI is a team sport. AI Operators build agents and skills that
-                immediately benefit their entire team. Sales builds something
-                useful, Support is already using it by Tuesday. With Projects,
-                people, agents, and context come together in shared hubs where
-                intelligence compounds. Not single-player productivity;
-                multiplayer AI for the enterprise.
+                Most teams are stuck in single-player AI mode. Dust changes that
+                — shared knowledge, agents, and conversations so AI works across
+                your whole team.
               </P>
             </HomeReveal>
             <HomeReveal as="figure" delay={240} className="m-0 mt-4 w-full">

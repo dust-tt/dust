@@ -1,5 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HomeQuoteMark } from "@app/components/home/content/Product/HomeQuoteMark";
+import { HomeReveal } from "@app/components/home/content/Product/HomeReveal";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
@@ -109,7 +110,7 @@ export function HomeQuotesSection({ quotes }: HomeQuotesSectionProps) {
     <section className="w-full bg-background py-24">
       <style dangerouslySetInnerHTML={{ __html: SLIDE_CSS }} />
       <div className="mx-auto w-full max-w-[1180px] px-6">
-        <div className="flex flex-col items-stretch gap-4 lg:flex-row">
+        <HomeReveal className="flex flex-col items-stretch gap-4 lg:flex-row">
           <div
             className={`flex flex-1 flex-col gap-8 rounded-2xl p-10 transition-colors duration-300 md:p-14 lg:gap-12 ${activeQuote.bg ?? "bg-blue-50"}`}
           >
@@ -235,7 +236,7 @@ export function HomeQuotesSection({ quotes }: HomeQuotesSectionProps) {
               />
             </div>
           </div>
-        </div>
+        </HomeReveal>
       </div>
     </section>
   );

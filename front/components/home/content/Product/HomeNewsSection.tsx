@@ -13,6 +13,13 @@ interface NewsItem {
 
 const NEWS: NewsItem[] = [
   {
+    source: "VIBESCALING PODCAST",
+    title:
+      "How We Built Profound’s GTM Motion To A $1B+ Valuation w/ Mark Ebert, SVP of Revenue @ Profound",
+    date: "May 12, 2026",
+    href: "https://youtu.be/iDF_On2kOxo",
+  },
+  {
     source: "HYPERTEXT",
     title: "What is ARR anyway?",
     date: "Apr 17, 2026",
