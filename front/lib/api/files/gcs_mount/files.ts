@@ -344,6 +344,33 @@ export async function createGCSMountFile(
   );
 }
 
+/**
+ * Copy a single file from one mount to another, preserving the relative file path on both sides.
+ */
+export async function copyMountFile(
+  auth: Authenticator,
+  {
+    source,
+    dest,
+  }: {
+    source: { scope: GCSMountPoint; relativeFilePath: string };
+    dest: { scope: GCSMountPoint; relativeFilePath: string };
+  }
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const sourceGcsPath = `${resolvePrefix(owner, source.scope)}${source.relativeFilePath}`;
+  const destGcsPath = `${resolvePrefix(owner, dest.scope)}${dest.relativeFilePath}`;
+
+  const bucket = getPrivateUploadBucket();
+
+  try {
+    await bucket.copyFile(sourceGcsPath, destGcsPath);
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 export async function copyConversationGCSMount(
   auth: Authenticator,
   {
