@@ -33,6 +33,12 @@ import {
 // Tier products and rates are derived from the prefix.
 const SEAT_TIER_COUNT = 6;
 
+const PROGRAMMATIC_USAGE_CREDITS_IN_USD_CENTS = 100;
+const PROGRAMMATIC_USAGE_CREDITS_IN_EUR = 0.87;
+
+const AWU_IN_USD_CENTS = 1;
+const AWU_IN_EUR = 0.0087;
+
 if (!process.env.METRONOME_API_KEY) {
   console.error("METRONOME_API_KEY env var required");
   process.exit(1);
@@ -510,7 +516,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 100,
+          fiat_per_custom_credit: PROGRAMMATIC_USAGE_CREDITS_IN_USD_CENTS,
         },
       ],
       rates: [
@@ -541,7 +547,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 100,
+          fiat_per_custom_credit: PROGRAMMATIC_USAGE_CREDITS_IN_USD_CENTS,
         },
       ],
       rates: [
@@ -572,7 +578,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 100,
+          fiat_per_custom_credit: PROGRAMMATIC_USAGE_CREDITS_IN_USD_CENTS,
         },
       ],
       rates: [
@@ -607,7 +613,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 100,
+          fiat_per_custom_credit: PROGRAMMATIC_USAGE_CREDITS_IN_USD_CENTS,
         },
       ],
       rates: [
@@ -647,7 +653,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 0.87,
+          fiat_per_custom_credit: PROGRAMMATIC_USAGE_CREDITS_IN_EUR,
         },
       ],
       rates: [
@@ -679,7 +685,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 0.87,
+          fiat_per_custom_credit: PROGRAMMATIC_USAGE_CREDITS_IN_EUR,
         },
       ],
       rates: [
@@ -711,7 +717,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 0.87,
+          fiat_per_custom_credit: PROGRAMMATIC_USAGE_CREDITS_IN_EUR,
         },
       ],
       rates: [
@@ -743,7 +749,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 0.87,
+          fiat_per_custom_credit: PROGRAMMATIC_USAGE_CREDITS_IN_EUR,
         },
       ],
       rates: [
@@ -784,7 +790,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeAwuId(),
-          fiat_per_custom_credit: 1,
+          fiat_per_custom_credit: AWU_IN_USD_CENTS,
         },
       ],
       rates: [
@@ -814,7 +820,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeAwuId(),
-          fiat_per_custom_credit: 100,
+          fiat_per_custom_credit: AWU_IN_EUR,
         },
       ],
       rates: [
@@ -844,7 +850,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeAwuId(),
-          fiat_per_custom_credit: 1,
+          fiat_per_custom_credit: AWU_IN_USD_CENTS,
         },
       ],
       rates: [
@@ -879,7 +885,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeAwuId(),
-          fiat_per_custom_credit: 0.01,
+          fiat_per_custom_credit: AWU_IN_EUR,
         },
       ],
       rates: [
