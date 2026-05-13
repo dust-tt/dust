@@ -135,13 +135,13 @@ export async function getLargeWhitelistedModelWithBatchMode(
     auth,
     "use_vertex_for_anthropic_models"
   );
-  const excludeProviders: Set<ModelProviderIdType> = useVertex
+  const excludedProviders: Set<ModelProviderIdType> = useVertex
     ? new Set(["anthropic"])
     : new Set();
 
   return _getLargeWhitelistedModel(
-    getWhitelistedProviders(auth).difference(excludeProviders),
-    { hasBatch: true }
+    getWhitelistedProviders(auth).difference(excludedProviders),
+    { forBatch: true }
   );
 }
 
@@ -176,7 +176,7 @@ const LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
 
 function _getLargeWhitelistedModel(
   whitelistedProviders: Set<ModelProviderIdType>,
-  { hasBatch }: { hasBatch?: boolean } = {}
+  { forBatch: hasBatch }: { forBatch?: boolean } = {}
 ): ModelConfigurationType | null {
   const compatibleModels = LARGE_MODEL_CONFIGS.filter(
     (m) =>
@@ -276,9 +276,6 @@ export function filterCustomAvailableAndWhitelistedModels(
     whitelistedProviders: Set<ModelProviderIdType>;
   }
 ): ModelConfigurationType[] {
-  const plan = auth.plan();
-  const whitelistedProviders = getWhitelistedProviders(auth);
-
   return models.filter(
     (m) =>
       isModelCustomAvailable(m, { featureFlags, plan, owner, region }) &&
