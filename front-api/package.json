@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "tsx ./server.ts",
-    "start": "NODE_ENV=production tsx ./server.ts"
+    "start": "NODE_ENV=production tsx ./server.ts",
+    "tsgo": "tsgo"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.10",
