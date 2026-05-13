@@ -65,6 +65,7 @@ interface InputBarProps {
   isAgentBuilder?: boolean;
   disableInput?: boolean;
   submitBlockMessage?: string | null;
+  placeholder?: string;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -83,6 +84,7 @@ export const InputBar = React.memo(function InputBar({
   isSubmitting = false,
   disableInput = false,
   submitBlockMessage = null,
+  placeholder,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
@@ -454,6 +456,7 @@ export const InputBar = React.memo(function InputBar({
             disableAgentSelector={isBlockedByAgentSwitch}
             disableInput={disableInput}
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
+            placeholder={placeholder}
             onShake={handleShake}
           />
         </div>
