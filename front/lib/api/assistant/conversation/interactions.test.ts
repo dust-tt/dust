@@ -16,7 +16,7 @@ describe("groupMessagesIntoInteractions", () => {
     expect(interactions[0].messages.map((m) => m.tag)).toEqual(["u1"]);
   });
 
-  it("keeps consecutive user and content_fragment messages in the same user turn", () => {
+  it("splits consecutive user and content_fragment messages in separate turns", () => {
     const interactions = groupMessagesIntoInteractions([
       msg("content_fragment", "cf1"),
       msg("user", "u1"),
@@ -26,11 +26,8 @@ describe("groupMessagesIntoInteractions", () => {
       msg("function", "f1"),
       msg("function", "f2"),
     ]);
-    expect(interactions).toHaveLength(1);
-    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
-      "cf1",
-      "u1",
-      "cf2",
+    expect(interactions).toHaveLength(4);
+    expect(interactions[3].messages.map((m) => m.tag)).toEqual([
       "u2",
       "a1",
       "f1",
