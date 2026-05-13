@@ -4,6 +4,7 @@ interface NavItem {
   isExternal?: boolean;
   label?: string;
   rows?: number;
+  tag?: string;
 }
 
 interface NavItemWithChildren extends NavItem {
@@ -441,6 +442,7 @@ export const menuConfig: DocsConfig = {
           title: "Jobs",
           href: "/jobs",
           isExternal: true,
+          tag: "We're hiring",
         },
         {
           title: "Brand resources",
