@@ -5,5 +5,5 @@
       "@app/*": ["../front/*"]
     }
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts", "../front/global.d.ts"]
 }
