@@ -44,8 +44,17 @@ makeScript(
       description: "Agent sId used to build prompt/tools/skills",
       required: true,
     },
+    allowedTokenCount: {
+      type: "number",
+      alias: "t",
+      description: "Allowed token count override",
+      required: false,
+    },
   },
-  async ({ workspaceId, conversationId, agentId }, logger) => {
+  async (
+    { workspaceId, conversationId, agentId, allowedTokenCount },
+    logger
+  ) => {
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
     const [conversationRes, agentConfiguration] = await Promise.all([
@@ -212,10 +221,9 @@ makeScript(
       }))
     );
 
-    const allowedTokenCount = Math.max(
-      0,
-      model.contextSize - model.generationTokensCount
-    );
+    allowedTokenCount = allowedTokenCount
+      ? allowedTokenCount
+      : Math.max(0, model.contextSize - model.generationTokensCount);
 
     const convoRes = await renderConversationForModel(auth, {
       conversation,
@@ -239,20 +247,18 @@ makeScript(
 
     const { modelConversation, tokensUsed, prunedContext } = convoRes.value;
 
-    process.stdout.write(
-      JSON.stringify(
-        {
-          model: model.modelId,
-          allowedTokenCount,
-          tokensUsed,
-          prunedContext,
-          prompt,
-          tools: JSON.parse(tools),
-          modelConversation,
-        },
-        null,
-        2
-      ) + "\n"
-    );
+    console.log("----------------------------------------------------------");
+    console.log(prompt);
+    console.log("----------------------------------------------------------");
+    console.log(JSON.stringify(JSON.parse(tools), null, 2));
+    console.log("----------------------------------------------------------");
+    console.log(JSON.stringify(modelConversation, null, 2));
+    console.log("----------------------------------------------------------");
+    console.log({
+      model: model.modelId,
+      allowedTokenCount,
+      tokensUsed,
+      prunedContext,
+    });
   }
 );
