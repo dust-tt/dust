@@ -4,8 +4,8 @@ import type {
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
 
 /**
- * Group messages into interactions (user turn + agent responses),
- * using turn type (user/content_fragment vs assistant/function) as the delimiter.
+ * Group messages into interactions (user turn + agent responses), using turn type
+ * (user/content_fragment vs assistant/function) as the delimiter.
  *
  * A compaction message acts as an interaction boundary: it closes the current interaction and
  * starts a new one. Pre-compaction messages should already have been filtered out by
@@ -56,16 +56,21 @@ export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
     // We close when:
     // - it's the last message, or
     // - the next message is a "user" turn while the current message is an "agent" turn,
-    // - the next message is a compaction boundary.
-    // This ensures that all consecutive user/content_fragment messages remain in the same
-    // user turn, followed by all agent/tool messages for that interaction.
+    // - the next message is a "user" turn while the current message is a "user" turn (otherwise
+    //   triggers can accumulate and exhaust context),
+    // - the next message is a compaction boundary (above).
+    // This ensures that all consecutive user/content_fragment messages remain in the same user
+    // turn, followed by all agent/tool messages for that interaction.
     const shouldClose = (() => {
       if (isLastMessage) {
         return true;
       }
       const currentTurn = turnTypeForMessage(message);
       const nextTurn = turnTypeForMessage(messages[i + 1]);
-      return currentTurn === "agent" && nextTurn === "user";
+      return (
+        (currentTurn === "agent" && nextTurn === "user") ||
+        (currentTurn === "user" && nextTurn === "user")
+      );
     })();
 
     if (shouldClose) {
