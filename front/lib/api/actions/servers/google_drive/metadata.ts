@@ -415,7 +415,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       "• insertInHeaderFooter — insert text into a header or footer\n" +
       "• raw — pass any valid Google Docs batchUpdate request directly (for operations not covered above)\n\n" +
       "When working with templates, prefer replaceText or replaceTableCell over raw operations. The server handles index ordering and batching automatically. " +
-      "When replacing content in cells that have existing bullet or numbered list formatting, the server automatically strips redundant markers from your content to prevent double-formatting.",
+      "When replacing content in cells that have existing bullet or numbered list formatting, the server automatically strips redundant markers and drops blank lines from your content to prevent double-formatting and empty list items.",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
       capabilities: capabilitiesSchema,

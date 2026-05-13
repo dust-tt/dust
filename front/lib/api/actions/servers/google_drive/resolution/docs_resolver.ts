@@ -42,9 +42,15 @@ export const DocumentOperationSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("deleteText"),
-    text: z
-      .string()
-      .describe("Exact text to delete (first occurrence in the doc)."),
+    text: z.string().describe("Exact text to delete."),
+    expectedOccurrences: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe(
+        "How many occurrences of `text` are expected in the document. The operation fails if the count differs — set this explicitly to delete multiple matches. Defaults to 1 (so a non-unique anchor errors instead of silently editing the first hit)."
+      ),
   }),
   z.object({
     type: z.literal("insertTable"),
@@ -54,9 +60,7 @@ export const DocumentOperationSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("formatText"),
-    text: z
-      .string()
-      .describe("Exact text whose first occurrence should be formatted."),
+    text: z.string().describe("Exact text to format."),
     bold: z.boolean().optional(),
     italic: z.boolean().optional(),
     underline: z.boolean().optional(),
@@ -65,6 +69,14 @@ export const DocumentOperationSchema = z.discriminatedUnion("type", [
       .positive()
       .optional()
       .describe("Font size in points."),
+    expectedOccurrences: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe(
+        "How many occurrences of `text` are expected in the document. The operation fails if the count differs — set this explicitly to format multiple matches. Defaults to 1 (so a non-unique anchor errors instead of silently styling the first hit)."
+      ),
   }),
   z.object({
     type: z.literal("replaceTableCell"),
@@ -220,6 +232,30 @@ function findRange(
   const startIndex = flat.charToDocIndex[pos];
   const endIndex = flat.charToDocIndex[pos + text.length - 1] + 1;
   return { startIndex, endIndex };
+}
+
+function findAllRanges(
+  flat: FlatIndex,
+  text: string
+): Array<{ startIndex: number; endIndex: number }> {
+  if (text.length === 0) {
+    return [];
+  }
+  const ranges: Array<{ startIndex: number; endIndex: number }> = [];
+  let from = 0;
+  while (from <= flat.flatText.length - text.length) {
+    const pos = flat.flatText.indexOf(text, from);
+    if (pos === -1) {
+      break;
+    }
+    const startIndex = flat.charToDocIndex[pos];
+    const endIndex = flat.charToDocIndex[pos + text.length - 1] + 1;
+    ranges.push({ startIndex, endIndex });
+    // Advance past this match to avoid overlapping matches (e.g. "aa" in "aaaa"
+    // returns 2 matches at positions 0 and 2, not 3).
+    from = pos + text.length;
+  }
+  return ranges;
 }
 
 function getBodyEndIndex(doc: docs_v1.Schema$Document): number {
@@ -380,12 +416,22 @@ function resolveTableCell(
  */
 function stripListMarkers(content: string): string {
   const out: string[] = [];
-  for (const line of content.split("\n")) {
+  // Normalize CRLF defensively — agent output is usually LF but Windows
+  // copy/paste survives through tool input occasionally.
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  for (const line of lines) {
     if (line.trim().length === 0) {
       continue;
     }
     const stripped = line
-      .replace(/^\s*[•‣◦⁃∙·●○■□▪▫\-–—]\s*/, "")
+      // Unicode bullet glyphs are unambiguous — trailing whitespace is
+      // optional. Each char is a dedicated bullet code point.
+      .replace(/^\s*[•‣◦⁃∙·●○■□▪▫]\s*/, "")
+      // ASCII hyphen / en dash / em dash require a following space to count
+      // as a list marker, so legitimate content like "-Wallow" or
+      // "—signed" isn't truncated.
+      .replace(/^\s*[\-–—]\s+/, "")
+      // Numbered prefix: alphanum + . or ) + whitespace.
       .replace(/^\s*[a-zA-Z0-9]+[.)]\s+/, "");
     out.push(stripped.length === 0 ? line : stripped);
   }
@@ -498,16 +544,28 @@ export function resolveDocOperations(
         break;
       }
       case "deleteText": {
-        const range = findRange(flat, op.text);
-        if (!range) {
+        // Defend against callers that bypass zod parsing (tests, direct
+        // invocations) — match the schema default of 1.
+        const expected = op.expectedOccurrences ?? 1;
+        const ranges = findAllRanges(flat, op.text);
+        if (ranges.length === 0) {
           return new Err(
             new Error(`deleteText: Text not found in document: "${op.text}"`)
           );
         }
-        indexedOps.push({
-          request: { deleteContentRange: { range } },
-          sortKey: range.startIndex,
-        });
+        if (ranges.length !== expected) {
+          return new Err(
+            new Error(
+              `deleteText: Expected ${expected} occurrence(s) of "${op.text}" but found ${ranges.length}. Set expectedOccurrences explicitly to delete multiple matches.`
+            )
+          );
+        }
+        for (const range of ranges) {
+          indexedOps.push({
+            request: { deleteContentRange: { range } },
+            sortKey: range.startIndex,
+          });
+        }
         break;
       }
       case "insertTable": {
@@ -529,12 +587,6 @@ export function resolveDocOperations(
         break;
       }
       case "formatText": {
-        const range = findRange(flat, op.text);
-        if (!range) {
-          return new Err(
-            new Error(`formatText: Text not found in document: "${op.text}"`)
-          );
-        }
         const textStyle: docs_v1.Schema$TextStyle = {};
         const fields: string[] = [];
         if (op.bold !== undefined) {
@@ -560,16 +612,30 @@ export function resolveDocOperations(
             )
           );
         }
-        indexedOps.push({
-          request: {
-            updateTextStyle: {
-              range,
-              textStyle,
-              fields: fields.join(","),
+        // Defend against callers that bypass zod parsing — match schema default.
+        const expected = op.expectedOccurrences ?? 1;
+        const ranges = findAllRanges(flat, op.text);
+        if (ranges.length === 0) {
+          return new Err(
+            new Error(`formatText: Text not found in document: "${op.text}"`)
+          );
+        }
+        if (ranges.length !== expected) {
+          return new Err(
+            new Error(
+              `formatText: Expected ${expected} occurrence(s) of "${op.text}" but found ${ranges.length}. Set expectedOccurrences explicitly to format multiple matches.`
+            )
+          );
+        }
+        const fieldMask = fields.join(",");
+        for (const range of ranges) {
+          indexedOps.push({
+            request: {
+              updateTextStyle: { range, textStyle, fields: fieldMask },
             },
-          },
-          sortKey: range.startIndex,
-        });
+            sortKey: range.startIndex,
+          });
+        }
         break;
       }
       case "replaceTableCell": {
@@ -598,12 +664,17 @@ export function resolveDocOperations(
         // inserted paragraph. Strip the model's leading markers so we don't
         // end up with double-formatted lines like "1. 1. ..." or "● • ...".
         const text = hasBulletStyle ? stripListMarkers(op.content) : op.content;
-        indexedOps.push({
-          request: {
-            insertText: { text, location: { index: insertIndex } },
-          },
-          sortKey: insertIndex,
-        });
+        // Skip insertText entirely if stripping reduced the content to
+        // nothing — Google Docs rejects empty insertText. The preceding
+        // deleteContentRange (if any) already cleared the cell.
+        if (text.length > 0) {
+          indexedOps.push({
+            request: {
+              insertText: { text, location: { index: insertIndex } },
+            },
+            sortKey: insertIndex,
+          });
+        }
         break;
       }
       case "insertInTableCell": {

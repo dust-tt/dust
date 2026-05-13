@@ -55,16 +55,43 @@ describe("resolveDocOperations", () => {
       }
     });
 
-    it("should use the first match when multiple occurrences exist", () => {
+    it("should error when multiple occurrences exist and expectedOccurrences defaults to 1", () => {
       const doc = makeSimpleDoc("foo bar foo baz\n");
       const res = resolveDocOperations(doc, [
         { type: "deleteText", text: "foo" },
       ]);
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.message).toContain("found 2");
+      }
+    });
+
+    it("should delete every match when expectedOccurrences equals the count", () => {
+      const doc = makeSimpleDoc("foo bar foo baz\n");
+      const res = resolveDocOperations(doc, [
+        { type: "deleteText", text: "foo", expectedOccurrences: 2 },
+      ]);
       expect(res.isOk()).toBe(true);
       if (res.isOk()) {
-        expect(res.value).toEqual([
-          { deleteContentRange: { range: { startIndex: 1, endIndex: 4 } } },
-        ]);
+        // Sorted highest-index-first: second "foo" at index 9, first at 1.
+        expect(res.value).toHaveLength(2);
+        expect(
+          res.value[0].deleteContentRange?.range?.startIndex
+        ).toBeGreaterThan(
+          res.value[1].deleteContentRange?.range?.startIndex ?? -1
+        );
+      }
+    });
+
+    it("should error when expectedOccurrences does not match the actual count", () => {
+      const doc = makeSimpleDoc("foo bar foo baz\n");
+      const res = resolveDocOperations(doc, [
+        { type: "deleteText", text: "foo", expectedOccurrences: 5 },
+      ]);
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.message).toContain("Expected 5");
+        expect(res.error.message).toContain("found 2");
       }
     });
   });
@@ -186,6 +213,36 @@ describe("resolveDocOperations", () => {
         { type: "formatText", text: "world" },
       ]);
       expect(res.isErr()).toBe(true);
+    });
+
+    it("should error when text appears multiple times and expectedOccurrences defaults to 1", () => {
+      const doc = makeSimpleDoc("foo bar foo baz\n");
+      const res = resolveDocOperations(doc, [
+        { type: "formatText", text: "foo", bold: true },
+      ]);
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.message).toContain("found 2");
+      }
+    });
+
+    it("should emit one updateTextStyle per match when expectedOccurrences equals the count", () => {
+      const doc = makeSimpleDoc("foo bar foo baz\n");
+      const res = resolveDocOperations(doc, [
+        {
+          type: "formatText",
+          text: "foo",
+          bold: true,
+          expectedOccurrences: 2,
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        expect(res.value).toHaveLength(2);
+        for (const req of res.value) {
+          expect(req.updateTextStyle?.textStyle?.bold).toBe(true);
+        }
+      }
     });
   });
 
@@ -471,6 +528,47 @@ describe("resolveDocOperations", () => {
       if (res.isOk()) {
         const insertReq = res.value.find((r) => r.insertText);
         expect(insertReq?.insertText?.text).toBe("• appended");
+      }
+    });
+
+    it("should skip insertText entirely if stripping reduces content to nothing", () => {
+      const doc = makeDocWithTable([[{ text: "old", bullet: true }]]);
+      const res = resolveDocOperations(doc, [
+        {
+          type: "replaceTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 0,
+          content: "\n\n   \n",
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        const insertReq = res.value.find((r) => r.insertText);
+        // Empty insertText would be rejected by Google Docs — the delete
+        // alone clears the cell.
+        expect(insertReq).toBeUndefined();
+        expect(res.value.find((r) => r.deleteContentRange)).toBeDefined();
+      }
+    });
+
+    it("should not strip a leading hyphen unless it is followed by whitespace", () => {
+      const doc = makeDocWithTable([[{ text: "old", bullet: true }]]);
+      const res = resolveDocOperations(doc, [
+        {
+          type: "replaceTableCell",
+          tableIndex: 0,
+          rowIndex: 0,
+          columnIndex: 0,
+          content: "-Wallow\n- real bullet",
+        },
+      ]);
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        const insertReq = res.value.find((r) => r.insertText);
+        // First line: hyphen-with-no-space is preserved.
+        // Second line: hyphen-with-space is treated as a bullet marker and stripped.
+        expect(insertReq?.insertText?.text).toBe("-Wallow\nreal bullet");
       }
     });
 
