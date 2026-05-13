@@ -555,14 +555,6 @@ const config = {
   getMetronomeWebhookSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("METRONOME_WEBHOOK_SECRET");
   },
-  // Marketing homepage news/press list. Sheet is published as a public CSV
-  // (Google Sheets → File → Share → Publish to web → CSV). Optional: when
-  // unset, the homepage falls back to a hardcoded list.
-  getHomepageNewsSheetCsvUrl: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "HOMEPAGE_NEWS_SHEET_CSV_URL"
-    );
-  },
 };
 
 export default config;

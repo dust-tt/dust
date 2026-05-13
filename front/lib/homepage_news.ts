@@ -1,15 +1,12 @@
-import config from "@app/lib/api/config";
+import { getAllHomepageNews } from "@app/lib/contentful/client";
+import type { NewsItem } from "@app/lib/contentful/types";
 
-export interface NewsItem {
-  source: string;
-  title: string;
-  date: string;
-  href: string;
-}
+export type { NewsItem };
 
-// Last-known-good list — used when the Google Sheet fetch fails (network
-// blip, missing env var, malformed CSV, etc.) so the homepage never breaks.
-// Keep this in sync with the live sheet when shipping major copy changes.
+// Last-known-good list — used when the Contentful fetch fails (network
+// blip, credentials rotation, etc.) so the homepage never breaks. Keep
+// roughly in sync with the live Contentful entries when shipping major
+// homepage updates so the fallback doesn't surface stale press links.
 export const FALLBACK_NEWS: NewsItem[] = [
   {
     source: "VIBESCALING PODCAST",
@@ -45,141 +42,16 @@ export const FALLBACK_NEWS: NewsItem[] = [
   },
 ];
 
-// Minimal RFC-4180-ish CSV parser. Handles quoted fields with embedded commas
-// and escaped double quotes ("" -> "). Doesn't handle multi-line cells —
-// not needed for the news sheet shape (one row = one news item).
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  // Strip BOM if Google added one.
-  const cleaned = text.replace(/^﻿/, "");
-  for (const rawLine of cleaned.split(/\r?\n/)) {
-    if (!rawLine.trim()) {
-      continue;
-    }
-    const row: string[] = [];
-    let cur = "";
-    let inQuotes = false;
-    for (let i = 0; i < rawLine.length; i++) {
-      const ch = rawLine[i];
-      if (inQuotes) {
-        if (ch === '"' && rawLine[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else if (ch === '"') {
-          inQuotes = false;
-        } else {
-          cur += ch;
-        }
-      } else {
-        if (ch === '"') {
-          inQuotes = true;
-        } else if (ch === ",") {
-          row.push(cur);
-          cur = "";
-        } else {
-          cur += ch;
-        }
-      }
-    }
-    row.push(cur);
-    rows.push(row);
-  }
-  return rows;
-}
-
-// Truthy values in the `published` column. Anything else hides the row.
-const TRUTHY_PUBLISHED = new Set(["TRUE", "Y", "YES", "1"]);
-
-function rowsToNews(rows: string[][]): NewsItem[] {
-  if (rows.length < 2) {
-    return [];
-  }
-  const [header, ...dataRows] = rows;
-  const indexOf = (key: string) =>
-    header.findIndex((h) => h.trim().toLowerCase() === key);
-  const sourceIdx = indexOf("source");
-  const titleIdx = indexOf("title");
-  const dateIdx = indexOf("date");
-  const hrefIdx = indexOf("href");
-  const publishedIdx = indexOf("published");
-
-  if (sourceIdx < 0 || titleIdx < 0 || dateIdx < 0 || hrefIdx < 0) {
-    return [];
-  }
-
-  const items: NewsItem[] = [];
-  for (const row of dataRows) {
-    const source = (row[sourceIdx] ?? "").trim();
-    const title = (row[titleIdx] ?? "").trim();
-    const date = (row[dateIdx] ?? "").trim();
-    const href = (row[hrefIdx] ?? "").trim();
-    if (!source || !title || !href) {
-      continue;
-    }
-    if (publishedIdx >= 0) {
-      const flag = (row[publishedIdx] ?? "").trim().toUpperCase();
-      if (!TRUTHY_PUBLISHED.has(flag)) {
-        continue;
-      }
-    }
-    items.push({ source, title, date, href });
-  }
-  return items;
-}
-
-function sortNewsByDateDesc(items: NewsItem[]): NewsItem[] {
-  return [...items].sort((a, b) => {
-    const ta = Date.parse(a.date);
-    const tb = Date.parse(b.date);
-    if (Number.isNaN(ta) && Number.isNaN(tb)) {
-      return 0;
-    }
-    if (Number.isNaN(ta)) {
-      return 1;
-    }
-    if (Number.isNaN(tb)) {
-      return -1;
-    }
-    return tb - ta;
-  });
-}
-
-// Per-process cache so the `/` route's `getServerSideProps` doesn't hit
-// Google Sheets on every request. The `/home` route uses `getStaticProps +
-// revalidate` and is already cached at the Next.js layer; this helps the
-// SSR path. Each serverless instance caches independently — fine for
-// homepage-scale traffic.
-const CACHE_TTL_MS = 5 * 60 * 1000;
-let cache: { items: NewsItem[]; expiresAt: number } | null = null;
-
-// Fetches the marketing-managed news list from the published Google Sheet
-// CSV. Returns the fallback array on any failure so the homepage build
-// never breaks because of a flaky external dependency. If the fetch fails
-// but stale cached items exist, returns the stale items instead of the
-// fallback so recent edits aren't lost during transient Sheets outages.
+// Fetches the marketing-managed news list from Contentful. Designed to be
+// called from `getStaticProps` / `getServerSideProps`. Falls back to the
+// hardcoded `FALLBACK_NEWS` array on any failure so the page never breaks
+// because of a transient external dependency. Contentful's CDA already
+// serves from a CDN, so we don't add a layer of in-memory caching here —
+// each request hits Contentful's edge cache directly.
 export async function fetchHomepageNews(): Promise<NewsItem[]> {
-  if (cache && Date.now() < cache.expiresAt) {
-    return cache.items;
-  }
-  const url = config.getHomepageNewsSheetCsvUrl();
-  if (!url) {
+  const result = await getAllHomepageNews();
+  if (result.isErr() || result.value.length === 0) {
     return FALLBACK_NEWS;
   }
-  try {
-    const res = await fetch(url, {
-      // Don't ride on Next.js' aggressive default cache — own the cadence
-      // via the in-memory cache above.
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      return cache?.items ?? FALLBACK_NEWS;
-    }
-    const text = await res.text();
-    const items = sortNewsByDateDesc(rowsToNews(parseCsv(text)));
-    const final = items.length > 0 ? items : FALLBACK_NEWS;
-    cache = { items: final, expiresAt: Date.now() + CACHE_TTL_MS };
-    return final;
-  } catch {
-    return cache?.items ?? FALLBACK_NEWS;
-  }
+  return result.value;
 }
