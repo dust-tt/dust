@@ -107,7 +107,7 @@ const JsonSchemaSchema = z.custom<JSONSchema7>(
   { message: "Invalid JSON schema" }
 );
 
-const MCPServerActionConfigurationSchema = z.object({
+export const MCPServerActionConfigurationSchema = z.object({
   type: z.literal("mcp_server_configuration"),
   mcpServerViewId: z.string(),
   name: z.string(),

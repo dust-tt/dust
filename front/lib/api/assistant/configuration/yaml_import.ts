@@ -11,6 +11,7 @@ import {
   getAgentConfigurationForExport,
 } from "@app/lib/api/assistant/configuration/yaml_export";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerActionConfigurationSchema } from "@app/types/api/internal/agent_configuration";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -90,15 +91,8 @@ async function importAgentConfiguration(
 
     // Strip fields that exist on ServerSideMCPServerConfigurationType but not
     // on the request body schema (MCPServerActionConfigurationSchema).
-    mcpConfigurations = serverSideActions.map(
-      ({
-        id: _id,
-        sId: _sId,
-        icon: _icon,
-        meta: _meta,
-        internalMCPServerId: _internalMCPServerId,
-        ...rest
-      }) => rest
+    mcpConfigurations = serverSideActions.map((action) =>
+      MCPServerActionConfigurationSchema.parse(action)
     );
   } else {
     const mcpConfigurationsResult =
