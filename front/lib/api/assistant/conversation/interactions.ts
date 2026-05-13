@@ -20,27 +20,12 @@ export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
   const interactions: Interaction<T>[] = [];
   let currentInteraction: T[] = [];
 
-  // Determine the high-level turn type for a message.
-  // - "user": user messages and content fragments
-  // - "agent": assistant messages and tool/function results
-  // - "compaction": compaction summary boundary
-  const turnTypeForMessage = (message: T): "user" | "agent" | "compaction" => {
-    if (message.role === "compaction") {
-      return "compaction";
-    }
-    if (message.role === "user" || message.role === "content_fragment") {
-      return "user";
-    }
-    // Includes "assistant" and "function" roles.
-    return "agent";
-  };
-
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
 
     // A compaction message closes the current interaction (if any) and starts a new one. The
     // compaction summary is the first message of the next interaction.
-    if (turnTypeForMessage(message) === "compaction") {
+    if (message.role === "compaction") {
       if (currentInteraction.length > 0) {
         interactions.push({ messages: currentInteraction });
       }
@@ -55,23 +40,28 @@ export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
     // Decide if we should close the current interaction.
     // We close when:
     // - it's the last message, or
-    // - the next message is a "user" turn while the current message is an "agent" turn,
-    // - the next message is a "user" turn while the current message is a "user" turn (otherwise
-    //   triggers can accumulate and exhaust context),
+    // - the next message is a user message or content fragment while the current message is an
+    //   agent message,
+    // - the next message is a user message or content fragment while the current message is a user
+    //   message (otherwise triggers can accumulate and exhaust context),
     // - the next message is a compaction boundary (above).
-    // This ensures that all consecutive user/content_fragment messages remain in the same user
-    // turn, followed by all agent/tool messages for that interaction.
+    // This keeps content fragments attached to the following user message while splitting
+    // successive user turns.
     const shouldClose = (() => {
       if (isLastMessage) {
         return true;
       }
-      const currentTurn = turnTypeForMessage(message);
-      const nextTurn = turnTypeForMessage(messages[i + 1]);
+      const currentRole = message.role;
+      const nextRole = messages[i + 1].role;
+
+      const currentIsAgent =
+        currentRole === "agent" ||
+        currentRole === "assistant" ||
+        currentRole === "function";
+      const nextIsUser = nextRole === "user" || nextRole === "content_fragment";
+
       return (
-        (currentTurn === "agent" && nextTurn === "user") ||
-        // TODO(spolu): we may want to remove it after we support pruning any type of message inside
-        // the last interaction.
-        (currentTurn === "user" && nextTurn === "user")
+        (currentIsAgent && nextIsUser) || (currentRole === "user" && nextIsUser)
       );
     })();
 
