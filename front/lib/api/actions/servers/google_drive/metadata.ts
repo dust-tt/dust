@@ -391,7 +391,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_document: {
     description:
-      "Update a Google Docs document by applying one or more operations (text find/replace, position-based insert/delete/format, table cell and row/column edits, header/footer edits). The server fetches the current document state and resolves text anchors and table coordinates automatically, so you do not need to call get_document_structure first. Use a `raw` operation as an escape hatch for any Google Docs batchUpdate request the named ops don't cover. When replacing content in cells that already have bullet or numbered list formatting, the server automatically strips redundant markers and drops blank lines to prevent double-formatting and empty list items.",
+      "Update a Google Docs document by applying one or more operations: text find/replace, position-based insert/delete/format, table cell and row/column edits, and header/footer edits. No prior call to get_document_structure is needed. Pass a `raw` operation for any Google Docs batchUpdate request the named ops don't cover.",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
       capabilities: capabilitiesSchema,
@@ -442,7 +442,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_spreadsheet: {
     description:
-      "Update a Google Sheets spreadsheet by applying one or more operations (write cells, format ranges, find/replace, merge, sort, insert/delete rows and columns, add/delete sheets). Operations address cells by sheet name + A1 range and the server resolves sheet names to sheetIds automatically, so you do not need to call get_spreadsheet first. Use a `raw` operation as an escape hatch for any Google Sheets batchUpdate request the named ops don't cover (e.g. data validation, conditional formatting, charts). For appending rows to the end of existing data, use append_to_spreadsheet instead — it's simpler and skips sheet-name resolution.",
+      "Update a Google Sheets spreadsheet by applying one or more operations: write cells, format ranges, find/replace, merge, sort, insert/delete rows and columns, add/delete sheets. Operations address cells by sheet name + A1 range. No prior call to get_spreadsheet is needed. Pass a `raw` operation for any Google Sheets batchUpdate request the named ops don't cover (e.g. data validation, conditional formatting, charts). For appending rows to existing data, append_to_spreadsheet is simpler.",
     schema: {
       spreadsheetId: z
         .string()
@@ -460,7 +460,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_presentation: {
     description:
-      "Update a Google Slides presentation by applying one or more operations (find/replace, shape text replacement and insertion, table cell edits, speaker notes, add/delete slides and elements). Operations address slides by 1-indexed number and shapes by text content, index, or placeholder/shape type; the server resolves these to objectIds automatically, so you do not need to call get_presentation_structure first. Use a `raw` operation as an escape hatch for any Google Slides batchUpdate request the named ops don't cover. For populating templates, replaceAllText with `{{placeholder}}` patterns is the simplest approach.",
+      "Update a Google Slides presentation by applying one or more operations: find/replace, shape text replacement and insertion, table cell edits, speaker notes, add/delete slides and elements. Operations address slides by 1-indexed number and shapes by text content, index, or placeholder type. No prior call to get_presentation_structure is needed. Pass a `raw` operation for any Google Slides batchUpdate request the named ops don't cover. For populating templates, replaceAllText with `{{placeholder}}` patterns is simplest.",
     schema: {
       presentationId: z
         .string()
