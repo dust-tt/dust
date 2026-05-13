@@ -13,9 +13,6 @@ export const apiConfig = {
   getDustFrontAPIUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_FRONT_API");
   },
-  getDustClientFacingUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL");
-  },
   getDustAppUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_APP_URL") ??
