@@ -33,7 +33,6 @@ UserProjectPreferencesModel.init(
     },
     notificationPreference: {
       type: DataTypes.STRING,
-      field: "preference",
       allowNull: true,
       validate: {
         isIn: [NOTIFICATION_CONDITION_OPTIONS],
@@ -42,21 +41,19 @@ UserProjectPreferencesModel.init(
     isStarred: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      defaultValue: null,
     },
   },
   {
-    modelName: "user_project_notification_preferences",
+    modelName: "user_project_preferences",
     sequelize: frontSequelize,
     indexes: [
       {
-        name: "user_project_notif_pref_workspace_user_space_unique",
+        name: "user_project_preferences_workspace_user_space_unique",
         fields: ["workspaceId", "userId", "spaceId"],
         unique: true,
         concurrently: true,
       },
-      { fields: ["userId"], concurrently: true },
-      { fields: ["spaceId"], concurrently: true },
+      { fields: ["workspaceId", "spaceId"], concurrently: true },
     ],
   }
 );
