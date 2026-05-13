@@ -125,15 +125,34 @@ export async function syncSeatCount({
       continue;
     }
 
-    // TODO Cleanup this - only required during migration, as all memberships are currently set to "free", but should be "workspace".
-    const seatType = m.seatType === "free" ? "workspace" : m.seatType;
-
-    const bucket = sIdsBySeatType.get(seatType);
+    const bucket = sIdsBySeatType.get(m.seatType);
     if (bucket) {
       bucket.push(userId);
     } else {
-      sIdsBySeatType.set(seatType, [userId]);
+      sIdsBySeatType.set(m.seatType, [userId]);
     }
+  }
+
+  // Surface memberships whose seat type has no matching subscription on the
+  // contract — these will not be billed. "free" is intentionally excluded
+  // (free seats never contribute to any quantity, per the function contract).
+  const coveredSeatTypes = new Set(
+    seatSubscriptions.map(({ seatType }) => seatType)
+  );
+  for (const [seatType, sIds] of sIdsBySeatType) {
+    if (seatType === "free" || coveredSeatTypes.has(seatType)) {
+      continue;
+    }
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        contractId,
+        seatType,
+        memberCount: sIds.length,
+        userIds: sIds,
+      },
+      "[Metronome] Memberships with seat type not covered by any contract subscription — they will not be billed"
+    );
   }
 
   for (const { sub, seatType } of seatSubscriptions) {

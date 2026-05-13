@@ -23,8 +23,9 @@ import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   MembershipOriginType,
   MembershipRoleType,
+  MembershipSeatType,
 } from "@app/types/memberships";
-import { Ok, type Result } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import type {
   ActiveRoleType,
   LightWorkspaceType,
@@ -293,4 +294,62 @@ export async function updateMembershipRoleAndTrack({
   }
 
   return updateRes;
+}
+
+/**
+ * Update a membership's seat type and re-sync Metronome seat counts.
+ * Seat-based Metronome subscriptions (Pro / Max) bucket users by seat type,
+ * so any change must trigger a seat-count sync.
+ */
+export async function updateMembershipSeatAndTrack({
+  user,
+  workspace,
+  newSeatType,
+  author,
+}: {
+  user: UserResource;
+  workspace: LightWorkspaceType;
+  newSeatType: MembershipSeatType;
+  author: UserType | "no-author";
+}): Promise<
+  Result<
+    {
+      previousSeatType: MembershipSeatType;
+      newSeatType: MembershipSeatType;
+    },
+    { type: "not_found" | "membership_revoked" }
+  >
+> {
+  const membership =
+    await MembershipResource.getLatestMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership) {
+    return new Err({ type: "not_found" });
+  }
+  if (membership.isRevoked()) {
+    return new Err({ type: "membership_revoked" });
+  }
+
+  const updateRes = await membership.updateMembershipSeat({
+    user,
+    workspace,
+    newSeatType,
+    author,
+  });
+
+  const syncResult = await syncSeatCountForWorkspace(workspace);
+  if (syncResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        error: syncResult.error,
+      },
+      "[Metronome] Failed to sync seats after seat type update"
+    );
+  }
+
+  return new Ok(updateRes);
 }
