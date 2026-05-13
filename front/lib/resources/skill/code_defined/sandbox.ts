@@ -12,6 +12,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Ok } from "@app/types/shared/result";
 
@@ -91,6 +92,27 @@ For tabular files (CSV, TSV, Excel) under \`/files/conversation\`, code is
 the preferred way to interact with them: analyze them with pandas, DuckDB,
 or the standard csv module. For very large files prefer chunked reads
 (\`pandas.read_csv(..., chunksize=...)\`) or DuckDB to keep memory bounded.`;
+}
+
+function buildProjectFilesSection(): string {
+  return `#### Sandbox Project File System
+
+This conversation belongs to a project, so the project's file system is also
+mounted read-write inside the sandbox at \`/files/project\`. These files are
+shared across every conversation in the same project and **persist beyond
+this conversation** — anything you write or delete here is visible to other
+conversations in the same project.
+
+Use this surface for files that belong to the project as a whole (specs,
+knowledge bases, shared scripts, recurring data sets), and use
+\`/files/conversation\` for ephemeral or per-conversation artifacts. When
+both are relevant, prefer reading from \`/files/project\` and writing
+deliverables to \`/files/conversation\` unless the user has asked you to
+update the project's files specifically.
+
+The same files are also exposed by the \`files\` MCP server under scoped
+paths like \`project/<rel>\`. Sandbox writes and MCP writes are two views on
+the same underlying storage.`;
 }
 
 function formatWorkspaceAllowlist(domains: string[]): string {
@@ -205,14 +227,19 @@ attempt to reconstruct, decode, or otherwise recover the value.`;
 async function buildSandboxInstructions(
   auth: Authenticator,
   providerId: ModelProviderIdType | undefined,
-  hasDsbxTools: boolean
+  { hasDsbxTools, isProject }: { hasDsbxTools: boolean; isProject: boolean }
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
   const environmentVariablesSection = buildEnvironmentVariablesSection();
   const conversationFilesSection = buildConversationFilesSection();
+  const projectFilesSection = isProject ? buildProjectFilesSection() : null;
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
 
   let toolsResult;
+
+  const filesSections = [conversationFilesSection, projectFilesSection]
+    .filter((s): s is string => s !== null)
+    .join("\n\n");
 
   if (providerId) {
     toolsResult = getToolsForProvider(auth, providerId, {
@@ -221,7 +248,7 @@ async function buildSandboxInstructions(
   } else {
     const imageResult = getSandboxImage(auth);
     if (imageResult.isErr()) {
-      return `${sandboxInstructions}\n\n${conversationFilesSection}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
+      return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
     }
     toolsResult = new Ok(
       filterDsbxToolEntries(imageResult.value.tools, {
@@ -231,7 +258,7 @@ async function buildSandboxInstructions(
   }
 
   if (toolsResult.isErr()) {
-    return `${sandboxInstructions}\n\n${conversationFilesSection}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
+    return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
   }
 
   const manifest = createToolManifest(toolsResult.value);
@@ -239,7 +266,7 @@ async function buildSandboxInstructions(
 
   return `${sandboxInstructions}
 
-${conversationFilesSection}
+${filesSections}
 
 ${networkAccessSection}
 
@@ -275,8 +302,14 @@ export const sandboxSkill = {
     const providerId = agentLoopData?.agentConfiguration?.model.providerId;
     const flags = await getFeatureFlags(auth);
     const hasDsbxTools = flags.includes("sandbox_dsbx_tools");
+    const isProject = agentLoopData?.conversation
+      ? isProjectConversation(agentLoopData.conversation)
+      : false;
 
-    return buildSandboxInstructions(auth, providerId, hasDsbxTools);
+    return buildSandboxInstructions(auth, providerId, {
+      hasDsbxTools,
+      isProject,
+    });
   },
   mcpServers: [{ name: "sandbox" }],
   version: 1,

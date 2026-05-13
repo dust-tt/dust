@@ -1,25 +1,82 @@
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import {
+  getConversationFilesBasePath,
+  getProjectFilesBasePath,
+} from "@app/lib/api/files/mount_path";
 import { mintDownscopedGcsToken } from "@app/lib/api/sandbox/gcs/token";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
+import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const MOUNT_TIMEOUT_MS = 30_000;
-const MOUNT_POINT = "/files/conversation";
+
+const MOUNT_POINT_CONVERSATION = "/files/conversation";
+const MOUNT_POINT_PROJECT = "/files/project";
+
+interface MountTarget {
+  label: "conversation" | "project";
+  mountPoint: string;
+  prefix: string;
+}
 
 /**
- * Mount GCS conversation files into a running sandbox via gcsfuse.
+ * Compute the set of GCS prefixes / sandbox mount points for the given conversation.
+ * Always includes the conversation mount. Add the project mount when the conversation belongs to a
+ * project space.
+ */
+function buildMountTargets(
+  auth: Authenticator,
+  conversation: ConversationType
+): MountTarget[] {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+
+  const targets: MountTarget[] = [
+    {
+      label: "conversation",
+      // Strip trailing slash so the prefix can be used directly in the CAB conditions and
+      // gcsfuse --only-dir.
+      prefix: getConversationFilesBasePath({
+        workspaceId,
+        conversationId: conversation.sId,
+      }).replace(/\/$/, ""),
+      mountPoint: MOUNT_POINT_CONVERSATION,
+    },
+  ];
+
+  if (isProjectConversation(conversation)) {
+    targets.push({
+      label: "project",
+      prefix: getProjectFilesBasePath({
+        workspaceId,
+        projectId: conversation.spaceId,
+      }).replace(/\/$/, ""),
+      mountPoint: MOUNT_POINT_PROJECT,
+    });
+  }
+
+  return targets;
+}
+
+/**
+ * Mount GCS files into a running sandbox via gcsfuse.
+ *
+ * Always mounts the conversation prefix at /files/conversation. When the conversation belongs to
+ * a project, also mounts the project prefix at /files/project. Both gcsfuse processes share the
+ * same token server on :9876, fed by a single multi-prefix downscoped token.
  *
  * The mount sequence:
- *  1. Mint a downscoped token scoped to the conversation prefix.
+ *  1. Mint a downscoped token covering every prefix.
  *  2. Write the token JSON to /tmp/token.json in the sandbox.
  *  3. Start the token HTTP server (netcat loop on :9876) and wait for it.
- *  4. Run gcsfuse with --token-url pointing to the local token server.
+ *  4. Run one gcsfuse process per mount target.
+ *
+ * Transactional: any mount failure returns Err. We do not partially mount.
  */
 export async function mountConversationFiles(
   auth: Authenticator,
@@ -32,23 +89,23 @@ export async function mountConversationFiles(
   }
 
   const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
-
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const prefix = getConversationFilesBasePath({
-    workspaceId,
-    conversationId: conversation.sId,
-  }).replace(/\/$/, ""); // Strip trailing slash for the token condition.
+
+  const targets = buildMountTargets(auth, conversation);
 
   const childLogger = logger.child({
     sandboxId: sandbox.sId,
     workspaceId,
     conversationId: conversation.sId,
     bucket,
-    prefix,
+    prefixes: targets.map((t) => t.prefix),
   });
 
-  // 1. Mint downscoped token.
-  const tokenResult = await mintDownscopedGcsToken({ bucket, prefix });
+  // 1. Mint downscoped token covering every prefix.
+  const tokenResult = await mintDownscopedGcsToken({
+    bucket,
+    prefixes: targets.map((t) => t.prefix),
+  });
   if (tokenResult.isErr()) {
     childLogger.error(
       { err: tokenResult.error },
@@ -103,27 +160,51 @@ export async function mountConversationFiles(
     return new Err(new Error(msg));
   }
 
-  // 4. Mount via gcsfuse (runs as root for FUSE permissions).
-  const mountCmd = buildMountCommand({ bucket, prefix });
-  const mountResult = await sandbox.exec(auth, mountCmd, {
-    timeoutMs: MOUNT_TIMEOUT_MS,
-    user: "root",
-  });
-  if (mountResult.isErr()) {
-    childLogger.error(
-      { err: mountResult.error },
-      "GCS mount: gcsfuse mount failed"
-    );
-    return mountResult;
+  // 4. Mount each target via gcsfuse (runs as root for FUSE permissions).
+  const mountResults = await concurrentExecutor(
+    targets,
+    async (target) => {
+      const mountCmd = buildMountCommand({ bucket, ...target });
+      const mountResult = await sandbox.exec(auth, mountCmd, {
+        timeoutMs: MOUNT_TIMEOUT_MS,
+        user: "root",
+      });
+
+      if (mountResult.isErr()) {
+        childLogger.error(
+          { err: mountResult.error, mountPoint: target.mountPoint },
+          "GCS mount: gcsfuse mount failed"
+        );
+        return mountResult;
+      }
+
+      if (mountResult.value.exitCode !== 0) {
+        const msg = `gcsfuse exited with code ${mountResult.value.exitCode} for ${target.mountPoint}: ${mountResult.value.stderr}`;
+        childLogger.error(
+          { stderr: mountResult.value.stderr, mountPoint: target.mountPoint },
+          msg
+        );
+
+        return new Err(new Error(msg));
+      }
+
+      return new Ok("");
+    },
+    { concurrency: targets.length }
+  );
+
+  const errors = mountResults.filter((r) => r.isErr());
+  if (errors.length > 0) {
+    childLogger.info({ errors }, "GCS mount: files mounted failed");
+
+    return errors[0];
   }
 
-  if (mountResult.value.exitCode !== 0) {
-    const msg = `gcsfuse exited with code ${mountResult.value.exitCode}: ${mountResult.value.stderr}`;
-    childLogger.error({ stderr: mountResult.value.stderr }, msg);
-    return new Err(new Error(msg));
-  }
+  childLogger.info(
+    { mountPoints: targets.map((t) => t.mountPoint) },
+    "GCS mount: files mounted successfully"
+  );
 
-  childLogger.info({}, "GCS mount: conversation files mounted successfully");
   return new Ok(undefined);
 }
 
@@ -131,7 +212,7 @@ export async function mountConversationFiles(
  * Refresh the GCS token in an already-mounted sandbox.
  *
  * Overwrites /tmp/token.json. The token server picks it up on next request from gcsfuse.
- * No remount needed.
+ * No remount needed. The token covers every prefix the sandbox was originally mounted with.
  */
 export async function refreshGcsToken(
   auth: Authenticator,
@@ -144,14 +225,14 @@ export async function refreshGcsToken(
   }
 
   const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
-
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const prefix = getConversationFilesBasePath({
-    workspaceId,
-    conversationId: conversation.sId,
-  }).replace(/\/$/, "");
 
-  const tokenResult = await mintDownscopedGcsToken({ bucket, prefix });
+  const targets = buildMountTargets(auth, conversation);
+
+  const tokenResult = await mintDownscopedGcsToken({
+    bucket,
+    prefixes: targets.map((t) => t.prefix),
+  });
   if (tokenResult.isErr()) {
     return tokenResult;
   }
@@ -175,6 +256,7 @@ export async function refreshGcsToken(
       sandboxId: sandbox.sId,
       workspaceId,
       conversationId: conversation.sId,
+      prefixes: targets.map((t) => t.prefix),
     },
     "GCS token refreshed"
   );
@@ -185,9 +267,11 @@ export async function refreshGcsToken(
 function buildMountCommand({
   bucket,
   prefix,
+  mountPoint,
 }: {
   bucket: string;
   prefix: string;
+  mountPoint: string;
 }): string {
   const flags = [
     `--token-url http://127.0.0.1:9876`,
@@ -206,7 +290,7 @@ function buildMountCommand({
     `--enable-hns=false`,
   ].join(" ");
 
-  return `timeout 30 gcsfuse ${flags} ${bucket} ${MOUNT_POINT} 2>&1`;
+  return `timeout 30 gcsfuse ${flags} ${bucket} ${mountPoint} 2>&1`;
 }
 
 function escapeSingleQuotes(s: string): string {

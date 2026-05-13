@@ -1,6 +1,9 @@
-import { mintDownscopedGcsToken } from "@app/lib/api/sandbox/gcs/token";
+import {
+  buildAccessBoundaryRules,
+  mintDownscopedGcsToken,
+} from "@app/lib/api/sandbox/gcs/token";
 import fileStorageConfig from "@app/lib/file_storage/config";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 /**
  * Manual integration test for GCS downscoped token CAB rules.
@@ -26,7 +29,10 @@ describe.skipIf(!runManual)("GCS downscoped token CAB", () => {
 
   it("mints a downscoped token", async () => {
     bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
-    const result = await mintDownscopedGcsToken({ bucket, prefix: PREFIX });
+    const result = await mintDownscopedGcsToken({
+      bucket,
+      prefixes: [PREFIX],
+    });
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       return;
@@ -123,5 +129,71 @@ describe.skipIf(!runManual)("GCS downscoped token CAB", () => {
       }
     );
     expect(res.ok).toBe(false);
+  });
+});
+
+describe("buildAccessBoundaryRules", () => {
+  beforeAll(() => {
+    // buildAccessBoundaryRules reads GOOGLE_CLOUD_PROJECT_ID via config; ensure it's set.
+    process.env.GOOGLE_CLOUD_PROJECT_ID ??= "test-project";
+  });
+
+  it("emits one bucket-get rule + 2 rules per prefix (single prefix)", () => {
+    const rules = buildAccessBoundaryRules("bucket-x", [
+      "w/ws1/conversations/c1/files",
+    ]);
+    expect(rules).toHaveLength(3);
+  });
+
+  it("scales linearly with the number of prefixes", () => {
+    const rules = buildAccessBoundaryRules("bucket-x", [
+      "w/ws1/conversations/c1/files",
+      "w/ws1/projects/spc1/files",
+    ]);
+    expect(rules).toHaveLength(5);
+  });
+
+  it("keeps the unconditional bucket-get rule first", () => {
+    const rules = buildAccessBoundaryRules("bucket-x", [
+      "w/ws1/conversations/c1/files",
+    ]);
+    expect(rules[0].availablePermissions[0]).toMatch(/sandbox_storage_mount/);
+    expect("availabilityCondition" in rules[0]).toBe(false);
+  });
+
+  it("references every prefix in list and resource.name conditions", () => {
+    const prefixes = [
+      "w/ws1/conversations/c1/files",
+      "w/ws1/projects/spc1/files",
+    ];
+    const rules = buildAccessBoundaryRules("bucket-x", prefixes);
+
+    const listRules = rules.filter((r) =>
+      r.availablePermissions[0].includes("legacyBucketReader")
+    );
+    const objectRules = rules.filter((r) =>
+      r.availablePermissions[0].includes("objectUser")
+    );
+    expect(listRules).toHaveLength(2);
+    expect(objectRules).toHaveLength(2);
+
+    for (const prefix of prefixes) {
+      expect(
+        listRules.some(
+          (r) =>
+            "availabilityCondition" in r &&
+            r.availabilityCondition.expression.includes(`'${prefix}/'`)
+        )
+      ).toBe(true);
+      expect(
+        objectRules.some(
+          (r) =>
+            "availabilityCondition" in r &&
+            r.availabilityCondition.expression.includes(
+              `projects/_/buckets/bucket-x/objects/${prefix}/`
+            )
+        )
+      ).toBe(true);
+    }
   });
 });

@@ -13,7 +13,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.9";
+const DUST_BASE_IMAGE_VERSION = "0.8.10";
 const DSBX_CLI_VERSION = "0.1.7";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
@@ -128,10 +128,10 @@ function getAgentProxiedSetupCommand(): string {
   // a perms handoff footgun during the PR1→PR2 rollout window.
   return [
     `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent --shell /bin/bash agent-proxied`,
-    "chgrp agent /home/agent /files/conversation",
-    "chmod g+ws /home/agent /files/conversation",
-    "setfacl -R -d -m g::rwx /home/agent /files/conversation",
-    "setfacl -R -m g::rwx /home/agent /files/conversation",
+    "chgrp agent /home/agent /files/conversation /files/project",
+    "chmod g+ws /home/agent /files/conversation /files/project",
+    "setfacl -R -d -m g::rwx /home/agent /files/conversation /files/project",
+    "setfacl -R -m g::rwx /home/agent /files/conversation /files/project",
   ].join(" && ");
 }
 
@@ -140,11 +140,16 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
 )
   // Create agent user first so e2b creates /home/agent with correct ownership.
   .setUser("agent")
-  // Conversation files bootstrap
-  // Pre-create workspace directory for faster GCS mounts.
-  .runCmd("mkdir -p /files/conversation && chmod 777 /files/conversation", {
-    user: "root",
-  })
+  // Conversation + project files bootstrap.
+  // Pre-create mount directories for faster GCS mounts. `/files/project` is only mounted when the
+  // conversation belongs to a project; the directory always exists in the image so the path is
+  // predictable for the agent prompt.
+  .runCmd(
+    "mkdir -p /files/conversation /files/project && chmod 777 /files/conversation /files/project",
+    {
+      user: "root",
+    }
+  )
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   // Create simple netcat-based token server script.
   .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
@@ -159,7 +164,10 @@ SHELLEOF`,
     { user: "root" }
   )
   .runCmd("chmod 755 /home/agent/.bin/token-server.sh", { user: "root" })
-  // Add sentinel file to indicate when mounts are pending.
+  // Add sentinel file to indicate when the conversation mount is pending. We intentionally do
+  // NOT add an equivalent marker under /files/project: the project mount is conditional (only
+  // happens for project conversations), so a baked marker would be misleading in non-project
+  // conversations where no mount ever lands.
   .runCmd("touch /files/conversation/.mount-pending", { user: "root" })
   // Hidden tools: installed but not in manifest (back profile functions)
   .runCmd("apt-get update && apt-get install -y ripgrep fd-find sd", {
