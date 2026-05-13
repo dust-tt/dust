@@ -90,7 +90,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   get_information: {
     description:
-      "Get information about the project: URL, description, and linked Company Data nodes " +
+      "Get information about the project: URL, description, and linked content nodes " +
       "attached to the project context. Does NOT list project files. Project files live under " +
       `\`project/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {

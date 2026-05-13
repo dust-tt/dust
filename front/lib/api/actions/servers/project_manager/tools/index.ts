@@ -274,7 +274,7 @@ export function createProjectManagerTools(
         // surface them here. Project files do (they live under `project/<rel>` scoped paths and
         // are discovered through the `files` MCP server), so we only report a count plus a hint.
         const attachments = await listProjectContextAttachments(auth, space);
-        const linkedContentNodes = attachments
+        const contentNodes = attachments
           .filter(isContentNodeAttachmentType)
           .map((node) => ({
             name: node.title,
@@ -302,7 +302,7 @@ export function createProjectManagerTools(
               name: space.name,
               url: projectUrl,
               description: metadata?.description ?? null,
-              linkedContentNodes,
+              contentNodes,
               files: {
                 count: projectFileCount,
                 hint: `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` with \`scope: "project"\` to enumerate.`,
