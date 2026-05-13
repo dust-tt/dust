@@ -35,20 +35,19 @@ function makeExtra(
 async function setupProjectConversation(): Promise<{
   auth: Authenticator;
   conversation: ConversationType;
-  projectSId: string;
+  projectId: string;
 }> {
   const { authenticator: auth, workspace } = await createResourceTest({
     role: "admin",
   });
-  const userId = auth.getNonNullableUser().id;
-  const userSId = auth.getNonNullableUser().sId;
+  const user = auth.getNonNullableUser();
 
-  const space = await SpaceFactory.project(workspace, userId);
-  const addRes = await space.addMembers(auth, { userIds: [userSId] });
+  const space = await SpaceFactory.project(workspace, user.id);
+  const addRes = await space.addMembers(auth, { userIds: [user.sId] });
   assert(addRes.isOk(), "Failed to add user to project space");
 
   const projectAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    userSId,
+    user.sId,
     workspace.sId
   );
 
@@ -58,7 +57,7 @@ async function setupProjectConversation(): Promise<{
     spaceId: space.id,
   });
 
-  return { auth: projectAuth, conversation, projectSId: space.sId };
+  return { auth: projectAuth, conversation, projectId: space.sId };
 }
 
 describe("listHandler", () => {
@@ -108,7 +107,7 @@ describe("listHandler", () => {
   });
 
   it("lists the project mount when scope=project in a project conversation", async () => {
-    const { auth, conversation, projectSId } = await setupProjectConversation();
+    const { auth, conversation, projectId } = await setupProjectConversation();
 
     const result = await listHandler(
       { scope: "project" },
@@ -118,7 +117,7 @@ describe("listHandler", () => {
     expect(result.isOk()).toBe(true);
     expect(mockListGCSMountFiles.mock.calls[0][1]).toEqual({
       useCase: "project",
-      projectId: projectSId,
+      projectId: projectId,
     });
   });
 
