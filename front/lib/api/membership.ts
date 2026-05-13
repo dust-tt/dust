@@ -4,6 +4,7 @@ import {
   emitAuditLogEventDirect,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
@@ -32,6 +33,7 @@ import type {
   UserType,
 } from "@app/types/user";
 import type { Transaction } from "sequelize";
+import { z } from "zod";
 
 async function syncSeatCountForWorkspace(
   workspace: LightWorkspaceType
@@ -352,4 +354,51 @@ export async function updateMembershipSeatAndTrack({
   }
 
   return new Ok(updateRes);
+}
+
+export const UpdateMemberSeatTypeInputSchema = z.object({
+  seatType: z.enum(["pro", "max"]),
+});
+
+export type UpdateMemberSeatTypeInput = z.infer<
+  typeof UpdateMemberSeatTypeInputSchema
+>;
+
+export interface UpdateMemberSeatTypeError {
+  type: "workspace_user_not_found";
+  message: string;
+}
+
+export async function updateMemberSeatType(
+  auth: Authenticator,
+  {
+    userId,
+    seatType,
+  }: UpdateMemberSeatTypeInput & { userId: string }
+): Promise<
+  Result<{ seatType: MembershipSeatType }, UpdateMemberSeatTypeError>
+> {
+  const user = await getUserForWorkspace(auth, { userId });
+  if (!user) {
+    return new Err({
+      type: "workspace_user_not_found",
+      message: "Could not find the user.",
+    });
+  }
+
+  const result = await updateMembershipSeatAndTrack({
+    user,
+    workspace: auth.getNonNullableWorkspace(),
+    newSeatType: seatType,
+    author: auth.user()?.toJSON() ?? "no-author",
+  });
+
+  if (result.isErr()) {
+    return new Err({
+      type: "workspace_user_not_found",
+      message: "Could not find an active membership for this user.",
+    });
+  }
+
+  return new Ok({ seatType: result.value.newSeatType });
 }
