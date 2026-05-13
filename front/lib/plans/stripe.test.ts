@@ -63,7 +63,6 @@ const { MockStripeError, MockStripeInvalidRequestError } = vi.hoisted(() => {
 vi.mock("@app/lib/api/config", () => ({
   default: {
     getStripeSecretKey: vi.fn(() => "sk_test_mock_key"),
-    getClientFacingUrl: vi.fn(() => "https://test.example.com"),
     getAppUrl: vi.fn(() => "https://test.example.com"),
   },
 }));

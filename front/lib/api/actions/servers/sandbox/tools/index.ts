@@ -261,7 +261,7 @@ export async function runSandboxBashTool(
   const sandboxAPIBase =
     isDevelopment() && config.getSandboxDevFrontHostName()
       ? `https://${config.getSandboxDevFrontHostName()}`
-      : config.getClientFacingUrl();
+      : config.getApiBaseUrl();
 
   const execResult = await sandbox.exec(auth, wrappedCommand, {
     workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,

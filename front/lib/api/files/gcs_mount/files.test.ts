@@ -16,7 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/config", () => ({
   default: {
-    getClientFacingUrl: vi.fn(() => "https://dust.tt"),
+    getApiBaseUrl: vi.fn(() => "https://dust.tt"),
   },
 }));
 

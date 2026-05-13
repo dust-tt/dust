@@ -30,33 +30,34 @@ export function getDefaultInit(): Promise<RequestInit> | null {
   return defaultInitResolver?.() ?? null;
 }
 
+// Deprecated: use getStaticWebsiteUrl, getApiBaseUrl or getAppUrl instead, depending on the context.
+function getClientFacingUrl(): string {
+  // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
+  // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
+  // public API URL.
+  const override = EnvironmentConfig.getOptionalEnvVariable(
+    "DUST_INTERNAL_CLIENT_FACING_URL"
+  );
+  if (override) {
+    return override;
+  }
+
+  // Using process.env here to make sure the function is usable on the client side.
+  if (!process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL) {
+    throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
+  }
+  return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+}
+
 const config = {
   // Dynamic API base URL: uses a custom resolver when set (SPA region switching),
   // otherwise falls back to getClientFacingUrl().
   getApiBaseUrl: (): string => {
-    return baseUrlResolver?.() || config.getClientFacingUrl();
+    return baseUrlResolver?.() || getClientFacingUrl();
   },
 
-  // Deprecated: use getStaticWebsiteUrl, getApiBaseUrl or getAppUrl instead, depending on the context.
-  getClientFacingUrl: (): string => {
-    // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
-    // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
-    // public API URL.
-    const override = EnvironmentConfig.getOptionalEnvVariable(
-      "DUST_INTERNAL_CLIENT_FACING_URL"
-    );
-    if (override) {
-      return override;
-    }
-
-    // Using process.env here to make sure the function is usable on the client side.
-    if (!process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL) {
-      throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
-    }
-    return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
-  },
   getStaticWebsiteUrl: (): string => {
-    return config.getClientFacingUrl();
+    return getClientFacingUrl();
   },
   // URL for the main app pages (/w/..., /share/..., etc.).
   // Use this for page URLs, not API endpoints.

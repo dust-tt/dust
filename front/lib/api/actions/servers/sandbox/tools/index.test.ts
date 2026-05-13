@@ -39,7 +39,7 @@ const {
 
 vi.mock("@app/lib/api/config", () => ({
   default: {
-    getClientFacingUrl: () => "https://dust.tt",
+    getApiBaseUrl: () => "https://dust.tt",
     getSandboxDevFrontHostName: () => undefined,
   },
 }));

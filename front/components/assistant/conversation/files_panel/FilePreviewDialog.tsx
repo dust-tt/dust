@@ -51,7 +51,7 @@ function getConversationFileUrl(
   const scoped = parseScopedFilePath(filePath);
   const rel = scoped ? scoped.rel : filePath;
 
-  return `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${rel}`;
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${rel}`;
 }
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
