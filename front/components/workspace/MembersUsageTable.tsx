@@ -68,7 +68,9 @@ function CircleProgress({ percentage }: CircleProgressProps) {
   );
 }
 
-const SEAT_TYPE_ICONS: Record<MembershipSeatType, React.ComponentType> = {
+const SEAT_TYPE_ICONS: Partial<
+  Record<MembershipSeatType, React.ComponentType>
+> = {
   max: SeatMaxIcon,
   pro: SeatProIcon,
   free: SeatFreeIcon,
@@ -83,6 +85,9 @@ function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
     return null;
   }
   const Icon = SEAT_TYPE_ICONS[seatType];
+  if (!Icon) {
+    return null;
+  }
   return <Icon />;
 }
 
