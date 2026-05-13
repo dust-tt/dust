@@ -63,14 +63,84 @@ import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improv
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
+import {
+  launchEmitMetronomeUsageEvents,
+  launchTrackProgrammaticUsage,
+} from "@app/temporal/agent_loop/activities/usage_tracking";
 import { ensureReinforcementWorkspaceSchedules } from "@app/temporal/reinforcement/client";
+import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { ApplicationFailure } from "@temporalio/common";
 import { Op } from "sequelize";
 
 // Re-export runToolActivity so the reinforced skills worker registers it,
 // allowing the workflow to call it via proxyActivities.
 export { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
+
+/**
+ * Report usage for a single reinforcement LLM step to Metronome, ES analytics,
+ * and programmatic usage. Gated behind the self_improving_skills_report_usage
+ * feature flag. Fire-and-forget: failures are logged but do not break the
+ * reinforcement workflow.
+ */
+async function reportSelfImprovingSkillsStepUsage({
+  auth,
+  reinforcementConversationId,
+  conversationTitle,
+  agentMessageId,
+  userMessageId,
+  dustRunIds,
+}: {
+  auth: Authenticator;
+  reinforcementConversationId: string;
+  conversationTitle: string | null;
+  agentMessageId: string;
+  userMessageId: string;
+  dustRunIds?: string[];
+}): Promise<void> {
+  const hasFlag = await hasFeatureFlag(
+    auth,
+    "self_improving_skills_report_usage"
+  );
+  if (!hasFlag) {
+    return;
+  }
+
+  const authType = auth.toJSON();
+  // Reinforcement messages are created with default version 0 and are never
+  // retried at a higher version (Temporal retries create new message sIds).
+  const agentLoopArgs: AgentLoopArgs = {
+    agentMessageId,
+    agentMessageVersion: 0,
+    conversationId: reinforcementConversationId,
+    conversationTitle,
+    conversationBranchId: null,
+    userMessageId,
+    userMessageVersion: 0,
+    userMessageOrigin: "reinforcement",
+    dustRunIds,
+  };
+
+  try {
+    await Promise.all([
+      launchAgentMessageAnalytics(authType, agentLoopArgs),
+      launchTrackProgrammaticUsage(authType, agentLoopArgs),
+      launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
+    ]);
+  } catch (err) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        reinforcementConversationId,
+        agentMessageId,
+        err,
+      },
+      "SelfImprovingSkills: failed to report step usage to billing channels"
+    );
+  }
+}
 
 /**
  * Common logic for a single reinforced skills step (analysis or aggregation).
@@ -170,13 +240,24 @@ async function runReinforcedSkillsStep({
     );
   }
 
+  const dustRunIds = [llm.getTraceId()];
   const storedResult = await storeLlmResult(
     auth,
     reinforcementConv,
     events,
     REINFORCEMENT_SKILLS_AGENT_ID,
-    { runIds: [llm.getTraceId()] }
+    { runIds: dustRunIds }
   );
+
+  // Report usage to billing channels (fire-and-forget, gated by flag).
+  await reportSelfImprovingSkillsStepUsage({
+    auth,
+    reinforcementConversationId,
+    conversationTitle: reinforcementConv.title,
+    agentMessageId: storedResult.agentMessageId,
+    userMessageId: storedResult.userMessageId,
+    dustRunIds,
+  });
 
   const { exploratoryToolCalls, terminalToolCalls } =
     classifySkillToolCalls(events);
@@ -1028,6 +1109,20 @@ export async function processSkillConversationAnalysisBatchResultActivity({
     reinforcementConversations.map((c) => [c.sId, c])
   );
 
+  // Report usage to billing channels for each stored result (fire-and-forget).
+  await concurrentExecutor(
+    [...storedResultInfo],
+    ([convId, info]) =>
+      reportSelfImprovingSkillsStepUsage({
+        auth,
+        reinforcementConversationId: convId,
+        conversationTitle: reinforcementConvById.get(convId)?.title ?? null,
+        agentMessageId: info.agentMessageId,
+        userMessageId: info.userMessageId,
+      }),
+    { concurrency: 4 }
+  );
+
   let totalCreated = 0;
   const continuations: ConversationContinuationInfo[] = [];
 
@@ -1284,6 +1379,20 @@ export async function processSkillAggregationBatchResultActivity({
   if (!reinforcementConv) {
     throw new Error(`Reinforcement conversation not found: ${firstConvId}`);
   }
+
+  // Report usage to billing channels for each stored result (fire-and-forget).
+  await concurrentExecutor(
+    [...storedResultInfo],
+    ([convId, info]) =>
+      reportSelfImprovingSkillsStepUsage({
+        auth,
+        reinforcementConversationId: convId,
+        conversationTitle: reinforcementConv.title,
+        agentMessageId: info.agentMessageId,
+        userMessageId: info.userMessageId,
+      }),
+    { concurrency: 4 }
+  );
 
   const { exploratoryToolCalls, terminalToolCalls } =
     classifySkillToolCalls(events);
