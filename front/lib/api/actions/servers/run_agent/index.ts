@@ -80,6 +80,7 @@ const UNTRACKED_CHILD_AGENT_ERROR_CATEGORIES = [
   "context_window_exceeded",
   "empty_content",
   "provider_internal_error",
+  "stream_error",
 ] satisfies AgentErrorCategory[];
 const UNTRACKED_CHILD_AGENT_ERROR_CODES = ["max_step_reached"] as const;
 
