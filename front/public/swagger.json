@@ -1459,6 +1459,74 @@
         }
       }
     },
+    "/api/v1/w/{wId}/assistant/conversations/{cId}/files/{rel}": {
+      "get": {
+        "tags": [
+          "Conversations"
+        ],
+        "summary": "Download a conversation-scoped file by path",
+        "description": "Download a file from a conversation's file system by its scoped path. The path must\nbe conversation-scoped, i.e. start with `conversation/` (as surfaced by agent file\nsystem tools). The file content is streamed directly from the conversation mount.\n",
+        "parameters": [
+          {
+            "name": "wId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cId",
+            "in": "path",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rel",
+            "in": "path",
+            "required": true,
+            "description": "Conversation-scoped file path, e.g. `conversation/foo.pdf` or\n`conversation/subdir/foo.pdf`. The `conversation/` prefix is required; any other\nscope prefix is rejected. Path traversal segments (`..`) are rejected.\n",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File content streamed directly.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid path parameters (e.g. missing or wrong scope prefix)."
+          },
+          "403": {
+            "description": "Resolved path is outside the conversation scope."
+          },
+          "404": {
+            "description": "Conversation or file not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/assistant/conversations/{cId}": {
       "get": {
         "summary": "Get a conversation",

@@ -1,3 +1,4 @@
+import { MARKUP_MULTIPLIER } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -103,6 +104,16 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
     return sum ?? 0;
   }
 
+  static async getSumPriceMicroUsdWithMarkupAfterDate(
+    auth: Authenticator,
+    createdAfter: Date
+  ): Promise<number> {
+    return (
+      (await this.getSumPriceMicroUsdAfterDate(auth, createdAfter)) *
+      MARKUP_MULTIPLIER
+    );
+  }
+
   static async getSumPriceMicroUsdAfterDateForSkills(
     auth: Authenticator,
     {
@@ -133,6 +144,81 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
 
     return new Map(
       rows.map((row) => [row.skillId as ModelId, Number(row.priceMicroUsd)])
+    );
+  }
+
+  static async getSumPriceMicroUsdWithMarkupAfterDateForSkills(
+    auth: Authenticator,
+    {
+      createdAfter,
+      skillModelIds,
+    }: {
+      createdAfter: Date;
+      skillModelIds: ModelId[];
+    }
+  ): Promise<Map<ModelId, number>> {
+    const raw = await this.getSumPriceMicroUsdAfterDateForSkills(auth, {
+      createdAfter,
+      skillModelIds,
+    });
+
+    return new Map(
+      [...raw.entries()].map(([id, value]) => [id, value * MARKUP_MULTIPLIER])
+    );
+  }
+
+  /**
+   * Return total spend per calendar day (UTC) within a date range.
+   *
+   * Each entry maps an ISO date string ("YYYY-MM-DD") to the summed spend in
+   * micro-USD for that day. Days with no spend are omitted.
+   */
+  private static async getDailySpendMicroUsd(
+    auth: Authenticator,
+    {
+      startDate,
+      endDate,
+    }: {
+      startDate: Date;
+      endDate: Date;
+    }
+  ): Promise<Map<string, number>> {
+    const dayExpr = Sequelize.fn(
+      "DATE",
+      Sequelize.cast(Sequelize.col("createdAt"), "TIMESTAMPTZ")
+    );
+
+    const rows = (await this.model.findAll({
+      attributes: [
+        [dayExpr, "day"],
+        [Sequelize.fn("SUM", Sequelize.col("priceMicroUsd")), "priceMicroUsd"],
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        createdAt: {
+          [Op.gte]: startDate,
+          [Op.lt]: endDate,
+        },
+      },
+      group: [dayExpr],
+      order: [[dayExpr, "ASC"]],
+      raw: true,
+    })) as unknown as { day: string; priceMicroUsd: string }[];
+
+    return new Map(rows.map((row) => [row.day, Number(row.priceMicroUsd)]));
+  }
+
+  static async getDailySpendMicroUsdWithMarkup(
+    auth: Authenticator,
+    params: {
+      startDate: Date;
+      endDate: Date;
+    }
+  ): Promise<Map<string, number>> {
+    const raw = await this.getDailySpendMicroUsd(auth, params);
+
+    return new Map(
+      [...raw.entries()].map(([day, value]) => [day, value * MARKUP_MULTIPLIER])
     );
   }
 

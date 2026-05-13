@@ -241,10 +241,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     // Not really on_demand but we want to be able to enable it for customers
     stage: "on_demand",
   },
-  sessions_branching: {
-    description: "Enable sessions branching",
-    stage: "dust_only",
-  },
   reinforced_agents: {
     description:
       "Enable reinforcement: background analysis of conversations to suggest improvements to skills.",

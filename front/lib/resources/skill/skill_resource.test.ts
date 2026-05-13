@@ -1,14 +1,11 @@
-import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
-import { DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD } from "@app/lib/reinforcement/constants";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -1158,42 +1155,6 @@ describe("SkillResource", () => {
       expect(results[0].skill.id).toEqual(skillA.id);
       expect(results[0].conversationModelId).toEqual(conv1.id);
       expect(results[0].agentConfigurationId).toEqual(agent.sId);
-    });
-  });
-
-  describe("makeNew - selfImprovementCostsCapMicroUsd", () => {
-    it("defaults to the workspace self-improvement cap (20 USD) when no metadata is set", async () => {
-      const skill = await SkillFactory.create(testContext.authenticator);
-
-      expect(skill.selfImprovementCostsCapMicroUsd).toBe(
-        DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD
-      );
-      expect(skill.selfImprovementLock).toBe(false);
-    });
-
-    it("uses the workspace-level cap override when set", async () => {
-      const customCapMicroUsd = 7_000_000; // $7
-
-      const workspaceResource = await WorkspaceResource.fetchByModelId(
-        testContext.workspace.id
-      );
-      if (!workspaceResource) {
-        throw new Error("Workspace not found");
-      }
-      await workspaceResource.updateWorkspaceSettings({
-        metadata: {
-          ...(testContext.workspace.metadata ?? {}),
-          selfImprovementCapPerSkillMicroUsd: customCapMicroUsd,
-        },
-      });
-
-      const freshAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        testContext.user.sId,
-        testContext.workspace.sId
-      );
-      const skill = await SkillFactory.create(freshAuth);
-
-      expect(skill.selfImprovementCostsCapMicroUsd).toBe(customCapMicroUsd);
     });
   });
 });

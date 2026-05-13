@@ -60,7 +60,9 @@ export function useConversationMarkAsRead({
           void mutateConversations(
             (prevState: ConversationListItemType[] | undefined) =>
               prevState?.map((c) =>
-                c.sId === conversationId ? { ...c, unread: false } : c
+                c.sId === conversationId
+                  ? { ...c, unread: false, isRunningAgentLoop: false }
+                  : c
               ),
             { revalidate: false }
           );

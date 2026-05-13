@@ -1,4 +1,6 @@
 import { queryTracker } from "@app/lib/api/query_tracker";
+import logger from "@app/logger/logger";
+import { isString } from "@app/types/shared/utils/general";
 import { context as otelContext, trace } from "@opentelemetry/api";
 import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
 import type {
@@ -9,8 +11,107 @@ import type {
   QueryOptionsWithModel,
   QueryOptionsWithType,
   QueryTypes,
+  Transaction,
 } from "sequelize";
 import { Sequelize } from "sequelize";
+
+declare module "sequelize" {
+  interface Transaction {
+    readonly id: string;
+  }
+}
+
+const IDLE_IN_TX_THRESHOLD_MS = 250;
+const MAX_TRACKED_QUERIES = 100;
+
+interface TxState {
+  beginAtMs: number;
+  busyMs: number;
+  route: string | undefined;
+  lastQuerySql: string;
+  queries: string[];
+}
+
+const txStates = new Map<string, TxState>();
+
+function trackTx(
+  transaction: Transaction | null | undefined,
+  sql: string | { query: string; values: unknown[] }
+): (() => void) | undefined {
+  if (!transaction) {
+    return undefined;
+  }
+  const sqlString = isString(sql) ? sql : sql.query;
+  const upper = sqlString.trimStart().toUpperCase();
+  const isBegin =
+    upper.startsWith("BEGIN") || upper.startsWith("START TRANSACTION");
+  const isCommit = upper.startsWith("COMMIT");
+  const isRollback =
+    upper.startsWith("ROLLBACK") && !upper.startsWith("ROLLBACK TO");
+
+  const txId = transaction.id;
+
+  if (isBegin) {
+    const span = trace.getSpan(otelContext.active());
+    let route: string | undefined;
+    if (span && span.isRecording()) {
+      const attrs = (span as unknown as ReadableSpan).attributes;
+      if (attrs?.["next.route"]) {
+        route = String(attrs["next.route"]);
+      } else if (attrs?.["next.span_name"]) {
+        const m = String(attrs["next.span_name"]).match(
+          /executing api route \(pages\) (.+)$/
+        );
+        if (m) {
+          route = m[1];
+        }
+      }
+    }
+    txStates.set(txId, {
+      beginAtMs: performance.now(),
+      busyMs: 0,
+      route,
+      lastQuerySql: "",
+      queries: [],
+    });
+    return undefined;
+  }
+
+  const state = txStates.get(txId);
+  if (!state) {
+    return undefined;
+  }
+  const startMs = performance.now();
+
+  return () => {
+    if (isCommit || isRollback) {
+      txStates.delete(txId);
+      const totalMs = performance.now() - state.beginAtMs;
+      const idleMs = Math.max(0, totalMs - state.busyMs);
+      if (idleMs >= IDLE_IN_TX_THRESHOLD_MS) {
+        logger.warn(
+          {
+            txId,
+            totalMs,
+            idleMs,
+            busyMs: state.busyMs,
+            outcome: isCommit ? "commit" : "rollback",
+            route: state.route,
+            lastQuerySql: state.lastQuerySql,
+            queries: state.queries,
+          },
+          "Idle-in-transaction detected"
+        );
+      }
+      return;
+    }
+    state.busyMs += performance.now() - startMs;
+    state.lastQuerySql = sqlString;
+    if (state.queries.length < MAX_TRACKED_QUERIES) {
+      state.queries.push(sqlString);
+    }
+  };
+}
 
 // Why are we doing this?
 // Sequelize is loosely typed and connection parameters are passed as is
@@ -116,6 +217,8 @@ export class SequelizeWithComments<
       ctx.peak = Math.max(ctx.peak, ctx.concurrent);
     }
 
+    const onQueryEnd = trackTx(options?.transaction, sql);
+
     try {
       // Only process string queries.
       if (typeof sql !== "string") {
@@ -171,6 +274,7 @@ export class SequelizeWithComments<
       if (ctx) {
         ctx.concurrent--;
       }
+      onQueryEnd?.();
     }
   }
 }

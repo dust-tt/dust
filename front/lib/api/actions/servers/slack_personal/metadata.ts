@@ -116,6 +116,18 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional file to attach to the message. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
         ),
+      unfurlLinks: z
+        .boolean()
+        .optional()
+        .describe(
+          "If false, disable link previews (unfurling) for URLs in the message. Useful when posting newsletters or curated lists where previews add clutter. Defaults to Slack's behavior."
+        ),
+      unfurlMedia: z
+        .boolean()
+        .optional()
+        .describe(
+          "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
+        ),
     },
     stake: "medium",
     displayLabels: {
@@ -150,6 +162,18 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe(
           "The thread ts of the message to reply to. If you need to find the thread ts, you can use the `search_messages` tool, the thread ts is the id of the message you want to reply to. If you don't provide a thread ts, the message will be posted as a top-level message."
+        ),
+      unfurlLinks: z
+        .boolean()
+        .optional()
+        .describe(
+          "If false, disable link previews (unfurling) for URLs in the message. Useful when posting newsletters or curated lists where previews add clutter. Defaults to Slack's behavior."
+        ),
+      unfurlMedia: z
+        .boolean()
+        .optional()
+        .describe(
+          "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
         ),
     },
     stake: "medium",

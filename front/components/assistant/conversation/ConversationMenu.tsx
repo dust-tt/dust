@@ -403,19 +403,15 @@ export function ConversationMenu({
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
-          {hasFeature("sessions_branching") && (
-            <>
-              <DropdownMenuItem
-                label="Branch conversation"
-                onClick={() => {
-                  void branchConversation();
-                }}
-                icon={ActionGitBranchIcon}
-                disabled={isBranching}
-              />
-              <DropdownMenuSeparator />
-            </>
-          )}
+          <DropdownMenuItem
+            label="Branch conversation"
+            onClick={() => {
+              void branchConversation();
+            }}
+            icon={ActionGitBranchIcon}
+            disabled={isBranching}
+          />
+          <DropdownMenuSeparator />
           {hasFeature("projects") && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger

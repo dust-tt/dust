@@ -121,6 +121,9 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
+// TODO(sessions-branching): Re-enable once branching from a source message is fixed.
+const SHOW_BRANCH_FROM_HERE_ACTION = false;
+
 function PrunedContextChip() {
   return (
     <Tooltip
@@ -677,8 +680,7 @@ export function AgentMessage({
     !isAgentMessageHandingOver &&
     !isProjectArchived;
 
-  const canBranchConversation =
-    hasFeature("sessions_branching") && shouldShowCopy;
+  const canBranchConversation = SHOW_BRANCH_FROM_HERE_ACTION && shouldShowCopy;
 
   const shouldShowFeedback =
     !isDeleted &&
@@ -1375,7 +1377,7 @@ function AgentMessageContent({
                 const href = file.fileId
                   ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`
                   : file.filePath
-                    ? `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${file.filePath.replace("conversation/", "")}`
+                    ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${file.filePath.replace("conversation/", "")}`
                     : undefined;
                 return {
                   index: -1,

@@ -110,7 +110,7 @@ async function handleStreamingSearch(
     );
 
     // First, stream knowledge results
-    const searchResult = await handleSearch(req, auth, searchParams);
+    const searchResult = await handleSearch(req.query, auth, searchParams);
 
     if (searchResult.isErr()) {
       return apiError(req, res, {
@@ -349,7 +349,7 @@ async function handler(
     });
   }
 
-  const searchResult = await handleSearch(req, auth, r.data);
+  const searchResult = await handleSearch(req.query, auth, r.data);
 
   if (searchResult.isErr()) {
     return apiError(req, res, {

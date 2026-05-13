@@ -519,6 +519,7 @@ export type ConversationListItemType = {
   triggerId: string | null;
   unread: boolean;
   updated: number;
+  isRunningAgentLoop: boolean;
 };
 
 /**

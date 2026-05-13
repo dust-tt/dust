@@ -11,6 +11,7 @@ import {
   getProductExcessCreditsId,
   getProductFreeCreditId,
 } from "@app/lib/metronome/constants";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { Commit, Credit } from "@metronome/sdk/resources/shared";
 
 // Metronome package aliases for contract provisioning.
@@ -26,14 +27,44 @@ export const LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS = "legacy-pro-annual-eur";
 export const LEGACY_BUSINESS_EUR_PACKAGE_ALIAS = "legacy-business-eur";
 export const LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS = "legacy-enterprise-eur";
 
-export const PRO_OR_BUSINESS_PACKAGE_ALIASES: ReadonlySet<string> = new Set([
-  LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
-  LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
-  LEGACY_BUSINESS_PACKAGE_ALIAS,
-  LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS,
-  LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS,
-  LEGACY_BUSINESS_EUR_PACKAGE_ALIAS,
-]);
+export type MetronomePackageTier = "pro" | "business" | "enterprise";
+
+/**
+ * Classify a Metronome package by its display name. The match is a
+ * case-insensitive whole-word search ordered by specificity:
+ * "enterprise" → enterprise, "business" → business, "pro" → pro.
+ *
+ * Names lacking any of those keywords return `null` — callers refuse such
+ * packages explicitly. This is a deliberate trade-off vs. a closed-set
+ * alias check: sales can add a new package in Metronome (e.g. a future
+ * "Pro Plan 2027") without a code change as long as its name contains one
+ * of the tier keywords.
+ */
+export function classifyMetronomePackageByName(
+  name: string
+): MetronomePackageTier | null {
+  const normalized = name.toLowerCase();
+  if (/\benterprise\b/.test(normalized)) {
+    return "enterprise";
+  }
+  if (/\bbusiness\b/.test(normalized)) {
+    return "business";
+  }
+  if (/\bpro\b/.test(normalized)) {
+    return "pro";
+  }
+  return null;
+}
+
+export function classifyMetronomePackageCurrencyByName(
+  name: string
+): SupportedCurrency {
+  const normalized = name.toLowerCase();
+  if (/\b(?:eur|euro)\b/.test(normalized)) {
+    return "eur";
+  }
+  return "usd";
+}
 
 export interface MetronomeEvent {
   transaction_id: string;

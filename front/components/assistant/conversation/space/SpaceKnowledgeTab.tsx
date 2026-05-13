@@ -58,7 +58,7 @@ interface SpaceKnowledgeTabProps {
 }
 
 const PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP =
-  "Adding knowledge to projects is disabled by your workspace admin.";
+  "Adding files to projects is disabled by your workspace admin.";
 
 type MenuItem = {
   kind: "item";
@@ -147,10 +147,10 @@ const KnowledgeSearchAndTable = memo(function KnowledgeSearchAndTable({
   return (
     <>
       <SearchInput
-        name="knowledge-search"
+        name="files-search"
         value={inputValue}
         onChange={setValue}
-        placeholder="Filter knowledge..."
+        placeholder="Filter..."
         className="w-full"
       />
       <KnowledgeFilteredDataTable
@@ -172,8 +172,8 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
   return (
     <FileDropProvider>
       <DropzoneContainer
-        description="Drop files here to upload knowledge."
-        title="Upload Knowledge"
+        description="Drop files here to upload them."
+        title="Upload files"
       >
         <SpaceKnowledgeTabContent owner={owner} space={space} />
       </DropzoneContainer>
@@ -517,7 +517,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
 
   const hasFiles = attachments.length > 0;
   const isUploading = projectFileUpload.isProcessingFiles;
-  const uploadButtonLabel = isUploading ? "Uploading..." : "Add knowledge";
+  const uploadButtonLabel = isUploading ? "Uploading..." : "Add";
   const isAddKnowledgeDisabled =
     !canManuallyManageProjectKnowledge || isUploading;
 
@@ -611,7 +611,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-8">
           <div className="flex gap-2">
-            <h3 className="heading-2xl flex-1 items-center">Knowledge</h3>
+            <h3 className="heading-2xl flex-1 items-center">Files</h3>
             {hasFiles && !isArchived && attachButtonWithPolicyTooltip}
           </div>
 
@@ -619,8 +619,8 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
             <EmptyCTA
               message={
                 isArchived
-                  ? "This project is archived. No knowledge has been added."
-                  : "No knowledge added to this project yet."
+                  ? "This project is archived. No files have been added."
+                  : "No files have been added to this project yet."
               }
               action={isArchived ? null : attachButtonWithPolicyTooltip}
             />

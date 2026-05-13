@@ -169,7 +169,6 @@ export class ServerSideTracking {
     workspaceSeats,
     subscriptionStartAt,
   }: {
-    userId: string;
     workspace: LightWorkspaceType;
     planCode: string;
     workspaceSeats: number;

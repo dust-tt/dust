@@ -331,6 +331,13 @@ export async function processEventForDatabase(
       // Ensure we handle all event types.
       break;
   }
+
+  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
+    await ConversationResource.setIsRunningAgentLoop(auth, {
+      conversation,
+      isRunningAgentLoop: false,
+    });
+  }
 }
 
 // Process unread state for agent events before publishing to Redis.

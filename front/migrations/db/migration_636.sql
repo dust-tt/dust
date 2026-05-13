@@ -1,0 +1,4 @@
+-- Migration created on mai 13, 2026
+CREATE TABLE IF NOT EXISTS "user_project_preferences" ("createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "notificationPreference" VARCHAR(255), "isStarred" BOOLEAN, "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "id"  BIGSERIAL , "userId" BIGINT NOT NULL REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "spaceId" BIGINT NOT NULL REFERENCES "vaults" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX CONCURRENTLY "user_project_preferences_workspace_user_space_unique" ON "user_project_preferences" ("workspaceId", "userId", "spaceId");
+CREATE INDEX CONCURRENTLY "user_project_preferences_workspace_id_space_id" ON "user_project_preferences" ("workspaceId", "spaceId");

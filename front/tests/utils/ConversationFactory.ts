@@ -409,7 +409,7 @@ export class ConversationFactory {
       },
     });
 
-    const action = await AgentMCPActionResource.makeNew(auth, {
+    const action = await AgentMCPActionResource.makeNew(auth, conversation, {
       agentMessageId: agentMessage.agentMessageId,
       augmentedInputs: {},
       citationsAllocated: 0,

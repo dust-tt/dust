@@ -1,4 +1,5 @@
 import {
+  copyConversationGCSMount,
   createGCSMountFile,
   type GCSMountFileEntry,
   getConversationFileMountSignedUrl,
@@ -6,6 +7,7 @@ import {
 } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -14,7 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/config", () => ({
   default: {
-    getClientFacingUrl: vi.fn(() => "https://dust.tt"),
+    getApiBaseUrl: vi.fn(() => "https://dust.tt"),
   },
 }));
 
@@ -306,6 +308,129 @@ describe("getConversationFileMountSignedUrl", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toContain("GCS unavailable");
+    }
+  });
+});
+
+describe("copyConversationGCSMount", () => {
+  let auth: Authenticator;
+  let source: ConversationResource;
+  let dest: ConversationResource;
+  let workspaceId: string;
+  let getFilesMock: ReturnType<typeof vi.fn>;
+  let copyFileMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    getFilesMock = vi.fn().mockResolvedValue([]);
+    copyFileMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      getFiles: getFilesMock,
+      copyFile: copyFileMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const { authenticator, conversationsSpace } = await createResourceTest({});
+    auth = authenticator;
+    workspaceId = auth.getNonNullableWorkspace().sId;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent",
+    });
+    const sourceConv = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: conversationsSpace.id,
+    });
+    const destConv = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: conversationsSpace.id,
+    });
+
+    const sourceRes = await ConversationResource.fetchById(
+      auth,
+      sourceConv.sId
+    );
+    const destRes = await ConversationResource.fetchById(auth, destConv.sId);
+    assert(sourceRes !== null);
+    assert(destRes !== null);
+    source = sourceRes;
+    dest = destRes;
+  });
+
+  it("copies every file under the source prefix to the dest prefix", async () => {
+    const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+    const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+    getFilesMock.mockResolvedValue([
+      { name: `${sourcePrefix}report.pdf` },
+      { name: `${sourcePrefix}.tool_outputs/chart.png` },
+      { name: `${sourcePrefix}data/foo.csv` },
+    ]);
+
+    const result = await copyConversationGCSMount(auth, { source, dest });
+
+    assert(result.isOk());
+    expect(result.value.copiedCount).toBe(3);
+    expect(getFilesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ prefix: sourcePrefix })
+    );
+    expect(copyFileMock).toHaveBeenCalledTimes(3);
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${sourcePrefix}report.pdf`,
+      `${destPrefix}report.pdf`
+    );
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${sourcePrefix}.tool_outputs/chart.png`,
+      `${destPrefix}.tool_outputs/chart.png`
+    );
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${sourcePrefix}data/foo.csv`,
+      `${destPrefix}data/foo.csv`
+    );
+  });
+
+  it("returns Ok with copiedCount 0 when source prefix is empty", async () => {
+    const result = await copyConversationGCSMount(auth, { source, dest });
+
+    assert(result.isOk());
+    expect(result.value.copiedCount).toBe(0);
+    expect(copyFileMock).not.toHaveBeenCalled();
+  });
+
+  it("no-ops when source and dest are the same conversation", async () => {
+    const result = await copyConversationGCSMount(auth, {
+      source,
+      dest: source,
+    });
+
+    assert(result.isOk());
+    expect(result.value.copiedCount).toBe(0);
+    expect(getFilesMock).not.toHaveBeenCalled();
+    expect(copyFileMock).not.toHaveBeenCalled();
+  });
+
+  it("returns Err when GCS listing fails", async () => {
+    getFilesMock.mockRejectedValue(new Error("GCS list unavailable"));
+
+    const result = await copyConversationGCSMount(auth, { source, dest });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("GCS list unavailable");
+    }
+    expect(copyFileMock).not.toHaveBeenCalled();
+  });
+
+  it("returns Err when a copy fails", async () => {
+    const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+    getFilesMock.mockResolvedValue([{ name: `${sourcePrefix}report.pdf` }]);
+    copyFileMock.mockRejectedValue(new Error("GCS copy unavailable"));
+
+    const result = await copyConversationGCSMount(auth, { source, dest });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("GCS copy unavailable");
     }
   });
 });

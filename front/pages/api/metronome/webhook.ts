@@ -473,13 +473,53 @@ async function handler(
             break;
           }
 
-          // Only swap when the workspace is Metronome-only billed. Shadow
+          // Idempotency: re-deliveries land here with the active subscription
+          // already pointing at the new contract.
+          if (activeSubscription.metronomeContractId === contractId) {
+            logger.info(
+              { contractId, workspaceId: workspace.sId },
+              "[Metronome Webhook] contract.start: subscription already swapped, skipping"
+            );
+            break;
+          }
+
+          // Preferred path: a pending (created_backend_only) subscription was
+          // staged when the contract was provisioned. Flip it to active and
+          // end whatever active sub the workspace currently holds.
+          const pendingSubscription =
+            await SubscriptionResource.fetchByMetronomeContractId(
+              workspace,
+              contractId
+            );
+          if (
+            pendingSubscription &&
+            pendingSubscription.status === "created_backend_only"
+          ) {
+            await pendingSubscription.activatePending();
+            await invalidateContractCache(workspace.sId);
+            const auth = await Authenticator.internalAdminForWorkspace(
+              workspace.sId
+            );
+            await restoreWorkspaceAfterSubscription(auth);
+            logger.info(
+              {
+                contractId,
+                planCode: targetPlan.code,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] contract.start: pending subscription activated"
+            );
+            break;
+          }
+
+          // Legacy fallback: no pending row was staged. Only swap when the
+          // workspace is Metronome-only billed, or not billed at all. Shadow
           // billed subscriptions (Stripe + Metronome) follow Stripe's signal,
-          // and pure Stripe subs have no Metronome contract at all. Pro and
-          // Business swaps are synchronous, so this branch effectively only
-          // fires for Enterprise upgrades scheduled in the future via Poke —
-          // the idempotency check below catches the sync cases.
-          if (!activeSubscription.isMetronomeOnlyBilled) {
+          // and pure Stripe subs have no Metronome contract at all.
+          if (
+            !activeSubscription.isMetronomeOnlyBilled &&
+            activeSubscription.isBilled
+          ) {
             logger.info(
               {
                 contractId,
@@ -487,16 +527,6 @@ async function handler(
                 workspaceId: workspace.sId,
               },
               "[Metronome Webhook] contract.start: subscription is not Metronome-only billed, leaving subscription alone"
-            );
-            break;
-          }
-
-          // Idempotency: re-deliveries land here with the subscription
-          // already pointing at the new contract.
-          if (activeSubscription.metronomeContractId === contractId) {
-            logger.info(
-              { contractId, workspaceId: workspace.sId },
-              "[Metronome Webhook] contract.start: subscription already swapped, skipping"
             );
             break;
           }
@@ -572,6 +602,17 @@ async function handler(
               logger.info(
                 { contractId, workspaceId: workspace.sId },
                 "[Metronome Webhook] contract.end: marking as ended (backend-initiated)"
+              );
+              await subscription.markAsEnded("ended");
+              break;
+
+            case "created_backend_only":
+              // Pending sub whose contract ended before activating (e.g.
+              // sunset by an overlapping new contract). No active billing —
+              // just close out the pending row.
+              logger.info(
+                { contractId, workspaceId: workspace.sId },
+                "[Metronome Webhook] contract.end: pending subscription never activated, marking as ended"
               );
               await subscription.markAsEnded("ended");
               break;

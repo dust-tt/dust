@@ -331,6 +331,7 @@ export async function createSkillSuggestionsConversation(
   );
 
   const contentFragmentRes = await toFileContentFragment(auth, {
+    conversation,
     contentFragment: {
       title: `${pendingSuggestions.length} pending suggestions for ${skillType.name} skill`,
       content: formattedSuggestions,

@@ -28,6 +28,7 @@ import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
+  isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -146,6 +147,17 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       : null;
 
   const autoMentions = useMemo(() => {
+    // If the user's last message contains only human mentions (no agent),
+    // prefill with just those human mentions.
+    const mentionsFromLastUserMessage = lastUserMessage?.richMentions ?? [];
+
+    if (
+      mentionsFromLastUserMessage.length > 0 &&
+      mentionsFromLastUserMessage.every(isRichUserMention)
+    ) {
+      return mentionsFromLastUserMessage;
+    }
+
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
     if (draftAgent) {
@@ -177,16 +189,20 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       return [lastAgentMentionInConversation];
     }
 
-    // Ultimate fallback: select the "dust" agent if available.
-    const dustAgent = agentConfigurations.find(
-      (a) => a.sId === GLOBAL_AGENTS_SID.DUST
-    );
-    if (dustAgent) {
-      return [toRichAgentMentionType(dustAgent)];
+    // Fall back to @dust only for new conversations. In existing conversations
+    // where messages are still loading, don't default — wait for messages.
+    if (!context.conversation) {
+      const dustAgent = agentConfigurations.find(
+        (a) => a.sId === GLOBAL_AGENTS_SID.DUST
+      );
+      if (dustAgent) {
+        return [toRichAgentMentionType(dustAgent)];
+      }
     }
 
     return [];
   }, [
+    context.conversation,
     draftAgent,
     lastUserMessage,
     lastAgentMentionInConversation,

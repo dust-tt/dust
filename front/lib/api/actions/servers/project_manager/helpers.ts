@@ -15,7 +15,6 @@ import {
 import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
@@ -233,65 +232,6 @@ export async function getWritableProjectContext(
   }
 
   return contextRes;
-}
-
-/**
- * Validates a source file for copying to project context.
- * Checks that:
- * - File exists and is ready
- * - File is associated with a conversation
- * - Conversation belongs to the target space
- * - File has a copyable content type
- */
-export async function validateSourceFileForCopy(
-  auth: Authenticator,
-  {
-    sourceFileId,
-    targetSpaceId,
-  }: { sourceFileId: string; targetSpaceId: number }
-): Promise<Result<FileResource, MCPError>> {
-  const sourceFile = await FileResource.fetchById(auth, sourceFileId);
-  if (!sourceFile) {
-    return new Err(new MCPError("Source file not found", { tracked: false }));
-  }
-
-  if (!sourceFile.isReady) {
-    return new Err(
-      new MCPError(`Source file not ready: ${sourceFileId}`, {
-        tracked: false,
-      })
-    );
-  }
-
-  if (!sourceFile.useCaseMetadata?.conversationId) {
-    return new Err(
-      new MCPError("Source file is not associated with a conversation", {
-        tracked: false,
-      })
-    );
-  }
-
-  const sourceFileConversation = await ConversationResource.fetchById(
-    auth,
-    sourceFile.useCaseMetadata.conversationId
-  );
-  if (!sourceFileConversation) {
-    return new Err(
-      new MCPError("Source file's conversation not found", {
-        tracked: false,
-      })
-    );
-  }
-
-  if (sourceFileConversation.spaceId !== targetSpaceId) {
-    return new Err(
-      new MCPError("Cannot copy files external to the project", {
-        tracked: false,
-      })
-    );
-  }
-
-  return new Ok(sourceFile);
 }
 
 /**

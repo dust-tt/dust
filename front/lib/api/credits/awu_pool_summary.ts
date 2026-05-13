@@ -4,12 +4,11 @@ import {
   floorToMidnightUTC,
   listMetronomeBalances,
   listMetronomeDraftInvoices,
-  listMetronomeUsage,
+  listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
 import {
   getCreditTypeAwuId,
-  getMetricLlmCostAwuProgrammaticId,
-  getMetricLlmCostAwuUserId,
+  getMetricLlmProviderCostAwuId,
 } from "@app/lib/metronome/constants";
 import { METRONOME_USER_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
 import { apiError } from "@app/logger/withlogging";
@@ -131,50 +130,43 @@ export async function handleAwuPoolSummaryRequest(
         }
       }
 
-      const [userResult, programmaticResult] = await Promise.all([
-        listMetronomeUsage({
-          customerIds: [metronomeCustomerId],
-          billableMetricIds: [getMetricLlmCostAwuUserId()],
-          startingOn,
-          endingBefore,
-          windowSize: "NONE",
-        }),
-        listMetronomeUsage({
-          customerIds: [metronomeCustomerId],
-          billableMetricIds: [getMetricLlmCostAwuProgrammaticId()],
-          startingOn,
-          endingBefore,
-          windowSize: "NONE",
-        }),
-      ]);
+      // Single merged AWU metric, grouped by `is_programmatic_usage` —
+      // authoritative flag set by the event emitter (see events.ts). Sentinel
+      // values like user_id/api_key_name = "unknown" are not reliable since
+      // programmatic callers without an API key also emit user_id="unknown".
+      const usageResult = await listMetronomeUsageWithGroups({
+        customerId: metronomeCustomerId,
+        billableMetricId: getMetricLlmProviderCostAwuId(),
+        startingOn,
+        endingBefore,
+        windowSize: "NONE",
+        groupKey: ["is_programmatic_usage"],
+      });
 
-      if (userResult.isErr()) {
+      if (usageResult.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to retrieve user AWU usage: ${userResult.error.message}`,
+            message: `Failed to retrieve AWU usage: ${usageResult.error.message}`,
           },
         });
       }
 
-      if (programmaticResult.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to retrieve programmatic AWU usage: ${programmaticResult.error.message}`,
-          },
-        });
+      let userAwu = 0;
+      let programmaticAwu = 0;
+      for (const entry of usageResult.value) {
+        const value = entry.value ?? 0;
+        if (entry.group?.["is_programmatic_usage"] === "true") {
+          programmaticAwu += value;
+        } else {
+          userAwu += value;
+        }
       }
-
       const consumedByUsersMicroUsd =
-        userResult.value.reduce((sum, e) => sum + (e.value ?? 0), 0) *
-        METRONOME_USER_CREDIT_TO_MICRO_USD;
-
+        userAwu * METRONOME_USER_CREDIT_TO_MICRO_USD;
       const consumedByProgrammaticMicroUsd =
-        programmaticResult.value.reduce((sum, e) => sum + (e.value ?? 0), 0) *
-        METRONOME_USER_CREDIT_TO_MICRO_USD;
+        programmaticAwu * METRONOME_USER_CREDIT_TO_MICRO_USD;
 
       return res.status(200).json({
         totalAmountMicroUsd,

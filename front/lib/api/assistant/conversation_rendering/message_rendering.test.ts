@@ -180,6 +180,7 @@ describe("renderAllMessages", () => {
       triggerId: null,
       metadata: {},
       branchId: null,
+      isRunningAgentLoop: false,
     } as ConversationType;
   }
 

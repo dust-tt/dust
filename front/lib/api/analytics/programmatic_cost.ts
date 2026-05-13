@@ -477,6 +477,7 @@ export async function handleProgrammaticCostRequest(
           const agents = await AgentConfigurationModel.findAll({
             where: {
               sId: agentIds,
+              workspaceId: auth.getNonNullableWorkspace().id,
             },
             attributes: ["sId", "name"],
           });

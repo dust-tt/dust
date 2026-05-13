@@ -111,6 +111,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "files": {
     "cat": "never_ask",
+    "copy": "never_ask",
     "create": "never_ask",
     "delete": "medium",
     "grep": "never_ask",
@@ -501,9 +502,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "project_manager": {
     "add_content_node": "never_ask",
-    "add_file": "never_ask",
     "add_message_to_conversation": "medium",
-    "attach_to_conversation": "never_ask",
     "create_conversation": "medium",
     "create_project": "low",
     "edit_description": "low",
@@ -512,10 +511,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_members": "never_ask",
     "list_projects": "never_ask",
     "remove_content_node": "medium",
-    "remove_file": "medium",
     "retrieve_recent_documents": "never_ask",
-    "semantic_search": "never_ask",
-    "update_file": "medium",
   },
   "project_tasks": {
     "create_tasks": "low",

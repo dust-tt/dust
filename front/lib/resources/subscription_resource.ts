@@ -7,9 +7,9 @@ import { DustError } from "@app/lib/error";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
+  provisionMetronomeContract,
   provisionShadowEnterpriseMetronomeContract,
   resolveCurrencyForExistingMetronomeCustomer,
-  switchMetronomeContractPackage,
   syncContractQuantities,
 } from "@app/lib/metronome/contracts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
@@ -546,6 +546,81 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
   }
 
+  static async fetchPendingByWorkspaceModelId(
+    workspaceModelId: ModelId
+  ): Promise<SubscriptionResource | null> {
+    const res = await this.model.findOne({
+      where: {
+        workspaceId: workspaceModelId,
+        status: "created_backend_only",
+      },
+      include: [PlanModel],
+      order: [["createdAt", "DESC"]],
+    });
+    if (!res) {
+      return null;
+    }
+    return new this(
+      SubscriptionModel,
+      res.get(),
+      renderPlanFromModel({ plan: res.plan })
+    );
+  }
+
+  /**
+   * Persist a pending (created_backend_only) subscription for a workspace that
+   * is provisioning a new Metronome contract via a future-effective swap. If a
+   * prior pending sub exists it is ended (status: "ended") within the same
+   * transaction — the prior contract is sunset on Metronome's side by the
+   * overlap-sunset pass in `provisionMetronomeContract`.
+   *
+   * The row flips to "active" when the matching `contract.start` webhook
+   * fires (`activatePending`).
+   */
+  static async createPendingMetronomeContract({
+    workspaceModelId,
+    planCode,
+    metronomeContractId,
+    startDate,
+  }: {
+    workspaceModelId: ModelId;
+    planCode: string;
+    metronomeContractId: string;
+    startDate: Date;
+  }): Promise<SubscriptionResource> {
+    const plan = await this.findPlanOrThrow(planCode);
+    return withTransaction(async (t) => {
+      const existing = await this.model.findOne({
+        where: {
+          workspaceId: workspaceModelId,
+          status: "created_backend_only",
+        },
+        transaction: t,
+      });
+      if (existing) {
+        await existing.update(
+          { status: "ended", endDate: new Date() },
+          { transaction: t }
+        );
+      }
+      return this.makeNew(
+        {
+          sId: generateRandomModelSId(),
+          workspaceId: workspaceModelId,
+          planId: plan.id,
+          status: "created_backend_only",
+          trialing: false,
+          startDate,
+          endDate: null,
+          stripeSubscriptionId: null,
+          metronomeContractId,
+        },
+        renderPlanFromModel({ plan }),
+        t
+      );
+    });
+  }
+
   static async isStripeIdAlreadyUsed(
     stripeSubscriptionId: string
   ): Promise<boolean> {
@@ -1015,17 +1090,18 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         LEGACY_BUSINESS_PACKAGE_ALIAS,
         billingCurrencyResult.value
       );
-      const result = await switchMetronomeContractPackage({
+      const result = await provisionMetronomeContract({
         metronomeCustomerId: owner.metronomeCustomerId,
-        oldContractId: this.metronomeContractId,
         workspace: owner,
         packageAlias,
-        enableStripeBilling: isSubscriptionMetronomeBilled(this.toJSON()),
-        planCode: PRO_PLAN_SEAT_39_CODE,
+        uniquenessKey: `switch:${this.metronomeContractId}`,
+        startingAt: new Date(),
         // Business is seat-based — swap at the current hour boundary so the
         // new contract is active immediately and the sync DB flip below is
         // consistent with Metronome.
         swapAt: "current-hour",
+        enableStripeBilling: isSubscriptionMetronomeBilled(this.toJSON()),
+        planCode: PRO_PLAN_SEAT_39_CODE,
       });
       if (result.isErr() && !this.isMetronomeShadowBilled) {
         return new Err(result.error);
@@ -1132,8 +1208,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     billingPeriod: BillingPeriod,
     {
       useMetronomeBilling,
+      couponCode,
     }: {
       useMetronomeBilling: boolean;
+      couponCode?: string;
     }
   ): Promise<CheckoutUrlResult> {
     const isBusiness = !!owner.metadata?.isBusiness;
@@ -1174,6 +1252,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           planCode,
           metronomePackageAlias,
           allowedPaymentMethods,
+          couponCode,
         });
       return {
         mode: "embedded",
@@ -1241,13 +1320,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   }
 
   /**
-   * End the current subscription as `ended_backend_only` and create a new
-   * active subscription on a different Metronome contract and plan code.
-   * Used by the contract.start webhook when an admin-scheduled Enterprise
-   * upgrade activates — preserves the plan-change history rather than
-   * mutating the existing subscription in place. The `ended_backend_only`
-   * status ensures the contract.end webhook for the old contract finds the
-   * old subscription in that state and does not scrub the workspace.
+   * End the current subscription and create a new active subscription on a
+   * different Metronome contract and plan code. Used by the contract.start
+   * webhook when an admin-scheduled upgrade activates — preserves the
+   * plan-change history rather than mutating the existing subscription in
+   * place. A billed current sub is ended as `ended_backend_only` so the
+   * contract.end webhook does not scrub the workspace; a non-billed (free)
+   * current sub is ended as `ended` since no external webhook will close it.
    */
   async swapMetronomeContract({
     metronomeContractId,
@@ -1257,9 +1336,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     planCode: string;
   }): Promise<void> {
     const newPlan = await SubscriptionResource.findPlanOrThrow(planCode);
+    const endedStatus = this.isBilled ? "ended_backend_only" : "ended";
 
     await withTransaction(async (t) => {
-      await this.markAsEnded("ended_backend_only", t);
+      await this.markAsEnded(endedStatus, t);
 
       await SubscriptionResource.makeNew(
         {
@@ -1275,6 +1355,41 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         },
         renderPlanFromModel({ plan: newPlan }),
         t
+      );
+    });
+  }
+
+  /**
+   * Flip this pending (created_backend_only) subscription to active, while
+   * ending whatever active subscription currently holds the workspace's seat.
+   * Mirrors `swapMetronomeContract` but for the pre-provisioned pending-row
+   * model — used by the `contract.start` webhook when the new contract was
+   * created up-front (e.g. by the poke switch_contract flow).
+   *
+   * `this` must be in `created_backend_only` state.
+   */
+  async activatePending(): Promise<void> {
+    if (this.status !== "created_backend_only") {
+      throw new Error(
+        `Cannot activate subscription ${this.sId}: status is ${this.status}, expected created_backend_only.`
+      );
+    }
+    await withTransaction(async (t) => {
+      const currentActive =
+        await SubscriptionResource.fetchActiveByWorkspaceModelId(
+          this.workspaceId,
+          t
+        );
+      if (currentActive && !currentActive.isLegacyFreeNoPlan()) {
+        const endedStatus = currentActive.isBilled
+          ? "ended_backend_only"
+          : "ended";
+        await currentActive.markAsEnded(endedStatus, t);
+      }
+      await this.update({ status: "active" }, t);
+      const workspaceId = this.workspaceId;
+      invalidateCacheAfterCommit(t, () =>
+        SubscriptionResource.invalidateSubscriptionCache(workspaceId)
       );
     });
   }

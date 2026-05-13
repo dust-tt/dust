@@ -60,6 +60,7 @@ class FileStorageMock {
         }),
       delete: vi.fn().mockResolvedValue(undefined),
       download: vi.fn().mockResolvedValue([Buffer.from("", "utf-8")]),
+      exists: vi.fn().mockResolvedValue([true]),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
       publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
       save: vi.fn().mockResolvedValue(undefined),

@@ -133,6 +133,7 @@ function createMockConversation(
     triggerId: null,
     metadata: {},
     branchId: null,
+    isRunningAgentLoop: false,
   };
 }
 

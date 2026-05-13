@@ -21,6 +21,7 @@ import {
   isSharedDriveNotFoundError,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   GoogleDriveConfigModel,
   GoogleDriveFilesModel,
@@ -41,6 +42,15 @@ import { GaxiosError } from "googleapis-common";
 import type { RedisClientType } from "redis";
 
 const PAGE_SIZE = 500;
+const UPDATE_PARENTS_BATCH_SIZE = 1_000;
+const UPDATE_PARENTS_CONCURRENCY = 8;
+
+type ParentsUpdate = {
+  file: GoogleDriveFilesModel;
+  parentIds: string[];
+};
+
+type EnqueueParentsUpdate = (update: ParentsUpdate) => Promise<void>;
 
 export async function incrementalSync(
   connectorId: ModelId,
@@ -393,7 +403,39 @@ async function recurseUpdateParents(
       span?.setTag("connectorId", connector.id);
       span?.setTag("workspaceId", connector.workspaceId);
       span?.setTag("fileId", file.driveFileId);
-      return recurseUpdateParentsInner(connector, file, parentIds, logger);
+
+      let updateBatch: ParentsUpdate[] = [];
+      const flushUpdateBatch = async () => {
+        await updateParentsFieldForBatch(connector, updateBatch, logger);
+        updateBatch = [];
+      };
+      const enqueueUpdate = async (update: ParentsUpdate) => {
+        if (updateBatch.length >= UPDATE_PARENTS_BATCH_SIZE) {
+          await flushUpdateBatch();
+        }
+        updateBatch.push(update);
+      };
+
+      await recurseUpdateParentsInner(
+        connector,
+        file,
+        parentIds,
+        logger,
+        enqueueUpdate
+      );
+      const initialFolderUpdate = updateBatch.pop();
+      await flushUpdateBatch();
+
+      if (!initialFolderUpdate) {
+        return;
+      }
+
+      await updateParentsField(
+        connector,
+        initialFolderUpdate.file,
+        initialFolderUpdate.parentIds,
+        logger
+      );
     }
   );
 }
@@ -402,7 +444,8 @@ async function recurseUpdateParentsInner(
   connector: ConnectorResource,
   file: GoogleDriveFilesModel,
   parentIds: string[],
-  logger: Logger
+  logger: Logger,
+  enqueueUpdate: EnqueueParentsUpdate
 ) {
   await heartbeat();
   const children = await GoogleDriveFilesModel.findAll({
@@ -443,11 +486,26 @@ async function recurseUpdateParentsInner(
       connector,
       child,
       [child.dustFileId, ...parentIds],
-      logger
+      logger,
+      enqueueUpdate
     );
   }
 
-  await updateParentsField(connector, file, parentIds, logger);
+  await enqueueUpdate({ file, parentIds });
+}
+
+async function updateParentsFieldForBatch(
+  connector: ConnectorResource,
+  updateBatch: ParentsUpdate[],
+  logger: Logger
+) {
+  await concurrentExecutor(
+    updateBatch,
+    async ({ file, parentIds }) => {
+      await updateParentsField(connector, file, parentIds, logger);
+    },
+    { concurrency: UPDATE_PARENTS_CONCURRENCY, onBatchComplete: heartbeat }
+  );
 }
 
 async function alreadySeenAndIgnored({

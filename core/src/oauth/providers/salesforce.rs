@@ -1,17 +1,13 @@
-use crate::{
-    http::proxy_client::create_untrusted_egress_client_builder,
-    oauth::{
-        connection::{
-            Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
-        },
-        credential::{Credential, CredentialProvider},
-        providers::utils::execute_request,
+use crate::oauth::{
+    connection::{
+        Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
     },
-    utils,
+    credential::{Credential, CredentialProvider},
+    providers::utils::execute_request,
 };
+use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use tracing::error;
 
 pub struct SalesforceConnectionProvider {}
 
@@ -64,16 +60,9 @@ impl Provider for SalesforceConnectionProvider {
         ConnectionProvider::Salesforce
     }
 
-    fn reqwest_client(&self) -> reqwest::Client {
-        // Salesforce provider makes requests to user-provided instance URLs, so we use the untrusted egress proxy.
-        match create_untrusted_egress_client_builder().build() {
-            Ok(client) => client,
-            Err(e) => {
-                error!(error = ?e, "Failed to create client with untrusted egress proxy");
-                reqwest::Client::new()
-            }
-        }
-    }
+    // Salesforce OAuth requests must use the static-IP proxy (default trait impl) — customers
+    // with IP-restricted Salesforce orgs allowlist Dust's documented static egress IPs.
+    // Instance URLs are validated to *.salesforce.com before reaching this provider.
 
     async fn finalize(
         &self,

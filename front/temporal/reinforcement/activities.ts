@@ -27,14 +27,12 @@ import {
   buildSkillAnalysisSystemPrompt,
   buildSkillConversationAnalysisBatchMap,
 } from "@app/lib/reinforcement/analyze_conversation";
+import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
 } from "@app/lib/reinforcement/constants";
-import {
-  getCurrentPeriodStart,
-  getReinforcementMonthlyCapMicroUsd,
-} from "@app/lib/reinforcement/consumption";
+import { getReinforcementMonthlyCapMicroUsd } from "@app/lib/reinforcement/consumption";
 import {
   buildReinforcedSkillsSpecifications,
   classifySkillToolCalls,
@@ -204,6 +202,7 @@ async function runReinforcedSkillsStep({
 
     // Store results for all terminal tool calls so the conversation is complete.
     await storeTerminalToolCallResults(auth, {
+      conversation: reinforcementConv.toJSON(),
       successfulToolCalls: result.successfulToolCalls,
       failedToolCalls: result.failedToolCalls,
       agentMessageModelId: storedResult.agentMessageModelId,
@@ -227,11 +226,11 @@ async function runReinforcedSkillsStep({
 
   // Prepare tool actions for the workflow to execute via runRetryableToolActivity.
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
+    conversation: reinforcementConv.toJSON(),
     exploratoryToolCalls,
     agentMessageModelId: storedResult.agentMessageModelId,
     agentMessageId: storedResult.agentMessageId,
     userMessageId: storedResult.userMessageId,
-    conversationId: reinforcementConversationId,
   });
 
   return {
@@ -395,7 +394,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
     ...new Set(conversationsWithSkills.flatMap(({ skillIds }) => skillIds)),
   ];
   const skills = await SkillResource.fetchByIds(auth, allSkillIds);
-  const skillModelIdBySId = new Map(
+  const skillModelIdById = new Map(
     skills
       .filter((skill) => isResourceSId("skill", skill.sId))
       .map((skill) => [skill.sId, skill.id])
@@ -429,7 +428,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
       usages.push({
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
-        skillId: skillModelIdBySId.get(skillIds[i]) ?? null,
+        skillId: skillModelIdById.get(skillIds[i]) ?? null,
         conversationId: conversation.id,
         priceMicroUsd: prices[i],
       });
@@ -484,7 +483,7 @@ export async function getReinforcementSettingsActivity({
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  const periodStart = getCurrentPeriodStart();
+  const { cycleStart: periodStart } = await getCurrentPeriod(auth);
   const globalConsumptionMicroUsd =
     await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
       auth,
@@ -504,7 +503,7 @@ export async function getReinforcementSettingsActivity({
 
   return {
     reinforcementEnabled: true,
-    batchModeAllowed: isReinforcementBatchModeAllowed(auth),
+    batchModeAllowed: await isReinforcementBatchModeAllowed(auth),
     globalConsumptionMicroUsd,
     globalCapMicroUsd,
   };
@@ -1021,12 +1020,29 @@ export async function processSkillConversationAnalysisBatchResultActivity({
     analysedConversations.map((c) => [c.sId, c])
   );
 
+  const reinforcementConversations = await ConversationResource.fetchByIds(
+    auth,
+    reinforcementConversationIds
+  );
+  const reinforcementConvById = new Map(
+    reinforcementConversations.map((c) => [c.sId, c])
+  );
+
   let totalCreated = 0;
   const continuations: ConversationContinuationInfo[] = [];
 
   for (const [reinforcementConvId, events] of batchEvents) {
     const analysedConvId =
       reinforcementToAnalysed.get(reinforcementConvId) ?? reinforcementConvId;
+
+    const reinforcementConv = reinforcementConvById.get(reinforcementConvId);
+    if (!reinforcementConv) {
+      logger.warn(
+        { reinforcementConvId, batchId },
+        "ReinforcedSkills: reinforcement conversation not found, skipping"
+      );
+      continue;
+    }
 
     const { exploratoryToolCalls, terminalToolCalls } =
       classifySkillToolCalls(events);
@@ -1048,6 +1064,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
       const storedInfo = storedResultInfo.get(reinforcementConvId);
       if (storedInfo) {
         await storeTerminalToolCallResults(auth, {
+          conversation: reinforcementConv.toJSON(),
           successfulToolCalls: result.successfulToolCalls,
           failedToolCalls: result.failedToolCalls,
           agentMessageModelId: storedInfo.agentMessageModelId,
@@ -1066,11 +1083,11 @@ export async function processSkillConversationAnalysisBatchResultActivity({
       const storedInfo = storedResultInfo.get(reinforcementConvId);
       if (storedInfo) {
         const toolActionInfo = await prepareReinforcedToolActions(auth, {
+          conversation: reinforcementConv.toJSON(),
           exploratoryToolCalls,
           agentMessageModelId: storedInfo.agentMessageModelId,
           agentMessageId: storedInfo.agentMessageId,
           userMessageId: storedInfo.userMessageId,
-          conversationId: reinforcementConvId,
         });
 
         continuations.push({
@@ -1258,6 +1275,16 @@ export async function processSkillAggregationBatchResultActivity({
     };
   }
 
+  // Hydrate the reinforcement conversation from its sId so we can pass
+  // ConversationWithoutContentType to action helpers (activity inputs are frozen).
+  const reinforcementConv = await ConversationResource.fetchById(
+    auth,
+    firstConvId
+  );
+  if (!reinforcementConv) {
+    throw new Error(`Reinforcement conversation not found: ${firstConvId}`);
+  }
+
   const { exploratoryToolCalls, terminalToolCalls } =
     classifySkillToolCalls(events);
 
@@ -1276,6 +1303,7 @@ export async function processSkillAggregationBatchResultActivity({
     const storedInfo = storedResultInfo.get(firstConvId);
     if (storedInfo) {
       await storeTerminalToolCallResults(auth, {
+        conversation: reinforcementConv.toJSON(),
         successfulToolCalls: result.successfulToolCalls,
         failedToolCalls: result.failedToolCalls,
         agentMessageModelId: storedInfo.agentMessageModelId,
@@ -1319,11 +1347,11 @@ export async function processSkillAggregationBatchResultActivity({
   }
 
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
+    conversation: reinforcementConv.toJSON(),
     exploratoryToolCalls,
     agentMessageModelId: storedInfo.agentMessageModelId,
     agentMessageId: storedInfo.agentMessageId,
     userMessageId: storedInfo.userMessageId,
-    conversationId: firstConvId,
   });
 
   return {

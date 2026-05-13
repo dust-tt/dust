@@ -19,12 +19,14 @@ import { memo, useCallback, useContext, useRef, useState } from "react";
 const ProjectListItem = memo(
   ({
     space,
+    isStarred,
     unreadCount,
     hasUnread,
     owner,
     moveConversationToProject,
   }: {
     space: SpaceType;
+    isStarred: boolean;
     unreadCount: number;
     hasUnread: boolean;
     owner: WorkspaceType;
@@ -124,6 +126,7 @@ const ProjectListItem = memo(
             activeSpaceId={space.sId}
             space={space}
             owner={owner}
+            isStarred={isStarred}
             trigger={<NavigationListItemAction />}
             isProjectDisplayed={activeConversationId === space.sId}
             isOpen={isMenuOpen}
@@ -173,6 +176,7 @@ export function renderProjectsList({
       <ProjectListItem
         key={space.sId}
         space={space}
+        isStarred={space.isStarred}
         unreadCount={unreadConversations.length}
         hasUnread={
           unreadConversations.length > 0 ||

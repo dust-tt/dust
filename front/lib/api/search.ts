@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import config from "@app/lib/api/config";
 import {
   getContentNodeFromCoreNode,
@@ -21,7 +20,7 @@ import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { NextApiRequest } from "next";
+import type { ParsedUrlQuery } from "querystring";
 import { z } from "zod";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
@@ -147,7 +146,7 @@ function selectHighestPriorityDataSourceView(
 }
 
 export async function handleSearch(
-  req: NextApiRequest,
+  reqQuery: ParsedUrlQuery,
   auth: Authenticator,
   {
     allowAdminSearch,
@@ -251,7 +250,7 @@ export async function handleSearch(
 
   const searchFilter = searchFilterRes.value;
 
-  const paginationRes = getCursorPaginationParams(req);
+  const paginationRes = getCursorPaginationParams(reqQuery);
   if (paginationRes.isErr()) {
     return new Err({
       status: 400,

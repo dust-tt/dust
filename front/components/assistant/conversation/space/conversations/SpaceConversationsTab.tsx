@@ -196,6 +196,7 @@ export function SpaceConversationsTab({
                 draftKey={`space-${spaceInfo.sId}-new-conversation`}
                 space={spaceInfo}
                 disableAutoFocus={false}
+                placeholder={`Start a conversation in ${spaceInfo.name}`}
               />
             ) : (
               <ProjectJoinCTA
@@ -334,7 +335,7 @@ export function SpaceConversationsTab({
                       return (
                         <div key={dateLabel}>
                           <ListItemSection>{dateLabel}</ListItemSection>
-                          <ListGroup>
+                          <ListGroup className="border-b-0">
                             {dateConversations
                               .toSorted((a, b) => b.updated - a.updated)
                               .map((conversation) => (

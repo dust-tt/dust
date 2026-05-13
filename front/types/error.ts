@@ -123,6 +123,8 @@ const API_ERROR_TYPES = [
   "group_not_found",
   // Coupons:
   "coupon_not_found",
+  "coupon_not_redeemable",
+  "coupon_already_redeemed",
   // Plugins:
   "plugin_not_found",
   "plugin_execution_failed",

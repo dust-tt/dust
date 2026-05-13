@@ -32,6 +32,7 @@ import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToPr
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useSearchProjects } from "@app/hooks/useSearchProjects";
+import { useStarredProjectsSectionCollapsed } from "@app/hooks/useStarredProjectsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
@@ -96,6 +97,7 @@ import {
   RobotIcon,
   SearchInput,
   Spinner,
+  StarIcon,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -105,6 +107,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -492,6 +495,11 @@ export function AgentSidebarMenu({
   const { isProjectsSectionCollapsed, setProjectsSectionCollapsed } =
     useProjectsSectionCollapsed();
 
+  const {
+    isStarredProjectsSectionCollapsed,
+    setStarredProjectsSectionCollapsed,
+  } = useStarredProjectsSectionCollapsed();
+
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
 
@@ -667,16 +675,76 @@ export function AgentSidebarMenu({
 
   const sidebarTitleFilter = hasSpaceConversations ? "" : titleFilter;
 
+  const starredSection = useMemo(() => {
+    if (!hasSpaceConversations) {
+      return null;
+    }
+    const starredSummary = summary.filter(({ space }) => space.isStarred);
+    const starredCountInSummary = starredSummary.length;
+
+    if (starredCountInSummary === 0) {
+      return null;
+    }
+
+    const showCount =
+      isStarredProjectsSectionCollapsed && starredCountInSummary > 0;
+
+    const VISIBLE_STARRED = 5;
+    const hiddenStarredSummary = starredSummary.slice(VISIBLE_STARRED);
+    const hiddenOverflowCount = hiddenStarredSummary.reduce(
+      (sum, s) => sum + s.unreadConversations.length,
+      0
+    );
+    const hiddenOverflowHasActivity = hiddenStarredSummary.some(
+      (s) =>
+        s.unreadConversations.length > 0 ||
+        s.nonParticipantUnreadConversations.length > 0
+    );
+
+    return (
+      <NavigationList className="px-2">
+        <NavigationListCollapsibleSection
+          label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
+          icon={StarIcon}
+          type="collapse"
+          visibleItems={VISIBLE_STARRED}
+          overflowCount={hiddenOverflowCount}
+          overflowHasActivity={hiddenOverflowHasActivity}
+          open={!isStarredProjectsSectionCollapsed}
+          onOpenChange={(open) => setStarredProjectsSectionCollapsed(!open)}
+        >
+          {renderProjectsList({
+            owner,
+            summary: starredSummary,
+            titleFilter: sidebarTitleFilter,
+            moveConversationToProject,
+          })}
+        </NavigationListCollapsibleSection>
+      </NavigationList>
+    );
+  }, [
+    hasSpaceConversations,
+    summary,
+    owner,
+    sidebarTitleFilter,
+    moveConversationToProject,
+    isStarredProjectsSectionCollapsed,
+    setStarredProjectsSectionCollapsed,
+  ]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const projectsSection = useMemo(() => {
     if (!hasSpaceConversations) {
       return null;
     }
-    const projectCountInSummary = summary.length;
+    const nonStarredSummary = summary.filter(
+      (project) => !project.space.isStarred
+    );
+    const projectCountInSummary = nonStarredSummary.length;
     const showCount = isProjectsSectionCollapsed && projectCountInSummary > 0;
 
     const VISIBLE_PROJECTS = 4;
-    const hiddenSummary = summary.slice(VISIBLE_PROJECTS);
+    const hiddenSummary = nonStarredSummary.slice(VISIBLE_PROJECTS);
     const hiddenOverflowCount = hiddenSummary.reduce(
       (sum, s) => sum + s.unreadConversations.length,
       0
@@ -699,7 +767,7 @@ export function AgentSidebarMenu({
           onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
           action={
             <>
-              {summary.length > 0 && (
+              {nonStarredSummary.length > 0 && (
                 <Button
                   size="xs"
                   icon={PlusIcon}
@@ -720,10 +788,10 @@ export function AgentSidebarMenu({
             <div className="flex items-center justify-center">
               <Spinner size="xs" />
             </div>
-          ) : summary.length > 0 ? (
+          ) : nonStarredSummary.length > 0 ? (
             renderProjectsList({
               owner,
-              summary,
+              summary: nonStarredSummary,
               titleFilter: sidebarTitleFilter,
               moveConversationToProject,
             })
@@ -759,6 +827,7 @@ export function AgentSidebarMenu({
         toggleConversationSelection={toggleConversationSelection}
         activeConversationId={activeConversationId}
         owner={owner}
+        starredSection={starredSection}
         projectsSection={projectsSection}
         hasTriggeredConversations={hasTriggeredConversations}
         hideTriggeredConversations={hideTriggeredConversations}
@@ -779,6 +848,7 @@ export function AgentSidebarMenu({
     toggleConversationSelection,
     activeConversationId,
     owner,
+    starredSection,
     projectsSection,
     hasTriggeredConversations,
     hideTriggeredConversations,
@@ -1150,6 +1220,7 @@ function UnreadConversationsSection({
           >
             <div className="overflow-hidden">
               <ConversationListItem
+                key={conversation.sId}
                 conversation={conversation}
                 isMultiSelect={isMultiSelect}
                 selectedConversations={selectedConversations}
@@ -1240,6 +1311,20 @@ const ConversationListItem = memo(
       handleMenuOpenChange,
     } = useConversationMenu();
 
+    const [showTypingAnimation, setShowTypingAnimation] = useState(false);
+    const titleRef = useRef<string | null>(conversation.title); // Used to detect when the title changes to show the typing animation.
+
+    useLayoutEffect(() => {
+      if (titleRef.current === null && conversation.title !== null) {
+        setShowTypingAnimation(true);
+      }
+      titleRef.current = conversation.title;
+    }, [conversation.title]);
+
+    const handleTypingAnimationComplete = useCallback(() => {
+      setShowTypingAnimation(false);
+    }, []);
+
     const conversationLabel = getConversationDisplayTitle(conversation);
 
     const handleDragStart = useCallback(
@@ -1282,9 +1367,18 @@ const ConversationListItem = memo(
       </div>
     ) : (
       <NavigationListItem
+        key={conversation.sId}
         selected={activeConversationId === conversation.sId}
         status={getConversationDotStatus(conversation)}
         label={conversationLabel}
+        labelAnimation={
+          showTypingAnimation
+            ? "typing"
+            : conversation.isRunningAgentLoop
+              ? "streaming"
+              : "none"
+        }
+        onTypingAnimationComplete={handleTypingAnimationComplete}
         href={getConversationRoute(owner.sId, conversation.sId)}
         shallow
         draggable={!conversation.spaceId}
@@ -1333,6 +1427,7 @@ interface NavigationListWithInboxProps {
   toggleConversationSelection: (conversation: ConversationListItemType) => void;
   activeConversationId: string | null;
   owner: WorkspaceType;
+  starredSection?: React.ReactNode;
   projectsSection?: React.ReactNode;
   hasTriggeredConversations: boolean;
   hideTriggeredConversations: boolean;
@@ -1353,6 +1448,7 @@ function NavigationListWithInbox({
   toggleConversationSelection,
   activeConversationId,
   owner,
+  starredSection,
   projectsSection,
   hasTriggeredConversations,
   hideTriggeredConversations,
@@ -1470,6 +1566,7 @@ function NavigationListWithInbox({
           </motion.div>
         )}
       </AnimatePresence>
+      {starredSection}
       {projectsSection}
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection

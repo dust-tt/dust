@@ -236,7 +236,7 @@ export const createStripeSubscriptionCheckoutSession = async ({
     },
     metadata: {
       planCode: planCode,
-      userId: `${user.id}`,
+      userId: user.sId,
       ...(metronomePackageAlias ? { metronomePackageAlias } : {}),
     },
     line_items: [
@@ -278,12 +278,14 @@ export const createStripeSubscriptionCheckoutSession = async ({
  */
 export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   allowedPaymentMethods = ["card"],
+  couponCode,
   metronomePackageAlias,
   owner,
   planCode,
   user,
 }: {
   allowedPaymentMethods?: SupportedPaymentMethod[];
+  couponCode?: string;
   metronomePackageAlias: string;
   owner: WorkspaceType;
   planCode: string;
@@ -293,9 +295,12 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
 
   const metadata: Record<string, string> = {
     planCode,
-    userId: `${user.id}`,
+    userId: user.sId,
     metronomePackageAlias,
   };
+  if (couponCode) {
+    metadata.couponCode = couponCode;
+  }
 
   const session = await stripe.checkout.sessions.create({
     ui_mode: "embedded",

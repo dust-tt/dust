@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {
@@ -60,6 +59,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { isLegacyPlan } from "@app/lib/metronome/plan_type";
 import { isUserBlocked } from "@app/lib/metronome/user_block";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -158,8 +158,8 @@ import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+import type { IncomingHttpHeaders } from "http";
 import uniq from "lodash/uniq";
-import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
 import { col } from "sequelize";
 
@@ -252,6 +252,7 @@ export async function createConversation(
     triggerId: conversation.triggerSId,
     metadata: conversation.metadata,
     branchId: null,
+    isRunningAgentLoop: conversation.isRunningAgentLoop,
   };
 }
 
@@ -506,7 +507,7 @@ async function getNextConversationMessageRank(
 
 export function isUserMessageContextValid(
   auth: Authenticator,
-  req: NextApiRequest,
+  headers: IncomingHttpHeaders,
   context: UserMessageContext
 ): boolean {
   const authMethod = auth.authMethod();
@@ -519,7 +520,7 @@ export function isUserMessageContextValid(
     "user-agent": userAgent,
     "x-dust-extension-version": extensionVersion,
     "x-zendesk-user-id": zendeskUserId,
-  } = req.headers;
+  } = headers;
 
   switch (context.origin) {
     case "api":
@@ -1591,6 +1592,17 @@ export async function createAgentMessageFromText(
           toolConfiguration: {} as LightMCPToolConfigurationType,
           stepContext: {} as StepContext,
           executionDurationMs: null,
+        },
+        { transaction: t }
+      );
+
+      await AgentStepContentToolExecutionModel.create(
+        {
+          workspaceId: owner.id,
+          conversationId: conversation.id,
+          agentMessageId: agentMessageRow.id,
+          agentMCPActionId: createdAction.id,
+          stepContentId: functionCallStepContent.id,
         },
         { transaction: t }
       );

@@ -1,7 +1,9 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
+  type GCSMountEntry,
   type GCSMountPoint,
   getGCSPathFromScopedPath,
+  listGCSMountFiles,
 } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
@@ -11,7 +13,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import { stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -36,7 +38,7 @@ type Access = "read" | "write";
 
 function buildConversationMountPoint(
   auth: Authenticator,
-  conversation: ConversationType
+  conversation: ConversationWithoutContentType
 ): MountPoint {
   const owner = auth.getNonNullableWorkspace();
   return {
@@ -50,7 +52,7 @@ function buildConversationMountPoint(
 
 async function buildProjectMountPoint(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   { access }: { access: Access }
 ): Promise<Result<MountPoint, MCPError>> {
   if (!isProjectConversation(conversation)) {
@@ -101,7 +103,7 @@ async function buildProjectMountPoint(
  */
 export async function resolveMountPoint(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   { access, scopedPath }: { access: Access; scopedPath: string }
 ): Promise<Result<MountPoint, MCPError>> {
   const parsed = parseScopedFilePath(scopedPath);
@@ -114,7 +116,22 @@ export async function resolveMountPoint(
     );
   }
 
-  switch (parsed.prefix) {
+  return resolveMountByUseCase(auth, conversation, {
+    useCase: parsed.prefix,
+    access,
+  });
+}
+
+/**
+ * Resolve the mount point for a given scope use case, without going through a path. Used by tools
+ * that operate on a whole mount (e.g. `list`).
+ */
+export async function resolveMountByUseCase(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType,
+  { useCase, access }: { useCase: GCSMountPoint["useCase"]; access: Access }
+): Promise<Result<MountPoint, MCPError>> {
+  switch (useCase) {
     case "conversation":
       return new Ok(buildConversationMountPoint(auth, conversation));
 
@@ -122,8 +139,37 @@ export async function resolveMountPoint(
       return buildProjectMountPoint(auth, conversation, { access });
 
     default:
-      assertNever(parsed.prefix);
+      assertNever(useCase);
   }
+}
+
+/**
+ * List the files mounted under a project's GCS prefix. Verifies `space.canRead(auth)` before
+ * touching the bucket. Use this from callers that already hold a `SpaceResource` so the
+ * file-listing path stays funneled through the same helper as `files__list`.
+ */
+export async function listProjectFiles(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<Result<GCSMountEntry[], MCPError>> {
+  if (!space.isProject) {
+    return new Err(new MCPError("Space is not a project.", { tracked: false }));
+  }
+
+  if (!space.canRead(auth)) {
+    return new Err(
+      new MCPError("You do not have read permissions for this project.", {
+        tracked: false,
+      })
+    );
+  }
+
+  const entries = await listGCSMountFiles(auth, {
+    useCase: "project",
+    projectId: space.sId,
+  });
+
+  return new Ok(entries);
 }
 
 /**
@@ -132,7 +178,7 @@ export async function resolveMountPoint(
  */
 export async function resolveFile(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   path: string
 ): Promise<Result<ResolvedFile, MCPError>> {
   const mountRes = await resolveMountPoint(auth, conversation, {

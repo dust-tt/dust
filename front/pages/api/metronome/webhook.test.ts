@@ -6,6 +6,7 @@ import {
 } from "@app/lib/metronome/client";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import { PlanModel } from "@app/lib/models/plan";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -327,6 +328,64 @@ describe("Metronome webhook — contract.start", () => {
       refreshed!.id
     );
     expect(sub!.metronomeContractId).toBe(NEW_CONTRACT_ID);
+  });
+
+  it("flips a pending (created_backend_only) subscription to active and ends the prior active", async () => {
+    await ensureEnterprisePlan();
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    // Stage the pending sub that switch_contract would have created.
+    const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
+      .id;
+    const targetPlan = await PlanModel.findOne({
+      where: { code: ENT_PLAN_CODE },
+    });
+    await SubscriptionResource.makeNew(
+      {
+        sId: generateRandomModelSId(),
+        workspaceId: workspaceModelId,
+        planId: targetPlan!.id,
+        status: "created_backend_only",
+        startDate: new Date(),
+        endDate: null,
+        stripeSubscriptionId: null,
+        metronomeContractId: NEW_CONTRACT_ID,
+      },
+      renderPlanFromModel({ plan: targetPlan! })
+    );
+
+    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
+    mockUnwrap(event);
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: NEW_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: new Date().toISOString(),
+        custom_fields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
+      } as never)
+    );
+
+    const { req, res } = makeWebhookRequest(event);
+    await handler(req, res as never);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    // Pending sub is now active.
+    const refreshed = await WorkspaceResource.fetchById(workspace.sId);
+    const activeSub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+      refreshed!.id
+    );
+    expect(activeSub!.metronomeContractId).toBe(NEW_CONTRACT_ID);
+    expect(activeSub!.status).toBe("active");
+    expect(activeSub!.getPlan().code).toBe(ENT_PLAN_CODE);
+
+    // Prior active is ended_backend_only (was Metronome-billed).
+    const oldSub = await SubscriptionResource.fetchByMetronomeContractId(
+      refreshed!,
+      OLD_CONTRACT_ID
+    );
+    expect(oldSub!.status).toBe("ended_backend_only");
+
+    expect(restoreWorkspaceAfterSubscription).toHaveBeenCalledTimes(1);
   });
 });
 

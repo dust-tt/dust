@@ -5,17 +5,18 @@ import {
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetReinforcementDailySpendResponseBody } from "@app/pages/api/w/[wId]/skills/reinforcement_daily_spend";
 import type { GetSkillsSpendResponseBody } from "@app/pages/api/w/[wId]/skills/reinforcement_spend";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 import type { Fetcher } from "swr";
 
-interface UseReinforcementToggleProps {
+interface UseSelfImprovingToggleProps {
   owner: LightWorkspaceType;
 }
 
-export function useReinforcementToggle({ owner }: UseReinforcementToggleProps) {
+export function useSelfImprovingToggle({ owner }: UseSelfImprovingToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
@@ -59,13 +60,13 @@ export function useReinforcementToggle({ owner }: UseReinforcementToggleProps) {
   };
 }
 
-interface UseReinforcementBatchModeToggleProps {
+interface UseSelfImprovingBatchModeToggleProps {
   owner: LightWorkspaceType;
 }
 
-export function useReinforcementBatchModeToggle({
+export function useSelfImprovingBatchModeToggle({
   owner,
-}: UseReinforcementBatchModeToggleProps) {
+}: UseSelfImprovingBatchModeToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
@@ -109,13 +110,13 @@ export function useReinforcementBatchModeToggle({
   };
 }
 
-interface UseReinforcementCapSettingProps {
+interface UseSelfImprovingCapSettingProps {
   owner: LightWorkspaceType;
 }
 
-export function useReinforcementCapSetting({
+export function useSelfImprovingCapSetting({
   owner,
-}: UseReinforcementCapSettingProps) {
+}: UseSelfImprovingCapSettingProps) {
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -157,7 +158,7 @@ export function useReinforcementCapSetting({
   };
 }
 
-export function useSkillsReinforcementSpend({
+export function useSkillsSelfImprovingSpend({
   owner,
   disabled,
 }: {
@@ -178,6 +179,31 @@ export function useSkillsReinforcementSpend({
     isSpendLoading: isLoading,
     isSpendError: !!error,
     mutateSpend: mutate,
+  };
+}
+
+export function useSelfImprovingDailySpend({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const dailyFetcher: Fetcher<GetReinforcementDailySpendResponseBody> = fetcher;
+
+  const { data, error, isLoading } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/skills/reinforcement_daily_spend`,
+    dailyFetcher,
+    { disabled }
+  );
+
+  return {
+    dailySpendMicroUsd: data?.dailySpendMicroUsd ?? {},
+    periodStartDate: data?.periodStartDate ?? null,
+    periodEndDate: data?.periodEndDate ?? null,
+    isDailySpendLoading: isLoading,
+    isDailySpendError: !!error,
   };
 }
 

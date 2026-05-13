@@ -1,3 +1,4 @@
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
@@ -126,7 +127,7 @@ import {
   UserModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
-import { UserProjectNotificationPreferenceModel } from "@app/lib/resources/storage/models/user_project_notification_preferences";
+import { UserProjectPreferencesModel } from "@app/lib/resources/storage/models/user_project_preferences";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
@@ -212,6 +213,7 @@ export function loadAllModels() {
     AgentStepContentModel,
     AgentMCPActionModel,
     AgentMCPActionOutputItemModel,
+    AgentStepContentToolExecutionModel,
     AgentChildAgentConfigurationModel,
     FeatureFlagModel,
     GlobalFeatureFlagModel,
@@ -248,7 +250,7 @@ export function loadAllModels() {
     TakeawaysModel,
     TakeawaySourcesModel,
     TakeawaysVersionModel,
-    UserProjectNotificationPreferenceModel,
+    UserProjectPreferencesModel,
     WorkspaceSensitivityLabelConfigModel,
     WorkspaceSandboxEnvVarModel,
   ];

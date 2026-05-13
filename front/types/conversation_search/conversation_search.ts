@@ -22,4 +22,5 @@ export interface ConversationSearchDocument extends ElasticsearchBaseDocument {
   updated_at: string;
   visibility: string;
   next_wakeup_at?: string | null;
+  is_running_agent_loop: boolean;
 }

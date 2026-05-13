@@ -19,10 +19,10 @@ import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
   ActionGitBranchIcon,
   ArrowLeftIcon,
-  AttachmentIcon,
   Breadcrumbs,
   Button,
   Chip,
+  FolderIcon,
   MoreIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -172,7 +172,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           <Button
             size="sm"
             label={isMobile ? undefined : "Files"}
-            icon={AttachmentIcon}
+            icon={FolderIcon}
             variant="ghost"
             onClick={() => openPanel({ type: "files" })}
           />

@@ -1463,6 +1463,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggerId: conversation.triggerSId,
       unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
       updated: conversation.updatedAt.getTime(),
+      isRunningAgentLoop: conversation.isRunningAgentLoop,
       ...(forkingData && { forkingData }),
     });
   }
@@ -2265,6 +2266,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           depth: c.depth,
           metadata: c.metadata,
           branchId: null,
+          isRunningAgentLoop: c.isRunningAgentLoop,
         };
       })
     );
@@ -2327,6 +2329,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: c.depth,
       metadata: c.metadata,
       branchId: null,
+      isRunningAgentLoop: c.isRunningAgentLoop,
     }));
   }
 
@@ -2403,6 +2406,36 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction: t,
+      }
+    );
+
+    await this.triggerEsIndexing(auth, conversation.sId);
+
+    return new Ok(updated[0]);
+  }
+
+  static async setIsRunningAgentLoop(
+    auth: Authenticator,
+    {
+      conversation,
+      isRunningAgentLoop,
+      transaction,
+    }: {
+      conversation: ConversationWithoutContentType;
+      isRunningAgentLoop: boolean;
+      transaction?: Transaction;
+    }
+  ) {
+    const updated = await ConversationModel.update(
+      { isRunningAgentLoop },
+      {
+        where: {
+          id: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        // Do not update `updatedAt.
+        silent: true,
+        transaction,
       }
     );
 
@@ -3944,6 +3977,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       unread:
         this.userLastReadAt === null || this.updatedAt > this.userLastReadAt,
       updated: this.updatedAt.getTime(),
+      isRunningAgentLoop: this.isRunningAgentLoop,
     };
   }
 

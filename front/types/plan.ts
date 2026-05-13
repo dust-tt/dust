@@ -58,6 +58,7 @@ export type LimitsType = {
 
 export const SUBSCRIPTION_STATUSES = [
   "active",
+  "created_backend_only", // Provisioned in DB, waiting on contract.start to flip to "active"
   "ended",
   "ended_backend_only", // Ended on the backend but not yet propagated to Stripe
 ] as const;

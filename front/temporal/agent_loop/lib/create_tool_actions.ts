@@ -212,10 +212,11 @@ async function createActionForTool(
   // We store the action here as the params have been generated, if an error occurs later on,
   // the error will be stored on the parent agent message.
   const action = await createMCPAction(auth, {
-    agentMessage,
-    status,
     actionConfiguration,
+    agentMessage,
     augmentedInputs,
+    conversation,
+    status,
     stepContentId,
     stepContext,
   });

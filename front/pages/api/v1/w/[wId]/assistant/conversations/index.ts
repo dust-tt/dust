@@ -344,6 +344,7 @@ async function handler(
 
         if (isContentFragmentInputWithInlinedContent(contentFragment)) {
           const contentFragmentRes = await toFileContentFragment(auth, {
+            conversation,
             contentFragment,
           });
           if (contentFragmentRes.isErr()) {
@@ -463,7 +464,7 @@ async function handler(
 
         const validateUserMessageContextRes = isUserMessageContextValid(
           auth,
-          req,
+          req.headers,
           ctx
         );
         if (!validateUserMessageContextRes) {
