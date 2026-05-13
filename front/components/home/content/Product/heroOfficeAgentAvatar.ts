@@ -53,6 +53,7 @@ export function buildAgent(
     body.appendChild(defs);
 
     const img = document.createElementNS(SVG_NS, "image");
+    img.setAttribute("class", "agent-photo");
     img.setAttributeNS("http://www.w3.org/1999/xlink", "href", iconImage);
     img.setAttribute("href", iconImage);
     img.setAttribute("x", "-22");
@@ -64,8 +65,11 @@ export function buildAgent(
     body.appendChild(img);
 
     // Match the gray ring used by the human + SVG-glyph agents so the
-    // family reads consistently.
+    // family reads consistently. The `agent-ring` class keeps the inactive
+    // disc-recolor rule from accidentally filling this circle and covering
+    // the photo underneath.
     const ring = document.createElementNS(SVG_NS, "circle");
+    ring.setAttribute("class", "agent-ring");
     ring.setAttribute("r", "22");
     ring.setAttribute("fill", "none");
     ring.setAttribute("stroke", "#E9ECEF");
@@ -75,6 +79,7 @@ export function buildAgent(
     // Stroke matches the human avatars' effective ring (the 3px gap between
     // the gray disc fill and the photo).
     const disc = document.createElementNS(SVG_NS, "circle");
+    disc.setAttribute("class", "agent-disc");
     disc.setAttribute("r", "22");
     disc.setAttribute("fill", "#1C91FF");
     disc.setAttribute("stroke", "#E9ECEF");

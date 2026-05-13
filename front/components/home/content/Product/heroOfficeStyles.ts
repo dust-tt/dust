@@ -136,13 +136,21 @@ export const SCENE_CSS = `
   50%     { transform: scale(1.03); }
 }
 /* Idle agents (not part of the current scenario) read as background props:
-   the blue disc fades to a light gray. The disc is the first <circle> child
-   of .agent-body — the icon glyph follows. */
-.dust-floor-host .agent-body > circle {
+   the blue disc fades to a light gray, and image-based agents fade to
+   grayscale so their photo still reads at a glance. The selectors are
+   scoped to .agent-disc and .agent-photo so the .agent-ring (which sits
+   on top of the photo with fill:none) is never accidentally filled. */
+.dust-floor-host .agent-disc {
   transition: fill 320ms ease;
 }
-.dust-floor-host .agent:not(.active) .agent-body > circle {
+.dust-floor-host .agent:not(.active) .agent-disc {
   fill: #B2B6BD;
+}
+.dust-floor-host .agent-photo {
+  transition: filter 320ms ease;
+}
+.dust-floor-host .agent:not(.active) .agent-photo {
+  filter: grayscale(1);
 }
 /* Halo is hidden by default. Same .active rule as the @name chip: only
    the agents in the running scenario radiate. */
