@@ -155,6 +155,8 @@ export async function renderConversationForModel(
   const logDetails = {
     workspaceId: conversation.owner.sId,
     conversationId: conversation.sId,
+    agentConfigurationId: agentConfiguration?.sId,
+    allowedTokenCount,
     model: {
       providerId: model.providerId,
       modelId: model.modelId,
@@ -163,7 +165,6 @@ export async function renderConversationForModel(
       tokenCountAdjustment: model.tokenCountAdjustment,
       tokenier: model.tokenizer,
     },
-    allowedTokenCount,
     baseTokens,
     promptCount,
     toolDefinitionsCount,
