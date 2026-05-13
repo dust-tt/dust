@@ -79,6 +79,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "conversation_files": {
     "cat": "never_ask",
     "list": "never_ask",
+    "list_content_nodes_and_tables": "never_ask",
     "semantic_search": "never_ask",
   },
   "data_sources_file_system": {

@@ -56,8 +56,8 @@ export const VIZ_STYLING_GUIDELINES = `
 `;
 
 export const VIZ_FILE_HANDLING_GUIDELINES = `
-- Using any file from the \`conversation_files__list_files\` action when available:
-  - Files from the conversation as returned by \`conversation_files__list_files\` can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
+- Using any file from the conversation when available:
+  - Files attached to the conversation can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Like any React hook, \`useFile\` must be called inside a React component at the top level (not in event handlers, loops, or conditions).
   - \`useFile()\` accepts either a file ID (e.g. \`"fil_abc123"\`, as found in \`<attachment id="fil_..." ...>\` tags) or a scoped file path (e.g. \`"conversation/report.csv"\`). Pass whichever you already have.
