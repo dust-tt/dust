@@ -13,6 +13,7 @@ export class SandboxFactory {
       statusChangedAt?: Date | null;
       baseImage?: string;
       version?: string;
+      killRequestedAt?: Date | null;
     }
   ): Promise<SandboxResource> {
     const sandbox = await SandboxResource.makeNew(auth, {
@@ -26,6 +27,13 @@ export class SandboxFactory {
     if (opts?.statusChangedAt !== undefined) {
       await SandboxModel.update(
         { statusChangedAt: opts.statusChangedAt } as Partial<SandboxModel>,
+        { where: { id: sandbox.id } }
+      );
+    }
+
+    if (opts?.killRequestedAt !== undefined) {
+      await SandboxModel.update(
+        { killRequestedAt: opts.killRequestedAt } as Partial<SandboxModel>,
         { where: { id: sandbox.id } }
       );
     }

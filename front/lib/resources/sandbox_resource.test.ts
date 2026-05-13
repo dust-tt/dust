@@ -221,6 +221,156 @@ describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
   });
 });
 
+describe("SandboxResource.dangerouslyDestroyIfKillRequested", () => {
+  let authenticator: Authenticator;
+  let conversation: ConversationType;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockExecuteWithLock.mockImplementation(
+      async (_key: string, fn: () => Promise<unknown>) => fn()
+    );
+    mockGetSandboxProvider.mockReturnValue({
+      destroy: mockProviderDestroy,
+    });
+    mockProviderDestroy.mockResolvedValue(new Ok(undefined));
+    mockDeleteSandboxPolicy.mockResolvedValue(new Ok(undefined));
+    mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
+
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+  });
+
+  it.each([
+    "running",
+    "sleeping",
+    "pending_approval",
+  ] as const)("destroys at the provider and marks deleted regardless of status (%s)", async (status) => {
+    const sandbox = await SandboxFactory.create(authenticator, conversation, {
+      status,
+      killRequestedAt: new Date(),
+    });
+
+    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
+      authenticator,
+      conversation.sId
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
+      workspaceId: authenticator.getNonNullableWorkspace().sId,
+    });
+
+    const reloaded = await SandboxResource.fetchByConversationId(
+      authenticator,
+      conversation.sId
+    );
+    expect(reloaded?.status).toBe("deleted");
+  });
+
+  it("is a no-op when killRequestedAt is not set", async () => {
+    await SandboxFactory.create(authenticator, conversation, {
+      status: "running",
+    });
+
+    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
+      authenticator,
+      conversation.sId
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+
+    const reloaded = await SandboxResource.fetchByConversationId(
+      authenticator,
+      conversation.sId
+    );
+    expect(reloaded?.status).toBe("running");
+  });
+
+  it("is a no-op when the sandbox is already deleted", async () => {
+    await SandboxFactory.create(authenticator, conversation, {
+      status: "deleted",
+      killRequestedAt: new Date(),
+    });
+
+    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
+      authenticator,
+      conversation.sId
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+  });
+});
+
+describe("SandboxResource.dangerouslyGetKillRequestedConversationIds", () => {
+  let authenticator: Authenticator;
+  let conversation: ConversationType;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+  });
+
+  it("returns rows with killRequestedAt set and status != deleted", async () => {
+    await SandboxFactory.create(authenticator, conversation, {
+      status: "running",
+      killRequestedAt: new Date(),
+    });
+
+    const rows =
+      await SandboxResource.dangerouslyGetKillRequestedConversationIds({
+        limit: 10,
+      });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.conversationId).toBe(conversation.sId);
+  });
+
+  it("skips deleted rows even when killRequestedAt is set", async () => {
+    await SandboxFactory.create(authenticator, conversation, {
+      status: "deleted",
+      killRequestedAt: new Date(),
+    });
+
+    const rows =
+      await SandboxResource.dangerouslyGetKillRequestedConversationIds({
+        limit: 10,
+      });
+
+    expect(rows).toHaveLength(0);
+  });
+
+  it("skips rows where killRequestedAt is null", async () => {
+    await SandboxFactory.create(authenticator, conversation, {
+      status: "running",
+    });
+
+    const rows =
+      await SandboxResource.dangerouslyGetKillRequestedConversationIds({
+        limit: 10,
+      });
+
+    expect(rows).toHaveLength(0);
+  });
+});
+
 describe("SandboxResource.ensureActive", () => {
   let authenticator: Authenticator;
   let conversation: ConversationType;
@@ -382,5 +532,35 @@ describe("SandboxResource.ensureActive", () => {
     expect(persisted?.baseImage).toBe("test-image");
     expect(persisted?.version).toBe("0.0.1");
     expect(persisted?.providerId).toBe("provider-id");
+  });
+
+  it("destroys and recreates when killRequestedAt is set on the existing row", async () => {
+    const stale = await SandboxFactory.create(authenticator, conversation, {
+      status: "running",
+      baseImage: "stale-image",
+      version: "0.0.0-old",
+      killRequestedAt: new Date(),
+    });
+
+    const result = await SandboxResource.ensureActive(
+      authenticator,
+      conversation
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockProviderDestroy).toHaveBeenCalledWith(stale.providerId, {
+      workspaceId: authenticator.getNonNullableWorkspace().sId,
+    });
+    expect(mockProviderCreate).toHaveBeenCalled();
+
+    const persisted = await SandboxResource.fetchByConversationId(
+      authenticator,
+      conversation.sId
+    );
+    expect(persisted?.providerId).toBe("provider-id");
+    expect(persisted?.baseImage).toBe("test-image");
+    expect(persisted?.version).toBe("0.0.1");
+    expect(persisted?.killRequestedAt).toBeNull();
+    expect(persisted?.status).toBe("running");
   });
 });
