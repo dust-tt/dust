@@ -193,7 +193,7 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_OPUS_4_6_MODEL_ID,
   displayName: "Claude Opus 4.6",
-  contextSize: 200_000,
+  contextSize: 400_000,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
@@ -224,7 +224,7 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_OPUS_4_7_MODEL_ID,
   displayName: "Claude Opus 4.7",
-  contextSize: 200_000,
+  contextSize: 400_000,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
@@ -260,7 +260,7 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   // 200k, reducing it temporarily to avoid "prompt too long" errors on dust agent
   // due to reasoning tokens not being counted when estimating prompt size in countTokensForMessages
   // Keeping 190k while Anthropic token count API rate limit hasn't been increased
-  contextSize: 190_000,
+  contextSize: 400_000,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
