@@ -8,6 +8,7 @@ import {
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
@@ -27,10 +28,12 @@ export async function validateAction(
     actionId,
     approvalState,
     messageId,
+    resumeAncestorConversations = false,
   }: {
     actionId: string;
     approvalState: ActionApprovalStateType;
     messageId: string;
+    resumeAncestorConversations?: boolean;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -204,5 +207,11 @@ export async function validateAction(
     `Action ${approvalState === "approved" ? "approved" : "rejected"} by user`
   );
 
-  return new Ok(undefined);
+  if (!resumeAncestorConversations) {
+    return new Ok(undefined);
+  }
+
+  return resumeAncestorConversationsHelper(auth, conversation, {
+    agentMessageId,
+  });
 }

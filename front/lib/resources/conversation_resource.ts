@@ -60,6 +60,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import isEqual from "lodash/isEqual";
@@ -250,11 +251,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       excludeTest,
       updatedAfter,
       includeForkingData,
+      loadSpaces,
     }: {
       transaction?: Transaction;
       excludeTest?: boolean;
       updatedAfter?: Date;
       includeForkingData?: boolean;
+      loadSpaces?: boolean;
     } = {}
   ): Promise<ConversationResource[]> {
     if (ids.length === 0) {
@@ -279,8 +282,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     });
 
+    let spaceIdToSpaceMap: Map<ModelId, SpaceResource> = new Map();
+    if (loadSpaces) {
+      const uniqueSpaceIds = uniq(
+        removeNulls(conversations.map((c) => c.spaceId))
+      );
+      const spaces =
+        uniqueSpaceIds.length === 0
+          ? []
+          : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds, {
+              transaction,
+            });
+      spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
+    }
+
     // Note: no permission filtering here. Callers must ensure the auth is allowed.
-    return conversations.map((c) => this.fromModel(c, null));
+    return conversations.map((c) =>
+      this.fromModel(
+        c,
+        loadSpaces && c.spaceId
+          ? (spaceIdToSpaceMap.get(c.spaceId) ?? null)
+          : null
+      )
+    );
   }
 
   get forkingData(): ConversationForkingDataType | undefined {
@@ -2698,6 +2722,69 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     return status;
+  }
+
+  /**
+   * Resolve the parent agent message that spawned the given agent message in
+   * this conversation via run_agent / agent_handover.
+   *
+   * Walks the agent message → its parent user message (in the same conversation)
+   * → that user message's `agenticOriginMessageId` (the parent agent message,
+   * possibly in another conversation).
+   *
+   * Returns null when the agent message has no agentic origin (root
+   * conversation) or when the parent message can no longer be found.
+   */
+  async findAgenticParent(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<MessageModel | null> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const agentMessage = await MessageModel.findOne({
+      where: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        sId: agentMessageId,
+      },
+      attributes: ["parentId"],
+    });
+
+    if (!agentMessage?.parentId) {
+      return null;
+    }
+
+    const parentMessage = await MessageModel.findOne({
+      where: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        id: agentMessage.parentId,
+      },
+      attributes: [],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: ["agenticOriginMessageId"],
+        },
+      ],
+    });
+
+    const agenticOriginMessageId =
+      parentMessage?.userMessage?.agenticOriginMessageId;
+    if (!agenticOriginMessageId) {
+      return null;
+    }
+
+    const agenticOriginMessage = await MessageModel.findOne({
+      where: {
+        workspaceId: owner.id,
+        sId: agenticOriginMessageId,
+      },
+    });
+
+    return agenticOriginMessage;
   }
 
   /**

@@ -90,17 +90,29 @@ export function BlockedActionsProvider({
 
   useEffect(() => {
     if (conversationId) {
-      setBlockedActionsQueue(
-        blockedActions.flatMap((action): BlockedActionQueueItem[] => {
+      // Sub-agent (run_agent) conversations can be nested arbitrarily deep:
+      // a `blocked_child_action_input_required` action can itself contain
+      // child actions in the same `blocked_child_action_input_required` state.
+      // Walk the tree to surface every leaf, anchored on the outermost
+      // message id so removal/lookup matches the rendered agent message.
+      const flattenBlockedActions = (
+        actions: BlockedToolExecution[],
+        outerMessageId: string
+      ): BlockedActionQueueItem[] =>
+        actions.flatMap((action) => {
           if (action.status === "blocked_child_action_input_required") {
-            return action.childBlockedActionsList.map((childAction) => ({
-              blockedAction: childAction,
-              messageId: action.messageId,
-            }));
-          } else {
-            return [{ blockedAction: action, messageId: action.messageId }];
+            return flattenBlockedActions(
+              action.childBlockedActionsList,
+              outerMessageId
+            );
           }
-        })
+          return [{ blockedAction: action, messageId: outerMessageId }];
+        });
+
+      setBlockedActionsQueue(
+        blockedActions.flatMap((action) =>
+          flattenBlockedActions([action], action.messageId)
+        )
       );
     } else {
       setBlockedActionsQueue(EMPTY_BLOCKED_ACTIONS_QUEUE);
