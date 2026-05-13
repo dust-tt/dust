@@ -14,12 +14,14 @@ import type {
   MetronomeBalance,
   MetronomeEvent,
   MetronomePackageTier,
+  MetronomeSeatBalance,
   MetronomeUsageListResponse,
   MetronomeUsageWithGroupsResponse,
 } from "./types";
 import {
   classifyMetronomePackageByName,
   classifyMetronomePackageCurrencyByName,
+  isMetronomeSeatBalance,
 } from "./types";
 
 let cachedClient: Metronome | null = null;
@@ -1769,6 +1771,47 @@ export async function deductMetronomeCreditBalance({
     logger.error(
       { error, metronomeCustomerId, contractId, creditId, segmentId, amount },
       "[Metronome] Failed to apply manual credit deduction"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * List per-seat balances for a SEAT_BASED contract.
+ * Uses a raw fetch because the Metronome SDK does not yet expose this endpoint.
+ * Returns one entry per seat_id (user sId), with balance (remaining) and
+ * starting_balance (full allocation for the period).
+ */
+export async function listMetronomeSeatBalances({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<Result<MetronomeSeatBalance[], Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok([]);
+  }
+
+  try {
+    const response = await getMetronomeClient().post<{ data?: unknown[] }>(
+      "/v1/contracts/seatBalances/list",
+      {
+        body: {
+          customer_id: metronomeCustomerId,
+          contract_id: metronomeContractId,
+          include_credits_and_commits: true,
+          covering_date: new Date().toISOString(),
+        },
+      }
+    );
+    const balances = (response.data ?? []).filter(isMetronomeSeatBalance);
+    return new Ok(balances);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId },
+      "[Metronome] Failed to list seat balances"
     );
     return new Err(error);
   }

@@ -1,17 +1,95 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { DataTable, LoadingBlock } from "@dust-tt/sparkle";
+import type { MembershipSeatType } from "@app/types/memberships";
+import {
+  DataTable,
+  LoadingBlock,
+  SeatFreeIcon,
+  SeatMaxIcon,
+  SeatProIcon,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type React from "react";
 
 type RowData = {
   sId: string;
   name: string;
   email: string | null;
   image: string | null;
+  seatType: MembershipSeatType | null;
+  seatUsagePercent: number | null;
   consumedMicroUsd: number;
   onClick?: () => void;
 };
 
 type Info = CellContext<RowData, string>;
+
+interface CircleProgressProps {
+  percentage: number;
+}
+
+function CircleProgress({ percentage }: CircleProgressProps) {
+  const size = 16;
+  const strokeWidth = 2;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clampedPct = Math.min(100, Math.max(0, percentage));
+  const offset = circumference - (clampedPct / 100) * circumference;
+  const strokeColor =
+    percentage >= 100
+      ? "#ef4444"
+      : percentage >= 80
+        ? "#f59e0b"
+        : "currentColor";
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        opacity={0.2}
+        strokeWidth={strokeWidth}
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth={strokeWidth}
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        strokeLinecap="butt"
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    </svg>
+  );
+}
+
+const SEAT_TYPE_ICONS: Partial<
+  Record<MembershipSeatType, React.ComponentType>
+> = {
+  max: SeatMaxIcon,
+  pro: SeatProIcon,
+  free: SeatFreeIcon,
+};
+
+interface SeatTypeIconProps {
+  seatType: MembershipSeatType | null;
+}
+
+function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
+  if (!seatType) {
+    return null;
+  }
+  const Icon = SEAT_TYPE_ICONS[seatType];
+  if (!Icon) {
+    return null;
+  }
+  return <Icon />;
+}
 
 function formatMicroUsd(amountMicroUsd: number): string {
   const dollars = amountMicroUsd / 1_000_000;
@@ -40,6 +118,53 @@ const columns: ColumnDef<RowData, string>[] = [
     ),
   },
   {
+    id: "seatType" as const,
+    header: "Seat",
+    accessorFn: (row) => row.seatType ?? "",
+    cell: (info: Info) => {
+      const seatType = info.row.original.seatType;
+      return (
+        <DataTable.CellContent>
+          <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
+            <SeatTypeIcon seatType={seatType} />
+            {seatType ?? "—"}
+          </span>
+        </DataTable.CellContent>
+      );
+    },
+    meta: {
+      className: "w-28",
+    },
+  },
+  {
+    id: "seatUsagePercent" as const,
+    header: "Seat usage",
+    accessorFn: (row) => (row.seatUsagePercent ?? 0).toString(),
+    cell: (info: Info) => {
+      const pct = info.row.original.seatUsagePercent;
+      return (
+        <DataTable.CellContent>
+          {pct !== null ? (
+            <span className="flex items-center gap-1.5 text-sm font-semibold tabular-nums text-muted-foreground dark:text-muted-foreground-night">
+              <CircleProgress percentage={pct} />
+              {`${Math.round(pct)}%`}
+            </span>
+          ) : (
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              —
+            </span>
+          )}
+        </DataTable.CellContent>
+      );
+    },
+    meta: {
+      className: "w-28",
+    },
+    enableSorting: true,
+    sortingFn: (a, b) =>
+      (a.original.seatUsagePercent ?? -1) - (b.original.seatUsagePercent ?? -1),
+  },
+  {
     id: "consumedMicroUsd" as const,
     header: "Workspace usage",
     accessorFn: (row) => row.consumedMicroUsd.toString(),
@@ -63,12 +188,14 @@ interface MembersUsageTableProps {
   members: MemberUsageType[];
   isLoading: boolean;
   searchTerm: string;
+  seatTypeFilter: MembershipSeatType | "none" | null;
 }
 
 export function MembersUsageTable({
   members,
   isLoading,
   searchTerm,
+  seatTypeFilter,
 }: MembersUsageTableProps) {
   if (isLoading) {
     return (
@@ -81,19 +208,34 @@ export function MembersUsageTable({
   }
 
   const lowerSearch = searchTerm.toLowerCase();
-  const filtered = searchTerm
-    ? members.filter(
-        (m) =>
-          m.name.toLowerCase().includes(lowerSearch) ||
-          (m.email ?? "").toLowerCase().includes(lowerSearch)
-      )
-    : members;
+  const filtered = members.filter((m) => {
+    if (
+      searchTerm &&
+      !m.name.toLowerCase().includes(lowerSearch) &&
+      !(m.email ?? "").toLowerCase().includes(lowerSearch)
+    ) {
+      return false;
+    }
+    if (seatTypeFilter === "none" && m.seatType !== null) {
+      return false;
+    }
+    if (
+      seatTypeFilter !== null &&
+      seatTypeFilter !== "none" &&
+      m.seatType !== seatTypeFilter
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   const rows: RowData[] = filtered.map((m) => ({
     sId: m.sId,
     name: m.name,
     email: m.email,
     image: m.image,
+    seatType: m.seatType,
+    seatUsagePercent: m.seatUsagePercent,
     consumedMicroUsd: m.consumedMicroUsd,
   }));
 

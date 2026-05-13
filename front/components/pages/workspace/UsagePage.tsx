@@ -15,10 +15,16 @@ import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
+import type { MembershipSeatType } from "@app/types/memberships";
 import { isAdmin } from "@app/types/user";
 import {
   ActionPieChartIcon,
+  Button,
   ContentMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   ExclamationCircleIcon,
   Icon,
   Page,
@@ -125,6 +131,9 @@ export function UsagePage() {
   const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [seatTypeFilter, setSeatTypeFilter] = useState<
+    MembershipSeatType | "none" | null
+  >(null);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
@@ -266,10 +275,52 @@ export function UsagePage() {
             />
           )}
         </div>
+        <div className="flex flex-row justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                label={
+                  seatTypeFilter === "none"
+                    ? "No seat"
+                    : seatTypeFilter
+                      ? seatTypeFilter.charAt(0).toUpperCase() +
+                        seatTypeFilter.slice(1)
+                      : "All seats"
+                }
+                size="sm"
+                isSelect
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                label="All seats"
+                onClick={() => setSeatTypeFilter(null)}
+              />
+              <DropdownMenuItem
+                label="No seat"
+                onClick={() => setSeatTypeFilter("none")}
+              />
+              <DropdownMenuItem
+                label="Free"
+                onClick={() => setSeatTypeFilter("free")}
+              />
+              <DropdownMenuItem
+                label="Pro"
+                onClick={() => setSeatTypeFilter("pro")}
+              />
+              <DropdownMenuItem
+                label="Max"
+                onClick={() => setSeatTypeFilter("max")}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <MembersUsageTable
           members={membersUsage}
           isLoading={isMembersUsageLoading}
           searchTerm={searchTerm}
+          seatTypeFilter={seatTypeFilter}
         />
       </Page.Vertical>
 
