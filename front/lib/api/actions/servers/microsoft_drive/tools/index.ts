@@ -11,6 +11,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   downloadAndProcessMicrosoftFile,
+  downloadDriveItemAsBuffer,
   getAllowedLabelsForMCPServer,
   getDriveItemEndpoint,
   getGraphClient,
@@ -19,7 +20,6 @@ import {
   validateZipFile,
 } from "@app/lib/api/actions/servers/microsoft/utils";
 import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
-import { untrustedFetch } from "@app/lib/egress/server";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type AdmZip from "adm-zip";
@@ -140,9 +140,12 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         );
       }
 
-      // Download the existing document
-      const docResponse = await untrustedFetch(downloadUrl);
-      const buffer = Buffer.from(await docResponse.arrayBuffer());
+      // Download the existing document (with authenticated fallback when pre-signed URL is unavailable).
+      const buffer = await downloadDriveItemAsBuffer(
+        client,
+        endpoint,
+        downloadUrl
+      );
 
       // Validate ZIP file to prevent zip bomb attacks
       const zipValidation = validateZipFile(buffer);
@@ -236,6 +239,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         try {
           content = await downloadAndProcessMicrosoftFile({
             downloadUrl,
+            client,
+            endpoint,
             mimeType,
             fileName,
             extractAsXml: true,
@@ -280,15 +285,17 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       }
 
       // Download the file as a buffer and attach it to the conversation.
-      const fileResponse = await untrustedFetch(downloadUrl);
-      if (!fileResponse.ok) {
+      // Falls back to authenticated Graph API download when pre-signed URL is unavailable.
+      let buffer: Buffer;
+      try {
+        buffer = await downloadDriveItemAsBuffer(client, endpoint, downloadUrl);
+      } catch (err) {
         return new Err(
           new MCPError(
-            `Failed to download file: ${fileResponse.status} ${fileResponse.statusText}`
+            `Failed to download file: ${normalizeError(err).message}`
           )
         );
       }
-      const buffer = Buffer.from(await fileResponse.arrayBuffer());
 
       const result = await processAttachment({
         mimeType,
