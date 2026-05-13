@@ -1,7 +1,6 @@
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { randomUUID } from "crypto";
 import type { slides_v1 } from "googleapis";
 import { z } from "zod";
 
@@ -188,7 +187,7 @@ export function resolvePresentationOperations(
             new Error(`addTextBox: slide ${op.slideNumber} not found.`)
           );
         }
-        const elementId = `dust_textbox_${randomUUID()}`;
+        const elementId = `dust_textbox_${crypto.randomUUID()}`;
         requests.push({
           createShape: {
             objectId: elementId,
