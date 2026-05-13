@@ -908,7 +908,7 @@ function getRateCards(): RateCardDef[] {
   ];
 }
 
-// Recurring free credit definition shared by all monthly packages.
+// Recurring free credit definition shared by all legacy monthly packages.
 // Quantity starts at 0 — the credit.segment.start webhook updates it each period
 // to the actual user-based amount.
 function getFreeMonthlyRecurringCredits(): RecurringCreditDef {
@@ -928,7 +928,7 @@ function getFreeMonthlyRecurringCredits(): RecurringCreditDef {
   };
 }
 
-// Annual variant for annual packages. Same product, but the credit is granted
+// Annual variant for legacy annual packages. Same product, but the credit is granted
 // once per year. The credit.segment.start webhook detects ANNUAL recurrence
 // and multiplies the monthly bracket amount by 12.
 function getFreeAnnualRecurringCredits(): RecurringCreditDef {
@@ -962,30 +962,6 @@ function getFreeExcessRecurringCredits(): RecurringCreditDef {
     applicable_product_tags: [USAGE_TAG],
     recurrence_frequency: "MONTHLY",
     name: EXCESS_CREDIT_NAME,
-  };
-}
-
-// Monthly recurring AWU credit that draws down only on usage tagged as free
-// via the `is_free_usage` presentation group. Granted at a very high quantity
-// so it effectively zeros out free-tagged usage on every billing period.
-//
-// Priority 100 — drawn before per-seat individual credits (200) so any usage
-// explicitly tagged as free is absorbed first, preserving the seat allocation.
-// Multiples of 100 leave room (50/150/...) for future credit tiers.
-function getFreeUsageAwuRecurringCredits(): RecurringCreditDef {
-  return {
-    product_name: "Free Credits",
-    access_amount: {
-      credit_type_id: getCreditTypeAwuId(),
-      unit_price: 0,
-      quantity: 1_000_000_000,
-    },
-    commit_duration: { value: 1, unit: "PERIODS" },
-    priority: 100,
-    starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
-    specifiers: [{ presentation_group_values: { is_free_usage: "true" } }],
-    recurrence_frequency: "MONTHLY",
-    name: "Free Usage Credits",
   };
 }
 
@@ -1092,9 +1068,6 @@ function getPerSeatIndividualAwuCredits({
       unit_price: quantityPerSeat,
     },
     commit_duration: { value: 1, unit: "PERIODS" },
-    // Priority 200 — drawn after Free Usage Credits (100) so explicitly-free
-    // events don't consume the paid per-seat allocation. Multiples of 100 leave
-    // room for future credits (e.g. workspace prepaid commit at 300).
     priority: 200,
     starting_at_offset: { unit: "DAYS", value: 0 },
     applicable_product_tags: [USAGE_TAG],
@@ -1231,7 +1204,6 @@ function getPackages(): PackageDef[] {
       rate_card_name: "Enterprise USD",
       subscriptions: [WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION],
       scheduled_charges_on_usage_invoices: "ALL",
-      recurring_credits: [getFreeUsageAwuRecurringCredits()],
       ...BILLING_CYCLE_CONFIG,
     },
     {
@@ -1240,7 +1212,6 @@ function getPackages(): PackageDef[] {
       rate_card_name: "Enterprise EUR",
       subscriptions: [WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION],
       scheduled_charges_on_usage_invoices: "ALL",
-      recurring_credits: [getFreeUsageAwuRecurringCredits()],
       ...BILLING_CYCLE_CONFIG,
     },
     // New Business USD / EUR — Pro and Max seats as SEAT_BASED subscriptions
@@ -1254,7 +1225,6 @@ function getPackages(): PackageDef[] {
       subscriptions: [PRO_SEAT_SUBSCRIPTION, MAX_SEAT_SUBSCRIPTION],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
-        getFreeUsageAwuRecurringCredits(),
         getPerSeatIndividualAwuCredits({
           subscriptionTemporaryId: PRO_SEAT_SUBSCRIPTION_TEMPORARY_ID,
           quantityPerSeat: PRO_SEAT_MONTHLY_AWU_CREDITS,
@@ -1275,7 +1245,6 @@ function getPackages(): PackageDef[] {
       subscriptions: [PRO_SEAT_SUBSCRIPTION, MAX_SEAT_SUBSCRIPTION],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
-        getFreeUsageAwuRecurringCredits(),
         getPerSeatIndividualAwuCredits({
           subscriptionTemporaryId: PRO_SEAT_SUBSCRIPTION_TEMPORARY_ID,
           quantityPerSeat: PRO_SEAT_MONTHLY_AWU_CREDITS,
