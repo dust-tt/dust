@@ -366,10 +366,7 @@ export type UpdateMemberSeatTypeInput = z.infer<
 
 export async function updateMemberSeatType(
   auth: Authenticator,
-  {
-    userId,
-    seatType,
-  }: UpdateMemberSeatTypeInput & { userId: string }
+  { userId, seatType }: UpdateMemberSeatTypeInput & { userId: string }
 ): Promise<
   Result<
     { seatType: MembershipSeatType },

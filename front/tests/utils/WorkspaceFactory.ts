@@ -27,7 +27,9 @@ export class WorkspaceFactory {
     return this.create(FREE_BYOK_PLAN_CODE, overrides);
   }
 
-  static async metronome(overrides?: WorkspaceOverrides): Promise<WorkspaceType> {
+  static async metronome(
+    overrides?: WorkspaceOverrides
+  ): Promise<WorkspaceType> {
     return this.create(PRO_PLAN_SEAT_29_CODE, overrides, {
       metronomeContractId: "test-metronome-contract-id",
     });

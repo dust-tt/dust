@@ -169,7 +169,11 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
 
     it("returns 200 when downgrading from max to pro", async () => {
       const workspace = await WorkspaceFactory.metronome();
-      const { req, res, workspace: w } = await createPrivateApiMockRequest({
+      const {
+        req,
+        res,
+        workspace: w,
+      } = await createPrivateApiMockRequest({
         method: "PATCH",
         role: "admin",
         workspace,
