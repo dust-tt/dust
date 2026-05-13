@@ -53,10 +53,7 @@ export interface ToolEntry {
 
 export type ManifestFormat = "json" | "yaml";
 
-export type ContentGenerator = () =>
-  | Buffer
-  | string
-  | Map<string, Buffer | string>;
+export type ContentGenerator = () => Buffer | string;
 
 export type CopySource =
   | { readonly type: "path"; readonly path: string }
