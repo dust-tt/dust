@@ -1631,6 +1631,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       resultConversations = conversations.slice(0, pagination.limit);
     }
 
+    // Exclude conversations that reference a project space where the user is not an
+    // explicit member. Project-space conversations belong in the project context, not
+    // in the private sidebar. This mirrors the ES path's must_not + isMember check.
+    const uniqueSpaceModelIds = uniq(
+      resultConversations.flatMap((c) => c.requestedSpaceIds)
+    );
+    if (uniqueSpaceModelIds.length > 0) {
+      const referencedSpaces = await SpaceResource.fetchByModelIds(
+        auth,
+        uniqueSpaceModelIds
+      );
+      const nonMemberProjectSpaceIds = new Set(
+        referencedSpaces
+          .filter((s) => s.isProject() && !s.isMember(auth))
+          .map((s) => s.id)
+      );
+      if (nonMemberProjectSpaceIds.size > 0) {
+        resultConversations = resultConversations.filter(
+          (c) =>
+            !c.requestedSpaceIds.some((id) => nonMemberProjectSpaceIds.has(id))
+        );
+      }
+    }
+
     resultConversations.forEach((c) => {
       const participation = participationMap.get(c.id);
       if (participation) {
@@ -1696,14 +1720,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const workspace = auth.getNonNullableWorkspace();
     const orderDirection = pagination.orderDirection ?? "desc";
 
-    const accessibleSpaces =
-      await SpaceResource.listWorkspaceSpacesAsMember(auth);
-    const accessibleSpaceIds = accessibleSpaces.map((s) => s.sId);
+    const projectSpaces = await SpaceResource.listProjectSpaces(auth);
+    const nonMemberProjectSpaceIds = projectSpaces
+      .filter((s) => !s.isMember(auth))
+      .map((s) => s.sId);
 
     const esResult = await listPrivateConversationsFromES({
-      accessibleSpaceIds,
       lastValue: pagination.lastValue,
       limit: pagination.limit,
+      nonMemberProjectSpaceIds,
       orderDirection,
       userId: user.sId,
       workspaceId: workspace.sId,

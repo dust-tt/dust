@@ -12,9 +12,9 @@ import type { Result } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
 interface ListPrivateConversationsFromESParams {
-  accessibleSpaceIds: string[];
   lastValue?: string;
   limit: number;
+  nonMemberProjectSpaceIds: string[];
   orderDirection: "asc" | "desc";
   userId: string;
   workspaceId: string;
@@ -54,54 +54,13 @@ function parseSearchAfterCursor(
 export async function listPrivateConversationsFromES({
   workspaceId,
   userId,
-  accessibleSpaceIds,
   limit,
   lastValue,
+  nonMemberProjectSpaceIds,
   orderDirection,
 }: ListPrivateConversationsFromESParams): Promise<
   Result<ListPrivateConversationsFromESResult, ElasticsearchError>
 > {
-  // Filter: all values in requested_space_ids must be in the user's accessible spaces.
-  // terms_set with minimum_should_match_script = doc field length implements the
-  // "superset check": every space the conversation references must be accessible.
-  // When accessibleSpaceIds is empty, conversations with non-empty requested_space_ids
-  // are correctly excluded (0 matches < required length).
-  // When accessibleSpaceIds is non-empty we need two cases:
-  //   1. Conversations with no space requirements (empty array → ES treats field as missing).
-  //   2. Conversations where every required space is in the user's accessible set.
-  // terms_set alone misses case 1 because ES skips documents where the field has no values,
-  // even when the Painless script would return minimum=0.
-  const requestedSpaceIdsFilter: estypes.QueryDslQueryContainer =
-    accessibleSpaceIds.length > 0
-      ? {
-          bool: {
-            should: [
-              // Case 1: no space requirements, always accessible.
-              {
-                bool: {
-                  must_not: [{ exists: { field: "requested_space_ids" } }],
-                },
-              },
-              // Case 2: all required spaces are in the user's accessible set.
-              {
-                terms_set: {
-                  requested_space_ids: {
-                    terms: accessibleSpaceIds,
-                    minimum_should_match_script: {
-                      source: "doc['requested_space_ids'].size()",
-                    },
-                  },
-                },
-              },
-            ],
-            minimum_should_match: 1,
-          },
-        }
-      : {
-          // No accessible spaces: only pass conversations with no space requirements.
-          bool: { must_not: [{ exists: { field: "requested_space_ids" } }] },
-        };
-
   const sortOrder = orderDirection === "desc" ? "desc" : "asc";
   const fetchLimit = limit + 1;
   const searchAfter = parseSearchAfterCursor(lastValue, orderDirection);
@@ -128,7 +87,24 @@ export async function listPrivateConversationsFromES({
                 },
               },
             },
-            requestedSpaceIdsFilter,
+            // Mirror the DB path: hide conversations that reference a project space
+            // the user is not a member of. Only project spaces are filtered; regular,
+            // global, and system spaces do not trigger exclusion.
+            ...(nonMemberProjectSpaceIds.length > 0
+              ? [
+                  {
+                    bool: {
+                      must_not: [
+                        {
+                          terms: {
+                            requested_space_ids: nonMemberProjectSpaceIds,
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ]
+              : []),
           ],
         },
       },

@@ -27,6 +27,7 @@ import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/c
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -7289,5 +7290,191 @@ describe("filterVisibleConversations", () => {
     );
 
     expect(visible).toHaveLength(0);
+  });
+});
+
+describe("listPrivateConversationsForUserPaginated", () => {
+  it("returns only conversations the user participates in", async () => {
+    const { authenticator: adminAuth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const regularUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, regularUser, { role: "user" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      regularUser.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      name: "Agent",
+      description: "Agent",
+      scope: "visible",
+    });
+
+    // Conversation the user is NOT a participant in.
+    await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    // Conversation the user IS a participant in.
+    const ownConversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation: ownConversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const { conversations } =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 20 }
+      );
+
+    const ids = conversations.map((c) => c.sId);
+    expect(ids).toContain(ownConversation.sId);
+    expect(ids).toHaveLength(1);
+  });
+
+  it("hides conversations that reference an open project space the user is not a member of", async () => {
+    // This tests the explicit project-space filter in fetchPrivateConversationsPaginated.
+    // An "open" project space (has the global group) is visible to all workspace members
+    // via baseFetchWithAuthorization, so that general ACL check alone would not hide the
+    // conversation. The project-space filter (isProject() && !isMember()) is what hides it.
+    const {
+      authenticator: adminAuth,
+      user: adminUser,
+      workspace,
+    } = await createResourceTest({ role: "admin" });
+    const regularUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, regularUser, { role: "user" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      regularUser.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      name: "Agent",
+      description: "Agent",
+      scope: "visible",
+    });
+
+    const projectSpace = await SpaceFactory.project(workspace, adminUser.id);
+    // Add the global group to the project space to make it "open" (visible to all
+    // workspace members), so the conversation passes baseFetchWithAuthorization but
+    // is still caught by the explicit project-space member check.
+    const globalGroupResult =
+      await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+    assert(globalGroupResult.isOk(), "Global group not found");
+    await GroupSpaceFactory.associate(projectSpace, globalGroupResult.value);
+
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: agent.sId,
+      requestedSpaceIds: [projectSpace.id],
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const { conversations } =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 20 }
+      );
+
+    expect(conversations.map((c) => c.sId)).not.toContain(conversation.sId);
+  });
+
+  it("shows conversations that reference an open project space the user IS a member of", async () => {
+    const {
+      authenticator: adminAuth,
+      user: adminUser,
+      workspace,
+    } = await createResourceTest({ role: "admin" });
+    const regularUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, regularUser, { role: "user" });
+    let userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      regularUser.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      name: "Agent",
+      description: "Agent",
+      scope: "visible",
+    });
+
+    const projectSpace = await SpaceFactory.project(workspace, adminUser.id);
+    const globalGroupResult =
+      await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+    assert(globalGroupResult.isOk(), "Global group not found");
+    await GroupSpaceFactory.associate(projectSpace, globalGroupResult.value);
+
+    const addResult = await projectSpace.addMembers(adminAuth, {
+      userIds: [regularUser.sId],
+    });
+    assert(addResult.isOk(), "Failed to add user to project space");
+    userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      regularUser.sId,
+      workspace.sId
+    );
+
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: agent.sId,
+      requestedSpaceIds: [projectSpace.id],
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const { conversations } =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 20 }
+      );
+
+    expect(conversations.map((c) => c.sId)).toContain(conversation.sId);
+  });
+
+  it("shows conversations that reference an open project space when user has no requestedSpaceIds", async () => {
+    // Conversations with empty requestedSpaceIds are always shown regardless of
+    // which spaces exist; this ensures the filter is not over-eager.
+    const { authenticator: adminAuth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const regularUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, regularUser, { role: "user" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      regularUser.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      name: "Agent",
+      description: "Agent",
+      scope: "visible",
+    });
+
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const { conversations } =
+      await ConversationResource.listPrivateConversationsForUserPaginated(
+        userAuth,
+        { limit: 20 }
+      );
+
+    expect(conversations.map((c) => c.sId)).toContain(conversation.sId);
   });
 });
