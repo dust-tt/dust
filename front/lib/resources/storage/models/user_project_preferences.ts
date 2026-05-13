@@ -9,17 +9,17 @@ import {
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-export class UserProjectNotificationPreferenceModel extends WorkspaceAwareModel<UserProjectNotificationPreferenceModel> {
+export class UserProjectPreferencesModel extends WorkspaceAwareModel<UserProjectPreferencesModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare spaceId: ForeignKey<SpaceModel["id"]>;
-  declare preference: NotificationCondition | null;
+  declare notificationPreference: NotificationCondition | null;
   declare isStarred: boolean | null;
 }
 
-UserProjectNotificationPreferenceModel.init(
+UserProjectPreferencesModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -31,8 +31,9 @@ UserProjectNotificationPreferenceModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    preference: {
+    notificationPreference: {
       type: DataTypes.STRING,
+      field: "preference",
       allowNull: true,
       validate: {
         isIn: [NOTIFICATION_CONDITION_OPTIONS],
@@ -60,18 +61,18 @@ UserProjectNotificationPreferenceModel.init(
   }
 );
 
-UserModel.hasMany(UserProjectNotificationPreferenceModel, {
+UserModel.hasMany(UserProjectPreferencesModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-UserProjectNotificationPreferenceModel.belongsTo(UserModel, {
+UserProjectPreferencesModel.belongsTo(UserModel, {
   foreignKey: { allowNull: false },
 });
 
-SpaceModel.hasMany(UserProjectNotificationPreferenceModel, {
+SpaceModel.hasMany(UserProjectPreferencesModel, {
   foreignKey: { allowNull: false, name: "spaceId" },
   onDelete: "RESTRICT",
 });
-UserProjectNotificationPreferenceModel.belongsTo(SpaceModel, {
+UserProjectPreferencesModel.belongsTo(SpaceModel, {
   foreignKey: { allowNull: false, name: "spaceId" },
 });

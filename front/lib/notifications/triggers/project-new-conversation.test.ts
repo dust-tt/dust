@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { filterMembersByNotifyCondition } from "@app/lib/notifications/triggers/project-new-conversation";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -171,9 +171,9 @@ describe("filterMembersByNotifyCondition", () => {
         user.sId,
         workspace.sId
       );
-      await UserProjectNotificationPreferenceResource.setPreference(userAuth, {
+      await UserProjectPreferencesResource.setNotificationPreference(userAuth, {
         spaceModelId: space.id,
-        preference,
+        notificationPreference: preference,
       });
     }
 
