@@ -364,11 +364,6 @@ export type UpdateMemberSeatTypeInput = z.infer<
   typeof UpdateMemberSeatTypeInputSchema
 >;
 
-export interface UpdateMemberSeatTypeError {
-  type: "workspace_user_not_found";
-  message: string;
-}
-
 export async function updateMemberSeatType(
   auth: Authenticator,
   {
@@ -376,7 +371,10 @@ export async function updateMemberSeatType(
     seatType,
   }: UpdateMemberSeatTypeInput & { userId: string }
 ): Promise<
-  Result<{ seatType: MembershipSeatType }, UpdateMemberSeatTypeError>
+  Result<
+    { seatType: MembershipSeatType },
+    { type: "workspace_user_not_found" | "membership_revoked"; message: string }
+  >
 > {
   const user = await getUserForWorkspace(auth, { userId });
   if (!user) {
@@ -390,10 +388,16 @@ export async function updateMemberSeatType(
     user,
     workspace: auth.getNonNullableWorkspace(),
     newSeatType: seatType,
-    author: auth.user()?.toJSON() ?? "no-author",
+    author: auth.getNonNullableUser().toJSON(),
   });
 
   if (result.isErr()) {
+    if (result.error.type === "membership_revoked") {
+      return new Err({
+        type: "membership_revoked",
+        message: "User's membership is revoked.",
+      });
+    }
     return new Err({
       type: "workspace_user_not_found",
       message: "Could not find an active membership for this user.",
