@@ -2,49 +2,13 @@
 import { H2 } from "@app/components/home/ContentComponents";
 import { HomeEyebrow } from "@app/components/home/content/Product/HomeEyebrow";
 import { HomeReveal } from "@app/components/home/content/Product/HomeReveal";
+import type { NewsItem } from "@app/lib/homepage_news";
+import { FALLBACK_NEWS } from "@app/lib/homepage_news";
 import Link from "next/link";
 
-interface NewsItem {
-  source: string;
-  title: string;
-  date: string;
-  href: string;
+interface HomeNewsSectionProps {
+  news?: NewsItem[];
 }
-
-const NEWS: NewsItem[] = [
-  {
-    source: "VIBESCALING PODCAST",
-    title:
-      "How We Built Profound’s GTM Motion To A $1B+ Valuation w/ Mark Ebert, SVP of Revenue @ Profound",
-    date: "May 12, 2026",
-    href: "https://youtu.be/iDF_On2kOxo",
-  },
-  {
-    source: "HYPERTEXT",
-    title: "What is ARR anyway?",
-    date: "Apr 17, 2026",
-    href: "https://hypertext.fyi/what-is-arr-anyway/",
-  },
-  {
-    source: "WING VC",
-    title: "Enterprise Tech 30 List 2026",
-    date: "Mar 31, 2026",
-    href: "https://www.wing.vc/et30/list",
-  },
-  {
-    source: "VENTUREBEAT",
-    title:
-      "Dust hits $6M ARR helping enterprises build AI agents that actually do stuff instead of just talking",
-    date: "Jul 3, 2025",
-    href: "https://venturebeat.com/ai/dust-hits-6m-arr-helping-enterprises-build-ai-agents-that-actually-do-stuff-instead-of-just-talking",
-  },
-  {
-    source: "SEQUOIA CAPITAL",
-    title: "Partnering with Dust: LLM-Powered Productivity",
-    date: "Jul 3, 2023",
-    href: "https://sequoiacap.com/article/partnering-with-dust-llm-powered-productivity/",
-  },
-];
 
 const SEE_ALL_PRESS_HREF = "/home/about";
 
@@ -52,7 +16,13 @@ const SEE_ALL_PRESS_HREF = "/home/about";
 // section conventions (bg-background, py-24, max-w-1180). Quiet editorial
 // list with hover delight: outlet color cycles through the Dust palette,
 // chevron slides in on hover, title nudges right, border accents under.
-export function HomeNewsSection() {
+//
+// News data is marketing-managed in a Google Sheet and fetched at build
+// time by `getStaticProps` (with revalidate) — see lib/homepage_news.ts.
+// Falls back to the hardcoded FALLBACK_NEWS list if the prop is missing
+// or empty, so the section always renders something.
+export function HomeNewsSection({ news }: HomeNewsSectionProps = {}) {
+  const items = news && news.length > 0 ? news : FALLBACK_NEWS;
   return (
     <section className="w-full bg-background py-24">
       <div className="mx-auto w-full max-w-[1180px] px-6">
@@ -91,7 +61,7 @@ export function HomeNewsSection() {
             </HomeReveal>
           </div>
           <ul className="flex w-full min-w-0 flex-1 flex-col">
-            {NEWS.map((item, index) => (
+            {items.map((item, index) => (
               <li key={item.title}>
                 <HomeReveal delay={Math.min(index, 3) * 80}>
                   <a

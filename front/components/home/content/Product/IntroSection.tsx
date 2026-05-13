@@ -8,6 +8,7 @@ import { HomeSecuritySection } from "@app/components/home/content/Product/HomeSe
 import { HomeTeamSportSection } from "@app/components/home/content/Product/HomeTeamSportSection";
 import { HomeTeamUsageSection } from "@app/components/home/content/Product/HomeTeamUsageSection";
 import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
+import type { NewsItem } from "@app/lib/homepage_news";
 
 const TESTIMONIAL_IMAGE = "/static/landing/people/quote-testimonial.png";
 
@@ -59,7 +60,11 @@ const HOME_REVEAL_CSS = `
   }
 `;
 
-export function IntroSection() {
+interface IntroSectionProps {
+  news?: NewsItem[];
+}
+
+export function IntroSection({ news }: IntroSectionProps = {}) {
   return (
     <section className="w-full">
       <style dangerouslySetInnerHTML={{ __html: HOME_REVEAL_CSS }} />
@@ -72,7 +77,7 @@ export function IntroSection() {
           <HomeCoordinatedSection />
           <HomeAgentsImproveSection />
           <HomeTeamUsageSection />
-          <HomeNewsSection />
+          <HomeNewsSection news={news} />
           <HomeSecuritySection />
           <HomeAIOperatorsCTASection />
         </div>
