@@ -11,7 +11,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import { stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -36,7 +36,7 @@ type Access = "read" | "write";
 
 function buildConversationMountPoint(
   auth: Authenticator,
-  conversation: ConversationType
+  conversation: ConversationWithoutContentType
 ): MountPoint {
   const owner = auth.getNonNullableWorkspace();
   return {
@@ -50,7 +50,7 @@ function buildConversationMountPoint(
 
 async function buildProjectMountPoint(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   { access }: { access: Access }
 ): Promise<Result<MountPoint, MCPError>> {
   if (!isProjectConversation(conversation)) {
@@ -101,7 +101,7 @@ async function buildProjectMountPoint(
  */
 export async function resolveMountPoint(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   { access, scopedPath }: { access: Access; scopedPath: string }
 ): Promise<Result<MountPoint, MCPError>> {
   const parsed = parseScopedFilePath(scopedPath);
@@ -126,11 +126,8 @@ export async function resolveMountPoint(
  */
 export async function resolveMountByUseCase(
   auth: Authenticator,
-  conversation: ConversationType,
-  {
-    useCase,
-    access,
-  }: { useCase: GCSMountPoint["useCase"]; access: Access }
+  conversation: ConversationWithoutContentType,
+  { useCase, access }: { useCase: GCSMountPoint["useCase"]; access: Access }
 ): Promise<Result<MountPoint, MCPError>> {
   switch (useCase) {
     case "conversation":
@@ -150,7 +147,7 @@ export async function resolveMountByUseCase(
  */
 export async function resolveFile(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   path: string
 ): Promise<Result<ResolvedFile, MCPError>> {
   const mountRes = await resolveMountPoint(auth, conversation, {
