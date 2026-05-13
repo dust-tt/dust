@@ -17,7 +17,7 @@ class MyDocument extends Document {
             // eslint-disable-next-line @next/next/no-sync-scripts
             <script src="https://unpkg.com/react-scan/dist/auto.global.js" />
           )}
-          <base href={process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL} />
+          <base href={process.env.NEXT_PUBLIC_DUST_API_URL} />
           {process.env.NEXT_PUBLIC_ENABLE_BOT_CRAWLING !== "true" && (
             <meta name="robots" content="noindex" />
           )}

@@ -12,7 +12,7 @@ import Script from "next/script";
 // Important: avoid destructuring process.env on the client.
 // Next.js replaces direct property access (process.env.NEXT_PUBLIC_*) at build time,
 // but destructuring `process.env` does not get inlined.
-const DUST_CLIENT_FACING_URL = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+const DUST_API_URL = process.env.NEXT_PUBLIC_DUST_API_URL;
 const NODE_ENV = process.env.NODE_ENV;
 const DATADOG_CLIENT_TOKEN = process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN;
 const DATADOG_SERVICE = process.env.NEXT_PUBLIC_DATADOG_SERVICE;
@@ -117,7 +117,7 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
           {getLayout(<Component {...pageProps} />, pageProps)}
         </SparkleContext.Provider>
       </PostHogTracker>
-      {DUST_CLIENT_FACING_URL !== "https://app.dust.tt" && (
+      {DUST_API_URL !== "https://app.dust.tt" && (
         <Script
           src="https://static.claydar.com/init.v1.js?id=clmYho8v0U"
           strategy="afterInteractive"
