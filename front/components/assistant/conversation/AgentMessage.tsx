@@ -1377,7 +1377,7 @@ function AgentMessageContent({
                 const href = file.fileId
                   ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`
                   : file.filePath
-                    ? `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${file.filePath.replace("conversation/", "")}`
+                    ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${file.filePath.replace("conversation/", "")}`
                     : undefined;
                 return {
                   index: -1,
