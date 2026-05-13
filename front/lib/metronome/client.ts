@@ -930,14 +930,15 @@ export async function updateSubscriptionQuantity({
 // `retrieveSubscriptionQuantityHistory` is the closest and returns quantity
 // totals, not seat IDs. So we route through the SDK client's generic post(),
 // which still gives us auth + retries + error handling.
-interface SubscriptionSeatsHistoryResponse {
-  data: Array<{
-    starting_at: string;
-    ending_before?: string | null;
-    seat_ids: string[];
-    unassigned_seats?: number;
-  }>;
-}
+//
+// The endpoint returns the history segments at the top level (no `data`
+// wrapper), each carrying `assigned_seat_ids` plus the segment totals.
+type SubscriptionSeatsHistoryResponse = Array<{
+  starting_at: string;
+  ending_before?: string | null;
+  total_quantity?: string;
+  assigned_seat_ids: string[];
+}>;
 
 /**
  * Fetch the currently assigned seat IDs on a SEAT_BASED subscription. Returns
@@ -966,7 +967,7 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
           },
         }
       );
-    return new Ok(response.data[0]?.seat_ids ?? []);
+    return new Ok(response[0]?.assigned_seat_ids ?? []);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
@@ -1465,6 +1466,7 @@ export async function createMetronomeCredit({
   idempotencyKey,
   applicableProductTags,
   applicableProductIds,
+  specifiers,
   priority,
 }: {
   metronomeCustomerId: string;
@@ -1475,8 +1477,18 @@ export async function createMetronomeCredit({
   endingBefore: string;
   name: string;
   idempotencyKey: string;
+  // Mutually exclusive with `specifiers` (Metronome rejects requests that
+  // combine the two).
   applicableProductTags?: string[];
   applicableProductIds?: string[];
+  // Per-specifier filters (presentation/pricing group values, product tags).
+  // Mutually exclusive with `applicableProductTags` / `applicableProductIds`.
+  specifiers?: Array<{
+    presentation_group_values?: Record<string, string>;
+    pricing_group_values?: Record<string, string>;
+    product_id?: string;
+    product_tags?: string[];
+  }>;
   priority: number;
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
@@ -1495,6 +1507,7 @@ export async function createMetronomeCredit({
       ...(applicableProductIds
         ? { applicable_product_ids: applicableProductIds }
         : {}),
+      ...(specifiers ? { specifiers } : {}),
       access_schedule: {
         credit_type_id: creditTypeId,
         schedule_items: [

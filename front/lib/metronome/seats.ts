@@ -1,10 +1,18 @@
 import {
+  ceilToHourISO,
+  createMetronomeCredit,
+  findMetronomeCreditByUniquenessKey,
   getMetronomeContractById,
   getMetronomeSubscriptionAssignedSeatIds,
+  updateMetronomeCreditEndDate,
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
-import { getSeatTypeForProductId } from "@app/lib/metronome/constants";
+import {
+  getCreditTypeAwuId,
+  getProductFreeCreditId,
+  getSeatTypeForProductId,
+} from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
@@ -12,6 +20,13 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+
+// One-shot AWU credit granted to each "free" seat user, drawn against any
+// usage-tagged product for events carrying that user's user_id.
+const FREE_USER_AWU_CREDITS_AMOUNT = 300;
+// Metronome caps credit end dates, so we anchor 5 years out from now rather
+// than a fixed far-future bound.
+const FREE_USER_AWU_CREDITS_DURATION_YEARS = 5;
 
 /**
  * Returns true if the contract has any seat-billed subscription (workspace /
@@ -118,7 +133,14 @@ export async function syncSeatCount({
     workspace,
   });
 
+  // Initialize a bucket for every seat type that has a subscription on the
+  // contract, so seat types with zero current memberships still drive a sync
+  // (e.g. draining a Pro Seat subscription to 0 when the last "pro" member
+  // moves to "max").
   const sIdsBySeatType = new Map<MembershipSeatType, string[]>();
+  for (const { seatType } of seatSubscriptions) {
+    sIdsBySeatType.set(seatType, []);
+  }
   for (const m of memberships) {
     const userId = m.user?.sId;
     if (!userId) {
@@ -155,6 +177,27 @@ export async function syncSeatCount({
     );
   }
 
+  // Grant the one-shot free AWU credit to every "free" seat member that
+  // doesn't already have one. Failures are logged but don't fail the sync —
+  // the call is idempotent and will be retried on the next sync.
+  const freeUserIds = sIdsBySeatType.get("free") ?? [];
+  for (const userId of freeUserIds) {
+    const ensureResult = await ensureFreeUserAwuCredit({
+      workspace,
+      userId,
+    });
+    if (ensureResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          userId,
+          error: ensureResult.error,
+        },
+        "[Metronome] Failed to ensure free user credit"
+      );
+    }
+  }
+
   for (const { sub, seatType } of seatSubscriptions) {
     const subscriptionId = sub.id!;
     const sIds = sIdsBySeatType.get(seatType) ?? [];
@@ -178,7 +221,7 @@ export async function syncSeatCount({
       );
 
       if (addSeatIds.length === 0 && removeSeatIds.length === 0) {
-        return new Ok(undefined);
+        continue;
       }
 
       logger.info(
@@ -230,4 +273,152 @@ export async function syncSeatCount({
   }
 
   return new Ok(undefined);
+}
+
+/**
+ * Ensure a one-shot AWU free credit exists for a "free" seat user on the
+ * given workspace. Idempotent — checks for an existing credit via its
+ * uniqueness key before attempting to create.
+ *
+ * The credit is scoped to events carrying the user's `user_id` (via a
+ * presentation specifier) and to any usage-tagged product. Workspaces without
+ * a Metronome customer id are no-ops.
+ */
+export async function ensureFreeUserAwuCredit({
+  workspace,
+  userId,
+  amountAwu = FREE_USER_AWU_CREDITS_AMOUNT,
+}: {
+  workspace: LightWorkspaceType;
+  userId: string;
+  amountAwu?: number;
+}): Promise<Result<{ creditId: string | null; created: boolean }, Error>> {
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return new Ok({ creditId: null, created: false });
+  }
+
+  // Stable per (workspace, user) — used both as uniqueness key (server-side
+  // idempotency) and as the lookup key for the pre-create existence check.
+  const uniquenessKey = `free-user-credit-${workspace.sId}-${userId}`;
+  const now = new Date();
+  const startingAt = now.toISOString();
+  const endingBeforeDate = new Date(now);
+  endingBeforeDate.setUTCFullYear(
+    endingBeforeDate.getUTCFullYear() + FREE_USER_AWU_CREDITS_DURATION_YEARS
+  );
+  const endingBefore = endingBeforeDate.toISOString();
+
+  const existing = await findMetronomeCreditByUniquenessKey({
+    metronomeCustomerId,
+    uniquenessKey,
+    coveringDate: startingAt,
+  });
+  if (existing.isErr()) {
+    return new Err(existing.error);
+  }
+  if (existing.value) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        userId,
+        metronomeCreditId: existing.value.id,
+      },
+      "[Metronome] Free user credit already exists, skipping create"
+    );
+    return new Ok({ creditId: existing.value.id, created: false });
+  }
+
+  const createResult = await createMetronomeCredit({
+    metronomeCustomerId,
+    productId: getProductFreeCreditId(),
+    creditTypeId: getCreditTypeAwuId(),
+    amount: amountAwu,
+    startingAt,
+    endingBefore,
+    name: `Free credits for user ${userId}`,
+    idempotencyKey: uniquenessKey,
+    priority: 50,
+    specifiers: [
+      {
+        presentation_group_values: { user_id: userId },
+        product_tags: ["usage"],
+      },
+    ],
+  });
+  if (createResult.isErr()) {
+    return new Err(createResult.error);
+  }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      userId,
+      metronomeCreditId: createResult.value?.id,
+      amountAwu,
+    },
+    "[Metronome] Free user credit created"
+  );
+  return new Ok({ creditId: createResult.value?.id ?? null, created: true });
+}
+
+/**
+ * Void any one-shot free AWU credit previously granted to this user. Called
+ * when a user transitions out of the "free" seat type — the unused balance is
+ * not transferable, so we cut the access end date to now. No-op if no
+ * matching credit exists or the workspace is not Metronome-billed.
+ */
+export async function voidFreeUserAwuCredit({
+  workspace,
+  userId,
+}: {
+  workspace: LightWorkspaceType;
+  userId: string;
+}): Promise<Result<{ creditId: string | null; voided: boolean }, Error>> {
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return new Ok({ creditId: null, voided: false });
+  }
+
+  const uniquenessKey = `free-user-credit-${workspace.sId}-${userId}`;
+  const now = new Date();
+  const nowIso = now.toISOString();
+  // Metronome requires end dates on hour boundaries. Ceil to the next hour
+  // rather than floor: flooring would push the end into the past and
+  // retroactively invalidate already-consumed usage from earlier in the
+  // current hour. Ceiling keeps prior consumption intact at the cost of a
+  // sub-hour window where the credit remains usable.
+  const accessEndingBefore = ceilToHourISO(now);
+
+  const existing = await findMetronomeCreditByUniquenessKey({
+    metronomeCustomerId,
+    uniquenessKey,
+    coveringDate: nowIso,
+  });
+  if (existing.isErr()) {
+    return new Err(existing.error);
+  }
+  if (!existing.value) {
+    return new Ok({ creditId: null, voided: false });
+  }
+
+  const updateResult = await updateMetronomeCreditEndDate({
+    metronomeCustomerId,
+    creditId: existing.value.id,
+    accessEndingBefore,
+  });
+  if (updateResult.isErr()) {
+    return new Err(updateResult.error);
+  }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      userId,
+      metronomeCreditId: existing.value.id,
+      accessEndingBefore,
+    },
+    "[Metronome] Free user credit voided"
+  );
+  return new Ok({ creditId: existing.value.id, voided: true });
 }

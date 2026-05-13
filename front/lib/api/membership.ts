@@ -9,6 +9,7 @@ import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   hasContractSeatSubscription,
   syncSeatCount,
+  voidFreeUserAwuCredit,
 } from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -338,6 +339,29 @@ export async function updateMembershipSeatAndTrack({
     newSeatType,
     author,
   });
+
+  // Transitioning out of "free" — the unused balance of the one-shot free
+  // credit is not transferable, so void it immediately. Failures are logged
+  // but do not block the seat type change.
+  if (
+    updateRes.previousSeatType === "free" &&
+    updateRes.newSeatType !== "free"
+  ) {
+    const voidResult = await voidFreeUserAwuCredit({
+      workspace,
+      userId: user.sId,
+    });
+    if (voidResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          userId: user.sId,
+          error: voidResult.error,
+        },
+        "[Metronome] Failed to void free user credit on seat type change"
+      );
+    }
+  }
 
   const syncResult = await syncSeatCountForWorkspace(workspace);
   if (syncResult.isErr()) {
