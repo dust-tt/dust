@@ -1,5 +1,6 @@
 import {
   createConversation,
+  postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -15,6 +16,7 @@ import type {
 } from "@app/types/project_task";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { toFileContentFragment } from "../api/assistant/conversation/content_fragment";
 
 type StartProjectTaskAgentError = {
   statusCode: number;
@@ -90,9 +92,6 @@ function buildTaskKickoffPrompt({
   customMessage?: string;
 }): string {
   const sourcesBlock = formatTaskSourcesMarkdown(sources);
-  const customMessageBlock = customMessage
-    ? ["", "### More from me", "", customMessage]
-    : [];
 
   const taskDirective = serializeProjectTaskDirective({
     label: taskText,
@@ -100,32 +99,27 @@ function buildTaskKickoffPrompt({
   });
 
   return [
-    "## Project task",
+    "Assist with the following project task. Repeating the full title is not necessary unless helpful for clarity.",
     "",
-    "I'm asking you to help with this task from my project. The task is shown as the attachment on this message — I don't need you to repeat the full title unless it helps.",
-    "",
-    "If your tools need the task reference, use:",
+    "For tools requiring a task reference, use:",
     "",
     taskDirective,
     "",
-    "## Sources",
+    ...(sources.length > 0 ? ["## Sources", "", sourcesBlock] : []),
     "",
-    sourcesBlock,
+    "## Instructions",
     "",
-    "## What I'd like you to do",
+    "1. Clarify initial assumptions and planning; independently use available tools or context as needed.",
+    "2. Leverage project context and accessible tools to complete the task end-to-end.",
+    "3. Provide a summary of actions taken and highlight anything that should be verified.",
     "",
-    "1. Clarify assumptions and plan; don't wait on me if you can get context with tools.",
-    "2. Use project context and tools to carry out the work end-to-end.",
-    "3. Summarize what you did, and anything I should verify.",
+    "## Completion Criteria",
     "",
-    "## When to mark it done",
+    "After the initial delivery, avoid marking the task as done solely based on your own judgment—provide a clear summary for user review and response.",
     "",
-    "**After your first delivery of the work:** don't mark this task done only because *you* consider the work finished—give me a clear summary so I can react.",
+    'Once there is explicit acceptance in this chat (e.g. "ok good for me", "looks good", "perfect", "works for me", "thanks that\'s what I needed", or any unequivocal statement of satisfaction or task completion), mark the task as done in the same turn using the project task management tools. Verbal approval in chat is required; do not assume closure will only happen via the UI. A prompt acknowledgment is sufficient, but always mark the task as done upon clear approval.',
     "",
-    '**When I clearly accept the result in this chat** (e.g. "ok good for me", "looks good", "perfect", "works for me", "thanks that\'s what I needed", or any plain statement that I\'m satisfied or we\'re done): **mark this task as done** in the same turn using the project task tools. Verbal approval here is the signal; don\'t assume I will only ever close it in the UI. A quick acknowledgment is fine, but do not skip marking done if I\'ve clearly approved.',
-    "",
-    "**If** I ask for more changes, say it's not quite right, or I tell you to keep the task open, then don't mark it done yet.",
-    ...customMessageBlock,
+    "If further changes are requested, if feedback indicates the work is not complete, or if the user instructs to keep the task open, do not mark it as done.",
   ].join("\n");
 }
 
@@ -230,9 +224,67 @@ export async function startAgentForProjectTask(
     conversation = conversationRes.value;
   }
 
+  // Add the prompt as a file attachment to the conversation.
+  const contentFragmentRes = await toFileContentFragment(auth, {
+    conversation,
+    contentFragment: {
+      title: "How to complete the task",
+      content: prompt,
+      contentType: "text/markdown",
+    },
+    fileName: "how-to-complete-the-task.md",
+  });
+  if (contentFragmentRes.isErr()) {
+    return new Err({
+      statusCode: 400,
+      type: "invalid_request_error",
+      message: contentFragmentRes.error.message,
+    });
+  }
+
+  const contentFragmentMsgRes = await postNewContentFragment(
+    auth,
+    conversation,
+    contentFragmentRes.value,
+    null
+  );
+
+  if (contentFragmentMsgRes.isErr()) {
+    return new Err({
+      statusCode: 400,
+      type: "invalid_request_error",
+      message: contentFragmentMsgRes.error.message,
+    });
+  }
+
+  // Get the updated conversation with the new content fragment.
+  const conversationRes = await getConversation(auth, conversationId);
+  if (conversationRes.isErr()) {
+    return new Err({
+      statusCode: 400,
+      type: "invalid_request_error",
+      message: conversationRes.error.message,
+    });
+  }
+
+  conversation = conversationRes.value;
+
+  const taskDirective = serializeProjectTaskDirective({
+    label: task.text,
+    sId: task.sId,
+  });
+
+  const content =
+    "Let's work on: " +
+    taskDirective +
+    "\n\n" +
+    (customMessage ?? "") +
+    "\n\n" +
+    "Read the attached file in full for more instructions.";
+
   const messageRes = await postUserMessage(auth, {
     conversation,
-    content: prompt,
+    content,
     mentions: [
       {
         configurationId: agentConfigurationId ?? GLOBAL_AGENTS_SID.DUST,
