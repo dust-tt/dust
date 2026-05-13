@@ -1,7 +1,9 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import { AnnouncementBanner } from "@app/components/home/AnnouncementBanner";
+import {
+  AnnouncementBanner,
+  BANNER_VISIBLE_AFTER_MS,
+} from "@app/components/home/AnnouncementBanner";
 import { A } from "@app/components/home/ContentComponents";
-import { DevGeoSwitcher } from "@app/components/home/DevGeoSwitcher";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
@@ -27,6 +29,7 @@ import { Button, cn, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import Script from "next/script";
 import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
@@ -52,6 +55,18 @@ export default function LandingLayout({
     hideNavigation,
     fullWidth,
   } = pageProps;
+
+  const router = useRouter();
+  // Initialize from the timestamp so there's no layout shift on first render.
+  // ?preview_banner in the URL forces it on for pre-launch testing.
+  const [showBanner, setShowBanner] = useState(
+    () => Date.now() >= BANNER_VISIBLE_AFTER_MS
+  );
+  useEffect(() => {
+    if ("preview_banner" in router.query) {
+      setShowBanner(true);
+    }
+  }, [router.query]);
 
   useStripUtmParams();
 
@@ -143,8 +158,8 @@ export default function LandingLayout({
         </div>
       ) : (
         <>
-          <AnnouncementBanner />
-          <ScrollingHeader>
+          <AnnouncementBanner show={showBanner} />
+          <ScrollingHeader hasBanner={showBanner}>
             <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
               <div className="hidden h-[24px] w-[96px] xl:block">
                 <PublicWebsiteLogo />
@@ -205,18 +220,13 @@ export default function LandingLayout({
           </ScrollingHeader>
         </>
       )}
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50" />
-      <div className="fixed inset-0 -z-30" />
-      {/* <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
-        <Particles currentShape={currentShape} />
-      </div> */}
       <main className="z-10 flex w-full flex-col items-center">
         <div
           className={classNames(
             "flex w-full flex-col",
             fullWidth ? "" : "container",
             "gap-6 px-6 md:gap-24",
-            hideNavigation ? "pt-6" : "pt-[136px]",
+            hideNavigation ? "pt-6" : showBanner ? "pt-[136px]" : "pt-[96px]",
             "xl:gap-16",
             "2xl:gap-24"
           )}
@@ -247,7 +257,6 @@ export default function LandingLayout({
         )}
         {!hideNavigation && <FooterNavigation />}
       </main>
-      <DevGeoSwitcher />
     </>
   );
 }

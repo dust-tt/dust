@@ -2,7 +2,6 @@ interface NavItem {
   title: string;
   href?: string;
   isExternal?: boolean;
-  label?: string;
   rows?: number;
   tag?: string;
 }
@@ -152,6 +151,9 @@ const SolutionsMenuConfig: MenuConfig = {
       title: "",
     },
     {
+      title: "",
+    },
+    {
       title: "Knowledge",
       href: "/home/solutions/knowledge",
     },
@@ -170,9 +172,6 @@ const SolutionsMenuConfig: MenuConfig = {
     {
       title: "Productivity",
       href: "/home/solutions/productivity",
-    },
-    {
-      title: "",
     },
     {
       title: "",
@@ -342,19 +341,16 @@ export const menuConfig: DocsConfig = {
   mainNav: [
     {
       title: ProductMenuConfig.title,
-      label: "Discover Dust",
       rows: 2,
       items: ProductMenuConfig.items,
     },
     {
       title: SolutionsMenuConfig.title,
-      label: "Dust for...",
       rows: 7,
       items: SolutionsMenuConfig.items,
     },
     {
       title: ResourcesMenuConfig.title,
-      label: "Resources",
       rows: 5,
       items: ResourcesMenuConfig.items,
     },

@@ -3,11 +3,28 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 const SCROLL_HIDE_THRESHOLD_PX = 12;
-const ANNOUNCEMENT_HREF = "/blog";
+const ANNOUNCEMENT_HREF = "/blog/series-b-multiplayer-ai";
 const ANNOUNCEMENT_TEXT =
   "Dust announces Series B to fuel next chapter of growth";
 
-export function AnnouncementBanner() {
+// Banner auto-enables at this UTC timestamp: Monday 18 May 2026, 15:00 CET (UTC+1).
+export const BANNER_VISIBLE_AFTER_MS = new Date(
+  "2026-05-18T14:00:00Z"
+).getTime();
+
+interface AnnouncementBannerProps {
+  show: boolean;
+}
+
+// Wrapper ensures scroll hooks are only registered when the banner is visible.
+export function AnnouncementBanner({ show }: AnnouncementBannerProps) {
+  if (!show) {
+    return null;
+  }
+  return <AnnouncementBannerContent />;
+}
+
+function AnnouncementBannerContent() {
   const [hidden, setHidden] = useState(false);
 
   const sync = useCallback(() => {
