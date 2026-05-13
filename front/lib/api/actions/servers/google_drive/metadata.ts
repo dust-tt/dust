@@ -340,7 +340,9 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     description:
       "Update an existing Google Docs document. Operations target content by text anchors (find/replace, find-and-insert-after, etc.), so you do not need to fetch the document first. " +
       "Available operations: replaceText (find/replace), insertText (at start/end or after an anchor), deleteText (by exact match), insertTable, formatText (bold/italic/underline/fontSize on matched text), and raw (escape hatch for any Google Docs batchUpdate request). " +
-      "Multiple operations can be batched in a single call.",
+      "Batch as many operations as possible in a single call to minimize API round-trips. " +
+      "To replace text while preserving its formatting, use replaceText — it keeps the original text style. " +
+      "Use deleteText + insertText only when you need to substitute new content that should not inherit the existing formatting.",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
       capabilities: capabilitiesSchema,
@@ -393,7 +395,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     description:
       "Update a Google Sheets spreadsheet. Operations address cells by A1 notation and sheets by title, so sheetIds are resolved server-side. " +
       "Available operations: updateCells (write values to a range), formatRange (bold/italic/color/alignment/number format), addSheet, deleteSheet, mergeCells, autoResizeColumns, insertDimension, deleteDimension, sortRange, findReplace, and raw (escape hatch). " +
-      "Multiple operations can be batched in a single call.",
+      "Batch as many operations as possible in a single call to minimize API round-trips. " +
+      "updateCells writes cell values (formulas evaluate by default — pass them as strings starting with '=' or use a raw operation if you need different behavior); formatRange handles styling separately.",
     schema: {
       spreadsheetId: z
         .string()
@@ -413,7 +416,9 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     description:
       "Update an existing Google Slides presentation. Operations address slides by 1-indexed slide number and shapes by their text content, so objectIds are resolved server-side. " +
       "Available operations: replaceAllText (global find/replace), replaceTextInShape (find/replace restricted to one slide), addSlide, deleteSlide, addTextBox, deleteElement (by text snippet), and raw (escape hatch). " +
-      "Multiple operations can be batched in a single call.",
+      "Batch as many operations as possible in a single call to minimize API round-trips. " +
+      "To change text inside an existing shape while preserving its formatting, prefer replaceAllText or replaceTextInShape — they keep the original text style. " +
+      "Use deleteElement + addTextBox only when you want to fully replace the element (the new text box uses default styling).",
     schema: {
       presentationId: z
         .string()
