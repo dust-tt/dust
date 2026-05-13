@@ -217,7 +217,7 @@ async function createActionForTool(
     augmentedInputs,
     conversation,
     status,
-    stepContentId,
+    stepContent,
     stepContext,
   });
 

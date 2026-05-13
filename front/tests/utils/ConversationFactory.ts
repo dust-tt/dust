@@ -409,23 +409,27 @@ export class ConversationFactory {
       },
     });
 
-    const action = await AgentMCPActionResource.makeNew(auth, conversation, {
-      agentMessageId: agentMessage.agentMessageId,
-      augmentedInputs: {},
-      citationsAllocated: 0,
-      mcpServerConfigurationId: toolConfiguration.sId,
-      status: "running",
-      stepContentId: stepContent.id,
-      stepContext: {
-        citationsCount: 0,
-        citationsOffset: 0,
-        resumeState: null,
-        retrievalTopK: 0,
-        websearchResultCount: 0,
-      },
-      toolConfiguration,
-      version: 0,
-    });
+    const action = await AgentMCPActionResource.makeNew(
+      auth,
+      { conversation, stepContent },
+      {
+        agentMessageId: agentMessage.agentMessageId,
+        augmentedInputs: {},
+        citationsAllocated: 0,
+        mcpServerConfigurationId: toolConfiguration.sId,
+        status: "running",
+        stepContentId: stepContent.id,
+        stepContext: {
+          citationsCount: 0,
+          citationsOffset: 0,
+          resumeState: null,
+          retrievalTopK: 0,
+          websearchResultCount: 0,
+        },
+        toolConfiguration,
+        version: 0,
+      }
+    );
 
     return { messageRow, agentMessage, action };
   }

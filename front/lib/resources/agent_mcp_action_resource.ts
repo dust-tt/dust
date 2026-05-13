@@ -79,6 +79,7 @@ import type {
   Transaction,
 } from "sequelize";
 import { Op } from "sequelize";
+import { AgentStepContentModel } from "../models/agent/agent_step_content";
 
 // Batch size for fetching output items to avoid loading too many large rows at once.
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
@@ -130,15 +131,41 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       transaction,
     });
 
-    const stepContents = await AgentStepContentResource.fetchByModelIds(
-      auth,
-      actions.map((a) => a.stepContentId)
-    );
+    if (actions.length === 0) {
+      return [];
+    }
 
-    const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
+    const agentStepContentToolExecutions =
+      await AgentStepContentToolExecutionModel.findAll({
+        where: {
+          workspaceId,
+          agentMCPActionId: { [Op.in]: actions.map((a) => a.id) },
+        },
+        include: [
+          {
+            model: AgentStepContentModel,
+            as: "stepContent",
+            required: true,
+          },
+        ],
+        transaction,
+      });
+
+    const stepContentByActionId = new Map<ModelId, AgentStepContentResource>();
+    for (const toolExecution of agentStepContentToolExecutions) {
+      const stepContentModel = toolExecution.stepContent;
+
+      stepContentByActionId.set(
+        toolExecution.agentMCPActionId,
+        new AgentStepContentResource(
+          AgentStepContentResource.model,
+          stepContentModel.get()
+        )
+      );
+    }
 
     return actions.map((a) => {
-      const stepContent = stepContentsMap.get(a.stepContentId);
+      const stepContent = stepContentByActionId.get(a.id);
 
       // Each action must have a function call step content.
       assert(stepContent, "Step content not found.");
@@ -160,7 +187,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async makeNew(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType,
+    {
+      conversation,
+      stepContent,
+    }: {
+      conversation: ConversationWithoutContentType;
+      stepContent: AgentStepContentResource;
+    },
     blob: Omit<CreationAttributes<AgentMCPActionModel>, "workspaceId">,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMCPActionResource> {
@@ -177,11 +210,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { transaction }
     );
 
-    const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
-      auth,
-      action.stepContentId
-    );
-    assert(stepContent, "Step content not found.");
     assert(
       stepContent.isFunctionCallContent(),
       "Step content is not a function call."
@@ -594,31 +622,39 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Not using the baseFetch because we already have the step contents.
-    let actions = await AgentMCPActionModel.findAll({
-      where: {
-        workspaceId,
-        stepContentId: {
-          [Op.in]: stepContents.map((content) => content.id),
+    let agentStepContentToolExecutions =
+      await AgentStepContentToolExecutionModel.findAll({
+        where: {
+          workspaceId,
+          stepContentId: { [Op.in]: stepContents.map((content) => content.id) },
         },
-      },
-    });
+        include: [
+          {
+            model: AgentMCPActionModel,
+            as: "agentMCPAction",
+            required: true,
+          },
+        ],
+      });
 
     if (latestVersionsOnly) {
-      const actionsByStepContentId = _.groupBy(actions, (action) =>
-        action.stepContentId.toString()
+      const rowsByStepContentId = _.groupBy(
+        agentStepContentToolExecutions,
+        (row) => row.stepContentId.toString()
       );
-      actions = removeNulls(
-        Object.values(actionsByStepContentId).map(
-          (actionsForContent) => _.maxBy(actionsForContent, "version") ?? null
+      agentStepContentToolExecutions = removeNulls(
+        Object.values(rowsByStepContentId).map(
+          (rowsForContent) =>
+            _.maxBy(rowsForContent, (row) => row.agentMCPAction.version) ?? null
         )
       );
     }
 
     const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
 
-    return actions.map((a) => {
-      const stepContent = stepContentsMap.get(a.stepContentId);
+    return agentStepContentToolExecutions.map((row) => {
+      const a = row.agentMCPAction;
+      const stepContent = stepContentsMap.get(row.stepContentId);
 
       // Each action must have a function call step content.
       assert(stepContent, "Step content not found.");

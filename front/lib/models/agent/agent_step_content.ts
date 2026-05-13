@@ -1,4 +1,3 @@
-import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -18,7 +17,6 @@ export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentM
   declare value: AgentContentItemType;
 
   declare agentMessage?: NonAttribute<AgentMessageModel>;
-  declare agentMCPActions?: NonAttribute<AgentMCPActionModel[]>;
 }
 
 AgentStepContentModel.init(

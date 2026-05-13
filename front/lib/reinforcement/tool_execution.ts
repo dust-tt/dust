@@ -80,55 +80,59 @@ async function createReinforcedAction(
     agentMessageModelId,
     conversation,
     mcpServerViewId,
-    stepContentId,
+    stepContent,
     toolCall,
   }: {
     agentMessageModelId: ModelId;
     conversation: ConversationWithoutContentType;
     mcpServerViewId: string;
-    stepContentId: ModelId;
+    stepContent: AgentStepContentResource;
     toolCall: ReinforcedSkillsToolCallInfo;
   }
 ): Promise<AgentMCPActionResource> {
-  return AgentMCPActionResource.makeNew(auth, conversation, {
-    agentMessageId: agentMessageModelId,
-    augmentedInputs: toolCall.arguments,
-    citationsAllocated: 0,
-    mcpServerConfigurationId: "agent_sidekick_context",
-    status: "ready_allowed_explicitly",
-    stepContentId,
-    stepContext: {
-      citationsCount: 0,
-      citationsOffset: 0,
-      resumeState: null,
-      retrievalTopK: 0,
-      websearchResultCount: 0,
-    },
-    toolConfiguration: {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_configuration",
-      name: toolCall.name,
-      originalName: toolCall.name,
-      mcpServerName: "agent_sidekick_context",
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId,
-      dustAppConfiguration: null,
-      internalMCPServerId: "agent_sidekick_context",
-      secretName: null,
-      dustProject: null,
-      availability: "auto",
-      permission: "never_ask",
-      toolServerId: "agent_sidekick_context",
-      retryPolicy: "no_retry",
-    },
-    version: 0,
-  });
+  return AgentMCPActionResource.makeNew(
+    auth,
+    { conversation, stepContent },
+    {
+      agentMessageId: agentMessageModelId,
+      augmentedInputs: toolCall.arguments,
+      citationsAllocated: 0,
+      mcpServerConfigurationId: "agent_sidekick_context",
+      status: "ready_allowed_explicitly",
+      stepContentId: stepContent.id,
+      stepContext: {
+        citationsCount: 0,
+        citationsOffset: 0,
+        resumeState: null,
+        retrievalTopK: 0,
+        websearchResultCount: 0,
+      },
+      toolConfiguration: {
+        id: -1,
+        sId: generateRandomModelSId(),
+        type: "mcp_configuration",
+        name: toolCall.name,
+        originalName: toolCall.name,
+        mcpServerName: "agent_sidekick_context",
+        dataSources: null,
+        tables: null,
+        childAgentId: null,
+        timeFrame: null,
+        jsonSchema: null,
+        additionalConfiguration: {},
+        mcpServerViewId,
+        dustAppConfiguration: null,
+        internalMCPServerId: "agent_sidekick_context",
+        secretName: null,
+        dustProject: null,
+        availability: "auto",
+        permission: "never_ask",
+        toolServerId: "agent_sidekick_context",
+        retryPolicy: "no_retry",
+      },
+      version: 0,
+    }
+  );
 }
 
 /**
@@ -169,7 +173,7 @@ export async function prepareReinforcedToolActions(
       toolCall: tc,
       conversation,
       agentMessageModelId,
-      stepContentId: stepContent.id,
+      stepContent,
       mcpServerViewId,
     });
 
@@ -228,7 +232,7 @@ export async function storeTerminalToolCallResults(
       conversation,
       toolCall,
       agentMessageModelId,
-      stepContentId: stepContent.id,
+      stepContent,
       mcpServerViewId,
     });
 
@@ -248,7 +252,7 @@ export async function storeTerminalToolCallResults(
       conversation,
       toolCall,
       agentMessageModelId,
-      stepContentId: stepContent.id,
+      stepContent,
       mcpServerViewId,
     });
 

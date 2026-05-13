@@ -7,11 +7,11 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import type { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type {
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
-import type { ModelId } from "@app/types/shared/model_id";
 import omit from "lodash/omit";
 
 /**
@@ -25,7 +25,7 @@ export async function createMCPAction(
     augmentedInputs,
     conversation,
     status,
-    stepContentId,
+    stepContent,
     stepContext,
   }: {
     actionConfiguration: MCPToolConfigurationType;
@@ -33,7 +33,7 @@ export async function createMCPAction(
     augmentedInputs: Record<string, unknown>;
     conversation: ConversationWithoutContentType;
     status: ToolExecutionStatus;
-    stepContentId: ModelId;
+    stepContent: AgentStepContentResource;
     stepContext: StepContext;
   }
 ): Promise<AgentMCPActionResource> {
@@ -42,15 +42,19 @@ export async function createMCPAction(
     MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
   ) as LightMCPToolConfigurationType;
 
-  return AgentMCPActionResource.makeNew(auth, conversation, {
-    agentMessageId: agentMessage.agentMessageId,
-    augmentedInputs,
-    citationsAllocated: stepContext.citationsCount,
-    mcpServerConfigurationId: actionConfiguration.id.toString(),
-    status,
-    stepContentId,
-    stepContext,
-    toolConfiguration,
-    version: 0,
-  });
+  return AgentMCPActionResource.makeNew(
+    auth,
+    { conversation, stepContent },
+    {
+      agentMessageId: agentMessage.agentMessageId,
+      augmentedInputs,
+      citationsAllocated: stepContext.citationsCount,
+      mcpServerConfigurationId: actionConfiguration.id.toString(),
+      status,
+      stepContentId: stepContent.id,
+      stepContext,
+      toolConfiguration,
+      version: 0,
+    }
+  );
 }
