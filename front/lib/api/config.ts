@@ -86,7 +86,7 @@ const config = {
     return EnvironmentConfig.getEnvVariable("POKE_APP_URL");
   },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
-  // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
+  // from NEXT_PUBLIC_DUST_API_URL. Falls back to getClientFacingUrl() when not set.
   getAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
