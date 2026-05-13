@@ -385,7 +385,7 @@ export function FilePreviewDialog({
               )}
               <span
                 className={cn(
-                  "line-clamp-1 text-sm font-medium leading-5",
+                  "line-clamp-1 text-sm leading-5",
                   "text-foreground dark:text-foreground-night"
                 )}
               >

@@ -28,6 +28,7 @@ import {
   Breadcrumbs,
   Button,
   CardGrid,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -38,7 +39,15 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+
+const cardGridClasses = cn(
+  "grid-cols-2",
+  "@xxs:grid-cols-3",
+  "@sm:grid-cols-4",
+  "@md:grid-cols-5",
+  "@lg:grid-cols-6",
+);
 
 // TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
 interface FileExplorerBreadcrumbProps {
@@ -171,90 +180,103 @@ export function NewFileExplorer({
 
   const totalFileCount = filesAtLevel.length;
 
-  const handleBreadcrumbNavigate = useCallback((index: number) => {
+  const handleBreadcrumbNavigate = (index: number) => {
     if (index < 0) {
       setFolderStack([]);
     } else {
       setFolderStack((prev) => prev.slice(0, index + 1));
     }
-  }, []);
+  };
 
-  const handleFolderNavigate = useCallback((node: SandboxTreeNode) => {
+  const handleFolderNavigate = (node: SandboxTreeNode) => {
     setFolderStack((prev) => [...prev, node]);
-  }, []);
+  };
 
-  const handleOpen = useCallback(
-    (entry: GCSMountFileEntry) => {
-      if (isInteractiveContentType(entry.contentType) && entry.fileId) {
-        openPanel({ type: "interactive_content", fileId: entry.fileId });
-      } else {
-        setPreviewFile(entry);
-        setShowPreviewSheet(true);
-      }
-    },
-    [openPanel]
-  );
-
-  const previewIndex = useMemo(() => {
-    if (!previewFile) {
-      return -1;
+  const handleOpen = (entry: GCSMountFileEntry) => {
+    if (isInteractiveContentType(entry.contentType) && entry.fileId) {
+      openPanel({ type: "interactive_content", fileId: entry.fileId });
+    } else {
+      setPreviewFile(entry);
+      setShowPreviewSheet(true);
     }
-    return filesAtLevel.findIndex((f) => f.path === previewFile.path);
-  }, [filesAtLevel, previewFile]);
+  };
 
-  const handlePreviewPrev = useCallback(() => {
+  const previewIndex = previewFile
+     ? filesAtLevel.findIndex((f) => f.path === previewFile.path)
+    : -1;
+
+  const handlePreviewPrev = () => {
     if (previewIndex > 0) {
       setPreviewFile(filesAtLevel[previewIndex - 1] ?? null);
     }
-  }, [filesAtLevel, previewIndex]);
+  };
 
-  const handlePreviewNext = useCallback(() => {
+  const handlePreviewNext = () => {
     if (previewIndex >= 0 && previewIndex < filesAtLevel.length - 1) {
       setPreviewFile(filesAtLevel[previewIndex + 1] ?? null);
     }
-  }, [filesAtLevel, previewIndex]);
+  };
 
-  const handleDownload = useCallback(
-    async (entry: GCSMountFileEntry) => {
-      if (isDownloadingRef.current) {
-        return;
+  const handleDownload = async (entry: GCSMountFileEntry) => {
+    if (isDownloadingRef.current) {
+      return;
+    }
+    isDownloadingRef.current = true;
+    try {
+      const res = await downloadSandboxFile(
+        owner,
+        conversation.sId,
+        entry.path
+      );
+      const blob = await res.blob();
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
       }
-      isDownloadingRef.current = true;
-      try {
-        const res = await downloadSandboxFile(
-          owner,
-          conversation.sId,
-          entry.path
-        );
-        const blob = await res.blob();
-        if (blobUrlRef.current) {
-          URL.revokeObjectURL(blobUrlRef.current);
-        }
-        const url = URL.createObjectURL(blob);
-        blobUrlRef.current = url;
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
 
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = entry.fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (err) {
-        logger.error(
-          { err: normalizeError(err) },
-          "Failed to download sandbox file"
-        );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = entry.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      logger.error(
+        { err: normalizeError(err) },
+        "Failed to download sandbox file"
+      );
 
-        sendNotification({
-          type: "error",
-          title: "Failed to download the file.",
-          description: "An error occurred while downloading. Please try again.",
-        });
-      } finally {
-        isDownloadingRef.current = false;
-      }
-    },
-    [owner, conversation.sId, sendNotification]
+      sendNotification({
+        type: "error",
+        title: "Failed to download the file.",
+        description: "An error occurred while downloading. Please try again.",
+      });
+    } finally {
+      isDownloadingRef.current = false;
+    }
+  };
+
+  const items = (
+    <>
+      {folders.map((node) => (
+        <FileExplorerFolderCard
+          key={node.path}
+          node={node}
+          viewMode={viewMode}
+          onNavigate={handleFolderNavigate}
+        />
+      ))}
+      {filesAtLevel.map((entry) => (
+        <FileExplorerFileCard
+          key={entry.path}
+          entry={entry}
+          viewMode={viewMode}
+          onOpen={handleOpen}
+          onDownload={handleDownload}
+        />
+      ))}
+    </>
   );
 
   return (
@@ -291,47 +313,10 @@ export function NewFileExplorer({
             <FileExplorerEmptyState />
           ) : (
             <ScrollArea className="flex-1">
-              {/* TODO(2026-04-27 FILE_SYSTEM) Candidate for Sparkle CardGrid extension */}
               {viewMode === "list" ? (
-                <div className="flex flex-col divide-y divide-separator dark:divide-separator-night">
-                  {folders.map((node) => (
-                    <FileExplorerFolderCard
-                      key={node.path}
-                      node={node}
-                      viewMode={viewMode}
-                      onNavigate={handleFolderNavigate}
-                    />
-                  ))}
-                  {filesAtLevel.map((entry) => (
-                    <FileExplorerFileCard
-                      key={entry.path}
-                      entry={entry}
-                      viewMode={viewMode}
-                      onOpen={handleOpen}
-                      onDownload={handleDownload}
-                    />
-                  ))}
-                </div>
+                <div className="flex flex-col gap-0.5">{items}</div>
               ) : (
-                <CardGrid>
-                  {folders.map((node) => (
-                    <FileExplorerFolderCard
-                      key={node.path}
-                      node={node}
-                      viewMode={viewMode}
-                      onNavigate={handleFolderNavigate}
-                    />
-                  ))}
-                  {filesAtLevel.map((entry) => (
-                    <FileExplorerFileCard
-                      key={entry.path}
-                      entry={entry}
-                      viewMode={viewMode}
-                      onOpen={handleOpen}
-                      onDownload={handleDownload}
-                    />
-                  ))}
-                </CardGrid>
+                <CardGrid gridClassName={cardGridClasses}>{items}</CardGrid>
               )}
             </ScrollArea>
           )}

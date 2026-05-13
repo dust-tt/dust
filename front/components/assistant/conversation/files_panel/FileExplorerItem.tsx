@@ -7,6 +7,7 @@ import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import {
+  ArrowDownOnSquareIcon,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +20,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import moment from "moment";
+import { intlFormatDistance } from "date-fns";
 
 export type ViewMode = "grid" | "list";
 
@@ -66,6 +67,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       <DropdownMenuContent>
         <DropdownMenuItem
           label="Download"
+          icon={ArrowDownOnSquareIcon}
           onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             onDownload();
@@ -83,7 +85,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         trigger={
           <span
             className={cn(
-              "text-sm font-medium truncate text-foreground dark:text-foreground-night leading-5",
+              "text-sm truncate text-foreground dark:text-foreground-night leading-5",
               "justify-start"
             )}
           >
@@ -106,7 +108,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
     return (
       <div
         className={cn(
-          "flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-4 transition-colors",
+          "flex cursor-pointer items-center gap-4 rounded-xl px-3 py-2 transition-colors",
           "hover:bg-muted-background dark:hover:bg-muted-background-night"
         )}
         onClick={onOpen}
@@ -140,12 +142,17 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
   );
 }
 
-function getFileSubtitle(entry: GCSMountFileEntry): string {
+function getFileSubtitle(
+  entry: GCSMountFileEntry,
+  viewMode: ViewMode
+): string {
   const typeLabel = getSingularFileCategoryLabelForContentType(
     entry.contentType
   );
   const timeLabel = entry.lastModifiedMs
-    ? moment(entry.lastModifiedMs).fromNow()
+    ? intlFormatDistance(entry.lastModifiedMs, Date.now(), {
+        style: viewMode === "list" ? "long" : "narrow",
+      })
     : null;
   return [typeLabel, timeLabel].filter(Boolean).join(" - ");
 }
@@ -194,7 +201,7 @@ export function FileExplorerFileCard({
   onOpen,
   onDownload,
 }: FileExplorerFileCardProps) {
-  const subtitle = getFileSubtitle(entry);
+  const subtitle = getFileSubtitle(entry, viewMode);
 
   if (getCategoryFromContentType(entry.contentType) === "image") {
     return (
