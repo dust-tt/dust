@@ -4,6 +4,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { docs_v1 } from "googleapis";
 import { z } from "zod";
 
+import { prefixErr } from "./utils";
+
 const InsertLocationSchema = z.union([
   z.literal("start").describe("Insert at the beginning of the document body."),
   z.literal("end").describe("Insert at the end of the document body."),
@@ -438,7 +440,7 @@ export function resolveDocOperations(
       case "insertText": {
         const indexResult = resolveInsertLocation(doc, flat, op.location);
         if (indexResult.isErr()) {
-          return new Err(new Error(`insertText: ${indexResult.error.message}`));
+          return prefixErr("insertText", indexResult.error);
         }
         const index = indexResult.value;
         indexedOps.push({
@@ -463,9 +465,7 @@ export function resolveDocOperations(
       case "insertTable": {
         const indexResult = resolveInsertLocation(doc, flat, op.location);
         if (indexResult.isErr()) {
-          return new Err(
-            new Error(`insertTable: ${indexResult.error.message}`)
-          );
+          return prefixErr("insertTable", indexResult.error);
         }
         const index = indexResult.value;
         indexedOps.push({
@@ -532,9 +532,7 @@ export function resolveDocOperations(
           op.columnIndex
         );
         if (cellResult.isErr()) {
-          return new Err(
-            new Error(`replaceTableCell: ${cellResult.error.message}`)
-          );
+          return prefixErr("replaceTableCell", cellResult.error);
         }
         const { insertIndex, endIndex, hasContent } = cellResult.value;
         if (hasContent) {
@@ -563,9 +561,7 @@ export function resolveDocOperations(
           op.columnIndex
         );
         if (cellResult.isErr()) {
-          return new Err(
-            new Error(`insertInTableCell: ${cellResult.error.message}`)
-          );
+          return prefixErr("insertInTableCell", cellResult.error);
         }
         const { insertIndex, endIndex } = cellResult.value;
         const index = op.position === "end" ? endIndex - 1 : insertIndex;
@@ -580,9 +576,7 @@ export function resolveDocOperations(
       case "insertTableRow": {
         const startResult = resolveTableStartIndex(doc, op.tableIndex);
         if (startResult.isErr()) {
-          return new Err(
-            new Error(`insertTableRow: ${startResult.error.message}`)
-          );
+          return prefixErr("insertTableRow", startResult.error);
         }
         const tableStartIndex = startResult.value;
         const rowIndex = op.afterRowIndex === -1 ? 0 : op.afterRowIndex;
@@ -605,9 +599,7 @@ export function resolveDocOperations(
       case "insertTableColumn": {
         const startResult = resolveTableStartIndex(doc, op.tableIndex);
         if (startResult.isErr()) {
-          return new Err(
-            new Error(`insertTableColumn: ${startResult.error.message}`)
-          );
+          return prefixErr("insertTableColumn", startResult.error);
         }
         const tableStartIndex = startResult.value;
         const columnIndex =
@@ -631,9 +623,7 @@ export function resolveDocOperations(
       case "deleteTableRow": {
         const startResult = resolveTableStartIndex(doc, op.tableIndex);
         if (startResult.isErr()) {
-          return new Err(
-            new Error(`deleteTableRow: ${startResult.error.message}`)
-          );
+          return prefixErr("deleteTableRow", startResult.error);
         }
         const tableStartIndex = startResult.value;
         indexedOps.push({
@@ -653,9 +643,7 @@ export function resolveDocOperations(
       case "deleteTableColumn": {
         const startResult = resolveTableStartIndex(doc, op.tableIndex);
         if (startResult.isErr()) {
-          return new Err(
-            new Error(`deleteTableColumn: ${startResult.error.message}`)
-          );
+          return prefixErr("deleteTableColumn", startResult.error);
         }
         const tableStartIndex = startResult.value;
         indexedOps.push({
@@ -679,9 +667,7 @@ export function resolveDocOperations(
         // segment exists so the model gets a clear error otherwise.
         const segResult = resolveHeaderFooterSegment(doc, op.segment, op.role);
         if (segResult.isErr()) {
-          return new Err(
-            new Error(`replaceHeaderFooterText: ${segResult.error.message}`)
-          );
+          return prefixErr("replaceHeaderFooterText", segResult.error);
         }
         nonIndexedOps.push({
           replaceAllText: {
@@ -694,9 +680,7 @@ export function resolveDocOperations(
       case "insertInHeaderFooter": {
         const segResult = resolveHeaderFooterSegment(doc, op.segment, op.role);
         if (segResult.isErr()) {
-          return new Err(
-            new Error(`insertInHeaderFooter: ${segResult.error.message}`)
-          );
+          return prefixErr("insertInHeaderFooter", segResult.error);
         }
         const { segmentId, startIndex, endIndex } = segResult.value;
         const index = op.position === "start" ? startIndex : endIndex;

@@ -4,6 +4,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { sheets_v4 } from "googleapis";
 import { z } from "zod";
 
+import { prefixErr } from "./utils";
+
 const CellValueSchema = z
   .union([z.string(), z.number(), z.boolean()])
   .nullable();
@@ -24,7 +26,11 @@ const CellFormatSchema = z
   .object({
     bold: z.boolean().optional(),
     italic: z.boolean().optional(),
-    fontSize: z.number().positive().optional(),
+    fontSizePt: z
+      .number()
+      .positive()
+      .optional()
+      .describe("Font size in points."),
     backgroundColor: RgbColorSchema.optional(),
     textColor: RgbColorSchema.optional(),
     horizontalAlignment: z.enum(["LEFT", "CENTER", "RIGHT"]).optional(),
@@ -304,7 +310,7 @@ export function resolveSpreadsheetOperations(
         // of a generic 400 from the values.batchUpdate API.
         const sheetCheck = getSheetIdByTitle(spreadsheet, op.sheetName);
         if (sheetCheck.isErr()) {
-          return new Err(new Error(`updateCells: ${sheetCheck.error.message}`));
+          return prefixErr("updateCells", sheetCheck.error);
         }
         valueUpdates.push({
           range: buildFullA1(op.sheetName, op.range),
@@ -315,7 +321,7 @@ export function resolveSpreadsheetOperations(
       case "formatCells": {
         const gridResult = toGridRange(spreadsheet, op.sheetName, op.range);
         if (gridResult.isErr()) {
-          return new Err(new Error(`formatCells: ${gridResult.error.message}`));
+          return prefixErr("formatCells", gridResult.error);
         }
         const userEnteredFormat: sheets_v4.Schema$CellFormat = {};
         const fieldParts: string[] = [];
@@ -326,8 +332,8 @@ export function resolveSpreadsheetOperations(
         if (op.format.italic !== undefined) {
           textFormat.italic = op.format.italic;
         }
-        if (op.format.fontSize !== undefined) {
-          textFormat.fontSize = op.format.fontSize;
+        if (op.format.fontSizePt !== undefined) {
+          textFormat.fontSize = op.format.fontSizePt;
         }
         if (op.format.textColor !== undefined) {
           textFormat.foregroundColor = op.format.textColor;
@@ -374,9 +380,7 @@ export function resolveSpreadsheetOperations(
         if (op.sheetName) {
           const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetName);
           if (sheetIdResult.isErr()) {
-            return new Err(
-              new Error(`findReplace: ${sheetIdResult.error.message}`)
-            );
+            return prefixErr("findReplace", sheetIdResult.error);
           }
           req.sheetId = sheetIdResult.value;
         } else {
@@ -388,7 +392,7 @@ export function resolveSpreadsheetOperations(
       case "mergeCells": {
         const gridResult = toGridRange(spreadsheet, op.sheetName, op.range);
         if (gridResult.isErr()) {
-          return new Err(new Error(`mergeCells: ${gridResult.error.message}`));
+          return prefixErr("mergeCells", gridResult.error);
         }
         batchRequests.push({
           mergeCells: {
@@ -401,9 +405,7 @@ export function resolveSpreadsheetOperations(
       case "insertRows": {
         const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetName);
         if (sheetIdResult.isErr()) {
-          return new Err(
-            new Error(`insertRows: ${sheetIdResult.error.message}`)
-          );
+          return prefixErr("insertRows", sheetIdResult.error);
         }
         batchRequests.push({
           insertDimension: {
@@ -420,9 +422,7 @@ export function resolveSpreadsheetOperations(
       case "deleteRows": {
         const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetName);
         if (sheetIdResult.isErr()) {
-          return new Err(
-            new Error(`deleteRows: ${sheetIdResult.error.message}`)
-          );
+          return prefixErr("deleteRows", sheetIdResult.error);
         }
         batchRequests.push({
           deleteDimension: {
@@ -439,9 +439,7 @@ export function resolveSpreadsheetOperations(
       case "insertColumns": {
         const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetName);
         if (sheetIdResult.isErr()) {
-          return new Err(
-            new Error(`insertColumns: ${sheetIdResult.error.message}`)
-          );
+          return prefixErr("insertColumns", sheetIdResult.error);
         }
         batchRequests.push({
           insertDimension: {
@@ -458,9 +456,7 @@ export function resolveSpreadsheetOperations(
       case "deleteColumns": {
         const sheetIdResult = getSheetIdByTitle(spreadsheet, op.sheetName);
         if (sheetIdResult.isErr()) {
-          return new Err(
-            new Error(`deleteColumns: ${sheetIdResult.error.message}`)
-          );
+          return prefixErr("deleteColumns", sheetIdResult.error);
         }
         batchRequests.push({
           deleteDimension: {
@@ -477,7 +473,7 @@ export function resolveSpreadsheetOperations(
       case "sortRange": {
         const gridResult = toGridRange(spreadsheet, op.sheetName, op.range);
         if (gridResult.isErr()) {
-          return new Err(new Error(`sortRange: ${gridResult.error.message}`));
+          return prefixErr("sortRange", gridResult.error);
         }
         const grid = gridResult.value;
         // dimensionIndex on sortRange is absolute on the sheet, not relative
@@ -503,9 +499,7 @@ export function resolveSpreadsheetOperations(
       case "deleteSheet": {
         const sheetIdResult = getSheetIdByTitle(spreadsheet, op.title);
         if (sheetIdResult.isErr()) {
-          return new Err(
-            new Error(`deleteSheet: ${sheetIdResult.error.message}`)
-          );
+          return prefixErr("deleteSheet", sheetIdResult.error);
         }
         batchRequests.push({
           deleteSheet: { sheetId: sheetIdResult.value },
@@ -515,9 +509,7 @@ export function resolveSpreadsheetOperations(
       case "autoResizeColumns": {
         const gridResult = toGridRange(spreadsheet, op.sheetName, op.range);
         if (gridResult.isErr()) {
-          return new Err(
-            new Error(`autoResizeColumns: ${gridResult.error.message}`)
-          );
+          return prefixErr("autoResizeColumns", gridResult.error);
         }
         const grid = gridResult.value;
         batchRequests.push({

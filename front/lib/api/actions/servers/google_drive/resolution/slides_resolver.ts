@@ -4,6 +4,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { slides_v1 } from "googleapis";
 import { z } from "zod";
 
+import { prefixErr } from "./utils";
+
 // Slides API sizes/positions are in EMU (English Metric Units). 914_400 EMU = 1 inch.
 const TEXTBOX_DEFAULT_WIDTH_EMU = 3_000_000; // ~3.28in
 const TEXTBOX_DEFAULT_HEIGHT_EMU = 1_000_000; // ~1.09in
@@ -324,9 +326,7 @@ export function resolvePresentationOperations(
             op.slideNumbers
           );
           if (idsResult.isErr()) {
-            return new Err(
-              new Error(`replaceAllText: ${idsResult.error.message}`)
-            );
+            return prefixErr("replaceAllText", idsResult.error);
           }
           req.pageObjectIds = idsResult.value;
         }
@@ -342,9 +342,7 @@ export function resolvePresentationOperations(
         }
         const shapeResult = resolveShape(slide, op.shapeIdentifier);
         if (shapeResult.isErr()) {
-          return new Err(
-            new Error(`replaceShapeText: ${shapeResult.error.message}`)
-          );
+          return prefixErr("replaceShapeText", shapeResult.error);
         }
         const { objectId, shape } = shapeResult.value;
         if (getShapeTextLength(shape) > 0) {
@@ -366,9 +364,7 @@ export function resolvePresentationOperations(
         }
         const shapeResult = resolveShape(slide, op.shapeIdentifier);
         if (shapeResult.isErr()) {
-          return new Err(
-            new Error(`insertInShape: ${shapeResult.error.message}`)
-          );
+          return prefixErr("insertInShape", shapeResult.error);
         }
         const { objectId, shape } = shapeResult.value;
         const insertionIndex =
@@ -389,9 +385,7 @@ export function resolvePresentationOperations(
         }
         const tableResult = findTableOnSlide(slide, op.tableIndex);
         if (tableResult.isErr()) {
-          return new Err(
-            new Error(`replaceSlideTableCell: ${tableResult.error.message}`)
-          );
+          return prefixErr("replaceSlideTableCell", tableResult.error);
         }
         const { objectId } = tableResult.value;
         const cellLocation = {

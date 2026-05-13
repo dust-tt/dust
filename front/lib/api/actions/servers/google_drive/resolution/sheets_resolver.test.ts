@@ -145,7 +145,7 @@ describe("resolveSpreadsheetOperations", () => {
           range: "A1:B2",
           format: {
             bold: true,
-            fontSize: 12,
+            fontSizePt: 12,
             backgroundColor: { red: 1, green: 0, blue: 0 },
             textColor: { red: 0, green: 0, blue: 1 },
             horizontalAlignment: "CENTER",
