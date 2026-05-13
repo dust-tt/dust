@@ -1,8 +1,8 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { GoogleDocsRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_docs_request_types";
-import { GoogleSheetsRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_sheets_request_types";
-import { GoogleSlidesRequestsArraySchema } from "@app/lib/api/actions/servers/google_drive/google_slides_request_types";
+import { DocumentOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolve_document_operations";
+import { PresentationOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolve_presentation_operations";
+import { SpreadsheetOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolve_spreadsheet_operations";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -35,11 +35,6 @@ const capabilitiesSchema = z
   .describe(
     "The capabilities object for this file, as returned by search_files or get_file_content. Pass this value if it was returned by a previous tool call."
   );
-
-// Tool name constants for cross-referencing in descriptions
-const GET_DOCUMENT_STRUCTURE_TOOL = "get_document_structure" as const;
-const GET_PRESENTATION_STRUCTURE_TOOL = "get_presentation_structure" as const;
-const GET_WORKSHEET_TOOL = "get_worksheet" as const;
 
 export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
   list_drives: {
@@ -127,7 +122,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
   },
   get_file_content: {
-    description: `Get the content of a Google Drive file (Docs, Slides, Sheets, text, PDF, PowerPoint, Word) as text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. For structured content with element indices/object IDs needed for updates, use ${GET_DOCUMENT_STRUCTURE_TOOL} (Docs) or ${GET_PRESENTATION_STRUCTURE_TOOL} (Slides) instead.`,
+    description: `Get the content of a Google Drive file (Docs, Slides, Sheets, text, PDF, PowerPoint, Word) as text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}.`,
     schema: {
       fileId: z
         .string()
@@ -149,65 +144,6 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     displayLabels: {
       running: "Getting Google Drive file content",
       done: "Get Google Drive file content",
-    },
-  },
-  [GET_DOCUMENT_STRUCTURE_TOOL]: {
-    description:
-      "Get the full structure of a Google Docs document including text, tables, formatting, and indices. " +
-      "Use this instead of get_file_content when working with tables or when you need element indices for updates. " +
-      "Supports pagination for large documents.",
-    schema: {
-      documentId: z
-        .string()
-        .describe("The ID of the Google Docs document to retrieve."),
-      offset: z
-        .number()
-        .optional()
-        .default(0)
-        .describe(
-          "Element index to start from (for pagination). Defaults to 0."
-        ),
-      limit: z
-        .number()
-        .optional()
-        .default(100)
-        .describe(
-          "Maximum number of elements to return. Defaults to 100. Set to 0 for no limit."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Getting Google Docs structure",
-      done: "Get Google Docs structure",
-    },
-  },
-  [GET_PRESENTATION_STRUCTURE_TOOL]: {
-    description:
-      "Get the full structure of a Google Slides presentation including slides, page elements (shapes, tables, images, videos), text content, and object IDs. " +
-      "Use this instead of get_file_content when you need object IDs for updates or want to understand the presentation structure. " +
-      "Object IDs are required for most update operations like insertText, deleteObject, updateTextStyle, etc. " +
-      "Supports pagination for large presentations.",
-    schema: {
-      presentationId: z
-        .string()
-        .describe("The ID of the Google Slides presentation to retrieve."),
-      offset: z
-        .number()
-        .optional()
-        .default(0)
-        .describe("Slide index to start from (for pagination). Defaults to 0."),
-      limit: z
-        .number()
-        .optional()
-        .default(10)
-        .describe(
-          "Maximum number of slides to return. Defaults to 10. Set to 0 for no limit."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Getting Google Slides structure",
-      done: "Get Google Slides structure",
     },
   },
   get_spreadsheet: {
@@ -402,26 +338,14 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_document: {
     description:
-      "Update an existing Google Docs document by inserting/deleting text, working with tables, and applying formatting. " +
-      `Call ${GET_DOCUMENT_STRUCTURE_TOOL} first to get current indices, document end index, and structure. ` +
-      "Batch multiple changes in a single request whenever possible to minimize API calls. " +
-      "When batching operations, order requests from highest to lowest index (write backwards) to avoid recalculating indices after each change. " +
-      "To replace text while maintaining formatting, use replaceAllText. For position-specific changes, use deleteContentRange + insertText. " +
-      "IMPORTANT: Valid insertion indices are from 1 to (endIndex - 1). The document's endIndex is the last position and cannot be used for insertion. " +
-      "Text must be inserted within paragraph bounds, not at structural element boundaries (e.g., insert at startIndex + 1 for table cells).",
+      "Update an existing Google Docs document. Operations target content by text anchors (find/replace, find-and-insert-after, etc.), so you do not need to fetch the document first. " +
+      "Available operations: replaceText (find/replace), insertText (at start/end or after an anchor), deleteText (by exact match), insertTable, formatText (bold/italic/underline/fontSize on matched text), and raw (escape hatch for any Google Docs batchUpdate request). " +
+      "Multiple operations can be batched in a single call.",
     schema: {
       documentId: z.string().describe("The ID of the document to update."),
       capabilities: capabilitiesSchema,
-      requests: GoogleDocsRequestsArraySchema.describe(
-        "An array of batch update requests to apply to the document. Include multiple operations in a single call to minimize requests. " +
-          "Each request is an object with optional properties for each request type (only one should be set per request). " +
-          "See https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/batchUpdate for all request types. " +
-          "Required fields for common requests: " +
-          "insertText: {text, location: {index}}; " +
-          "deleteContentRange: {range: {startIndex, endIndex}}; " +
-          "replaceAllText: {containsText: {text}, replaceText}; " +
-          "insertTable: {rows, columns, location: {index}}; " +
-          "updateTextStyle: {range: {startIndex, endIndex}, textStyle, fields}."
+      operations: DocumentOperationsArraySchema.describe(
+        "An array of operations to apply to the document. Operations are resolved server-side from the current document state."
       ),
     },
     stake: "medium",
@@ -467,22 +391,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_spreadsheet: {
     description:
-      "Update a Google Sheets spreadsheet using batch update operations. " +
-      "Supports complex operations like inserting/deleting/moving rows and columns, merging cells, sorting ranges, " +
-      "updating cell formatting and borders, setting data validation, adding filters, find and replace, and more. " +
-      `For operations that need to know current data or structure (e.g., updating specific cells, working with existing ranges), call ${GET_WORKSHEET_TOOL} first to understand the current layout. ` +
-      "Batch multiple changes in a single request whenever possible to minimize API calls. " +
-      "Each request is an object with one property set (e.g., {updateCells: {...}} or {mergeCells: {...}}). " +
-      "See https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/batchUpdate for available request types.",
+      "Update a Google Sheets spreadsheet. Operations address cells by A1 notation and sheets by title, so sheetIds are resolved server-side. " +
+      "Available operations: updateCells (write values to a range), formatRange (bold/italic/color/alignment/number format), addSheet, deleteSheet, mergeCells, autoResizeColumns, insertDimension, deleteDimension, sortRange, findReplace, and raw (escape hatch). " +
+      "Multiple operations can be batched in a single call.",
     schema: {
       spreadsheetId: z
         .string()
         .describe("The ID of the spreadsheet to update."),
       capabilities: capabilitiesSchema,
-      requests: GoogleSheetsRequestsArraySchema.describe(
-        "An array of batch update requests to apply to the spreadsheet. Include multiple operations in a single call to minimize requests. " +
-          "Each request is an object with optional properties for each request type (only one should be set per request). " +
-          "Common requests include updateCells, insertDimension, deleteDimension, mergeCells, sortRange, updateBorders, findReplace, etc."
+      operations: SpreadsheetOperationsArraySchema.describe(
+        "An array of operations to apply to the spreadsheet. Operations are resolved server-side from the current spreadsheet state."
       ),
     },
     stake: "medium",
@@ -493,21 +411,16 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   },
   update_presentation: {
     description:
-      "Update an existing Google Slides presentation by adding, modifying, or deleting slides and content. " +
-      `Call ${GET_PRESENTATION_STRUCTURE_TOOL} first to get object IDs when working with existing elements (shapes, tables, images, etc.). ` +
-      "Batch multiple changes in a single request whenever possible to minimize API calls. " +
-      "To replace text while maintaining formatting, use replaceAllText. For position-specific changes on shapes/text boxes, use deleteText + insertText with object IDs. " +
-      "Common operations include createSlide, insertText, deleteObject, updateTextStyle, createTable, insertTableRows, replaceAllText, etc.",
+      "Update an existing Google Slides presentation. Operations address slides by 1-indexed slide number and shapes by their text content, so objectIds are resolved server-side. " +
+      "Available operations: replaceAllText (global find/replace), replaceTextInShape (find/replace restricted to one slide), addSlide, deleteSlide, addTextBox, deleteElement (by text snippet), and raw (escape hatch). " +
+      "Multiple operations can be batched in a single call.",
     schema: {
       presentationId: z
         .string()
         .describe("The ID of the presentation to update."),
       capabilities: capabilitiesSchema,
-      requests: GoogleSlidesRequestsArraySchema.describe(
-        "An array of batch update requests to apply to the presentation. Include multiple operations in a single call to minimize requests. " +
-          "Each request is an object with optional properties for each request type (only one should be set per request). " +
-          "See https://developers.google.com/slides/api/reference/rest/v1/presentations/batchUpdate for request types. " +
-          "Common requests include replaceAllText (preserves formatting), createSlide, deleteObject, insertText, updateTextStyle, createTable, insertTableRows, etc."
+      operations: PresentationOperationsArraySchema.describe(
+        "An array of operations to apply to the presentation. Operations are resolved server-side from the current presentation state."
       ),
     },
     stake: "medium",

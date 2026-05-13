@@ -14,8 +14,6 @@ import {
   getFileFromConversationAttachment,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import { formatDocumentStructure } from "@app/lib/api/actions/servers/google_drive/format_document";
-import { formatPresentationStructure } from "@app/lib/api/actions/servers/google_drive/format_presentation";
 import {
   getDocsClient,
   getDriveClient,
@@ -29,6 +27,9 @@ import {
   MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/api/actions/servers/google_drive/metadata";
+import { resolveDocOperations } from "@app/lib/api/actions/servers/google_drive/resolve_document_operations";
+import { resolvePresentationOperations } from "@app/lib/api/actions/servers/google_drive/resolve_presentation_operations";
+import { resolveSpreadsheetOperations } from "@app/lib/api/actions/servers/google_drive/resolve_spreadsheet_operations";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -633,51 +634,6 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       return handleDriveAccessError(err, authInfo);
     }
   },
-  get_document_structure: async (
-    { documentId, offset = 0, limit = 100 },
-    { authInfo }
-  ) => {
-    const docs = await getDocsClient(authInfo);
-    if (!docs) {
-      return new Err(new MCPError("Failed to authenticate with Google Docs"));
-    }
-
-    try {
-      const res = await docs.documents.get({
-        documentId,
-      });
-
-      // Format as markdown for better readability
-      const markdown = formatDocumentStructure(res.data, offset, limit);
-
-      return new Ok([{ type: "text" as const, text: markdown }]);
-    } catch (err) {
-      return handleDriveAccessError(err, authInfo);
-    }
-  },
-  get_presentation_structure: async (
-    { presentationId, offset = 0, limit = 10 },
-    { authInfo }
-  ) => {
-    const slides = await getSlidesClient(authInfo);
-    if (!slides) {
-      return new Err(new MCPError("Failed to authenticate with Google Slides"));
-    }
-
-    try {
-      const res = await slides.presentations.get({
-        presentationId,
-      });
-
-      // Format as markdown for better readability
-      const markdown = formatPresentationStructure(res.data, offset, limit);
-
-      return new Ok([{ type: "text" as const, text: markdown }]);
-    } catch (err) {
-      return handleDriveAccessError(err, authInfo);
-    }
-  },
-
   list_file_permissions: async ({ fileId, capabilities }, { authInfo }) => {
     const shareError = await ensureCapability(
       "canShare",
@@ -991,7 +947,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   update_document: async (
-    { documentId, requests, capabilities },
+    { documentId, operations, capabilities },
     { authInfo, agentLoopContext }
   ) => {
     const accessError = await ensureCapability(
@@ -1009,10 +965,18 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     try {
+      const doc = await docs.documents.get({ documentId });
+      const resolved = resolveDocOperations(doc.data, operations);
+      if (resolved.isErr()) {
+        return new Err(
+          new MCPError(resolved.error.message, { tracked: false })
+        );
+      }
+
       const res = await docs.documents.batchUpdate(
         {
           documentId,
-          requestBody: { requests },
+          requestBody: { requests: resolved.value },
         },
         {}
       );
@@ -1099,7 +1063,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   update_spreadsheet: async (
-    { spreadsheetId, requests, capabilities },
+    { spreadsheetId, operations, capabilities },
     { authInfo, agentLoopContext }
   ) => {
     const accessError = await ensureCapability(
@@ -1117,13 +1081,49 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     try {
-      const res = await sheets.spreadsheets.batchUpdate(
-        {
-          spreadsheetId,
-          requestBody: { requests: requests as any },
-        },
-        {}
+      const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+      const resolved = resolveSpreadsheetOperations(
+        spreadsheet.data,
+        operations
       );
+      if (resolved.isErr()) {
+        return new Err(
+          new MCPError(resolved.error.message, { tracked: false })
+        );
+      }
+      const { valueUpdates, batchRequests } = resolved.value;
+
+      // Cell-value writes and structural ops go through different Sheets APIs,
+      // so we issue them sequentially. If the structural batch fails after the
+      // value batch succeeded, the value writes will already have applied —
+      // the model will see the error in the response and can retry the
+      // structural ops alone.
+      let valueAppliedCount = 0;
+      if (valueUpdates.length > 0) {
+        const valueRes = await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            valueInputOption: "USER_ENTERED",
+            data: valueUpdates.map((v) => ({
+              range: v.range,
+              values: v.values,
+            })),
+          },
+        });
+        valueAppliedCount = valueRes.data.totalUpdatedCells ?? 0;
+      }
+
+      let batchAppliedCount = 0;
+      if (batchRequests.length > 0) {
+        const batchRes = await sheets.spreadsheets.batchUpdate(
+          {
+            spreadsheetId,
+            requestBody: { requests: batchRequests },
+          },
+          {}
+        );
+        batchAppliedCount = batchRes.data.replies?.length ?? 0;
+      }
 
       return new Ok([
         {
@@ -1131,7 +1131,8 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
           text: JSON.stringify(
             {
               spreadsheetId,
-              appliedUpdates: res.data.replies?.length ?? 0,
+              appliedBatchUpdates: batchAppliedCount,
+              updatedCells: valueAppliedCount,
               url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
             },
             null,
@@ -1153,7 +1154,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
   },
 
   update_presentation: async (
-    { presentationId, requests, capabilities },
+    { presentationId, operations, capabilities },
     { authInfo, agentLoopContext }
   ) => {
     const accessError = await ensureCapability(
@@ -1171,9 +1172,20 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
 
     try {
+      const presentation = await slides.presentations.get({ presentationId });
+      const resolved = resolvePresentationOperations(
+        presentation.data,
+        operations
+      );
+      if (resolved.isErr()) {
+        return new Err(
+          new MCPError(resolved.error.message, { tracked: false })
+        );
+      }
+
       const res = await slides.presentations.batchUpdate({
         presentationId,
-        requestBody: { requests },
+        requestBody: { requests: resolved.value },
       });
 
       return new Ok([
