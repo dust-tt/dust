@@ -1,10 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
-  getProductMaxSeatId,
-  getProductProSeatId,
   MAX_SEAT_CREDIT_NAME,
+  MAX_SEAT_PRODUCT_NAME,
   PRO_SEAT_CREDIT_NAME,
+  PRO_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import logger from "@app/logger/logger";
@@ -18,12 +18,10 @@ export interface SeatTypeInfo {
   priceCents: number;
 }
 
-export interface SeatPlanResponseBody {
-  pro: SeatTypeInfo | null;
-  max: SeatTypeInfo | null;
-}
-
 type PriceKey = "pro" | "max";
+
+export interface SeatPlanResponseBody
+  extends Record<PriceKey, SeatTypeInfo | null> {}
 
 export async function handleSeatPlanRequest(
   req: NextApiRequest,
@@ -63,35 +61,38 @@ export async function handleSeatPlanRequest(
     }
   }
 
-  const proProductId = getProductProSeatId();
-  const maxProductId = getProductMaxSeatId();
-
   const monthlyPriceCentsMap = new Map<PriceKey, number>();
 
   try {
-    const rateSchedule =
-      await getMetronomeClient().v1.contracts.rateCards.retrieveRateSchedule({
-        rate_card_id: contract.rate_card_id,
-        starting_at: new Date().toISOString(),
-        selectors: [{ product_id: proProductId }, { product_id: maxProductId }],
-      });
+    const startingAt = new Date().toISOString();
+    let nextPage: string | null | undefined = undefined;
+    do {
+      const rateSchedule =
+        await getMetronomeClient().v1.contracts.rateCards.retrieveRateSchedule({
+          rate_card_id: contract.rate_card_id,
+          starting_at: startingAt,
+          ...(nextPage ? { next_page: nextPage } : {}),
+        });
 
-    for (const entry of rateSchedule.data ?? []) {
-      if (!entry.entitled || entry.rate.price === undefined) {
-        continue;
+      for (const entry of rateSchedule.data ?? []) {
+        if (!entry.entitled || entry.rate.price === undefined) {
+          continue;
+        }
+        const key: PriceKey | undefined =
+          entry.product_name === PRO_SEAT_PRODUCT_NAME
+            ? "pro"
+            : entry.product_name === MAX_SEAT_PRODUCT_NAME
+              ? "max"
+              : undefined;
+        if (!key) {
+          continue;
+        }
+        // TODO (https://github.com/dust-tt/tasks/issues/8072): Add annual pricing
+        monthlyPriceCentsMap.set(key, entry.rate.price);
       }
-      const key: PriceKey | undefined =
-        entry.product_id === proProductId
-          ? "pro"
-          : entry.product_id === maxProductId
-            ? "max"
-            : undefined;
-      if (!key) {
-        continue;
-      }
-      // TODO (https://github.com/dust-tt/tasks/issues/8072): Add annual pricing
-      monthlyPriceCentsMap.set(key, entry.rate.price);
-    }
+
+      nextPage = rateSchedule.next_page;
+    } while (nextPage && monthlyPriceCentsMap.size < 2);
   } catch (err) {
     logger.warn(
       {

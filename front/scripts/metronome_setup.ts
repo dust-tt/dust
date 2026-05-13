@@ -19,8 +19,10 @@ import {
   DEV_CREDIT_TYPE_AWU_ID,
   DEV_CREDIT_TYPE_PROG_USD_ID,
   MAX_SEAT_CREDIT_NAME,
+  MAX_SEAT_PRODUCT_NAME,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   PRO_SEAT_CREDIT_NAME,
+  PRO_SEAT_PRODUCT_NAME,
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
 } from "@app/lib/metronome/constants";
@@ -348,11 +350,11 @@ const PRODUCTS: ProductDef[] = [
   // seat-based plans. Used as SEAT_BASED subscriptions in packages with per-seat
   // INDIVIDUAL recurring credits (Pro: 8000 AWU/mo, Max: 40000 AWU/mo).
   {
-    name: "Pro Seat",
+    name: PRO_SEAT_PRODUCT_NAME,
     type: "SUBSCRIPTION",
   },
   {
-    name: "Max Seat",
+    name: MAX_SEAT_PRODUCT_NAME,
     type: "SUBSCRIPTION",
   },
   // MAU product — single subscription for simple (non-tiered) enterprise contracts.
@@ -834,7 +836,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Pro Seat",
+          product_name: PRO_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -842,7 +844,7 @@ function getRateCards(): RateCardDef[] {
           billing_frequency: "MONTHLY",
         },
         {
-          product_name: "Max Seat",
+          product_name: MAX_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -876,7 +878,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Pro Seat",
+          product_name: PRO_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -885,7 +887,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
-          product_name: "Max Seat",
+          product_name: MAX_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -1040,7 +1042,7 @@ const MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID = "max-seat-sub";
 
 const PRO_SEAT_SUBSCRIPTION: PackageSubscription = {
   temporary_id: PRO_SEAT_SUBSCRIPTION_TEMPORARY_ID,
-  product_name: "Pro Seat",
+  product_name: PRO_SEAT_PRODUCT_NAME,
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "SEAT_BASED",
@@ -1053,7 +1055,7 @@ const PRO_SEAT_SUBSCRIPTION: PackageSubscription = {
 
 const MAX_SEAT_SUBSCRIPTION: PackageSubscription = {
   temporary_id: MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID,
-  product_name: "Max Seat",
+  product_name: MAX_SEAT_PRODUCT_NAME,
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "SEAT_BASED",

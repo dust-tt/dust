@@ -88,6 +88,8 @@ export const PLAN_CODE_CUSTOM_FIELD_KEY = "DUST_PLAN_CODE";
 
 export const PRO_SEAT_CREDIT_NAME = "Pro Seat Credits";
 export const MAX_SEAT_CREDIT_NAME = "Max Seat Credits";
+export const PRO_SEAT_PRODUCT_NAME = "Pro Seat";
+export const MAX_SEAT_PRODUCT_NAME = "Max Seat";
 
 // AWU (Agentic Work Units) differs per environment.
 export const DEV_CREDIT_TYPE_AWU_ID = "eb003cc7-4935-467d-a41c-c1738c1c9dc2";
