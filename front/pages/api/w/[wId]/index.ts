@@ -280,6 +280,16 @@ async function handler(
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
+
+        void emitAuditLogEvent({
+          auth,
+          action: "self_improvement.enabled",
+          targets: [buildAuditLogTarget("workspace", owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            enabled: String(body.allowReinforcement),
+          },
+        });
       } else if ("allowReinforcementBatchMode" in body) {
         const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
@@ -288,6 +298,16 @@ async function handler(
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
+
+        void emitAuditLogEvent({
+          auth,
+          action: "self_improvement.batch_mode_updated",
+          targets: [buildAuditLogTarget("workspace", owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            enabled: String(body.allowReinforcementBatchMode),
+          },
+        });
       } else if ("disableExtensionMcpTools" in body) {
         const previousMetadata = owner.metadata ?? {};
         const newMetadata = {

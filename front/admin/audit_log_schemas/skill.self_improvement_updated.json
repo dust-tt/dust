@@ -1,0 +1,10 @@
+{
+  "action": "skill.self_improvement_updated",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "skill" }
+  ],
+  "metadata": {
+    "reinforcement": "string"
+  }
+}
