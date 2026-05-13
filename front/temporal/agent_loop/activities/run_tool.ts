@@ -23,6 +23,7 @@ import {
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import {
   startActiveObservation,
   updateActiveObservation,
@@ -44,7 +45,7 @@ function extractDataSourceIds(
   const ds = inputs.dataSources;
   const tables = inputs.tables;
   const lastUriSegment = (v: unknown): string | undefined =>
-    typeof v === "string" ? v.split("/").pop() : undefined;
+    isString(v) ? v.split("/").pop() : undefined;
   if (Array.isArray(ds) && ds.length > 0) {
     result.accessed_data_source_ids = ds
       .map((d: { uri?: unknown }) => lastUriSegment(d.uri) ?? "")
@@ -58,7 +59,7 @@ function extractDataSourceIds(
         if (segment) {
           return segment;
         }
-        return typeof t.tableId === "string" ? t.tableId : "";
+        return isString(t.tableId) ? t.tableId : "";
       })
       .filter(Boolean)
       .join(",");
