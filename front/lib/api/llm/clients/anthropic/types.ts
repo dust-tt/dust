@@ -107,7 +107,6 @@ export const VERTEX_MODEL_ID_MAP: Partial<Record<ModelIdType, string>> = {
   [CLAUDE_OPUS_4_6_MODEL_ID]: "claude-opus-4-6@default",
   [CLAUDE_4_5_OPUS_20251101_MODEL_ID]: "claude-opus-4-5@20251101",
   [CLAUDE_4_5_HAIKU_20251001_MODEL_ID]: "claude-haiku-4-5@20251001",
-  [CLAUDE_OPUS_4_7_MODEL_ID]: "claude-opus-4-7@default",
 };
 
 export function isVertexWhitelistedModelId(
