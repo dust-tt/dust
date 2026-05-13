@@ -196,6 +196,7 @@ export function SpaceConversationsTab({
                 draftKey={`space-${spaceInfo.sId}-new-conversation`}
                 space={spaceInfo}
                 disableAutoFocus={false}
+                placeholder={`Start a conversation in ${spaceInfo.name}`}
               />
             ) : (
               <ProjectJoinCTA

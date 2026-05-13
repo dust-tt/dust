@@ -105,6 +105,7 @@ export interface InputBarContainerProps {
   // button.
   disableInput: boolean;
   submitBlockMessage: string | null;
+  placeholder?: string;
   onShake: () => void;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
@@ -160,6 +161,7 @@ const InputBarContainer = ({
   disableAgentSelector,
   disableInput,
   submitBlockMessage,
+  placeholder,
   onShake,
 }: InputBarContainerProps) => {
   const isSubmitBlocked = submitBlockMessage !== null;
@@ -463,7 +465,7 @@ const InputBarContainer = ({
       onSelectRef,
       selectedMCPServerViewIdsRef,
     },
-    placeholderOverride: disableInput ? submitBlockMessage : null,
+    placeholderOverride: disableInput ? submitBlockMessage : placeholder,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
