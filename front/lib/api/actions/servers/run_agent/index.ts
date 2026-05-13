@@ -106,10 +106,6 @@ async function checkChildAgentCanRun(
     childAgentName: string;
   }
 ): Promise<Result<void, MCPError>> {
-  if (!auth.isUser()) {
-    return new Ok(undefined);
-  }
-
   const childAgent = await getAgentConfiguration(auth, {
     agentId,
     variant: "extra_light",
