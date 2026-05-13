@@ -2,6 +2,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
+import { provisionMetronomeFirstPeriodSubscription } from "@app/lib/metronome/checkout";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import {
   chargeFirstPeriodInvoice,
@@ -9,8 +10,10 @@ import {
 } from "@app/lib/plans/stripe";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -192,6 +195,37 @@ async function handler(
     if (chargeResult.isErr()) {
       return res.status(500).json({ error: "payment_failed" });
     }
+  }
+
+  const user = auth.getNonNullableUser();
+  const planCode = setupSession.metadata?.planCode ?? "";
+  const metronomePackageAlias =
+    setupSession.metadata?.metronomePackageAlias ?? "";
+
+  const provisionResult = await provisionMetronomeFirstPeriodSubscription({
+    stripeCustomerId,
+    paymentMethodId,
+    subtotalCents,
+    currency,
+    workspaceId: owner.sId,
+    userId: user.sId,
+    planCode,
+    metronomePackageAlias,
+    firstPeriodPaymentEnforced: shouldEnforceFirstPeriodPayment,
+    uniquenessKey: setupSessionId,
+    now: new Date(),
+  });
+
+  if (provisionResult.isErr()) {
+    logger.error(
+      {
+        panic: true,
+        workspaceId: owner.sId,
+        error: normalizeError(provisionResult.error).message,
+      },
+      "[Checkout] Payment succeeded but Metronome provisioning failed"
+    );
+    return res.status(500).json({ error: "metronome_error" });
   }
 
   return res.status(200).json({ success: true });

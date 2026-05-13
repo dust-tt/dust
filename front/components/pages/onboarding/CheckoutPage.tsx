@@ -1,3 +1,4 @@
+import { PaymentMethodRow } from "@app/components/checkout/PaymentMethodRow";
 import config from "@app/lib/api/config";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
@@ -10,7 +11,10 @@ import {
 import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
+  useAuthContext,
+  useConfirmPayment,
   useCreateCheckoutSession,
+  usePreparePayment,
   useValidateCoupon,
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
@@ -18,10 +22,13 @@ import type { CouponType } from "@app/types/coupon";
 import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
+  ActionCheckCircleIcon,
+  ActionXCircleIcon,
   Button,
   DustLogoSquare,
   Icon,
   Input,
+  LockIcon,
   Spinner,
   TagIcon,
   XMarkIcon,
@@ -32,7 +39,7 @@ import {
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -54,6 +61,20 @@ const couponFormSchema = z.object({
 
 type CouponFormValues = z.infer<typeof couponFormSchema>;
 
+type CheckoutPhase =
+  | "card_capture" // Phase 1 — Stripe setup iframe
+  | "payment_review" // Phase 2 — tax breakdown + confirm button
+  | "confirming" // Phase 3 — POST /payment in progress
+  | "activating" // Phase 4 — mutating auth context, redirecting
+  | "error"; // Terminal error
+
+type PhaseError =
+  | { kind: "setup_failed" }
+  | { kind: "payment_failed" }
+  | { kind: "metronome_error" }
+  | { kind: "internal_error" }
+  | { kind: "generic" };
+
 function useBillingPeriodParam(): BillingPeriod {
   const raw = useSearchParam("billingPeriod");
   return raw === "yearly" ? "yearly" : "monthly";
@@ -62,22 +83,61 @@ function useBillingPeriodParam(): BillingPeriod {
 export function CheckoutPage() {
   const owner = useWorkspace();
   const router = useAppRouter();
-
   const billingPeriod = useBillingPeriodParam();
+  const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
 
-  const { seatsCount, isSeatsCountLoading } = useWorkspaceSeatsCount({
-    workspaceId: owner.sId,
-  });
+  const [phase, setPhase] = useState<CheckoutPhase>("card_capture");
+  const [phaseError, setPhaseError] = useState<PhaseError | null>(null);
+  const [setupSessionId, setSetupSessionId] = useState<string | null>(null);
+  // Prevents initSession from firing before URL params have been read on mount.
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const { createSession, isCreating } = useCreateCheckoutSession({
-    workspaceId: owner.sId,
-  });
-  const { validateCoupon } = useValidateCoupon({ workspaceId: owner.sId });
+  // Read setup_session_id from URL on mount, then clean up the URL.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const sessionId = url.searchParams.get("setup_session_id");
+    url.searchParams.delete("setup_session_id");
+    history.replaceState({}, "", url.toString());
+    if (sessionId) {
+      setSetupSessionId(sessionId);
+      setPhase("payment_review");
+    }
+    setIsInitialized(true);
+  }, []);
 
+  // Card capture phase state.
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isSessionRefreshing, setIsSessionRefreshing] = useState(false);
   const [showCouponInput, setShowCouponInput] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponType | null>(null);
+
+  // Ref to prevent double-fire of the confirm effect.
+  const confirmCalledRef = useRef(false);
+  // Once the user has gone through card_capture at least once, skip the full-page
+  // spinner on restart so the two-pane layout stays visible.
+  const hasHadSessionRef = useRef(false);
+
+  const { seatsCount } = useWorkspaceSeatsCount({
+    workspaceId: owner.sId,
+  });
+  const { createSession, isCreating } = useCreateCheckoutSession({
+    workspaceId: owner.sId,
+  });
+  const { confirmPayment, isConfirming } = useConfirmPayment({
+    workspaceId: owner.sId,
+  });
+  const { validateCoupon } = useValidateCoupon({ workspaceId: owner.sId });
+
+  const { preparePayment, isPreparePaymentLoading, isPreparePaymentError } =
+    usePreparePayment({
+      workspaceId: owner.sId,
+      setupSessionId,
+      disabled:
+        phase !== "payment_review" &&
+        phase !== "confirming" &&
+        phase !== "activating" &&
+        phase !== "error",
+    });
 
   const {
     register: registerCoupon,
@@ -107,6 +167,7 @@ export function CheckoutPage() {
       switch (result.mode) {
         case "embedded":
           setClientSecret(result.clientSecret);
+          setSetupSessionId(result.sessionId);
           return;
         case "hosted":
           void router.push(result.checkoutUrl);
@@ -118,8 +179,7 @@ export function CheckoutPage() {
     [billingPeriod, createSession, router]
   );
 
-  // We have to enforce light mode to fit with stripe embedded checkout session
-  // as there is not appearance selection field in EmbeddedCheckoutProvider
+  // Force light mode — Stripe embedded checkout does not support dark mode.
   useEffect(() => {
     const htmlEl = document.documentElement;
     const bodyEl = document.body;
@@ -147,10 +207,72 @@ export function CheckoutPage() {
     };
   }, []);
 
-  // On mount, create an initial checkout session.
+  // Phase "card_capture": init (or re-init on billingPeriod change).
   useEffect(() => {
+    if (!isInitialized || phase !== "card_capture") {
+      return;
+    }
     void initSession();
-  }, [initSession]);
+  }, [isInitialized, phase, initSession]);
+
+  const handleConfirmPayment = useCallback(async () => {
+    if (!setupSessionId || confirmCalledRef.current) {
+      return;
+    }
+    confirmCalledRef.current = true;
+    setPhase("confirming");
+
+    const result = await confirmPayment({ setupSessionId });
+    if (!result) {
+      setPhaseError({ kind: "generic" });
+      setPhase("error");
+      return;
+    }
+    if ("error" in result) {
+      switch (result.error) {
+        case "setup_failed":
+          setPhaseError({ kind: "setup_failed" });
+          break;
+        case "payment_failed":
+          setPhaseError({ kind: "payment_failed" });
+          break;
+        case "metronome_error":
+          setPhaseError({ kind: "metronome_error" });
+          break;
+        case "internal_error":
+          setPhaseError({ kind: "internal_error" });
+          break;
+        default:
+          assertNeverAndIgnore(result.error);
+          setPhaseError({ kind: "generic" });
+      }
+      setPhase("error");
+      return;
+    }
+
+    // Payment and provisioning succeeded — show success state for 2s, then redirect.
+    setPhase("activating");
+    await Promise.all([
+      mutateAuthContext(),
+      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+    ]);
+    void router.replace(`/w/${owner.sId}`);
+  }, [setupSessionId, confirmPayment, mutateAuthContext, router, owner.sId]);
+
+  const handleCardCaptureComplete = useCallback(() => {
+    setPhase("payment_review");
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    hasHadSessionRef.current = true;
+    setClientSecret(null);
+    setSetupSessionId(null);
+    setPhaseError(null);
+    setAppliedCoupon(null);
+    resetCoupon();
+    confirmCalledRef.current = false;
+    setPhase("card_capture");
+  }, [resetCoupon]);
 
   const handleRemoveCoupon = async () => {
     setAppliedCoupon(null);
@@ -168,18 +290,23 @@ export function CheckoutPage() {
     }
     setAppliedCoupon(result.coupon);
     setShowCouponInput(false);
-    // Re-create session with the coupon code so it's stored in metadata.
     setIsSessionRefreshing(true);
     await initSession(couponCode.trim());
     setIsSessionRefreshing(false);
   });
 
-  // Full-page spinner only on initial load; coupon re-creation keeps the left pane visible.
-  const isInitialLoading = (isSeatsCountLoading || isCreating) && !clientSecret;
+  const fallbackCurrency = useUserBillingCurrency();
 
-  const currency = useUserBillingCurrency();
+  // In payment_review and confirming phases, use actual values from the API.
+  const showActualTax =
+    (phase === "payment_review" ||
+      phase === "confirming" ||
+      phase === "activating" ||
+      phase === "error") &&
+    preparePayment !== null;
+
+  const currency = showActualTax ? preparePayment.currency : fallbackCurrency;
   const seats = seatsCount ?? 1;
-
   const isBusiness = isWhitelistedBusinessPlan(owner);
   const seatPricePerMonthCents =
     (isBusiness
@@ -187,18 +314,25 @@ export function CheckoutPage() {
       : billingPeriod === "monthly"
         ? PRO_PLAN_COST_MONTHLY
         : PRO_PLAN_COST_YEARLY) * 100;
-  // Yearly billing charges 12 months upfront.
   const monthsInPeriod = billingPeriod === "yearly" ? 12 : 1;
   const seatPriceCents = seatPricePerMonthCents * monthsInPeriod;
   const subtotalCents = seatPriceCents * seats;
-
   const couponDiscountCents =
     appliedCoupon !== null
       ? Math.min(appliedCoupon.amount * 100, subtotalCents)
       : 0;
   const totalDueTodayCents = subtotalCents - couponDiscountCents;
 
-  if (!isSessionRefreshing && (isInitialLoading || !clientSecret)) {
+  if (!isInitialized) {
+    return null;
+  }
+
+  // Full-page spinner only on first load (and hosted redirect). After a restart the
+  // two-pane layout stays visible and the right pane shows its own spinner.
+  const isInitialLoading =
+    phase === "card_capture" && !clientSecret && !hasHadSessionRef.current;
+
+  if (!isSessionRefreshing && isInitialLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <Spinner size="xl" />
@@ -208,15 +342,13 @@ export function CheckoutPage() {
 
   return (
     <main className="flex min-h-screen">
-      {/* Left pane: plan summary + coupon + total */}
+      {/* Left pane: order summary + coupon */}
       <div className="flex w-1/2 flex-col gap-14 p-24">
-        {/* Logo */}
         <div>
           <Icon visual={DustLogoSquare} size="lg" />
         </div>
 
         <div className="flex flex-col gap-11">
-          {/* Plan header */}
           <div className="flex flex-col">
             <span className="text-base text-muted-foreground">Your plan</span>
             <h1 className="text-5xl font-semibold text-foreground">
@@ -229,7 +361,6 @@ export function CheckoutPage() {
             </span>
           </div>
 
-          {/* Line items */}
           <div className="flex flex-col text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">
@@ -238,25 +369,28 @@ export function CheckoutPage() {
               <span>
                 {getPriceAsString({
                   currency,
-                  priceInCents: seatPriceCents,
+                  priceInCents: showActualTax
+                    ? preparePayment.pricePerSeatCents
+                    : seatPriceCents,
                 })}
               </span>
             </div>
             <div className="mt-3 flex justify-between">
               <span className="text-muted-foreground">Number of seats</span>
-              <span>{seats}</span>
+              <span>{showActualTax ? preparePayment.seatCount : seats}</span>
             </div>
             <div className="mt-6 flex justify-between border-t border-separator pt-3 font-medium">
               <span>Subtotal (excl. taxes)</span>
               <span>
                 {getPriceAsString({
                   currency,
-                  priceInCents: subtotalCents,
+                  priceInCents: showActualTax
+                    ? preparePayment.subtotalCents
+                    : subtotalCents,
                 })}
               </span>
             </div>
 
-            {/* Promotion code: toggle button → input field */}
             {COUPONS_ENABLED &&
               !appliedCoupon &&
               (showCouponInput ? (
@@ -294,7 +428,6 @@ export function CheckoutPage() {
                 </div>
               ))}
 
-            {/* Applied coupon: pill + description */}
             {COUPONS_ENABLED && appliedCoupon && (
               <div className="mt-4 flex flex-col gap-1">
                 <div className="flex items-center justify-between">
@@ -329,42 +462,265 @@ export function CheckoutPage() {
               </div>
             )}
 
-            {/* Total due today — always visible */}
-            <div className="mt-6 flex justify-between border-t border-separator pt-3 text-base font-semibold">
-              <span>Total due today (excl. taxes)</span>
-              <span>
-                {getPriceAsString({
-                  currency,
-                  priceInCents: totalDueTodayCents,
-                })}
-              </span>
-            </div>
-
-            <p className="mt-11 text-xs text-muted-foreground">
-              Final currency and tax amount are determined by the country
-              entered in the payment form.
-            </p>
+            {showActualTax ? (
+              <>
+                <div className="mt-6 flex justify-between border-t border-separator pt-3 text-sm text-muted-foreground">
+                  <span>Tax</span>
+                  <span>
+                    {getPriceAsString({
+                      currency,
+                      priceInCents: preparePayment.taxCents,
+                    })}
+                  </span>
+                </div>
+                <div className="mt-3 flex justify-between text-base font-semibold">
+                  <span>Total due today</span>
+                  <span>
+                    {getPriceAsString({
+                      currency,
+                      priceInCents: preparePayment.totalCents,
+                    })}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mt-6 flex justify-between border-t border-separator pt-3 text-base font-semibold">
+                  <span>Total due today (excl. taxes)</span>
+                  <span>
+                    {getPriceAsString({
+                      currency,
+                      priceInCents: totalDueTodayCents,
+                    })}
+                  </span>
+                </div>
+                <p className="mt-11 text-xs text-muted-foreground">
+                  Final currency and tax amount are determined by the country
+                  entered in the payment form.
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Right pane: Stripe Embedded Checkout */}
-      <div className="w-1/2 p-24">
-        {isCreating || !clientSecret ? (
-          <div className="flex h-64 items-center justify-center">
-            <Spinner size="lg" />
-          </div>
-        ) : (
-          <div className="pb-24">
-            <EmbeddedCheckoutProvider
-              stripe={getStripePromise()}
-              options={{ clientSecret }}
-            >
-              <EmbeddedCheckout />
-            </EmbeddedCheckoutProvider>
-          </div>
-        )}
+      {/* Right pane: phase-dependent content — centered except when showing the Stripe iframe */}
+      <div
+        className={`flex w-1/2 flex-col p-24 ${phase === "card_capture" && clientSecret ? "" : "items-center justify-center"}`}
+      >
+        <RightPane
+          phase={phase}
+          phaseError={phaseError}
+          clientSecret={clientSecret}
+          isCreating={isCreating}
+          isConfirming={isConfirming}
+          isPreparePaymentLoading={isPreparePaymentLoading}
+          isPreparePaymentError={isPreparePaymentError}
+          cardBrand={preparePayment?.cardBrand}
+          cardLast4={preparePayment?.cardLast4}
+          sepaLast4={preparePayment?.sepaLast4}
+          onRestart={handleRestart}
+          onConfirmPayment={handleConfirmPayment}
+          onCardCaptureComplete={handleCardCaptureComplete}
+        />
       </div>
     </main>
   );
+}
+
+interface RightPaneProps {
+  phase: CheckoutPhase;
+  phaseError: PhaseError | null;
+  clientSecret: string | null;
+  isCreating: boolean;
+  isConfirming: boolean;
+  isPreparePaymentLoading: boolean;
+  isPreparePaymentError: boolean;
+  cardBrand?: string;
+  cardLast4?: string;
+  sepaLast4?: string;
+  onRestart: () => void;
+  onConfirmPayment: () => void;
+  onCardCaptureComplete: () => void;
+}
+
+function RightPane({
+  phase,
+  phaseError,
+  clientSecret,
+  isCreating,
+  isConfirming,
+  isPreparePaymentLoading,
+  isPreparePaymentError,
+  cardBrand,
+  cardLast4,
+  sepaLast4,
+  onRestart,
+  onConfirmPayment,
+  onCardCaptureComplete,
+}: RightPaneProps) {
+  switch (phase) {
+    case "card_capture":
+      if (isCreating || !clientSecret) {
+        return <Spinner size="lg" />;
+      }
+      return (
+        <div className="pb-24">
+          <EmbeddedCheckoutProvider
+            stripe={getStripePromise()}
+            options={{ clientSecret, onComplete: onCardCaptureComplete }}
+          >
+            <EmbeddedCheckout />
+          </EmbeddedCheckoutProvider>
+        </div>
+      );
+
+    case "payment_review":
+      if (isPreparePaymentError) {
+        return (
+          <div className="flex flex-col items-center gap-6 text-center">
+            <Icon
+              visual={ActionXCircleIcon}
+              size="2xl"
+              className="text-warning-500"
+            />
+            <div className="flex flex-col gap-3">
+              <h2 className="text-2xl font-semibold text-foreground">
+                Couldn&apos;t load payment details
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Your payment was not processed and you have not been charged.
+                Please try again.
+                <br />
+                If the issue persists, contact us at{" "}
+                <a
+                  href="mailto:support@dust.tt"
+                  className="text-primary underline"
+                >
+                  support@dust.tt
+                </a>
+                .
+              </p>
+            </div>
+            <Button label="Try again" onClick={onRestart} />
+          </div>
+        );
+      }
+      return (
+        <div className="flex w-full flex-col items-center gap-6">
+          {isPreparePaymentLoading ? (
+            <Spinner size="lg" />
+          ) : (
+            <>
+              {cardBrand && cardLast4 ? (
+                <PaymentMethodRow
+                  paymentMethod={{
+                    type: "card",
+                    brand: cardBrand,
+                    last4: cardLast4,
+                  }}
+                  onRestart={onRestart}
+                />
+              ) : sepaLast4 ? (
+                <PaymentMethodRow
+                  paymentMethod={{ type: "sepa_debit", last4: sepaLast4 }}
+                  onRestart={onRestart}
+                />
+              ) : null}
+              <Button
+                label="Confirm payment"
+                onClick={onConfirmPayment}
+                size="md"
+                icon={LockIcon}
+                className="w-full"
+              />
+            </>
+          )}
+        </div>
+      );
+
+    case "confirming":
+      return (
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="lg" />
+          <p className="text-sm text-muted-foreground">Processing payment…</p>
+        </div>
+      );
+
+    case "activating":
+      return (
+        <div className="flex flex-col items-center gap-6 text-center">
+          <Icon
+            visual={ActionCheckCircleIcon}
+            size="2xl"
+            className="text-success-500"
+          />
+          <h2 className="text-2xl font-semibold text-foreground">
+            Thanks for subscribing
+          </h2>
+        </div>
+      );
+
+    case "error": {
+      if (phaseError?.kind === "metronome_error") {
+        return (
+          <div className="flex flex-col items-center gap-6 text-center">
+            <Icon
+              visual={ActionXCircleIcon}
+              size="2xl"
+              className="text-warning-500"
+            />
+            <div className="flex flex-col gap-3">
+              <h2 className="text-2xl font-semibold text-foreground">
+                Something went wrong in your subscription
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Your payment was processed but we encountered an issue setting
+                up your subscription. Please contact us at{" "}
+                <a
+                  href="mailto:support@dust.tt"
+                  className="text-primary underline"
+                >
+                  support@dust.tt
+                </a>{" "}
+                and we&apos;ll get this sorted out right away.
+              </p>
+            </div>
+          </div>
+        );
+      }
+      return (
+        <div className="flex flex-col items-center gap-6 text-center">
+          <Icon
+            visual={ActionXCircleIcon}
+            size="2xl"
+            className="text-warning-500"
+          />
+          <div className="flex flex-col gap-3">
+            <h2 className="text-2xl font-semibold text-foreground">
+              Payment failed
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Your payment could not be processed and you have not been charged.
+              Please try again.
+              <br />
+              If the issue persists, contact us at{" "}
+              <a
+                href="mailto:support@dust.tt"
+                className="text-primary underline"
+              >
+                support@dust.tt
+              </a>
+              .
+            </p>
+          </div>
+          <Button label="Try again" onClick={onRestart} />
+        </div>
+      );
+    }
+
+    default:
+      assertNeverAndIgnore(phase);
+      return null;
+  }
 }

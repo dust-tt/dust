@@ -54,7 +54,6 @@ export type RedisUsageTagsType =
   | "mcp_client_side_results"
   | "mentions_count"
   | "stripe_checkout_status"
-  | "metronome_checkout_error"
   | "metronome_credit_cache"
   | "metronome_limit"
   | "message_events"
