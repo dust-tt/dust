@@ -193,9 +193,11 @@ export async function mountConversationFiles(
     { concurrency: targets.length }
   );
 
-  const errors = mountResults.map((r) => r.isErr());
+  const errors = mountResults.filter((r) => r.isErr());
   if (errors.length > 0) {
     childLogger.info({ errors }, "GCS mount: files mounted failed");
+
+    return errors[0];
   }
 
   childLogger.info(
