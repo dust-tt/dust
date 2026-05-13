@@ -14,6 +14,9 @@ export const SUPPORTED_MIMETYPES = [
   "text/plain",
   "text/markdown",
   "text/csv",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
 export const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
@@ -124,7 +127,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
   },
   get_file_content: {
-    description: `Get the content of a Google Drive file as plain text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. For structured content with element indices/object IDs needed for updates, use ${GET_DOCUMENT_STRUCTURE_TOOL} (Docs) or ${GET_PRESENTATION_STRUCTURE_TOOL} (Slides) instead.`,
+    description: `Get the content of a Google Drive file as text with offset-based pagination. Supports native Google formats (Docs, Slides, Sheets), text files (plain/markdown/csv), and binary documents (PDF, PowerPoint .pptx, Word .docx) via Tika text extraction with OCR. Binary documents are also returned as an attached resource so they can be passed to other tools. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. For structured content with element indices/object IDs needed for updates, use ${GET_DOCUMENT_STRUCTURE_TOOL} (Docs) or ${GET_PRESENTATION_STRUCTURE_TOOL} (Slides) instead.`,
     schema: {
       fileId: z
         .string()
