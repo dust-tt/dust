@@ -12,11 +12,11 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 import type { Fetcher } from "swr";
 
-interface UseReinforcementToggleProps {
+interface UseSelfImprovingToggleProps {
   owner: LightWorkspaceType;
 }
 
-export function useReinforcementToggle({ owner }: UseReinforcementToggleProps) {
+export function useSelfImprovingToggle({ owner }: UseSelfImprovingToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
@@ -60,13 +60,13 @@ export function useReinforcementToggle({ owner }: UseReinforcementToggleProps) {
   };
 }
 
-interface UseReinforcementBatchModeToggleProps {
+interface UseSelfImprovingBatchModeToggleProps {
   owner: LightWorkspaceType;
 }
 
-export function useReinforcementBatchModeToggle({
+export function useSelfImprovingBatchModeToggle({
   owner,
-}: UseReinforcementBatchModeToggleProps) {
+}: UseSelfImprovingBatchModeToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
@@ -110,13 +110,13 @@ export function useReinforcementBatchModeToggle({
   };
 }
 
-interface UseReinforcementCapSettingProps {
+interface UseSelfImprovingCapSettingProps {
   owner: LightWorkspaceType;
 }
 
-export function useReinforcementCapSetting({
+export function useSelfImprovingCapSetting({
   owner,
-}: UseReinforcementCapSettingProps) {
+}: UseSelfImprovingCapSettingProps) {
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -158,7 +158,7 @@ export function useReinforcementCapSetting({
   };
 }
 
-export function useSkillsReinforcementSpend({
+export function useSkillsSelfImprovingSpend({
   owner,
   disabled,
 }: {
@@ -182,7 +182,7 @@ export function useSkillsReinforcementSpend({
   };
 }
 
-export function useReinforcementDailySpend({
+export function useSelfImprovingDailySpend({
   owner,
   disabled,
 }: {

@@ -3,11 +3,11 @@ import {
   DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD,
 } from "@app/lib/reinforcement/constants";
 import {
-  useReinforcementBatchModeToggle,
-  useReinforcementCapSetting,
-  useReinforcementToggle,
   useSelfImprovementCapPerSkillSetting,
-} from "@app/lib/swr/useReinforcementToggle";
+  useSelfImprovingBatchModeToggle,
+  useSelfImprovingCapSetting,
+  useSelfImprovingToggle,
+} from "@app/lib/swr/useSelfImprovingSkillsSettings";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -18,19 +18,19 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-interface ReinforcementSectionProps {
+interface SelfImprovingSkillsSettingsSectionProps {
   owner: WorkspaceType;
   onCapSaved?: (capMicroUsd: number) => void;
   onDefaultCapPerSkillSaved?: (microUsd: number) => void;
 }
 
-export function ReinforcementSection({
+export function SelfImprovingSkillsSettingsSection({
   owner,
   onCapSaved,
   onDefaultCapPerSkillSaved,
-}: ReinforcementSectionProps) {
+}: SelfImprovingSkillsSettingsSectionProps) {
   const { isEnabled, isChanging, doToggleReinforcement } =
-    useReinforcementToggle({ owner });
+    useSelfImprovingToggle({ owner });
 
   return (
     <Page.Vertical align="stretch" gap="md">
@@ -51,8 +51,8 @@ export function ReinforcementSection({
         >
           <ContextItem.Description description="Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models." />
         </ContextItem>
-        <ReinforcementBatchModeToggle owner={owner} />
-        <ReinforcementCapItem owner={owner} onCapSaved={onCapSaved} />
+        <SelfImprovingBatchModeToggle owner={owner} />
+        <SelfImprovingCapItem owner={owner} onCapSaved={onCapSaved} />
         <SelfImprovementCapPerSkillItem
           owner={owner}
           onSaved={onDefaultCapPerSkillSaved}
@@ -62,9 +62,11 @@ export function ReinforcementSection({
   );
 }
 
-function ReinforcementBatchModeToggle({ owner }: ReinforcementSectionProps) {
+function SelfImprovingBatchModeToggle({
+  owner,
+}: SelfImprovingSkillsSettingsSectionProps) {
   const { isEnabled, isChanging, doToggleBatchMode } =
-    useReinforcementBatchModeToggle({ owner });
+    useSelfImprovingBatchModeToggle({ owner });
 
   return (
     <ContextItem
@@ -162,11 +164,11 @@ function SelfImprovementCapPerSkillItem({
   );
 }
 
-function ReinforcementCapItem({
+function SelfImprovingCapItem({
   owner,
   onCapSaved,
-}: ReinforcementSectionProps) {
-  const { capDollars, isSaving, saveCapDollars } = useReinforcementCapSetting({
+}: SelfImprovingSkillsSettingsSectionProps) {
+  const { capDollars, isSaving, saveCapDollars } = useSelfImprovingCapSetting({
     owner,
   });
   const [inputValue, setInputValue] = useState<string>(() =>

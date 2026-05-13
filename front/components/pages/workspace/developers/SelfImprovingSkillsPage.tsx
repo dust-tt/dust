@@ -1,6 +1,6 @@
 import { SelfImprovingSkillsConsumptionSection } from "@app/components/pages/workspace/developers/SelfImprovingSkillsConsumptionSection";
-import { ReinforcementSection } from "@app/components/workspace/settings/AgentReinforcementToggle";
-import { ReinforcementSkillsSection } from "@app/components/workspace/settings/ReinforcementSkillsSection";
+import { SelfImprovingSkillsListSection } from "@app/components/workspace/settings/SelfImprovingSkillsListSection";
+import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import {
   useAuth,
   useFeatureFlags,
@@ -19,7 +19,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-export function ReinforcementPage() {
+export function SelfImprovingSkillsPage() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
@@ -66,7 +66,7 @@ export function ReinforcementPage() {
           </LinkWrapper>{" "}
           to share some feedback about this feature.
         </ContentMessage>
-        <ReinforcementSection
+        <SelfImprovingSkillsSettingsSection
           owner={owner}
           onCapSaved={setCapMicroUsd}
           onDefaultCapPerSkillSaved={setDefaultCapPerSkillMicroUsd}
@@ -75,7 +75,7 @@ export function ReinforcementPage() {
           owner={owner}
           capMicroUsd={capMicroUsd}
         />
-        <ReinforcementSkillsSection
+        <SelfImprovingSkillsListSection
           owner={owner}
           defaultCapPerSkillMicroUsd={defaultCapPerSkillMicroUsd}
         />

@@ -7,9 +7,9 @@ import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { ConsumptionProgressBarWithNumbers } from "@app/components/pages/workspace/developers/ConsumptionProgressBar";
 import {
-  useReinforcementDailySpend,
-  useSkillsReinforcementSpend,
-} from "@app/lib/swr/useReinforcementToggle";
+  useSelfImprovingDailySpend,
+  useSkillsSelfImprovingSpend,
+} from "@app/lib/swr/useSelfImprovingSkillsSettings";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -102,15 +102,15 @@ function SpendTooltip(
   return <ChartTooltipCard title={date} rows={rows} />;
 }
 
-interface ReinforcementSpendChartProps {
+interface SelfImprovingSpendChartProps {
   owner: LightWorkspaceType;
   capMicroUsd: number;
 }
 
-function ReinforcementSpendChart({
+function SelfImprovingSpendChart({
   owner,
   capMicroUsd,
-}: ReinforcementSpendChartProps) {
+}: SelfImprovingSpendChartProps) {
   const [displayMode, setDisplayMode] = useState<DisplayMode>("cumulative");
 
   const {
@@ -119,7 +119,7 @@ function ReinforcementSpendChart({
     periodEndDate,
     isDailySpendLoading,
     isDailySpendError,
-  } = useReinforcementDailySpend({ owner });
+  } = useSelfImprovingDailySpend({ owner });
 
   const chartData = useMemo(() => {
     if (!periodStartDate || !periodEndDate) {
@@ -371,7 +371,7 @@ export function SelfImprovingSkillsConsumptionSection({
   capMicroUsd,
 }: SelfImprovingSkillsConsumptionSectionProps) {
   const { spentMicroUsdBySkillId, isSpendLoading } =
-    useSkillsReinforcementSpend({ owner });
+    useSkillsSelfImprovingSpend({ owner });
 
   const totalSpentDollars =
     Object.values(spentMicroUsdBySkillId).reduce((sum, v) => sum + v, 0) /
@@ -393,7 +393,7 @@ export function SelfImprovingSkillsConsumptionSection({
           totalFormatted={`$${capDollars.toFixed(2)}`}
         />
       )}
-      <ReinforcementSpendChart owner={owner} capMicroUsd={capMicroUsd} />
+      <SelfImprovingSpendChart owner={owner} capMicroUsd={capMicroUsd} />
     </Page.Vertical>
   );
 }
