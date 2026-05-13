@@ -1789,39 +1789,23 @@ export async function listMetronomeSeatBalances({
   metronomeCustomerId: string;
   metronomeContractId: string;
 }): Promise<Result<MetronomeSeatBalance[], Error>> {
-  const apiKey = config.getMetronomeApiKey();
-  if (!apiKey) {
+  if (!config.getMetronomeApiKey()) {
     return new Ok([]);
   }
 
-  const baseURL = getMetronomeClient().baseURL.replace(/\/$/, "");
-
   try {
-    const response = await fetch(`${baseURL}/v1/contracts/seatBalances/list`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        customer_id: metronomeCustomerId,
-        contract_id: metronomeContractId,
-        include_credits_and_commits: true,
-        covering_date: new Date().toISOString(),
-      }),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      return new Err(
-        new Error(
-          `[Metronome] seatBalances/list returned ${response.status}: ${text}`
-        )
-      );
-    }
-
-    const json = (await response.json()) as { data?: unknown[] };
-    const balances = (json.data ?? []).filter(isMetronomeSeatBalance);
+    const response = await getMetronomeClient().post<{ data?: unknown[] }>(
+      "/v1/contracts/seatBalances/list",
+      {
+        body: {
+          customer_id: metronomeCustomerId,
+          contract_id: metronomeContractId,
+          include_credits_and_commits: true,
+          covering_date: new Date().toISOString(),
+        },
+      }
+    );
+    const balances = (response.data ?? []).filter(isMetronomeSeatBalance);
     return new Ok(balances);
   } catch (err) {
     const error = normalizeError(err);
