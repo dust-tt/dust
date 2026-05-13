@@ -1,4 +1,4 @@
-import { AuditLogsUiToggle } from "@app/components/workspace/settings/AuditLogsUiToggle";
+import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsToggle";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharingToggle } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
 import { OpenProjectsPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
@@ -22,8 +22,7 @@ export function CapabilitiesSection({
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const hasAuditLogsAccess =
-    (subscription.plan.isAuditLogsAllowed || hasFeature("audit_logs")) &&
-    !hasFeature("disable_audit_logs_ui");
+    subscription.plan.isAuditLogsAllowed || hasFeature("audit_logs");
 
   return (
     <Page.Vertical align="stretch" gap="md">
@@ -38,7 +37,7 @@ export function CapabilitiesSection({
         <ProjectKnowledgePolicy owner={owner} />
         <EmailAgentsToggle owner={owner} />
         <PrivateConversationUrlsToggle owner={owner} />
-        {hasAuditLogsAccess && <AuditLogsUiToggle owner={owner} />}
+        {hasAuditLogsAccess && <AuditLogsToggle owner={owner} />}
         {publishingRestrictionMessage && (
           <RestrictAgentsPublishingCapability
             subElement={publishingRestrictionMessage}

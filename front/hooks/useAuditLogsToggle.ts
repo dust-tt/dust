@@ -4,17 +4,17 @@ import { useAuthContext } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 
-interface UseAuditLogsUiToggleProps {
+interface UseAuditLogsToggleProps {
   owner: LightWorkspaceType;
 }
 
-export function useAuditLogsUiToggle({ owner }: UseAuditLogsUiToggleProps) {
+export function useAuditLogsToggle({ owner }: UseAuditLogsToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
-  const isEnabled = owner.metadata?.disableAuditLogsUi !== true;
+  const isEnabled = owner.metadata?.disableAuditLogs !== true;
 
-  const doToggleAuditLogsUi = async () => {
+  const doToggleAuditLogs = async () => {
     setIsChanging(true);
     try {
       const res = await clientFetch(`/api/w/${owner.sId}`, {
@@ -23,12 +23,12 @@ export function useAuditLogsUiToggle({ owner }: UseAuditLogsUiToggleProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          disableAuditLogsUi: isEnabled,
+          disableAuditLogs: isEnabled,
         }),
       });
 
       if (!res.ok) {
-        let description = "Failed to update audit logs UI setting";
+        let description = "Failed to update audit logs setting";
         try {
           const body = await res.json();
           if (body?.error?.message) {
@@ -39,7 +39,7 @@ export function useAuditLogsUiToggle({ owner }: UseAuditLogsUiToggleProps) {
         }
         sendNotification({
           type: "error",
-          title: "Failed to update audit logs UI setting",
+          title: "Failed to update audit logs setting",
           description,
         });
         return;
@@ -57,6 +57,6 @@ export function useAuditLogsUiToggle({ owner }: UseAuditLogsUiToggleProps) {
   return {
     isEnabled,
     isChanging,
-    doToggleAuditLogsUi,
+    doToggleAuditLogs,
   };
 }

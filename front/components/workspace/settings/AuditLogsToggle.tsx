@@ -1,27 +1,27 @@
-import { useAuditLogsUiToggle } from "@app/hooks/useAuditLogsUiToggle";
+import { useAuditLogsToggle } from "@app/hooks/useAuditLogsToggle";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, DocumentTextIcon, SliderToggle } from "@dust-tt/sparkle";
 
-interface AuditLogsUiToggleProps {
+interface AuditLogsToggleProps {
   owner: WorkspaceType;
 }
 
-export function AuditLogsUiToggle({ owner }: AuditLogsUiToggleProps) {
-  const { isEnabled, isChanging, doToggleAuditLogsUi } = useAuditLogsUiToggle({
+export function AuditLogsToggle({ owner }: AuditLogsToggleProps) {
+  const { isEnabled, isChanging, doToggleAuditLogs } = useAuditLogsToggle({
     owner,
   });
 
   return (
     <ContextItem
       title="Audit Logs"
-      subElement="Show audit logs section in workspace access settings"
+      subElement="Emit audit events to WorkOS and expose the audit logs section in workspace access. Turning this off stops emission and hides the section."
       visual={<DocumentTextIcon className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
         <SliderToggle
           selected={isEnabled}
           disabled={isChanging}
-          onClick={doToggleAuditLogsUi}
+          onClick={doToggleAuditLogs}
         />
       }
     />

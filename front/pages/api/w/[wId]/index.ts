@@ -115,8 +115,8 @@ const WorkspaceSelfImprovementCapPerSkillUpdateBodySchema = z.object({
   selfImprovementCapPerSkillMicroUsd: z.number(),
 });
 
-const WorkspaceAuditLogsUiUpdateBodySchema = z.object({
-  disableAuditLogsUi: z.boolean(),
+const WorkspaceAuditLogsUpdateBodySchema = z.object({
+  disableAuditLogs: z.boolean(),
 });
 
 const PostWorkspaceRequestBodySchema = z.union([
@@ -139,7 +139,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSandboxAgentEgressRequestsUpdateBodySchema,
   WorkspaceReinforcementCapUpdateBodySchema,
   WorkspaceSelfImprovementCapPerSkillUpdateBodySchema,
-  WorkspaceAuditLogsUiUpdateBodySchema,
+  WorkspaceAuditLogsUpdateBodySchema,
 ]);
 
 async function handler(
@@ -391,31 +391,21 @@ async function handler(
             enabled: String(body.sandboxAllowAgentEgressRequests),
           },
         });
-      } else if ("disableAuditLogsUi" in body) {
-        if (await hasFeatureFlag(auth, "disable_audit_logs_ui")) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "feature_flag_not_found",
-              message:
-                "Audit logs UI configuration is not enabled for this workspace.",
-            },
-          });
-        }
+      } else if ("disableAuditLogs" in body) {
         const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
           ...previousMetadata,
-          disableAuditLogsUi: body.disableAuditLogsUi,
+          disableAuditLogs: body.disableAuditLogs,
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
         void emitAuditLogEvent({
           auth,
-          action: "workspace.audit_logs_ui_updated",
+          action: "workspace.audit_logs_updated",
           targets: [buildAuditLogTarget("workspace", owner)],
           context: getAuditLogContext(auth, req),
           metadata: {
-            enabled: String(!body.disableAuditLogsUi),
+            enabled: String(!body.disableAuditLogs),
           },
         });
       } else if ("domainUpdates" in body) {
