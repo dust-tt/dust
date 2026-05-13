@@ -49,7 +49,11 @@ import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentErrorCategory,
+  GenericErrorContent,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
@@ -71,6 +75,25 @@ import _ from "lodash";
 import type z from "zod";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
+const UNTRACKED_CHILD_AGENT_ERROR_CATEGORIES = [
+  "retryable_model_error",
+  "context_window_exceeded",
+  "empty_content",
+  "provider_internal_error",
+] satisfies AgentErrorCategory[];
+const UNTRACKED_CHILD_AGENT_ERROR_CODES = ["max_step_reached"] as const;
+
+function shouldTrackChildAgentError(error: GenericErrorContent): boolean {
+  const category = error.metadata?.category;
+  if (
+    typeof category === "string" &&
+    UNTRACKED_CHILD_AGENT_ERROR_CATEGORIES.some((c) => c === category)
+  ) {
+    return false;
+  }
+
+  return !UNTRACKED_CHILD_AGENT_ERROR_CODES.some((code) => code === error.code);
+}
 
 function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
   switch (agent.status) {
@@ -566,11 +589,7 @@ const runAgent = async (
         // Certain types of agent errors should not be tracked as run_agent tool execution
         // errors (they will be exposed to the model and will be tracked as errors from the
         // agentic loop in the sub agent conversation).
-        const tracked = ![
-          "retryable_model_error",
-          "context_window_exceeded",
-          "provider_internal_error",
-        ].includes(event.error.metadata?.category);
+        const tracked = shouldTrackChildAgentError(event.error);
         return await finalizeAndReturn(
           new Err(
             new MCPError(errorMessage, {
