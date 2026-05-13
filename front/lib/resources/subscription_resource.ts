@@ -1387,6 +1387,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         await currentActive.markAsEnded(endedStatus, t);
       }
       await this.update({ status: "active" }, t);
+      const workspaceId = this.workspaceId;
+      invalidateCacheAfterCommit(t, () =>
+        SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+      );
     });
   }
 
