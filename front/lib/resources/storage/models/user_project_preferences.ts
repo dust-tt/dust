@@ -53,8 +53,7 @@ UserProjectPreferencesModel.init(
         unique: true,
         concurrently: true,
       },
-      { fields: ["userId"], concurrently: true },
-      { fields: ["spaceId"], concurrently: true },
+      { fields: ["workspaceId", "spaceId"], concurrently: true },
     ],
   }
 );
