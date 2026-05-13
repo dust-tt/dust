@@ -69,6 +69,8 @@ export function groupMessagesIntoInteractions<T extends MinimalMessageType>(
       const nextTurn = turnTypeForMessage(messages[i + 1]);
       return (
         (currentTurn === "agent" && nextTurn === "user") ||
+        // TODO(spolu): we may want to remove it after we support pruning any type of message inside
+        // the last interaction.
         (currentTurn === "user" && nextTurn === "user")
       );
     })();
