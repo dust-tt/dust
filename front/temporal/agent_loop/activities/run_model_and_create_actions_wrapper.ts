@@ -3,6 +3,7 @@ import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DurationRecorder } from "@app/lib/duration_recorder";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -351,49 +352,58 @@ async function getExistingActionsAndBlobs(
   // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent step content.
   const { agentMessage } = runAgentArgs;
 
-  // Find function_call step contents for this step.
-  const stepContents = await AgentStepContentModel.findAll({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      agentMessageId: agentMessage.agentMessageId,
-      step,
-      type: "function_call",
-    },
-    include: [
-      {
-        model: AgentMCPActionModel,
-        as: "agentMCPActions",
-        required: true,
+  const agentStepContentToolExecutions =
+    await AgentStepContentToolExecutionModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: agentMessage.agentMessageId,
       },
-    ],
-  });
+      include: [
+        {
+          model: AgentStepContentModel,
+          as: "stepContent",
+          required: true,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            step,
+            type: "function_call",
+          },
+        },
+        {
+          model: AgentMCPActionModel,
+          as: "agentMCPAction",
+          required: true,
+        },
+      ],
+    });
 
-  if (stepContents.length === 0) {
+  if (agentStepContentToolExecutions.length === 0) {
     return null; // No existing actions.
   }
 
   const actionBlobs: ActionBlob[] = [];
 
-  for (const stepContent of stepContents) {
-    if (stepContent.agentMCPActions && stepContent.agentMCPActions.length > 0) {
-      const [mcpAction] = stepContent.agentMCPActions;
+  for (const toolExecution of agentStepContentToolExecutions) {
+    const stepContent = toolExecution.stepContent;
+    const mcpAction = toolExecution.agentMCPAction;
+    assert(stepContent, "Unexpected: step content join row missing.");
+    assert(mcpAction, "Unexpected: MCP action join row missing.");
 
-      assert(
-        isAgentFunctionCallContent(stepContent.value),
-        "Unexpected: step content is not a function call"
-      );
+    assert(
+      isAgentFunctionCallContent(stepContent.value),
+      "Unexpected: step content is not a function call"
+    );
 
-      // If the tool is not already in a final state we must add it to the list of actions to run.
-      if (!isToolExecutionStatusFinal(mcpAction.status)) {
-        actionBlobs.push({
-          actionId: mcpAction.id,
-          actionStatus: mcpAction.status,
-          needsApproval: mcpAction.status === "blocked_validation_required",
-          retryPolicy: getRetryPolicyFromToolConfiguration(
-            mcpAction.toolConfiguration
-          ),
-        });
-      }
+    // If the tool is not already in a final state we must add it to the list of actions to run.
+    if (!isToolExecutionStatusFinal(mcpAction.status)) {
+      actionBlobs.push({
+        actionId: mcpAction.id,
+        actionStatus: mcpAction.status,
+        needsApproval: mcpAction.status === "blocked_validation_required",
+        retryPolicy: getRetryPolicyFromToolConfiguration(
+          mcpAction.toolConfiguration
+        ),
+      });
     }
   }
 

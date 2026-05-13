@@ -6,7 +6,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 export class AgentStepContentToolExecutionModel extends WorkspaceAwareModel<AgentStepContentToolExecutionModel> {
@@ -19,6 +19,9 @@ export class AgentStepContentToolExecutionModel extends WorkspaceAwareModel<Agen
 
   declare agentMCPActionId: ForeignKey<AgentMCPActionModel["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
+
+  declare agentMCPAction: NonAttribute<AgentMCPActionModel>;
+  declare stepContent: NonAttribute<AgentStepContentModel>;
 }
 
 AgentStepContentToolExecutionModel.init(

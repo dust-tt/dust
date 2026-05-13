@@ -124,7 +124,7 @@ async function handler(
       });
 
       const resultActions = actions.map((a) => {
-        const stepContent = contentById.get(a.stepContentId);
+        const stepContent = contentById.get(a.stepContent.id);
         assert(stepContent, "Step content not found.");
 
         return {

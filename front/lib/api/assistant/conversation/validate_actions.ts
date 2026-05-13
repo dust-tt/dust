@@ -14,7 +14,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -78,19 +77,7 @@ export async function validateAction(
     );
   }
 
-  const agentStepContent =
-    await AgentStepContentResource.fetchByModelIdWithAuth(
-      auth,
-      action.stepContentId
-    );
-  if (!agentStepContent) {
-    return new Err(
-      new DustError(
-        "internal_error",
-        `Agent step content not found: ${action.stepContentId}`
-      )
-    );
-  }
+  const agentStepContent = action.stepContent;
 
   if (action.status !== "blocked_validation_required") {
     return new Err(
