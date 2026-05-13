@@ -45,6 +45,8 @@ export function useResolveAuthentication({
       setIsCompleting(true);
 
       try {
+        // The backend resumes both the conversation that contains the action
+        // and any blocked ancestor conversations.
         await fetcher(
           `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/${ROUTE_FOR_KIND[kind]}`,
           {
@@ -52,7 +54,11 @@ export function useResolveAuthentication({
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ actionId, outcome }),
+            body: JSON.stringify({
+              actionId,
+              outcome,
+              resumeAncestorConversations: true,
+            }),
           }
         );
 
