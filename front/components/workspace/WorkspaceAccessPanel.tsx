@@ -4,7 +4,7 @@ import UserProvisioning from "@app/components/workspace/DirectorySync";
 import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   useRemoveWorkspaceDomain,
   useWorkspaceDomains,
@@ -46,7 +46,11 @@ export default function WorkspaceAccessPanel({
     owner,
   });
   const { hasFeature } = useFeatureFlags();
-  const showAuditLogs = plan.isAuditLogsAllowed || hasFeature("audit_logs");
+  const workspace = useWorkspace();
+  const hasAuditLogsAccess =
+    plan.isAuditLogsAllowed || hasFeature("audit_logs");
+  const showAuditLogs =
+    hasAuditLogsAccess && workspace.metadata?.disableAuditLogs !== true;
   const showExtensionMcpTools = hasFeature("browser_extension_mcp_tools");
 
   return (
