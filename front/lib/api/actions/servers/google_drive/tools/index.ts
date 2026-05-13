@@ -14,6 +14,8 @@ import {
   getFileFromConversationAttachment,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { formatDocumentStructure } from "@app/lib/api/actions/servers/google_drive/format_document";
+import { formatPresentationStructure } from "@app/lib/api/actions/servers/google_drive/format_presentation";
 import {
   getDocsClient,
   getDriveClient,
@@ -630,6 +632,40 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
           text: JSON.stringify(res.data, null, 2),
         },
       ]);
+    } catch (err) {
+      return handleDriveAccessError(err, authInfo);
+    }
+  },
+  get_document_structure: async (
+    { documentId, offset = 0, limit = 100 },
+    { authInfo }
+  ) => {
+    const docs = await getDocsClient(authInfo);
+    if (!docs) {
+      return new Err(new MCPError("Failed to authenticate with Google Docs"));
+    }
+
+    try {
+      const res = await docs.documents.get({ documentId });
+      const markdown = formatDocumentStructure(res.data, offset, limit);
+      return new Ok([{ type: "text" as const, text: markdown }]);
+    } catch (err) {
+      return handleDriveAccessError(err, authInfo);
+    }
+  },
+  get_presentation_structure: async (
+    { presentationId, offset = 0, limit = 10 },
+    { authInfo }
+  ) => {
+    const slides = await getSlidesClient(authInfo);
+    if (!slides) {
+      return new Err(new MCPError("Failed to authenticate with Google Slides"));
+    }
+
+    try {
+      const res = await slides.presentations.get({ presentationId });
+      const markdown = formatPresentationStructure(res.data, offset, limit);
+      return new Ok([{ type: "text" as const, text: markdown }]);
     } catch (err) {
       return handleDriveAccessError(err, authInfo);
     }

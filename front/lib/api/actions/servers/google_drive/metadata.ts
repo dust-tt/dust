@@ -146,6 +146,66 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       done: "Get Google Drive file content",
     },
   },
+  get_document_structure: {
+    description:
+      "Get the structure of a Google Docs document as markdown — text content, tables, headers/footers, and per-element indices. " +
+      "Useful when you need a structured view of a document (e.g. to enumerate tables or inspect formatting). " +
+      "Note: update_document resolves text anchors internally, so you do NOT need to call this tool before editing a document. " +
+      "Supports pagination for large documents.",
+    schema: {
+      documentId: z
+        .string()
+        .describe("The ID of the Google Docs document to retrieve."),
+      offset: z
+        .number()
+        .optional()
+        .default(0)
+        .describe(
+          "Element index to start from (for pagination). Defaults to 0."
+        ),
+      limit: z
+        .number()
+        .optional()
+        .default(100)
+        .describe(
+          "Maximum number of elements to return. Defaults to 100. Set to 0 for no limit."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Google Docs structure",
+      done: "Get Google Docs structure",
+    },
+  },
+  get_presentation_structure: {
+    description:
+      "Get the structure of a Google Slides presentation as markdown — slides, page elements (shapes, tables, images, videos), text content, and object IDs. " +
+      "Useful when you need a structured view of a presentation (e.g. to enumerate shapes or inspect layouts). " +
+      "Note: update_presentation resolves slide numbers and element text internally, so you do NOT need to call this tool before editing a presentation. " +
+      "Supports pagination for large presentations.",
+    schema: {
+      presentationId: z
+        .string()
+        .describe("The ID of the Google Slides presentation to retrieve."),
+      offset: z
+        .number()
+        .optional()
+        .default(0)
+        .describe("Slide index to start from (for pagination). Defaults to 0."),
+      limit: z
+        .number()
+        .optional()
+        .default(10)
+        .describe(
+          "Maximum number of slides to return. Defaults to 10. Set to 0 for no limit."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Google Slides structure",
+      done: "Get Google Slides structure",
+    },
+  },
   get_spreadsheet: {
     description:
       "Get metadata and properties of a specific Google Sheets spreadsheet, including sheet names, IDs, row/column counts, and structure. " +
