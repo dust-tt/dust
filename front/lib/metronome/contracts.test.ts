@@ -4,7 +4,6 @@ import {
   extractEnterprisePricing,
   provisionMetronomeContract,
   resolveCurrencyForExistingMetronomeCustomer,
-  switchMetronomeContractPackage,
 } from "@app/lib/metronome/contracts";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -17,10 +16,11 @@ const {
   mockFindMetronomeCustomerByAlias,
   mockGetMetronomeContractById,
   mockGetMetronomeCustomerStripeCustomerId,
-  mockGetSeatSubscriptionIdFromContract,
+  mockHasContractSeatSubscription,
   mockGetStripeCustomer,
   mockGetStripeSubscription,
   mockHasMauSubscriptionInContract,
+  mockListMetronomeContracts,
   mockPrices,
   mockScheduleMetronomeContractEnd,
   mockSyncMauCount,
@@ -34,10 +34,11 @@ const {
     mockFindMetronomeCustomerByAlias: vi.fn(),
     mockGetMetronomeContractById: vi.fn(),
     mockGetMetronomeCustomerStripeCustomerId: vi.fn(),
-    mockGetSeatSubscriptionIdFromContract: vi.fn(),
+    mockHasContractSeatSubscription: vi.fn(),
     mockGetStripeCustomer: vi.fn(),
     mockGetStripeSubscription: vi.fn(),
     mockHasMauSubscriptionInContract: vi.fn(),
+    mockListMetronomeContracts: vi.fn(),
     mockPrices,
     mockScheduleMetronomeContractEnd: vi.fn(),
     mockSyncMauCount: vi.fn(),
@@ -56,6 +57,7 @@ vi.mock("@app/lib/metronome/client", () => ({
   getMetronomeContractById: mockGetMetronomeContractById,
   getMetronomeCustomerStripeCustomerId:
     mockGetMetronomeCustomerStripeCustomerId,
+  listMetronomeContracts: mockListMetronomeContracts,
   scheduleMetronomeContractEnd: mockScheduleMetronomeContractEnd,
 }));
 
@@ -72,7 +74,7 @@ vi.mock("@app/lib/metronome/mau_sync", async () => {
 });
 
 vi.mock("@app/lib/metronome/seats", () => ({
-  getSeatSubscriptionIdFromContract: mockGetSeatSubscriptionIdFromContract,
+  hasContractSeatSubscription: mockHasContractSeatSubscription,
   syncSeatCount: mockSyncSeatCount,
 }));
 
@@ -139,11 +141,14 @@ beforeEach(() => {
   mockScheduleMetronomeContractEnd.mockReset();
   mockScheduleMetronomeContractEnd.mockResolvedValue(new Ok(undefined));
 
+  mockListMetronomeContracts.mockReset();
+  mockListMetronomeContracts.mockResolvedValue(new Ok([]));
+
   mockGetMetronomeContractById.mockReset();
   mockGetMetronomeContractById.mockResolvedValue(new Ok(CONTRACT));
 
-  mockGetSeatSubscriptionIdFromContract.mockReset();
-  mockGetSeatSubscriptionIdFromContract.mockReturnValue("seat-subscription");
+  mockHasContractSeatSubscription.mockReset();
+  mockHasContractSeatSubscription.mockReturnValue(true);
 
   mockHasMauSubscriptionInContract.mockReset();
   mockHasMauSubscriptionInContract.mockReturnValue(true);
@@ -680,9 +685,7 @@ describe("provisionMetronomeContract", () => {
       metronomeCustomerId: "m-customer",
       metronomeContractId: "m-contract",
     });
-    expect(mockGetSeatSubscriptionIdFromContract).toHaveBeenCalledWith(
-      CONTRACT
-    );
+    expect(mockHasContractSeatSubscription).toHaveBeenCalledWith(CONTRACT);
     expect(mockHasMauSubscriptionInContract).toHaveBeenCalledWith(CONTRACT);
     expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
     expect(mockSyncSeatCount).toHaveBeenCalledWith({
@@ -703,7 +706,7 @@ describe("provisionMetronomeContract", () => {
   });
 
   it("skips seat sync when the contract has no seat subscription", async () => {
-    mockGetSeatSubscriptionIdFromContract.mockReturnValue(undefined);
+    mockHasContractSeatSubscription.mockReturnValue(false);
 
     const result = await provisionMetronomeContract({
       metronomeCustomerId: "m-customer",
@@ -737,65 +740,86 @@ describe("provisionMetronomeContract", () => {
   });
 });
 
-describe("switchMetronomeContractPackage", () => {
-  it("syncs seats and MAU when the contract has both subscriptions", async () => {
-    const result = await switchMetronomeContractPackage({
+describe("provisionMetronomeContract — overlap sunset", () => {
+  it("ends non-archived contracts that overlap with the new start", async () => {
+    mockListMetronomeContracts.mockResolvedValue(
+      new Ok([
+        // overlaps — starts before, no end
+        {
+          id: "overlap-1",
+          starting_at: "2026-03-01T00:00:00.000Z",
+          ending_before: null,
+          archived_at: null,
+        },
+        // starts AFTER the new start — skipped
+        {
+          id: "future",
+          starting_at: "2026-05-01T00:00:00.000Z",
+          ending_before: null,
+          archived_at: null,
+        },
+        // ended BEFORE the new start — skipped
+        {
+          id: "ended",
+          starting_at: "2026-03-01T00:00:00.000Z",
+          ending_before: "2026-03-15T00:00:00.000Z",
+          archived_at: null,
+        },
+        // archived — skipped
+        {
+          id: "archived",
+          starting_at: "2026-03-01T00:00:00.000Z",
+          ending_before: null,
+          archived_at: "2026-03-10T00:00:00.000Z",
+        },
+        // the newly-created contract — skipped by id
+        {
+          id: "m-contract",
+          starting_at: START_DATE,
+          ending_before: null,
+          archived_at: null,
+        },
+      ])
+    );
+
+    const result = await provisionMetronomeContract({
       metronomeCustomerId: "m-customer",
-      oldContractId: "old-contract",
       workspace: WORKSPACE,
-      packageAlias: "legacy-business",
-      enableStripeBilling: false,
-      planCode: "PRO_PLAN_SEAT_39",
-      swapAt: "current-hour",
+      packageAlias: "legacy-pro-monthly",
+      uniquenessKey: "uniq_123",
+      startingAt: new Date(START_DATE),
+      planCode: "PRO_PLAN_SEAT_29",
     });
 
     expect(result.isOk()).toBe(true);
     expect(mockScheduleMetronomeContractEnd).toHaveBeenCalledTimes(1);
-    expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
-    expect(mockSyncSeatCount).toHaveBeenCalledWith({
-      metronomeCustomerId: "m-customer",
-      contractId: "m-contract",
-      workspace: WORKSPACE,
-      startingAt: START_DATE,
-      contract: CONTRACT,
-    });
-    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
+    expect(mockScheduleMetronomeContractEnd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metronomeCustomerId: "m-customer",
+        contractId: "overlap-1",
+      })
+    );
   });
 
-  it("skips seat sync when the switched contract has no seat subscription", async () => {
-    mockGetSeatSubscriptionIdFromContract.mockReturnValue(undefined);
+  it("returns an error when listing contracts fails", async () => {
+    mockListMetronomeContracts.mockResolvedValue(
+      new Err(new Error("list failed"))
+    );
 
-    const result = await switchMetronomeContractPackage({
+    const result = await provisionMetronomeContract({
       metronomeCustomerId: "m-customer",
-      oldContractId: "old-contract",
       workspace: WORKSPACE,
-      packageAlias: "legacy-enterprise-eur",
-      enableStripeBilling: false,
-      planCode: "PRO_PLAN_SEAT_39",
-      swapAt: "current-hour",
+      packageAlias: "legacy-pro-monthly",
+      uniquenessKey: "uniq_123",
+      startingAt: new Date(START_DATE),
+      planCode: "PRO_PLAN_SEAT_29",
     });
 
-    expect(result.isOk()).toBe(true);
-    expect(mockSyncSeatCount).not.toHaveBeenCalled();
-    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
-  });
-
-  it("skips MAU sync when the switched contract has no MAU subscription", async () => {
-    mockHasMauSubscriptionInContract.mockReturnValue(false);
-
-    const result = await switchMetronomeContractPackage({
-      metronomeCustomerId: "m-customer",
-      oldContractId: "old-contract",
-      workspace: WORKSPACE,
-      packageAlias: "legacy-business",
-      enableStripeBilling: false,
-      planCode: "PRO_PLAN_SEAT_39",
-      swapAt: "current-hour",
-    });
-
-    expect(result.isOk()).toBe(true);
-    expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
-    expect(mockSyncMauCount).not.toHaveBeenCalled();
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected error");
+    }
+    expect(result.error.message).toContain("failed to list");
   });
 });
 

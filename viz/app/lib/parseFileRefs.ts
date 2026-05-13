@@ -32,6 +32,10 @@ export function extractFileRefs(code: string): FileRef[] {
       sourceType: "module",
       plugins: ["jsx", "typescript"],
       strictMode: false,
+      // AI-generated viz code occasionally contains spec-level syntax errors
+      // (e.g. `a ?? b || c` without parens). Recover and still walk the valid
+      // portions so we can prefetch refs.
+      errorRecovery: true,
     });
 
     traverse(ast, {
@@ -67,7 +71,7 @@ export function extractFileRefs(code: string): FileRef[] {
       },
     });
   } catch (err) {
-    logger.error({ err }, "Failed to parse frame code:");
+    logger.warn({ err }, "Failed to parse frame code:");
   }
 
   return refs;

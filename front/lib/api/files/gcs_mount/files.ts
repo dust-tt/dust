@@ -163,7 +163,7 @@ function makeThumbnailUrl({
 
   switch (scope.useCase) {
     case "conversation":
-      return `${config.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`;
+      return `${config.getApiBaseUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`;
 
     case "project":
       // TODO(2026-05-10: FILE SYSTEM) Expose a project files thumbnail endpoint.

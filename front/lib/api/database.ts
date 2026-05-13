@@ -15,16 +15,24 @@ import type {
 } from "sequelize";
 import { Sequelize } from "sequelize";
 
+declare module "sequelize" {
+  interface Transaction {
+    readonly id: string;
+  }
+}
+
 const IDLE_IN_TX_THRESHOLD_MS = 250;
+const MAX_TRACKED_QUERIES = 100;
 
 interface TxState {
   beginAtMs: number;
   busyMs: number;
   route: string | undefined;
   lastQuerySql: string;
+  queries: string[];
 }
 
-const txStates = new WeakMap<Transaction, TxState>();
+const txStates = new Map<string, TxState>();
 
 function trackTx(
   transaction: Transaction | null | undefined,
@@ -40,6 +48,8 @@ function trackTx(
   const isCommit = upper.startsWith("COMMIT");
   const isRollback =
     upper.startsWith("ROLLBACK") && !upper.startsWith("ROLLBACK TO");
+
+  const txId = transaction.id;
 
   if (isBegin) {
     const span = trace.getSpan(otelContext.active());
@@ -57,16 +67,17 @@ function trackTx(
         }
       }
     }
-    txStates.set(transaction, {
+    txStates.set(txId, {
       beginAtMs: performance.now(),
       busyMs: 0,
       route,
       lastQuerySql: "",
+      queries: [],
     });
     return undefined;
   }
 
-  const state = txStates.get(transaction);
+  const state = txStates.get(txId);
   if (!state) {
     return undefined;
   }
@@ -74,18 +85,20 @@ function trackTx(
 
   return () => {
     if (isCommit || isRollback) {
-      txStates.delete(transaction);
+      txStates.delete(txId);
       const totalMs = performance.now() - state.beginAtMs;
       const idleMs = Math.max(0, totalMs - state.busyMs);
       if (idleMs >= IDLE_IN_TX_THRESHOLD_MS) {
         logger.warn(
           {
+            txId,
             totalMs,
             idleMs,
             busyMs: state.busyMs,
             outcome: isCommit ? "commit" : "rollback",
             route: state.route,
             lastQuerySql: state.lastQuerySql,
+            queries: state.queries,
           },
           "Idle-in-transaction detected"
         );
@@ -94,6 +107,9 @@ function trackTx(
     }
     state.busyMs += performance.now() - startMs;
     state.lastQuerySql = sqlString;
+    if (state.queries.length < MAX_TRACKED_QUERIES) {
+      state.queries.push(sqlString);
+    }
   };
 }
 

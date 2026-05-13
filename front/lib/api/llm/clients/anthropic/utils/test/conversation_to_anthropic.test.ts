@@ -7,15 +7,17 @@ import { describe, expect, it } from "vitest";
 
 describe("toMessage", () => {
   describe("user messages", () => {
-    it("should convert user message with text and function calls", () => {
-      const messages = conversationMessages.map((msg) => toMessage(msg));
+    it("should convert user message with text and function calls", async () => {
+      const messages = await Promise.all(
+        conversationMessages.map((msg) => toMessage(msg))
+      );
 
       expect(messages).toEqual(inputMessages);
     });
 
-    it("should convert assistant message with reasoning/thinking content", () => {
-      const messages = reasoningConversationMessages.map((msg) =>
-        toMessage(msg)
+    it("should convert assistant message with reasoning/thinking content", async () => {
+      const messages = await Promise.all(
+        reasoningConversationMessages.map((msg) => toMessage(msg))
       );
 
       expect(messages).toEqual(reasoningInputMessages);
@@ -23,7 +25,7 @@ describe("toMessage", () => {
   });
 
   describe("cache_control", () => {
-    it("should not add cache_control when isLast is false", () => {
+    it("should not add cache_control when isLast is false", async () => {
       const userMessage = conversationMessages.find(
         (msg) => msg.role === "user"
       );
@@ -31,7 +33,7 @@ describe("toMessage", () => {
         throw new Error("No user message found in test fixtures");
       }
 
-      const result = toMessage(userMessage, {
+      const result = await toMessage(userMessage, {
         isLast: false,
         omittedThinking: false,
       });
@@ -44,7 +46,7 @@ describe("toMessage", () => {
       }
     });
 
-    it("should add cache_control to last content block when isLast is true", () => {
+    it("should add cache_control to last content block when isLast is true", async () => {
       const userMessage = conversationMessages.find(
         (msg) => msg.role === "user"
       );
@@ -52,7 +54,7 @@ describe("toMessage", () => {
         throw new Error("No user message found in test fixtures");
       }
 
-      const result = toMessage(userMessage, {
+      const result = await toMessage(userMessage, {
         isLast: true,
         omittedThinking: false,
       });
@@ -67,7 +69,7 @@ describe("toMessage", () => {
       }
     });
 
-    it("should not add cache_control to non-user messages", () => {
+    it("should not add cache_control to non-user messages", async () => {
       const assistantMessage = conversationMessages.find(
         (msg) => msg.role === "assistant"
       );
@@ -75,7 +77,7 @@ describe("toMessage", () => {
         throw new Error("No assistant message found in test fixtures");
       }
 
-      const result = toMessage(assistantMessage, {
+      const result = await toMessage(assistantMessage, {
         isLast: true,
         omittedThinking: false,
       });

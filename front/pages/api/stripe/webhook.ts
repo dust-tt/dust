@@ -1452,6 +1452,14 @@ async function handler(
                 "[Stripe Webhook] Received customer.subscription.deleted event but the subscription was already with status = ended. Doing nothing."
               );
               break;
+            case "created_backend_only":
+              // Should never happen — pending subs have no stripeSubscriptionId.
+              logger.warn(
+                { event },
+                "[Stripe Webhook] Unexpected: customer.subscription.deleted matched a created_backend_only subscription. Marking it as ended."
+              );
+              await matchingSubscription.markAsEnded("ended");
+              break;
             case "ended_backend_only":
               // This status is set by the backend after a Poké workspace migration from one plan to another.
               // We don't want to delete any data in this case as the workspace is still active.

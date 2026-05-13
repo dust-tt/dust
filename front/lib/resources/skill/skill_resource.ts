@@ -21,7 +21,6 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
-import { getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd } from "@app/lib/reinforcement/consumption";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -371,8 +370,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const skill = await this.model.create(
         {
           ...blob,
-          selfImprovementCostsCapMicroUsd:
-            getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner),
           workspaceId: owner.id,
         },
         {
@@ -1554,7 +1551,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
-        selfImprovementCostsCapMicroUsd: 0,
+        selfImprovementCostsCapMicroUsd: null,
         selfImprovementLock: false,
       },
       {
@@ -2034,7 +2031,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async updateSelfImprovementCostsCap(
-    selfImprovementCostsCapMicroUsd: number
+    selfImprovementCostsCapMicroUsd: number | null
   ): Promise<void> {
     await this.update({ selfImprovementCostsCapMicroUsd });
   }

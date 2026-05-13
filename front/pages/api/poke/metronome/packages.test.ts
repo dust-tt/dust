@@ -28,6 +28,7 @@ describe("GET /api/poke/metronome/packages", () => {
           name: "Enterprise USD",
           aliases: ["enterprise-usd"],
           tier: "enterprise",
+          currency: "usd",
         },
       ])
     );
@@ -47,6 +48,7 @@ describe("GET /api/poke/metronome/packages", () => {
           name: "Enterprise USD",
           aliases: ["enterprise-usd"],
           tier: "enterprise",
+          currency: "usd",
         },
       ],
     });

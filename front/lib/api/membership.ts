@@ -7,7 +7,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
-  getSeatSubscriptionIdFromContract,
+  hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -52,7 +52,7 @@ async function syncSeatCountForWorkspace(
 
   // Gate on seat subscription presence — contracts without a seat product (e.g. enterprise)
   // should not trigger a seat sync.
-  if (!getSeatSubscriptionIdFromContract(contract)) {
+  if (!hasContractSeatSubscription(contract)) {
     return new Ok(undefined);
   }
 

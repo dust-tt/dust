@@ -503,7 +503,7 @@ export async function getReinforcementSettingsActivity({
 
   return {
     reinforcementEnabled: true,
-    batchModeAllowed: isReinforcementBatchModeAllowed(auth),
+    batchModeAllowed: await isReinforcementBatchModeAllowed(auth),
     globalConsumptionMicroUsd,
     globalCapMicroUsd,
   };

@@ -3,7 +3,7 @@ import {
   useSkillsWithRelations,
   useUpdateSkillReinforcement,
 } from "@app/lib/swr/skill_configurations";
-import { useSkillsReinforcementSpend } from "@app/lib/swr/useReinforcementToggle";
+import { useSkillsSelfImprovingSpend } from "@app/lib/swr/useSelfImprovingSkillsSettings";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillReinforcementMode,
@@ -18,11 +18,16 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  PaginationState,
+} from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
-interface ReinforcementSkillsSectionProps {
+interface SelfImprovingSkillsListSectionProps {
   owner: LightWorkspaceType;
+  defaultCapPerSkillMicroUsd: number;
 }
 
 type RowData = {
@@ -38,6 +43,7 @@ type RowData = {
   isLockUpdating: boolean;
   currentSpentDollars: number;
   capInputValue: string;
+  capPlaceholder: string;
   isCapUpdating: boolean;
   onToggleEnabled: () => void;
   onToggleLock: () => void;
@@ -94,36 +100,23 @@ const COLUMNS: ColumnDef<RowData, unknown>[] = [
     header: "Enabled",
     accessorKey: "enabled",
     cell: (info: CellContext<RowData, unknown>) => {
-      const { enabled, pendingEnabled, isEnabledUpdating, onToggleEnabled } =
-        info.row.original;
+      const {
+        enabled,
+        pendingEnabled,
+        isEnabledUpdating,
+        lock,
+        pendingLock,
+        onToggleEnabled,
+      } = info.row.original;
       const selected = pendingEnabled ?? enabled;
+      const isLocked = pendingLock ?? lock;
       return (
         <DataTable.CellContent>
           <SliderToggle
             size="xs"
             selected={selected}
-            disabled={isEnabledUpdating}
+            disabled={isEnabledUpdating || isLocked}
             onClick={onToggleEnabled}
-          />
-        </DataTable.CellContent>
-      );
-    },
-    meta: { className: "w-24" },
-  },
-  {
-    header: "Lock State",
-    accessorKey: "lock",
-    cell: (info: CellContext<RowData, unknown>) => {
-      const { lock, pendingLock, isLockUpdating, onToggleLock } =
-        info.row.original;
-      const selected = pendingLock ?? lock;
-      return (
-        <DataTable.CellContent>
-          <SliderToggle
-            size="xs"
-            selected={selected}
-            disabled={isLockUpdating}
-            onClick={onToggleLock}
           />
         </DataTable.CellContent>
       );
@@ -144,13 +137,20 @@ const COLUMNS: ColumnDef<RowData, unknown>[] = [
     header: "Cap ($)",
     accessorKey: "capInputValue",
     cell: (info: CellContext<RowData, unknown>) => {
-      const { sId, capInputValue, isCapUpdating, onCapChange, onCapCommit } =
-        info.row.original;
+      const {
+        sId,
+        capInputValue,
+        capPlaceholder,
+        isCapUpdating,
+        onCapChange,
+        onCapCommit,
+      } = info.row.original;
       return (
         <DataTable.CellContent>
           <Input
             name={`cap-${sId}`}
             value={capInputValue}
+            placeholder={capPlaceholder}
             disabled={isCapUpdating}
             onChange={(e) => onCapChange(e.target.value)}
             onBlur={onCapCommit}
@@ -165,6 +165,26 @@ const COLUMNS: ColumnDef<RowData, unknown>[] = [
       );
     },
     meta: { className: "w-32" },
+  },
+  {
+    header: "Lock State",
+    accessorKey: "lock",
+    cell: (info: CellContext<RowData, unknown>) => {
+      const { lock, pendingLock, isLockUpdating, onToggleLock } =
+        info.row.original;
+      const selected = pendingLock ?? lock;
+      return (
+        <DataTable.CellContent>
+          <SliderToggle
+            size="xs"
+            selected={selected}
+            disabled={isLockUpdating}
+            onClick={onToggleLock}
+          />
+        </DataTable.CellContent>
+      );
+    },
+    meta: { className: "w-24" },
   },
 ];
 
@@ -193,12 +213,13 @@ function withoutSkill<T>(
   return rest;
 }
 
-export function ReinforcementSkillsSection({
+export function SelfImprovingSkillsListSection({
   owner,
-}: ReinforcementSkillsSectionProps) {
+  defaultCapPerSkillMicroUsd,
+}: SelfImprovingSkillsListSectionProps) {
   const { skillsWithRelations, isSkillsWithRelationsLoading } =
     useSkillsWithRelations({ owner, status: "active", onlyCustom: true });
-  const { spentMicroUsdBySkillId } = useSkillsReinforcementSpend({ owner });
+  const { spentMicroUsdBySkillId } = useSkillsSelfImprovingSpend({ owner });
   const { updateSkillReinforcement } = useUpdateSkillReinforcement({
     owner,
     onlyCustom: true,
@@ -268,16 +289,37 @@ export function ReinforcementSkillsSection({
   );
 
   const handleCapCommit = useCallback(
-    async (skillId: string, savedDollars: number) => {
+    async (skillId: string, savedCapMicroUsd: number | null) => {
       const inputValue = capInputBySkillId[skillId];
       if (inputValue === undefined) {
         return;
       }
 
-      const parsed = Number(inputValue);
-      const isInvalid =
-        inputValue.trim() === "" || !Number.isFinite(parsed) || parsed < 0;
-      const isUnchanged = parsed === savedDollars;
+      const trimmed = inputValue.trim();
+
+      // Empty input resets to default (null).
+      if (trimmed === "") {
+        if (savedCapMicroUsd === null) {
+          // Already using default — just drop the local override.
+          setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+          return;
+        }
+        setCapUpdatingBySkillId((prev) => ({ ...prev, [skillId]: true }));
+        const ok = await updateSkillReinforcement(skillId, {
+          selfImprovementCostsCapMicroUsd: null,
+        });
+        setCapUpdatingBySkillId((prev) => withoutSkill(prev, skillId));
+        if (ok) {
+          setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+        }
+        return;
+      }
+
+      const parsed = Number(trimmed);
+      const isInvalid = !Number.isFinite(parsed) || parsed < 0;
+      const isUnchanged =
+        savedCapMicroUsd !== null &&
+        parsed === microUsdToDollars(savedCapMicroUsd);
       if (isInvalid || isUnchanged) {
         // Drop the local input override so the field falls back to the server value.
         setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
@@ -299,6 +341,10 @@ export function ReinforcementSkillsSection({
   );
 
   const [filter, setFilter] = useState("");
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 25,
+  });
 
   const sortedSkills = useMemo(
     () =>
@@ -314,16 +360,19 @@ export function ReinforcementSkillsSection({
     [skillsWithRelations, spentMicroUsdBySkillId]
   );
 
+  const defaultCapPlaceholder = `${formatDollars(microUsdToDollars(defaultCapPerSkillMicroUsd))} (default)`;
+
   const rows: RowData[] = useMemo(
     () =>
       sortedSkills.map((skill: SkillWithRelationsType) => {
         const enabled = isReinforcementEnabled(skill.reinforcement);
         const lock = skill.selfImprovementLock;
-        const savedCapDollars = microUsdToDollars(
-          skill.selfImprovementCostsCapMicroUsd
-        );
+        const savedCapMicroUsd = skill.selfImprovementCostsCapMicroUsd;
         const capInput =
-          capInputBySkillId[skill.sId] ?? formatDollars(savedCapDollars);
+          capInputBySkillId[skill.sId] ??
+          (savedCapMicroUsd !== null
+            ? formatDollars(microUsdToDollars(savedCapMicroUsd))
+            : "");
 
         return {
           sId: skill.sId,
@@ -340,6 +389,7 @@ export function ReinforcementSkillsSection({
             spentMicroUsdBySkillId[skill.sId] ?? 0
           ),
           capInputValue: capInput,
+          capPlaceholder: defaultCapPlaceholder,
           isCapUpdating: capUpdatingBySkillId[skill.sId] ?? false,
           onToggleEnabled: () => {
             void handleToggleEnabled(skill.sId, enabled);
@@ -351,12 +401,13 @@ export function ReinforcementSkillsSection({
             setCapInputBySkillId((prev) => ({ ...prev, [skill.sId]: value }));
           },
           onCapCommit: () => {
-            void handleCapCommit(skill.sId, savedCapDollars);
+            void handleCapCommit(skill.sId, savedCapMicroUsd);
           },
         };
       }),
     [
       sortedSkills,
+      defaultCapPlaceholder,
       pendingEnabledBySkillId,
       enabledUpdatingBySkillId,
       pendingLockBySkillId,
@@ -393,6 +444,8 @@ export function ReinforcementSkillsSection({
           columns={COLUMNS}
           filter={filter}
           filterColumn="name"
+          pagination={pagination}
+          setPagination={setPagination}
         />
       )}
     </Page.Vertical>

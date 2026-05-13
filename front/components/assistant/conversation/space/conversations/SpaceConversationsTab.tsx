@@ -334,7 +334,7 @@ export function SpaceConversationsTab({
                       return (
                         <div key={dateLabel}>
                           <ListItemSection>{dateLabel}</ListItemSection>
-                          <ListGroup>
+                          <ListGroup className="border-b-0">
                             {dateConversations
                               .toSorted((a, b) => b.updated - a.updated)
                               .map((conversation) => (

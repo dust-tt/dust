@@ -349,7 +349,7 @@ function isSlackTokenRevoked(error: unknown): boolean {
 // or null if the error should be handled by the caller.
 function handleSlackAuthError(error: unknown) {
   if (isSlackTokenRevoked(error) || isSlackMissingScope(error)) {
-    return new Ok(makePersonalAuthenticationError("slack").content);
+    return new Ok(makePersonalAuthenticationError("slack_tools").content);
   }
   return null;
 }
@@ -751,7 +751,7 @@ export function createSlackPersonalTools(
       if (!response.ok) {
         // Trigger authentication flow for missing_scope.
         if (response.error === "missing_scope") {
-          return new Ok(makePersonalAuthenticationError("slack").content);
+          return new Ok(makePersonalAuthenticationError("slack_tools").content);
         }
         return new Err(
           new MCPError(response.error ?? "Failed to list threads")

@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
@@ -8,33 +9,33 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes } from "sequelize";
 import { Op } from "sequelize";
 import { SpaceResource } from "./space_resource";
-import { UserProjectNotificationPreferenceModel } from "./storage/models/user_project_notification_preferences";
+import { UserProjectPreferencesModel } from "./storage/models/user_project_preferences";
 import { makeSId } from "./string_ids";
 import type { UserResource } from "./user_resource";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface UserProjectNotificationPreferenceResource
-  extends ReadonlyAttributesType<UserProjectNotificationPreferenceModel> {}
+export interface UserProjectPreferencesResource
+  extends ReadonlyAttributesType<UserProjectPreferencesModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class UserProjectNotificationPreferenceResource extends BaseResource<UserProjectNotificationPreferenceModel> {
-  static model: typeof UserProjectNotificationPreferenceModel =
-    UserProjectNotificationPreferenceModel;
+export class UserProjectPreferencesResource extends BaseResource<UserProjectPreferencesModel> {
+  static model: typeof UserProjectPreferencesModel =
+    UserProjectPreferencesModel;
 
   readonly user: UserResource;
 
   constructor(
-    model: typeof UserProjectNotificationPreferenceModel,
-    blob: Attributes<UserProjectNotificationPreferenceModel>,
+    model: typeof UserProjectPreferencesModel,
+    blob: Attributes<UserProjectPreferencesModel>,
     { user }: { user: UserResource }
   ) {
-    super(UserProjectNotificationPreferenceModel, blob);
+    super(UserProjectPreferencesModel, blob);
 
     this.user = user;
   }
 
   get sId(): string {
-    return UserProjectNotificationPreferenceResource.modelIdToSId({
+    return UserProjectPreferencesResource.modelIdToSId({
       id: this.id,
       workspaceId: this.workspaceId,
     });
@@ -53,32 +54,25 @@ export class UserProjectNotificationPreferenceResource extends BaseResource<User
     });
   }
 
-  static async create(
+  private static async baseFetch(
     auth: Authenticator,
-    {
-      spaceModelId,
-      preference,
-    }: {
-      spaceModelId: ModelId;
-      preference: NotificationCondition;
-    }
-  ): Promise<UserProjectNotificationPreferenceResource> {
-    const workspace = auth.getNonNullableWorkspace();
+    options: ResourceFindOptions<UserProjectPreferencesModel> = {}
+  ): Promise<UserProjectPreferencesResource[]> {
+    const { where, ...otherOptions } = options;
     const user = auth.getNonNullableUser();
 
-    const entry = await UserProjectNotificationPreferenceModel.create({
-      workspaceId: workspace.id,
-      spaceId: spaceModelId,
-      userId: user.id,
-      preference,
+    const results = await UserProjectPreferencesModel.findAll({
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      ...otherOptions,
     });
 
-    return new this(this.model, entry.get(), {
-      user,
-    });
+    return results.map((r) => new this(this.model, r.get(), { user }));
   }
 
-  static async fetchAllBySpaceAndUsers(
+  static async fetchNotificationPreferenceMap(
     auth: Authenticator,
     {
       spaceModelId,
@@ -88,56 +82,96 @@ export class UserProjectNotificationPreferenceResource extends BaseResource<User
       userModelIds: ModelId[];
     }
   ): Promise<Map<ModelId, NotificationCondition>> {
-    const results = await UserProjectNotificationPreferenceModel.findAll({
+    const preferences = await this.baseFetch(auth, {
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
         spaceId: spaceModelId,
         userId: { [Op.in]: userModelIds },
+        notificationPreference: { [Op.ne]: null },
       },
     });
 
     const preferenceMap = new Map<ModelId, NotificationCondition>();
-    for (const result of results) {
-      preferenceMap.set(result.userId, result.preference);
+    for (const preference of preferences) {
+      if (preference.notificationPreference !== null) {
+        preferenceMap.set(preference.userId, preference.notificationPreference);
+      }
     }
 
     return preferenceMap;
   }
 
-  static async fetchByProject(
+  static async fetchBySpace(
     auth: Authenticator,
     spaceModelId: ModelId
-  ): Promise<UserProjectNotificationPreferenceResource | null> {
-    const user = auth.getNonNullableUser();
-    const result = await UserProjectNotificationPreferenceModel.findOne({
+  ): Promise<UserProjectPreferencesResource | null> {
+    const [preference] = await this.baseFetch(auth, {
       where: {
-        userId: user.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.getNonNullableUser().id,
         spaceId: spaceModelId,
       },
     });
 
-    return result ? new this(this.model, result.get(), { user }) : null;
+    return preference ?? null;
   }
 
-  static async setPreference(
+  static async fetchStarred(
+    auth: Authenticator,
+    { spaceIds }: { spaceIds?: ModelId[] } = {}
+  ): Promise<Set<ModelId>> {
+    if (spaceIds && spaceIds.length === 0) {
+      return new Set();
+    }
+    const preferences = await this.baseFetch(auth, {
+      where: {
+        userId: auth.getNonNullableUser().id,
+        isStarred: true,
+        ...(spaceIds ? { spaceId: { [Op.in]: spaceIds } } : {}),
+      },
+    });
+    return new Set(preferences.map((p) => p.spaceId));
+  }
+
+  static async setNotificationPreference(
     auth: Authenticator,
     {
       spaceModelId,
-      preference,
+      notificationPreference,
     }: {
       spaceModelId: ModelId;
-      preference: NotificationCondition;
+      notificationPreference: NotificationCondition;
     }
-  ): Promise<UserProjectNotificationPreferenceResource> {
+  ): Promise<UserProjectPreferencesResource> {
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
 
-    const [entry] = await UserProjectNotificationPreferenceModel.upsert({
-      userId: user.id,
+    const [entry] = await UserProjectPreferencesModel.upsert({
       workspaceId: workspace.id,
+      userId: user.id,
       spaceId: spaceModelId,
-      preference,
+      notificationPreference,
+    });
+
+    return new this(this.model, entry.get(), { user });
+  }
+
+  static async setStarred(
+    auth: Authenticator,
+    {
+      spaceModelId,
+      isStarred,
+    }: {
+      spaceModelId: ModelId;
+      isStarred: boolean;
+    }
+  ): Promise<UserProjectPreferencesResource> {
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const [entry] = await UserProjectPreferencesModel.upsert({
+      workspaceId: workspace.id,
+      userId: user.id,
+      spaceId: spaceModelId,
+      isStarred,
     });
 
     return new this(this.model, entry.get(), { user });
@@ -148,7 +182,7 @@ export class UserProjectNotificationPreferenceResource extends BaseResource<User
     spaceModelId: ModelId
   ): Promise<Result<undefined, Error>> {
     try {
-      await UserProjectNotificationPreferenceModel.destroy({
+      await UserProjectPreferencesModel.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
           spaceId: spaceModelId,
@@ -162,7 +196,7 @@ export class UserProjectNotificationPreferenceResource extends BaseResource<User
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
-      await UserProjectNotificationPreferenceModel.destroy({
+      await UserProjectPreferencesModel.destroy({
         where: {
           id: this.id,
           userId: auth.getNonNullableUser().id,
@@ -184,7 +218,8 @@ export class UserProjectNotificationPreferenceResource extends BaseResource<User
         workspaceId: this.workspaceId,
       }),
       userId: this.user.sId,
-      preference: this.preference,
+      notificationPreference: this.notificationPreference,
+      isStarred: this.isStarred === true,
     };
   }
 }

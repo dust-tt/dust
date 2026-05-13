@@ -10,7 +10,11 @@ import {
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import { usePokeMetronomePackages, usePokePlans } from "@app/lib/swr/poke";
+import {
+  usePokeMetronomePackages,
+  usePokePlans,
+  usePokeStripeCustomerCurrency,
+} from "@app/lib/swr/poke";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -95,15 +99,6 @@ export default function SwitchContractDialog({
     );
   }, []);
 
-  const packageOptions = useMemo(
-    () =>
-      metronomePackages.map((p) => ({
-        value: p.id,
-        display: `${p.name} (${p.tier})`,
-      })),
-    [metronomePackages]
-  );
-
   const form = useForm<SwitchContractFormValues>({
     resolver: zodResolver(SwitchContractFormSchema),
     defaultValues: {
@@ -114,12 +109,58 @@ export default function SwitchContractDialog({
     },
   });
 
+  const watchedStripeCustomerId = form.watch("stripeCustomerId");
+  const trimmedStripeCustomerId = watchedStripeCustomerId.trim() || null;
+  const {
+    currency: resolvedCurrency,
+    isCurrencyLoading,
+    currencyError,
+  } = usePokeStripeCustomerCurrency({
+    stripeCustomerId: trimmedStripeCustomerId,
+    disabled: !open,
+  });
+
+  // Split packages into Current vs Legacy sections (name contains "legacy",
+  // case-insensitive). Each section preserves the lib-side sort order.
+  const packageGroups = useMemo(() => {
+    const inCurrency = metronomePackages.filter(
+      (p) => p.currency === resolvedCurrency
+    );
+    const isLegacy = (name: string) => /\blegacy\b/i.test(name);
+    const toOption = (p: (typeof inCurrency)[number]) => ({
+      value: p.id,
+      display: `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
+    });
+    return [
+      {
+        label: "Current",
+        options: inCurrency.filter((p) => !isLegacy(p.name)).map(toOption),
+      },
+      {
+        label: "Legacy",
+        options: inCurrency.filter((p) => isLegacy(p.name)).map(toOption),
+      },
+    ];
+  }, [metronomePackages, resolvedCurrency]);
+
   const selectedPackageId = form.watch("metronomePackageId");
   const selectedPackage = useMemo(
     () => metronomePackages.find((p) => p.id === selectedPackageId),
     [metronomePackages, selectedPackageId]
   );
   const selectedTier = selectedPackage?.tier ?? null;
+
+  // Clear a stale package selection when the resolved currency changes so a
+  // previously-picked package can't survive a currency switch silently.
+  useEffect(() => {
+    if (
+      resolvedCurrency &&
+      selectedPackage &&
+      selectedPackage.currency !== resolvedCurrency
+    ) {
+      form.setValue("metronomePackageId", "");
+    }
+  }, [resolvedCurrency, selectedPackage, form]);
 
   // When the operator picks a package, derive (Pro/Business) or reset
   // (Enterprise) the plan code. The full list of ENT_* plans is offered for
@@ -233,6 +274,25 @@ export default function SwitchContractDialog({
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-4"
               >
+                <InputField
+                  control={form.control}
+                  name="stripeCustomerId"
+                  title="Stripe Customer Id"
+                  placeholder="cus_1234567890"
+                  readOnly={stripeCustomerId !== null}
+                />
+                {isCurrencyLoading && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Spinner size="sm" />
+                    <span>Resolving customer currency...</span>
+                  </div>
+                )}
+                {currencyError && (
+                  <div className="text-warning text-sm">
+                    Failed to resolve currency from Stripe customer:{" "}
+                    {currencyError.message}
+                  </div>
+                )}
                 {isPackagesLoading && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Spinner size="sm" />
@@ -244,15 +304,18 @@ export default function SwitchContractDialog({
                     Failed to load Metronome packages: {packagesError.message}
                   </div>
                 )}
-                {!isPackagesLoading && !packagesError && (
-                  <SelectField
-                    control={form.control}
-                    name="metronomePackageId"
-                    title="Metronome Package"
-                    mountPortalContainer={portalContainer}
-                    options={packageOptions}
-                  />
-                )}
+                {!isPackagesLoading &&
+                  !packagesError &&
+                  resolvedCurrency &&
+                  !isCurrencyLoading && (
+                    <SelectField
+                      control={form.control}
+                      name="metronomePackageId"
+                      title={`Metronome Package (${resolvedCurrency.toUpperCase()})`}
+                      mountPortalContainer={portalContainer}
+                      groups={packageGroups}
+                    />
+                  )}
                 {selectedTier === "enterprise" && (
                   <>
                     <SelectField
@@ -281,19 +344,12 @@ export default function SwitchContractDialog({
                     synchronously.
                   </div>
                 )}
-                <InputField
-                  control={form.control}
-                  name="stripeCustomerId"
-                  title="Stripe Customer Id"
-                  placeholder="cus_1234567890"
-                  readOnly={stripeCustomerId !== null}
-                />
                 <DialogFooter>
                   <Button
                     type="submit"
                     variant="warning"
                     label="Switch"
-                    disabled={!selectedTier}
+                    disabled={!selectedTier || !resolvedCurrency}
                   />
                 </DialogFooter>
               </form>

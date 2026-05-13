@@ -19,11 +19,11 @@ export function parseSpaceTabFromLocationHash(
     return fallbackTab;
   }
   const hash = window.location.hash.slice(1);
-  if (hash === "context") {
-    return "knowledge";
+  if (hash === "context" || hash === "knowledge") {
+    return "files";
   }
   if (
-    hash === "knowledge" ||
+    hash === "files" ||
     hash === "settings" ||
     hash === "conversations" ||
     hash === "tasks" ||

@@ -878,7 +878,7 @@ export async function sendToolValidationEmail({
     ? email.subject
     : `Re: ${email.subject}`;
 
-  const baseUrl = config.getClientFacingUrl();
+  const baseUrl = config.getAppUrl();
   const conversationUrl = getConversationRoute(
     workspace.sId,
     conversation.sId,

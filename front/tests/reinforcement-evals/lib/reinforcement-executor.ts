@@ -60,7 +60,7 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     sourceMetadata: null,
     reinforcement: "auto",
     selfImprovementLock: false,
-    selfImprovementCostsCapMicroUsd: 0,
+    selfImprovementCostsCapMicroUsd: null,
     requestedSpaceIds: [],
     tools: (config.tools ?? []).map((t) => ({
       id: 0,
