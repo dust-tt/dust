@@ -5,7 +5,6 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DurationRecorder } from "@app/lib/duration_recorder";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -21,7 +20,6 @@ import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_t
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModel } from "@app/temporal/agent_loop/lib/run_model";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
-import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
@@ -33,7 +31,6 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context } from "@temporalio/activity";
-import assert from "assert";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -360,16 +357,6 @@ async function getExistingActionsAndBlobs(
       },
       include: [
         {
-          model: AgentStepContentModel,
-          as: "stepContent",
-          required: true,
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-            step,
-            type: "function_call",
-          },
-        },
-        {
           model: AgentMCPActionModel,
           as: "agentMCPAction",
           required: true,
@@ -384,15 +371,7 @@ async function getExistingActionsAndBlobs(
   const actionBlobs: ActionBlob[] = [];
 
   for (const toolExecution of agentStepContentToolExecutions) {
-    const stepContent = toolExecution.stepContent;
-    const mcpAction = toolExecution.agentMCPAction;
-    assert(stepContent, "Unexpected: step content join row missing.");
-    assert(mcpAction, "Unexpected: MCP action join row missing.");
-
-    assert(
-      isAgentFunctionCallContent(stepContent.value),
-      "Unexpected: step content is not a function call"
-    );
+    const { agentMCPAction: mcpAction } = toolExecution;
 
     // If the tool is not already in a final state we must add it to the list of actions to run.
     if (!isToolExecutionStatusFinal(mcpAction.status)) {

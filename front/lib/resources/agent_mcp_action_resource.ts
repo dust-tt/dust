@@ -154,7 +154,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const stepContentByActionId = new Map<ModelId, AgentStepContentResource>();
     for (const toolExecution of agentStepContentToolExecutions) {
       const stepContentModel = toolExecution.stepContent;
-      assert(stepContentModel, "Step content join row missing.");
 
       stepContentByActionId.set(
         toolExecution.agentMCPActionId,

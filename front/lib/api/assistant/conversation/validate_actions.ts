@@ -77,8 +77,6 @@ export async function validateAction(
     );
   }
 
-  const agentStepContent = action.stepContent;
-
   if (action.status !== "blocked_validation_required") {
     return new Err(
       new DustError(
@@ -188,7 +186,7 @@ export async function validateAction(
       userMessageOrigin,
     },
     // Resume from the step where the action was created.
-    startStep: agentStepContent.step,
+    startStep: action.stepContent.step,
     // Wait for completion of the agent loop workflow that triggered the
     // validation. This avoids race conditions where validation re-triggers the
     // agent loop before it completes, and thus throws a workflow already

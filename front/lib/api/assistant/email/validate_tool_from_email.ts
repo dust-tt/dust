@@ -219,8 +219,6 @@ export async function validateActionFromEmail(
     "[email] Tool validation request from email"
   );
 
-  const agentStepContent = action.stepContent;
-
   if (action.status !== "blocked_validation_required") {
     return new Err(
       new DustError(
@@ -331,7 +329,7 @@ export async function validateActionFromEmail(
       userMessageOrigin: parentMessage.userMessage.userContextOrigin,
       conversationBranchId: message.getBranchId(),
     },
-    startStep: agentStepContent.step,
+    startStep: action.stepContent.step,
     waitForCompletion: true,
   });
 
