@@ -95,6 +95,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       conversationId: number;
       providerId: string;
       status: SandboxStatus;
+      baseImage: string;
+      version: string;
     },
     { transaction }: { transaction?: Transaction } = {}
   ) {
@@ -423,6 +425,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           conversationId: conversation.id,
           providerId: createResult.value.providerId,
           status: "running",
+          baseImage: createConfig.imageId.imageName,
+          version: createConfig.imageId.tag,
         });
 
         const startTelemetry = await provider.exec(
@@ -523,7 +527,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           if (createResult.isErr()) {
             return createResult;
           }
-          await existing.update({ providerId: createResult.value.providerId });
+          await existing.update({
+            providerId: createResult.value.providerId,
+            baseImage: createConfig.imageId.imageName,
+            version: createConfig.imageId.tag,
+          });
           freshlyCreated = true;
 
           const startTelemetry = await provider.exec(

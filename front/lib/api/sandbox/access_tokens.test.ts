@@ -43,6 +43,8 @@ async function setupTest() {
     conversationId: conversation.id,
     providerId: "test-provider-id",
     status: "running",
+    baseImage: "dust-base",
+    version: "0.0.0-test",
   });
 
   const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
