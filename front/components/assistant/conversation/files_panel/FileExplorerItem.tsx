@@ -21,11 +21,12 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { intlFormatDistance } from "date-fns";
+import { useState } from "react";
 
 export type ViewMode = "grid" | "list";
 
 export type FileExplorerItemProps = {
-  onDownload?: () => void;
+  onDownload?: () => Promise<void>;
   onOpen: () => void;
   subtitle: string;
   title: string;
@@ -54,8 +55,33 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       </div>
     );
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    if (!onDownload) {
+      return;
+    }
+    e.stopPropagation();
+    setIsDownloading(true);
+    try {
+      await onDownload();
+    } finally {
+      setIsDownloading(false);
+      setMenuOpen(false);
+    }
+  };
+
   const menu = onDownload && (
-    <DropdownMenu>
+    <DropdownMenu
+      open={menuOpen}
+      onOpenChange={(open) => {
+        if (!open && isDownloading) {
+          return;
+        }
+        setMenuOpen(open);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -66,12 +92,10 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
-          label="Download"
+          label={isDownloading ? "Downloading…" : "Download"}
           icon={ArrowDownOnSquareIcon}
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            onDownload();
-          }}
+          disabled={isDownloading}
+          onClick={handleDownload}
         />
       </DropdownMenuContent>
     </DropdownMenu>
@@ -192,7 +216,7 @@ export interface FileExplorerFileCardProps {
   entry: GCSMountFileEntry;
   viewMode: ViewMode;
   onOpen: (entry: GCSMountFileEntry) => void;
-  onDownload: (entry: GCSMountFileEntry) => void;
+  onDownload: (entry: GCSMountFileEntry) => Promise<void>;
 }
 
 export function FileExplorerFileCard({

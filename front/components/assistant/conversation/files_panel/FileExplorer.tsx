@@ -121,7 +121,6 @@ export function NewFileExplorer({
     null
   );
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
-  const isDownloadingRef = useRef(false);
   const blobUrlRef = useRef<string | null>(null);
 
   const { sandboxStatus } = useConversationSandboxStatus({
@@ -218,10 +217,6 @@ export function NewFileExplorer({
   };
 
   const handleDownload = async (entry: GCSMountFileEntry) => {
-    if (isDownloadingRef.current) {
-      return;
-    }
-    isDownloadingRef.current = true;
     try {
       const res = await downloadSandboxFile(
         owner,
@@ -252,8 +247,6 @@ export function NewFileExplorer({
         title: "Failed to download the file.",
         description: "An error occurred while downloading. Please try again.",
       });
-    } finally {
-      isDownloadingRef.current = false;
     }
   };
 
