@@ -58,7 +58,7 @@ const COLUMNS: ComplianceColumn[] = [
     accent: "red",
     items: [
       "SOC 2 Type II certified",
-      "GDPR compliant — EU data residency",
+      "GDPR compliant, EU data residency",
       "HIPAA-ready deployment",
       "SSO (SAML, OIDC) + SCIM",
       "Audit logs, 365-day retention",
@@ -171,7 +171,7 @@ export function HomeSecuritySection() {
           {/* Caption strip — small, kept on-brand: foreground sans, mono only on the link */}
           <div className="flex flex-wrap items-baseline justify-between gap-3 px-1">
             <span className="text-sm text-muted-foreground">
-              Trust datasheet —{" "}
+              Trust datasheet,{" "}
               <span className="font-medium text-foreground">
                 {TOTAL_CONTROLS} controls live
               </span>

@@ -30,9 +30,9 @@ export function HomeTeamSportSection() {
                 size="sm"
                 className="max-w-[480px] leading-[1.6] text-muted-foreground"
               >
-                Most teams are stuck in single-player AI mode. Dust changes that
-                — shared knowledge, agents, and conversations so AI works across
-                your whole team.
+                Most teams are stuck in single-player AI mode. Dust changes
+                that, shared knowledge, agents, and conversations so AI works
+                across your whole team.
               </P>
             </HomeReveal>
             <HomeReveal as="figure" delay={240} className="m-0 mt-4 w-full">

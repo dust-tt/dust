@@ -26,7 +26,7 @@ export function HomeCoordinatedSection() {
               size="sm"
               className="max-w-[480px] leading-[1.6] text-muted-foreground"
             >
-              Any tool can pull from Slack or your CRM. Dust goes further — a
+              Any tool can pull from Slack or your CRM. Dust goes further, a
               semantic layer that synthesizes your company's knowledge so agents
               don't just retrieve information, they understand it.
             </P>

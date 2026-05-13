@@ -32,7 +32,7 @@ const CARDS: FeatureCard[] = [
     number: "01",
     title: "Knows your company",
     subtitle:
-      "Connects to all your tools and data — your stack becomes the agent's memory.",
+      "Connects to all your tools and data, your stack becomes the agent's memory.",
     accent: "text-blue-500",
     hoverVideoSrc: "/static/landing/home/features/knows-your-company.mp4",
   },
@@ -48,7 +48,7 @@ const CARDS: FeatureCard[] = [
     number: "03",
     title: "Always the best model",
     subtitle:
-      "Switch between OpenAI, Anthropic, Google, Mistral — without rewriting the agent.",
+      "Switch between OpenAI, Anthropic, Google, Mistral, without rewriting the agent.",
     accent: "text-golden-500",
     hoverVideoSrc: "/static/landing/home/features/best-model.mp4",
   },
@@ -220,7 +220,7 @@ export function HomeAgentsImproveSection() {
               size="sm"
               className="max-w-[680px] text-center text-muted-foreground"
             >
-              Dust agents don&apos;t just search your data — they learn how you
+              Dust agents don&apos;t just search your data, they learn how you
               work. Best practices consolidate into shared skills, improvements
               spread automatically, and your fiftieth workflow is easier to
               build than your fifth.
