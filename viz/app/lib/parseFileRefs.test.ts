@@ -1,0 +1,119 @@
+import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
+import { describe, expect, it } from "vitest";
+
+describe("extractFileRefs", () => {
+  it("extracts file IDs from useFile() calls", () => {
+    const code = `
+      function Comp() {
+        const f = useFile("fil_ABCDEFGHIJ");
+        return f;
+      }
+    `;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "fileId", fileId: "fil_ABCDEFGHIJ" },
+    ]);
+  });
+
+  it("extracts file IDs from fileId JSX attributes", () => {
+    const code = `
+      function Comp() {
+        return <Image fileId="fil_XYZ1234567" />;
+      }
+    `;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "fileId", fileId: "fil_XYZ1234567" },
+    ]);
+  });
+
+  it("extracts file IDs from any string literal", () => {
+    const code = `const s = "fil_ABCDEFGHIJ";`;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "fileId", fileId: "fil_ABCDEFGHIJ" },
+    ]);
+  });
+
+  it("extracts scoped paths from string literals", () => {
+    const code = `const path = "conversation/abc/file.csv";`;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "path", scopedPath: "conversation/abc/file.csv" },
+    ]);
+  });
+
+  it("deduplicates refs across visitors", () => {
+    const code = `
+      function Comp() {
+        useFile("fil_ABCDEFGHIJ");
+        return <Image fileId="fil_ABCDEFGHIJ" />;
+      }
+    `;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "fileId", fileId: "fil_ABCDEFGHIJ" },
+    ]);
+  });
+
+  it("extracts file IDs and scoped paths from import specifiers", () => {
+    const code = `
+      import data from "fil_ABCDEFGHIJ";
+      import { thing } from "fil_BBBBBBBBBB";
+      const lazy = import("fil_CCCCCCCCCC");
+      export * from "fil_DDDDDDDDDD";
+      const csv = require("conversation/abc/data.csv");
+    `;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "fileId", fileId: "fil_ABCDEFGHIJ" },
+      { type: "fileId", fileId: "fil_BBBBBBBBBB" },
+      { type: "fileId", fileId: "fil_CCCCCCCCCC" },
+      { type: "fileId", fileId: "fil_DDDDDDDDDD" },
+      { type: "path", scopedPath: "conversation/abc/data.csv" },
+    ]);
+  });
+
+  it("ignores non-matching string literals", () => {
+    const code = `
+      const a = "hello world";
+      const b = "fil_TOO_SHORT";
+      const c = "/conversation/wrong-prefix";
+    `;
+    expect(extractFileRefs(code)).toEqual([]);
+  });
+
+  it("recovers refs from code with spec-level syntax errors", () => {
+    // `a ?? b || c` without parens is a SyntaxError per the JS spec — this is
+    // the pattern AI-generated frame code occasionally emits.
+    const code = `
+      function Comp() {
+        const f = useFile("fil_ABCDEFGHIJ");
+        const broken = a ?? b || c;
+        return <Image fileId="fil_XYZ1234567" path="conversation/x/y.csv" />;
+      }
+    `;
+    const refs = extractFileRefs(code);
+    expect(refs).toEqual(
+      expect.arrayContaining([
+        { type: "fileId", fileId: "fil_ABCDEFGHIJ" },
+        { type: "fileId", fileId: "fil_XYZ1234567" },
+        { type: "path", scopedPath: "conversation/x/y.csv" },
+      ])
+    );
+    expect(refs).toHaveLength(3);
+  });
+
+  it("returns an empty array for completely unparseable input without throwing", () => {
+    const code = "@@@ not even javascript @@@";
+    expect(() => extractFileRefs(code)).not.toThrow();
+    expect(extractFileRefs(code)).toEqual([]);
+  });
+
+  it("returns refs in the order they're first seen", () => {
+    const code = `
+      useFile("fil_AAAAAAAAAA");
+      const p = "conversation/foo/bar.txt";
+      useFile("fil_BBBBBBBBBB");
+    `;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "fileId", fileId: "fil_AAAAAAAAAA" },
+      { type: "path", scopedPath: "conversation/foo/bar.txt" },
+      { type: "fileId", fileId: "fil_BBBBBBBBBB" },
+    ]);
+  });
+});
