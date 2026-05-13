@@ -35,6 +35,16 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Common } from "googleapis";
 import { Readable } from "stream";
 
+export type BinaryFileResourceBlock = {
+  type: "resource";
+  resource: {
+    blob: string;
+    _meta: { text: string };
+    mimeType: string;
+    uri: string;
+  };
+};
+
 /**
  * Builds a resource block for a binary Google Drive file so downstream tools
  * (sandbox upload, file viewer, etc.) can consume the raw bytes alongside any
@@ -48,10 +58,10 @@ export function buildBinaryFileResource({
   buffer: Buffer;
   fileName: string | null | undefined;
   mimeType: string;
-}) {
+}): BinaryFileResourceBlock {
   const safeFileName = sanitizeFilename(fileName ?? "unknown");
   return {
-    type: "resource" as const,
+    type: "resource",
     resource: {
       blob: buffer.toString("base64"),
       _meta: { text: `File: ${safeFileName}` },
@@ -60,6 +70,9 @@ export function buildBinaryFileResource({
     },
   };
 }
+
+const BINARY_TEXT_EXTRACTION_FAILED_PLACEHOLDER =
+  "[Text extraction failed — file attached as binary resource]";
 
 /**
  * Normalizes GaxiosError code to string for comparison.
@@ -409,8 +422,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       }
 
       let content: string;
-      let binaryResource: ReturnType<typeof buildBinaryFileResource> | null =
-        null;
+      let binaryResource: BinaryFileResourceBlock | null = null;
 
       switch (file.mimeType) {
         case "application/vnd.google-apps.document":
@@ -477,12 +489,19 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
               "Text extraction failed for Google Drive binary file"
             );
           }
-          content = extractionResult.isOk() ? extractionResult.value : "";
-          binaryResource = buildBinaryFileResource({
-            buffer,
-            fileName: file.name,
-            mimeType: file.mimeType,
-          });
+          content = extractionResult.isOk()
+            ? extractionResult.value
+            : BINARY_TEXT_EXTRACTION_FAILED_PLACEHOLDER;
+          // Only attach the raw bytes on the first page — callers paginating
+          // further already have the resource ref from the initial response,
+          // and the base64 blob can be ~85 MB for a 64 MB original.
+          if (offset === 0) {
+            binaryResource = buildBinaryFileResource({
+              buffer,
+              fileName: file.name,
+              mimeType: file.mimeType,
+            });
+          }
           break;
         }
         default:
@@ -504,7 +523,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
       const responseBlocks: (
         | { type: "text"; text: string }
-        | ReturnType<typeof buildBinaryFileResource>
+        | BinaryFileResourceBlock
       )[] = [
         {
           type: "text" as const,

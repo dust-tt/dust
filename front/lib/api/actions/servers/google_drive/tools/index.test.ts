@@ -171,7 +171,7 @@ describe("handleFileAccessError", () => {
 });
 
 describe("buildBinaryFileResource", () => {
-  it("base64-encodes the buffer and preserves the mime type", () => {
+  it("should base64-encode the buffer and preserve the mime type", () => {
     const buffer = Buffer.from("Hello PDF", "utf-8");
 
     const block = buildBinaryFileResource({
@@ -187,7 +187,7 @@ describe("buildBinaryFileResource", () => {
     expect(block.resource._meta).toEqual({ text: "File: report.pdf" });
   });
 
-  it("falls back to 'unknown' when the file name is missing", () => {
+  it("should fall back to 'unknown' when the file name is missing", () => {
     const block = buildBinaryFileResource({
       buffer: Buffer.from(""),
       fileName: null,
@@ -199,7 +199,7 @@ describe("buildBinaryFileResource", () => {
     expect(block.resource._meta).toEqual({ text: "File: unknown" });
   });
 
-  it("sanitizes file names with unsafe characters", () => {
+  it("should sanitize file names with unsafe characters", () => {
     const block = buildBinaryFileResource({
       buffer: Buffer.from("x"),
       fileName: "../../etc/passwd",
