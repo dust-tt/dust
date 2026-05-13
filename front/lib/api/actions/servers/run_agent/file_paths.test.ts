@@ -153,10 +153,10 @@ describe("appendFilePathsHintToQuery", () => {
 
 describe("copyConversationFilesIntoSub", () => {
   it("is a no-op when no paths are conversation-scoped", async () => {
-    const { auth } = await setupPlainConversation();
+    const { auth, conversation } = await setupPlainConversation();
 
     const res = await copyConversationFilesIntoSub(auth, {
-      parentConversationId: "parent_sid",
+      parentConversation: conversation,
       subConversationId: "sub_sid",
       resolvedFilePaths: [
         {
@@ -171,10 +171,10 @@ describe("copyConversationFilesIntoSub", () => {
   });
 
   it("dispatches conversation-scoped paths through the GCS mount copy primitive", async () => {
-    const { auth } = await setupPlainConversation();
+    const { auth, conversation } = await setupPlainConversation();
 
     const res = await copyConversationFilesIntoSub(auth, {
-      parentConversationId: "parent_sid",
+      parentConversation: conversation,
       subConversationId: "sub_sid",
       resolvedFilePaths: [
         {
@@ -191,5 +191,30 @@ describe("copyConversationFilesIntoSub", () => {
     });
 
     assert(res.isOk());
+  });
+
+  it("returns Err when the parent auth check fails on a path", async () => {
+    const { auth, conversation } = await setupPlainConversation();
+
+    // Force `resolveFile` to fail by making the source object look missing.
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
+      file: vi.fn(() => ({
+        getMetadata: vi.fn().mockRejectedValue(new Error("404")),
+      })),
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const res = await copyConversationFilesIntoSub(auth, {
+      parentConversation: conversation,
+      subConversationId: "sub_sid",
+      resolvedFilePaths: [
+        {
+          scopedPath: "conversation/missing.md",
+          useCase: "conversation",
+          rel: "missing.md",
+        },
+      ],
+    });
+
+    expect(res.isErr()).toBe(true);
   });
 });

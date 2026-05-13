@@ -308,7 +308,7 @@ export async function getOrCreateConversation(
   }
 
   const copyRes = await copyConversationFilesIntoSub(auth, {
-    parentConversationId: mainConversation.sId,
+    parentConversation: mainConversation,
     subConversationId: conversation.sId,
     resolvedFilePaths,
   });

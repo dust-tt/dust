@@ -66,11 +66,11 @@ export function appendFilePathsHintToQuery(
 export async function copyConversationFilesIntoSub(
   auth: Authenticator,
   {
-    parentConversationId,
+    parentConversation,
     subConversationId,
     resolvedFilePaths,
   }: {
-    parentConversationId: string;
+    parentConversation: ConversationType;
     subConversationId: string;
     resolvedFilePaths: ResolvedScopedFilePath[];
   }
@@ -83,11 +83,17 @@ export async function copyConversationFilesIntoSub(
   }
 
   for (const p of conversationScoped) {
+    // Re-validate auth and existence on every source.
+    const fileRes = await resolveFile(auth, parentConversation, p.scopedPath);
+    if (fileRes.isErr()) {
+      return fileRes;
+    }
+
     const copyRes = await copyMountFile(auth, {
       source: {
         scope: {
           useCase: "conversation",
-          conversationId: parentConversationId,
+          conversationId: parentConversation.sId,
         },
         relativeFilePath: p.rel,
       },
