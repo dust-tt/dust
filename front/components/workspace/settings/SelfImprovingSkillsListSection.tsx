@@ -3,7 +3,7 @@ import {
   useSkillsWithRelations,
   useUpdateSkillReinforcement,
 } from "@app/lib/swr/skill_configurations";
-import { useSkillsReinforcementSpend } from "@app/lib/swr/useReinforcementToggle";
+import { useSkillsSelfImprovingSpend } from "@app/lib/swr/useSelfImprovingSkillsSettings";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillReinforcementMode,
@@ -25,7 +25,7 @@ import type {
 } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
-interface ReinforcementSkillsSectionProps {
+interface SelfImprovingSkillsListSectionProps {
   owner: LightWorkspaceType;
   defaultCapPerSkillMicroUsd: number;
 }
@@ -213,13 +213,13 @@ function withoutSkill<T>(
   return rest;
 }
 
-export function ReinforcementSkillsSection({
+export function SelfImprovingSkillsListSection({
   owner,
   defaultCapPerSkillMicroUsd,
-}: ReinforcementSkillsSectionProps) {
+}: SelfImprovingSkillsListSectionProps) {
   const { skillsWithRelations, isSkillsWithRelationsLoading } =
     useSkillsWithRelations({ owner, status: "active", onlyCustom: true });
-  const { spentMicroUsdBySkillId } = useSkillsReinforcementSpend({ owner });
+  const { spentMicroUsdBySkillId } = useSkillsSelfImprovingSpend({ owner });
   const { updateSkillReinforcement } = useUpdateSkillReinforcement({
     owner,
     onlyCustom: true,

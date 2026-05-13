@@ -39,12 +39,12 @@ const SandboxPage = withSuspense(
     import("@dust-tt/front/components/pages/workspace/developers/SandboxPage"),
   "SandboxPage"
 );
-const ReinforcementPage = withSuspense(
+const SelfImprovingSkillsPage = withSuspense(
   () =>
     import(
-      "@dust-tt/front/components/pages/workspace/developers/ReinforcementPage"
+      "@dust-tt/front/components/pages/workspace/developers/SelfImprovingSkillsPage"
     ),
-  "ReinforcementPage"
+  "SelfImprovingSkillsPage"
 );
 const MembersPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/MembersPage"),
@@ -115,7 +115,7 @@ export const adminRoutes: RouteObject[] = [
       },
       {
         path: "developers/self-improving-skills",
-        element: <ReinforcementPage />,
+        element: <SelfImprovingSkillsPage />,
       },
     ],
   },

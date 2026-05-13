@@ -10,7 +10,7 @@ import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
-interface ReinforcementSkillsConversationDataTableProps {
+interface SelfImprovingSkillsConversationDataTableProps {
   owner: LightWorkspaceType;
   skillId: string;
 }
@@ -29,7 +29,7 @@ function getOperationTypeLabel(metadata: Record<string, unknown>): string {
   }
 }
 
-const makeColumnsForReinforcementSkillsConversations = (
+const makeColumnsForSelfImprovingSkillsConversations = (
   owner: LightWorkspaceType
 ): ColumnDef<ConversationWithoutContentType>[] => {
   return [
@@ -118,10 +118,10 @@ const makeColumnsForReinforcementSkillsConversations = (
   ];
 };
 
-export function ReinforcementSkillsConversationDataTable({
+export function SelfImprovingSkillsConversationDataTable({
   owner,
   skillId,
-}: ReinforcementSkillsConversationDataTableProps) {
+}: SelfImprovingSkillsConversationDataTableProps) {
   const useReinforcementSkillsConversations = (
     props: PokeConversationsFetchProps
   ) => usePokeConversations({ ...props, reinforcedSkillId: skillId });
@@ -134,7 +134,7 @@ export function ReinforcementSkillsConversationDataTable({
       useSWRHook={useReinforcementSkillsConversations}
     >
       {(conversations) => {
-        const columns = makeColumnsForReinforcementSkillsConversations(owner);
+        const columns = makeColumnsForSelfImprovingSkillsConversations(owner);
 
         return (
           <PokeDataTable<ConversationWithoutContentType, unknown>
