@@ -84,12 +84,14 @@ const runAgent = async (
     executionMode,
     toolsetsToAdd,
     fileOrContentFragmentIds,
+    filePaths,
   }: {
     query: string;
     childAgent: { uri: string };
     executionMode: { value: "run-agent" | "handoff" };
     toolsetsToAdd?: string[] | null;
     fileOrContentFragmentIds?: string[] | null;
+    filePaths?: string[] | null;
   },
   {
     auth,
@@ -129,6 +131,18 @@ const runAgent = async (
     return result;
   };
   const isHandoff = executionMode.value === "handoff";
+
+  if (isHandoff && filePaths && filePaths.length > 0) {
+    return finalizeAndReturn(
+      new Err(
+        new MCPError(
+          "`filePaths` is not supported in handoff mode: the sub-agent continues in the same " +
+            "conversation, so files are already visible to it.",
+          { tracked: false }
+        )
+      )
+    );
+  }
 
   const { agentConfiguration: mainAgent, conversation: mainConversation } =
     agentLoopContext.runContext;
@@ -210,6 +224,7 @@ const runAgent = async (
         : query,
       toolsetsToAdd: toolsetsToAdd ?? null,
       fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
+      filePaths: filePaths ?? null,
       conversationId: isHandoff ? mainConversation.sId : null,
       originMessage: agentLoopContext.runContext.agentMessage,
     }

@@ -1,5 +1,6 @@
 import {
   copyConversationGCSMount,
+  copyMountFile,
   createGCSMountFile,
   type GCSMountFileEntry,
   getConversationFileMountSignedUrl,
@@ -427,6 +428,63 @@ describe("copyConversationGCSMount", () => {
     copyFileMock.mockRejectedValue(new Error("GCS copy unavailable"));
 
     const result = await copyConversationGCSMount(auth, { source, dest });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("GCS copy unavailable");
+    }
+  });
+});
+
+describe("copyMountFile", () => {
+  let auth: Authenticator;
+  let workspaceId: string;
+  let copyFileMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    copyFileMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      copyFile: copyFileMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const { authenticator } = await createResourceTest({});
+    auth = authenticator;
+    workspaceId = auth.getNonNullableWorkspace().sId;
+  });
+
+  it("copies between mounts preserving the relative path", async () => {
+    const result = await copyMountFile(auth, {
+      source: {
+        scope: { useCase: "conversation", conversationId: "parent" },
+        relativeFilePath: "report.pdf",
+      },
+      dest: {
+        scope: { useCase: "conversation", conversationId: "child" },
+        relativeFilePath: "report.pdf",
+      },
+    });
+
+    assert(result.isOk());
+    expect(copyFileMock).toHaveBeenCalledTimes(1);
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `w/${workspaceId}/conversations/parent/files/report.pdf`,
+      `w/${workspaceId}/conversations/child/files/report.pdf`
+    );
+  });
+
+  it("returns Err when the copy fails", async () => {
+    copyFileMock.mockRejectedValue(new Error("GCS copy unavailable"));
+
+    const result = await copyMountFile(auth, {
+      source: {
+        scope: { useCase: "conversation", conversationId: "parent" },
+        relativeFilePath: "notes.md",
+      },
+      dest: {
+        scope: { useCase: "conversation", conversationId: "child" },
+        relativeFilePath: "notes.md",
+      },
+    });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
