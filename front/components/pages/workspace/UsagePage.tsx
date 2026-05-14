@@ -2,7 +2,9 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
+import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
   useAuth,
   useFeatureFlags,
@@ -10,7 +12,11 @@ import {
 } from "@app/lib/auth/AuthContext";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import { useAwuPoolSummary, useAwuPurchaseInfo } from "@app/lib/swr/credits";
+import {
+  useAwuPoolSummary,
+  useAwuPurchaseInfo,
+  useSeatPlan,
+} from "@app/lib/swr/credits";
 import { useMembersUsage } from "@app/lib/swr/memberships";
 import {
   useMetronomeContract,
@@ -36,6 +42,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
+import { mutate } from "swr";
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
@@ -138,9 +145,10 @@ export function UsagePage() {
     MembershipSeatType | "none" | null
   >(null);
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
+  const [changeSeatMember, setChangeSeatMember] =
+    useState<MemberUsageType | null>(null);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
-
   useEffect(() => {
     if (!hasFeature("metronome_billing_usage_page")) {
       void router.push(`/w/${owner.sId}/members`);
@@ -168,6 +176,10 @@ export function UsagePage() {
   });
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
+    workspaceId: owner.sId,
+  });
+
+  const { proSeatInfo, maxSeatInfo } = useSeatPlan({
     workspaceId: owner.sId,
   });
 
@@ -364,6 +376,7 @@ export function UsagePage() {
             searchTerm={searchTerm}
             seatTypeFilter={seatTypeFilter}
             showSeatColumns={hasSeatSubscription}
+            onChangeSeat={setChangeSeatMember}
           />
         </Page.Vertical>
 
@@ -375,6 +388,20 @@ export function UsagePage() {
             subscription={subscription}
             owner={owner}
             code={inviteBlockedPopupReason}
+          />
+        )}
+
+        {changeSeatMember && (
+          <ChangeSeatModal
+            isOpen={true}
+            onClose={() => setChangeSeatMember(null)}
+            member={changeSeatMember}
+            owner={owner}
+            proSeatInfo={proSeatInfo}
+            maxSeatInfo={maxSeatInfo}
+            onSeatChanged={() => {
+              void mutate(`/api/w/${owner.sId}/credits/members-usage`);
+            }}
           />
         )}
 

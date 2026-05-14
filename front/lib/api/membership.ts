@@ -5,8 +5,12 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
+import { updateSubscriptionSeats } from "@app/lib/metronome/client";
+import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
+  getSubscriptionIdForSeatTypeFromContract,
+  handleSeatTransition,
   hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
@@ -297,6 +301,53 @@ export async function updateMembershipRoleAndTrack({
 }
 
 /**
+ * Schedules the inverse Metronome transition at the same future date, overriding
+ * the previously scheduled downgrade. Returns Err if subscription IDs are missing.
+ */
+async function cancelScheduledDowngradeInMetronome({
+  metronomeCustomerId,
+  contractId,
+  contract,
+  currentSeatType,
+  pendingDowngradeSeatType,
+  pendingDowngradeAt,
+  userId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  contract: CachedContract;
+  currentSeatType: MembershipSeatType;
+  pendingDowngradeSeatType: MembershipSeatType;
+  pendingDowngradeAt: Date;
+  userId: string;
+}): Promise<Result<void, Error>> {
+  const fromSubId = getSubscriptionIdForSeatTypeFromContract(
+    contract,
+    pendingDowngradeSeatType
+  );
+  const toSubId = getSubscriptionIdForSeatTypeFromContract(
+    contract,
+    currentSeatType
+  );
+  if (!fromSubId || !toSubId) {
+    return new Err(
+      new Error(
+        `Missing subscription IDs to cancel downgrade from ${pendingDowngradeSeatType} to ${currentSeatType}`
+      )
+    );
+  }
+  return updateSubscriptionSeats({
+    metronomeCustomerId,
+    contractId,
+    fromSubscriptionId: fromSubId,
+    toSubscriptionId: toSubId,
+    addSeatIds: [userId],
+    removeSeatIds: [userId],
+    startingAt: pendingDowngradeAt.toISOString(),
+  });
+}
+
+/**
  * Update a membership's seat type and re-sync Metronome seat counts.
  * Seat-based Metronome subscriptions (Pro / Max) bucket users by seat type,
  * so any change must trigger a seat-count sync.
@@ -316,8 +367,9 @@ export async function updateMembershipSeatAndTrack({
     {
       previousSeatType: MembershipSeatType;
       newSeatType: MembershipSeatType;
+      pendingDowngradeAt: Date | undefined;
     },
-    { type: "not_found" | "membership_revoked" }
+    { type: "not_found" | "membership_revoked" | "metronome_error" }
   >
 > {
   const membership =
@@ -332,24 +384,97 @@ export async function updateMembershipSeatAndTrack({
     return new Err({ type: "membership_revoked" });
   }
 
-  const updateRes = await membership.updateMembershipSeat({
-    user,
-    workspace,
-    newSeatType,
-    author,
-  });
+  const previousSeatType = membership.seatType;
 
-  const syncResult = await syncSeatCountForWorkspace(workspace);
-  if (syncResult.isErr()) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
+  let newPendingDowngradeSeatType: MembershipSeatType | null | undefined;
+  let newPendingDowngradeAt: Date | null | undefined;
+
+  if (workspace.metronomeCustomerId) {
+    const subscription =
+      await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
+    const contract = await getActiveContract(workspace.sId);
+
+    if (
+      subscription?.metronomeContractId &&
+      contract &&
+      hasContractSeatSubscription(contract)
+    ) {
+      const metronomeCustomerId = workspace.metronomeCustomerId;
+      const contractId = subscription.metronomeContractId;
+
+      const transitionResult = await handleSeatTransition({
+        metronomeCustomerId,
+        contractId,
+        contract,
         userId: user.sId,
-        error: syncResult.error,
-      },
-      "[Metronome] Failed to sync seats after seat type update"
-    );
+        previousSeatType,
+        newSeatType,
+      });
+      if (transitionResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            previousSeatType,
+            newSeatType,
+            error: transitionResult.error,
+          },
+          "[Metronome] Failed to handle seat transition"
+        );
+        return new Err({ type: "metronome_error" });
+      }
+
+      const scheduledDowngradeAt = transitionResult.value.pendingDowngradeAt;
+
+      if (scheduledDowngradeAt) {
+        newPendingDowngradeSeatType = newSeatType;
+        newPendingDowngradeAt = scheduledDowngradeAt;
+      } else if (
+        membership.pendingDowngradeSeatType &&
+        membership.pendingDowngradeAt
+      ) {
+        const cancelResult = await cancelScheduledDowngradeInMetronome({
+          metronomeCustomerId,
+          contractId,
+          contract,
+          currentSeatType: membership.seatType,
+          pendingDowngradeSeatType: membership.pendingDowngradeSeatType,
+          pendingDowngradeAt: membership.pendingDowngradeAt,
+          userId: user.sId,
+        });
+        if (cancelResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              userId: user.sId,
+              error: cancelResult.error,
+            },
+            "[Metronome] Failed to cancel scheduled downgrade"
+          );
+          return new Err({ type: "metronome_error" });
+        }
+        newPendingDowngradeSeatType = null;
+        newPendingDowngradeAt = null;
+      }
+    }
   }
 
-  return new Ok(updateRes);
+  const dbSeatType =
+    newPendingDowngradeAt instanceof Date ? previousSeatType : newSeatType;
+
+  await membership.updateMembershipSeat({
+    user,
+    workspace,
+    newSeatType: dbSeatType,
+    author,
+    newPendingDowngradeSeatType,
+    newPendingDowngradeAt,
+  });
+
+  return new Ok({
+    previousSeatType,
+    newSeatType: dbSeatType,
+    pendingDowngradeAt:
+      newPendingDowngradeAt instanceof Date ? newPendingDowngradeAt : undefined,
+  });
 }

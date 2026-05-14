@@ -7,6 +7,7 @@ import {
   DataTable,
   Icon,
   LoadingBlock,
+  type MenuItem,
   SeatFreeIcon,
   SeatMaxIcon,
   SeatProIcon,
@@ -23,7 +24,9 @@ type RowData = {
   seatUsagePercent: number | null;
   consumedWorkplacePoolCredits: number;
   billingFrequency: BillingFrequency | null;
-  onClick?: () => void;
+  pendingDowngradeSeatType: MembershipSeatType | null;
+  pendingDowngradeAt: string | null;
+  menuItems: MenuItem[];
 };
 
 type Info = CellContext<RowData, string>;
@@ -152,17 +155,34 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   accessorFn: (row) => row.seatType ?? "",
   cell: (info: Info) => {
     const seatType = info.row.original.seatType;
+    const pendingDowngradeSeatType =
+      info.row.original.pendingDowngradeSeatType;
+    const pendingDowngradeAt = info.row.original.pendingDowngradeAt;
+    const pendingDate = pendingDowngradeAt
+      ? new Date(pendingDowngradeAt).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        })
+      : null;
     return (
       <DataTable.CellContent>
-        <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
-          <SeatTypeIcon seatType={seatType} />
-          {seatType ?? "—"}
+        <span className="flex flex-col">
+          <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
+            <SeatTypeIcon seatType={seatType} />
+            {seatType ?? "—"}
+          </span>
+          {pendingDowngradeSeatType && pendingDate && (
+            <span className="text-xs capitalize text-amber-600 dark:text-amber-400">
+              → {pendingDowngradeSeatType} on {pendingDate}
+            </span>
+          )}
         </span>
       </DataTable.CellContent>
     );
   },
   meta: {
-    className: "w-24",
+    className: "w-28",
   },
 };
 
@@ -266,6 +286,18 @@ const consumedWorkplacePoolCreditsColumn: ColumnDef<RowData, string> = {
     b.original.consumedWorkplacePoolCredits,
 };
 
+const actionsColumn: ColumnDef<RowData, string> = {
+  id: "actions" as const,
+  header: "",
+  accessorKey: "actions",
+  cell: (info: Info) => (
+    <DataTable.MoreButton menuItems={info.row.original.menuItems} />
+  ),
+  meta: {
+    className: "w-14",
+  },
+};
+
 function buildColumns(showSeatColumns: boolean): ColumnDef<RowData, string>[] {
   return [
     nameColumn,
@@ -273,6 +305,7 @@ function buildColumns(showSeatColumns: boolean): ColumnDef<RowData, string>[] {
       ? [seatTypeColumn, billingFrequencyColumn, seatUsagePercentColumn]
       : []),
     consumedWorkplacePoolCreditsColumn,
+    ...(showSeatColumns ? [actionsColumn] : []),
   ];
 }
 
@@ -282,6 +315,7 @@ interface MembersUsageTableProps {
   searchTerm: string;
   seatTypeFilter: MembershipSeatType | "none" | null;
   showSeatColumns: boolean;
+  onChangeSeat: (member: MemberUsageType) => void;
 }
 
 export function MembersUsageTable({
@@ -290,6 +324,7 @@ export function MembersUsageTable({
   searchTerm,
   seatTypeFilter,
   showSeatColumns,
+  onChangeSeat,
 }: MembersUsageTableProps) {
   if (isLoading) {
     return (
@@ -332,6 +367,15 @@ export function MembersUsageTable({
     seatUsagePercent: m.seatUsagePercent,
     consumedWorkplacePoolCredits: m.consumedWorkplacePoolCredits,
     billingFrequency: m.billingFrequency,
+    pendingDowngradeSeatType: m.pendingDowngradeSeatType,
+    pendingDowngradeAt: m.pendingDowngradeAt,
+    menuItems: [
+      {
+        kind: "item" as const,
+        label: "Change seat",
+        onClick: () => onChangeSeat(m),
+      },
+    ],
   }));
 
   return <DataTable data={rows} columns={buildColumns(showSeatColumns)} />;

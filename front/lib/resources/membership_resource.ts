@@ -1235,7 +1235,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
   /**
    * Update the seatType of an active membership. Callers are responsible for
-   * re-syncing Metronome seat counts (via `syncSeatCount`) after this returns.
+   * calling handleSeatTransition after this returns.
    */
   async updateMembershipSeat({
     user,
@@ -1243,35 +1243,66 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     newSeatType,
     transaction,
     author,
+    newPendingDowngradeSeatType,
+    newPendingDowngradeAt,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     newSeatType: MembershipSeatType;
     transaction?: Transaction;
     author: UserType | "no-author";
+    newPendingDowngradeSeatType?: MembershipSeatType | null;
+    newPendingDowngradeAt?: Date | null;
   }): Promise<{
     previousSeatType: MembershipSeatType;
     newSeatType: MembershipSeatType;
   }> {
     const previousSeatType = this.seatType;
-    if (previousSeatType === newSeatType) {
+    const seatTypeChanging = previousSeatType !== newSeatType;
+    const pendingStateChanging = newPendingDowngradeSeatType !== undefined;
+
+    if (!seatTypeChanging && !pendingStateChanging) {
       return { previousSeatType, newSeatType };
     }
 
-    await this.update({ seatType: newSeatType }, transaction);
-
-    auditLog(
+    await this.update(
       {
-        author,
-        userId: user.id,
-        workspaceId: workspace.id,
-        previousSeatType,
-        newSeatType,
+        ...(seatTypeChanging ? { seatType: newSeatType } : {}),
+        ...(pendingStateChanging
+          ? {
+              pendingDowngradeSeatType: newPendingDowngradeSeatType,
+              pendingDowngradeAt: newPendingDowngradeAt ?? null,
+            }
+          : {}),
       },
-      "Membership seat type updated"
+      transaction
     );
 
+    if (seatTypeChanging) {
+      auditLog(
+        {
+          author,
+          userId: user.id,
+          workspaceId: workspace.id,
+          previousSeatType,
+          newSeatType,
+        },
+        "Membership seat type updated"
+      );
+    }
+
     return { previousSeatType, newSeatType };
+  }
+
+  async removePendingDowngrade(): Promise<void> {
+    if (!this.pendingDowngradeSeatType) {
+      return;
+    }
+    await this.update({
+      seatType: this.pendingDowngradeSeatType,
+      pendingDowngradeSeatType: null,
+      pendingDowngradeAt: null,
+    });
   }
 
   async delete(

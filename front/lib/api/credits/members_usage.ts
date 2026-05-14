@@ -31,6 +31,9 @@ export type MemberUsageType = {
   consumedWorkplacePoolCredits: number;
   // Billing cadence for the seat subscription the user is assigned to; null when unknown.
   billingFrequency: BillingFrequency | null;
+  // Set when a seat downgrade is pending at the next credit refresh.
+  pendingDowngradeSeatType: MembershipSeatType | null;
+  pendingDowngradeAt: string | null;
 };
 
 export type GetMembersUsageResponseBody = {
@@ -192,6 +195,16 @@ export async function handleGetMembersUsageRequest(
 
       const { memberships, total, nextPageParams } = membershipsResult;
 
+      // Lazy reconciliation: if a scheduled downgrade has already fired in
+      // Metronome (pendingDowngradeAt is in the past), settle the DB state now
+      // so the response reflects reality. This is for visual consistency only.
+      const now = new Date();
+      for (const m of memberships) {
+        if (m.pendingDowngradeAt && m.pendingDowngradeAt < now) {
+          await m.removePendingDowngrade();
+        }
+      }
+
       const membersUsage: MemberUsageType[] = memberships.flatMap((m) => {
         if (!m.user) {
           return [];
@@ -220,6 +233,8 @@ export async function handleGetMembersUsageRequest(
             seatUsagePercent,
             consumedWorkplacePoolCredits: poolConsumedCredits,
             billingFrequency: seatData?.billingFrequency ?? null,
+            pendingDowngradeSeatType: m.pendingDowngradeSeatType ?? null,
+            pendingDowngradeAt: m.pendingDowngradeAt?.toISOString() ?? null,
           },
         ];
       });
