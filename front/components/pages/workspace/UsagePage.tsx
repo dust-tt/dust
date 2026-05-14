@@ -42,7 +42,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
-import { mutate } from "swr";
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
@@ -399,9 +398,6 @@ export function UsagePage() {
             owner={owner}
             proSeatInfo={proSeatInfo}
             maxSeatInfo={maxSeatInfo}
-            onSeatChanged={() => {
-              void mutate(`/api/w/${owner.sId}/credits/members-usage`);
-            }}
           />
         )}
 

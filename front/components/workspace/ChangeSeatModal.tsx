@@ -1,7 +1,6 @@
-import { useSendNotification } from "@app/hooks/useNotification";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type { SeatTypeInfo } from "@app/lib/api/credits/seat_plan";
-import { clientFetch } from "@app/lib/egress/client";
+import { useUpdateMemberSeatType } from "@app/lib/swr/memberships";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -94,7 +93,6 @@ interface ChangeSeatModalProps {
   stockedSeatCounts?: StockedSeatCounts;
   proSeatInfo: SeatTypeInfo | null;
   maxSeatInfo: SeatTypeInfo | null;
-  onSeatChanged: () => void;
 }
 
 function toVisibleSeatType(
@@ -117,14 +115,15 @@ export function ChangeSeatModal({
   stockedSeatCounts = { pro: 0, max: 0 },
   proSeatInfo,
   maxSeatInfo,
-  onSeatChanged,
 }: ChangeSeatModalProps) {
   const currentSeatType = toVisibleSeatType(member.seatType);
   const [selectedSeat, setSelectedSeat] = useState<VisibleSeatType>(
     currentSeatType ?? "pro"
   );
   const [isSaving, setIsSaving] = useState(false);
-  const sendNotification = useSendNotification();
+  const { doUpdateSeatType } = useUpdateMemberSeatType({
+    workspaceId: owner.sId,
+  });
 
   const hasStockedSeats =
     stockedSeatCounts.pro > 0 || stockedSeatCounts.max > 0;
@@ -174,38 +173,15 @@ export function ChangeSeatModal({
 
     setIsSaving(true);
     try {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/members/${member.sId}/seat-type`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ seatType: selectedSeat }),
-        }
-      );
-
-      if (!res.ok) {
-        const error = await res.json();
-        sendNotification({
-          type: "error",
-          title: "Failed to update seat",
-          description: error?.error?.message ?? "An unexpected error occurred.",
-        });
-        return;
-      }
-
-      const body = await res.json();
-      const isDeferred = !!body?.pendingDowngradeAt;
-      sendNotification({
-        type: "success",
-        title: isDeferred ? "Downgrade scheduled" : "Seat updated",
-        description: isDeferred
-          ? `${member.name}'s seat will be downgraded to ${selectedSeat} at the next credit refresh.`
-          : isCancellingPendingDowngrade
-            ? `${member.name}'s pending downgrade has been cancelled.`
-            : `${member.name}'s seat has been updated to ${selectedSeat}.`,
+      const ok = await doUpdateSeatType({
+        memberId: member.sId,
+        memberName: member.name,
+        seatType: selectedSeat,
+        isCancellingPendingDowngrade,
       });
-      onSeatChanged();
-      onClose();
+      if (ok) {
+        onClose();
+      }
     } finally {
       setIsSaving(false);
     }
@@ -227,7 +203,7 @@ export function ChangeSeatModal({
               isRounded
             />
             <div>
-              <DialogTitle>Change seat for {member.name}</DialogTitle>
+              <DialogTitle>Change Seat Type for {member.name}</DialogTitle>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 They will be able to consume this amount from the pool after
                 reaching their plan usage limit.

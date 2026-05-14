@@ -107,6 +107,14 @@ async function handler(
                 message: "User's membership is revoked.",
               },
             });
+          case "metronome_error":
+            return apiError(req, res, {
+              status_code: 502,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to update seat in billing system.",
+              },
+            });
           default:
             assertNever(result.error.type);
         }

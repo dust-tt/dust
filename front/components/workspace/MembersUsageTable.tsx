@@ -372,7 +372,7 @@ export function MembersUsageTable({
     menuItems: [
       {
         kind: "item" as const,
-        label: "Change seat",
+        label: "Change Seat Type",
         onClick: () => onChangeSeat(m),
       },
     ],

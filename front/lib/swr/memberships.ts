@@ -1,4 +1,6 @@
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
+import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
@@ -10,6 +12,7 @@ import { isGroupKind } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
+import { mutate } from "swr";
 
 type PaginationParams = {
   orderColumn: "createdAt";
@@ -213,4 +216,63 @@ export function useMembersUsage({
       [data?.nextPageUrl]
     ),
   };
+}
+
+export function useUpdateMemberSeatType({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doUpdateSeatType = useCallback(
+    async ({
+      memberId,
+      memberName,
+      seatType,
+      isCancellingPendingDowngrade,
+    }: {
+      memberId: string;
+      memberName: string;
+      seatType: "pro" | "max";
+      isCancellingPendingDowngrade: boolean;
+    }): Promise<boolean> => {
+      const res = await clientFetch(
+        `/api/w/${workspaceId}/members/${memberId}/seat-type`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ seatType }),
+        }
+      );
+
+      if (!res.ok) {
+        const error = await res.json();
+        sendNotification({
+          type: "error",
+          title: "Failed to update seat",
+          description: error?.error?.message ?? "An unexpected error occurred.",
+        });
+        return false;
+      }
+
+      const body = await res.json();
+      const isDeferred = !!body?.pendingDowngradeAt;
+      sendNotification({
+        type: "success",
+        title: isDeferred ? "Downgrade scheduled" : "Seat updated",
+        description: isDeferred
+          ? `${memberName}'s seat will be downgraded to ${seatType} at the next credit refresh.`
+          : isCancellingPendingDowngrade
+            ? `${memberName}'s pending downgrade has been cancelled.`
+            : `${memberName}'s seat has been updated to ${seatType}.`,
+      });
+
+      await mutate(`/api/w/${workspaceId}/credits/members-usage`);
+      return true;
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { doUpdateSeatType };
 }
