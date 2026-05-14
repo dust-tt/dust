@@ -1,3 +1,6 @@
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/kill.ts
+
 /** @ignoreswagger */
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
