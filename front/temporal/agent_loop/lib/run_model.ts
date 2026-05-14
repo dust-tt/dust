@@ -40,6 +40,7 @@ import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
   getUserFacingLLMErrorMessage,
+  LLM_ERROR_TYPE_TO_CATEGORY,
 } from "@app/lib/api/llm/types/errors";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
@@ -684,7 +685,9 @@ export async function runModel(
             {
               code: "multi_actions_error",
               message: errorMessage,
-              metadata: null,
+              metadata: {
+                category: LLM_ERROR_TYPE_TO_CATEGORY[type],
+              },
             },
             errorDustRunId
           );
@@ -874,7 +877,10 @@ export async function runModel(
       code: "max_step_reached",
       message:
         "The agent reached the maximum number of steps. This error can be safely retried.",
-      metadata: null,
+      metadata: {
+        category: "empty_content",
+        errorTitle: "Too many steps",
+      },
     });
     return null;
   }
