@@ -220,8 +220,7 @@ export async function handleChatBot(
         slackThreadTs,
         rateLimitMaxPerActorChannel:
           SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR_CHANNEL,
-        rateLimitTimeframeSeconds:
-          SLACK_CHATBOT_RATE_LIMIT_TIMEFRAME_SECONDS,
+        rateLimitTimeframeSeconds: SLACK_CHATBOT_RATE_LIMIT_TIMEFRAME_SECONDS,
       },
       "Rate limited Slack Chat Bot message"
     );
