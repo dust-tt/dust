@@ -488,7 +488,7 @@ export const MONDAY_SERVER = {
       supported_use_cases: ["personal_actions", "platform_actions"],
     },
     icon: "MondayLogo",
-    documentationUrl: "https://docs.dust.tt/docs/monday-tool",
+    documentationUrl: "https://docs.dust.tt/docs/monday",
     instructions: null,
   },
   tools: Object.values(MONDAY_TOOLS_METADATA).map((t) => ({

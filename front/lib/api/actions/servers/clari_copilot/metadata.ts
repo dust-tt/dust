@@ -81,7 +81,7 @@ export const CLARI_COPILOT_SERVER = {
       "Access Clari Copilot call transcripts, AI summaries, and action items.",
     authorization: null,
     icon: "ClariLogo",
-    documentationUrl: "https://docs.dust.tt/docs/clari-copilot",
+    documentationUrl: null,
     instructions: null,
   },
   tools: Object.values(CLARI_COPILOT_TOOLS_METADATA).map((t) => ({

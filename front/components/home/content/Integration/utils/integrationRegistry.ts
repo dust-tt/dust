@@ -399,7 +399,7 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
       description:
         "Connect Google Meet recordings to Dust. AI automatically summarizes your meetings, extracts action items, and syncs insights to your workspace.",
       icon: "GcalLogo", // Using Google Calendar logo as closest match
-      documentationUrl: "https://docs.dust.tt/docs/meeting-recordings",
+      documentationUrl: null,
       authorizationRequired: true,
       tools: [],
       category: "transcripts",
@@ -411,7 +411,7 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
       description:
         "Connect Modjo call recordings to Dust. AI analyzes sales calls, extracts key insights, and helps your team improve performance.",
       icon: "ActionMegaphoneIcon",
-      documentationUrl: "https://docs.dust.tt/docs/meeting-recordings",
+      documentationUrl: null,
       authorizationRequired: true,
       tools: [],
       category: "transcripts",
