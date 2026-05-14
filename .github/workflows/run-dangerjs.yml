@@ -30,9 +30,10 @@ jobs:
           # Define monitored paths
           MONITORED_PATHS=(
             'front/lib/'
+            'front/pages/api/'
+            'front-api/'
             'connectors/src/lib/models/'
             'connectors/src/resources/storage/models/'
-            'front/pages/api/v1/'
             'sdks/js/'
             'front/package.json'
             'extension/package.json'
