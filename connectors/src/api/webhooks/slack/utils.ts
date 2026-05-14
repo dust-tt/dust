@@ -10,7 +10,7 @@ import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import tracer from "dd-trace";
 import type { Request, Response } from "express";
 
-const SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR_CHANNEL = 10;
+const SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR = 10;
 const SLACK_CHATBOT_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 /**
@@ -209,7 +209,7 @@ export async function handleChatBot(
 
   const shouldProcessMessage = await throttleWithRedis(
     {
-      limit: SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR_CHANNEL,
+      limit: SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR,
       windowInMs: SLACK_CHATBOT_RATE_LIMIT_WINDOW_MS,
     },
     `slack-chatbot:${slackTeamId}:${actorId}`,
@@ -231,8 +231,7 @@ export async function handleChatBot(
         slackBotId,
         slackMessageTs,
         slackThreadTs,
-        rateLimitMaxPerActorChannel:
-          SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR_CHANNEL,
+        rateLimitMaxPerActor: SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR,
         rateLimitWindowMs: SLACK_CHATBOT_RATE_LIMIT_WINDOW_MS,
       },
       "Rate limited Slack Chat Bot message"
