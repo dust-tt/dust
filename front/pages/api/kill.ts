@@ -2,13 +2,8 @@
 // @migration-target: front-api/routes/kill.ts
 
 /** @ignoreswagger */
-import type { KillSwitchType } from "@app/lib/poke/types";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetKillSwitchesResponseBody = {
-  killSwitches: KillSwitchType[];
-};
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default async function handler(
