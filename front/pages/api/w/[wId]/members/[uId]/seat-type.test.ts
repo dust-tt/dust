@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import handler from "./seat-type";
 
-describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
+describe("PATCH /api/w/[wId]/members/[uId]/seat-type", () => {
   describe("auth", () => {
     it("returns 403 when caller is not an admin", async () => {
       const { req, res, user } = await createPrivateApiMockRequest({
@@ -14,7 +14,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
         role: "user",
       });
 
-      req.query.userId = user.sId;
+      req.query.uId = user.sId;
       req.body = { seatType: "pro" };
 
       await handler(req, res);
@@ -29,7 +29,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
         role: "admin",
       });
 
-      req.query.userId = user.sId;
+      req.query.uId = user.sId;
       req.body = { seatType: "pro" };
 
       await handler(req, res);
@@ -48,7 +48,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
         workspace,
       });
 
-      req.query.userId = user.sId;
+      req.query.uId = user.sId;
       req.body = { seatType: "pro" };
 
       await handler(req, res);
@@ -59,7 +59,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
   });
 
   describe("input validation", () => {
-    it("returns 400 when userId is missing", async () => {
+    it("returns 400 when uId is missing", async () => {
       const workspace = await WorkspaceFactory.metronome();
       const { req, res } = await createPrivateApiMockRequest({
         method: "PATCH",
@@ -75,7 +75,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
       expect(res._getJSONData().error.type).toBe("invalid_request_error");
     });
 
-    it("returns 404 when userId does not exist", async () => {
+    it("returns 404 when uId does not exist", async () => {
       const workspace = await WorkspaceFactory.metronome();
       const { req, res } = await createPrivateApiMockRequest({
         method: "PATCH",
@@ -83,7 +83,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
         workspace,
       });
 
-      req.query.userId = "nonexistent-user-id";
+      req.query.uId = "nonexistent-user-id";
       req.body = { seatType: "pro" };
 
       await handler(req, res);
@@ -100,7 +100,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
         workspace,
       });
 
-      req.query.userId = user.sId;
+      req.query.uId = user.sId;
       req.body = { seatType: "invalid_type" };
 
       await handler(req, res);
@@ -117,7 +117,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
         workspace,
       });
 
-      req.query.userId = user.sId;
+      req.query.uId = user.sId;
       req.body = { seatType: "free" };
 
       await handler(req, res);
@@ -141,7 +141,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
         role: "user",
       });
 
-      req.query.userId = targetUser.sId;
+      req.query.uId = targetUser.sId;
       req.body = { seatType: "pro" };
 
       await handler(req, res);
@@ -158,7 +158,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
         workspace,
       });
 
-      req.query.userId = user.sId;
+      req.query.uId = user.sId;
       req.body = { seatType: "max" };
 
       await handler(req, res);
@@ -184,7 +184,7 @@ describe("PATCH /api/w/[wId]/members/[userId]/seat-type", () => {
         role: "user",
       });
 
-      req.query.userId = targetUser.sId;
+      req.query.uId = targetUser.sId;
       req.body = { seatType: "pro" };
 
       await handler(req, res);
