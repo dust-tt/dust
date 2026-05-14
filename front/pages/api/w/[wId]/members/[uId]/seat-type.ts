@@ -49,13 +49,13 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
-      const { userId } = req.query;
-      if (!isString(userId)) {
+      const { uId } = req.query;
+      if (!isString(uId)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid query parameters, `userId` (string) is required.",
+            message: "Invalid query parameters, `uId` (string) is required.",
           },
         });
       }
@@ -71,7 +71,7 @@ async function handler(
         });
       }
 
-      const user = await getUserForWorkspace(auth, { userId });
+      const user = await getUserForWorkspace(auth, { userId: uId });
       if (!user) {
         return apiError(req, res, {
           status_code: 404,
