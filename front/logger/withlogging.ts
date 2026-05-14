@@ -306,9 +306,11 @@ export function withLogging<T>(
   };
 }
 
-export function apiError<T>(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<T>>,
+// Minimal structural shapes so lib/api handlers can call apiError without
+// importing from "next" (slim-api campaign, task #8079).
+export function apiError(
+  req: { method?: string; url?: string },
+  res: { status(code: number): { json(body: unknown): void } },
   apiError: APIErrorWithStatusCode,
   error?: Error
 ): void {

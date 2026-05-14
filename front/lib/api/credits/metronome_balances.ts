@@ -9,15 +9,15 @@ import {
   isMetronomeExcessCredit,
   METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD,
 } from "@app/lib/metronome/types";
-import { apiError } from "@app/logger/withlogging";
 import type {
   CreditDisplayData,
   CreditType,
   GetCreditsResponseBody,
 } from "@app/types/credits";
-import type { WithAPIErrorResponse } from "@app/types/error";
+import type { APIError } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { NextApiRequest, NextApiResponse } from "next";
 
 function mapMetronomeType(
   entry: MetronomeCommit | MetronomeCredit
@@ -97,15 +97,18 @@ export function metronomeBalanceToDisplayData(
   };
 }
 
-export async function handleMetronomeBalancesRequest(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetCreditsResponseBody>>,
+type MetronomeBalancesError = {
+  status: number;
+  error: APIError;
+};
+
+export async function getMetronomeBalances(
   auth: Authenticator
-): Promise<void> {
+): Promise<Result<GetCreditsResponseBody, MetronomeBalancesError>> {
   if (!auth.isAdmin()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
+    return new Err({
+      status: 403,
+      error: {
         type: "workspace_auth_error",
         message:
           "Only users that are `admins` for the current workspace can view credits.",
@@ -113,49 +116,37 @@ export async function handleMetronomeBalancesRequest(
     });
   }
 
-  switch (req.method) {
-    case "GET": {
-      const workspace = auth.getNonNullableWorkspace();
-      const { metronomeCustomerId } = workspace;
-      if (!metronomeCustomerId) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Workspace is not configured for Metronome billing.",
-          },
-        });
-      }
-
-      const result = await listMetronomeBalances(metronomeCustomerId);
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to retrieve Metronome balances: ${result.error.message}`,
-          },
-        });
-      }
-
-      const programmaticUsdCreditTypeId = getCreditTypeProgrammaticUsdId();
-      const credits: CreditDisplayData[] = result.value
-        .filter(
-          (entry) =>
-            entry.access_schedule?.credit_type?.id ===
-              programmaticUsdCreditTypeId && !isMetronomeExcessCredit(entry)
-        )
-        .map(metronomeBalanceToDisplayData);
-
-      return res.status(200).json({ credits });
-    }
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
+  const workspace = auth.getNonNullableWorkspace();
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return new Err({
+      status: 400,
+      error: {
+        type: "invalid_request_error",
+        message: "Workspace is not configured for Metronome billing.",
+      },
+    });
   }
+
+  const result = await listMetronomeBalances(metronomeCustomerId);
+  if (result.isErr()) {
+    return new Err({
+      status: 500,
+      error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve Metronome balances: ${result.error.message}`,
+      },
+    });
+  }
+
+  const programmaticUsdCreditTypeId = getCreditTypeProgrammaticUsdId();
+  const credits: CreditDisplayData[] = result.value
+    .filter(
+      (entry) =>
+        entry.access_schedule?.credit_type?.id ===
+          programmaticUsdCreditTypeId && !isMetronomeExcessCredit(entry)
+    )
+    .map(metronomeBalanceToDisplayData);
+
+  return new Ok({ credits });
 }

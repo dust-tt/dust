@@ -1,6 +1,9 @@
 /** @ignoreswagger */
 import type { GetMetronomeUsageResponse } from "@app/lib/api/analytics/metronome_usage";
-import { handleMetronomeUsageRequest } from "@app/lib/api/analytics/metronome_usage";
+import {
+  getMetronomeUsage,
+  MetronomeUsageQuerySchema,
+} from "@app/lib/api/analytics/metronome_usage";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -39,7 +42,36 @@ async function handler(
     });
   }
 
-  return handleMetronomeUsageRequest(req, res, auth);
+  if (req.method !== "GET") {
+    return apiError(req, res, {
+      status_code: 405,
+      api_error: {
+        type: "method_not_supported_error",
+        message: "The method passed is not supported, GET is expected.",
+      },
+    });
+  }
+
+  const q = MetronomeUsageQuerySchema.safeParse(req.query);
+  if (!q.success) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid query parameters: ${q.error.message}`,
+      },
+    });
+  }
+
+  const result = await getMetronomeUsage(auth, q.data);
+  if (result.isErr()) {
+    return apiError(req, res, {
+      status_code: result.error.status,
+      api_error: result.error.error,
+    });
+  }
+
+  res.status(200).json(result.value);
 }
 
 export default withSessionAuthenticationForPoke(handler);

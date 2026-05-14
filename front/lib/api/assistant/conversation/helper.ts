@@ -2,7 +2,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { ConversationErrorType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { isOverflowingDBString } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
 
 const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
   conversation_access_restricted: 403,
@@ -16,8 +15,8 @@ const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
 };
 
 export function apiErrorForConversation(
-  req: NextApiRequest,
-  res: NextApiResponse,
+  req: { method?: string; url?: string },
+  res: { status(code: number): { json(body: unknown): void } },
   error: Error
 ) {
   if (error instanceof ConversationError) {

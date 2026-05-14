@@ -1,11 +1,9 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js API response type needed for cookie setting.
 import config from "@app/lib/api/config";
 import { ExternalViewerSessionModel } from "@app/lib/resources/storage/models/files";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDevelopment, isTest } from "@app/types/shared/env";
 import type { LightWorkspaceType } from "@app/types/user";
 import crypto from "crypto";
-import type { NextApiResponse } from "next";
 import { Op } from "sequelize";
 
 export const FRAME_SESSION_COOKIE_NAME = "dust_frame_session";
@@ -13,13 +11,13 @@ export const FRAME_SESSION_COOKIE_NAME = "dust_frame_session";
 const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60; // 7 days.
 
 /**
- * Create an external viewer session for a verified email and set the session cookie.
+ * Create an external viewer session for a verified email. Returns the cookie
+ * header value(s) the caller must set on the response.
  */
 export async function createFrameSession(
-  res: NextApiResponse,
   workspace: LightWorkspaceType,
   { email }: { email: string }
-): Promise<void> {
+): Promise<{ cookieHeaders: string[] }> {
   const sessionToken = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_DURATION_SECONDS * 1000);
 
@@ -36,10 +34,9 @@ export async function createFrameSession(
   const cookieValue = `${FRAME_SESSION_COOKIE_NAME}=${sessionToken}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=${SESSION_DURATION_SECONDS}`;
 
   if (domain) {
-    res.setHeader("Set-Cookie", [`${cookieValue}; Domain=${domain}`]);
-  } else {
-    res.setHeader("Set-Cookie", [cookieValue]);
+    return { cookieHeaders: [`${cookieValue}; Domain=${domain}`] };
   }
+  return { cookieHeaders: [cookieValue] };
 }
 
 /**

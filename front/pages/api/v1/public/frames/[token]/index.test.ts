@@ -61,10 +61,8 @@ describe("GET /api/v1/public/frames/[token]", () => {
     await file.addSharingGrants(auth, { emails: [email] });
 
     // Create session and extract token from the Set-Cookie header.
-    const mockRes = createMocks<NextApiRequest, NextApiResponse>().res;
-    await createFrameSession(mockRes, workspace, { email });
-
-    const cookie = String(mockRes.getHeader("Set-Cookie") ?? "");
+    const { cookieHeaders } = await createFrameSession(workspace, { email });
+    const cookie = cookieHeaders[0] ?? "";
     const match = cookie.match(/dust_frame_session=([^;]+)/);
     expect(match).not.toBeNull();
     return match![1];
@@ -283,11 +281,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       await file.addSharingGrants(auth, { emails: ["alice@example.com"] });
 
       // Create session for bob (no grant for bob).
-      const mockRes = createMocks<NextApiRequest, NextApiResponse>().res;
-      await createFrameSession(mockRes, workspace, {
+      const { cookieHeaders } = await createFrameSession(workspace, {
         email: "bob@example.com",
       });
-      const cookie = String(mockRes.getHeader("Set-Cookie") ?? "");
+      const cookie = cookieHeaders[0] ?? "";
       const match = cookie.match(/dust_frame_session=([^;]+)/);
       expect(match).not.toBeNull();
       const bobSessionToken = match![1];
@@ -349,11 +346,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       expect(grant).not.toBeNull();
       expect(grant!.lastViewedAt).toBeNull();
 
-      const mockRes = createMocks<NextApiRequest, NextApiResponse>().res;
-      await createFrameSession(mockRes, workspace, {
+      const { cookieHeaders } = await createFrameSession(workspace, {
         email: "viewer@example.com",
       });
-      const cookie = String(mockRes.getHeader("Set-Cookie") ?? "");
+      const cookie = cookieHeaders[0] ?? "";
       const match = cookie.match(/dust_frame_session=([^;]+)/);
       expect(match).not.toBeNull();
 
@@ -388,9 +384,8 @@ describe("GET /api/v1/public/frames/[token]", () => {
       await file2.addSharingGrants(auth, { emails: [email] });
 
       // Create one session for this email.
-      const mockRes = createMocks<NextApiRequest, NextApiResponse>().res;
-      await createFrameSession(mockRes, workspace, { email });
-      const cookie = String(mockRes.getHeader("Set-Cookie") ?? "");
+      const { cookieHeaders } = await createFrameSession(workspace, { email });
+      const cookie = cookieHeaders[0] ?? "";
       const match = cookie.match(/dust_frame_session=([^;]+)/);
       expect(match).not.toBeNull();
       const sessionToken = match![1];
