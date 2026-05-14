@@ -3,7 +3,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Common } from "googleapis";
 import { describe, expect, it } from "vitest";
 
-import { handleFileAccessError } from "./index";
+import { buildBinaryFileResource, handleFileAccessError } from "./index";
 
 // Helper to create a mock GaxiosError
 function createGaxiosError(code: number, message: string): Common.GaxiosError {
@@ -167,5 +167,48 @@ describe("handleFileAccessError", () => {
     if (result.isErr()) {
       expect(result.error.message).toBe("Failed to access file");
     }
+  });
+});
+
+describe("buildBinaryFileResource", () => {
+  it("should base64-encode the buffer and preserve the mime type", () => {
+    const buffer = Buffer.from("Hello PDF", "utf-8");
+
+    const block = buildBinaryFileResource({
+      buffer,
+      fileName: "report.pdf",
+      mimeType: "application/pdf",
+    });
+
+    expect(block.type).toBe("resource");
+    expect(block.resource.mimeType).toBe("application/pdf");
+    expect(block.resource.blob).toBe(buffer.toString("base64"));
+    expect(block.resource.uri).toBe("report.pdf");
+    expect(block.resource._meta).toEqual({ text: "File: report.pdf" });
+  });
+
+  it("should fall back to 'unknown' when the file name is missing", () => {
+    const block = buildBinaryFileResource({
+      buffer: Buffer.from(""),
+      fileName: null,
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    });
+
+    expect(block.resource.uri).toBe("unknown");
+    expect(block.resource._meta).toEqual({ text: "File: unknown" });
+  });
+
+  it("should sanitize file names with unsafe characters", () => {
+    const block = buildBinaryFileResource({
+      buffer: Buffer.from("x"),
+      fileName: "../../etc/passwd",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+
+    expect(block.resource.uri).not.toContain("/");
+    expect(block.resource.uri).not.toContain("..");
+    expect(block.resource._meta.text).toBe(`File: ${block.resource.uri}`);
   });
 });
