@@ -1,17 +1,17 @@
 import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import { getBotUserIdResponse } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import type { Logger } from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
-import { rateLimiter } from "@connectors/types/shared/rate_limiter";
 import tracer from "dd-trace";
 import type { Request, Response } from "express";
 
 const SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR_CHANNEL = 10;
-const SLACK_CHATBOT_RATE_LIMIT_TIMEFRAME_SECONDS = 60;
+const SLACK_CHATBOT_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 /**
  * Webhook payload example. Can be handy for working on it.
@@ -202,14 +202,27 @@ export async function handleChatBot(
   // We need to answer 200 quickly to Slack, otherwise they will retry the HTTP request.
   res.status(200).send();
 
-  const actorId = slackUserId ?? slackBotId;
-  const remainingMessages = await rateLimiter({
-    key: `slack-chatbot:${slackTeamId}:${slackChannel}:${actorId}`,
-    maxPerTimeframe: SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR_CHANNEL,
-    timeframeSeconds: SLACK_CHATBOT_RATE_LIMIT_TIMEFRAME_SECONDS,
-    logger,
-  });
-  if (remainingMessages === 0) {
+  const actorId = slackUserId || slackBotId;
+  if (!actorId) {
+    throw new Error("Failed to get Slack actor id.");
+  }
+
+  const shouldProcessMessage = await throttleWithRedis(
+    {
+      limit: SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR_CHANNEL,
+      windowInMs: SLACK_CHATBOT_RATE_LIMIT_WINDOW_MS,
+    },
+    `slack-chatbot:${slackTeamId}:${actorId}`,
+    { canBeIgnored: true },
+    async () => true,
+    {
+      source: "slack-chatbot-webhook",
+      slackTeamId,
+      slackChannel,
+      actorId,
+    }
+  );
+  if (!shouldProcessMessage) {
     logger.warn(
       {
         slackTeamId,
@@ -220,7 +233,7 @@ export async function handleChatBot(
         slackThreadTs,
         rateLimitMaxPerActorChannel:
           SLACK_CHATBOT_RATE_LIMIT_MAX_PER_ACTOR_CHANNEL,
-        rateLimitTimeframeSeconds: SLACK_CHATBOT_RATE_LIMIT_TIMEFRAME_SECONDS,
+        rateLimitWindowMs: SLACK_CHATBOT_RATE_LIMIT_WINDOW_MS,
       },
       "Rate limited Slack Chat Bot message"
     );
