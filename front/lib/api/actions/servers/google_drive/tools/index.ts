@@ -492,16 +492,11 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
           content = extractionResult.isOk()
             ? extractionResult.value
             : EXTRACTION_FAILED_PLACEHOLDER;
-          // Only attach the raw bytes on the first page — callers paginating
-          // further already have the resource ref from the initial response,
-          // and the base64 blob can be ~85 MB for a 64 MB original.
-          if (offset === 0) {
-            binaryResource = buildBinaryFileResource({
-              buffer,
-              fileName: file.name,
-              mimeType: file.mimeType,
-            });
-          }
+          binaryResource = buildBinaryFileResource({
+            buffer,
+            fileName: file.name,
+            mimeType: file.mimeType,
+          });
           break;
         }
         default:
