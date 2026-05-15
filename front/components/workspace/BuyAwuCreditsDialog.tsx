@@ -1,7 +1,5 @@
 import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
-import { usePurchaseCredits } from "@app/lib/swr/credits";
 import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
   ActionCreditCoinsIcon,
@@ -105,7 +103,6 @@ export function BuyAwuCreditsDialog({
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const { purchaseCredits } = usePurchaseCredits({ workspaceId });
 
   const resetModalStateAndClose = useCallback(() => {
     setAmountDollars("");
@@ -154,26 +151,8 @@ export function BuyAwuCreditsDialog({
 
   const canPurchase = isValidAmount;
 
-  const handlePurchase = async () => {
-    setPurchaseState("processing");
-    const result = await purchaseCredits(parsedAmount);
-
-    switch (result.status) {
-      case "success":
-        setPurchaseState("success");
-        break;
-      case "redirect":
-        setPaymentUrl(result.paymentUrl);
-        setPurchaseState("redirect");
-        break;
-      case "error":
-        setErrorMessage(result.message);
-        setPurchaseState("error");
-        break;
-      default:
-        assertNeverAndIgnore(result);
-    }
-  };
+  // TODO: implement AWU-specific purchase endpoint.
+  const handlePurchase = async () => {};
 
   const renderContent = () => {
     switch (purchaseState) {

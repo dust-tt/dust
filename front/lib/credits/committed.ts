@@ -2,14 +2,9 @@ import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import { createMetronomeCommit } from "@app/lib/metronome/client";
 import {
-  getCreditTypeAwuId,
   getCreditTypeProgrammaticUsdId,
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
-import {
-  METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD,
-  METRONOME_USER_CREDIT_TO_MICRO_USD,
-} from "@app/lib/metronome/types";
 import type { CustomerFacingInvoiceInfo } from "@app/lib/plans/stripe";
 import {
   ENTERPRISE_N30_PAYMENTS_DAYS,
@@ -115,7 +110,7 @@ export async function startCreditFromProOneOffInvoice({
     const metronomeResult = await addMetronomeCommitsForWorkspace({
       auth,
       credit,
-      amountMicroUsd: creditAmountCents * 10_000,
+      amountCredits: creditAmountCents / 100,
       startDate: startResult.value.startDate,
       expirationDate: startResult.value.expirationDate,
     });
@@ -238,7 +233,7 @@ export async function startCreditFromEnterpriseOneOffInvoice({
   const metronomeResult = await addMetronomeCommitsForWorkspace({
     auth,
     credit,
-    amountMicroUsd: creditAmountCents * 10_000,
+    amountCredits: creditAmountCents / 100,
     startDate: startResult.value.startDate,
     expirationDate: startResult.value.expirationDate,
   });
@@ -450,7 +445,7 @@ export async function createEnterpriseCreditPurchase({
   const metronomeResult = await addMetronomeCommitsForWorkspace({
     auth,
     credit,
-    amountMicroUsd,
+    amountCredits: amountMicroUsd / 1_000_000,
     startDate: startResult.value.startDate,
     expirationDate: startResult.value.expirationDate,
   });
@@ -651,13 +646,14 @@ export async function deleteCreditFromVoidedInvoice({
 async function addMetronomeCommitsForWorkspace({
   auth,
   credit,
-  amountMicroUsd,
+  amountCredits,
   startDate,
   expirationDate,
 }: {
   auth: Authenticator;
   credit: CreditResource;
-  amountMicroUsd: number;
+  /** Amount in custom credit units (not cents). */
+  amountCredits: number;
   startDate: Date;
   expirationDate: Date;
 }): Promise<Result<void, Error>> {
@@ -672,21 +668,12 @@ async function addMetronomeCommitsForWorkspace({
     return new Ok(undefined);
   }
 
-  const isMetronomeOnly =
-    auth.subscriptionResource()?.isMetronomeOnlyBilled ?? false;
-  const creditTypeId = isMetronomeOnly
-    ? getCreditTypeAwuId()
-    : getCreditTypeProgrammaticUsdId();
-  const amountCredits = isMetronomeOnly
-    ? amountMicroUsd / METRONOME_USER_CREDIT_TO_MICRO_USD
-    : amountMicroUsd / METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD;
-
   const productId = getProductPrepaidCommitId();
 
   const result = await createMetronomeCommit({
     metronomeCustomerId,
     productId,
-    creditTypeId,
+    creditTypeId: getCreditTypeProgrammaticUsdId(),
     amount: amountCredits,
     startingAt: startDate,
     endingBefore: expirationDate,
