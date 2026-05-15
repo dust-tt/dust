@@ -1,6 +1,5 @@
 import type { Context, MiddlewareHandler } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { NextApiRequest } from "next";
 
 import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
@@ -16,22 +15,14 @@ import type { APIErrorWithStatusCode } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import { getUserEmailFromHeaders } from "@app/types/user";
 
-// Bridge Hono Context to the minimal NextApiRequest shape used by the existing
-// auth helpers. The public API only needs headers + socket (no cookies).
-function buildNextLikeReq(c: Context): NextApiRequest {
+type HeaderRecord = Record<string, string | string[] | undefined>;
+
+function readHeaders(c: Context): HeaderRecord {
   const headers: Record<string, string> = {};
   c.req.raw.headers.forEach((value, key) => {
     headers[key] = value;
   });
-  const req = {
-    cookies: {},
-    headers,
-    query: {},
-    socket: { remoteAddress: undefined },
-    method: c.req.method,
-    url: c.req.url,
-  };
-  return req as unknown as NextApiRequest;
+  return headers;
 }
 
 function validateWorkspaceFromAuth(
@@ -104,8 +95,8 @@ function jsonApiError(c: Context, err: APIErrorWithStatusCode) {
   );
 }
 
-function applyClientIp(auth: Authenticator, req: NextApiRequest): void {
-  const ip = getClientIp(req);
+function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
+  const ip = getClientIp({ headers });
   if (ip !== "internal") {
     auth.setClientIp(ip);
   }
@@ -149,7 +140,7 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
     );
   }
 
-  const req = buildNextLikeReq(c);
+  const headers = readHeaders(c);
 
   // 1) Sandbox token.
   const token = authHeader.replace("Bearer ", "");
@@ -171,14 +162,14 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
       return jsonApiError(c, authRes.error);
     }
     const auth = authRes.value;
-    applyClientIp(auth, req);
+    applyClientIp(auth, headers);
     c.set("auth", auth);
     await next();
     return;
   }
 
   // 2) OAuth bearer token (resolves to a workspace user session).
-  const bearerRes = await getSessionFromBearerToken(req);
+  const bearerRes = await getSessionFromBearerToken(authHeader);
   if (bearerRes.isErr()) {
     return c.json(
       {
@@ -222,14 +213,14 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
     if (workspaceError) {
       return jsonApiError(c, workspaceError);
     }
-    applyClientIp(auth, req);
+    applyClientIp(auth, headers);
     c.set("auth", auth);
     await next();
     return;
   }
 
   // 3) API key.
-  const keyRes = await getAPIKey(req);
+  const keyRes = await getAPIKey(authHeader);
   if (keyRes.isErr()) {
     return jsonApiError(c, keyRes.error);
   }
@@ -237,8 +228,8 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
   const keyAndWorkspaceAuth = await Authenticator.fromKey(
     keyRes.value,
     wId,
-    getGroupIdsFromHeaders(req.headers),
-    getRoleFromHeaders(req.headers)
+    getGroupIdsFromHeaders(headers),
+    getRoleFromHeaders(headers)
   );
   let { workspaceAuth } = keyAndWorkspaceAuth;
 
@@ -260,7 +251,7 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
   }
 
   // x-api-user-email: system-key-only impersonation.
-  const userEmailFromHeader = getUserEmailFromHeaders(req.headers);
+  const userEmailFromHeader = getUserEmailFromHeaders(headers);
   if (userEmailFromHeader) {
     workspaceAuth =
       (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(workspaceAuth, {
@@ -269,7 +260,7 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
   }
 
   // x-api-key-name: system-key-only key name override (for analytics).
-  const apiKeyNameFromHeader = getApiKeyNameFromHeaders(req.headers);
+  const apiKeyNameFromHeader = getApiKeyNameFromHeaders(headers);
   const key = workspaceAuth.key();
   if (apiKeyNameFromHeader && key && key.isSystem) {
     workspaceAuth = workspaceAuth.exchangeKey({
@@ -281,7 +272,7 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
     });
   }
 
-  applyClientIp(workspaceAuth, req);
+  applyClientIp(workspaceAuth, headers);
   c.set("auth", workspaceAuth);
   await next();
 };
