@@ -154,6 +154,12 @@ ENV NEXT_PUBLIC_DUST_API_URL=$NEXT_PUBLIC_DUST_API_URL
 ENV NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL=$NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL
 ENV NEXT_PUBLIC_DUST_APP_URL=$NEXT_PUBLIC_DUST_APP_URL
 
+# Front's transitive runtime deps (e.g. hot-shots) may live in
+# /app/front/node_modules rather than the hoisted /app/node_modules, and node's
+# walk-up from /app/front-api/dist/server.js never visits them. Add it to
+# NODE_PATH so externalized requires from the esbuild bundle resolve at runtime.
+ENV NODE_PATH=/app/front/node_modules
+
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
