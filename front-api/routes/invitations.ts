@@ -1,49 +1,29 @@
-// @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/invitations.ts
+import { Hono } from "hono";
 
-/** @ignoreswagger */
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { fetchInvitationsFromOtherRegion } from "@app/lib/api/regions/lookup";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
-import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetPendingInvitationsLookupResponseBody = {
-  pendingInvitations: PendingInvitationOption[];
-};
+import { sessionAuth } from "../middleware/session_auth";
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetPendingInvitationsLookupResponseBody>
-  >,
-  session: SessionWithUser
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
-    });
-  }
+export const invitationsApp = new Hono();
+
+invitationsApp.use("*", sessionAuth);
+
+invitationsApp.get("/", async (c) => {
+  const session = c.get("session");
 
   const user = await getUserFromSession(session);
   if (!user) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "User not found.",
+    return c.json(
+      {
+        error: { type: "user_not_found", message: "User not found." },
       },
-    });
+      404
+    );
   }
 
   const invitationResources =
@@ -54,7 +34,6 @@ async function handler(
   const localInvitations: PendingInvitationOption[] = invitationResources.map(
     (invitation) => {
       const workspace = invitation.workspace;
-
       return {
         workspaceName: workspace.name,
         initialRole: invitation.initialRole,
@@ -65,7 +44,6 @@ async function handler(
     }
   );
 
-  // Fetch cross-region invitations and merge with local ones.
   const crossRegionRes = await fetchInvitationsFromOtherRegion(user.email);
   let pendingInvitations = localInvitations;
   if (crossRegionRes.isOk()) {
@@ -77,7 +55,5 @@ async function handler(
     );
   }
 
-  return res.status(200).json({ pendingInvitations });
-}
-
-export default withSessionAuthentication(handler);
+  return c.json({ pendingInvitations });
+});
