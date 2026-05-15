@@ -1,5 +1,4 @@
 import capitalize from "lodash/capitalize";
-import chain from "lodash/chain";
 import words from "lodash/words";
 
 export const FILE_ID_PATTERN = "fil_[A-Za-z0-9]{10,}";
@@ -28,13 +27,10 @@ export function formatFilenameForDisplay(filename: string): string {
   const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
 
   // Split on camelCase, underscores, and hyphens, then join with spaces.
-  const wordsChain = chain(nameWithoutExt)
+  return nameWithoutExt
     .split(/[_-]/) // Split on underscores and hyphens.
     .flatMap((word) => words(word)) // Split camelCase words.
-    .compact() // Remove empty strings.
+    .filter((word) => word.length > 0) // Remove empty strings.
     .map((word) => capitalize(word)) // Capitalize each word.
-    .join(" ")
-    .value();
-
-  return wordsChain;
+    .join(" ");
 }
