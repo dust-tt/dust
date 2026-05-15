@@ -12,7 +12,7 @@ async function getHonoApp() {
 
 /**
  * Selects which implementation the helper invokes. Default is "next"
- * Set `TEST_HANDLER=hono` to run the same test body against the legacy Next handler
+ * Set `TEST_HANDLER=hono` to run the same test body against Hono
  * useful for parity checking during the migration.
  */
 const TEST_HANDLER = (process.env.TEST_HANDLER ?? "next") as "hono" | "next";
