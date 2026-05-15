@@ -158,7 +158,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       >
         {thumbnailContent}
       </div>
-      <div className="flex items-start justify-between gap-1">
+      <div className="flex items-start justify-between gap-0.5">
         {info}
         {menu}
       </div>
