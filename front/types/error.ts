@@ -49,6 +49,7 @@ const API_ERROR_TYPES = [
   "action_unknown_error",
   "action_api_error",
   "membership_not_found",
+  "membership_revoked",
   "invitation_not_found",
   "plan_limit_error",
   "template_not_found",

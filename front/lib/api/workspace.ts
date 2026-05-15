@@ -481,6 +481,7 @@ export interface WorkspaceMetadata {
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
   disableExtensionMcpTools?: boolean;
+  disableAuditLogs?: boolean;
   isBusiness?: boolean;
   phoneCountry?: string;
   sandboxAllowAgentEgressRequests?: boolean;

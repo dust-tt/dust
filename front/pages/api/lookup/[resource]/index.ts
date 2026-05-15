@@ -107,7 +107,7 @@ async function handler(
     });
   }
 
-  const bearerTokenRes = await getBearerToken(req);
+  const bearerTokenRes = await getBearerToken(req.headers.authorization);
   if (bearerTokenRes.isErr()) {
     return apiError(req, res, {
       status_code: 401,

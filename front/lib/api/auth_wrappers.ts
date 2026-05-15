@@ -434,7 +434,7 @@ export function withPublicAPIAuthentication<T>(
       }
 
       // API key authentication.
-      const keyRes = await getAPIKey(req);
+      const keyRes = await getAPIKey(req.headers.authorization);
       if (keyRes.isErr()) {
         return apiError(req, res, keyRes.error);
       }

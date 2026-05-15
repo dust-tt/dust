@@ -6,8 +6,8 @@
   },
   "type": "module",
   "scripts": {
-    "dev:poke": "VITE_APP_NAME=poke VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",
-    "dev:app": "VITE_APP_NAME=app VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",
+    "dev:poke": "VITE_APP_NAME=poke VITE_DUST_API_URL=$DUST_CLIENT_FACING_URL vite",
+    "dev:app": "VITE_APP_NAME=app VITE_DUST_API_URL=$DUST_CLIENT_FACING_URL vite",
     "build:poke": "VITE_APP_NAME=poke vite build && cp _headers dist/poke/_headers",
     "build:app": "VITE_APP_NAME=app vite build && cp _headers dist/app/_headers",
     "build": "npm run build:poke && npm run build:app",

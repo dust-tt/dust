@@ -102,7 +102,9 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
 
   // Try bearer token first, then fall back to cookie-based session.
   // Mirrors withLogging in front/logger/withlogging.ts.
-  const bearerRes = await getSessionFromBearerToken(req);
+  const bearerRes = await getSessionFromBearerToken(
+    c.req.header("authorization")
+  );
   if (bearerRes.isErr()) {
     return c.json(
       {

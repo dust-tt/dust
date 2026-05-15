@@ -115,6 +115,10 @@ const WorkspaceSelfImprovementCapPerSkillUpdateBodySchema = z.object({
   selfImprovementCapPerSkillMicroUsd: z.number(),
 });
 
+const WorkspaceAuditLogsUpdateBodySchema = z.object({
+  disableAuditLogs: z.boolean(),
+});
+
 const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -135,6 +139,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSandboxAgentEgressRequestsUpdateBodySchema,
   WorkspaceReinforcementCapUpdateBodySchema,
   WorkspaceSelfImprovementCapPerSkillUpdateBodySchema,
+  WorkspaceAuditLogsUpdateBodySchema,
 ]);
 
 async function handler(
@@ -384,6 +389,23 @@ async function handler(
           context: getAuditLogContext(auth, req),
           metadata: {
             enabled: String(body.sandboxAllowAgentEgressRequests),
+          },
+        });
+      } else if ("disableAuditLogs" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          disableAuditLogs: body.disableAuditLogs,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.audit_logs_updated",
+          targets: [buildAuditLogTarget("workspace", owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            enabled: String(!body.disableAuditLogs),
           },
         });
       } else if ("domainUpdates" in body) {

@@ -16,7 +16,7 @@ describe("groupMessagesIntoInteractions", () => {
     expect(interactions[0].messages.map((m) => m.tag)).toEqual(["u1"]);
   });
 
-  it("keeps consecutive user and content_fragment messages in the same user turn", () => {
+  it("keeps content fragments with the following user while splitting user turns", () => {
     const interactions = groupMessagesIntoInteractions([
       msg("content_fragment", "cf1"),
       msg("user", "u1"),
@@ -26,16 +26,52 @@ describe("groupMessagesIntoInteractions", () => {
       msg("function", "f1"),
       msg("function", "f2"),
     ]);
-    expect(interactions).toHaveLength(1);
-    expect(interactions[0].messages.map((m) => m.tag)).toEqual([
-      "cf1",
-      "u1",
+    expect(interactions).toHaveLength(2);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual(["cf1", "u1"]);
+    expect(interactions[1].messages.map((m) => m.tag)).toEqual([
       "cf2",
       "u2",
       "a1",
       "f1",
       "f2",
     ]);
+  });
+
+  it("keeps each content fragment with the user message following it", () => {
+    const interactions = groupMessagesIntoInteractions([
+      msg("content_fragment", "cf1"),
+      msg("user", "u1"),
+      msg("content_fragment", "cf2"),
+      msg("user", "u2"),
+      msg("content_fragment", "cf3"),
+      msg("user", "u3"),
+      msg("user", "u4"),
+      msg("content_fragment", "cf4"),
+      msg("user", "u5"),
+      msg("assistant", "a1"),
+    ]);
+
+    expect(interactions).toHaveLength(5);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual(["cf1", "u1"]);
+    expect(interactions[1].messages.map((m) => m.tag)).toEqual(["cf2", "u2"]);
+    expect(interactions[2].messages.map((m) => m.tag)).toEqual(["cf3", "u3"]);
+    expect(interactions[3].messages.map((m) => m.tag)).toEqual(["u4"]);
+    expect(interactions[4].messages.map((m) => m.tag)).toEqual([
+      "cf4",
+      "u5",
+      "a1",
+    ]);
+  });
+
+  it("splits consecutive user messages in separate turns", () => {
+    const interactions = groupMessagesIntoInteractions([
+      msg("user", "u1"),
+      msg("user", "u2"),
+      msg("assistant", "a1"),
+    ]);
+    expect(interactions).toHaveLength(2);
+    expect(interactions[0].messages.map((m) => m.tag)).toEqual(["u1"]);
+    expect(interactions[1].messages.map((m) => m.tag)).toEqual(["u2", "a1"]);
   });
 
   it("starts a new interaction when a user turn follows an agent turn", () => {

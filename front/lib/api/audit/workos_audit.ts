@@ -69,6 +69,8 @@ type AuditAction =
   | "sandbox_env_var.deleted"
   | "sandbox_env_var.promoted_to_https_secret"
   | "sandbox_env_var.updated"
+  // Workspace settings.
+  | "workspace.audit_logs_updated"
   // SCIM / Directory Sync.
   | "scim.user_provisioned"
   | "scim.user_updated"
@@ -144,12 +146,18 @@ function serializeMetadata(
 }
 
 /**
- * Returns true if audit logs are enabled for the workspace,
- * either via feature flag or plan setting.
+ * Returns true if audit logs are enabled for the workspace.
+ * Enabled when the `audit_logs` feature flag is set or the plan allows it,
+ * unless the workspace kill switch (`metadata.disableAuditLogs`) is on.
+ * The kill switch suppresses both the audit logs UI and event emission, and
+ * can be flipped by workspace admins or by Dust admins via poke.
  */
 export async function isAuditLogsEnabled(
   auth: Authenticator
 ): Promise<boolean> {
+  if (auth.getNonNullableWorkspace().metadata?.disableAuditLogs === true) {
+    return false;
+  }
   if (await hasFeatureFlag(auth, "audit_logs")) {
     return true;
   }
@@ -230,6 +238,10 @@ export async function emitAuditLogEventDirect({
 }): Promise<void> {
   try {
     if (!workspace.workOSOrganizationId) {
+      return;
+    }
+
+    if (workspace.metadata?.disableAuditLogs === true) {
       return;
     }
 
