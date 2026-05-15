@@ -70,8 +70,9 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import chunk from "lodash/chunk";
+import groupBy from "lodash/groupBy";
+import keyBy from "lodash/keyBy";
 import type {
   Attributes,
   CreationAttributes,
@@ -351,7 +352,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ],
     });
 
-    const parentUserMessageById = _.keyBy(parentUserMessages, "id");
+    const parentUserMessageById = keyBy(parentUserMessages, "id");
 
     const blockedActionsList: BlockedToolExecution[] = [];
 
@@ -787,7 +788,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       });
     } else {
       // Batch queries to avoid loading too many large (potentially TOASTed) rows at once.
-      const batches = _.chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
+      const batches = chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
       const batchResults = await concurrentExecutor(
         batches,
         async (batchActionIds) => {
@@ -974,7 +975,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
         const workspaceId = auth.getNonNullableWorkspace().id;
 
-        const outputItemsByActionId = _.groupBy(
+        const outputItemsByActionId = groupBy(
           Array.from(
             (
               await this.fetchOutputItemsByActionIds(auth, {
@@ -992,7 +993,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           )
         );
 
-        const fileById = _.keyBy(
+        const fileById = keyBy(
           // Using the model instead of the resource since we're mutating outputItems.
           // Not super clean but everything happens in this one function and faster to write.
           await FileModel.findAll({

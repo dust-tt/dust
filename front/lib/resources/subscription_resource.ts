@@ -87,8 +87,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import keyBy from "lodash/keyBy";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import type Stripe from "stripe";
@@ -422,7 +421,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     workspaceModelIds: ModelId[],
     transaction?: Transaction
   ): Promise<Record<ModelId, SubscriptionResource>> {
-    const activeSubscriptionByWorkspaceModelId = _.keyBy(
+    const activeSubscriptionByWorkspaceModelId = keyBy(
       await this.model.findAll({
         attributes: [
           "endDate",

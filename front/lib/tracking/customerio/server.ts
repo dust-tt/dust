@@ -9,8 +9,8 @@ import logger from "@app/logger/logger";
 import type { JobType } from "@app/types/job_type";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import * as _ from "lodash";
+import chunk from "lodash/chunk";
+import keyBy from "lodash/keyBy";
 
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
 
@@ -176,7 +176,7 @@ export class CustomerioServerSideTracking {
         users: [u],
       });
 
-    const workspaces = _.keyBy(
+    const workspaces = keyBy(
       await WorkspaceResource.fetchByModelIds(
         userMemberships.map((m) => m.workspaceId)
       ),
@@ -184,7 +184,7 @@ export class CustomerioServerSideTracking {
     );
 
     // Identify all workspace objects.
-    const chunks = _.chunk(userMemberships, 8);
+    const chunks = chunk(userMemberships, 8);
     for (const c of chunks) {
       await Promise.all(
         c.map(async (membership) => {

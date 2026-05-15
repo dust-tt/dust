@@ -11,8 +11,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { estypes } from "@elastic/elasticsearch";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import keyBy from "lodash/keyBy";
 import type { RedisClientType } from "redis";
 
 // Ranking of agents is done over a 30 days period.
@@ -227,7 +226,7 @@ export async function storeCountsInRedis(
   const agentKeys = await redis.hKeys(agentMessageCountKey);
 
   // fill in the missing agent ids, avoiding n^2 complexity
-  const amcByAgentId = _.keyBy(agentMessageCounts, "agentId");
+  const amcByAgentId = keyBy(agentMessageCounts, "agentId");
 
   for (const agentId of agentKeys) {
     if (!amcByAgentId[agentId]) {
