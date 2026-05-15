@@ -482,7 +482,6 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     auth,
     {
       stepContents,
-      latestVersionsOnly: true,
     }
   );
 
