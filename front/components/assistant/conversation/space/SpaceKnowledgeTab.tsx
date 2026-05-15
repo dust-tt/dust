@@ -7,7 +7,6 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { FilePreviewSheet } from "@app/components/spaces/FilePreviewSheet";
 import { useDebounce } from "@app/hooks/useDebounce";
-import config from "@app/lib/api/config";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type {
   ContextAttachmentItem,
@@ -17,6 +16,7 @@ import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
+import config from "@app/lib/api/config";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   useAddProjectContextContentNode,
