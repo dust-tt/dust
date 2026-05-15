@@ -128,6 +128,13 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       // Get the file metadata
       const response = await client.api(endpoint).get();
       const downloadUrl = response["@microsoft.graph.downloadUrl"];
+      if (!response.file) {
+        return new Err(
+          new MCPError(
+            "The specified item is not a file (it may be a folder or other non-file resource)."
+          )
+        );
+      }
       const mimeType = response.file.mimeType;
 
       // Verify it's a Word document
@@ -229,6 +236,13 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       }
 
       const downloadUrl = response["@microsoft.graph.downloadUrl"];
+      if (!response.file) {
+        return new Err(
+          new MCPError(
+            "The specified item is not a file (it may be a folder or other non-file resource)."
+          )
+        );
+      }
       const mimeType = response.file.mimeType;
       const fileName = response.name;
 
