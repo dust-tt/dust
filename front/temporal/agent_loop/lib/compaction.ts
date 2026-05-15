@@ -372,8 +372,6 @@ async function generateCompactionSummary(
     truncateTotalChars: 512000, // Simple heuristic to avoid context overflow with most models.
   });
 
-  // TODO(compaction): Ensure we don't exceeds the model context size here, as we have no guarantee
-  // that the current conversation is not exceeding it already.
   // TODO(compaction): We may want to be more mechanical about files available to the model in
   // conversation and projects by including a list as part of the summary.
   // TODO(compaction: We may want to add retries around the LLM call
