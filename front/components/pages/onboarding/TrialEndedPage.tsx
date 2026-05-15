@@ -2,6 +2,7 @@ import { DontLoseSection } from "@app/components/paywall/DontLoseSection";
 import { TrialPricingCard } from "@app/components/paywall/TrialPricingCard";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import type { BillingPeriod } from "@app/types/plan";
 import { Card, ContentMessage, DustLogo } from "@dust-tt/sparkle";
@@ -11,6 +12,7 @@ import React, { useState } from "react";
 export function TrialEndedPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
+  const isBusiness = isWhitelistedBusinessPlan(workspace);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
 
   const { submit: handleSubscribePlan, isSubmitting } = useSubmitFunction(
@@ -45,6 +47,7 @@ export function TrialEndedPage() {
             onBillingPeriodChange={setBillingPeriod}
             onSubscribe={() => handleSubscribePlan(billingPeriod)}
             isSubmitting={isSubmitting}
+            isBusiness={isBusiness}
           />
         </Card>
       </div>

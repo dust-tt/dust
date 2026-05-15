@@ -1,4 +1,5 @@
 import {
+  BUSINESS_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
   usePriceWithCurrency,
@@ -17,9 +18,10 @@ interface TrialPricingCardProps {
   onBillingPeriodChange: (period: BillingPeriod) => void;
   onSubscribe: () => void;
   isSubmitting: boolean;
+  isBusiness?: boolean;
 }
 
-const FEATURES = [
+const PRO_FEATURES = [
   "Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral...",
   "Custom agents: Build AI with your company knowledge",
   "Data connections: Slack, Notion, Google Drive, GitHub...",
@@ -27,15 +29,28 @@ const FEATURES = [
   "Email support: Get help when you need it",
 ];
 
+const BUSINESS_EXTRA_FEATURES = [
+  "US / EU data hosting",
+  "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)",
+  "Advanced connections (Salesforce, etc)",
+];
+
 export function TrialPricingCard({
   billingPeriod,
   onBillingPeriodChange,
   onSubscribe,
   isSubmitting,
+  isBusiness = false,
 }: TrialPricingCardProps) {
-  const rawPrice =
-    billingPeriod === "monthly" ? PRO_PLAN_COST_MONTHLY : PRO_PLAN_COST_YEARLY;
+  const rawPrice = isBusiness
+    ? BUSINESS_PLAN_COST_MONTHLY
+    : billingPeriod === "monthly"
+      ? PRO_PLAN_COST_MONTHLY
+      : PRO_PLAN_COST_YEARLY;
   const price = usePriceWithCurrency(rawPrice);
+  const features = isBusiness
+    ? [...PRO_FEATURES, ...BUSINESS_EXTRA_FEATURES]
+    : PRO_FEATURES;
 
   return (
     <div className="flex flex-col gap-6">
@@ -52,20 +67,22 @@ export function TrialPricingCard({
           </span>
         </div>
 
-        {/* Billing toggle */}
-        <ButtonsSwitchList
-          defaultValue={billingPeriod}
-          size="xs"
-          onValueChange={(v) => onBillingPeriodChange(v as BillingPeriod)}
-        >
-          <ButtonsSwitch value="monthly" label="Monthly" />
-          <ButtonsSwitch value="yearly" label="Yearly" />
-        </ButtonsSwitchList>
+        {/* Billing toggle: hidden for seat-based business plan (fixed monthly pricing) */}
+        {!isBusiness && (
+          <ButtonsSwitchList
+            defaultValue={billingPeriod}
+            size="xs"
+            onValueChange={(v) => onBillingPeriodChange(v as BillingPeriod)}
+          >
+            <ButtonsSwitch value="monthly" label="Monthly" />
+            <ButtonsSwitch value="yearly" label="Yearly" />
+          </ButtonsSwitchList>
+        )}
       </div>
 
       {/* Features list */}
       <ul className="flex flex-col gap-3">
-        {FEATURES.map((feature, index) => (
+        {features.map((feature, index) => (
           <li key={index} className="flex items-start gap-2">
             <Icon
               visual={CheckIcon}
@@ -83,7 +100,11 @@ export function TrialPricingCard({
       <Button
         variant="highlight"
         size="md"
-        label="Continue with Pro"
+        label={
+          isBusiness
+            ? "Continue with Enterprise (Seat-based)"
+            : "Continue with Pro"
+        }
         onClick={onSubscribe}
         disabled={isSubmitting}
         className="w-full"
