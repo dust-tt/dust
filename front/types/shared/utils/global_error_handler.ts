@@ -12,7 +12,7 @@ type ErrorWithCode = Error & { code?: string };
 let once = false;
 
 export function isTeenyRequestUnableToPipeError(
-  reason: unknown,
+  reason: unknown
 ): reason is ErrorWithCode {
   if (!(reason instanceof Error)) {
     return false;
@@ -38,7 +38,7 @@ export function setupGlobalErrorHandler(logger: LoggerInterface) {
       promise.catch(() => undefined);
       logger.warn(
         { error: reason, panic: false },
-        "Ignoring teeny-request stream pipe rejection",
+        "Ignoring teeny-request stream pipe rejection"
       );
       return;
     }
