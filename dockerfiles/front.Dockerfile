@@ -136,9 +136,25 @@ RUN --mount=type=cache,id=next-cache,target=/app/front/.next/cache \
 # Workers-specific build stage
 FROM base-deps AS workers-build
 
+ARG COMMIT_HASH
+ARG DATADOG_API_KEY
+ARG NEXT_PUBLIC_DATADOG_SERVICE
+
 # Build temporal workers and esbuild workers (workers only)
 RUN FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles
 RUN npm run build:workers
+
+# Upload worker source maps to Datadog for Error Tracking (map files kept in image for --enable-source-maps)
+RUN if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
+  DATADOG_SITE=datadoghq.eu \
+  DATADOG_API_KEY=$DATADOG_API_KEY \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./dist \
+  --minified-path-prefix=/app/front/dist/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=front \
+  --release-version=$COMMIT_HASH \
+  --service=$NEXT_PUBLIC_DATADOG_SERVICE; \
+fi
 
 # Frontend image (Next.js standalone) for front deployment
 FROM node:24.14.0 AS front
@@ -253,4 +269,4 @@ ENV DD_VERSION=${COMMIT_HASH}
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
-CMD ["node", "--require", "dd-trace/init", "dist/start_worker.js"]
+CMD ["node", "--enable-source-maps", "--require", "dd-trace/init", "dist/start_worker.js"]
