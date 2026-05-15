@@ -96,99 +96,109 @@ function formatMicroUsd(amountMicroUsd: number): string {
   return `$${dollars.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-const columns: ColumnDef<RowData, string>[] = [
-  {
-    id: "name" as const,
-    header: "Name",
-    accessorFn: (row) => row.name,
-    cell: (info: Info) => (
-      <DataTable.CellContent
-        avatarUrl={info.row.original.image ?? undefined}
-        roundedAvatar
-      >
-        <div>
-          <div>{info.row.original.name}</div>
-          {info.row.original.email && (
-            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              {info.row.original.email}
-            </div>
-          )}
-        </div>
-      </DataTable.CellContent>
-    ),
-  },
-  {
-    id: "seatType" as const,
-    header: "Seat",
-    accessorFn: (row) => row.seatType ?? "",
-    cell: (info: Info) => {
-      const seatType = info.row.original.seatType;
-      return (
-        <DataTable.CellContent>
-          <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
-            <SeatTypeIcon seatType={seatType} />
-            {seatType ?? "—"}
-          </span>
-        </DataTable.CellContent>
-      );
-    },
-    meta: {
-      className: "w-28",
-    },
-  },
-  {
-    id: "seatUsagePercent" as const,
-    header: "Seat usage",
-    accessorFn: (row) => (row.seatUsagePercent ?? 0).toString(),
-    cell: (info: Info) => {
-      const pct = info.row.original.seatUsagePercent;
-      return (
-        <DataTable.CellContent>
-          {pct !== null ? (
-            <span className="flex items-center gap-1.5 text-sm font-semibold tabular-nums text-muted-foreground dark:text-muted-foreground-night">
-              <CircleProgress percentage={pct} />
-              {`${Math.round(pct)}%`}
-            </span>
-          ) : (
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              —
-            </span>
-          )}
-        </DataTable.CellContent>
-      );
-    },
-    meta: {
-      className: "w-28",
-    },
-    enableSorting: true,
-    sortingFn: (a, b) =>
-      (a.original.seatUsagePercent ?? -1) - (b.original.seatUsagePercent ?? -1),
-  },
-  {
-    id: "consumedMicroUsd" as const,
-    header: "Workspace usage",
-    accessorFn: (row) => row.consumedMicroUsd.toString(),
-    cell: (info: Info) => (
+const nameColumn: ColumnDef<RowData, string> = {
+  id: "name" as const,
+  header: "Name",
+  accessorFn: (row) => row.name,
+  cell: (info: Info) => (
+    <DataTable.CellContent
+      avatarUrl={info.row.original.image ?? undefined}
+      roundedAvatar
+    >
+      <div>
+        <div>{info.row.original.name}</div>
+        {info.row.original.email && (
+          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            {info.row.original.email}
+          </div>
+        )}
+      </div>
+    </DataTable.CellContent>
+  ),
+};
+
+const seatTypeColumn: ColumnDef<RowData, string> = {
+  id: "seatType" as const,
+  header: "Seat",
+  accessorFn: (row) => row.seatType ?? "",
+  cell: (info: Info) => {
+    const seatType = info.row.original.seatType;
+    return (
       <DataTable.CellContent>
-        <span className="text-sm tabular-nums text-muted-foreground dark:text-muted-foreground-night">
-          {formatMicroUsd(info.row.original.consumedMicroUsd)}
+        <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
+          <SeatTypeIcon seatType={seatType} />
+          {seatType ?? "—"}
         </span>
       </DataTable.CellContent>
-    ),
-    meta: {
-      className: "w-36 text-right",
-    },
-    enableSorting: true,
-    sortingFn: (a, b) =>
-      a.original.consumedMicroUsd - b.original.consumedMicroUsd,
+    );
   },
-];
+  meta: {
+    className: "w-28",
+  },
+};
+
+const seatUsagePercentColumn: ColumnDef<RowData, string> = {
+  id: "seatUsagePercent" as const,
+  header: "Seat usage",
+  accessorFn: (row) => (row.seatUsagePercent ?? 0).toString(),
+  cell: (info: Info) => {
+    const pct = info.row.original.seatUsagePercent;
+    return (
+      <DataTable.CellContent>
+        {pct !== null ? (
+          <span className="flex items-center gap-1.5 text-sm font-semibold tabular-nums text-muted-foreground dark:text-muted-foreground-night">
+            <CircleProgress percentage={pct} />
+            {`${Math.round(pct)}%`}
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            —
+          </span>
+        )}
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-28",
+  },
+  enableSorting: true,
+  sortingFn: (a, b) =>
+    (a.original.seatUsagePercent ?? -1) - (b.original.seatUsagePercent ?? -1),
+};
+
+const consumedMicroUsdColumn: ColumnDef<RowData, string> = {
+  id: "consumedMicroUsd" as const,
+  header: "Workspace usage",
+  accessorFn: (row) => row.consumedMicroUsd.toString(),
+  cell: (info: Info) => (
+    <DataTable.CellContent>
+      <span className="text-sm tabular-nums text-muted-foreground dark:text-muted-foreground-night">
+        {formatMicroUsd(info.row.original.consumedMicroUsd)}
+      </span>
+    </DataTable.CellContent>
+  ),
+  meta: {
+    className: "w-36 text-right",
+  },
+  enableSorting: true,
+  sortingFn: (a, b) =>
+    a.original.consumedMicroUsd - b.original.consumedMicroUsd,
+};
+
+function buildColumns(showSeatColumns: boolean): ColumnDef<RowData, string>[] {
+  return [
+    nameColumn,
+    ...(showSeatColumns ? [seatTypeColumn, seatUsagePercentColumn] : []),
+    consumedMicroUsdColumn,
+  ];
+}
 
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   isLoading: boolean;
   searchTerm: string;
   seatTypeFilter: MembershipSeatType | "none" | null;
+  showSeatColumns: boolean;
 }
 
 export function MembersUsageTable({
@@ -196,6 +206,7 @@ export function MembersUsageTable({
   isLoading,
   searchTerm,
   seatTypeFilter,
+  showSeatColumns,
 }: MembersUsageTableProps) {
   if (isLoading) {
     return (
@@ -239,5 +250,5 @@ export function MembersUsageTable({
     consumedMicroUsd: m.consumedMicroUsd,
   }));
 
-  return <DataTable data={rows} columns={columns} />;
+  return <DataTable data={rows} columns={buildColumns(showSeatColumns)} />;
 }
