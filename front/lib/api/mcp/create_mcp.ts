@@ -51,8 +51,10 @@ export async function createMCPAction(
       citationsAllocated: stepContext.citationsCount,
       mcpServerConfigurationId: actionConfiguration.id.toString(),
       status,
+      stepContentId: stepContent.id,
       stepContext,
       toolConfiguration,
+      version: 0,
     }
   );
 }

@@ -418,6 +418,7 @@ export class ConversationFactory {
         citationsAllocated: 0,
         mcpServerConfigurationId: toolConfiguration.sId,
         status: "running",
+        stepContentId: stepContent.id,
         stepContext: {
           citationsCount: 0,
           citationsOffset: 0,
@@ -426,6 +427,7 @@ export class ConversationFactory {
           websearchResultCount: 0,
         },
         toolConfiguration,
+        version: 0,
       }
     );
 
