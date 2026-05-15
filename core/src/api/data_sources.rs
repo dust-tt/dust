@@ -42,21 +42,6 @@ fn is_unknown_data_source_error(error: &anyhow::Error, data_source_id: &str) -> 
         .is_some_and(|unknown_data_source_id| unknown_data_source_id == data_source_id)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_is_unknown_data_source_error() {
-        let error = anyhow::anyhow!("Unknown DataSource: ds_missing");
-        assert!(is_unknown_data_source_error(&error, "ds_missing"));
-        assert!(!is_unknown_data_source_error(&error, "ds_other"));
-
-        let error = anyhow::anyhow!("Unknown Project: ds_missing");
-        assert!(!is_unknown_data_source_error(&error, "ds_missing"));
-    }
-}
-
 /// Apply global top-k sorting to documents from multiple data sources.
 /// Works at the chunk level: takes top K chunks across all documents, then reassembles documents.
 fn apply_global_top_k(

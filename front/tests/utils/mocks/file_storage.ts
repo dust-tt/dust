@@ -74,7 +74,6 @@ class FileStorageMock {
     return {
       file: vi.fn((path: string) => this.createMockGCSFile(path)),
       name: "mock-bucket",
-      getFiles: vi.fn().mockResolvedValue([]),
       getFileContentType: vi
         .fn()
         .mockResolvedValue({ isOk: () => false, isErr: () => true }),

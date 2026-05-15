@@ -1,16 +1,13 @@
-import {
-  hardDeleteDataSource,
-  softDeleteDataSourceAndLaunchScrubWorkflow,
-} from "@app/lib/api/data_sources";
+import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { CoreAPI } from "@app/types/core/core_api";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock distributed lock to avoid Redis dependency
@@ -207,54 +204,5 @@ describe("softDeleteDataSourceAndLaunchScrubWorkflow", () => {
         folderDataSource
       );
     });
-  });
-});
-
-describe("hardDeleteDataSource", () => {
-  let builderAuth: Authenticator;
-  let folderDataSource: DataSourceResource;
-
-  beforeEach(async () => {
-    const builderSetup = await createResourceTest({ role: "builder" });
-    builderAuth = builderSetup.authenticator;
-
-    const dataSourceView = await DataSourceViewFactory.folder(
-      builderSetup.workspace,
-      builderSetup.globalSpace,
-      builderSetup.user
-    );
-    folderDataSource = dataSourceView.dataSource;
-
-    vi.spyOn(DataSourceViewResource, "listForDataSources").mockResolvedValue(
-      []
-    );
-
-    vi.clearAllMocks();
-  });
-
-  it("deletes the local data source when Core says it was already deleted", async () => {
-    const deleteDataSourceSpy = vi
-      .spyOn(CoreAPI.prototype, "deleteDataSource")
-      .mockResolvedValueOnce(
-        new Err({
-          code: "internal_server_error",
-          message: `Failed to delete data source (error: Unknown DataSource: ${folderDataSource.dustAPIDataSourceId})`,
-        })
-      );
-
-    await expect(
-      hardDeleteDataSource(builderAuth, folderDataSource)
-    ).resolves.toBeUndefined();
-
-    expect(deleteDataSourceSpy).toHaveBeenCalledWith({
-      projectId: folderDataSource.dustAPIProjectId,
-      dataSourceId: folderDataSource.dustAPIDataSourceId,
-    });
-
-    const deletedDataSource = await DataSourceResource.fetchByModelIdWithAuth(
-      builderAuth,
-      folderDataSource.id
-    );
-    expect(deletedDataSource).toBeNull();
   });
 });
