@@ -97,6 +97,11 @@ export type ConversationAccessType =
   | "conversation_access_restricted_by_private_by_default_url_restriction";
 
 const shouldByPassPrivateByDefaultUrlRestriction = (auth: Authenticator) => {
+  // Dust super users (poke admins) can always access conversations regardless of participant
+  // restrictions — they need this to debug triggered conversations that have no human participant.
+  if (auth.isDustSuperUser()) {
+    return true;
+  }
   const authMethod = auth.authMethod();
   switch (authMethod) {
     case "api_key":
