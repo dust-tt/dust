@@ -93,9 +93,10 @@ export function useProjectFiles({
   const { fetcher } = useFetcher();
   const projectFilesFetcher: Fetcher<GetSpaceFilesResponseBody> = fetcher;
 
-  const key = disabled ? null : `/api/w/${owner.sId}/spaces/${spaceId}/files`;
-
-  const { data, error, mutate } = useSWRWithDefaults(key, projectFilesFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/spaces/${spaceId}/files`,
+    projectFilesFetcher
+  );
 
   return {
     files: data?.files ?? emptyArray<GCSMountEntry>(),
