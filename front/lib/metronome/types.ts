@@ -107,8 +107,13 @@ export function isMetronomeFreeCredit(entry: MetronomeBalance): boolean {
 // Programmatic Usage Credits is a custom Metronome credit type (1 PUC = 1 USD).
 // `amount` and `balance` fields on commits/credits of this type are denominated in PUC.
 export const METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD = 1_000_000;
-// User credits are priced at $0.01 per unit.
-export const METRONOME_USER_CREDIT_TO_MICRO_USD = 10_000;
+export const MICRO_USD_PER_DOLLAR = 1_000_000;
+// Minimum one-time credit purchase amount ($1)
+export const MIN_CREDIT_PURCHASE_AMOUNT_MICRO_USD = MICRO_USD_PER_DOLLAR;
+// Hard cap used by purchase UIs
+export const MAX_CREDIT_PURCHASE_AMOUNT_MICRO_USD = 1_000_000_000;
+export const AWU_TO_MICRO_USD = 10_000;
+export const AWU_CREDITS_PER_DOLLAR = MICRO_USD_PER_DOLLAR / AWU_TO_MICRO_USD;
 
 export interface MetronomeUsageListResponse {
   billableMetricId: string;

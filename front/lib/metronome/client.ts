@@ -936,7 +936,7 @@ interface SubscriptionSeatsHistoryResponse {
   data: Array<{
     starting_at: string;
     ending_before?: string | null;
-    seat_ids: string[];
+    assigned_seat_ids: string[];
     unassigned_seats?: number;
   }>;
 }
@@ -968,7 +968,7 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
           },
         }
       );
-    return new Ok(response.data[0]?.seat_ids ?? []);
+    return new Ok(response.data[0]?.assigned_seat_ids ?? []);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(

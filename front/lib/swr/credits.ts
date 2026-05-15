@@ -212,19 +212,20 @@ export function useAwuPoolSummary({
   const { fetcher } = useFetcher();
   const awuFetcher: Fetcher<AwuPoolSummaryResponseBody> = fetcher;
 
-  const { data, error, isValidating } = useSWRWithDefaults(
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/credits/awu-pool-summary`,
     awuFetcher,
     { disabled }
   );
 
   return {
-    totalAmountMicroUsd: data?.totalAmountMicroUsd ?? 0,
-    consumedByUsersMicroUsd: data?.consumedByUsersMicroUsd ?? 0,
-    consumedByProgrammaticMicroUsd: data?.consumedByProgrammaticMicroUsd ?? 0,
+    totalCredits: data?.totalCredits ?? 0,
+    consumedByUsersCredits: data?.consumedByUsersCredits ?? 0,
+    consumedByProgrammaticCredits: data?.consumedByProgrammaticCredits ?? 0,
     resetDate: data?.resetDate ?? "",
     isAwuPoolSummaryLoading: !error && !data && !disabled,
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
+    mutateAwuPoolSummary: mutate,
   };
 }
