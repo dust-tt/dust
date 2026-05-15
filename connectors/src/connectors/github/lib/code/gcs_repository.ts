@@ -9,8 +9,7 @@ import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
 import type { Bucket, File } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import { chunk } from "lodash";
+import chunk from "lodash/chunk";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 

@@ -2,8 +2,7 @@ import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { distributedLock, distributedUnlock } from "@connectors/lib/lock";
 import logger from "@connectors/logger/logger";
 import { redisClient } from "@connectors/types/shared/redis_client";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import difference from "lodash/difference";
 
 export type RateLimit = {
   limit: number;
@@ -126,7 +125,7 @@ export async function throttle({
     });
 
     // Remove the expired timestamps entries using batch operation.
-    const diff = _.difference(rawTimestamps, timestamps);
+    const diff = difference(rawTimestamps, timestamps);
     await removeTimestampsBatch(diff);
 
     // Check if the list of timestamps is less than the rate limit.

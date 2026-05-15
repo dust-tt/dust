@@ -36,9 +36,7 @@ import {
 } from "@connectors/types";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
-
+import last from "lodash/last";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getOrphanedCount, hasChildren } from "./lib/parents";
 
@@ -49,7 +47,7 @@ export function nodeIdFromNotionId(notionId: string) {
 }
 
 function notionIdFromNodeId(nodeId: string) {
-  return _.last(nodeId.split("notion-"))!;
+  return last(nodeId.split("notion-"))!;
 }
 
 export async function workspaceIdFromConnectionId(connectionId: string) {
