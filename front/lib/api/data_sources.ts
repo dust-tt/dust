@@ -76,6 +76,21 @@ import assert from "assert";
 import type { Transaction } from "sequelize";
 import { ConversationResource } from "../resources/conversation_resource";
 
+const CORE_UNKNOWN_DATA_SOURCE_DELETE_ERROR_PREFIX =
+  "Failed to delete data source (error: Unknown DataSource: ";
+
+function isCoreDataSourceNotFoundError(
+  error: CoreAPIError,
+  dataSourceId: string
+): boolean {
+  return (
+    error.code === "data_source_not_found" ||
+    (error.code === "internal_server_error" &&
+      error.message ===
+        `${CORE_UNKNOWN_DATA_SOURCE_DELETE_ERROR_PREFIX}${dataSourceId})`)
+  );
+}
+
 /**
  * Registers or updates the Slack webhook router entry for a Slack connection.
  * This stores the signing secret in the webhook router, keyed by the Slack team ID.
@@ -341,7 +356,12 @@ export async function hardDeleteDataSource(
   if (coreDeleteRes.isErr()) {
     // Same as above we proceed with the deletion if the data source is not found in core. Otherwise
     // we throw as this is unexpected.
-    if (coreDeleteRes.error.code !== "data_source_not_found") {
+    if (
+      !isCoreDataSourceNotFoundError(
+        coreDeleteRes.error,
+        dataSource.dustAPIDataSourceId
+      )
+    ) {
       throw new Error(
         "Unexpected error deleting data source: " + coreDeleteRes.error.message
       );

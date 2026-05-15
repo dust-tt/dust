@@ -27,10 +27,19 @@ use crate::{
     utils::{self, error_response, APIResponse},
 };
 
+const UNKNOWN_DATA_SOURCE_ERROR_PREFIX: &str = "Unknown DataSource: ";
+
 struct ChunkWithDocument {
     document_id: String,
     timestamp: u64,
     chunk: Chunk,
+}
+
+fn is_unknown_data_source_error(error: &anyhow::Error, data_source_id: &str) -> bool {
+    error
+        .to_string()
+        .strip_prefix(UNKNOWN_DATA_SOURCE_ERROR_PREFIX)
+        .is_some_and(|unknown_data_source_id| unknown_data_source_id == data_source_id)
 }
 
 /// Apply global top-k sorting to documents from multiple data sources.
@@ -1642,6 +1651,12 @@ pub async fn data_sources_delete(
                 )
                 .await
             {
+                Err(e) if is_unknown_data_source_error(&e, &data_source_id) => error_response(
+                    StatusCode::NOT_FOUND,
+                    "data_source_not_found",
+                    &format!("No data source found for id `{}`", data_source_id),
+                    None,
+                ),
                 Err(e) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "internal_server_error",
