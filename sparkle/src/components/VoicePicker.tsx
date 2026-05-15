@@ -147,7 +147,10 @@ export function VoicePicker({
     }
 
     stopEvent(event);
-    await onRecordStop();
+
+    if (status === "recording") {
+      await onRecordStop();
+    }
   }
 
   async function handleClick(
