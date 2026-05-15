@@ -186,13 +186,16 @@ function buildMountFilePreviewHref({
     const rel = filePath.slice("conversation/".length);
     return `${apiBaseUrl}/api/w/${ownerId}/assistant/conversations/${conversationId}/files/${rel}`;
   }
+
   if (filePath.startsWith("project/")) {
     if (!spaceId) {
       return undefined;
     }
+
     const rel = filePath.slice("project/".length);
     return `${apiBaseUrl}/api/w/${ownerId}/spaces/${spaceId}/files/${rel}`;
   }
+
   return undefined;
 }
 
