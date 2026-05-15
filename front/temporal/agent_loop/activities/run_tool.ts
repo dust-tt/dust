@@ -68,27 +68,6 @@ function extractDataSourceIds(
   return result;
 }
 
-function mergeAbortSignals(...signals: AbortSignal[]): AbortSignal {
-  const controller = new AbortController();
-
-  for (const signal of signals) {
-    if (signal.aborted) {
-      controller.abort(signal.reason);
-      return controller.signal;
-    }
-
-    signal.addEventListener(
-      "abort",
-      () => {
-        controller.abort(signal.reason);
-      },
-      { once: true }
-    );
-  }
-
-  return controller.signal;
-}
-
 export async function runToolActivity(
   authType: AuthenticatorType,
   {
@@ -214,10 +193,10 @@ async function executeToolStreaming(
     step: number;
   }
 ): Promise<ToolExecutionResult> {
-  const abortSignal = mergeAbortSignals(
+  const abortSignal = AbortSignal.any([
     Context.current().cancellationSignal,
-    getShutdownSignal()
-  );
+    getShutdownSignal(),
+  ]);
 
   const eventStream = runToolWithStreaming(
     auth,
