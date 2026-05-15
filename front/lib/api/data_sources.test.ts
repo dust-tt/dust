@@ -62,12 +62,6 @@ vi.mock("@app/poke/temporal/client", () => ({
   launchScrubDataSourceWorkflow: vi.fn(),
 }));
 
-vi.mock("@app/lib/file_storage", () => ({
-  getDustDataSourcesBucket: vi.fn(() => ({
-    getFiles: vi.fn(async () => []),
-  })),
-}));
-
 describe("softDeleteDataSourceAndLaunchScrubWorkflow", () => {
   let builderAuth: Authenticator;
   let userAuth: Authenticator;
