@@ -26,6 +26,28 @@ vi.mock("@dust-tt/sparkle", () => ({
   Spinner: () => <div role="status" />,
 }));
 
+function renderValidationPage() {
+  render(
+    <RegionProvider>
+      <ValidationPage />
+    </RegionProvider>
+  );
+}
+
+async function getValidationForm() {
+  const form = await waitFor(() => {
+    const renderedForm = document.querySelector("form");
+    expect(renderedForm).not.toBeNull();
+    return renderedForm;
+  });
+
+  if (!form) {
+    throw new Error("Expected validation form");
+  }
+
+  return form;
+}
+
 describe("ValidationPage", () => {
   let submitSpy: MockInstance;
 
@@ -47,21 +69,9 @@ describe("ValidationPage", () => {
   });
 
   it("posts email validation to the region URL from query params", async () => {
-    render(
-      <RegionProvider>
-        <ValidationPage />
-      </RegionProvider>
-    );
+    renderValidationPage();
 
-    const form = await waitFor(() => {
-      const renderedForm = document.querySelector("form");
-      expect(renderedForm).not.toBeNull();
-      return renderedForm;
-    });
-
-    if (!form) {
-      throw new Error("Expected validation form");
-    }
+    const form = await getValidationForm();
 
     expect(form.getAttribute("action")).toBe(
       "https://eu.dust.tt/api/email/validate-action"
@@ -76,5 +86,23 @@ describe("ValidationPage", () => {
       throw new Error("Expected validation token input");
     }
     expect(tokenInput.value).toBe("approval-token");
+  });
+
+  it("does not post email validation to an untrusted region URL", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/email/validation?token=approval-token&region=europe-west1&regionUrl=https%3A%2F%2Fattacker.example"
+    );
+
+    renderValidationPage();
+
+    const form = await getValidationForm();
+
+    expect(form.getAttribute("action")).toBe(
+      "http://fake-url/api/email/validate-action"
+    );
+    expect(submitSpy).toHaveBeenCalledOnce();
+    expect(window.location.search).toBe("?token=approval-token");
   });
 });

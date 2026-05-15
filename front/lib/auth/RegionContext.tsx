@@ -1,6 +1,7 @@
 import { setBaseUrlResolver } from "@app/lib/api/config";
 import type { RegionInfo, RegionType } from "@app/lib/api/regions/config";
 import { isRegionType } from "@app/lib/api/regions/config";
+import { isString } from "@app/types/shared/utils/general";
 import {
   createContext,
   useCallback,
@@ -25,11 +26,77 @@ const DEFAULT_REGION_INFO: RegionInfo = {
   url: DEFAULT_URL,
 };
 
+const TRUSTED_REGION_HOSTS: Record<RegionType, string[]> = {
+  "europe-west1": ["eu.dust.tt", "eu.front-edge.dust.tt"],
+  "us-central1": ["dust.tt", "front-edge.dust.tt"],
+};
+
+const LOCALHOST_NAMES = ["localhost", "127.0.0.1", "[::1]"];
+
+function getTrustedRegionUrl(
+  region: RegionType,
+  regionUrl: string
+): string | null {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(regionUrl);
+  } catch {
+    return null;
+  }
+
+  if (LOCALHOST_NAMES.includes(parsedUrl.hostname)) {
+    return parsedUrl.origin;
+  }
+
+  if (parsedUrl.protocol !== "https:") {
+    return null;
+  }
+
+  if (parsedUrl.port !== "") {
+    return null;
+  }
+
+  if (!TRUSTED_REGION_HOSTS[region].includes(parsedUrl.hostname)) {
+    return null;
+  }
+
+  return parsedUrl.origin;
+}
+
+function isRegionInfoInput(
+  regionInfo: unknown
+): regionInfo is { name: string; url: string } {
+  return (
+    typeof regionInfo === "object" &&
+    regionInfo !== null &&
+    "name" in regionInfo &&
+    "url" in regionInfo &&
+    isString(regionInfo.name) &&
+    isString(regionInfo.url)
+  );
+}
+
+function getValidRegionInfo(regionInfo: unknown): RegionInfo | null {
+  if (!isRegionInfoInput(regionInfo) || !isRegionType(regionInfo.name)) {
+    return null;
+  }
+
+  const trustedRegionUrl = getTrustedRegionUrl(regionInfo.name, regionInfo.url);
+  if (!trustedRegionUrl) {
+    return null;
+  }
+
+  return { name: regionInfo.name, url: trustedRegionUrl };
+}
+
 function getStoredRegionInfo(): RegionInfo | null {
   const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) {
+    return null;
+  }
 
   try {
-    return stored && JSON.parse(stored);
+    return getValidRegionInfo(JSON.parse(stored));
   } catch {
     // Invalid JSON, return null.
     return null;
@@ -69,8 +136,11 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
     const regionUrl = params.get("regionUrl");
 
     if (region && regionUrl && isRegionType(region)) {
-      regionInfo = { name: region, url: regionUrl };
-      setStoredRegionInfo(regionInfo);
+      const trustedRegionUrl = getTrustedRegionUrl(region, regionUrl);
+      if (trustedRegionUrl) {
+        regionInfo = { name: region, url: trustedRegionUrl };
+        setStoredRegionInfo(regionInfo);
+      }
 
       // Clean region params from URL.
       params.delete("region");
