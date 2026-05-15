@@ -1,6 +1,5 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
-  compactConversation,
   editUserMessage,
   isConversationEventAllowedForAuth,
   postNewContentFragment,
@@ -9,6 +8,7 @@ import {
   softDeleteAgentMessage,
   softDeleteUserMessageAndReplies,
 } from "@app/lib/api/assistant/conversation";
+import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   getConversation,

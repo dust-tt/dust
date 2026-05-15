@@ -1,6 +1,6 @@
 import type { LLMConfig } from "@app/lib/api/assistant/call_llm";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation";
+import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation/compaction";
 import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";

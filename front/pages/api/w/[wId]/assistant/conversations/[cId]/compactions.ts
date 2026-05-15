@@ -57,7 +57,7 @@
  *       400:
  *         description: Invalid request body
  */
-import { compactConversation } from "@app/lib/api/assistant/conversation";
+import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
