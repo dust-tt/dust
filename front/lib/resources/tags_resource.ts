@@ -12,8 +12,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagKind, TagTypeWithUsage } from "@app/types/tag";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import groupBy from "lodash/groupBy";
+import keyBy from "lodash/keyBy";
+import mapValues from "lodash/mapValues";
 import type {
   Attributes,
   CreationAttributes,
@@ -209,8 +210,8 @@ export class TagResource extends BaseResource<TagModel> {
       },
     });
 
-    const tagsMap = _.keyBy(tags, "id");
-    return _.mapValues(_.groupBy(tagAgents, "agentConfigurationId"), (group) =>
+    const tagsMap = keyBy(tags, "id");
+    return mapValues(groupBy(tagAgents, "agentConfigurationId"), (group) =>
       group.map((tagAgent) => tagsMap[tagAgent.tagId])
     );
   }

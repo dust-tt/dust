@@ -1,5 +1,6 @@
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import capitalize from "lodash/capitalize";
+import chain from "lodash/chain";
+import words from "lodash/words";
 
 export const FILE_ID_PATTERN = "fil_[A-Za-z0-9]{10,}";
 export const FILE_ID_REGEX = new RegExp(`\\b${FILE_ID_PATTERN}\\b`, "g");
@@ -27,13 +28,13 @@ export function formatFilenameForDisplay(filename: string): string {
   const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
 
   // Split on camelCase, underscores, and hyphens, then join with spaces.
-  const words = _.chain(nameWithoutExt)
+  const wordsChain = chain(nameWithoutExt)
     .split(/[_-]/) // Split on underscores and hyphens.
-    .flatMap((word) => _.words(word)) // Split camelCase words.
+    .flatMap((word) => words(word)) // Split camelCase words.
     .compact() // Remove empty strings.
-    .map((word) => _.capitalize(word)) // Capitalize each word.
+    .map((word) => capitalize(word)) // Capitalize each word.
     .join(" ")
     .value();
 
-  return words;
+  return wordsChain;
 }

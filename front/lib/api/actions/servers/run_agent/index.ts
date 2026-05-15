@@ -70,8 +70,7 @@ import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import maxBy from "lodash/maxBy";
 import type z from "zod";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
@@ -906,7 +905,7 @@ function getLatestVersionByParentMessageId(
   });
 
   return messageIndex !== -1
-    ? _.maxBy(
+    ? maxBy(
         conversation.content[messageIndex] as AgentMessagePublicType[],
         (m) => m.version
       )

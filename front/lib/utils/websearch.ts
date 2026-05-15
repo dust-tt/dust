@@ -6,8 +6,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import FirecrawlApp from "@mendable/firecrawl-js";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import isNil from "lodash/isNil";
+import omitBy from "lodash/omitBy";
 
 const credentials = dustManagedServiceCredentials();
 
@@ -66,7 +66,7 @@ const serpapiSearch = async (
   }
 
   const urlParams = new URLSearchParams(
-    _.omitBy(
+    omitBy(
       {
         q: query,
         start: page
@@ -75,7 +75,7 @@ const serpapiSearch = async (
         num: options.num ?? serpapiDefaultOptions.num,
         ...options,
       },
-      _.isNil
+      isNil
     ) as Record<string, any>
   );
 
