@@ -9,9 +9,10 @@ import { validate } from "../../../middleware/validator";
 
 const MEMBERS_LOOKUP_MAX_IDS = 50;
 
-// Hono's "query" validator returns string for a single occurrence and string[]
-// for repeated keys (?ids=1 vs. ?ids=1&ids=2), mirroring the legacy
-// NextApiRequest behavior. The union accepts both shapes.
+// @hono/zod-validator's "query" target calls c.req.queries() (plural) under
+// the hood and collapses single-value keys to scalar / preserves repeated
+// keys as arrays. Same shape as legacy NextApiRequest.query: ?ids=1 → "1",
+// ?ids=1&ids=2 → ["1", "2"]. The union accepts both branches.
 const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
