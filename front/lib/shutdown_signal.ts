@@ -5,16 +5,32 @@
  * - The prestop hook (which signals shutdown)
  * - The readiness probe (which should fail when shutting down)
  * - Connection draining (which needs the pod to stay alive)
+ * - Worker shutdown handlers
  */
 
 let isShuttingDown = false;
+const shutdownController = new AbortController();
+let shutdownAbortTimeout: NodeJS.Timeout | undefined;
 
 /**
  * Marks the pod as shutting down.
- * This should be called by the prestop hook to signal that the pod is terminating.
  */
 export function markShuttingDown(): void {
   isShuttingDown = true;
+  abortShutdownSignal();
+}
+
+/**
+ * Marks the pod as shutting down, but lets active work use most of the grace period.
+ */
+export function markShuttingDownWithDelayedAbort(abortDelayMs: number): void {
+  isShuttingDown = true;
+
+  if (shutdownController.signal.aborted || shutdownAbortTimeout) {
+    return;
+  }
+
+  shutdownAbortTimeout = setTimeout(abortShutdownSignal, abortDelayMs);
 }
 
 /**
@@ -23,4 +39,21 @@ export function markShuttingDown(): void {
  */
 export function isInShutdown(): boolean {
   return isShuttingDown;
+}
+
+export function getShutdownSignal(): AbortSignal {
+  return shutdownController.signal;
+}
+
+function abortShutdownSignal(): void {
+  if (shutdownAbortTimeout) {
+    clearTimeout(shutdownAbortTimeout);
+    shutdownAbortTimeout = undefined;
+  }
+
+  if (shutdownController.signal.aborted) {
+    return;
+  }
+
+  shutdownController.abort();
 }
