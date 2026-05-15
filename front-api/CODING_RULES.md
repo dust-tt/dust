@@ -142,35 +142,9 @@ Next handlers produce via `apiError`. For dynamic status codes carried in
 `jsonApiError(c, err)` helper — it centralizes the
 `number → ContentfulStatusCode` cast in one place with a comment.
 
-## TESTING
-
-### [API8] Tests invoke routes via `honoApp.request()`
-
-Tests use the same factories and `getSession` mock as Next tests
-(`createPrivateApiMockRequest`, `SpaceFactory`, etc.). Only the dispatch
-changes — instead of calling a Next handler with mocked `req`/`res`, hit
-the Hono app:
-
-```ts
-import { honoApp } from "@dust-tt/front-api/app";
-
-const response = await honoApp.request(
-  `/api/w/${workspace.sId}/spaces/${space.sId}/mcp/available`
-);
-expect(response.status).toBe(200);
-const body = await response.json();
-```
-
-The auth mock applies because `workspaceAuth` reaches through to
-`getSession`, which is what `createPrivateApiMockRequest` mocks.
-
-Test files currently live in `front/` (next to their Next counterparts)
-because vitest is configured in `front/` only. They reference `front-api`
-via the workspace dep (`@dust-tt/front-api/app`).
-
 ## DEPENDENCIES
 
-### [API9] Avoid Next types in front-api code
+### [API8] Avoid Next types in front-api code
 
 `NextApiRequest` / `NextApiResponse` should not appear in new code. New
 middleware reads what it needs from Hono's `Context` directly

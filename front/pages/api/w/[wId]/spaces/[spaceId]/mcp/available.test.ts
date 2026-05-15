@@ -10,22 +10,23 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { honoApp } from "@dust-tt/front-api/app";
 import { describe, expect, it } from "vitest";
+
+import handler from "./available";
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
   it("returns available servers for regular user", async () => {
-    // Sets up workspace, user, membership, and mocks getSession to return that
-    // user's session. We don't use the returned req/res — the request goes
-    // through the Hono app below.
-    const { workspace, globalGroup } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "user",
-    });
-
+    // Create mock request
+    const { req, res, workspace, globalGroup } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+    // Create workspace and space
     const space = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(space, globalGroup);
 
+    // Get auth
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     // Mock the INTERNAL_MCP_SERVERS to override the "primitive_types_debugger" server config
@@ -49,6 +50,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
       configurable: true,
     });
 
+    // Create some servers
     await FeatureFlagFactory.basic(auth, "dev_mcp_actions");
 
     // Internal server in the right workspace
@@ -70,14 +72,20 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     await SpaceFactory.system(workspace2);
     await RemoteMCPServerFactory.create(workspace2);
 
-    const response = await honoApp.request(
-      `/api/w/${workspace.sId}/spaces/${space.sId}/mcp/available`
-    );
+    // Add query params
+    req.query = {
+      ...req.query,
+      spaceId: space.sId,
+    };
 
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.success).toBe(true);
-    expect(body.servers).toHaveLength(1); // Only one available server — the other is assigned to the system space
-    expect(body.servers[0].sId).toBe(internalServer.id);
+    // Call handler
+    await handler(req, res);
+
+    // Check response
+    expect(res._getStatusCode()).toBe(200);
+    const response = res._getJSONData();
+    expect(response.success).toBe(true);
+    expect(response.servers).toHaveLength(1); // Only one available server as the other is assigned to the system space
+    expect(response.servers[0].sId).toBe(internalServer.id);
   });
 });
