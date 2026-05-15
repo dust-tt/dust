@@ -170,9 +170,7 @@ async function createAgentMessage(
   const action = await AgentMCPActionModel.create({
     workspaceId: workspace.id,
     agentMessageId: agentMessage.id,
-    stepContentId: stepContent.id,
     mcpServerConfigurationId: generateRandomModelSId(),
-    version: 0,
     status: "succeeded",
     citationsAllocated: 0,
     augmentedInputs: {},
