@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 
 import { publicApiAuth } from "../../../middleware/public_api_auth";
-import { publicFeatureFlagsApp } from "./feature-flags";
+import { publicFeatureFlagsApp } from "./feature_flags";
 import { publicSpacesApp } from "./spaces";
 
 // Mounted at /api/v1/w/:wId. Every route below inherits publicApiAuth, which

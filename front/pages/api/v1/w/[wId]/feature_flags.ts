@@ -1,5 +1,5 @@
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/v1/w/feature-flags.ts
+// @migration-target: front-api/routes/v1/w/feature_flags.ts
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
