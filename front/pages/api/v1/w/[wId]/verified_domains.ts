@@ -1,3 +1,6 @@
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/v1/w/verified-domains.ts
+
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
