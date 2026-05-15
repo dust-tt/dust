@@ -13,7 +13,8 @@ import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ProjectType, SpaceType } from "@app/types/space";
 
-import { validate } from "../../middleware/validator";
+import { validate } from "../../../middleware/validator";
+import { mcpApp } from "./mcp";
 
 const PostSpaceRequestBodySchema = z.intersection(
   z.object({
@@ -175,3 +176,8 @@ spacesApp.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
   const responseBody: PostSpacesResponseBody = { space: space.toJSON() };
   return c.json(responseBody, 201);
 });
+
+// Per-space sub-resource sub-apps. New families of routes under a specific
+// space (data source views, members, etc.) live in their own sibling files
+// and are mounted here.
+spacesApp.route("/:spaceId/mcp", mcpApp);

@@ -24,6 +24,7 @@ const HONO_ROUTES: HonoRoute[] = [
   { pattern: "/api/app-status", methods: ["GET"] },
   { pattern: "/api/kill", methods: ["GET"] },
   { pattern: "/api/w/:wId/spaces", methods: ["GET", "POST"] },
+  { pattern: "/api/w/:wId/spaces/:spaceId/mcp/available", methods: ["GET"] },
   { pattern: "/api/v1/w/:wId/spaces", methods: ["GET"] },
 ];
 
