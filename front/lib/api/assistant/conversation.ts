@@ -7,10 +7,13 @@ import {
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import {
+  getConversationRankVersionLock,
+  getNextConversationMessageRank,
+} from "@app/lib/api/assistant/conversation/lock";
 import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
 import {
   createAgentMessages,
-  createCompactionMessage,
   createUserMessage,
 } from "@app/lib/api/assistant/conversation/messages";
 import {
@@ -67,7 +70,6 @@ import {
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
-  CompactionMessageModel,
   ConversationModel,
   MentionModel,
   MessageModel,
@@ -82,9 +84,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -99,10 +99,7 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger, { auditLog } from "@app/logger/logger";
-import {
-  launchAgentLoopWorkflow,
-  launchCompactionWorkflow,
-} from "@app/temporal/agent_loop/client";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -113,7 +110,6 @@ import type {
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
   AgenticMessageData,
   AgentMessageStatus,
@@ -144,7 +140,6 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
-import type { SupportedModel } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -154,13 +149,11 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import type { IncomingHttpHeaders } from "http";
 import uniq from "lodash/uniq";
-import type { Transaction } from "sequelize";
 import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
@@ -446,64 +439,6 @@ export async function getLastUserMessageMentions(
 /**
  * Conversation API
  */
-
-/**
- * To avoid deadlocks when using Postgresql advisory locks, please make sure to not issue any other
- * SQL query outside of the transaction `t` that is holding the lock.
- * Otherwise, the other query will be competing for a connection in the database connection pool,
- * resulting in a potential deadlock when the pool is fully occupied.
- */
-async function getConversationRankVersionLock(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  t: Transaction
-) {
-  const now = new Date();
-  // Get a lock using the unique lock key (number withing postgresql BigInt range).
-  const hash = md5(`conversation_message_rank_version_${conversation.id}`);
-  const lockKey = parseInt(hash, 16) % 9999999999;
-  // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
-  await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
-    transaction: t,
-    replacements: { key: lockKey },
-  });
-
-  logger.info(
-    {
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      conversationId: conversation.sId,
-      duration: new Date().getTime() - now.getTime(),
-      lockKey,
-    },
-    "[ASSISTANT_TRACE] Advisory lock acquired"
-  );
-}
-
-async function getNextConversationMessageRank(
-  auth: Authenticator,
-  {
-    conversation,
-    transaction,
-  }: {
-    conversation: ConversationWithoutContentType;
-    transaction: Transaction;
-  }
-): Promise<number> {
-  const owner = auth.getNonNullableWorkspace();
-
-  return (
-    ((await MessageModel.max<number | null, MessageModel>("rank", {
-      where: {
-        workspaceId: owner.id,
-        conversationId: conversation.id,
-        branchId: conversation.branchId
-          ? getResourceIdFromSId(conversation.branchId)
-          : null,
-      },
-      transaction,
-    })) ?? -1) + 1
-  );
-}
 
 export function isUserMessageContextValid(
   auth: Authenticator,
@@ -2782,223 +2717,6 @@ export async function isConversationEventAllowedForAuth(
     default:
       assertNever(type);
   }
-}
-
-/**
- * Create a CompactionMessage in the conversation and launch the compaction workflow.
- *
- * The CompactionMessage is created with status "created" inside the conversation advisory lock,
- * ensuring it's serialized with other conversation operations. The workflow is launched
- * fire-and-forget after the transaction commits.
- */
-export async function compactConversation(
-  auth: Authenticator,
-  {
-    conversation,
-    model,
-    sourceConversation,
-  }: {
-    conversation: ConversationType;
-    model: SupportedModel;
-    sourceConversation?: CompactionSourceConversation;
-  }
-): Promise<
-  Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
-> {
-  const owner = auth.getNonNullableWorkspace();
-
-  // Block compaction while an agent message is running or a compaction is running.
-  const runningAgentMessage = conversation.content
-    .flat()
-    .find(
-      (m): m is AgentMessageType =>
-        isAgentMessageType(m) && m.status === "created"
-    );
-  const runningCompaction = conversation.content
-    .flat()
-    .find(
-      (m): m is CompactionMessageType =>
-        isCompactionMessageType(m) && m.status === "created"
-    );
-  const lastMessage = conversation.content.at(-1)?.at(-1);
-
-  if (runningAgentMessage) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Answer the pending agent message first.",
-      },
-    });
-  }
-
-  if (runningCompaction) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message: "A compaction is already in progress. Please wait.",
-      },
-    });
-  }
-
-  if (lastMessage && isCompactionMessageType(lastMessage)) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "This conversation was just compacted. Send a new message before compacting again.",
-      },
-    });
-  }
-
-  const { compactionMessage } = await withTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
-
-    // Re-check the existence of a compaction message or running agent message inside the critical
-    // section of the advisory lock to avoid stacking compaction with other compaction or running
-    // agent loop.
-    const [runningCompactionMessage, runningAgentMessage] = await Promise.all([
-      MessageModel.findOne({
-        where: {
-          conversationId: conversation.id,
-          workspaceId: owner.id,
-        },
-        include: [
-          {
-            model: CompactionMessageModel,
-            as: "compactionMessage",
-            required: true,
-            where: { status: "created" },
-          },
-        ],
-        transaction: t,
-      }),
-      MessageModel.findOne({
-        where: {
-          conversationId: conversation.id,
-          workspaceId: owner.id,
-        },
-        include: [
-          {
-            model: AgentMessageModel,
-            as: "agentMessage",
-            required: true,
-            where: { status: "created" },
-          },
-        ],
-        transaction: t,
-      }),
-    ]);
-
-    if (runningCompactionMessage || runningAgentMessage) {
-      return { compactionMessage: null };
-    }
-
-    const nextMessageRank = await getNextConversationMessageRank(auth, {
-      conversation,
-      transaction: t,
-    });
-
-    const compactionMessage = await createCompactionMessage(auth, {
-      conversation,
-      rank: nextMessageRank,
-      sourceConversationId:
-        sourceConversation?.conversationId &&
-        sourceConversation.conversationId !== conversation.sId
-          ? sourceConversation.conversationId
-          : undefined,
-      transaction: t,
-    });
-
-    return { compactionMessage };
-  });
-
-  if (!compactionMessage) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Cannot compact while another compaction or an agent message is running.",
-      },
-    });
-  }
-
-  await publishConversationEvent(
-    {
-      type: "compaction_message_new",
-      created: Date.now(),
-      messageId: compactionMessage.sId,
-      message: compactionMessage,
-    },
-    { conversationId: conversation.sId }
-  );
-
-  void launchCompactionWorkflow({
-    auth,
-    conversationId: conversation.sId,
-    compactionMessageId: compactionMessage.sId,
-    compactionMessageVersion: compactionMessage.version,
-    model,
-    sourceConversation,
-  });
-
-  return new Ok({ compactionMessage });
-}
-
-export async function updateCompactionMessageWithContentAndFinalStatus(
-  auth: Authenticator,
-  {
-    conversation,
-    compactionMessage,
-    clearEnabledSkillsOnSuccess,
-    status,
-    content,
-  }: {
-    conversation: ConversationWithoutContentType;
-    compactionMessage: CompactionMessageType;
-    clearEnabledSkillsOnSuccess: boolean;
-    status: "succeeded" | "failed";
-    content: string | null;
-  }
-): Promise<{
-  completedTs: number;
-  status: "succeeded" | "failed";
-}> {
-  const completedAt = new Date();
-  const owner = auth.getNonNullableWorkspace();
-
-  await withTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
-
-    await CompactionMessageModel.update(
-      { status, content },
-      {
-        where: {
-          id: compactionMessage.compactionMessageId,
-          workspaceId: owner.id,
-        },
-        transaction: t,
-      }
-    );
-
-    if (status === "succeeded" && clearEnabledSkillsOnSuccess) {
-      await SkillResource.clearAllEnabledByConversation(
-        auth,
-        {
-          conversation,
-        },
-        { transaction: t }
-      );
-    }
-  });
-
-  return {
-    completedTs: completedAt.getTime(),
-    status,
-  };
 }
 
 /**

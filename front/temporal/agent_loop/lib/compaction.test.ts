@@ -1,5 +1,5 @@
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { compactConversation } from "@app/lib/api/assistant/conversation";
+import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { createGCSMountFile } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
