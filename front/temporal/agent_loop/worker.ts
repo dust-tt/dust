@@ -3,7 +3,6 @@ import {
   resource,
 } from "@app/lib/api/instrumentation/init";
 import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporter";
-import { markShuttingDown } from "@app/lib/shutdown_signal";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
@@ -107,10 +106,7 @@ export async function runAgentLoopWorker() {
   });
 
   // TODO(2025-11-12 INSTRUMENTATION): Drain Langfuse data before shutdown.
-  process.on("SIGTERM", () => {
-    markShuttingDown();
-    void worker.shutdown();
-  });
+  process.on("SIGTERM", () => worker.shutdown());
 
   try {
     await worker.run(); // this resolves after shutdown completes
