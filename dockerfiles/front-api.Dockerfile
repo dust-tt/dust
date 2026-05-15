@@ -102,6 +102,13 @@ ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 # Fake PostgreSQL URI is needed because Sequelize validates the connection string during
 # module initialization (imported by `next build`), but doesn't actually connect.
 WORKDIR /app/front
+
+# front-api only serves /api/* traffic; remove marketing/landing pages so they
+# aren't compiled into .next/ (smaller image, faster build).
+RUN rm -rf pages/blog pages/customers pages/home pages/landing \
+           pages/academy pages/integrations \
+        && rm -f pages/index.tsx
+
 RUN --mount=type=cache,id=next-cache,target=/app/front/.next/cache \
     FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" \
     NODE_OPTIONS="--max-old-space-size=8192" \
