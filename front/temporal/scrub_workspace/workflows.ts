@@ -12,6 +12,7 @@ import {
   LAST_EMAIL_BEFORE_SCRUB_IN_DAYS,
   WORKSPACE_DEFAULT_RETENTION_DAYS,
 } from "./config";
+import { getWorkspaceScrubJitterMinutes } from "./jitter";
 import { runScrubFreeEndedWorkspacesSignal } from "./signals";
 
 const { shouldStillScrubData, getWorkspaceRetentionDays } = proxyActivities<
@@ -76,6 +77,9 @@ export async function scheduleWorkspaceScrubWorkflowV2({
   await sleep(`${LAST_EMAIL_BEFORE_SCRUB_IN_DAYS} days`);
   if (!(await shouldStillScrubData({ workspaceId }))) {
     return false;
+  }
+  if (patched("workspace-scrub-jitter")) {
+    await sleep(`${getWorkspaceScrubJitterMinutes(workspaceId)} minutes`);
   }
 
   await scrubWorkspaceData({ workspaceId });
