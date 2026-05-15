@@ -610,10 +610,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     auth: Authenticator,
     {
       stepContents,
-      latestVersionsOnly = false,
     }: {
       stepContents: AgentStepContentResource[];
-      latestVersionsOnly?: boolean;
     }
   ): Promise<AgentMCPActionResource[]> {
     if (stepContents.length === 0) {
@@ -636,19 +634,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           },
         ],
       });
-
-    if (latestVersionsOnly) {
-      const rowsByStepContentId = _.groupBy(
-        agentStepContentToolExecutions,
-        (row) => row.stepContentId.toString()
-      );
-      agentStepContentToolExecutions = removeNulls(
-        Object.values(rowsByStepContentId).map(
-          (rowsForContent) =>
-            _.maxBy(rowsForContent, (row) => row.agentMCPAction.version) ?? null
-        )
-      );
-    }
 
     const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
 

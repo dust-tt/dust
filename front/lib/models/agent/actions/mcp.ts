@@ -207,7 +207,7 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
   declare updatedAt: CreationOptional<Date>;
 
   declare mcpServerConfigurationId: string;
-  declare version: number;
+  declare version?: number;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 

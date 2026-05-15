@@ -108,8 +108,10 @@ async function backfillWorkspace(
     // SIDE-QUEST : While we're looking up the whole actions table, let's
     // check if some of them have a non-0 version. If we don't find any,
     // we'll be able to drop the column.
-    const nonZeroVersionActions = actions.filter((a) => a.version > 0);
-    appendNonZeroActionsCsv(workspace.sId, nonZeroVersionActions);
+    //
+    // RESULT: zero nonZeroVersionActions found. Removing the column.
+    // const nonZeroVersionActions = actions.filter((a) => a.version > 0);
+    // appendNonZeroActionsCsv(workspace.sId, nonZeroVersionActions);
 
     // Retrieve conversation id for agent message to populate table.
     const messages = await MessageModel.findAll({
@@ -141,7 +143,6 @@ async function backfillWorkspace(
         validActions.map((a) => ({
           workspaceId: workspace.id,
           agentMCPActionId: a.id,
-          stepContentId: a.stepContentId,
           agentMessageId: a.agentMessageId,
           conversationId: messagesMap.get(a.agentMessageId),
         })),

@@ -99,7 +99,6 @@ async function createReinforcedAction(
       citationsAllocated: 0,
       mcpServerConfigurationId: "agent_sidekick_context",
       status: "ready_allowed_explicitly",
-      stepContentId: stepContent.id,
       stepContext: {
         citationsCount: 0,
         citationsOffset: 0,
@@ -130,7 +129,6 @@ async function createReinforcedAction(
         toolServerId: "agent_sidekick_context",
         retryPolicy: "no_retry",
       },
-      version: 0,
     }
   );
 }
