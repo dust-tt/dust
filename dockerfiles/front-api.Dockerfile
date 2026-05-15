@@ -1,7 +1,7 @@
 # Dockerfile for the front-api deployment — the Hono server with Next.js fallback
-# (strangler shim). The runtime entry is front-api/server.ts, which calls
-# next({ dir: "../front" }) + nextApp.prepare() and therefore needs the full Next.js
-# install + .next build (NOT the standalone subset).
+# (strangler shim). The runtime entry is front-api/dist/server.js (bundled by esbuild
+# from server.ts), which calls next({ dir: "../front" }) + nextApp.prepare() and
+# therefore needs the full Next.js install + .next build (NOT the standalone subset).
 #
 # This Dockerfile intentionally does NOT upload source maps. The front.Dockerfile
 # build uploads them once for the same source SHA, so we avoid duplication and
@@ -108,6 +108,11 @@ RUN --mount=type=cache,id=next-cache,target=/app/front/.next/cache \
     npm run build -- --no-lint && \
     npm run sitemap
 
+# Bundle the front-api server (Hono + Next.js handler) with esbuild.
+# Produces /app/front-api/dist/server.js, which becomes the runtime entry.
+WORKDIR /app/front-api
+RUN npm run build
+
 # Final runtime image — assembled from front-build.
 FROM node:24.14.0 AS front-api
 
@@ -151,4 +156,4 @@ ENV DD_VERSION=${COMMIT_HASH}
 ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
-CMD ["node", "--require", "dd-trace/init", "--import", "tsx", "server.ts"]
+CMD ["node", "--require", "dd-trace/init", "dist/server.js"]
