@@ -377,6 +377,15 @@ async function generateCompactionSummary(
   // conversation and projects by including a list as part of the summary.
   // TODO(compaction: We may want to add retries around the LLM call
 
+  logger.info(
+    {
+      workspaceId: owner.sId,
+      conversationId: conversationToSummarize.sId,
+      renderedMessagesLength: renderedMessages.length,
+    },
+    "Compaction generation started"
+  );
+
   const conv: ModelConversationTypeMultiActions = {
     messages: [
       {
