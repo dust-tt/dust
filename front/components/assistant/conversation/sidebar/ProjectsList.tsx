@@ -4,6 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ProjectMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useConversation } from "@app/hooks/conversations";
+import { useSpaceConversations } from "@app/hooks/conversations/useSpaceConversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
@@ -50,6 +51,28 @@ const ProjectListItem = memo(
       workspaceId: owner.sId,
     });
 
+    const { mutateConversations: mutateAllConversations } =
+      useSpaceConversations({
+        workspaceId: owner.sId,
+        spaceId: space.sId,
+        filter: "all",
+        options: { disabled: true },
+      });
+    const { mutateConversations: mutateWithMeConversations } =
+      useSpaceConversations({
+        workspaceId: owner.sId,
+        spaceId: space.sId,
+        filter: "with_me",
+        options: { disabled: true },
+      });
+    const { mutateConversations: mutateGroupConversations } =
+      useSpaceConversations({
+        workspaceId: owner.sId,
+        spaceId: space.sId,
+        filter: "group",
+        options: { disabled: true },
+      });
+
     const isSpaceSelected =
       router.asPath.startsWith(spacePath) ||
       conversation?.spaceId === space.sId;
@@ -90,13 +113,27 @@ const ProjectListItem = memo(
             const conversationObj = JSON.parse(
               conversationData
             ) as ConversationWithoutContentType;
-            await moveConversationToProject(conversationObj, space);
+            const success = await moveConversationToProject(
+              conversationObj,
+              space
+            );
+            if (success) {
+              void mutateAllConversations();
+              void mutateWithMeConversations();
+              void mutateGroupConversations();
+            }
           }
         } catch (error) {
           console.error("Error parsing conversation data:", error);
         }
       },
-      [moveConversationToProject, space]
+      [
+        moveConversationToProject,
+        space,
+        mutateAllConversations,
+        mutateWithMeConversations,
+        mutateGroupConversations,
+      ]
     );
 
     return (

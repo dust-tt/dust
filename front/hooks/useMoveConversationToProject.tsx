@@ -73,7 +73,9 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
       }
 
       // Revalidate conversations list to reflect the move
-      void mutateConversations();
+      void mutateConversations((prev) =>
+        prev?.filter((c) => c.sId !== conversation.sId)
+      );
       void mutateSpaceSummary();
       void sendNotification({
         title: "Conversation moved.",

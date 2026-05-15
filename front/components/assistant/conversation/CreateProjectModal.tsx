@@ -7,14 +7,18 @@ import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  GlobeAltIcon,
   Input,
-  SliderToggle,
+  Label,
+  LockIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
@@ -162,36 +166,18 @@ export function CreateProjectModal({
                 </div>
               )}
             </div>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex flex-col">
-                <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                  Open to everyone
-                </div>
-                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  Anyone in the workspace can find and join the project.
-                </div>
+            <div className="flex flex-col items-start gap-1">
+              <Label>Visibility</Label>
+              <VisibilitySwitch
+                isPublic={isPublic}
+                disabled={!areWorkspaceOpenProjectsAllowed}
+                onChange={setIsPublic}
+              />
+              <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                {isPublic
+                  ? "Anyone in the workspace can find and join this project."
+                  : "Only invited members can access this project."}
               </div>
-              {areWorkspaceOpenProjectsAllowed ? (
-                <SliderToggle
-                  size="xs"
-                  selected={isPublic}
-                  onClick={() => setIsPublic((prev) => !prev)}
-                />
-              ) : (
-                <Tooltip
-                  label={OPEN_PROJECTS_DISABLED_TOOLTIP}
-                  trigger={
-                    <div>
-                      <SliderToggle
-                        size="xs"
-                        selected={isPublic}
-                        onClick={() => setIsPublic((prev) => !prev)}
-                        disabled
-                      />
-                    </div>
-                  }
-                />
-              )}
             </div>
           </div>
         </DialogContainer>
@@ -208,4 +194,36 @@ export function CreateProjectModal({
       </DialogContent>
     </Dialog>
   );
+}
+
+interface VisibilitySwitchProps {
+  isPublic: boolean;
+  disabled: boolean;
+  onChange: (isPublic: boolean) => void;
+}
+
+function VisibilitySwitch({
+  isPublic,
+  disabled,
+  onChange,
+}: VisibilitySwitchProps) {
+  const switchList = (
+    <ButtonsSwitchList
+      size="xs"
+      defaultValue={isPublic ? "open" : "restricted"}
+      onValueChange={(value) => onChange(value === "open")}
+      disabled={disabled}
+    >
+      <ButtonsSwitch value="open" label="Open" icon={GlobeAltIcon} />
+      <ButtonsSwitch value="restricted" label="Restricted" icon={LockIcon} />
+    </ButtonsSwitchList>
+  );
+
+  if (disabled) {
+    return (
+      <Tooltip label={OPEN_PROJECTS_DISABLED_TOOLTIP} trigger={switchList} />
+    );
+  }
+
+  return switchList;
 }

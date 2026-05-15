@@ -20,7 +20,7 @@ const OPTIONS: {
     value: "max",
     title: "As far back as possible",
     description:
-      "Search with no fixed lower time bound (subject to limits below).",
+      "Search with no fixed lower time bound (subject to limits above).",
   },
 ];
 
