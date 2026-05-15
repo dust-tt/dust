@@ -132,7 +132,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
     return (
       <div
         className={cn(
-          "flex cursor-pointer items-center gap-4 rounded-xl px-3 py-2 transition-colors",
+          "flex cursor-pointer items-center gap-4 rounded-xl px-3 py-2",
           "hover:bg-muted-background dark:hover:bg-muted-background-night"
         )}
         onClick={onOpen}
@@ -151,7 +151,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       <div
         className={cn(
           "flex h-24 cursor-pointer items-center justify-center overflow-hidden rounded-xl",
-          "bg-muted-background transition-colors hover:brightness-95 dark:bg-muted-background-night",
+          "bg-muted-background hover:brightness-95 dark:bg-muted-background-night",
           props.kind === "icon" && "p-4"
         )}
         onClick={onOpen}
