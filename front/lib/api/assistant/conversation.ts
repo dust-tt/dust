@@ -1583,9 +1583,7 @@ export async function createAgentMessageFromText(
         {
           workspaceId: owner.id,
           mcpServerConfigurationId: "",
-          version: 0,
           agentMessageId: agentMessageRow.id,
-          stepContentId: functionCallStepContent.id,
           status: "succeeded",
           citationsAllocated,
           augmentedInputs: {},
