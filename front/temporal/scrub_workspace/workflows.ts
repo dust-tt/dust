@@ -80,6 +80,9 @@ export async function scheduleWorkspaceScrubWorkflowV2({
   }
   if (patched("workspace-scrub-jitter")) {
     await sleep(`${getWorkspaceScrubJitterMinutes(workspaceId)} minutes`);
+    if (!(await shouldStillScrubData({ workspaceId }))) {
+      return false;
+    }
   }
 
   await scrubWorkspaceData({ workspaceId });
