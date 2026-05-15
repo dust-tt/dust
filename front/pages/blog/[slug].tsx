@@ -10,7 +10,10 @@ import {
   getRelatedPosts,
 } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
-import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
+import {
+  renderCtaFromContentful,
+  renderRichTextFromContentful,
+} from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -96,6 +99,7 @@ export default function BlogPost({
   const ogImageUrl = post.image?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/blog/${post.slug}`;
   const tocItems = extractTableOfContents(post.body);
+  const ctaContent = renderCtaFromContentful(post.cta);
 
   return (
     <>
@@ -235,6 +239,10 @@ export default function BlogPost({
               </span>
             </div>
           </header>
+
+          {ctaContent && (
+            <div className={classNames(WIDE_CLASSES, "mt-3")}>{ctaContent}</div>
+          )}
 
           {post.image && (
             <div className={classNames(WIDE_CLASSES, "mt-2")}>
