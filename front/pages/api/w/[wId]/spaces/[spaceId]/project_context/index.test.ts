@@ -203,9 +203,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
 
       req.query.spaceId = globalSpace.sId;
       req.body = {
-        title: "Ref",
-        nodeId: "n1",
-        nodeDataSourceViewId: "dsv1",
+        items: [{ title: "Ref", nodeId: "n1", nodeDataSourceViewId: "dsv1" }],
       };
 
       await handler(req, res);
@@ -232,9 +230,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
         const project = await SpaceFactory.project(workspace, user.id);
         req.query.spaceId = project.sId;
         req.body = {
-          title: "Ref",
-          nodeId: "n1",
-          nodeDataSourceViewId: "dsv1",
+          items: [{ title: "Ref", nodeId: "n1", nodeDataSourceViewId: "dsv1" }],
         };
 
         await handler(req, res);
@@ -271,20 +267,26 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
 
       req.query.spaceId = project.sId;
       req.body = {
-        title: "My doc",
-        nodeId: "core-node",
-        nodeDataSourceViewId: "dsview-sid",
+        items: [
+          {
+            title: "My doc",
+            nodeId: "core-node",
+            nodeDataSourceViewId: "dsview-sid",
+          },
+        ],
       };
 
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(201);
       const data = res._getJSONData();
-      expect(data.contentFragment.sId).toBe("cf_mock");
-      expect(data.contentFragment.title).toBe("Synced title");
-      expect(data.contentFragment.nodeId).toBe("core-node");
-      expect(data.contentFragment.nodeType).toBe("document");
-      expect(data.contentFragment.nodeDataSourceViewId).toBeDefined();
+      expect(data.contentFragments).toHaveLength(1);
+      expect(data.errors).toHaveLength(0);
+      expect(data.contentFragments[0].sId).toBe("cf_mock");
+      expect(data.contentFragments[0].title).toBe("Synced title");
+      expect(data.contentFragments[0].nodeId).toBe("core-node");
+      expect(data.contentFragments[0].nodeType).toBe("document");
+      expect(data.contentFragments[0].nodeDataSourceViewId).toBeDefined();
       expect(addContentNodeToProjectSpy).toHaveBeenCalledWith(
         expect.anything(),
         {

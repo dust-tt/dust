@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { removeContentNodeFromProject } from "@app/lib/api/projects/context";
+import { removeContentNodesFromProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -10,9 +10,13 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-const DeleteProjectContextContentNodeBodySchema = z.object({
+const DeleteProjectContextContentNodeItemSchema = z.object({
   nodeId: z.string().min(1, "nodeId is required"),
   nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
+});
+
+const DeleteProjectContextContentNodeBodySchema = z.object({
+  items: z.array(DeleteProjectContextContentNodeItemSchema),
 });
 
 export type DeleteProjectContextContentNodeResponseBody = Record<string, never>;
@@ -84,10 +88,9 @@ async function handler(
         });
       }
 
-      const r = await removeContentNodeFromProject(auth, {
+      const r = await removeContentNodesFromProject(auth, {
         space,
-        nodeId: bodyValidation.data.nodeId,
-        nodeDataSourceViewId: bodyValidation.data.nodeDataSourceViewId,
+        nodes: bodyValidation.data.items,
       });
       if (r.isErr()) {
         return apiError(req, res, {

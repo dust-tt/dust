@@ -21,10 +21,10 @@ import config from "@app/lib/api/config";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { useAppRouter } from "@app/lib/platform";
 import {
-  useAddProjectContextContentNode,
+  useAddProjectContextContentNodes,
   useProjectContextAttachments,
   useProjectFiles,
-  useRemoveProjectContextContentNode,
+  useRemoveProjectContextContentNodes,
   useRemoveProjectContextFile,
 } from "@app/lib/swr/projects";
 import { useSpaceDataSourceViews, useSpaces } from "@app/lib/swr/spaces";
@@ -420,12 +420,12 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     spaceId: space.sId,
   });
 
-  const removeProjectContextContentNode = useRemoveProjectContextContentNode({
+  const removeProjectContextContentNodes = useRemoveProjectContextContentNodes({
     owner,
     spaceId: space.sId,
   });
 
-  const addProjectContextContentNode = useAddProjectContextContentNode({
+  const addProjectContextContentNodes = useAddProjectContextContentNodes({
     owner,
     spaceId: space.sId,
   });
@@ -499,10 +499,12 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     });
 
     if (confirmed) {
-      const result = await removeProjectContextContentNode({
-        nodeId: item.nodeId,
-        nodeDataSourceViewId: item.nodeDataSourceViewId,
-      });
+      const result = await removeProjectContextContentNodes([
+        {
+          nodeId: item.nodeId,
+          nodeDataSourceViewId: item.nodeDataSourceViewId,
+        },
+      ]);
       if (result.isOk()) {
         void mutateProjectContextAttachments();
       }
@@ -780,69 +782,56 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
 
   const handleCompanyDataSave = useCallback(
     async (selectionConfigurations: DataSourceViewSelectionConfigurations) => {
-      type SelectedNode = {
-        title: string;
-        nodeId: string;
-        nodeDataSourceViewId: string;
-        sourceUrl: string | null | undefined;
-      };
-      const nextByKey = new Map<string, SelectedNode>();
-      for (const config of Object.values(selectionConfigurations)) {
-        for (const node of config.selectedResources) {
-          const dsvId = config.dataSourceView.sId;
-          nextByKey.set(`${dsvId}:${node.internalId}`, {
+      // 1. Flatten modal selection into a list of nodes.
+      const selectedNodes = Object.values(selectionConfigurations).flatMap(
+        ({ dataSourceView, selectedResources }) =>
+          selectedResources.map((node) => ({
             title: node.title,
             nodeId: node.internalId,
-            nodeDataSourceViewId: dsvId,
+            nodeDataSourceViewId: dataSourceView.sId,
             sourceUrl: node.sourceUrl,
-          });
-        }
-      }
+          }))
+      );
 
-      const currentByKey = new Map<
-        string,
-        { nodeId: string; nodeDataSourceViewId: string }
-      >();
-      for (const attachment of attachments) {
-        if (!isContentNodeAttachmentType(attachment)) {
-          continue;
-        }
-        currentByKey.set(
-          `${attachment.nodeDataSourceViewId}:${attachment.nodeId}`,
-          {
-            nodeId: attachment.nodeId,
-            nodeDataSourceViewId: attachment.nodeDataSourceViewId,
-          }
-        );
-      }
+      // 2. Build identity keys for both sides of the diff.
+      const keyOf = (n: { nodeDataSourceViewId: string; nodeId: string }) =>
+        `${n.nodeDataSourceViewId}:${n.nodeId}`;
+      const currentContentNodes = attachments.filter(
+        isContentNodeAttachmentType
+      );
+      const currentKeys = new Set(currentContentNodes.map(keyOf));
+      const selectedKeys = new Set(selectedNodes.map(keyOf));
 
-      for (const [key, node] of nextByKey.entries()) {
-        if (currentByKey.has(key)) {
-          continue;
-        }
-        await addProjectContextContentNode({
-          title: node.title,
-          nodeId: node.nodeId,
-          nodeDataSourceViewId: node.nodeDataSourceViewId,
-          ...(node.sourceUrl ? { url: node.sourceUrl } : {}),
-        });
-      }
-      for (const [key, node] of currentByKey.entries()) {
-        if (nextByKey.has(key)) {
-          continue;
-        }
-        await removeProjectContextContentNode({
-          nodeId: node.nodeId,
-          nodeDataSourceViewId: node.nodeDataSourceViewId,
-        });
-      }
+      // 3. Diff.
+      const toAdd = selectedNodes.filter((n) => !currentKeys.has(keyOf(n)));
+      const toRemove = currentContentNodes.filter(
+        (n) => !selectedKeys.has(keyOf(n))
+      );
+
+      // 4. Apply both sides
+      await addProjectContextContentNodes(
+        toAdd.map((n) => ({
+          title: n.title,
+          nodeId: n.nodeId,
+          nodeDataSourceViewId: n.nodeDataSourceViewId,
+          ...(n.sourceUrl ? { url: n.sourceUrl } : {}),
+        }))
+      );
+      await removeProjectContextContentNodes(
+        toRemove.map((n) => ({
+          nodeId: n.nodeId,
+          nodeDataSourceViewId: n.nodeDataSourceViewId,
+        }))
+      );
+
+      // 5. Refresh.
       void mutateProjectContextAttachments();
     },
     [
-      addProjectContextContentNode,
+      addProjectContextContentNodes,
       attachments,
       mutateProjectContextAttachments,
-      removeProjectContextContentNode,
+      removeProjectContextContentNodes,
     ]
   );
 

@@ -9,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -20,7 +21,7 @@ export type GetProjectContextResponseBody = {
   attachments: ConversationAttachmentType[];
 };
 
-const PostProjectContextContentNodeBodySchema = z.object({
+const PostProjectContextContentNodeItemSchema = z.object({
   title: z.string().min(1, "title is required"),
   nodeId: z.string().min(1, "nodeId is required"),
   nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
@@ -28,15 +29,22 @@ const PostProjectContextContentNodeBodySchema = z.object({
   supersededContentFragmentId: z.string().nullable().optional(),
 });
 
+const PostProjectContextContentNodeBodySchema = z.object({
+  items: z.array(PostProjectContextContentNodeItemSchema),
+});
+
+export type PostProjectContextContentNodeFragment = {
+  sId: string;
+  title: string;
+  contentType: string;
+  nodeId: string;
+  nodeDataSourceViewId: string;
+  nodeType: ContentNodeType;
+};
+
 export type PostProjectContextContentNodeResponseBody = {
-  contentFragment: {
-    sId: string;
-    title: string;
-    contentType: string;
-    nodeId: string;
-    nodeDataSourceViewId: string;
-    nodeType: ContentNodeType;
-  };
+  contentFragments: PostProjectContextContentNodeFragment[];
+  errors: Array<{ index: number; message: string }>;
 };
 
 const ProjectContextQuerySchema = z.object({
@@ -161,57 +169,50 @@ async function handler(
         });
       }
 
-      const addRes = await addContentNodeToProject(auth, {
-        space,
-        contentFragment: bodyValidation.data,
-      });
-
-      if (addRes.isErr()) {
-        const err = addRes.error;
-        const status = err.code === "invalid_request_error" ? 400 : 500;
-        return apiError(req, res, {
-          status_code: status,
-          api_error: {
-            type:
-              err.code === "invalid_request_error"
-                ? "invalid_request_error"
-                : "internal_server_error",
-            message: err.message,
-          },
-        });
-      }
-
-      const fr = addRes.value;
-      if (
-        fr.nodeId == null ||
-        fr.nodeDataSourceViewId == null ||
-        fr.nodeType == null
-      ) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Missing node fields on content fragment.",
-          },
-        });
-      }
-
+      const { items } = bodyValidation.data;
       const owner = auth.getNonNullableWorkspace();
-      const nodeDataSourceViewId = DataSourceViewResource.modelIdToSId({
-        id: fr.nodeDataSourceViewId,
-        workspaceId: owner.id,
-      });
 
-      res.status(201).json({
-        contentFragment: {
+      const results = await concurrentExecutor(
+        items,
+        (item) =>
+          addContentNodeToProject(auth, { space, contentFragment: item }),
+        { concurrency: 2 }
+      );
+
+      const contentFragments: PostProjectContextContentNodeFragment[] = [];
+      const errors: Array<{ index: number; message: string }> = [];
+
+      results.forEach((result, index) => {
+        if (result.isErr()) {
+          errors.push({ index, message: result.error.message });
+          return;
+        }
+        const fr = result.value;
+        if (
+          fr.nodeId == null ||
+          fr.nodeDataSourceViewId == null ||
+          fr.nodeType == null
+        ) {
+          errors.push({
+            index,
+            message: "Missing node fields on content fragment.",
+          });
+          return;
+        }
+        contentFragments.push({
           sId: fr.sId,
           title: fr.title,
           contentType: fr.contentType,
           nodeId: fr.nodeId,
-          nodeDataSourceViewId,
+          nodeDataSourceViewId: DataSourceViewResource.modelIdToSId({
+            id: fr.nodeDataSourceViewId,
+            workspaceId: owner.id,
+          }),
           nodeType: fr.nodeType,
-        },
+        });
       });
+
+      res.status(201).json({ contentFragments, errors });
       return;
     }
 

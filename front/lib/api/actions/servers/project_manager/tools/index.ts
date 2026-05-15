@@ -35,7 +35,7 @@ import config from "@app/lib/api/config";
 import {
   addContentNodeToProject,
   listProjectContextAttachments,
-  removeContentNodeFromProject,
+  removeContentNodesFromProject,
 } from "@app/lib/api/projects/context";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
@@ -189,10 +189,14 @@ export function createProjectManagerTools(
 
         const { space } = contextRes.value;
 
-        const removeRes = await removeContentNodeFromProject(auth, {
+        const removeRes = await removeContentNodesFromProject(auth, {
           space,
-          nodeId: params.nodeId,
-          nodeDataSourceViewId: params.nodeDataSourceViewId,
+          nodes: [
+            {
+              nodeId: params.nodeId,
+              nodeDataSourceViewId: params.nodeDataSourceViewId,
+            },
+          ],
         });
         if (removeRes.isErr()) {
           return new Err(

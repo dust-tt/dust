@@ -1,5 +1,5 @@
 import {
-  removeContentNodeFromProject,
+  removeContentNodesFromProject,
   removeFileFromProject,
 } from "@app/lib/api/projects/context";
 import { MessageModel } from "@app/lib/models/agent/conversation";
@@ -118,7 +118,7 @@ describe("removeFileFromProject", () => {
   });
 });
 
-describe("removeContentNodeFromProject", () => {
+describe("removeContentNodesFromProject", () => {
   beforeEach(() => {
     // keep tests isolated; factories already run in their own DB context
   });
@@ -157,10 +157,9 @@ describe("removeContentNodeFromProject", () => {
       sId: "cf_test_node_1",
     });
 
-    const res = await removeContentNodeFromProject(auth, {
+    const res = await removeContentNodesFromProject(auth, {
       space: project,
-      nodeId: "node_1",
-      nodeDataSourceViewId: dsView.sId,
+      nodes: [{ nodeId: "node_1", nodeDataSourceViewId: dsView.sId }],
     });
     expect(res.isOk()).toBe(true);
 
@@ -218,10 +217,9 @@ describe("removeContentNodeFromProject", () => {
       workspaceId: workspace.id,
     });
 
-    const res = await removeContentNodeFromProject(auth, {
+    const res = await removeContentNodesFromProject(auth, {
       space: project,
-      nodeId: "node_2",
-      nodeDataSourceViewId: dsView.sId,
+      nodes: [{ nodeId: "node_2", nodeDataSourceViewId: dsView.sId }],
     });
     expect(res.isOk()).toBe(true);
 
@@ -303,10 +301,9 @@ describe("removeContentNodeFromProject", () => {
       workspaceId: workspace.id,
     });
 
-    const res = await removeContentNodeFromProject(auth, {
+    const res = await removeContentNodesFromProject(auth, {
       space: project,
-      nodeId: "node_3",
-      nodeDataSourceViewId: dsView.sId,
+      nodes: [{ nodeId: "node_3", nodeDataSourceViewId: dsView.sId }],
     });
     expect(res.isOk()).toBe(true);
 
