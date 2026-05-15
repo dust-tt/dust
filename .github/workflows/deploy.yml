@@ -19,10 +19,10 @@ on:
         type: choice
         default:
         options:
-          - connectors
-          - core
           - front
           - front-edge
+          - connectors
+          - core
           - front-sse
           - prodbox
           - oauth
@@ -83,7 +83,7 @@ jobs:
           exit 1
 
   prepare:
-    needs: [check-branch]
+    needs: [ check-branch ]
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
@@ -98,7 +98,7 @@ jobs:
         run: echo "long_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   notify-start:
-    needs: [prepare]
+    needs: [ prepare ]
     runs-on: ubuntu-latest
     outputs:
       thread_ts: ${{ steps.build_message.outputs.thread_ts }}
@@ -142,7 +142,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    needs: [prepare, notify-start, create-matrix]
+    needs: [ prepare, notify-start, create-matrix ]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -211,7 +211,7 @@ jobs:
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy:
-    needs: [prepare, notify-start, build, deploy-app, deploy-poke, ensure-sandbox-images]
+    needs: [ prepare, notify-start, build, deploy-app, deploy-poke, ensure-sandbox-images ]
     if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
@@ -303,7 +303,7 @@ jobs:
   # Starts in parallel with Docker build to save time.
   deploy-app:
     if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_app
-    needs: [notify-start]
+    needs: [ notify-start ]
     uses: ./.github/workflows/deploy-spa.yaml
     with:
       app: "app"
@@ -314,7 +314,7 @@ jobs:
 
   deploy-poke:
     if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_poke
-    needs: [notify-start]
+    needs: [ notify-start ]
     uses: ./.github/workflows/deploy-spa.yaml
     with:
       app: "poke"
