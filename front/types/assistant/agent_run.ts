@@ -30,8 +30,8 @@ import { isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
 
 /**
- * Error types for getAgentLoopData that indicate soft-deleted resources.
- * These are safe to ignore in callers since the resource was intentionally deleted.
+ * Error types for getAgentLoopData that indicate deleted or unavailable resources.
+ * These are safe to ignore in callers since retrying won't make the data available.
  */
 export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "conversation_deleted",
@@ -218,13 +218,13 @@ export async function getAgentLoopDataWithAuth(
         error instanceof ConversationError &&
         error.type === "conversation_not_found"
       ) {
-        // Check if the conversation was soft-deleted.
+        // Check if the conversation was deleted or is no longer readable.
         const conv = await ConversationResource.fetchById(
           auth,
           conversationId,
           { includeDeleted: true }
         );
-        if (conv?.visibility === "deleted") {
+        if (!conv || conv.visibility === "deleted") {
           return new Err(new AgentLoopDataError("conversation_deleted"));
         }
       }
@@ -244,13 +244,13 @@ export async function getAgentLoopDataWithAuth(
 
     if (conversationRes.isErr()) {
       if (conversationRes.error.type === "conversation_not_found") {
-        // Check if the conversation was soft-deleted.
+        // Check if the conversation was deleted or is no longer readable.
         const conv = await ConversationResource.fetchById(
           auth,
           conversationId,
           { includeDeleted: true }
         );
-        if (conv?.visibility === "deleted") {
+        if (!conv || conv.visibility === "deleted") {
           return new Err(new AgentLoopDataError("conversation_deleted"));
         }
       }
