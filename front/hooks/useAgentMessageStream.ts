@@ -24,12 +24,11 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import throttle from "lodash/throttle";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 function createUpdateMessageThrottled() {
-  return _.throttle(
+  return throttle(
     ({
       chainOfThought,
       content,

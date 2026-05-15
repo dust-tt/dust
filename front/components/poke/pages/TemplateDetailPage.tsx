@@ -47,8 +47,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import map from "lodash/map";
 import { ChevronDownIcon } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -328,7 +327,7 @@ function PresetActionsField({
 const tagOptions: {
   label: string;
   value: TemplateTagCodeType;
-}[] = _.map(TEMPLATES_TAGS_CONFIG, (config, key) => ({
+}[] = map(TEMPLATES_TAGS_CONFIG, (config, key) => ({
   label: config.label,
   value: key as TemplateTagCodeType,
 }));

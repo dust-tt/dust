@@ -21,8 +21,7 @@ import {
   SheetTrigger,
   TextArea,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import * as _ from "lodash";
+import capitalize from "lodash/capitalize";
 import { useEffect, useState } from "react";
 
 interface RequestDataSourceModal {
@@ -162,16 +161,12 @@ export function RequestDataSourceModal({
             {selectedDataSource && (
               <div className="flex flex-col gap-2">
                 <p className="mb-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {_.capitalize(
-                    selectedDataSource.editedByUser?.fullName ?? ""
-                  )}{" "}
+                  {capitalize(selectedDataSource.editedByUser?.fullName ?? "")}{" "}
                   is the administrator for the{" "}
                   {getDisplayNameForDataSource(selectedDataSource)} connection
                   within Dust. Send an email to{" "}
-                  {_.capitalize(
-                    selectedDataSource.editedByUser?.fullName ?? ""
-                  )}
-                  , explaining your request.
+                  {capitalize(selectedDataSource.editedByUser?.fullName ?? "")},
+                  explaining your request.
                 </p>
                 <TextArea
                   placeholder={`Hello ${selectedDataSource.editedByUser?.fullName},`}

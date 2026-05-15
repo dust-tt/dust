@@ -31,8 +31,7 @@ import { isEqualNode } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import uniqBy from "lodash/uniqBy";
 import React, {
   useCallback,
   useContext,
@@ -267,7 +266,7 @@ export const InputBar = React.memo(function InputBar({
     const allMentions = shouldInjectSelectedAgent
       ? [selectedSingleAgent, ...rawMentions]
       : rawMentions;
-    const mentions = _.uniqBy(allMentions, "id");
+    const mentions = uniqBy(allMentions, "id");
     const uploadedFiles = fileUploaderService.getFileBlobs();
     const mentionedAgents = agentConfigurations.filter((a) =>
       mentions.some((m) => m.id === a.sId && m.type === "agent")

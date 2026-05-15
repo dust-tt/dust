@@ -46,8 +46,7 @@ import {
   TableIcon,
   Tree,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import uniq from "lodash/uniq";
 import { useMemo, useState } from "react";
 
 interface AssistantKnowledgeSectionProps {
@@ -112,8 +111,8 @@ export function AssistantKnowledgeSection({
                 );
               }
               // We need to remove duplicates
-              existingFilter.in = _.uniq(existingFilter.in);
-              existingFilter.not = _.uniq(existingFilter.not);
+              existingFilter.in = uniq(existingFilter.in);
+              existingFilter.not = uniq(existingFilter.not);
             }
           } else {
             // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
@@ -155,8 +154,8 @@ export function AssistantKnowledgeSection({
                 );
               }
               // We need to remove duplicates
-              existingFilter.in = _.uniq(existingFilter.in);
-              existingFilter.not = _.uniq(existingFilter.not);
+              existingFilter.in = uniq(existingFilter.in);
+              existingFilter.not = uniq(existingFilter.not);
             }
           } else {
             // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)

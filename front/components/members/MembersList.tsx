@@ -15,8 +15,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import capitalize from "lodash/capitalize";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo } from "react";
 import type { KeyedMutator } from "swr";
@@ -101,7 +100,7 @@ const memberColumns = [
     cell: (info: Info) => (
       <DataTable.CellContent>
         <Chip
-          label={_.capitalize(displayRole(info.row.original.role))}
+          label={capitalize(displayRole(info.row.original.role))}
           color={
             info.row.original.role !== "none"
               ? ROLES_DATA[info.row.original.role]["color"]
@@ -142,7 +141,7 @@ const memberColumns = [
         <DataTable.CellContent>
           {info.row.original.status +
             (info.row.original.origin
-              ? ` (${_.capitalize(info.row.original.origin)})`
+              ? ` (${capitalize(info.row.original.origin)})`
               : "")}
         </DataTable.CellContent>
       );
