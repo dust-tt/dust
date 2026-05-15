@@ -5,16 +5,22 @@
  * - The prestop hook (which signals shutdown)
  * - The readiness probe (which should fail when shutting down)
  * - Connection draining (which needs the pod to stay alive)
+ * - Worker shutdown handlers
  */
 
 let isShuttingDown = false;
+const shutdownController = new AbortController();
 
 /**
  * Marks the pod as shutting down.
- * This should be called by the prestop hook to signal that the pod is terminating.
  */
 export function markShuttingDown(): void {
+  if (isShuttingDown) {
+    return;
+  }
+
   isShuttingDown = true;
+  shutdownController.abort();
 }
 
 /**
@@ -23,4 +29,8 @@ export function markShuttingDown(): void {
  */
 export function isInShutdown(): boolean {
   return isShuttingDown;
+}
+
+export function getShutdownSignal(): AbortSignal {
+  return shutdownController.signal;
 }
