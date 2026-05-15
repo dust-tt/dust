@@ -41,16 +41,11 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
 
   describe("GET", () => {
     it("does not surface file-backed attachments (files now live under /spaces/[spaceId]/files)", async () => {
-      const {
-        auth,
-        req,
-        res,
-        user,
-        globalSpace,
-      } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
+      const { auth, req, res, user, globalSpace } =
+        await createPrivateApiMockRequest({
+          method: "GET",
+          role: "user",
+        });
 
       await ProjectFileFactory.create(auth, user, globalSpace, {
         contentType: "text/plain",
@@ -193,7 +188,6 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
       const responseData = res._getJSONData();
       expect(responseData.error.type).toBe("invalid_request_error");
     });
-
   });
 
   describe("POST (content node)", () => {
