@@ -3,6 +3,10 @@ import { Hono } from "hono";
 
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
+// Re-exported so SWR hooks and other consumers can import the response type
+// from the Hono route file, matching the convention of our other routes.
+export type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
+
 export const publicVerifiedDomainsApp = new Hono();
 
 publicVerifiedDomainsApp.get("/", async (c) => {
