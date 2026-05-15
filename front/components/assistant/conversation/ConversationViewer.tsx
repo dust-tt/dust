@@ -796,31 +796,48 @@ export const ConversationViewer = ({
             void mutateContextUsage();
 
             // Update the messages SWR cache in place so a future remount
-            // of this conversation (e.g. navigating away and back) sees the
-            // message as terminal instead of the stale "created" snapshot
-            // (which would otherwise re-open an SSE replay). We only flip
-            // status here to avoid a network refetch on every termination,
-            // which on prod was slow enough to delay retry feedback. The
-            // richer final state (activitySteps, content, gracefully_stopped
-            // vs cancelled) is restored by the next real fetch when needed.
-            void mutateMessages(
-              (pages) =>
-                pages?.map((page) => ({
-                  ...page,
-                  messages: page.messages.map((m) =>
-                    isLightAgentMessageType(m) && m.sId === event.messageId
-                      ? {
-                          ...m,
-                          status:
-                            event.status === "error"
-                              ? ("failed" as const)
-                              : ("succeeded" as const),
-                        }
-                      : m
-                  ),
-                })),
-              { revalidate: false }
-            );
+            // (e.g. navigating away and back) sees the full terminal state.
+            // The message-level SSE fires agent_message_success before this
+            // conversation-level event, so Virtuoso already holds the final
+            // content, completionDurationMs, and activitySteps. We copy them
+            // into the SWR snapshot to avoid a blank message body on remount.
+            // If Virtuoso hasn't committed the update yet (rare race between
+            // two independent SSE streams), we fall back to a real revalidation.
+            {
+              const vMsg = virtuosoMessageListRef.current?.data.find(
+                (m) => m.sId === event.messageId
+              );
+              const msg =
+                vMsg && isAgentMessageWithStreaming(vMsg) ? vMsg : null;
+
+              void mutateMessages(
+                (pages) =>
+                  pages?.map((page) => ({
+                    ...page,
+                    messages: page.messages.map((m) =>
+                      isLightAgentMessageType(m) && m.sId === event.messageId
+                        ? {
+                            ...m,
+                            status:
+                              event.status === "error"
+                                ? ("failed" as const)
+                                : ("succeeded" as const),
+                            ...(msg !== null
+                              ? {
+                                  content: msg.content,
+                                  completionDurationMs:
+                                    msg.completionDurationMs,
+                                  activitySteps:
+                                    msg.streaming.inlineActivitySteps,
+                                }
+                              : {}),
+                          }
+                        : m
+                    ),
+                  })),
+                { revalidate: msg === null }
+              );
+            }
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
