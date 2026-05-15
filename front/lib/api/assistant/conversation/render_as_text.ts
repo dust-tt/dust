@@ -125,7 +125,7 @@ export function renderConversationAsText(
       continue;
     }
 
-    totalChars += rendered.contentLength;
+    totalChars += rendered.text.length;
     parts.unshift(rendered.text);
 
     // A succeeded compaction message is a history boundary. Include it and stop.
