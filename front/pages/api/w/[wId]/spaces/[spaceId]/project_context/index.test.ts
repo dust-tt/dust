@@ -1,4 +1,3 @@
-import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import * as projectsApi from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
 import type { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -41,9 +40,9 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
   });
 
   describe("GET", () => {
-    it("should return project files for a valid space", async () => {
+    it("does not surface file-backed attachments (files now live under /spaces/[spaceId]/files)", async () => {
       const {
-        auth: auth,
+        auth,
         req,
         res,
         user,
@@ -53,142 +52,31 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
         role: "user",
       });
 
-      const space = globalSpace;
-
-      await ProjectFileFactory.create(auth, user, space, {
+      await ProjectFileFactory.create(auth, user, globalSpace, {
         contentType: "text/plain",
         fileName: "test1.txt",
         fileSize: 100,
         status: "ready",
       });
 
-      await ProjectFileFactory.create(auth, user, space, {
-        contentType: "image/png",
-        fileName: "test2.png",
-        fileSize: 200,
-        status: "ready",
-      });
-
-      req.query.spaceId = space.sId;
+      req.query.spaceId = globalSpace.sId;
 
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
       const responseData = res._getJSONData();
-      expect(responseData.attachments).toHaveLength(2);
-      const titles = responseData.attachments.map(
-        (a: { title: string }) => a.title
-      );
-      expect(new Set(titles)).toEqual(new Set(["test1.txt", "test2.png"]));
-      const withCreator = responseData.attachments.find(
-        (a: { title: string }) => a.title === "test1.txt"
-      );
-      expect(withCreator).toBeDefined();
-      expect(isFileAttachmentType(withCreator)).toBe(true);
-      if (isFileAttachmentType(withCreator)) {
-        expect(withCreator.creator?.type).toBe("user");
-        expect(withCreator.creator?.name).toBeDefined();
-      }
+      expect(responseData.attachments).toHaveLength(0);
     });
 
-    it("filters attachments by query (case-insensitive)", async () => {
-      const { auth, req, res, user, globalSpace } =
-        await createPrivateApiMockRequest({
-          method: "GET",
-          role: "user",
-        });
-
-      const space = globalSpace;
-
-      await ProjectFileFactory.create(auth, user, space, {
-        contentType: "text/plain",
-        fileName: "Budget 2026.txt",
-        fileSize: 100,
-        status: "ready",
-      });
-
-      await ProjectFileFactory.create(auth, user, space, {
-        contentType: "text/plain",
-        fileName: "Roadmap.txt",
-        fileSize: 100,
-        status: "ready",
-      });
-
-      req.query.spaceId = space.sId;
-      req.query.query = "budget";
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const responseData = res._getJSONData();
-      const titles = responseData.attachments.map(
-        (a: { title: string }) => a.title
-      );
-      expect(titles).toEqual(["Budget 2026.txt"]);
-    });
-
-    it("filters attachments by query (spacing/camelCase-style titles)", async () => {
-      const { auth, req, res, user, globalSpace } =
-        await createPrivateApiMockRequest({
-          method: "GET",
-          role: "user",
-        });
-
-      const space = globalSpace;
-
-      await ProjectFileFactory.create(auth, user, space, {
-        contentType: "text/plain",
-        fileName: "Hello World 4.tsx",
-        fileSize: 100,
-        status: "ready",
-      });
-
-      await ProjectFileFactory.create(auth, user, space, {
-        contentType: "text/plain",
-        fileName: "Other.txt",
-        fileSize: 100,
-        status: "ready",
-      });
-
-      req.query.spaceId = space.sId;
-      req.query.query = "helloworld";
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const responseData = res._getJSONData();
-      const titles = responseData.attachments.map(
-        (a: { title: string }) => a.title
-      );
-      expect(titles).toEqual(["Hello World 4.tsx"]);
-    });
-
-    it("filters attachments by type=content-node", async () => {
+    it("filters content-node attachments by query (case-insensitive)", async () => {
       const { req, res, globalSpace } = await createPrivateApiMockRequest({
         method: "GET",
         role: "user",
       });
 
-      // Mock the list function so we can focus on filtering behavior.
       listProjectContextAttachmentsSpy.mockResolvedValue([
         {
-          title: "notes.txt",
-          contentType: "text/plain",
-          contentFragmentVersion: "latest",
-          snippet: null,
-          generatedTables: [],
-          isIncludable: true,
-          isSearchable: false,
-          isQueryable: false,
-          isInProjectContext: true,
-          creator: null,
-          hidden: false,
-          fileId: "file_1",
-          source: "user",
-          createdAt: Date.now(),
-        } as any,
-        {
-          title: "Spec doc",
+          title: "Budget plan",
           contentType: "text/plain",
           contentFragmentVersion: "latest",
           snippet: null,
@@ -200,7 +88,25 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
           creator: null,
           hidden: false,
           contentFragmentId: "cf_1",
-          nodeId: "core-node",
+          nodeId: "node_1",
+          nodeDataSourceViewId: "dsv_1",
+          nodeType: "document",
+          sourceUrl: null,
+        } as any,
+        {
+          title: "Roadmap",
+          contentType: "text/plain",
+          contentFragmentVersion: "latest",
+          snippet: null,
+          generatedTables: [],
+          isIncludable: true,
+          isSearchable: false,
+          isQueryable: false,
+          isInProjectContext: true,
+          creator: null,
+          hidden: false,
+          contentFragmentId: "cf_2",
+          nodeId: "node_2",
           nodeDataSourceViewId: "dsv_1",
           nodeType: "document",
           sourceUrl: null,
@@ -208,17 +114,19 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
       ]);
 
       req.query.spaceId = globalSpace.sId;
-      req.query.type = "content-node";
+      req.query.query = "budget";
 
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
       const responseData = res._getJSONData();
-      expect(responseData.attachments).toHaveLength(1);
-      expect(responseData.attachments[0].title).toBe("Spec doc");
+      const titles = responseData.attachments.map(
+        (a: { title: string }) => a.title
+      );
+      expect(titles).toEqual(["Budget plan"]);
     });
 
-    it("should return empty array when space has no files", async () => {
+    it("should return empty array when space has no content nodes", async () => {
       const { req, res, globalSpace } = await createPrivateApiMockRequest({
         method: "GET",
         role: "user",
@@ -271,61 +179,6 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
       expect(responseData.error.type).toBe("space_not_found");
     });
 
-    it("should infer attachment creator from the authenticated user when syncing fragments", async () => {
-      const {
-        req,
-        res,
-        auth: auth,
-        user,
-        globalSpace,
-      } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
-
-      const space = globalSpace;
-
-      await ProjectFileFactory.create(auth, user, space, {
-        contentType: "text/csv",
-        fileName: "data.csv",
-        fileSize: 500,
-        status: "ready",
-      });
-
-      await ProjectFileFactory.create(auth, null, space, {
-        contentType: "application/json",
-        fileName: "data.json",
-        fileSize: 300,
-        status: "ready",
-      });
-
-      req.query.spaceId = space.sId;
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const responseData = res._getJSONData();
-      expect(responseData.attachments).toHaveLength(2);
-
-      const fileWithUserResponse = responseData.attachments.find(
-        (f: { title: string }) => f.title === "data.csv"
-      );
-      const fileWithoutUserResponse = responseData.attachments.find(
-        (f: { title: string }) => f.title === "data.json"
-      );
-
-      expect(fileWithUserResponse.creator).toBeDefined();
-      expect(fileWithUserResponse.creator.type).toBe("user");
-      expect(fileWithUserResponse.creator.name).toBeDefined();
-
-      // File row may have no uploader (`user: null` in factory); creator still comes from auth at upsert.
-      expect(fileWithoutUserResponse.creator).toBeDefined();
-      expect(fileWithoutUserResponse.creator.type).toBe("user");
-      expect(fileWithoutUserResponse.creator.name).toBe(
-        fileWithUserResponse.creator.name
-      );
-    });
-
     it("should return 400 for invalid spaceId parameter", async () => {
       const { req, res } = await createPrivateApiMockRequest({
         method: "GET",
@@ -341,47 +194,6 @@ describe("/api/w/[wId]/spaces/[spaceId]/project_context", () => {
       expect(responseData.error.type).toBe("invalid_request_error");
     });
 
-    it("should return files with correct metadata format", async () => {
-      const {
-        auth: auth,
-        req,
-        res,
-        user,
-        globalSpace,
-      } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
-
-      const space = globalSpace;
-
-      await ProjectFileFactory.create(auth, user, space, {
-        contentType: "text/markdown",
-        fileName: "readme.md",
-        fileSize: 1024,
-        status: "ready",
-      });
-
-      req.query.spaceId = space.sId;
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const responseData = res._getJSONData();
-      expect(responseData.attachments).toHaveLength(1);
-
-      const attachment = responseData.attachments[0];
-      expect(isFileAttachmentType(attachment)).toBe(true);
-      if (isFileAttachmentType(attachment)) {
-        expect(attachment.fileId).toBeDefined();
-        expect(attachment.title).toBe("readme.md");
-        expect(attachment.contentType).toBe("text/markdown");
-        expect(attachment.source).toBe("user");
-        expect(attachment.isInProjectContext).toBe(true);
-        expect(attachment.contentFragmentVersion).toBe("latest");
-        expect(typeof attachment.createdAt).toBe("number");
-      }
-    });
   });
 
   describe("POST (content node)", () => {
