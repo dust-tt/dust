@@ -35,3 +35,19 @@ export type SandboxTreeNode = {
   fileId: string | null;
   children: SandboxTreeNode[];
 };
+
+export type FileExplorerBucket =
+  | "tables"
+  | "frames"
+  | "texts"
+  | "folders"
+  | "images"
+  | "code";
+
+export type FileExplorerFilter = "all" | FileExplorerBucket;
+
+export type FileExplorerSortMode =
+  | "last-modified"
+  | "last-created"
+  | "name-asc"
+  | "name-desc";

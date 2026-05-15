@@ -10,7 +10,10 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { isSupportedImageContentType } from "@app/types/files";
+import {
+  isSupportedImageContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -115,7 +118,7 @@ function makeFileEntry(
     fileName,
     relativeFilePath,
     sizeBytes,
-    contentType,
+    contentType: rawContentType,
     lastModifiedMs,
     fileId,
   }: {
@@ -129,6 +132,10 @@ function makeFileEntry(
   scope: GCSMountPoint,
   workspaceId: string
 ): GCSMountFileEntry {
+  // GCS metadata commonly carries MIME parameters (e.g. `text/csv; charset=utf-8`).
+  // Strip them at the module boundary so every downstream consumer sees a clean type
+  // that matches our content-type lookup tables exactly.
+  const contentType = stripMimeParameters(rawContentType);
   return {
     isDirectory: false,
     fileName,

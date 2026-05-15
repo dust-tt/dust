@@ -16,9 +16,91 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   ConversationAttachmentItem,
   ConversationAttachmentRow,
+  FileExplorerBucket,
+  FileExplorerSortMode,
   FilePanelCategory,
   SandboxTreeNode,
 } from "./types";
+
+/**
+ * Maps a tree node (file or folder) to its explorer filter bucket. Audio files (and any other
+ * unmapped type) return null and only surface under the "All" chip.
+ */
+export function getFileExplorerBucket(
+  node: SandboxTreeNode
+): FileExplorerBucket | null {
+  if (node.isDirectory) {
+    return "folders";
+  }
+
+  const contentType = node.contentType;
+  if (!contentType) {
+    return null;
+  }
+
+  if (isInteractiveContentType(contentType)) {
+    return "frames";
+  }
+
+  const previewConfig = getFilePreviewConfig(contentType);
+  switch (previewConfig.category) {
+    case "image":
+      return "images";
+
+    case "code":
+      return "code";
+
+    case "delimited":
+      return "tables";
+
+    case "pdf":
+    case "viewer":
+    case "markdown":
+    case "text":
+      return "texts";
+
+    case "frame":
+      return "frames";
+
+    default:
+      return null;
+  }
+}
+
+/**
+ * Returns a node's sort key for the explorer sort modes. Falls back to 0 / empty string when
+ * the underlying entry isn't available (e.g. inferred directory).
+ */
+export function compareTreeNodesForSort(
+  a: SandboxTreeNode,
+  b: SandboxTreeNode,
+  sortMode: FileExplorerSortMode,
+  timestampsByPath: Map<string, number>
+): number {
+  switch (sortMode) {
+    case "name-asc":
+      return a.name.localeCompare(b.name);
+
+    case "name-desc":
+      return b.name.localeCompare(a.name);
+
+    case "last-modified":
+    case "last-created": {
+      // Folders have no timestamp on the tree (they're inferred from file paths). Fall through
+      // to alphabetical so they group at the top in a stable order.
+      const ta = timestampsByPath.get(a.path) ?? 0;
+      const tb = timestampsByPath.get(b.path) ?? 0;
+      if (tb !== ta) {
+        return tb - ta;
+      }
+
+      return a.name.localeCompare(b.name);
+    }
+
+    default:
+      return 0;
+  }
+}
 
 /**
  * Category display configuration, ordered by priority.
@@ -161,7 +243,7 @@ export function conversationAttachmentToRow(
 }
 
 /**
- * Build a tree from flat GCS file entries by inferring directories from paths.
+ * Build a tree from flat file entries by inferring directories from paths.
  * entry.path is a scoped path (e.g. "conversation/subdir/file.png"); the
  * use-case prefix (first segment) is stripped so tree paths start at the
  * sandbox working directory root.
