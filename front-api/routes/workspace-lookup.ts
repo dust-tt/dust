@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { fetchRevokedWorkspace } from "@app/lib/api/user";
-import { getUserFromSession } from "@app/lib/iam/session";
+import {
+  fetchRevokedWorkspace,
+  getUserWithWorkspaces,
+} from "@app/lib/api/user";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
-import { sessionAuth } from "../middleware/session_auth";
 import { validate } from "../middleware/validator";
 
 const GetWorkspaceLookupQuerySchema = z.object({
@@ -15,28 +16,15 @@ const GetWorkspaceLookupQuerySchema = z.object({
 
 export const workspaceLookupApp = new Hono();
 
-workspaceLookupApp.use("*", sessionAuth);
-
 workspaceLookupApp.get(
   "/",
   validate("query", GetWorkspaceLookupQuerySchema),
   async (c) => {
-    const session = c.get("session");
-
-    const user = await getUserFromSession(session);
-    if (!user) {
-      return c.json(
-        {
-          error: { type: "user_not_found", message: "User not found." },
-        },
-        404
-      );
-    }
-
+    const userResource = c.get("userResource");
     const { flow } = c.req.valid("query");
 
     if (flow === "no-auto-join") {
-      const [, userEmailDomain] = user.email.split("@");
+      const [, userEmailDomain] = userResource.email.split("@");
       const result =
         await WorkspaceResource.fetchByDomainWithInfo(userEmailDomain);
       const workspace = result?.workspace ?? null;
@@ -61,6 +49,7 @@ workspaceLookupApp.get(
       });
     }
 
+    const user = await getUserWithWorkspaces(userResource);
     const result = await fetchRevokedWorkspace(user);
     if (result.isErr()) {
       return c.json(

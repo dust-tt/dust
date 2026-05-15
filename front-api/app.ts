@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 
 import { cors } from "./middleware/cors";
+import { sessionAuth } from "./middleware/session_auth";
+import { userAuth } from "./middleware/user_auth";
 import { appStatusApp } from "./routes/app-status";
 import { authContextApp } from "./routes/auth-context";
 import { createNewWorkspaceApp } from "./routes/create-new-workspace";
@@ -45,14 +47,21 @@ const HONO_ROUTE_REGEXES = HONO_ROUTES.map((r) => {
   };
 });
 
+// Session-scoped routes share sessionAuth + userAuth, applied once here so
+// individual route files don't repeat the wiring.
+const sessionRoutes = new Hono();
+sessionRoutes.use("*", sessionAuth);
+sessionRoutes.use("*", userAuth);
+sessionRoutes.route("/auth-context", authContextApp);
+sessionRoutes.route("/create-new-workspace", createNewWorkspaceApp);
+sessionRoutes.route("/invitations", invitationsApp);
+sessionRoutes.route("/workspace-lookup", workspaceLookupApp);
+
 const apiApp = new Hono();
 apiApp.route("/healthz", healthzApp);
 apiApp.route("/app-status", appStatusApp);
-apiApp.route("/auth-context", authContextApp);
-apiApp.route("/create-new-workspace", createNewWorkspaceApp);
-apiApp.route("/invitations", invitationsApp);
 apiApp.route("/kill", killApp);
-apiApp.route("/workspace-lookup", workspaceLookupApp);
+apiApp.route("/", sessionRoutes);
 apiApp.route("/w/:wId", workspaceApp);
 apiApp.route("/v1/w/:wId", publicWorkspaceApp);
 
