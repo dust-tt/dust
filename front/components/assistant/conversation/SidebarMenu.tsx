@@ -14,6 +14,7 @@ import {
   getGroupConversationsByDate,
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
+import { ConfirmContext } from "@app/components/Confirm";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
@@ -483,6 +484,8 @@ export function AgentSidebarMenu({
     };
   }, [hasSpaceConversations, mutateConversations, mutateSpaceSummary]);
 
+  const confirm = useContext(ConfirmContext);
+
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
     ConversationListItemType[]
@@ -503,9 +506,9 @@ export function AgentSidebarMenu({
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
 
-  const [showDeleteDialog, setShowDeleteDialog] = useState<
-    "all" | "selection" | null
-  >(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState<"selection" | null>(
+    null
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
   const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
@@ -642,6 +645,27 @@ export function AgentSidebarMenu({
     setIsDeleting(false);
     setShowDeleteDialog(null);
   }, [conversations, doDelete, sendNotification]);
+
+  // Rendered inside a Sheet on mobile, so we use ConfirmContext (root-level portal) to ensure
+  // the confirmation dialog is not unmounted together with the Sheet when it closes.
+  const handleClearAll = useCallback(async () => {
+    const confirmed = await confirm({
+      title: "Clear conversation history",
+      message: (
+        <>
+          Are you sure you want to delete ALL conversations?
+          <br />
+          <br />
+          <b>This action cannot be undone.</b>
+        </>
+      ),
+      validateLabel: "Delete",
+      validateVariant: "warning",
+    });
+    if (confirmed) {
+      await deleteAll();
+    }
+  }, [confirm, deleteAll]);
 
   const { setAnimate } = useContext(InputBarContext);
 
@@ -834,6 +858,7 @@ export function AgentSidebarMenu({
         setHideTriggeredConversations={setHideTriggeredConversations}
         handleNewClick={handleNewClick}
         toggleMultiSelect={toggleMultiSelect}
+        onClearHistory={handleClearAll}
         setShowDeleteDialog={setShowDeleteDialog}
         hasMore={hasMore}
         loadMore={loadMore}
@@ -855,6 +880,7 @@ export function AgentSidebarMenu({
     setHideTriggeredConversations,
     handleNewClick,
     toggleMultiSelect,
+    handleClearAll,
     setShowDeleteDialog,
     hasMore,
     loadMore,
@@ -867,9 +893,8 @@ export function AgentSidebarMenu({
         isOpen={showDeleteDialog !== null}
         isDeleting={isDeleting}
         onClose={() => setShowDeleteDialog(null)}
-        onDelete={showDeleteDialog === "all" ? deleteAll : deleteSelection}
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        type={showDeleteDialog || "all"}
+        onDelete={deleteSelection}
+        type="selection"
         selectedCount={selectedConversations.length}
       />
       <CreateProjectModal
@@ -1089,7 +1114,8 @@ export function AgentSidebarMenu({
                         />
                         <DropdownMenuItem
                           label="Clear conversation history"
-                          onClick={() => setShowDeleteDialog("all")}
+                          variant="warning"
+                          onClick={handleClearAll}
                           icon={TrashIcon}
                           disabled={filteredConversations.length === 0}
                         />
@@ -1434,7 +1460,8 @@ interface NavigationListWithInboxProps {
   setHideTriggeredConversations: (hide: boolean) => void;
   handleNewClick: () => void;
   toggleMultiSelect: () => void;
-  setShowDeleteDialog: (value: "all" | "selection" | null) => void;
+  onClearHistory: () => void;
+  setShowDeleteDialog: (value: "selection" | null) => void;
   hasMore: boolean;
   loadMore: () => void;
   isLoadingMore: boolean;
@@ -1455,6 +1482,7 @@ function NavigationListWithInbox({
   setHideTriggeredConversations,
   handleNewClick,
   toggleMultiSelect,
+  onClearHistory,
   setShowDeleteDialog,
   hasMore,
   loadMore,
@@ -1611,7 +1639,7 @@ function NavigationListWithInbox({
                     label="Clear history"
                     variant="warning"
                     icon={TrashIcon}
-                    onClick={() => setShowDeleteDialog("all")}
+                    onClick={onClearHistory}
                     disabled={conversations.length === 0}
                   />
                 </DropdownMenuContent>
