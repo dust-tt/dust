@@ -6,7 +6,7 @@ export const authContextApp = new Hono();
 
 authContextApp.get("/", async (c) => {
   const session = c.get("session");
-  const user = c.get("userResource");
+  const user = c.get("user");
 
   if (session.workspaceId) {
     const redirect = await getWorkspaceRegionRedirect(session.workspaceId);

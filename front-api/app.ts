@@ -47,8 +47,7 @@ const HONO_ROUTE_REGEXES = HONO_ROUTES.map((r) => {
   };
 });
 
-// Session-scoped routes share sessionAuth + userAuth, applied once here so
-// individual route files don't repeat the wiring.
+// userAuth depends on c.get("session"), so sessionAuth must register first.
 const sessionRoutes = new Hono();
 sessionRoutes.use("*", sessionAuth);
 sessionRoutes.use("*", userAuth);

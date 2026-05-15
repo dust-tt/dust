@@ -20,11 +20,11 @@ workspaceLookupApp.get(
   "/",
   validate("query", GetWorkspaceLookupQuerySchema),
   async (c) => {
-    const userResource = c.get("userResource");
+    const user = c.get("user");
     const { flow } = c.req.valid("query");
 
     if (flow === "no-auto-join") {
-      const [, userEmailDomain] = userResource.email.split("@");
+      const [, userEmailDomain] = user.email.split("@");
       const result =
         await WorkspaceResource.fetchByDomainWithInfo(userEmailDomain);
       const workspace = result?.workspace ?? null;
@@ -49,8 +49,11 @@ workspaceLookupApp.get(
       });
     }
 
-    const user = await getUserWithWorkspaces(userResource);
-    const result = await fetchRevokedWorkspace(user);
+    // TODO(2026-05-15 PERF): fetchRevokedWorkspace re-fetches the
+    // UserResource we already have on the context. Refactor it to take a
+    // UserResource directly and drop this getUserWithWorkspaces call.
+    const userWithWorkspaces = await getUserWithWorkspaces(user);
+    const result = await fetchRevokedWorkspace(userWithWorkspaces);
     if (result.isErr()) {
       return c.json(
         {

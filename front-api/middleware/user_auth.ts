@@ -5,16 +5,18 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 
 declare module "hono" {
   interface ContextVariableMap {
-    userResource: UserResource;
+    user: UserResource;
   }
 }
 
 /**
- * Resolves the `UserResource` for the current session and stores it on the
- * Hono context under the `userResource` variable.
+ * Resolves the `UserResource` for the current session (Redis-cached lookup)
+ * and stores it on the Hono context as `user`.
+ *
+ * Kept intentionally lightweight — heavier `getUserWithWorkspaces` is opt-in
+ * per-handler to avoid the workspace fan-out on every session-authed request.
  *
  * Must run after `sessionAuth` — expects `c.get("session")` to be set.
- * Handlers that need workspaces should call `getUserWithWorkspaces` themselves.
  */
 export const userAuth: MiddlewareHandler = async (c, next) => {
   const session = c.get("session");
@@ -32,6 +34,6 @@ export const userAuth: MiddlewareHandler = async (c, next) => {
     );
   }
 
-  c.set("userResource", user);
+  c.set("user", user);
   await next();
 };

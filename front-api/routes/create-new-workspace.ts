@@ -8,11 +8,11 @@ export const createNewWorkspaceApp = new Hono();
 
 createNewWorkspaceApp.post("/", async (c) => {
   const session = c.get("session");
-  const userResource = c.get("userResource");
+  const user = c.get("user");
 
-  const user = await getUserWithWorkspaces(userResource);
+  const userWithWorkspaces = await getUserWithWorkspaces(user);
 
-  if (user.workspaces.length > 0) {
+  if (userWithWorkspaces.workspaces.length > 0) {
     return c.json(
       {
         error: {
@@ -27,7 +27,7 @@ createNewWorkspaceApp.post("/", async (c) => {
   const workspace = await createWorkspace(session);
 
   await createAndTrackMembership({
-    user: userResource,
+    user,
     workspace,
     role: "admin",
     origin: "invited",

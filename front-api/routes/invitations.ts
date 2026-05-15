@@ -9,7 +9,7 @@ import type { PendingInvitationOption } from "@app/types/membership_invitation";
 export const invitationsApp = new Hono();
 
 invitationsApp.get("/", async (c) => {
-  const user = c.get("userResource");
+  const user = c.get("user");
 
   const invitationResources =
     await MembershipInvitationResource.listPendingForEmail({
