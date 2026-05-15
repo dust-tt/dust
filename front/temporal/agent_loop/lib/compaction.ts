@@ -369,6 +369,7 @@ async function generateCompactionSummary(
     includeActions: true,
     includeActionDetails: true,
     skipRunningAgentMessages: true,
+    truncateTotalChars: 512000, // Simple heuristic to avoid context overflow with most models.
   });
 
   // TODO(compaction): Ensure we don't exceeds the model context size here, as we have no guarantee
