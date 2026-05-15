@@ -9,6 +9,8 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import {
   CONVERSATION_CAT_FILE_ACTION_NAME,
   CONVERSATION_FILES_TOOLS_METADATA,
+  CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM,
+  CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME,
   CONVERSATION_LIST_FILES_ACTION_NAME,
   CONVERSATION_SEARCH_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
@@ -78,52 +80,56 @@ export const contentFromAttachments = (
   return content;
 };
 
-const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
-  [CONVERSATION_LIST_FILES_ACTION_NAME]: async (
-    _,
-    { auth, agentLoopContext }
-  ) => {
-    if (!agentLoopContext?.runContext) {
-      return new Err(new MCPError("No conversation context available"));
-    }
+// Shared list handler used under two action names: the legacy `list` (all attachments) and the
+// file-system-mode `list_content_nodes_and_tables` (narrowed). Filtering is driven by the
+// conversation's `useFileSystem` flag so the same handler is correct under either name.
+const listAttachmentsHandler: ToolHandlers<
+  typeof CONVERSATION_FILES_TOOLS_METADATA
+>[typeof CONVERSATION_LIST_FILES_ACTION_NAME] = async (
+  _,
+  { auth, agentLoopContext }
+) => {
+  if (!agentLoopContext?.runContext) {
+    return new Err(new MCPError("No conversation context available"));
+  }
 
-    const conversation = agentLoopContext.runContext.conversation;
-    const allAttachments = await listAttachments(auth, { conversation });
+  const conversation = agentLoopContext.runContext.conversation;
+  const allAttachments = await listAttachments(auth, { conversation });
 
-    // When the conversation uses the new file system, files are surfaced via the
-    // `files` server. Only list content nodes and queryable attachments (tables) here.
-    const useFileSystem = conversation.metadata?.useFileSystem === true;
-    const attachments = useFileSystem
-      ? allAttachments.filter(
-          (a) => isContentNodeAttachmentType(a) || a.isQueryable
-        )
-      : allAttachments;
+  // When the conversation uses the new file system, regular files are surfaced via the
+  // `files` server. Only list content nodes and queryable attachments (tables) here.
+  const useFileSystem = conversation.metadata?.useFileSystem === true;
+  const attachments = useFileSystem
+    ? allAttachments.filter(
+        (a) => isContentNodeAttachmentType(a) || a.isQueryable
+      )
+    : allAttachments;
 
-    if (attachments.length === 0) {
-      return new Ok([
-        {
-          type: "text",
-          text: "No files are currently attached to the conversation.",
-        },
-      ]);
-    }
-
-    let content = contentFromAttachments(attachments);
-
-    if (content.length > MAX_CONTENT_SIZE_FOR_LIST_FILES) {
-      content = contentFromAttachments(
-        attachments,
-        "Snippet content too large."
-      );
-    }
-
+  if (attachments.length === 0) {
     return new Ok([
       {
         type: "text",
-        text: content,
+        text: "No files are currently attached to the conversation.",
       },
     ]);
-  },
+  }
+
+  let content = contentFromAttachments(attachments);
+
+  if (content.length > MAX_CONTENT_SIZE_FOR_LIST_FILES) {
+    content = contentFromAttachments(attachments, "Snippet content too large.");
+  }
+
+  return new Ok([
+    {
+      type: "text",
+      text: content,
+    },
+  ]);
+};
+
+const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
+  [CONVERSATION_LIST_FILES_ACTION_NAME]: listAttachmentsHandler,
 
   [CONVERSATION_CAT_FILE_ACTION_NAME]: async (
     { fileId, offset, limit, grep },
@@ -401,3 +407,15 @@ async function getFileFromConversation(
 }
 
 export const TOOLS = buildTools(CONVERSATION_FILES_TOOLS_METADATA, handlers);
+
+const handlersWithFilesystem: ToolHandlers<
+  typeof CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM
+> = {
+  [CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME]:
+    listAttachmentsHandler,
+};
+
+export const TOOLS_WITH_FILESYSTEM = buildTools(
+  CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM,
+  handlersWithFilesystem
+);
