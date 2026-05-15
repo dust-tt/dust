@@ -242,14 +242,7 @@ describe("sendToolValidationEmail", () => {
 
     const [[recipient, message]] = mockSendEmail.mock.calls;
     expect(recipient).toBe("sender@dust.tt");
-    if (
-      typeof message !== "object" ||
-      message === null ||
-      !("html" in message) ||
-      typeof message.html !== "string"
-    ) {
-      throw new Error("Expected validation email HTML");
-    }
+    expect(message).toMatchObject({ html: expect.any(String) });
 
     const validationUrls = [...message.html.matchAll(/href="([^"]+)"/g)]
       .map((match) => match[1])
