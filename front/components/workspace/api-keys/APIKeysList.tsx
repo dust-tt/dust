@@ -6,11 +6,9 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { RoleType } from "@app/types/user";
 import { Button, cn } from "@dust-tt/sparkle";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import sortBy from "lodash/sortBy";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
-
 import { prettifyGroupName } from "./utils";
 
 type APIKeysListProps = {
@@ -59,7 +57,7 @@ export const APIKeysList = ({
   return (
     <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
       <ul role="list" className="pt-4">
-        {_.sortBy(keys, (key) => key.status[0] + key.name).map((key) => (
+        {sortBy(keys, (key) => key.status[0] + key.name).map((key) => (
           <li key={key.secret} className="px-2 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center">

@@ -16,8 +16,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import * as _ from "lodash";
+import capitalize from "lodash/capitalize";
 import { useState } from "react";
 
 interface DocumentOrTableDeleteDialogProps {
@@ -78,7 +77,7 @@ export const DocumentOrTableDeleteDialog = ({
 
       sendNotification({
         type: "success",
-        title: `${_.capitalize(contentNode.type)} deletion submitted`,
+        title: `${capitalize(contentNode.type)} deletion submitted`,
         description:
           `Deletion of ${contentNode.type} ${contentNode.title} is ongoing, ` +
           `it will complete shortly.`,

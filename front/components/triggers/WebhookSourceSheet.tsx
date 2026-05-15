@@ -50,8 +50,7 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import uniq from "lodash/uniq";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
@@ -437,7 +436,7 @@ function WebhookSourceSheetContent({
       return;
     }
 
-    const agents = _.uniq(
+    const agents = uniq(
       webhookSourcesWithViews
         .filter((source) => source.sId === webhookSource.sId)
         .map((source) => source.usage?.agents ?? [])

@@ -24,8 +24,7 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import capitalize from "lodash/capitalize";
 import { useState } from "react";
 
 interface RequestActionsModal {
@@ -159,17 +158,13 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
               {selectedMcpServer && (
                 <div className="flex flex-col gap-2">
                   <p className="mb-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {_.capitalize(
-                      selectedMcpServer.editedByUser?.fullName ?? ""
-                    )}{" "}
+                    {capitalize(selectedMcpServer.editedByUser?.fullName ?? "")}{" "}
                     is the administrator for the{" "}
                     {selectedMcpServer
                       ? getMcpServerDisplayName(selectedMcpServer.server)
                       : ""}{" "}
                     tool within Dust. Send an email to Dust. Send an email to{" "}
-                    {_.capitalize(
-                      selectedMcpServer.editedByUser?.fullName ?? ""
-                    )}
+                    {capitalize(selectedMcpServer.editedByUser?.fullName ?? "")}
                     , explaining your request.
                   </p>
                   <TextArea
