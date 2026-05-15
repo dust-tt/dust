@@ -24,6 +24,7 @@ on:
           - front
           - front-edge
           - front-sse
+          - front-api
           - prodbox
           - oauth
           - viz

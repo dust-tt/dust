@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "tsx ./server.ts",
-    "start": "NODE_ENV=production tsx ./server.ts",
+    "start": "NODE_ENV=production node dist/server.js",
+    "build": "tsx esbuild.server.ts",
     "tsgo": "tsgo"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
+    "esbuild": "^0.27.3",
     "tsx": "^4.21.0"
   }
 }
