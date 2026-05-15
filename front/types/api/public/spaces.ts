@@ -11,9 +11,10 @@ const ParentsInSchema = z.object({
   parentsIn: z.array(z.string()),
 });
 
+// It's important to have ParentsInSchema first, as ParentsToAddRemoveSchema only has optional fields and would always match if it were first.
 export const PatchDataSourceViewSchema = z.union([
-  ParentsToAddRemoveSchema,
   ParentsInSchema,
+  ParentsToAddRemoveSchema,
 ]);
 
 export type PatchDataSourceViewType = z.infer<typeof PatchDataSourceViewSchema>;
