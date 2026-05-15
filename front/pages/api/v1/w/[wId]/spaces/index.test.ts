@@ -1,5 +1,5 @@
+import { callApi } from "@app/tests/utils/api_request";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
-
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
@@ -10,6 +10,8 @@ import { describe, expect, it } from "vitest";
 
 import handler from "./index";
 
+const ROUTE = "/api/v1/w/:wId/spaces";
+
 describe(
   "public api authentication tests",
   createPublicApiAuthenticationTests(handler)
@@ -17,18 +19,21 @@ describe(
 
 describe("GET /api/v1/w/[wId]/spaces", () => {
   it("returns an empty list when no spaces exist", async () => {
-    const { req, res } = await createPublicApiMockRequest();
+    const { workspace, key } = await createPublicApiMockRequest();
 
-    await handler(req, res);
+    const response = await callApi({
+      route: ROUTE,
+      params: { wId: workspace.sId },
+      bearerToken: key.secret,
+      nextHandler: handler,
+    });
 
-    expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData()).toEqual({ spaces: [] });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ spaces: [] });
   });
 
   it("returns accessible spaces for the workspace", async () => {
-    // Setup
-    const { req, res, workspace, globalGroup } =
-      await createPublicApiMockRequest();
+    const { workspace, globalGroup, key } = await createPublicApiMockRequest();
 
     // Create test spaces
     const globalSpace = await SpaceFactory.global(workspace);
@@ -41,13 +46,16 @@ describe("GET /api/v1/w/[wId]/spaces", () => {
     await GroupSpaceFactory.associate(regularSpace1, globalGroup);
     await GroupSpaceFactory.associate(regularSpace2, globalGroup);
 
-    // Execute request
-    await handler(req, res);
+    const response = await callApi({
+      route: ROUTE,
+      params: { wId: workspace.sId },
+      bearerToken: key.secret,
+      nextHandler: handler,
+    });
 
-    // Verify response
-    expect(res._getStatusCode()).toBe(200);
+    expect(response.status).toBe(200);
 
-    const { spaces } = res._getJSONData();
+    const { spaces } = response.body;
     expectArrayOfObjectsWithSpecificLength(spaces, 3);
 
     expect(spaces).toEqual(

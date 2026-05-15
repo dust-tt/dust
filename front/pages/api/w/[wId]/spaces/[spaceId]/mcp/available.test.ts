@@ -1,6 +1,7 @@
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { callApi } from "@app/tests/utils/api_request";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -16,17 +17,15 @@ import handler from "./available";
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
   it("returns available servers for regular user", async () => {
-    // Create mock request
-    const { req, res, workspace, globalGroup } =
-      await createPrivateApiMockRequest({
-        method: "GET",
-        role: "user",
-      });
-    // Create workspace and space
+    // Sets up workspace, user, membership, and mocks getSession.
+    const { workspace, globalGroup } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
     const space = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(space, globalGroup);
 
-    // Get auth
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     // Mock the INTERNAL_MCP_SERVERS to override the "primitive_types_debugger" server config
@@ -50,7 +49,6 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
       configurable: true,
     });
 
-    // Create some servers
     await FeatureFlagFactory.basic(auth, "dev_mcp_actions");
 
     // Internal server in the right workspace
@@ -72,20 +70,16 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     await SpaceFactory.system(workspace2);
     await RemoteMCPServerFactory.create(workspace2);
 
-    // Add query params
-    req.query = {
-      ...req.query,
-      spaceId: space.sId,
-    };
+    const response = await callApi({
+      route: "/api/w/:wId/spaces/:spaceId/mcp/available",
+      params: { wId: workspace.sId, spaceId: space.sId },
 
-    // Call handler
-    await handler(req, res);
+      nextHandler: handler,
+    });
 
-    // Check response
-    expect(res._getStatusCode()).toBe(200);
-    const response = res._getJSONData();
-    expect(response.success).toBe(true);
-    expect(response.servers).toHaveLength(1); // Only one available server as the other is assigned to the system space
-    expect(response.servers[0].sId).toBe(internalServer.id);
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.servers).toHaveLength(1); // Only one available server — the other is assigned to the system space
+    expect(response.body.servers[0].sId).toBe(internalServer.id);
   });
 });

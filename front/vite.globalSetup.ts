@@ -46,6 +46,7 @@ export default async function setup() {
     CONNECTORS_API: "http://fake-connectors-api",
     DUST_CONNECTORS_SECRET: "fake-connectors-secret",
     DUST_CONNECTORS_WEBHOOKS_SECRET: "fake-connectors-webhooks-secret",
+    TEST_HANDLER: process.env.TEST_HANDLER ?? "next", // "next" or "hono". Set via env var to avoid hardcoding in test files, which would make it more error-prone to switch modes.
 
     // Variables that modify the behavior of certain tests
     UPDATE_MCP_METADATA_SNAPSHOT: process.env.UPDATE_MCP_METADATA_SNAPSHOT,
