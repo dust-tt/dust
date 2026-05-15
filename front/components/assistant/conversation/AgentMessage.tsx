@@ -169,8 +169,36 @@ function PrunedContextChip() {
   );
 }
 
+function buildMountFilePreviewHref({
+  apiBaseUrl,
+  ownerId,
+  conversationId,
+  spaceId,
+  filePath,
+}: {
+  apiBaseUrl: string;
+  ownerId: string;
+  conversationId: string;
+  spaceId: string | null;
+  filePath: string;
+}): string | undefined {
+  if (filePath.startsWith("conversation/")) {
+    const rel = filePath.slice("conversation/".length);
+    return `${apiBaseUrl}/api/w/${ownerId}/assistant/conversations/${conversationId}/files/${rel}`;
+  }
+  if (filePath.startsWith("project/")) {
+    if (!spaceId) {
+      return undefined;
+    }
+    const rel = filePath.slice("project/".length);
+    return `${apiBaseUrl}/api/w/${ownerId}/spaces/${spaceId}/files/${rel}`;
+  }
+  return undefined;
+}
+
 interface AgentMessageProps {
   conversationId: string;
+  spaceId: string | null;
   hideHeader: boolean;
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
@@ -192,6 +220,7 @@ interface AgentMessageProps {
 
 export function AgentMessage({
   conversationId,
+  spaceId,
   hideHeader,
   isLastMessage,
   agentMessage,
@@ -986,6 +1015,7 @@ export function AgentMessage({
           onQuickReplySend={handleQuickReply}
           owner={owner}
           conversationId={conversationId}
+          spaceId={spaceId}
           retryHandler={retryHandler}
           reloadMessage={reloadMessage}
           isRetryHandlerProcessing={isRetryHandlerProcessing}
@@ -1082,6 +1112,7 @@ function AgentMessageContent({
   streamError,
   owner,
   conversationId,
+  spaceId,
   activeReferences,
   setActiveReferences,
   retryHandler,
@@ -1097,6 +1128,7 @@ function AgentMessageContent({
   isLastMessage: boolean;
   owner: LightWorkspaceType;
   conversationId: string;
+  spaceId: string | null;
   retryHandler: (params: {
     conversationId: string;
     messageId: string;
@@ -1377,7 +1409,13 @@ function AgentMessageContent({
                 const href = file.fileId
                   ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`
                   : file.filePath
-                    ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${file.filePath.replace("conversation/", "")}`
+                    ? buildMountFilePreviewHref({
+                        apiBaseUrl: config.getApiBaseUrl(),
+                        ownerId: owner.sId,
+                        conversationId,
+                        spaceId,
+                        filePath: file.filePath,
+                      })
                     : undefined;
                 return {
                   index: -1,

@@ -7,8 +7,12 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { FilePreviewSheet } from "@app/components/spaces/FilePreviewSheet";
 import { useDebounce } from "@app/hooks/useDebounce";
+import config from "@app/lib/api/config";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { ContextAttachmentItem } from "@app/lib/api/assistant/conversation/attachments";
+import type {
+  ContextAttachmentItem,
+  FileAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
 import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
@@ -17,6 +21,7 @@ import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   useAddProjectContextContentNode,
   useProjectContextAttachments,
+  useProjectFiles,
   useRemoveProjectContextContentNode,
   useRemoveProjectContextFile,
 } from "@app/lib/swr/projects";
@@ -59,6 +64,15 @@ interface SpaceKnowledgeTabProps {
 
 const PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP =
   "Adding files to projects is disabled by your workspace admin.";
+
+// TODO(2026-05 FILE SYSTEM): Remove once the file explorer supports rendering
+// path-only files natively. Sentinel id needed today to squeeze path-only entries
+// through the existing `FileAttachmentType`-shaped table rows.
+const AGENT_FILE_ID_PREFIX = "agent-file:";
+
+function isAgentFileId(fileId: string): boolean {
+  return fileId.startsWith(AGENT_FILE_ID_PREFIX);
+}
 
 type MenuItem = {
   kind: "item";
@@ -207,13 +221,55 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   const globalSpace = spaces.find((space) => space.kind === "global");
 
   const {
-    attachments,
+    attachments: contentNodeAttachments,
     isProjectContextAttachmentsLoading,
     mutateProjectContextAttachments,
   } = useProjectContextAttachments({
     owner,
     spaceId: space.sId,
   });
+
+  const {
+    files: projectGCSFiles,
+    isProjectFilesLoading,
+    mutateProjectFiles,
+  } = useProjectFiles({
+    owner,
+    spaceId: space.sId,
+  });
+
+  const fileAttachments = useMemo<FileAttachmentType[]>(() => {
+    const out: FileAttachmentType[] = [];
+    for (const entry of projectGCSFiles) {
+      if (entry.isDirectory) {
+        continue;
+      }
+      out.push({
+        title: entry.fileName,
+        contentType: entry.contentType as FileAttachmentType["contentType"],
+        contentFragmentVersion: "latest",
+        snippet: null,
+        generatedTables: [],
+        isIncludable: true,
+        isSearchable: true,
+        isQueryable: false,
+        isInProjectContext: true,
+        creator: null,
+        hidden: false,
+        fileId: entry.fileId ?? `${AGENT_FILE_ID_PREFIX}${entry.path}`,
+        path: entry.path,
+        source: null,
+        createdAt: entry.lastModifiedMs,
+        updatedAt: entry.lastModifiedMs,
+      });
+    }
+    return out;
+  }, [projectGCSFiles]);
+
+  const attachments = useMemo<ContextAttachmentItem[]>(
+    () => [...contentNodeAttachments, ...fileAttachments],
+    [contentNodeAttachments, fileAttachments]
+  );
 
   const removeProjectContextFile = useRemoveProjectContextFile({
     owner,
@@ -244,15 +300,15 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    void mutateProjectContextAttachments();
+    void mutateProjectFiles();
   };
 
   const handleDroppedFiles = useCallback(
     async (files: File[]) => {
       await projectFileUpload.handleFilesUpload(files);
-      void mutateProjectContextAttachments();
+      void mutateProjectFiles();
     },
-    [projectFileUpload, mutateProjectContextAttachments]
+    [projectFileUpload, mutateProjectFiles]
   );
 
   // Process dropped files from the drag-and-drop context.
@@ -282,7 +338,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     if (confirmed) {
       const result = await removeProjectContextFile(item.fileId);
       if (result.isOk()) {
-        void mutateProjectContextAttachments();
+        void mutateProjectFiles();
       }
     }
   };
@@ -312,6 +368,15 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   const openAttachment = useCallback(
     (item: ContextAttachmentItem) => {
       if (isFileAttachmentType(item)) {
+        if (isAgentFileId(item.fileId) && item.path) {
+          const rel = item.path.replace(/^project\//, "");
+          window.open(
+            `${config.getApiBaseUrl()}/api/w/${owner.sId}/spaces/${space.sId}/files/${rel}`,
+            "_blank",
+            "noopener,noreferrer"
+          );
+          return;
+        }
         setSelectedFile({
           sId: item.fileId,
           fileName: item.title,
@@ -325,7 +390,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
         window.open(item.sourceUrl, "_blank", "noopener,noreferrer");
       }
     },
-    [space.sId]
+    [owner.sId, space.sId]
   );
 
   const columns: ColumnDef<ProjectKnowledgeRow>[] = useMemo(
@@ -476,27 +541,29 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       ...attachment,
       onClick: () => openAttachment(attachment),
       menuItems: isFileAttachmentType(attachment)
-        ? [
-            {
-              kind: "item" as const,
-              label: "Rename",
-              icon: PencilSquareIcon,
-              onClick: (e: React.MouseEvent) => {
-                e.stopPropagation();
-                handleRenameClick(attachment);
+        ? isAgentFileId(attachment.fileId)
+          ? []
+          : [
+              {
+                kind: "item" as const,
+                label: "Rename",
+                icon: PencilSquareIcon,
+                onClick: (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  handleRenameClick(attachment);
+                },
               },
-            },
-            {
-              kind: "item" as const,
-              label: "Delete",
-              icon: TrashIcon,
-              variant: "warning" as const,
-              onClick: (e: React.MouseEvent) => {
-                e.stopPropagation();
-                void handleDeleteFile(attachment);
+              {
+                kind: "item" as const,
+                label: "Delete",
+                icon: TrashIcon,
+                variant: "warning" as const,
+                onClick: (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  void handleDeleteFile(attachment);
+                },
               },
-            },
-          ]
+            ]
         : isContentNodeAttachmentType(attachment)
           ? [
               {
@@ -521,7 +588,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   const isAddKnowledgeDisabled =
     !canManuallyManageProjectKnowledge || isUploading;
 
-  if (isProjectContextAttachmentsLoading) {
+  if (isProjectContextAttachmentsLoading || isProjectFilesLoading) {
     return (
       <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
         <div className="mx-auto flex w-full flex-col gap-4 py-8">
@@ -552,7 +619,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
         // Selection state is not tracked locally; project context is updated on select only.
       }}
       onFileChange={() => {
-        void mutateProjectContextAttachments();
+        void mutateProjectFiles();
       }}
       attachedNodes={[]}
       isLoading={isUploading}
@@ -585,7 +652,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       <RenameFileDialog
         isOpen={showRenameDialog}
         onClose={() => setShowRenameDialog(false)}
-        onRenamed={() => void mutateProjectContextAttachments()}
+        onRenamed={() => void mutateProjectFiles()}
         owner={owner}
         file={fileToRename}
       />

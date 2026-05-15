@@ -2,7 +2,6 @@ import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversa
 import {
   getAttachmentFromContentFragment,
   isContentNodeAttachmentType,
-  isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
@@ -89,34 +88,20 @@ export async function listProjectContextFiles(
 }
 
 /**
- * Project context attachments: latest file-backed and content-node fragments for the space,
- * same item shape as conversation attachments (see GET `.../conversations/[cId]/attachments`).
+ * Project context attachments: latest content-node fragments for the space, same item shape
+ * as conversation attachments (see GET `.../conversations/[cId]/attachments`). File-backed
+ * project files are served separately via the GCS-backed `/spaces/[spaceId]/files` endpoints.
  */
 export async function listProjectContextAttachments(
   auth: Authenticator,
   space: SpaceResource
 ): Promise<ConversationAttachmentType[]> {
   const fragments = await ContentFragmentResource.listBySpace(auth, space);
-  const fileModelIds = removeNulls(fragments.map((fr) => fr.fileId));
-  const filesByModelId = new Map<number, FileResource>();
-  if (fileModelIds.length > 0) {
-    const fetched = await FileResource.fetchByModelIdsWithAuth(
-      auth,
-      fileModelIds
-    );
-    for (const f of fetched) {
-      filesByModelId.set(f.id, f);
-    }
-  }
 
   const merged = new Map<string, ConversationAttachmentType>();
 
   for (const fragment of fragments) {
-    const file =
-      fragment.fileId != null
-        ? (filesByModelId.get(fragment.fileId) ?? null)
-        : null;
-    if (fragment.fileId != null && !file) {
+    if (fragment.fileId != null) {
       continue;
     }
 
@@ -125,17 +110,15 @@ export async function listProjectContextAttachments(
       fragment,
       {
         kind: "project_context",
-        file,
+        file: null,
       }
     );
     const attachment = getAttachmentFromContentFragment(cf);
-    if (!attachment) {
+    if (!attachment || !isContentNodeAttachmentType(attachment)) {
       continue;
     }
 
-    const key = isFileAttachmentType(attachment)
-      ? attachment.fileId
-      : attachment.contentFragmentId;
+    const key = attachment.contentFragmentId;
     if (merged.has(key)) {
       continue;
     }
