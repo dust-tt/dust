@@ -193,12 +193,12 @@ const KnowledgeSearchAndTable = memo(function KnowledgeSearchAndTable({
   );
 });
 
-type AttachKnowledgeDropdownProps = {
+interface AttachKnowledgeDropdownProps {
   buttonLabel: string;
   isDisabled: boolean;
   onUploadFileClick: () => void;
   onShowCompanyDataClick: () => void;
-};
+}
 
 function AttachKnowledgeDropdown({
   buttonLabel,
@@ -213,23 +213,23 @@ function AttachKnowledgeDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
-          icon={CloudArrowUpIcon}
-          label="Upload file"
-          onClick={onUploadFileClick}
-        />
-        <DropdownMenuItem
           icon={CloudArrowLeftRightIcon}
           label="From Company Data"
           onClick={onShowCompanyDataClick}
+        />
+        <DropdownMenuItem
+          icon={CloudArrowUpIcon}
+          label="Upload file"
+          onClick={onUploadFileClick}
         />
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-type AttachKnowledgeButtonProps = AttachKnowledgeDropdownProps & {
+interface AttachKnowledgeButtonProps extends AttachKnowledgeDropdownProps {
   canManuallyManageProjectKnowledge: boolean;
-};
+}
 
 function AttachKnowledgeButton({
   buttonLabel,
@@ -265,11 +265,11 @@ function AttachKnowledgeButton({
   );
 }
 
-type NoCompanyDataDialogProps = {
+interface NoCompanyDataDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onGoToCompanyData: () => void;
-};
+}
 
 function NoCompanyDataDialog({
   isOpen,
@@ -342,9 +342,9 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     contentType: string;
     projectId?: string | null;
   } | null>(null);
-  const [showPreviewSheet, setShowPreviewSheet] = useState(false);
-  const [showCompanyDataSheet, setShowCompanyDataSheet] = useState(false);
-  const [showNoCompanyDataDialog, setShowNoCompanyDataDialog] = useState(false);
+  const [activeOverlay, setActiveOverlay] = useState<
+    "preview" | "companyData" | "noCompanyData" | null
+  >(null);
   const isArchived = !!space.archivedAt;
   const canManuallyManageProjectKnowledge =
     isManualProjectKnowledgeManagementAllowed(owner);
@@ -529,7 +529,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
           contentType: item.contentType,
           projectId: space.sId,
         });
-        setShowPreviewSheet(true);
+        setActiveOverlay("preview");
         return;
       }
       if (isContentNodeAttachmentType(item) && item.sourceUrl) {
@@ -730,110 +730,98 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
 
   const hasFiles = attachments.length > 0;
   const isUploading = projectFileUpload.isProcessingFiles;
-  const uploadButtonLabel = isUploading ? "Uploading..." : "Add data";
+  const uploadButtonLabel = isUploading ? "Uploading..." : "Add";
   const isAddKnowledgeDisabled =
     !canManuallyManageProjectKnowledge || isUploading;
 
-  const handleUploadFileClick = useCallback(() => {
+  const handleUploadFileClick = () => {
     fileInputRef.current?.click();
-  }, []);
+  };
 
-  const handleShowCompanyDataClick = useCallback(() => {
-    if (globalSpaceDSVs.length === 0) {
-      setShowNoCompanyDataDialog(true);
-      return;
-    }
-    setShowCompanyDataSheet(true);
-  }, [globalSpaceDSVs.length]);
+  const handleShowCompanyDataClick = () => {
+    setActiveOverlay(
+      globalSpaceDSVs.length === 0 ? "noCompanyData" : "companyData"
+    );
+  };
 
-  const handleCloseCompanyDataSheet = useCallback(() => {
-    setShowCompanyDataSheet(false);
-  }, []);
+  const handleCloseOverlay = () => {
+    setActiveOverlay(null);
+  };
 
-  const handleCloseNoCompanyDataDialog = useCallback(() => {
-    setShowNoCompanyDataDialog(false);
-  }, []);
-
-  const handleGoToCompanyData = useCallback(() => {
+  const handleGoToCompanyData = () => {
     if (!globalSpace) {
       return;
     }
     void router.push(`/w/${owner.sId}/spaces/${globalSpace.sId}`);
-  }, [globalSpace, owner.sId, router]);
+  };
 
   const initialSelectedDataSources = useMemo<DataSourceViewType[]>(() => {
-    const nodeIdsByDsvId = new Map<string, string[]>();
+    const nodeIdsByDataSoureceViewId = new Map<string, string[]>();
     for (const attachment of attachments) {
       if (!isContentNodeAttachmentType(attachment)) {
         continue;
       }
       const existing =
-        nodeIdsByDsvId.get(attachment.nodeDataSourceViewId) ?? [];
-      nodeIdsByDsvId.set(attachment.nodeDataSourceViewId, [
+        nodeIdsByDataSoureceViewId.get(attachment.nodeDataSourceViewId) ?? [];
+      nodeIdsByDataSoureceViewId.set(attachment.nodeDataSourceViewId, [
         ...existing,
         attachment.nodeId,
       ]);
     }
-    return Array.from(nodeIdsByDsvId.entries()).flatMap(([dsvId, nodeIds]) => {
-      const dsv = globalSpaceDSVs.find((v) => v.sId === dsvId);
-      return dsv ? [{ ...dsv, parentsIn: nodeIds }] : [];
-    });
+    return Array.from(nodeIdsByDataSoureceViewId.entries()).flatMap(
+      ([dsvId, nodeIds]) => {
+        const dsv = globalSpaceDSVs.find((v) => v.sId === dsvId);
+        return dsv ? [{ ...dsv, parentsIn: nodeIds }] : [];
+      }
+    );
   }, [attachments, globalSpaceDSVs]);
 
-  const handleCompanyDataSave = useCallback(
-    async (selectionConfigurations: DataSourceViewSelectionConfigurations) => {
-      // 1. Flatten modal selection into a list of nodes.
-      const selectedNodes = Object.values(selectionConfigurations).flatMap(
-        ({ dataSourceView, selectedResources }) =>
-          selectedResources.map((node) => ({
-            title: node.title,
-            nodeId: node.internalId,
-            nodeDataSourceViewId: dataSourceView.sId,
-            sourceUrl: node.sourceUrl,
-          }))
-      );
-
-      // 2. Build identity keys for both sides of the diff.
-      const keyOf = (n: { nodeDataSourceViewId: string; nodeId: string }) =>
-        `${n.nodeDataSourceViewId}:${n.nodeId}`;
-      const currentContentNodes = attachments.filter(
-        isContentNodeAttachmentType
-      );
-      const currentKeys = new Set(currentContentNodes.map(keyOf));
-      const selectedKeys = new Set(selectedNodes.map(keyOf));
-
-      // 3. Diff.
-      const toAdd = selectedNodes.filter((n) => !currentKeys.has(keyOf(n)));
-      const toRemove = currentContentNodes.filter(
-        (n) => !selectedKeys.has(keyOf(n))
-      );
-
-      // 4. Apply both sides
-      await addProjectContextContentNodes(
-        toAdd.map((n) => ({
-          title: n.title,
-          nodeId: n.nodeId,
-          nodeDataSourceViewId: n.nodeDataSourceViewId,
-          ...(n.sourceUrl ? { url: n.sourceUrl } : {}),
+  const handleCompanyDataSave = async (
+    selectionConfigurations: DataSourceViewSelectionConfigurations
+  ) => {
+    // 1. Flatten modal selection into a list of nodes.
+    const selectedNodes = Object.values(selectionConfigurations).flatMap(
+      ({ dataSourceView, selectedResources }) =>
+        selectedResources.map((node) => ({
+          title: node.title,
+          nodeId: node.internalId,
+          nodeDataSourceViewId: dataSourceView.sId,
+          sourceUrl: node.sourceUrl,
         }))
-      );
-      await removeProjectContextContentNodes(
-        toRemove.map((n) => ({
-          nodeId: n.nodeId,
-          nodeDataSourceViewId: n.nodeDataSourceViewId,
-        }))
-      );
+    );
 
-      // 5. Refresh.
-      void mutateProjectContextAttachments();
-    },
-    [
-      addProjectContextContentNodes,
-      attachments,
-      mutateProjectContextAttachments,
-      removeProjectContextContentNodes,
-    ]
-  );
+    // 2. Build identity keys for both sides of the diff.
+    const keyOf = (n: { nodeDataSourceViewId: string; nodeId: string }) =>
+      `${n.nodeDataSourceViewId}:${n.nodeId}`;
+    const currentContentNodes = attachments.filter(isContentNodeAttachmentType);
+    const currentKeys = new Set(currentContentNodes.map(keyOf));
+    const selectedKeys = new Set(selectedNodes.map(keyOf));
+
+    // 3. Diff.
+    const toAdd = selectedNodes.filter((n) => !currentKeys.has(keyOf(n)));
+    const toRemove = currentContentNodes.filter(
+      (n) => !selectedKeys.has(keyOf(n))
+    );
+
+    // 4. Apply both sides
+    await addProjectContextContentNodes(
+      toAdd.map((n) => ({
+        title: n.title,
+        nodeId: n.nodeId,
+        nodeDataSourceViewId: n.nodeDataSourceViewId,
+        ...(n.sourceUrl ? { url: n.sourceUrl } : {}),
+      }))
+    );
+    await removeProjectContextContentNodes(
+      toRemove.map((n) => ({
+        nodeId: n.nodeId,
+        nodeDataSourceViewId: n.nodeDataSourceViewId,
+      }))
+    );
+
+    // 5. Refresh.
+    void mutateProjectContextAttachments();
+  };
 
   if (isProjectContextAttachmentsLoading || isProjectFilesLoading) {
     return (
@@ -860,15 +848,15 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       <FilePreviewSheet
         owner={owner}
         file={selectedFile}
-        isOpen={showPreviewSheet}
-        onOpenChange={setShowPreviewSheet}
+        isOpen={activeOverlay === "preview"}
+        onOpenChange={(open) => setActiveOverlay(open ? "preview" : null)}
       />
 
       {globalSpace && (
         <SpaceManagedDatasourcesViewsModal
-          isOpen={showCompanyDataSheet}
+          isOpen={activeOverlay === "companyData"}
           isRootSelectable={false}
-          onClose={handleCloseCompanyDataSheet}
+          onClose={handleCloseOverlay}
           onSave={handleCompanyDataSave}
           owner={owner}
           space={globalSpace}
@@ -880,8 +868,8 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       )}
 
       <NoCompanyDataDialog
-        isOpen={showNoCompanyDataDialog}
-        onClose={handleCloseNoCompanyDataDialog}
+        isOpen={activeOverlay === "noCompanyData"}
+        onClose={handleCloseOverlay}
         onGoToCompanyData={handleGoToCompanyData}
       />
 
