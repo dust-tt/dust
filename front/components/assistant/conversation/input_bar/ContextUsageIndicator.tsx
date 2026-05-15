@@ -117,7 +117,8 @@ export function ContextUsageIndicator({
         <PopoverContent side="top" className="w-auto p-3">
           <div className="flex flex-col items-start gap-3">
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {contextUsagePercentage}% of context used. <LinkWrapper
+              {contextUsagePercentage}% of context used.{" "}
+              <LinkWrapper
                 href={COMPACTION_GUIDE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -126,21 +127,21 @@ export function ContextUsageIndicator({
                 Learn more
               </LinkWrapper>
             </span>
-              {contextUsagePercentage >
-                CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  label={isCompacting ? "Compacting" : "Compact now"}
-                  onClick={() => {
-                    if (contextUsage?.model) {
-                      void compact(contextUsage.model);
-                    }
-                  }}
-                  disabled={isCompacting || !contextUsage?.model}
-                  isLoading={isCompacting}
-                />
-              )}
+            {contextUsagePercentage >
+              CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
+              <Button
+                variant="outline"
+                size="xs"
+                label={isCompacting ? "Compacting" : "Compact now"}
+                onClick={() => {
+                  if (contextUsage?.model) {
+                    void compact(contextUsage.model);
+                  }
+                }}
+                disabled={isCompacting || !contextUsage?.model}
+                isLoading={isCompacting}
+              />
+            )}
           </div>
         </PopoverContent>
       </PopoverRoot>
