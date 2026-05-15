@@ -46,8 +46,4 @@ export type FileExplorerBucket =
 
 export type FileExplorerFilter = "all" | FileExplorerBucket;
 
-export type FileExplorerSortMode =
-  | "last-modified"
-  | "last-created"
-  | "name-asc"
-  | "name-desc";
+export type FileExplorerSortMode = "last-modified" | "name-asc" | "name-desc";

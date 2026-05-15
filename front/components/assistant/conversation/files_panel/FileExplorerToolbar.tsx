@@ -2,6 +2,8 @@ import type { ViewMode } from "@app/components/assistant/conversation/files_pane
 import type { FileExplorerSortMode } from "@app/components/assistant/conversation/files_panel/types";
 import {
   ActionTimeIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -12,11 +14,13 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 
-const SORT_LABELS: Record<FileExplorerSortMode, string> = {
-  "last-modified": "Last modified",
-  "last-created": "Last created",
-  "name-asc": "Name A → Z",
-  "name-desc": "Name Z → A",
+const SORT_ITEMS: Record<
+  FileExplorerSortMode,
+  { label: string; icon: React.ComponentType<{ className?: string }> }
+> = {
+  "last-modified": { label: "Last modified", icon: ActionTimeIcon },
+  "name-asc": { label: "Name A → Z", icon: ArrowDownIcon },
+  "name-desc": { label: "Name Z → A", icon: ArrowUpIcon },
 };
 
 interface ViewToggleProps {
@@ -49,25 +53,30 @@ interface SortDropdownProps {
 }
 
 function SortDropdown({ value, onValueChange }: SortDropdownProps) {
+  const current = SORT_ITEMS[value];
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
           size="sm"
-          icon={ActionTimeIcon}
-          label={SORT_LABELS[value]}
+          icon={current.icon}
+          label={current.label}
           isSelect
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {(Object.keys(SORT_LABELS) as FileExplorerSortMode[]).map((mode) => (
-          <DropdownMenuItem
-            key={mode}
-            label={SORT_LABELS[mode]}
-            onClick={() => onValueChange(mode)}
-          />
-        ))}
+        {(Object.keys(SORT_ITEMS) as FileExplorerSortMode[]).map((mode) => {
+          const item = SORT_ITEMS[mode];
+          return (
+            <DropdownMenuItem
+              key={mode}
+              icon={item.icon}
+              label={item.label}
+              onClick={() => onValueChange(mode)}
+            />
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -5,8 +5,8 @@ import {
   type ViewMode,
 } from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
 import type { SandboxTreeNode } from "@app/components/assistant/conversation/files_panel/types";
-import { CardGrid, ScrollArea, Spinner } from "@dust-tt/sparkle";
 import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
+import { CardGrid, ScrollArea, Spinner } from "@dust-tt/sparkle";
 
 const cardGridClasses =
   "grid-cols-2 @xxs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5 @lg:grid-cols-6";

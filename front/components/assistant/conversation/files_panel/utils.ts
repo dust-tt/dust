@@ -84,8 +84,7 @@ export function compareTreeNodesForSort(
     case "name-desc":
       return b.name.localeCompare(a.name);
 
-    case "last-modified":
-    case "last-created": {
+    case "last-modified": {
       // Folders have no timestamp on the tree (they're inferred from file paths). Fall through
       // to alphabetical so they group at the top in a stable order.
       const ta = timestampsByPath.get(a.path) ?? 0;
