@@ -153,6 +153,28 @@ export const getProductSeatSubscriptionCreditsId = () =>
     PROD_PRODUCT_SEAT_SUBSCRIPTION_CREDITS
   );
 
+export const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
+export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
+
+export function getAwuAllocationForSeatType(
+  seatType: MembershipSeatType | null
+): number {
+  if (seatType === null) {
+    return 0;
+  }
+  switch (seatType) {
+    case "max":
+      return MAX_SEAT_MONTHLY_AWU_CREDITS;
+    case "pro":
+      return PRO_SEAT_MONTHLY_AWU_CREDITS;
+    case "workspace":
+    case "free":
+      return 0;
+    default:
+      return assertNever(seatType);
+  }
+}
+
 export const getSeatProductIds = (): Set<string> =>
   new Set([
     getProductSeatSubscriptionCreditsId(),

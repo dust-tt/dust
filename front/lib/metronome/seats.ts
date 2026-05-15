@@ -4,7 +4,10 @@ import {
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
-import { getSeatTypeForProductId } from "@app/lib/metronome/constants";
+import {
+  getAwuAllocationForSeatType,
+  getSeatTypeForProductId,
+} from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
@@ -230,4 +233,75 @@ export async function syncSeatCount({
   }
 
   return new Ok(undefined);
+}
+
+/**
+ * Query Metronome to determine which seat (pro/max) each user is assigned to,
+ * then return a map of userId → AWU allocation for the current period.
+ *
+ * Only covers SEAT_BASED subscriptions — Metronome tracks individual seat
+ * assignments for those. QUANTITY_ONLY subscriptions don't expose per-user
+ * assignments via the API, so users on those plans are omitted (allocation = 0).
+ *
+ * Returns an empty map on any error so callers degrade gracefully.
+ */
+export async function buildSeatAllocationByUserId({
+  metronomeCustomerId,
+  contractId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+}): Promise<Map<string, number>> {
+  const contractResult = await getMetronomeContractById({
+    metronomeCustomerId,
+    metronomeContractId: contractId,
+  });
+  if (contractResult.isErr()) {
+    logger.warn(
+      { error: contractResult.error, metronomeCustomerId, contractId },
+      "[Metronome] buildSeatAllocationByUserId: failed to fetch contract"
+    );
+    return new Map();
+  }
+
+  const allocationByUserId = new Map<string, number>();
+
+  for (const sub of contractResult.value.subscriptions ?? []) {
+    if (sub.quantity_management_mode !== "SEAT_BASED" || !sub.id) {
+      continue;
+    }
+    const seatType = getSeatTypeForProductId(sub.subscription_rate.product);
+    if (!seatType) {
+      continue;
+    }
+    const awuAllocation = getAwuAllocationForSeatType(seatType);
+    if (awuAllocation === 0) {
+      continue;
+    }
+
+    const seatIdsResult = await getMetronomeSubscriptionAssignedSeatIds({
+      metronomeCustomerId,
+      contractId,
+      subscriptionId: sub.id,
+    });
+    if (seatIdsResult.isErr()) {
+      logger.warn(
+        {
+          error: seatIdsResult.error,
+          metronomeCustomerId,
+          contractId,
+          subscriptionId: sub.id,
+          seatType,
+        },
+        "[Metronome] buildSeatAllocationByUserId: failed to fetch seat IDs"
+      );
+      continue;
+    }
+
+    for (const seatId of seatIdsResult.value) {
+      allocationByUserId.set(seatId, awuAllocation);
+    }
+  }
+
+  return allocationByUserId;
 }
