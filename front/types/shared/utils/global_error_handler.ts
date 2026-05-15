@@ -17,13 +17,15 @@ export function isTeenyRequestUnableToPipeError(
   if (!(reason instanceof Error)) {
     return false;
   }
+  if (!("code" in reason)) {
+    return false;
+  }
 
-  const error = reason as ErrorWithCode;
   return (
-    error.code === TEENY_REQUEST_STREAM_PIPE_ERROR_CODE &&
-    error.message === TEENY_REQUEST_STREAM_PIPE_ERROR_MESSAGE &&
-    typeof error.stack === "string" &&
-    error.stack.includes(TEENY_REQUEST_STACK_FRAME)
+    reason.code === TEENY_REQUEST_STREAM_PIPE_ERROR_CODE &&
+    reason.message === TEENY_REQUEST_STREAM_PIPE_ERROR_MESSAGE &&
+    typeof reason.stack === "string" &&
+    reason.stack.includes(TEENY_REQUEST_STACK_FRAME)
   );
 }
 
