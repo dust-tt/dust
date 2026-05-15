@@ -90,7 +90,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="end">
         <DropdownMenuItem
           label={isDownloading ? "Downloading…" : "Download"}
           icon={ArrowDownOnSquareIcon}
