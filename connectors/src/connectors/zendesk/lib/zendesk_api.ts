@@ -43,8 +43,7 @@ import mainLogger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import chunk from "lodash/chunk";
 import type { z } from "zod";
 
 const RATE_LIMIT_MAX_RETRIES = 5;
@@ -367,9 +366,9 @@ export class ZendeskClient {
     userIds: number[];
   }): Promise<ZendeskUser[]> {
     const users: ZendeskUser[] = [];
-    for (const chunk of _.chunk(userIds, 100)) {
+    for (const userIdChunk of chunk(userIds, 100)) {
       const response = await this.fetchFromZendeskWithRetries(
-        `https://${brandSubdomain}.zendesk.com/api/v2/users/show_many?ids=${chunk.join(",")}`,
+        `https://${brandSubdomain}.zendesk.com/api/v2/users/show_many?ids=${userIdChunk.join(",")}`,
         ZendeskUsersResponseSchema
       );
       users.push(...response.users);
@@ -420,8 +419,8 @@ export class ZendeskClient {
 
     // We can fetch at most 100 organizations at once: https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-many-organizations
     if (nonCachedOrganizationIds.length > 0) {
-      for (const chunk of _.chunk(nonCachedOrganizationIds, 100)) {
-        const parameter = `ids=${encodeURIComponent(chunk.join(","))}`;
+      for (const orgIdChunk of chunk(nonCachedOrganizationIds, 100)) {
+        const parameter = `ids=${encodeURIComponent(orgIdChunk.join(","))}`;
         const response = await this.fetchFromZendeskWithRetries(
           `https://${brandSubdomain}.zendesk.com/api/v2/organizations/show_many?${parameter}`,
           ZendeskOrganizationsResponseSchema

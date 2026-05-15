@@ -82,8 +82,7 @@ import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import { WorkflowNotFoundError } from "@temporalio/client";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import * as _ from "lodash";
+import chunk from "lodash/chunk";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { parser } from "stream-json";
@@ -1890,7 +1889,7 @@ export async function microsoftGarbageCollectionActivity({
     method: "GET",
   }));
 
-  const chunkedRequests = _.chunk(requests, 20);
+  const chunkedRequests = chunk(requests, 20);
 
   const nodeResources = await MicrosoftNodeResource.fetchByInternalIds(
     connectorId,
