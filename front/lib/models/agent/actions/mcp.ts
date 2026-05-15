@@ -3,6 +3,7 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -206,7 +207,9 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
   declare updatedAt: CreationOptional<Date>;
 
   declare mcpServerConfigurationId: string;
+  declare version: number;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
+  declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
   declare status: ToolExecutionStatus;
 
@@ -237,6 +240,11 @@ AgentMCPActionModel.init(
     mcpServerConfigurationId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     status: {
       type: DataTypes.STRING,
@@ -278,6 +286,16 @@ AgentMCPActionModel.init(
         concurrently: true,
       },
       {
+        fields: ["stepContentId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "agentMessageId", "stepContentId", "version"],
+        name: "agent_mcp_action_workspace_agent_message_step_content_version",
+        unique: true,
+        concurrently: true,
+      },
+      {
         fields: ["workspaceId", "agentMessageId", "status"],
         name: "agent_mcp_action_workspace_agent_message_status",
         concurrently: true,
@@ -298,6 +316,17 @@ AgentMCPActionModel.belongsTo(AgentMessageModel, {
 
 AgentMessageModel.hasMany(AgentMCPActionModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+AgentMCPActionModel.belongsTo(AgentStepContentModel, {
+  foreignKey: { name: "stepContentId", allowNull: false },
+  as: "stepContent",
+  onDelete: "RESTRICT",
+});
+
+AgentStepContentModel.hasMany(AgentMCPActionModel, {
+  foreignKey: { name: "stepContentId", allowNull: false },
+  as: "agentMCPActions",
 });
 
 export class AgentMCPActionOutputItemModel extends WorkspaceAwareModel<AgentMCPActionOutputItemModel> {

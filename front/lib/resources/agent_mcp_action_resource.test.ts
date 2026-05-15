@@ -147,7 +147,9 @@ describe("listBlockedActionsForConversation", () => {
     const action = await AgentMCPActionModel.create({
       workspaceId: workspace.id,
       agentMessageId,
+      stepContentId: stepContent.id,
       mcpServerConfigurationId: generateRandomModelSId(),
+      version: 0,
       status,
       citationsAllocated: 0,
       augmentedInputs: {},
