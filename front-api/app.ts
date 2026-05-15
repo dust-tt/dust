@@ -2,6 +2,7 @@ import { Hono } from "hono";
 
 import { cors } from "./middleware/cors";
 import { appStatusApp } from "./routes/app-status";
+import { loginApp } from "./routes/auth/login";
 import { authContextApp } from "./routes/auth-context";
 import { createNewWorkspaceApp } from "./routes/create-new-workspace";
 import { healthzApp } from "./routes/healthz";
@@ -26,13 +27,17 @@ interface HonoRoute {
 const HONO_ROUTES: HonoRoute[] = [
   { pattern: "/api/healthz", methods: ["GET"] },
   { pattern: "/api/app-status", methods: ["GET"] },
+  { pattern: "/api/auth/login", methods: ["GET"] },
   { pattern: "/api/auth-context", methods: ["GET"] },
   { pattern: "/api/create-new-workspace", methods: ["POST"] },
   { pattern: "/api/invitations", methods: ["GET"] },
   { pattern: "/api/kill", methods: ["GET"] },
   { pattern: "/api/workspace-lookup", methods: ["GET"] },
+  { pattern: "/api/w/:wId/feature-flags", methods: ["GET"] },
   { pattern: "/api/w/:wId/spaces", methods: ["GET", "POST"] },
   { pattern: "/api/w/:wId/spaces/:spaceId/mcp/available", methods: ["GET"] },
+  { pattern: "/api/w/:wId/trial-message-usage", methods: ["GET"] },
+  { pattern: "/api/v1/w/:wId/feature_flags", methods: ["GET"] },
   { pattern: "/api/v1/w/:wId/spaces", methods: ["GET"] },
 ];
 
@@ -48,6 +53,7 @@ const HONO_ROUTE_REGEXES = HONO_ROUTES.map((r) => {
 const apiApp = new Hono();
 apiApp.route("/healthz", healthzApp);
 apiApp.route("/app-status", appStatusApp);
+apiApp.route("/auth/login", loginApp);
 apiApp.route("/auth-context", authContextApp);
 apiApp.route("/create-new-workspace", createNewWorkspaceApp);
 apiApp.route("/invitations", invitationsApp);
