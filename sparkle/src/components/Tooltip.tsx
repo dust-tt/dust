@@ -83,7 +83,7 @@ const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
     ref
   ) => (
     <TooltipProvider>
-      <TooltipRoot>
+      <TooltipRoot disableHoverableContent>
         <TooltipTrigger asChild={tooltipTriggerAsChild}>
           {trigger}
         </TooltipTrigger>

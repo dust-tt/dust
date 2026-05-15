@@ -142,11 +142,12 @@ export function VoicePicker({
       return;
     }
 
-    stopEvent(event);
-
-    if (disabled || interactionMode !== "hold") {
+    if (disabled || interactionMode !== "hold" || status !== "recording") {
       return;
     }
+
+    stopEvent(event);
+
     if (status === "recording") {
       await onRecordStop();
     }
