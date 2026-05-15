@@ -49,7 +49,7 @@ function buildPath(route: string, params: Record<string, string> = {}): string {
 }
 
 /**
- * Invokes an API endpoint via either Hono (default) or the legacy Next
+ * Invokes an API endpoint via either Hono or the legacy Next
  * handler, depending on `TEST_HANDLER`. The test body is identical in both
  * modes — only the dispatch differs.
  *
