@@ -7,6 +7,7 @@ import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import {
+  ArrowDownOnSquareIcon,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -19,12 +20,13 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import moment from "moment";
+import { intlFormatDistance } from "date-fns";
+import { useState } from "react";
 
 export type ViewMode = "grid" | "list";
 
 export type FileExplorerItemProps = {
-  onDownload?: () => void;
+  onDownload?: () => Promise<void>;
   onOpen: () => void;
   subtitle: string;
   title: string;
@@ -53,8 +55,33 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       </div>
     );
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    if (!onDownload) {
+      return;
+    }
+    e.stopPropagation();
+    setIsDownloading(true);
+    try {
+      await onDownload();
+    } finally {
+      setIsDownloading(false);
+      setMenuOpen(false);
+    }
+  };
+
   const menu = onDownload && (
-    <DropdownMenu>
+    <DropdownMenu
+      open={menuOpen}
+      onOpenChange={(open) => {
+        if (!open && isDownloading) {
+          return;
+        }
+        setMenuOpen(open);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -63,13 +90,12 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="end">
         <DropdownMenuItem
-          label="Download"
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            onDownload();
-          }}
+          label={isDownloading ? "Downloading…" : "Download"}
+          icon={ArrowDownOnSquareIcon}
+          disabled={isDownloading}
+          onClick={handleDownload}
         />
       </DropdownMenuContent>
     </DropdownMenu>
@@ -83,7 +109,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         trigger={
           <span
             className={cn(
-              "text-sm font-medium truncate text-foreground dark:text-foreground-night leading-5",
+              "text-sm truncate text-foreground dark:text-foreground-night leading-5",
               "justify-start"
             )}
           >
@@ -106,7 +132,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
     return (
       <div
         className={cn(
-          "flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-4 transition-colors",
+          "flex cursor-pointer items-center gap-4 rounded-xl px-3 py-2",
           "hover:bg-muted-background dark:hover:bg-muted-background-night"
         )}
         onClick={onOpen}
@@ -125,14 +151,14 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       <div
         className={cn(
           "flex h-24 cursor-pointer items-center justify-center overflow-hidden rounded-xl",
-          "bg-muted-background transition-colors hover:brightness-95 dark:bg-muted-background-night",
+          "bg-muted-background hover:brightness-95 dark:bg-muted-background-night",
           props.kind === "icon" && "p-4"
         )}
         onClick={onOpen}
       >
         {thumbnailContent}
       </div>
-      <div className="flex items-start justify-between gap-1">
+      <div className="flex items-start justify-between gap-0.5">
         {info}
         {menu}
       </div>
@@ -140,12 +166,14 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
   );
 }
 
-function getFileSubtitle(entry: GCSMountFileEntry): string {
+function getFileSubtitle(entry: GCSMountFileEntry, viewMode: ViewMode): string {
   const typeLabel = getSingularFileCategoryLabelForContentType(
     entry.contentType
   );
   const timeLabel = entry.lastModifiedMs
-    ? moment(entry.lastModifiedMs).fromNow()
+    ? intlFormatDistance(entry.lastModifiedMs, Date.now(), {
+        style: viewMode === "list" ? "long" : "narrow",
+      })
     : null;
   return [typeLabel, timeLabel].filter(Boolean).join(" - ");
 }
@@ -185,7 +213,7 @@ export interface FileExplorerFileCardProps {
   entry: GCSMountFileEntry;
   viewMode: ViewMode;
   onOpen: (entry: GCSMountFileEntry) => void;
-  onDownload: (entry: GCSMountFileEntry) => void;
+  onDownload: (entry: GCSMountFileEntry) => Promise<void>;
 }
 
 export function FileExplorerFileCard({
@@ -194,7 +222,7 @@ export function FileExplorerFileCard({
   onOpen,
   onDownload,
 }: FileExplorerFileCardProps) {
-  const subtitle = getFileSubtitle(entry);
+  const subtitle = getFileSubtitle(entry, viewMode);
 
   if (getCategoryFromContentType(entry.contentType) === "image") {
     return (

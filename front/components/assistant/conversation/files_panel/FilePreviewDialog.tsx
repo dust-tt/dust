@@ -28,7 +28,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -290,7 +290,7 @@ interface FilePreviewDialogProps {
   conversationId: string;
   entry: GCSMountFileEntry | null;
   isOpen: boolean;
-  onDownload: (entry: GCSMountFileEntry) => void;
+  onDownload: (entry: GCSMountFileEntry) => Promise<void>;
   onNext?: () => void;
   onOpenChange: (open: boolean) => void;
   onPrev?: () => void;
@@ -307,6 +307,20 @@ export function FilePreviewDialog({
   onPrev,
   onNext,
 }: FilePreviewDialogProps) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!entry) {
+      return;
+    }
+    setIsDownloading(true);
+    try {
+      await onDownload(entry);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -385,7 +399,7 @@ export function FilePreviewDialog({
               )}
               <span
                 className={cn(
-                  "line-clamp-1 text-sm font-medium leading-5",
+                  "line-clamp-1 text-sm leading-5",
                   "text-foreground dark:text-foreground-night"
                 )}
               >
@@ -464,9 +478,9 @@ export function FilePreviewDialog({
               variant="outline"
               size="sm"
               icon={ArrowDownOnSquareIcon}
-              label="Download"
-              onClick={() => entry && onDownload(entry)}
-              disabled={!entry}
+              label={isDownloading ? "Downloading…" : "Download"}
+              onClick={handleDownload}
+              disabled={!entry || isDownloading}
             />
           </div>
         </DialogFooter>
