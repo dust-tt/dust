@@ -2,10 +2,14 @@ import { Hono } from "hono";
 
 import { cors } from "./middleware/cors";
 import { appStatusApp } from "./routes/app-status";
+import { authContextApp } from "./routes/auth-context";
+import { createNewWorkspaceApp } from "./routes/create-new-workspace";
 import { healthzApp } from "./routes/healthz";
+import { invitationsApp } from "./routes/invitations";
 import { killApp } from "./routes/kill";
 import { publicWorkspaceApp } from "./routes/v1/w";
 import { workspaceApp } from "./routes/w";
+import { workspaceLookupApp } from "./routes/workspace-lookup";
 
 // Single source of truth for which routes are served natively by Hono.
 // Anything not listed here is delegated to the Next.js handler. OPTIONS is
@@ -22,7 +26,11 @@ interface HonoRoute {
 const HONO_ROUTES: HonoRoute[] = [
   { pattern: "/api/healthz", methods: ["GET"] },
   { pattern: "/api/app-status", methods: ["GET"] },
+  { pattern: "/api/auth-context", methods: ["GET"] },
+  { pattern: "/api/create-new-workspace", methods: ["POST"] },
+  { pattern: "/api/invitations", methods: ["GET"] },
   { pattern: "/api/kill", methods: ["GET"] },
+  { pattern: "/api/workspace-lookup", methods: ["GET"] },
   { pattern: "/api/w/:wId/spaces", methods: ["GET", "POST"] },
   { pattern: "/api/w/:wId/spaces/:spaceId/mcp/available", methods: ["GET"] },
   { pattern: "/api/v1/w/:wId/spaces", methods: ["GET"] },
@@ -40,7 +48,11 @@ const HONO_ROUTE_REGEXES = HONO_ROUTES.map((r) => {
 const apiApp = new Hono();
 apiApp.route("/healthz", healthzApp);
 apiApp.route("/app-status", appStatusApp);
+apiApp.route("/auth-context", authContextApp);
+apiApp.route("/create-new-workspace", createNewWorkspaceApp);
+apiApp.route("/invitations", invitationsApp);
 apiApp.route("/kill", killApp);
+apiApp.route("/workspace-lookup", workspaceLookupApp);
 apiApp.route("/w/:wId", workspaceApp);
 apiApp.route("/v1/w/:wId", publicWorkspaceApp);
 
