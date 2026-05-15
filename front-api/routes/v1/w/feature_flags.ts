@@ -3,6 +3,10 @@ import { Hono } from "hono";
 
 import { getFeatureFlags } from "@app/lib/auth";
 
+// Re-exported so consumers can import the response type from the route
+// file, matching the convention of our other migrated routes.
+export type { GetWorkspaceFeatureFlagsResponseType } from "@dust-tt/client";
+
 export const publicFeatureFlagsApp = new Hono();
 
 publicFeatureFlagsApp.get("/", async (c) => {
