@@ -33,6 +33,22 @@ const TRUSTED_REGION_HOSTS: Record<RegionType, string[]> = {
 
 const LOCALHOST_NAMES = ["localhost", "127.0.0.1", "[::1]"];
 
+function isLocalhostUrl(url: URL): boolean {
+  return LOCALHOST_NAMES.includes(url.hostname);
+}
+
+function isDefaultUrlLocalhost(): boolean {
+  if (!DEFAULT_URL) {
+    return false;
+  }
+
+  try {
+    return isLocalhostUrl(new URL(DEFAULT_URL));
+  } catch {
+    return false;
+  }
+}
+
 function getTrustedRegionUrl(
   region: RegionType,
   regionUrl: string
@@ -44,7 +60,7 @@ function getTrustedRegionUrl(
     return null;
   }
 
-  if (LOCALHOST_NAMES.includes(parsedUrl.hostname)) {
+  if (isLocalhostUrl(parsedUrl) && isDefaultUrlLocalhost()) {
     return parsedUrl.origin;
   }
 

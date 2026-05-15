@@ -105,4 +105,22 @@ describe("ValidationPage", () => {
     expect(submitSpy).toHaveBeenCalledOnce();
     expect(window.location.search).toBe("?token=approval-token");
   });
+
+  it("does not post email validation to localhost unless the SPA is local", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/email/validation?token=approval-token&region=europe-west1&regionUrl=http%3A%2F%2Flocalhost%3A3000"
+    );
+
+    renderValidationPage();
+
+    const form = await getValidationForm();
+
+    expect(form.getAttribute("action")).toBe(
+      "http://fake-url/api/email/validate-action"
+    );
+    expect(submitSpy).toHaveBeenCalledOnce();
+    expect(window.location.search).toBe("?token=approval-token");
+  });
 });
