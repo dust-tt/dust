@@ -290,24 +290,25 @@ export function NewFileExplorer({
             </div>
           </div>
         </AppLayoutTitle>
-
-        <div className="flex flex-1 flex-col overflow-hidden gap-5 pt-5 px-4">
-          {isLoading ? (
-            <div className="flex flex-1 items-center justify-center">
-              <Spinner />
-            </div>
-          ) : totalFileCount === 0 && folders.length === 0 ? (
-            <FileExplorerEmptyState />
-          ) : (
-            <ScrollArea className="flex-1">
-              {viewMode === "list" ? (
-                <div className="flex flex-col gap-0.5">{items}</div>
-              ) : (
-                <CardGrid gridClassName={cardGridClasses}>{items}</CardGrid>
-              )}
-            </ScrollArea>
-          )}
-        </div>
+        <ScrollArea className="flex-1">
+          <div className="flex flex-1 flex-col overflow-hidden gap-5 pt-5 px-4">
+            {isLoading ? (
+              <div className="flex flex-1 items-center justify-center">
+                <Spinner />
+              </div>
+            ) : totalFileCount === 0 && folders.length === 0 ? (
+              <FileExplorerEmptyState />
+            ) : (
+              <>
+                {viewMode === "list" ? (
+                  <div className="flex flex-col gap-0.5">{items}</div>
+                ) : (
+                  <CardGrid gridClassName={cardGridClasses}>{items}</CardGrid>
+                )}
+              </>
+            )}
+          </div>
+        </ScrollArea>
       </div>
 
       <FilePreviewDialog
