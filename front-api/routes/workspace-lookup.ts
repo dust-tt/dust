@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { fetchRevokedWorkspace } from "@app/lib/api/user";
-import { getUserFromSession } from "@app/lib/iam/session";
+import {
+  fetchRevokedWorkspace,
+  getUserWithWorkspaces,
+} from "@app/lib/api/user";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
-import { sessionAuth } from "../middleware/session_auth";
 import { validate } from "../middleware/validator";
 
 const GetWorkspaceLookupQuerySchema = z.object({
@@ -15,24 +16,11 @@ const GetWorkspaceLookupQuerySchema = z.object({
 
 export const workspaceLookupApp = new Hono();
 
-workspaceLookupApp.use("*", sessionAuth);
-
 workspaceLookupApp.get(
   "/",
   validate("query", GetWorkspaceLookupQuerySchema),
   async (c) => {
-    const session = c.get("session");
-
-    const user = await getUserFromSession(session);
-    if (!user) {
-      return c.json(
-        {
-          error: { type: "user_not_found", message: "User not found." },
-        },
-        404
-      );
-    }
-
+    const user = c.get("user");
     const { flow } = c.req.valid("query");
 
     if (flow === "no-auto-join") {
@@ -61,7 +49,11 @@ workspaceLookupApp.get(
       });
     }
 
-    const result = await fetchRevokedWorkspace(user);
+    // TODO(2026-05-15 PERF): fetchRevokedWorkspace re-fetches the
+    // UserResource we already have on the context. Refactor it to take a
+    // UserResource directly and drop this getUserWithWorkspaces call.
+    const userWithWorkspaces = await getUserWithWorkspaces(user);
+    const result = await fetchRevokedWorkspace(userWithWorkspaces);
     if (result.isErr()) {
       return c.json(
         {
