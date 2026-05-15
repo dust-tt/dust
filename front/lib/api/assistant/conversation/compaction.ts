@@ -87,7 +87,11 @@ export async function compactConversation(
     });
   }
 
-  if (lastMessage && isCompactionMessageType(lastMessage)) {
+  if (
+    lastMessage &&
+    isCompactionMessageType(lastMessage) &&
+    lastMessage.status === "succeeded"
+  ) {
     return new Err({
       status_code: 409,
       api_error: {
