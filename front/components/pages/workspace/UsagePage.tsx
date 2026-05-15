@@ -207,8 +207,8 @@ export function UsagePage() {
     <>
       <BuyAwuCreditsDialog
         isOpen={showBuyCreditDialog}
-        onClose={() => {
-          setShowBuyCreditDialog(false);
+        onClose={() => setShowBuyCreditDialog(false)}
+        onPurchaseSuccess={() => {
           void mutateAwuPoolSummary();
         }}
         workspaceId={owner.sId}

@@ -10,7 +10,7 @@ import {
   getCreditTypeAwuId,
   getMetricLlmProviderCostAwuId,
 } from "@app/lib/metronome/constants";
-import { METRONOME_USER_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
+import { AWU_TO_MICRO_USD } from "@app/lib/metronome/types";
 import {
   MembershipResource,
   type MembershipsPaginationParams,
@@ -134,10 +134,7 @@ async function fetchPerUserUsageMicroUsd({
       continue;
     }
     const existing = perUser.get(userId) ?? 0;
-    perUser.set(
-      userId,
-      existing + entry.value * METRONOME_USER_CREDIT_TO_MICRO_USD
-    );
+    perUser.set(userId, existing + entry.value * AWU_TO_MICRO_USD);
   }
   return perUser;
 }
@@ -245,8 +242,7 @@ export async function handleGetMembersUsageRequest(
             (seatConsumed / seat.startingBalance) * 100
           );
           // Pool usage is total minus what was covered by the seat credit.
-          const seatConsumedMicroUsd =
-            seatConsumed * METRONOME_USER_CREDIT_TO_MICRO_USD;
+          const seatConsumedMicroUsd = seatConsumed * AWU_TO_MICRO_USD;
           poolConsumedMicroUsd = Math.max(
             0,
             totalMicroUsd - seatConsumedMicroUsd

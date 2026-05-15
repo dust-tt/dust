@@ -1,4 +1,11 @@
+import config from "@app/lib/api/config";
 import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
+import {
+  AWU_CREDITS_PER_DOLLAR,
+  MAX_CREDIT_PURCHASE_AMOUNT_MICRO_USD,
+  MICRO_USD_PER_DOLLAR,
+  MIN_CREDIT_PURCHASE_AMOUNT_MICRO_USD,
+} from "@app/lib/metronome/types";
 import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
@@ -16,6 +23,10 @@ import {
   Icon,
   Input,
   Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
@@ -23,10 +34,9 @@ import { useCallback, useMemo, useState } from "react";
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
 type TopUpTab = "one-time" | "automatic";
 
-const SUPPORT_EMAIL = "support@dust.tt";
-const LIMIT_EXHAUSTED_THRESHOLD_MICRO_USD = 1_000_000;
-const CREDITS_PER_DOLLAR = 100;
 const QUICK_SELECT_AMOUNTS_DOLLARS = [10, 50, 100] as const;
+
+const supportEmail = config.getSupportEmailAddress().email;
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
@@ -80,6 +90,7 @@ function SummaryRow({ label, value, dimmed = false }: SummaryRowProps) {
 interface BuyAwuCreditsDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onPurchaseSuccess?: () => void;
   workspaceId: string;
   currency: string;
   discountPercent: number;
@@ -91,6 +102,7 @@ interface BuyAwuCreditsDialogProps {
 export function BuyAwuCreditsDialog({
   isOpen,
   onClose,
+  onPurchaseSuccess,
   workspaceId,
   currency,
   discountPercent,
@@ -117,19 +129,33 @@ export function BuyAwuCreditsDialog({
     if (!creditPurchaseLimits?.canPurchase) {
       return null;
     }
-    return Math.floor(creditPurchaseLimits.maxAmountMicroUsd / 1_000_000);
+    return Math.floor(
+      creditPurchaseLimits.maxAmountMicroUsd / MICRO_USD_PER_DOLLAR
+    );
   }, [creditPurchaseLimits]);
 
   const maxAmountFormatted = useMemo(() => {
     if (!creditPurchaseLimits?.canPurchase) {
       return null;
     }
-    return `$${Math.floor(creditPurchaseLimits.maxAmountMicroUsd / 1_000_000).toLocaleString()}`;
+    return `$${Math.floor(creditPurchaseLimits.maxAmountMicroUsd / MICRO_USD_PER_DOLLAR).toLocaleString()}`;
   }, [creditPurchaseLimits]);
+
+  const effectiveMaxDollars =
+    maxAmountDollars ??
+    Math.floor(MAX_CREDIT_PURCHASE_AMOUNT_MICRO_USD / MICRO_USD_PER_DOLLAR);
+
+  const setAmountWithClamp = useCallback(
+    (dollars: number) => {
+      setAmountDollars(String(Math.min(dollars, effectiveMaxDollars)));
+    },
+    [effectiveMaxDollars]
+  );
 
   const parsedAmount = parseFloat(amountDollars) || 0;
   const isValidAmount = parsedAmount > 0;
-  const addedCredits = parsedAmount * CREDITS_PER_DOLLAR;
+  const amountExceedsMax = parsedAmount > effectiveMaxDollars;
+  const addedCredits = parsedAmount * AWU_CREDITS_PER_DOLLAR;
 
   const displayCurrency = isSupportedCurrency(currency) ? currency : "usd";
   const currencySymbol = CURRENCY_SYMBOLS[displayCurrency];
@@ -149,10 +175,13 @@ export function BuyAwuCreditsDialog({
   const discountAmount = amountInDisplayCurrency * (effectiveDiscount / 100);
   const totalInDisplayCurrency = amountInDisplayCurrency - discountAmount;
 
-  const canPurchase = isValidAmount;
+  const canPurchase = isValidAmount && !amountExceedsMax;
 
   // TODO: implement AWU-specific purchase endpoint.
-  const handlePurchase = async () => {};
+  const handlePurchase = async () => {
+    setPurchaseState("success");
+    onPurchaseSuccess?.();
+  };
 
   const renderContent = () => {
     switch (purchaseState) {
@@ -231,144 +260,126 @@ export function BuyAwuCreditsDialog({
       default: {
         return (
           <div className="flex flex-col gap-4">
-            {/* Tab bar */}
-            <div className="flex border-b border-border dark:border-border-night">
-              <button
-                type="button"
-                onClick={() => setSelectedTab("one-time")}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                  selectedTab === "one-time"
-                    ? "-mb-px border-b-2 border-foreground text-foreground dark:border-foreground-night dark:text-foreground-night"
-                    : "text-muted-foreground dark:text-muted-foreground-night"
-                }`}
-              >
-                One time top-up
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedTab("automatic")}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                  selectedTab === "automatic"
-                    ? "-mb-px border-b-2 border-foreground text-foreground dark:border-foreground-night dark:text-foreground-night"
-                    : "text-muted-foreground dark:text-muted-foreground-night"
-                }`}
-              >
-                Automatic top-up
-              </button>
-            </div>
+            <Tabs
+              value={selectedTab}
+              onValueChange={(v) => setSelectedTab(v as TopUpTab)}
+            >
+              <TabsList>
+                <TabsTrigger value="one-time" label="One time top-up" />
+                <TabsTrigger value="automatic" label="Automatic top-up" />
+              </TabsList>
 
-            {selectedTab === "one-time" && (
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="amount"
-                    className="text-sm font-medium text-foreground dark:text-foreground-night"
-                  >
-                    Top up
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                        $
-                      </span>
-                      <Input
-                        id="amount"
-                        type="number"
-                        placeholder="0"
-                        value={amountDollars}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (
-                            maxAmountDollars !== null &&
-                            parseFloat(val) > maxAmountDollars
-                          ) {
-                            setAmountDollars(String(maxAmountDollars));
-                          } else {
-                            setAmountDollars(val);
-                          }
-                        }}
-                        min="0"
-                        max={maxAmountDollars ?? undefined}
-                        step="1"
-                        className="w-32 pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      />
-                    </div>
-                    {isValidAmount && (
-                      <span className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                        {formatCredits(addedCredits)} credit
-                        <Icon visual={ActionCreditCoinsIcon} size="xs" />
-                      </span>
-                    )}
-                    <div className="ml-auto flex gap-2">
-                      {QUICK_SELECT_AMOUNTS_DOLLARS.map((amount) => (
-                        <button
-                          key={amount}
-                          type="button"
-                          onClick={() => setAmountDollars(String(amount))}
-                          className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-foreground hover:bg-muted-background dark:border-border-night dark:text-foreground-night dark:hover:bg-muted-background-night"
-                        >
-                          ${amount}
-                        </button>
-                      ))}
+              <TabsContent value="one-time">
+                <div className="flex flex-col gap-4 pt-4">
+                  <div className="flex flex-col gap-2">
+                    <label
+                      htmlFor="amount"
+                      className="text-sm font-medium text-foreground dark:text-foreground-night"
+                    >
+                      Top up
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
+                          $
+                        </span>
+                        <Input
+                          id="amount"
+                          type="number"
+                          placeholder="0"
+                          value={amountDollars}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!isNaN(val)) {
+                              setAmountWithClamp(val);
+                            } else {
+                              setAmountDollars(e.target.value);
+                            }
+                          }}
+                          min="0"
+                          max={effectiveMaxDollars}
+                          step="1"
+                          className="w-32 pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        />
+                      </div>
+                      {isValidAmount && (
+                        <span className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                          {formatCredits(addedCredits)} credit
+                          <Icon visual={ActionCreditCoinsIcon} size="xs" />
+                        </span>
+                      )}
+                      <div className="ml-auto flex gap-2">
+                        {QUICK_SELECT_AMOUNTS_DOLLARS.map((amount) => (
+                          <Button
+                            key={amount}
+                            label={`$${amount}`}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAmountWithClamp(amount)}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {isValidAmount && (
-                  <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4 dark:bg-muted-background-night">
-                    <p className="font-semibold text-foreground dark:text-foreground-night">
-                      Summary
-                    </p>
-                    {currentBalanceCredits !== undefined && (
+                  {isValidAmount && (
+                    <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4 dark:bg-muted-background-night">
+                      <p className="font-semibold text-foreground dark:text-foreground-night">
+                        Summary
+                      </p>
+                      {currentBalanceCredits !== undefined && (
+                        <SummaryRow
+                          label="Current Balance"
+                          value={
+                            <CreditValue credits={currentBalanceCredits} />
+                          }
+                          dimmed
+                        />
+                      )}
                       <SummaryRow
-                        label="Current Balance"
-                        value={<CreditValue credits={currentBalanceCredits} />}
+                        label="Added balance"
+                        value={<CreditValue credits={addedCredits} />}
                         dimmed
                       />
-                    )}
-                    <SummaryRow
-                      label="Added balance"
-                      value={<CreditValue credits={addedCredits} />}
-                      dimmed
-                    />
-                    <div className="py-1" />
-                    {currentBalanceCredits !== undefined && (
+                      <div className="py-1" />
+                      {currentBalanceCredits !== undefined && (
+                        <SummaryRow
+                          label="New balance"
+                          value={
+                            <CreditValue
+                              credits={currentBalanceCredits + addedCredits}
+                            />
+                          }
+                        />
+                      )}
                       <SummaryRow
-                        label="New balance"
-                        value={
-                          <CreditValue
-                            credits={currentBalanceCredits + addedCredits}
-                          />
-                        }
+                        label="Cost"
+                        value={`${currencySymbol}${formatCost(totalInDisplayCurrency)}`}
                       />
-                    )}
-                    <SummaryRow
-                      label="Cost"
-                      value={`${currencySymbol}${formatCost(totalInDisplayCurrency)}`}
-                    />
-                  </div>
-                )}
+                    </div>
+                  )}
 
-                {maxAmountFormatted && (
-                  <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                    Purchase up to {maxAmountFormatted} worth of credits.{" "}
-                    <a
-                      href={`mailto:${SUPPORT_EMAIL}?subject=Higher%20credit%20limit%20request`}
-                      className="text-action-500 hover:underline"
-                    >
-                      Contact support
-                    </a>{" "}
-                    if you need more.
-                  </p>
-                )}
-              </div>
-            )}
+                  {maxAmountFormatted && (
+                    <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      Purchase up to {maxAmountFormatted} worth of credits.{" "}
+                      <a
+                        href={`mailto:${supportEmail}?subject=Higher%20credit%20limit%20request`}
+                        className="text-action-500 hover:underline"
+                      >
+                        Contact support
+                      </a>{" "}
+                      if you need more.
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
 
-            {selectedTab === "automatic" && (
-              <p className="py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Automatic top-up is not yet available.
-              </p>
-            )}
+              <TabsContent value="automatic">
+                <p className="py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Automatic top-up is not yet available.
+                </p>
+              </TabsContent>
+            </Tabs>
           </div>
         );
       }
@@ -477,7 +488,7 @@ export function BuyAwuCreditsDialog({
               Credit purchases become available once you upgrade to a paid plan.
               If you need credits during your trial, please{" "}
               <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=Credit%20purchase%20during%20trial`}
+                href={`mailto:${supportEmail}?subject=Credit%20purchase%20during%20trial`}
                 className="text-action-500 hover:underline"
               >
                 contact support
@@ -517,7 +528,7 @@ export function BuyAwuCreditsDialog({
               Please ensure your subscription is active and your payment method
               is up to date. If you need assistance, please{" "}
               <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=Credit%20purchase%20-%20payment%20issue`}
+                href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20payment%20issue`}
                 className="text-action-500 hover:underline"
               >
                 contact support
@@ -557,7 +568,7 @@ export function BuyAwuCreditsDialog({
               Please complete your pending payment before making a new purchase
               or{" "}
               <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=Cancel%20pending%20credit%20purchase`}
+                href={`mailto:${supportEmail}?subject=Cancel%20pending%20credit%20purchase`}
                 className="text-action-500 hover:underline"
               >
                 contact support
@@ -588,7 +599,8 @@ export function BuyAwuCreditsDialog({
   if (
     creditPurchaseLimits &&
     creditPurchaseLimits.canPurchase &&
-    creditPurchaseLimits.maxAmountMicroUsd < LIMIT_EXHAUSTED_THRESHOLD_MICRO_USD
+    creditPurchaseLimits.maxAmountMicroUsd <
+      MIN_CREDIT_PURCHASE_AMOUNT_MICRO_USD
   ) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -604,7 +616,7 @@ export function BuyAwuCreditsDialog({
               Your credit purchase limit resets at the start of your next
               billing cycle. If you need additional credits before then, please{" "}
               <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=Credit%20purchase%20limit%20reached`}
+                href={`mailto:${supportEmail}?subject=Credit%20purchase%20limit%20reached`}
                 className="text-action-500 hover:underline"
               >
                 contact support
