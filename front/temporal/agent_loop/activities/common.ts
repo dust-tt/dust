@@ -31,8 +31,7 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import maxBy from "lodash/maxBy";
 import {
   fn,
   type InferAttributes,
@@ -583,7 +582,7 @@ export async function finalizeCancellation(
     runAgentDataRes.value;
 
   // get the last step of the agent message
-  const step = _.maxBy(agentMessage.contents, "step")?.step ?? 0;
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
 
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
@@ -649,7 +648,7 @@ export async function finalizeInterruption(
   const { auth, agentConfiguration, agentMessage, conversation } =
     runAgentDataRes.value;
 
-  const step = _.maxBy(agentMessage.contents, "step")?.step ?? 0;
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
 
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
@@ -714,7 +713,7 @@ export async function finalizeGracefulStop(
   const { auth, agentConfiguration, agentMessage, conversation } =
     runAgentDataRes.value;
 
-  const step = _.maxBy(agentMessage.contents, "step")?.step ?? 0;
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
 
   await updateResourceAndPublishEvent(auth, {
     event: {

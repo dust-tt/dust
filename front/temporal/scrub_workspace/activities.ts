@@ -42,8 +42,10 @@ import logger from "@app/logger/logger";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { removeNulls } from "@app/types/shared/utils/general";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import chunk from "lodash/chunk";
+import groupBy from "lodash/groupBy";
+import keyBy from "lodash/keyBy";
+import uniqBy from "lodash/uniqBy";
 
 export async function sendDataDeletionEmail({
   remainingDays,
@@ -200,7 +202,7 @@ export async function deleteAllConversations(auth: Authenticator) {
     "Deleting all conversations for workspace."
   );
   // unique conversations
-  const uniqueConversations = _.uniqBy(conversations, (c) => c.sId);
+  const uniqueConversations = uniqBy(conversations, (c) => c.sId);
   await concurrentExecutor(
     uniqueConversations,
     async (conversation) => {
@@ -320,7 +322,7 @@ async function cleanupCustomerio(auth: Authenticator) {
     latestMemberships = memberships;
   }
 
-  const allMembershipsByUserId = _.groupBy(latestMemberships, (m) =>
+  const allMembershipsByUserId = groupBy(latestMemberships, (m) =>
     m.userId.toString()
   );
 
@@ -328,7 +330,7 @@ async function cleanupCustomerio(auth: Authenticator) {
   const workspaceIds = Object.values(allMembershipsByUserId)
     .flat()
     .map((m) => m.workspaceId);
-  const workspaceById = _.keyBy(
+  const workspaceById = keyBy(
     await unsafeGetWorkspacesByModelId(workspaceIds),
     (w) => w.id.toString()
   );
@@ -340,7 +342,7 @@ async function cleanupCustomerio(auth: Authenticator) {
     );
 
   // Process the workspace users in chunks of 4.
-  const chunks = _.chunk(users, 4);
+  const chunks = chunk(users, 4);
 
   for (const c of chunks) {
     await Promise.all(
