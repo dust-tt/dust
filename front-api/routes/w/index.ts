@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { workspaceAuth } from "../../middleware/workspace_auth";
+import { assistantApp } from "./assistant";
 import { featureFlagsApp } from "./feature-flags";
 import { membersApp } from "./members";
 import { modelsApp } from "./models";
@@ -18,6 +19,7 @@ export const workspaceApp = new Hono();
 
 workspaceApp.use("*", workspaceAuth);
 
+workspaceApp.route("/assistant", assistantApp);
 workspaceApp.route("/feature-flags", featureFlagsApp);
 workspaceApp.route("/members", membersApp);
 workspaceApp.route("/models", modelsApp);

@@ -314,6 +314,81 @@ When migrating a new handler, add the marker to the Next file immediately.
 
 Reviewer: If a PR touches a file that is part of a migrated pair (either a Next file with a `@migration-target` marker, or a Hono file that is the target of such a marker), verify the counterpart is also updated in the same PR.
 
+### [BACK18] Business-layer code must not return HTTP error envelopes
+
+Functions in `lib/api/*` (and other shared business-logic modules) must
+not return `APIErrorWithStatusCode` or anything else that bakes in an HTTP
+status code. HTTP is a transport concern of the handler layer.
+
+The reason: a `lib/api/*` function may be called from many places — Next
+handlers, Hono handlers, Temporal activities, scripts, tests. The status
+code only makes sense at the transport boundary. Putting it in the
+business layer either forces non-HTTP callers to invent fake status codes,
+or (more commonly) leaks one transport's response shape into code that
+should be transport-agnostic.
+
+When a business function needs to signal failure, return a domain error —
+typically `Result<T, SomeDomainError>` where `SomeDomainError` is a class
+or discriminated union of the actual failure conditions. Handlers map the
+domain error to whatever HTTP shape they need.
+
+Example:
+
+```ts
+// BAD — business layer encoding HTTP status codes
+export async function getThing(
+  auth: Authenticator,
+  id: string
+): Promise<Result<Thing, APIErrorWithStatusCode>> {
+  if (!found) {
+    return new Err({
+      status_code: 404,
+      api_error: { type: "thing_not_found", message: "Not found." },
+    });
+  }
+  // ...
+}
+
+// GOOD — domain error, handler maps to HTTP
+export class ThingError extends Error {
+  constructor(readonly type: "not_found" | "unauthorized") {
+    super(type);
+  }
+}
+
+export async function getThing(
+  auth: Authenticator,
+  id: string
+): Promise<Result<Thing, ThingError>> {
+  if (!found) {
+    return new Err(new ThingError("not_found"));
+  }
+  // ...
+}
+
+// Handler does the mapping:
+const result = await getThing(auth, id);
+if (result.isErr()) {
+  switch (result.error.type) {
+    case "not_found": return apiError(req, res, { status_code: 404, ... });
+    case "unauthorized": return apiError(req, res, { status_code: 403, ... });
+  }
+}
+```
+
+**Pragmatic exception:** if the error model is genuinely HTTP-flavored
+(status + error type are tied to HTTP semantics with no underlying domain
+distinction worth modeling), it's better to keep the logic in the handler
+than to invent a synthetic domain enum. A 50-line handler with HTTP
+responses inline is fine; duplicating it across Next and Hono is the
+expected cost of the migration. The wrong move is to extract a lib helper
+that returns `Result<T, APIErrorWithStatusCode>` just to deduplicate —
+that hides the HTTP coupling instead of removing it.
+
+Reviewer: If you see a `lib/api/*` function returning `APIErrorWithStatusCode`,
+require the author to either (a) introduce a domain error type, or (b) move
+the logic back into the handlers and accept the duplication.
+
 ## AUDIT LOGGING
 
 ### [AUDIT1] Every state-changing operation on a security-sensitive resource MUST emit an audit log event

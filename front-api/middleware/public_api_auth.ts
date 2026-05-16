@@ -1,5 +1,4 @@
 import type { Context, MiddlewareHandler } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
@@ -14,6 +13,8 @@ import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import { getUserEmailFromHeaders } from "@app/types/user";
+
+import { jsonApiError } from "./utils";
 
 type HeaderRecord = Record<string, string | string[] | undefined>;
 
@@ -83,16 +84,6 @@ function validateWorkspaceFromAuth(
     };
   }
   return null;
-}
-
-// APIErrorWithStatusCode.status_code is typed as `number`, but Hono's c.json
-// expects the narrower ContentfulStatusCode. The cast is safe because all our
-// status codes are valid HTTP error codes.
-function jsonApiError(c: Context, err: APIErrorWithStatusCode) {
-  return c.json(
-    { error: err.api_error },
-    err.status_code as ContentfulStatusCode
-  );
 }
 
 function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {

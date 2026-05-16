@@ -1,4 +1,7 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/assistant/builder/sidekick.ts
+import { buildTemplatePrompt } from "@app/lib/api/assistant/builder/sidekick_prompts";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -6,28 +9,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-function buildTemplateAgentInitMessage({
-  handle,
-  sidekickInstructions,
-  agentFacingDescription,
-}: TemplateResource): string {
-  return `<dust_system>
-The user is creating a new agent based on the "${handle}" template.
-NEVER call \`get_agent_config\` in this first message.
-Here is a brief description of what the agent should do:
-
-<description>
-${agentFacingDescription}
-</description>
-
-Follow the <using_templates> section from your instructions to act on the sidekickInstructions below.
-
-<sidekickInstructions>
-${sidekickInstructions}
-</sidekickInstructions>
-</dust_system>`;
-}
 
 async function handler(
   req: NextApiRequest,
@@ -60,7 +41,7 @@ async function handler(
         });
       }
 
-      return res.status(200).json(buildTemplateAgentInitMessage(template));
+      return res.status(200).json(buildTemplatePrompt(template));
     }
     default:
       return apiError(req, res, {
