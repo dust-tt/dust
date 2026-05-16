@@ -6,6 +6,7 @@
     "dev": "tsx ./server.ts",
     "start": "NODE_ENV=production node dist/server.js",
     "build": "tsx esbuild.server.ts",
+    "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
     "tsgo": "tsgo"
   },
   "dependencies": {

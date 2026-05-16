@@ -1,7 +1,10 @@
 import { exec } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const execAsync = promisify(exec);
+const FRONT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 export default async function setup() {
   // Naive system to make sure we are running on a test db
@@ -54,7 +57,8 @@ export default async function setup() {
   // Execute the db migration script
   // I tried to sync models directly but I kept getting errors about foreign key (that do not exist) constraints.
   const { stderr } = await execAsync(
-    "FRONT_DATABASE_URI=$FRONT_DATABASE_URI npx tsx admin/db.ts"
+    "FRONT_DATABASE_URI=$FRONT_DATABASE_URI npx tsx admin/db.ts",
+    { cwd: FRONT_DIR }
   );
 
   if (stderr.toLowerCase().includes("error")) {
