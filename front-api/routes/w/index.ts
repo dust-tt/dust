@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { workspaceAuth } from "../../middleware/workspace_auth";
 import { assistantApp } from "./assistant";
 import { featureFlagsApp } from "./feature-flags";
+import { mcpApp } from "./mcp";
 import { membersApp } from "./members";
 import { modelsApp } from "./models";
 import { providersApp } from "./providers";
@@ -21,6 +22,7 @@ workspaceApp.use("*", workspaceAuth);
 
 workspaceApp.route("/assistant", assistantApp);
 workspaceApp.route("/feature-flags", featureFlagsApp);
+workspaceApp.route("/mcp", mcpApp);
 workspaceApp.route("/members", membersApp);
 workspaceApp.route("/models", modelsApp);
 workspaceApp.route("/providers", providersApp);
