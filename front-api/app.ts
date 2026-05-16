@@ -55,6 +55,17 @@ const HONO_ROUTES: HonoRoute[] = [
     methods: ["GET"],
   },
   { pattern: "/api/w/:wId/assistant/builder/suggestions", methods: ["POST"] },
+  { pattern: "/api/w/:wId/assistant/mentions/parse", methods: ["POST"] },
+  { pattern: "/api/w/:wId/assistant/mentions/suggestions", methods: ["GET"] },
+  {
+    pattern: "/api/w/:wId/assistant/skills/:sId/suggestions",
+    methods: ["GET", "PATCH"],
+  },
+  {
+    pattern: "/api/w/:wId/builder/assistants/:aId/actions",
+    methods: ["GET"],
+  },
+  { pattern: "/api/w/:wId/builder/skills/suggestions", methods: ["POST"] },
   { pattern: "/api/w/:wId/feature-flags", methods: ["GET"] },
   { pattern: "/api/w/:wId/members/lookup", methods: ["GET"] },
   { pattern: "/api/w/:wId/members/search", methods: ["GET"] },
