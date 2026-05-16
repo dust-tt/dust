@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/mcp/discover_oauth_metadata.ts
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";

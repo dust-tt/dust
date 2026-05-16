@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/mcp/index.ts
 import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
