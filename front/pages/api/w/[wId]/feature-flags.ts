@@ -1,3 +1,6 @@
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/feature-flags.ts
+
 /**
  * @swagger
  * /api/w/{wId}/feature-flags:
