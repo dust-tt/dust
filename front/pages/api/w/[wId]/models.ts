@@ -1,3 +1,6 @@
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/models.ts
+
 /** @ignoreswagger */
 import {
   REASONING_MODEL_CONFIGS,
