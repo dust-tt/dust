@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/builder/skills.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { SkillDescriptionSuggestionInputs } from "@app/lib/api/skills/description_suggestion";
 import { getSkillDescriptionSuggestion } from "@app/lib/api/skills/description_suggestion";
