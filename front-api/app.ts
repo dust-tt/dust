@@ -34,11 +34,20 @@ const HONO_ROUTES: HonoRoute[] = [
   { pattern: "/api/kill", methods: ["GET"] },
   { pattern: "/api/workspace-lookup", methods: ["GET"] },
   { pattern: "/api/w/:wId/feature-flags", methods: ["GET"] },
+  { pattern: "/api/w/:wId/members/lookup", methods: ["GET"] },
+  { pattern: "/api/w/:wId/members/search", methods: ["GET"] },
+  { pattern: "/api/w/:wId/models", methods: ["GET"] },
+  { pattern: "/api/w/:wId/providers", methods: ["GET"] },
+  { pattern: "/api/w/:wId/provisioning-status", methods: ["GET"] },
   { pattern: "/api/w/:wId/spaces", methods: ["GET", "POST"] },
   { pattern: "/api/w/:wId/spaces/:spaceId/mcp/available", methods: ["GET"] },
   { pattern: "/api/w/:wId/trial-message-usage", methods: ["GET"] },
+  { pattern: "/api/w/:wId/verified-domains", methods: ["GET"] },
+  { pattern: "/api/w/:wId/verify", methods: ["GET"] },
+  { pattern: "/api/w/:wId/welcome", methods: ["GET"] },
   { pattern: "/api/v1/w/:wId/feature_flags", methods: ["GET"] },
   { pattern: "/api/v1/w/:wId/spaces", methods: ["GET"] },
+  { pattern: "/api/v1/w/:wId/verified_domains", methods: ["GET"] },
 ];
 
 const HONO_ROUTE_REGEXES = HONO_ROUTES.map((r) => {

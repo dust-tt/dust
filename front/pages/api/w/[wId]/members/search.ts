@@ -1,3 +1,6 @@
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/members/search.ts
+
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { searchMembers } from "@app/lib/api/workspace";
