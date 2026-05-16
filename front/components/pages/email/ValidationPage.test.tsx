@@ -52,11 +52,13 @@ describe("ValidationPage", () => {
   let submitSpy: MockInstance;
 
   beforeEach(() => {
+    vi.stubEnv("VITE_DUST_API_URL_EU", "https://eu.dust.tt");
+    vi.stubEnv("VITE_DUST_API_URL_US", "https://dust.tt");
     window.localStorage.clear();
     window.history.replaceState(
       null,
       "",
-      "/email/validation?token=approval-token&region=europe-west1&regionUrl=https%3A%2F%2Feu.dust.tt"
+      "/email/validation?token=approval-token&region=europe-west1"
     );
     submitSpy = vi
       .spyOn(HTMLFormElement.prototype, "submit")
@@ -65,10 +67,11 @@ describe("ValidationPage", () => {
 
   afterEach(() => {
     submitSpy.mockRestore();
+    vi.unstubAllEnvs();
     window.localStorage.clear();
   });
 
-  it("posts email validation to the region URL from query params", async () => {
+  it("posts email validation to the URL derived from the region query param", async () => {
     renderValidationPage();
 
     const form = await getValidationForm();
@@ -88,7 +91,7 @@ describe("ValidationPage", () => {
     expect(tokenInput.value).toBe("approval-token");
   });
 
-  it("does not post email validation to an untrusted region URL", async () => {
+  it("ignores regionUrl when resolving the validation URL", async () => {
     window.history.replaceState(
       null,
       "",
@@ -100,25 +103,7 @@ describe("ValidationPage", () => {
     const form = await getValidationForm();
 
     expect(form.getAttribute("action")).toBe(
-      "http://fake-url/api/email/validate-action"
-    );
-    expect(submitSpy).toHaveBeenCalledOnce();
-    expect(window.location.search).toBe("?token=approval-token");
-  });
-
-  it("does not post email validation to localhost unless the SPA is local", async () => {
-    window.history.replaceState(
-      null,
-      "",
-      "/email/validation?token=approval-token&region=europe-west1&regionUrl=http%3A%2F%2Flocalhost%3A3000"
-    );
-
-    renderValidationPage();
-
-    const form = await getValidationForm();
-
-    expect(form.getAttribute("action")).toBe(
-      "http://fake-url/api/email/validate-action"
+      "https://eu.dust.tt/api/email/validate-action"
     );
     expect(submitSpy).toHaveBeenCalledOnce();
     expect(window.location.search).toBe("?token=approval-token");

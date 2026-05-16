@@ -16,14 +16,12 @@ const {
   mockGetAppUrl,
   mockGetCurrentRegion,
   mockGetEmailValidationSecret,
-  mockGetRegionUrl,
   mockSendEmail,
   mockSendEmailToRecipients,
 } = vi.hoisted(() => ({
   mockGetAppUrl: vi.fn(),
   mockGetCurrentRegion: vi.fn(),
   mockGetEmailValidationSecret: vi.fn(),
-  mockGetRegionUrl: vi.fn(),
   mockSendEmail: vi.fn(),
   mockSendEmailToRecipients: vi.fn(),
 }));
@@ -43,7 +41,6 @@ vi.mock("@app/lib/api/email", () => ({
 vi.mock("@app/lib/api/regions/config", () => ({
   config: {
     getCurrentRegion: mockGetCurrentRegion,
-    getRegionUrl: mockGetRegionUrl,
   },
 }));
 
@@ -55,7 +52,6 @@ beforeEach(() => {
   mockGetAppUrl.mockReturnValue("https://dust.tt");
   mockGetCurrentRegion.mockReturnValue("europe-west1");
   mockGetEmailValidationSecret.mockReturnValue("test-email-validation-secret");
-  mockGetRegionUrl.mockReturnValue("https://eu.dust.tt");
   mockSendEmail.mockResolvedValue(undefined);
 });
 
@@ -249,19 +245,13 @@ describe("sendToolValidationEmail", () => {
       .filter((href) => href.includes("/email/validation"));
 
     expect(validationUrls).toHaveLength(2);
-    expect(
-      validationUrls.every((href) =>
-        href.includes("regionUrl=https%3A%2F%2Feu.dust.tt")
-      )
-    ).toBe(true);
-
     const approvalStates = validationUrls.map((href) => {
       const url = new URL(href);
       expect(url.origin + url.pathname).toBe(
         "https://dust.tt/email/validation"
       );
       expect(url.searchParams.get("region")).toBe("europe-west1");
-      expect(url.searchParams.get("regionUrl")).toBe("https://eu.dust.tt");
+      expect(url.searchParams.has("regionUrl")).toBe(false);
 
       const token = url.searchParams.get("token");
       if (!token) {

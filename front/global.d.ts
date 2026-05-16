@@ -75,6 +75,8 @@ declare global {
       VITE_DATADOG_CLIENT_TOKEN?: string;
       VITE_DATADOG_SERVICE?: string;
       VITE_DUST_API_URL?: string;
+      VITE_DUST_API_URL_EU?: string;
+      VITE_DUST_API_URL_US?: string;
       VITE_DUST_REGION?: string;
       VITE_DUST_REGION_STORAGE_KEY?: string;
     };

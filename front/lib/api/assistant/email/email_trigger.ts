@@ -882,7 +882,6 @@ export async function sendToolValidationEmail({
 
   const baseUrl = config.getAppUrl();
   const currentRegion = regionsConfig.getCurrentRegion();
-  const currentRegionUrl = regionsConfig.getRegionUrl(currentRegion);
   const conversationUrl = getConversationRoute(
     workspace.sId,
     conversation.sId,
@@ -898,12 +897,10 @@ export async function sendToolValidationEmail({
     const approveUrl = new URL("/email/validation", baseUrl);
     approveUrl.searchParams.set("token", approveToken);
     approveUrl.searchParams.set("region", currentRegion);
-    approveUrl.searchParams.set("regionUrl", currentRegionUrl);
 
     const rejectUrl = new URL("/email/validation", baseUrl);
     rejectUrl.searchParams.set("token", rejectToken);
     rejectUrl.searchParams.set("region", currentRegion);
-    rejectUrl.searchParams.set("regionUrl", currentRegionUrl);
 
     const inputsJson = JSON.stringify(action.inputs, null, 2)
       .replace(/</g, "&lt;")
