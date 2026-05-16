@@ -24,6 +24,7 @@ interface HonoRoute {
   methods: HonoMethod[];
 }
 
+// This is only needed during migration, to implement isHonoRoute()
 const HONO_ROUTES: HonoRoute[] = [
   { pattern: "/api/healthz", methods: ["GET"] },
   { pattern: "/api/app-status", methods: ["GET"] },
@@ -33,6 +34,27 @@ const HONO_ROUTES: HonoRoute[] = [
   { pattern: "/api/invitations", methods: ["GET"] },
   { pattern: "/api/kill", methods: ["GET"] },
   { pattern: "/api/workspace-lookup", methods: ["GET"] },
+  {
+    pattern: "/api/w/:wId/assistant/builder/process/generate_schema",
+    methods: ["POST"],
+  },
+  {
+    pattern: "/api/w/:wId/assistant/builder/sidekick/prompt/existing",
+    methods: ["GET"],
+  },
+  {
+    pattern: "/api/w/:wId/assistant/builder/sidekick/prompt/shrink-wrap",
+    methods: ["GET"],
+  },
+  {
+    pattern: "/api/w/:wId/assistant/builder/sidekick/prompt/template",
+    methods: ["GET"],
+  },
+  {
+    pattern: "/api/w/:wId/assistant/builder/slack/channels_linked_with_agent",
+    methods: ["GET"],
+  },
+  { pattern: "/api/w/:wId/assistant/builder/suggestions", methods: ["POST"] },
   { pattern: "/api/w/:wId/feature-flags", methods: ["GET"] },
   { pattern: "/api/w/:wId/members/lookup", methods: ["GET"] },
   { pattern: "/api/w/:wId/members/search", methods: ["GET"] },
