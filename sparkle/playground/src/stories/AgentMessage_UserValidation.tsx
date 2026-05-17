@@ -1250,9 +1250,7 @@ export default function AgentMessage_UserValidationStory() {
         users={[user1, user2, user3, user4]}
         agents={[designAgent, codeAgent, dataAgent]}
         conversationsWithMessages={[]}
-        showBackButton={false}
         conversationTitle="Notification System Redesign"
-        projectTitle="Product Engineering"
         onAcceptPendingValidation={handleAcceptPendingValidation}
         onCancelPendingValidation={handleCancelPendingValidation}
       />

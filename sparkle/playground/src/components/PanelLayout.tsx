@@ -67,42 +67,17 @@ function makeDragResize({
 // ── PanelTopBar ───────────────────────────────────────────────────────────────
 
 interface PanelTopBarProps {
-  label: string;
-  panelIndex: number;
   left?: ReactNode;
   right?: ReactNode;
-  back?: () => void;
 }
 
-export function PanelTopBar({
-  label,
-  panelIndex,
-  left,
-  right,
-  back,
-}: PanelTopBarProps) {
+export function PanelTopBar({ left, right }: PanelTopBarProps) {
   return (
-    <header className="s-flex s-h-10 s-flex-none s-items-center s-justify-between s-gap-2 s-overflow-hidden s-whitespace-nowrap s-border-b s-border-separator s-px-2 dark:s-border-separator-night">
-      <div className="s-flex s-min-w-0 s-items-center s-gap-1.5 s-overflow-hidden">
-        {back ? (
-          <Button
-            variant="ghost"
-            size="xs"
-            icon={ArrowLeftIcon}
-            onClick={back}
-            tooltip="Back"
-          />
-        ) : (
-          left
-        )}
-        <span className="s-rounded s-border s-border-separator s-bg-muted-background s-px-1.5 s-py-0.5 s-text-[10px] s-font-semibold s-uppercase s-tracking-wider s-text-foreground dark:s-border-separator-night dark:s-bg-structure-100-night dark:s-text-foreground-night">
-          P{panelIndex}
-        </span>
-        <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-          {label}
-        </span>
+    <header className="s-flex s-h-[52px] s-flex-none s-items-center s-justify-between s-gap-2 s-overflow-hidden s-whitespace-nowrap s-border-b s-border-separator s-px-3 dark:s-border-separator-night">
+      <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-1 s-overflow-hidden">
+        {left}
       </div>
-      {!back && right && (
+      {right && (
         <div className="s-flex s-flex-none s-items-center s-gap-1">{right}</div>
       )}
     </header>
@@ -141,7 +116,9 @@ function ResizeHandle({
 // ── PanelLayoutNav ────────────────────────────────────────────────────────────
 
 export interface PanelLayoutNavProps {
-  children?: ReactNode;
+  topBarLeft?: ReactNode;
+  topBarRight?: ReactNode;
+  children?: ((onClose: () => void) => ReactNode) | ReactNode;
 }
 
 // Marker — PanelLayout identifies this slot by displayName.
@@ -158,6 +135,8 @@ export interface PanelLayoutPanelProps {
   isOpen: boolean;
   /** Called when the panel's close button / back button is triggered. */
   onClose: () => void;
+  topBarLeft?: ReactNode;
+  topBarRight?: ReactNode;
   children?: ReactNode;
 }
 
@@ -331,7 +310,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     return (
       <section
         className={[
-          "s-relative s-flex s-min-w-0 s-flex-none s-flex-col s-overflow-hidden",
+          "s-relative s-flex s-h-full s-min-w-0 s-flex-none s-flex-col s-overflow-hidden",
           isNav
             ? "s-bg-muted-background dark:s-bg-muted-background-night"
             : "s-bg-white dark:s-bg-structure-0-night",
@@ -343,12 +322,12 @@ export function PanelLayout({ children }: PanelLayoutProps) {
             : "s-transition-[width] s-duration-[260ms] s-ease-[cubic-bezier(.4,0,.2,1)]",
         ].join(" ")}
         style={{ width }}
-        aria-hidden={hidden}
+        {...(hidden ? { inert: "" } : {})} // inert not in React's HTMLAttributes yet
       >
         {topBar}
         <div
           className={[
-            "s-relative s-flex-1 s-overflow-auto",
+            "s-relative s-flex s-min-h-0 s-flex-1 s-flex-col s-overflow-hidden",
             !content
               ? isNav
                 ? "s-bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]"
@@ -366,7 +345,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   const navToggleButton = (
     <Button
       variant="ghost"
-      size="xs"
+      size="sm"
       icon={
         isMobile
           ? MenuIcon
@@ -379,33 +358,44 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     />
   );
 
+  const closeNav = () => {
+    if (isMobile) setNavIntent(false);
+  };
+  const resolvedNavChildren = navChild
+    ? typeof navChild.props.children === "function"
+      ? navChild.props.children(closeNav)
+      : navChild.props.children
+    : null;
+
   return (
     <div
       ref={stageRef}
-      className="s-relative s-flex s-h-screen s-w-full s-overflow-hidden s-rounded-[10px] s-border s-border-separator dark:s-border-separator-night"
+      className="s-relative s-flex s-w-full s-h-[100vh] s-overflow-hidden"
     >
-      <div className="s-relative s-flex s-min-w-0 s-flex-1">
+      <div className="s-relative s-flex s-h-full s-min-w-0 s-flex-1 s-overflow-hidden">
         {/* ── Nav panel (P1) ── */}
         {navChild &&
           panelShell(
             layout.nav,
             true,
             <PanelTopBar
-              panelIndex={1}
-              label="Navigation"
+              left={navChild.props.topBarLeft}
               right={
-                !isMobile ? (
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    icon={SidebarLeftCloseIcon}
-                    onClick={() => setNavIntent(false)}
-                    tooltip="Hide navigation"
-                  />
-                ) : undefined
+                <>
+                  {navChild.props.topBarRight}
+                  {!isMobile && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={SidebarLeftCloseIcon}
+                      onClick={() => setNavIntent(false)}
+                      tooltip="Hide navigation"
+                    />
+                  )}
+                </>
               }
             />,
-            navChild.props.children
+            resolvedNavChildren
           )}
 
         <ResizeHandle
@@ -424,9 +414,13 @@ export function PanelLayout({ children }: PanelLayoutProps) {
             layout.p2,
             false,
             <PanelTopBar
-              panelIndex={2}
-              label={p2.props.label}
-              left={navHidden ? navToggleButton : undefined}
+              left={
+                <>
+                  {navHidden && navToggleButton}
+                  {p2.props.topBarLeft}
+                </>
+              }
+              right={p2.props.topBarRight}
             />,
             p2.props.children
           )}
@@ -447,22 +441,35 @@ export function PanelLayout({ children }: PanelLayoutProps) {
             layout.p3,
             false,
             <PanelTopBar
-              panelIndex={3}
-              label={p3.props.label}
-              back={isMobile ? p3.props.onClose : undefined}
               left={
-                !isMobile && p4Open && navHidden ? navToggleButton : undefined
-              }
-              right={
-                !isMobile ? (
+                isMobile ? (
                   <Button
                     variant="ghost"
-                    size="xs"
-                    icon={XMarkIcon}
+                    size="sm"
+                    icon={ArrowLeftIcon}
                     onClick={p3.props.onClose}
-                    tooltip="Close"
+                    tooltip="Back"
                   />
-                ) : undefined
+                ) : (
+                  <>
+                    {p4Open && navHidden && navToggleButton}
+                    {p3.props.topBarLeft}
+                  </>
+                )
+              }
+              right={
+                <>
+                  {!isMobile && p3.props.topBarRight}
+                  {!isMobile && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={XMarkIcon}
+                      onClick={p3.props.onClose}
+                      tooltip="Close"
+                    />
+                  )}
+                </>
               }
             />,
             p3.props.children
@@ -484,19 +491,32 @@ export function PanelLayout({ children }: PanelLayoutProps) {
             layout.p4,
             false,
             <PanelTopBar
-              panelIndex={4}
-              label={p4.props.label}
-              back={isMobile ? p4.props.onClose : undefined}
-              right={
-                !isMobile ? (
+              left={
+                isMobile ? (
                   <Button
                     variant="ghost"
-                    size="xs"
-                    icon={XMarkIcon}
+                    size="sm"
+                    icon={ArrowLeftIcon}
                     onClick={p4.props.onClose}
-                    tooltip="Close"
+                    tooltip="Back"
                   />
-                ) : undefined
+                ) : (
+                  p4.props.topBarLeft
+                )
+              }
+              right={
+                <>
+                  {!isMobile && p4.props.topBarRight}
+                  {!isMobile && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={XMarkIcon}
+                      onClick={p4.props.onClose}
+                      tooltip="Close"
+                    />
+                  )}
+                </>
               }
             />,
             p4.props.children
@@ -536,23 +556,25 @@ export function PanelLayout({ children }: PanelLayoutProps) {
             onMouseLeave={() => setNavPeek(false)}
           >
             <PanelTopBar
-              panelIndex={1}
-              label={isPeek ? "peek" : "overlay"}
+              left={navChild?.props.topBarLeft}
               right={
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  icon={XMarkIcon}
-                  onClick={() => {
-                    setNavOverlay(false);
-                    setNavPeek(false);
-                  }}
-                  tooltip="Dismiss"
-                />
+                <>
+                  {navChild?.props.topBarRight}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={XMarkIcon}
+                    onClick={() => {
+                      setNavOverlay(false);
+                      setNavPeek(false);
+                    }}
+                    tooltip="Dismiss"
+                  />
+                </>
               }
             />
             <div className="s-flex-1 s-bg-[repeating-linear-gradient(45deg,transparent_0,transparent_11px,rgba(0,0,0,0.06)_11px,rgba(0,0,0,0.06)_12px)]">
-              {navChild?.props.children}
+              {resolvedNavChildren}
             </div>
           </div>
         )}

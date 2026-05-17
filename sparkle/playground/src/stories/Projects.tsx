@@ -1359,9 +1359,6 @@ function DustMain() {
         users={mockUsers}
         agents={mockAgents}
         conversationsWithMessages={conversationsWithMessages}
-        showBackButton={!!previousSpaceId}
-        onBack={handleConversationBack}
-        projectTitle={selectedSpace?.name}
       />
     ) : // Priority 3: Show space view if a space is selected
     selectedSpace && selectedSpaceId ? (

@@ -1,14 +1,11 @@
 import {
   ActionCardBlock,
   ArrowDownOnSquareIcon,
-  ArrowLeftIcon,
   ArrowRightIcon,
   AttachmentChip,
   AttachmentIcon,
   Avatar,
-  Bar,
   BoltIcon,
-  Breadcrumbs,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
@@ -81,10 +78,7 @@ interface ConversationViewProps {
   users: User[];
   agents: Agent[];
   conversationsWithMessages: Conversation[]; // Conversations that have messages to randomly select from
-  showBackButton?: boolean;
-  onBack?: () => void;
   conversationTitle?: string;
-  projectTitle?: string;
   onAcceptPendingValidation?: (blockId: string) => void;
   onCancelPendingValidation?: (blockId: string) => void;
   validationDisplayMode?: "inline" | "sheet";
@@ -92,6 +86,8 @@ interface ConversationViewProps {
   onSend?: () => void;
   /** When validationDisplayMode is "sheet", the validation content to show in the sheet (e.g. when user clicked Send). */
   pendingValidationForSheet?: ConversationPendingValidation | null;
+  /** When set, citation clicks call this instead of opening the internal sheet. */
+  onCitationOpen?: (citation: { title: string; icon?: string }) => void;
 }
 
 export function ConversationView({
@@ -100,15 +96,13 @@ export function ConversationView({
   users,
   agents,
   conversationsWithMessages,
-  showBackButton = false,
-  onBack,
   conversationTitle,
-  projectTitle,
   onAcceptPendingValidation,
   onCancelPendingValidation,
   validationDisplayMode = "inline",
   onSend,
   pendingValidationForSheet,
+  onCitationOpen,
 }: ConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -713,11 +707,18 @@ export function ConversationView({
               label={citation.title}
               size="lg"
               onClick={() => {
-                setSelectedCitation(citation);
-                if (citation.imgSrc) {
-                  setIsImageZoomOpen(true);
+                if (onCitationOpen) {
+                  onCitationOpen({
+                    title: citation.title,
+                    icon: citation.icon,
+                  });
                 } else {
-                  setIsCitationSheetOpen(true);
+                  setSelectedCitation(citation);
+                  if (citation.imgSrc) {
+                    setIsImageZoomOpen(true);
+                  } else {
+                    setIsCitationSheetOpen(true);
+                  }
                 }
               }}
               {...(citation.imgSrc ? { imgSrc: citation.imgSrc } : {})}
@@ -909,21 +910,6 @@ export function ConversationView({
 
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-hidden">
-      <Bar
-        title=" "
-        description={
-          <Breadcrumbs items={breadcrumbItems} size="sm" hasLighterFont />
-        }
-        size="sm"
-        rightActions={
-          <div className="s-flex s-gap-2">
-            <Button size="sm" variant="ghost" icon={AttachmentIcon} isSelect />
-            <Button size="sm" variant="ghost" icon={MoreIcon} />
-          </div>
-        }
-        position="top"
-        variant="default"
-      />
       <Dialog
         open={isRenameDialogOpen}
         onOpenChange={(open: boolean) => {
@@ -968,7 +954,7 @@ export function ConversationView({
       <div className="s-relative s-flex s-flex-1 s-flex-col s-overflow-hidden">
         <div
           ref={scrollContainerRef}
-          className="s-flex s-flex-1 s-flex-col s-overflow-y-auto"
+          className="s-flex s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto"
         >
           <NewConversationContainer>
             <div ref={messagesEndRef} className="s-h-12 s-shrink-0" />

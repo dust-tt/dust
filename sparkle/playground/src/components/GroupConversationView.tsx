@@ -11,11 +11,9 @@ import {
   Card,
   CardGrid,
   ChatBubbleLeftRightIcon,
-  CheckCircleIcon,
   CheckDoubleIcon,
   CheckIcon,
   Chip,
-  Cog6ToothIcon,
   ContentMessage,
   ConversationListItem,
   DataTable,
@@ -40,11 +38,9 @@ import {
   ExternalLinkIcon,
   FolderIcon,
   Icon,
-  InformationCircleIcon,
   Input,
   ListGroup,
   ListItemSection,
-  LogoutIcon,
   MagicIcon,
   MoreIcon,
   ReplySection,
@@ -58,9 +54,6 @@ import {
   SliderToggle,
   Tabs,
   TabsContent,
-  TabsList,
-  TabsTrigger,
-  ToolsIcon,
   TrashIcon,
   TypingAnimation,
   UserGroupIcon,
@@ -70,6 +63,7 @@ import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearch
 import { cn } from "@sparkle/lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -110,6 +104,8 @@ interface GroupConversationViewProps {
   isProjectJoined?: boolean;
   onJoinProject?: () => void;
   onLeaveProject?: () => void;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
 interface Member {
@@ -1121,6 +1117,8 @@ export function GroupConversationView({
   isProjectJoined = false,
   onJoinProject = () => {},
   onLeaveProject = () => {},
+  activeTab: controlledActiveTab,
+  onTabChange,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -1220,8 +1218,13 @@ export function GroupConversationView({
   const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
   const [deleteConfirmDraft, setDeleteConfirmDraft] = useState("");
 
-  // Active tab (for switching from suggestion cards)
-  const [activeTab, setActiveTab] = useState("conversations");
+  // Active tab — controlled externally if activeTab/onTabChange props are provided
+  const [internalActiveTab, setInternalActiveTab] = useState("conversations");
+  const activeTab = controlledActiveTab ?? internalActiveTab;
+  const setActiveTab = (tab: string) => {
+    setInternalActiveTab(tab);
+    onTabChange?.(tab);
+  };
 
   // Files tab state
   const [dataSources, setDataSources] = useState<DataSource[]>(() =>
@@ -2768,80 +2771,9 @@ export function GroupConversationView({
         onValueChange={setActiveTab}
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border dark:s-border-border-night s-px-6">
-          <div className="s-flex s-h-full s-flex-1 s-items-end">
-            <TabsList border={false}>
-              <TabsTrigger
-                value="conversations"
-                label="Conversations"
-                icon={ChatBubbleLeftRightIcon}
-              />
-              <TabsTrigger value="todos" label="Tasks" icon={CheckCircleIcon} />
-              <div className="s-flex s-h-full s-items-center s-pb-2">
-                <Chip size="xs" color="golden" label="Beta" />
-              </div>
-              <TabsTrigger value="knowledge" label="Files" icon={FolderIcon} />
-              {showToolsAndAboutTabs && (
-                <>
-                  <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
-                  <TabsTrigger
-                    value="about"
-                    label="About"
-                    icon={InformationCircleIcon}
-                  />
-                </>
-              )}
-              <TabsTrigger
-                value="settings"
-                icon={Cog6ToothIcon}
-                tooltip={"Room settings"}
-              />
-            </TabsList>
-          </div>
-          <div className="s-flex-1" />
-          {spaceAvatars.length > 0 && (
-            <div className="s-flex s-h-8 s-items-center">
-              <Avatar.Stack
-                avatars={spaceAvatars}
-                nbVisibleItems={spaceAvatars.length}
-                orientation="horizontal"
-                hasMagnifier={false}
-                size="sm"
-              />
-            </div>
-          )}
-          {isProjectJoined ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  icon={MoreIcon}
-                  tooltip="Project options"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  label="Leave the project"
-                  icon={LogoutIcon}
-                  onClick={onLeaveProject}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button
-              size="sm"
-              variant="primary"
-              label="Join the project"
-              tooltip="Join the project to be notified of new conversations"
-              onClick={onJoinProject}
-            />
-          )}
-        </div>
-
         {/* Conversations Tab */}
         <TabsContent value="conversations">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
+          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-4">
             <div
               className={`s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 ${
                 !hasHistory ? "s-h-full s-justify-center s-py-8" : "s-py-8"
@@ -3097,7 +3029,7 @@ export function GroupConversationView({
                         if (bucketConversations.length === 0) return null;
 
                         return (
-                          <>
+                          <Fragment key={bucketKey}>
                             <ListItemSection>{bucketKey}</ListItemSection>
                             <ListGroup className="!s-border-transparent">
                               {bucketConversations.map((conversation) => {
@@ -3189,7 +3121,7 @@ export function GroupConversationView({
                                 );
                               })}
                             </ListGroup>
-                          </>
+                          </Fragment>
                         );
                       })}
                     </div>
@@ -3270,7 +3202,7 @@ export function GroupConversationView({
         {/* Tasks Tab */}
         <TabsContent value="todos">
           <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
-            <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8">
+            <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8 s-px-4">
               <div className="s-flex s-flex-col s-gap-3">
                 <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
                   {getProjectPageTitle("tasks")}
@@ -3717,7 +3649,7 @@ export function GroupConversationView({
 
         {/* Files Tab */}
         <TabsContent value="knowledge">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
+          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-4">
             <div className="s-mx-auto s-flex s-w-full s-flex-col s-gap-3 s-py-8">
               <div className="s-flex s-gap-2">
                 <h3 className="s-heading-2xl s-flex-1 s-items-center">
@@ -3764,7 +3696,7 @@ export function GroupConversationView({
         {/* About Tab */}
         {showToolsAndAboutTabs && (
           <TabsContent value="about">
-            <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
+            <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-4">
               <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8">
                 <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
                   {getProjectPageTitle("about")}
@@ -3779,8 +3711,8 @@ export function GroupConversationView({
 
         {/* Settings Tab */}
         <TabsContent value="settings">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
-            <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-px-6 s-py-8">
+          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-4">
+            <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-px-4 s-py-8">
               {/* Room Name Section */}
               <div className="s-flex s-gap-2">
                 <h3 className="s-heading-2xl s-flex-1">

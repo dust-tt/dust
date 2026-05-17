@@ -26,7 +26,7 @@ function NavList<T extends string>({
   onSelect: (item: T) => void;
 }) {
   return (
-    <div className="s-flex s-flex-col s-gap-0.5 s-p-2">
+    <div className="s-flex s-flex-col s-gap-0.5 s-overflow-auto s-p-2">
       {items.map((item) => (
         <button
           key={item}
