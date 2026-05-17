@@ -168,9 +168,10 @@ async function setupDataSourceMocks(
 }
 
 async function setupProjectSpaceWithMember() {
-  const { workspace, user, auth, globalGroup } = await createPrivateApiMockRequest({
-    role: "admin",
-  });
+  const { workspace, user, auth, globalGroup } =
+    await createPrivateApiMockRequest({
+      role: "admin",
+    });
 
   const projectSpace = await SpaceFactory.project(workspace);
   const adminAuth = await Authenticator.internalAdminForWorkspace(
