@@ -104,11 +104,7 @@ interface WorkspaceUsageBarProps {
 
 function WorkspaceUsageBar({ consumed, limit }: WorkspaceUsageBarProps) {
   const percentage =
-    limit === null
-      ? 0
-      : limit > 0
-        ? Math.min((consumed / limit) * 100, 100)
-        : 0;
+    limit !== null && limit > 0 ? Math.min((consumed / limit) * 100, 100) : 0;
 
   return (
     <div className="flex w-full flex-col gap-1">
@@ -172,14 +168,14 @@ const columns: ColumnDef<RowData, string>[] = [
     accessorFn: (row) => (row.seatUsagePercent ?? 0).toString(),
     cell: (info: Info) => {
       const pct = info.row.original.seatUsagePercent;
-      const textColor =
-        pct === null
-          ? undefined
-          : pct >= 100
-            ? "#ef4444"
-            : pct >= 80
-              ? "#FE9C1A"
-              : undefined;
+      let textColor: string | undefined;
+      if (pct !== null) {
+        if (pct >= 100) {
+          textColor = "#ef4444";
+        } else if (pct >= 80) {
+          textColor = "#FE9C1A";
+        }
+      }
       return (
         <DataTable.CellContent>
           {pct !== null ? (
