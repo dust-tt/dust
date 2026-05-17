@@ -14,6 +14,7 @@
 
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
+  AWU_PRIORITY_SEAT_ALLOCATION,
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
@@ -1078,7 +1079,7 @@ function getPerSeatIndividualAwuCredits({
       unit_price: quantityPerSeat,
     },
     commit_duration: { value: 1, unit: "PERIODS" },
-    priority: 200,
+    priority: AWU_PRIORITY_SEAT_ALLOCATION,
     starting_at_offset: { unit: "DAYS", value: 0 },
     applicable_product_tags: [USAGE_TAG],
     recurrence_frequency: "MONTHLY",

@@ -10,7 +10,7 @@ import {
 } from "@app/lib/auth/AuthContext";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import { useAwuPoolSummary, useCreditPurchaseInfo } from "@app/lib/swr/credits";
+import { useAwuPoolSummary, useAwuPurchaseInfo } from "@app/lib/swr/credits";
 import { useMembersUsage } from "@app/lib/swr/memberships";
 import {
   useMetronomeContract,
@@ -154,13 +154,14 @@ export function UsagePage() {
     resetDate,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
-    mutateAwuPoolSummary,
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
   });
 
-  const { currency, discountPercent, creditPricing, creditPurchaseLimits } =
-    useCreditPurchaseInfo({ workspaceId: owner.sId });
+  const { awuPurchaseInfo, isAwuPurchaseInfoLoading } = useAwuPurchaseInfo({
+    workspaceId: owner.sId,
+    disabled: !showBuyCreditDialog,
+  });
 
   const { membersUsage, isMembersUsageLoading } = useMembersUsage({
     workspaceId: owner.sId,
@@ -215,14 +216,9 @@ export function UsagePage() {
       <BuyAwuCreditsDialog
         isOpen={showBuyCreditDialog}
         onClose={() => setShowBuyCreditDialog(false)}
-        onPurchaseSuccess={() => {
-          void mutateAwuPoolSummary();
-        }}
         workspaceId={owner.sId}
-        currency={currency}
-        discountPercent={discountPercent}
-        creditPricing={creditPricing}
-        creditPurchaseLimits={creditPurchaseLimits}
+        awuPurchaseInfo={awuPurchaseInfo}
+        isAwuPurchaseInfoLoading={isAwuPurchaseInfoLoading}
         currentBalanceCredits={currentBalanceCredits}
       />
 

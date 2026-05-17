@@ -9,6 +9,7 @@ import { getRedisCacheClient } from "@app/lib/api/redis";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { grantAwuCreditsFromPaidInvoice } from "@app/lib/credits/awu_purchase";
 import {
   deleteCreditFromVoidedInvoice,
   startCreditFromEnterpriseOneOffInvoice,
@@ -43,6 +44,7 @@ import {
   createCustomerPortalSession,
   getStripeClient,
   getStripeSubscription,
+  isAwuPurchaseInvoice,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
   isFirstPeriodInvoice,
@@ -847,6 +849,11 @@ async function handler(
               auth: ctx.auth,
               isEnterprise: ctx.isEnterprise,
             });
+          } else if (isAwuPurchaseInvoice(invoice)) {
+            await grantAwuCreditsFromPaidInvoice({
+              invoice,
+              auth: ctx.auth,
+            });
           } else {
             await ctx.subscription.clearPaymentFailingStatus();
           }
@@ -863,11 +870,18 @@ async function handler(
           const isMetronomeInvoice = typeof invoice.subscription !== "string";
           const isCreditPurchase = isCreditPurchaseInvoice(invoice);
           const isFirstPeriod = isFirstPeriodInvoice(invoice);
+          const isAwuPurchase = isAwuPurchaseInvoice(invoice);
 
           // Only Metronome subscription invoices need the force-charge.
           // Stripe-subscription invoices have their own auto-charge flow;
-          // credit-purchase invoices have their own flow too.
-          if (isMetronomeInvoice && !isCreditPurchase && !isFirstPeriod) {
+          // credit-purchase, first-period, and AWU purchase invoices have
+          // their own flow too.
+          if (
+            isMetronomeInvoice &&
+            !isCreditPurchase &&
+            !isFirstPeriod &&
+            !isAwuPurchase
+          ) {
             await forceChargeMetronomeFinalizedInvoice(invoice);
           }
           break;

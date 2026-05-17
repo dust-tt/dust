@@ -1,13 +1,12 @@
+import { useAwuPurchase } from "@app/hooks/useAwuPurchase";
 import config from "@app/lib/api/config";
-import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
+import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
 import {
-  AWU_CREDITS_PER_DOLLAR,
-  MAX_CREDIT_PURCHASE_AMOUNT_MICRO_USD,
-  MICRO_USD_PER_DOLLAR,
-  MIN_CREDIT_PURCHASE_AMOUNT_MICRO_USD,
-} from "@app/lib/metronome/types";
-import { CURRENCY_SYMBOLS, isSupportedCurrency } from "@app/types/currency";
-import type { StripePricingData } from "@app/types/stripe/pricing";
+  MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
+  MIN_AWU_PURCHASE_CREDITS,
+} from "@app/lib/credits/awu_purchase_constants";
+import { AWU_CREDITS_PER_DOLLAR } from "@app/lib/metronome/types";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ActionCreditCoinsIcon,
   Button,
@@ -92,10 +91,8 @@ interface BuyAwuCreditsDialogProps {
   onClose: () => void;
   onPurchaseSuccess?: () => void;
   workspaceId: string;
-  currency: string;
-  discountPercent: number;
-  creditPricing: StripePricingData | null;
-  creditPurchaseLimits: CreditPurchaseLimits | null;
+  awuPurchaseInfo: AwuPurchaseInfo | null;
+  isAwuPurchaseInfoLoading: boolean;
   currentBalanceCredits?: number;
 }
 
@@ -104,10 +101,8 @@ export function BuyAwuCreditsDialog({
   onClose,
   onPurchaseSuccess,
   workspaceId,
-  currency,
-  discountPercent,
-  creditPricing,
-  creditPurchaseLimits,
+  awuPurchaseInfo,
+  isAwuPurchaseInfoLoading,
   currentBalanceCredits,
 }: BuyAwuCreditsDialogProps) {
   const [amountDollars, setAmountDollars] = useState<string>("");
@@ -115,6 +110,7 @@ export function BuyAwuCreditsDialog({
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const { purchaseAwuCredits } = useAwuPurchase({ workspaceId });
 
   const resetModalStateAndClose = useCallback(() => {
     setAmountDollars("");
@@ -126,24 +122,24 @@ export function BuyAwuCreditsDialog({
   }, [onClose]);
 
   const maxAmountDollars = useMemo(() => {
-    if (!creditPurchaseLimits?.canPurchase) {
+    if (!awuPurchaseInfo?.canPurchase) {
       return null;
     }
     return Math.floor(
-      creditPurchaseLimits.maxAmountMicroUsd / MICRO_USD_PER_DOLLAR
+      awuPurchaseInfo.remainingCycleCredits / AWU_CREDITS_PER_DOLLAR
     );
-  }, [creditPurchaseLimits]);
+  }, [awuPurchaseInfo]);
 
   const maxAmountFormatted = useMemo(() => {
-    if (!creditPurchaseLimits?.canPurchase) {
+    if (maxAmountDollars === null) {
       return null;
     }
-    return `$${Math.floor(creditPurchaseLimits.maxAmountMicroUsd / MICRO_USD_PER_DOLLAR).toLocaleString()}`;
-  }, [creditPurchaseLimits]);
+    return `$${maxAmountDollars.toLocaleString()}`;
+  }, [maxAmountDollars]);
 
   const effectiveMaxDollars =
     maxAmountDollars ??
-    Math.floor(MAX_CREDIT_PURCHASE_AMOUNT_MICRO_USD / MICRO_USD_PER_DOLLAR);
+    Math.floor(MAX_AWU_PURCHASE_CREDITS_PER_CYCLE / AWU_CREDITS_PER_DOLLAR);
 
   const setAmountWithClamp = useCallback(
     (dollars: number) => {
@@ -157,30 +153,28 @@ export function BuyAwuCreditsDialog({
   const amountExceedsMax = parsedAmount > effectiveMaxDollars;
   const addedCredits = parsedAmount * AWU_CREDITS_PER_DOLLAR;
 
-  const displayCurrency = isSupportedCurrency(currency) ? currency : "usd";
-  const currencySymbol = CURRENCY_SYMBOLS[displayCurrency];
-  const needsConversion = displayCurrency !== "usd";
-
-  let amountInDisplayCurrency = parsedAmount;
-  if (needsConversion && creditPricing) {
-    const usdUnit = creditPricing.currencyOptions.usd?.unitAmount ?? 0;
-    const displayUnit =
-      creditPricing.currencyOptions[displayCurrency]?.unitAmount ?? 0;
-    if (usdUnit > 0 && displayUnit > 0) {
-      amountInDisplayCurrency = parsedAmount * (displayUnit / usdUnit);
-    }
-  }
-
-  const effectiveDiscount = discountPercent || 0;
-  const discountAmount = amountInDisplayCurrency * (effectiveDiscount / 100);
-  const totalInDisplayCurrency = amountInDisplayCurrency - discountAmount;
-
   const canPurchase = isValidAmount && !amountExceedsMax;
 
-  // TODO: implement AWU-specific purchase endpoint.
   const handlePurchase = async () => {
-    setPurchaseState("success");
-    onPurchaseSuccess?.();
+    setPurchaseState("processing");
+    const amountCredits = Math.round(addedCredits);
+    const result = await purchaseAwuCredits(amountCredits);
+    switch (result.status) {
+      case "success":
+        setPurchaseState("success");
+        onPurchaseSuccess?.();
+        break;
+      case "redirect":
+        setPaymentUrl(result.paymentUrl);
+        setPurchaseState("redirect");
+        break;
+      case "error":
+        setErrorMessage(result.message);
+        setPurchaseState("error");
+        break;
+      default:
+        assertNeverAndIgnore(result);
+    }
   };
 
   const renderContent = () => {
@@ -354,7 +348,7 @@ export function BuyAwuCreditsDialog({
                       )}
                       <SummaryRow
                         label="Cost"
-                        value={`${currencySymbol}${formatCost(totalInDisplayCurrency)}`}
+                        value={`$${formatCost(parsedAmount)}`}
                       />
                     </div>
                   )}
@@ -468,11 +462,28 @@ export function BuyAwuCreditsDialog({
     }
   };
 
-  // Cannot purchase: trialing.
+  if (isAwuPurchaseInfoLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Credit pool top-up</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            <div className="flex justify-center py-8">
+              <Spinner size="lg" />
+            </div>
+          </DialogContainer>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Cannot purchase: legacy plan.
   if (
-    creditPurchaseLimits &&
-    !creditPurchaseLimits.canPurchase &&
-    creditPurchaseLimits.reason === "trialing"
+    awuPurchaseInfo &&
+    !awuPurchaseInfo.canPurchase &&
+    awuPurchaseInfo.reason === "legacy_plan"
   ) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -480,20 +491,19 @@ export function BuyAwuCreditsDialog({
           <DialogHeader>
             <DialogTitle>Credit pool top-up</DialogTitle>
             <DialogDescription>
-              Credit purchases are not available during your trial period.
+              AWU credit purchases are not available for your current plan.
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Credit purchases become available once you upgrade to a paid plan.
-              If you need credits during your trial, please{" "}
+              Please{" "}
               <a
-                href={`mailto:${supportEmail}?subject=Credit%20purchase%20during%20trial`}
+                href={`mailto:${supportEmail}?subject=AWU%20credit%20purchase`}
                 className="text-action-500 hover:underline"
               >
                 contact support
-              </a>
-              .
+              </a>{" "}
+              for assistance.
             </p>
           </DialogContainer>
           <DialogFooter
@@ -508,11 +518,11 @@ export function BuyAwuCreditsDialog({
     );
   }
 
-  // Cannot purchase: payment issue.
+  // Cannot purchase: no Stripe customer.
   if (
-    creditPurchaseLimits &&
-    !creditPurchaseLimits.canPurchase &&
-    creditPurchaseLimits.reason === "payment_issue"
+    awuPurchaseInfo &&
+    !awuPurchaseInfo.canPurchase &&
+    awuPurchaseInfo.reason === "no_stripe_customer"
   ) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -520,20 +530,19 @@ export function BuyAwuCreditsDialog({
           <DialogHeader>
             <DialogTitle>Credit pool top-up</DialogTitle>
             <DialogDescription>
-              Credit purchases require an active subscription.
+              No billing configuration found for this workspace.
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Please ensure your subscription is active and your payment method
-              is up to date. If you need assistance, please{" "}
+              Please{" "}
               <a
-                href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20payment%20issue`}
+                href={`mailto:${supportEmail}?subject=AWU%20credit%20purchase%20-%20billing%20setup`}
                 className="text-action-500 hover:underline"
               >
                 contact support
-              </a>
-              .
+              </a>{" "}
+              to set up billing for your workspace.
             </p>
           </DialogContainer>
           <DialogFooter
@@ -550,9 +559,9 @@ export function BuyAwuCreditsDialog({
 
   // Cannot purchase: pending payment.
   if (
-    creditPurchaseLimits &&
-    !creditPurchaseLimits.canPurchase &&
-    creditPurchaseLimits.reason === "pending_payment"
+    awuPurchaseInfo &&
+    !awuPurchaseInfo.canPurchase &&
+    awuPurchaseInfo.reason === "pending_purchase"
   ) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -597,10 +606,8 @@ export function BuyAwuCreditsDialog({
 
   // Limit exhausted for this billing cycle.
   if (
-    creditPurchaseLimits &&
-    creditPurchaseLimits.canPurchase &&
-    creditPurchaseLimits.maxAmountMicroUsd <
-      MIN_CREDIT_PURCHASE_AMOUNT_MICRO_USD
+    awuPurchaseInfo?.canPurchase &&
+    awuPurchaseInfo.remainingCycleCredits < MIN_AWU_PURCHASE_CREDITS
   ) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
