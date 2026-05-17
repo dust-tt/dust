@@ -553,7 +553,7 @@ export function renderCtaFromContentful(document: Document | null): ReactNode {
     },
   };
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
+    <div className="flex flex-col gap-3 [&>a]:w-full [&>a]:justify-center">
       {documentToReactComponents(document, options)}
     </div>
   );

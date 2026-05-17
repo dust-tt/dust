@@ -240,10 +240,6 @@ export default function BlogPost({
             </div>
           </header>
 
-          {ctaContent && (
-            <div className={classNames(WIDE_CLASSES, "mt-3")}>{ctaContent}</div>
-          )}
-
           {post.image && (
             <div className={classNames(WIDE_CLASSES, "mt-2")}>
               <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white">
@@ -266,9 +262,9 @@ export default function BlogPost({
               <div className="min-w-0 lg:col-span-9">
                 {renderRichTextFromContentful(post.body)}
               </div>
-              {tocItems.length > 0 && (
+              {(tocItems.length > 0 || ctaContent) && (
                 <div className="hidden lg:col-span-3 lg:block">
-                  <TableOfContents items={tocItems} />
+                  <TableOfContents items={tocItems} cta={ctaContent} />
                 </div>
               )}
             </div>
