@@ -14,7 +14,19 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ProjectType, SpaceType } from "@app/types/space";
 
 import { validate } from "../../../middleware/validator";
+import { appsApp } from "./apps";
+import { dataSourceViewsApp } from "./data_source_views";
+import { dataSourcesApp } from "./data_sources";
+import { joinApp } from "./join";
+import { leaveApp } from "./leave";
 import { mcpApp } from "./mcp";
+import { mcpViewsApp } from "./mcp_views";
+import { projectContextApp } from "./project_context";
+import { projectFilesApp } from "./project_files";
+import { projectTasksApp } from "./project_tasks";
+import { searchConversationsApp } from "./search_conversations";
+import { starApp } from "./star";
+import { webhookSourceViewsApp } from "./webhook_source_views";
 
 const PostSpaceRequestBodySchema = z.intersection(
   z.object({
@@ -180,4 +192,16 @@ spacesApp.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
 // Per-space sub-resource sub-apps. New families of routes under a specific
 // space (data source views, members, etc.) live in their own sibling files
 // and are mounted here.
+spacesApp.route("/:spaceId/apps", appsApp);
+spacesApp.route("/:spaceId/data_source_views/:dsvId", dataSourceViewsApp);
+spacesApp.route("/:spaceId/data_sources/:dsId", dataSourcesApp);
+spacesApp.route("/:spaceId/join", joinApp);
+spacesApp.route("/:spaceId/leave", leaveApp);
 spacesApp.route("/:spaceId/mcp", mcpApp);
+spacesApp.route("/:spaceId/mcp_views", mcpViewsApp);
+spacesApp.route("/:spaceId/project_context", projectContextApp);
+spacesApp.route("/:spaceId/project_files", projectFilesApp);
+spacesApp.route("/:spaceId/project_tasks", projectTasksApp);
+spacesApp.route("/:spaceId/search_conversations", searchConversationsApp);
+spacesApp.route("/:spaceId/star", starApp);
+spacesApp.route("/:spaceId/webhook_source_views", webhookSourceViewsApp);

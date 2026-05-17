@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/apps.ts
 import { softDeleteApp } from "@app/lib/api/apps";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";

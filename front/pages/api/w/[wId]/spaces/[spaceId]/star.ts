@@ -1,4 +1,6 @@
 /**
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/star.ts
  * @ignoreswagger
  */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
