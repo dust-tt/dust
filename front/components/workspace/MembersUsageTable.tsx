@@ -20,6 +20,7 @@ type RowData = {
   seatType: MembershipSeatType | null;
   seatUsagePercent: number | null;
   consumedWorkplacePoolCredits: number;
+  billingFrequency: "MONTHLY" | "ANNUAL" | null;
   onClick?: () => void;
 };
 
@@ -159,7 +160,27 @@ const columns: ColumnDef<RowData, string>[] = [
       );
     },
     meta: {
-      className: "w-28",
+      className: "w-24",
+    },
+  },
+  {
+    id: "billingFrequency" as const,
+    header: "Period",
+    accessorFn: (row) => row.billingFrequency ?? "",
+    cell: (info: Info) => {
+      const freq = info.row.original.billingFrequency;
+      const label =
+        freq === "MONTHLY" ? "Monthly" : freq === "ANNUAL" ? "Annual" : "—";
+      return (
+        <DataTable.CellContent>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {label}
+          </span>
+        </DataTable.CellContent>
+      );
+    },
+    meta: {
+      className: "w-24",
     },
   },
   {
@@ -195,7 +216,7 @@ const columns: ColumnDef<RowData, string>[] = [
       );
     },
     meta: {
-      className: "w-28",
+      className: "w-32",
     },
     enableSorting: true,
     sortingFn: (a, b) =>
@@ -219,7 +240,7 @@ const columns: ColumnDef<RowData, string>[] = [
       </div>
     ),
     meta: {
-      className: "w-56",
+      className: "w-64",
     },
     enableSorting: true,
     sortingFn: (a, b) =>
@@ -281,6 +302,7 @@ export function MembersUsageTable({
     seatType: m.seatType,
     seatUsagePercent: m.seatUsagePercent,
     consumedWorkplacePoolCredits: m.consumedWorkplacePoolCredits,
+    billingFrequency: m.billingFrequency,
   }));
 
   return <DataTable data={rows} columns={columns} />;

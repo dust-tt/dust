@@ -6,7 +6,7 @@ import {
   listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
 import { getMetricLlmProviderCostAwuId } from "@app/lib/metronome/constants";
-import { buildSeatAllocationByUserId } from "@app/lib/metronome/seats";
+import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
 import {
   MembershipResource,
   type MembershipsPaginationParams,
@@ -28,6 +28,8 @@ export type MemberUsageType = {
   seatUsagePercent: number | null;
   // Pool consumption only (AWU credits): total usage minus what was covered by the seat credit.
   consumedWorkplacePoolCredits: number;
+  // Billing cadence for the seat subscription the user is assigned to; null when unknown.
+  billingFrequency: "MONTHLY" | "ANNUAL" | null;
 };
 
 export type GetMembersUsageResponseBody = {
@@ -169,7 +171,7 @@ export async function handleGetMembersUsageRequest(
       const { metronomeCustomerId } = workspace;
       const metronomeContractId = subscription?.metronomeContractId ?? null;
 
-      const [membershipsResult, perUserTotalCredits, seatAllocationByUserId] =
+      const [membershipsResult, perUserTotalCredits, seatDataByUserId] =
         await Promise.all([
           MembershipResource.getActiveMemberships({
             workspace,
@@ -180,11 +182,11 @@ export async function handleGetMembersUsageRequest(
             metronomeContractId,
           }),
           metronomeCustomerId && metronomeContractId
-            ? buildSeatAllocationByUserId({
+            ? buildSeatDataByUserId({
                 metronomeCustomerId,
                 contractId: metronomeContractId,
               })
-            : Promise.resolve(new Map<string, number>()),
+            : Promise.resolve(new Map()),
         ]);
 
       const { memberships, total, nextPageParams } = membershipsResult;
@@ -195,15 +197,16 @@ export async function handleGetMembersUsageRequest(
         }
         const userId = m.user.sId;
         const totalCredits = perUserTotalCredits.get(userId) ?? 0;
-        const seatAllocation = seatAllocationByUserId.get(userId) ?? 0;
+        const seatData = seatDataByUserId.get(userId);
+        const awuAllocation = seatData?.awuAllocation ?? 0;
 
         let seatUsagePercent: number | null = null;
         let poolConsumedCredits = totalCredits;
 
-        if (seatAllocation > 0) {
-          const seatConsumed = Math.min(totalCredits, seatAllocation);
-          seatUsagePercent = (seatConsumed / seatAllocation) * 100;
-          poolConsumedCredits = Math.max(0, totalCredits - seatAllocation);
+        if (awuAllocation > 0) {
+          const seatConsumed = Math.min(totalCredits, awuAllocation);
+          seatUsagePercent = (seatConsumed / awuAllocation) * 100;
+          poolConsumedCredits = Math.max(0, totalCredits - awuAllocation);
         }
 
         return [
@@ -215,6 +218,7 @@ export async function handleGetMembersUsageRequest(
             seatType: m.seatType ?? null,
             seatUsagePercent,
             consumedWorkplacePoolCredits: poolConsumedCredits,
+            billingFrequency: seatData?.billingFrequency ?? null,
           },
         ];
       });

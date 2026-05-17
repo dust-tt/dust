@@ -11,7 +11,7 @@ import {
   getMetricLlmProviderCostAwuId,
   getSeatProductIds,
 } from "@app/lib/metronome/constants";
-import { buildSeatAllocationByUserId } from "@app/lib/metronome/seats";
+import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -146,7 +146,7 @@ export async function handleAwuPoolSummaryRequest(
       // Per-user breakdown is needed to compute pool overflow correctly:
       // seat credits cover each user up to their allocation; only the excess
       // draws from the workspace pool.
-      const [usageResult, seatAllocationByUserId] = await Promise.all([
+      const [usageResult, seatDataByUserId] = await Promise.all([
         listMetronomeUsageWithGroups({
           customerId: metronomeCustomerId,
           billableMetricId: getMetricLlmProviderCostAwuId(),
@@ -155,7 +155,7 @@ export async function handleAwuPoolSummaryRequest(
           windowSize: "NONE",
           groupKey: ["user_id", "usage_type"],
         }),
-        buildSeatAllocationByUserId({
+        buildSeatDataByUserId({
           metronomeCustomerId,
           contractId: metronomeContractId,
         }),
@@ -195,7 +195,7 @@ export async function handleAwuPoolSummaryRequest(
       // Users without a seat: all their usage is pool consumption.
       let consumedByUsersCredits = 0;
       for (const [userId, userCredits] of perUserCredits) {
-        const seatAllocation = seatAllocationByUserId.get(userId) ?? 0;
+        const seatAllocation = seatDataByUserId.get(userId)?.awuAllocation ?? 0;
         consumedByUsersCredits += Math.max(0, userCredits - seatAllocation);
       }
 
