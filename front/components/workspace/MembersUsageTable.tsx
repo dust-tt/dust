@@ -1,7 +1,9 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
+  ActionCreditCoinsIcon,
   DataTable,
+  Icon,
   LoadingBlock,
   SeatFreeIcon,
   SeatMaxIcon,
@@ -17,7 +19,7 @@ type RowData = {
   image: string | null;
   seatType: MembershipSeatType | null;
   seatUsagePercent: number | null;
-  consumedMicroUsd: number;
+  consumedWorkplacePoolCredits: number;
   onClick?: () => void;
 };
 
@@ -91,9 +93,33 @@ function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
   return <Icon />;
 }
 
-function formatMicroUsd(amountMicroUsd: number): string {
-  const dollars = amountMicroUsd / 1_000_000;
-  return `$${dollars.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatCredits(credits: number): string {
+  return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
+}
+
+interface WorkspaceUsageBarProps {
+  consumed: number;
+  limit: number | null;
+}
+
+function WorkspaceUsageBar({ consumed, limit }: WorkspaceUsageBarProps) {
+  const percentage =
+    limit !== null && limit > 0 ? Math.min((consumed / limit) * 100, 100) : 0;
+
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
+        <span>{formatCredits(consumed)}</span>
+        <span>{limit === null ? "∞" : formatCredits(limit)}</span>
+      </div>
+      <div className="h-0.5 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
+        <div
+          className="h-full transition-all"
+          style={{ width: `${percentage}%`, backgroundColor: "#596170" }}
+        />
+      </div>
+    </div>
+  );
 }
 
 const columns: ColumnDef<RowData, string>[] = [
@@ -142,12 +168,23 @@ const columns: ColumnDef<RowData, string>[] = [
     accessorFn: (row) => (row.seatUsagePercent ?? 0).toString(),
     cell: (info: Info) => {
       const pct = info.row.original.seatUsagePercent;
+      let textColor: string | undefined;
+      if (pct !== null) {
+        if (pct >= 100) {
+          textColor = "#ef4444";
+        } else if (pct >= 80) {
+          textColor = "#FE9C1A";
+        }
+      }
       return (
         <DataTable.CellContent>
           {pct !== null ? (
-            <span className="flex items-center gap-1.5 text-sm font-semibold tabular-nums text-muted-foreground dark:text-muted-foreground-night">
-              <CircleProgress percentage={pct} />
+            <span
+              className="flex items-center gap-1.5 text-sm font-semibold tabular-nums"
+              style={textColor ? { color: textColor } : undefined}
+            >
               {`${Math.round(pct)}%`}
+              <CircleProgress percentage={pct} />
             </span>
           ) : (
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -165,22 +202,29 @@ const columns: ColumnDef<RowData, string>[] = [
       (a.original.seatUsagePercent ?? -1) - (b.original.seatUsagePercent ?? -1),
   },
   {
-    id: "consumedMicroUsd" as const,
-    header: "Workspace usage",
-    accessorFn: (row) => row.consumedMicroUsd.toString(),
+    id: "consumedWorkplacePoolCredits" as const,
+    header: () => (
+      <span className="flex items-center gap-1.5">
+        <Icon visual={ActionCreditCoinsIcon} size="xs" />
+        Workspace usage
+      </span>
+    ),
+    accessorFn: (row) => row.consumedWorkplacePoolCredits.toString(),
     cell: (info: Info) => (
-      <DataTable.CellContent>
-        <span className="text-sm tabular-nums text-muted-foreground dark:text-muted-foreground-night">
-          {formatMicroUsd(info.row.original.consumedMicroUsd)}
-        </span>
-      </DataTable.CellContent>
+      <div className="w-full pr-3">
+        <WorkspaceUsageBar
+          consumed={info.row.original.consumedWorkplacePoolCredits}
+          limit={null}
+        />
+      </div>
     ),
     meta: {
-      className: "w-36 text-right",
+      className: "w-56",
     },
     enableSorting: true,
     sortingFn: (a, b) =>
-      a.original.consumedMicroUsd - b.original.consumedMicroUsd,
+      a.original.consumedWorkplacePoolCredits -
+      b.original.consumedWorkplacePoolCredits,
   },
 ];
 
@@ -236,7 +280,7 @@ export function MembersUsageTable({
     image: m.image,
     seatType: m.seatType,
     seatUsagePercent: m.seatUsagePercent,
-    consumedMicroUsd: m.consumedMicroUsd,
+    consumedWorkplacePoolCredits: m.consumedWorkplacePoolCredits,
   }));
 
   return <DataTable data={rows} columns={columns} />;

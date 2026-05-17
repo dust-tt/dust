@@ -3,14 +3,10 @@ import {
   ceilToMidnightUTC,
   floorToMidnightUTC,
   listMetronomeDraftInvoices,
-  listMetronomeSeatBalances,
   listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
-import {
-  getCreditTypeAwuId,
-  getMetricLlmProviderCostAwuId,
-} from "@app/lib/metronome/constants";
-import { AWU_TO_MICRO_USD } from "@app/lib/metronome/types";
+import { getMetricLlmProviderCostAwuId } from "@app/lib/metronome/constants";
+import { buildSeatAllocationByUserId } from "@app/lib/metronome/seats";
 import {
   MembershipResource,
   type MembershipsPaginationParams,
@@ -30,8 +26,8 @@ export type MemberUsageType = {
   seatType: MembershipSeatType | null;
   // Percentage of seat allocation consumed (0–100), null when seat balances are unavailable.
   seatUsagePercent: number | null;
-  // Pool consumption only: total usage minus what was covered by the seat credit.
-  consumedMicroUsd: number;
+  // Pool consumption only (AWU credits): total usage minus what was covered by the seat credit.
+  consumedWorkplacePoolCredits: number;
 };
 
 export type GetMembersUsageResponseBody = {
@@ -73,7 +69,7 @@ function buildUrlWithParams(
   return url.pathname + url.search;
 }
 
-async function fetchPerUserUsageMicroUsd({
+async function fetchPerUserUsageCredits({
   metronomeCustomerId,
   metronomeContractId,
 }: {
@@ -119,7 +115,7 @@ async function fetchPerUserUsageMicroUsd({
     startingOn,
     endingBefore,
     windowSize: "NONE",
-    groupKey: ["user_id"],
+    groupKey: ["user_id", "usage_type"],
   });
 
   if (usageResult.isErr()) {
@@ -129,12 +125,12 @@ async function fetchPerUserUsageMicroUsd({
   const perUser = new Map<string, number>();
   for (const entry of usageResult.value) {
     const userId = entry.group?.["user_id"];
-    // Skip programmatic events — they carry user_id="unknown" (see events.ts).
-    if (!userId || userId === "unknown" || entry.value === null) {
+    const usageType = entry.group?.["usage_type"];
+    if (!userId || usageType !== "user" || entry.value === null) {
       continue;
     }
     const existing = perUser.get(userId) ?? 0;
-    perUser.set(userId, existing + entry.value * AWU_TO_MICRO_USD);
+    perUser.set(userId, existing + entry.value);
   }
   return perUser;
 }
@@ -173,80 +169,41 @@ export async function handleGetMembersUsageRequest(
       const { metronomeCustomerId } = workspace;
       const metronomeContractId = subscription?.metronomeContractId ?? null;
 
-      const [membershipsResult, perUserTotalMicroUsd, seatBalancesResult] =
+      const [membershipsResult, perUserTotalCredits, seatAllocationByUserId] =
         await Promise.all([
           MembershipResource.getActiveMemberships({
             workspace,
             paginationParams,
           }),
-          fetchPerUserUsageMicroUsd({
+          fetchPerUserUsageCredits({
             metronomeCustomerId: metronomeCustomerId ?? null,
             metronomeContractId,
           }),
           metronomeCustomerId && metronomeContractId
-            ? listMetronomeSeatBalances({
+            ? buildSeatAllocationByUserId({
                 metronomeCustomerId,
-                metronomeContractId,
+                contractId: metronomeContractId,
               })
-            : Promise.resolve(null),
+            : Promise.resolve(new Map<string, number>()),
         ]);
 
       const { memberships, total, nextPageParams } = membershipsResult;
-
-      if (seatBalancesResult !== null && seatBalancesResult.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to retrieve Metronome seat balances: ${seatBalancesResult.error.message}`,
-          },
-        });
-      }
-
-      // Build seat_id → balance map. seat_id is the user's sId.
-      // Each entry has a `balances` array; we pick the AWU credit type entry.
-      const awuCreditTypeId = getCreditTypeAwuId();
-      const seatBalanceByUserId = new Map<
-        string,
-        { balance: number; startingBalance: number }
-      >();
-      if (seatBalancesResult !== null) {
-        for (const entry of seatBalancesResult.value) {
-          const awuBalance = entry.balances.find(
-            (b) => b.credit_type_id === awuCreditTypeId
-          );
-          if (awuBalance) {
-            seatBalanceByUserId.set(entry.seat_id, {
-              balance: awuBalance.balance,
-              startingBalance: awuBalance.starting_balance,
-            });
-          }
-        }
-      }
 
       const membersUsage: MemberUsageType[] = memberships.flatMap((m) => {
         if (!m.user) {
           return [];
         }
         const userId = m.user.sId;
-        const totalMicroUsd = perUserTotalMicroUsd.get(userId) ?? 0;
-        const seat = seatBalanceByUserId.get(userId) ?? null;
+        const totalCredits = perUserTotalCredits.get(userId) ?? 0;
+        const seatAllocation = seatAllocationByUserId.get(userId) ?? 0;
 
         let seatUsagePercent: number | null = null;
-        let poolConsumedMicroUsd = totalMicroUsd;
+        let poolConsumedCredits = totalCredits;
 
-        if (seat !== null && seat.startingBalance > 0) {
-          const seatConsumed = seat.startingBalance - seat.balance;
-          seatUsagePercent = Math.min(
-            100,
-            (seatConsumed / seat.startingBalance) * 100
-          );
-          // Pool usage is total minus what was covered by the seat credit.
-          const seatConsumedMicroUsd = seatConsumed * AWU_TO_MICRO_USD;
-          poolConsumedMicroUsd = Math.max(
-            0,
-            totalMicroUsd - seatConsumedMicroUsd
-          );
+        if (seatAllocation > 0) {
+          const seatConsumed = Math.min(totalCredits, seatAllocation);
+          seatUsagePercent = (seatConsumed / seatAllocation) * 100;
+          poolConsumedCredits = Math.max(0, totalCredits - seatAllocation);
         }
 
         return [
@@ -257,7 +214,7 @@ export async function handleGetMembersUsageRequest(
             image: m.user.imageUrl ?? null,
             seatType: m.seatType ?? null,
             seatUsagePercent,
-            consumedMicroUsd: poolConsumedMicroUsd,
+            consumedWorkplacePoolCredits: poolConsumedCredits,
           },
         ];
       });

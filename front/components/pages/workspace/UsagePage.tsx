@@ -99,7 +99,7 @@ function CreditPoolUsageBar({
       <div
         className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10"
         role="progressbar"
-        aria-label="User and programmatic usage"
+        aria-label="Credit pool usage"
         aria-valuenow={Math.round(totalConsumedPercentage)}
         aria-valuemin={0}
         aria-valuemax={100}

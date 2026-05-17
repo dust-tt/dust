@@ -11,6 +11,7 @@ import {
   getMetricLlmProviderCostAwuId,
   getSeatProductIds,
 } from "@app/lib/metronome/constants";
+import { buildSeatAllocationByUserId } from "@app/lib/metronome/seats";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -115,29 +116,50 @@ export async function handleAwuPoolSummaryRequest(
           !seatProductIds.has(entry.product.id)
       );
 
-      // Sum remaining balance across active AWU entries. Using entry.balance
-      // so that consumption outside the billing window (e.g. usage
-      // from a prior period) is correctly reflected in the remaining balance.
-      let balanceCredits = 0;
+      // Sum the remaining balance of each active pool credit.
+      // entry.balance accounts for prior-period consumption (e.g. a carried-over prepaid
+      // top-off that was partially consumed in a previous billing cycle). Upcoming and
+      // expired schedule segments contribute 0 to the balance, so this is safe for
+      // multi-period recurring credits too.
+      let totalCredits = 0;
       for (const entry of awuBalances) {
-        balanceCredits += entry.balance ?? 0;
+        const isActive = (entry.access_schedule?.schedule_items ?? []).some(
+          (item) => {
+            const itemStartMs = new Date(item.starting_at).getTime();
+            const itemEndMs = new Date(item.ending_before).getTime();
+            return itemStartMs <= now && now < itemEndMs;
+          }
+        );
+        if (isActive) {
+          totalCredits += entry.balance ?? 0;
+        }
       }
 
-      // Query the AWU metric grouped by is_programmatic_usage to split consumption.
-      // "NONE" window gives a single aggregate over the entire billing period.
-      // Metronome requires midnight UTC boundaries for usage queries.
-      const usageResult = await listMetronomeUsageWithGroups({
-        customerId: metronomeCustomerId,
-        billableMetricId: getMetricLlmProviderCostAwuId(),
-        startingOn: floorToMidnightUTC(
-          new Date(currentInvoice.start_timestamp)
-        ).toISOString(),
-        endingBefore: ceilToMidnightUTC(
-          new Date(currentInvoice.end_timestamp)
-        ).toISOString(),
-        windowSize: "NONE",
-        groupKey: ["is_programmatic_usage"],
-      });
+      const startingOn = floorToMidnightUTC(
+        new Date(currentInvoice.start_timestamp)
+      ).toISOString();
+      const endingBefore = ceilToMidnightUTC(
+        new Date(currentInvoice.end_timestamp)
+      ).toISOString();
+
+      // Query usage per user and seat allocations in parallel.
+      // Per-user breakdown is needed to compute pool overflow correctly:
+      // seat credits cover each user up to their allocation; only the excess
+      // draws from the workspace pool.
+      const [usageResult, seatAllocationByUserId] = await Promise.all([
+        listMetronomeUsageWithGroups({
+          customerId: metronomeCustomerId,
+          billableMetricId: getMetricLlmProviderCostAwuId(),
+          startingOn,
+          endingBefore,
+          windowSize: "NONE",
+          groupKey: ["user_id", "usage_type"],
+        }),
+        buildSeatAllocationByUserId({
+          metronomeCustomerId,
+          contractId: metronomeContractId,
+        }),
+      ]);
 
       if (usageResult.isErr()) {
         return apiError(req, res, {
@@ -149,21 +171,33 @@ export async function handleAwuPoolSummaryRequest(
         });
       }
 
-      let consumedByUsersCredits = 0;
+      // Aggregate per-user consumption from the usage metric.
+      const perUserCredits = new Map<string, number>();
       let consumedByProgrammaticCredits = 0;
+
       for (const row of usageResult.value) {
         const credits = row.value ?? 0;
-        if (row.group?.["is_programmatic_usage"] === "true") {
+        const usageType = row.group?.["usage_type"];
+        if (usageType === "programmatic") {
           consumedByProgrammaticCredits += credits;
         } else {
-          consumedByUsersCredits += credits;
+          const userId = row.group?.["user_id"];
+          if (userId) {
+            perUserCredits.set(
+              userId,
+              (perUserCredits.get(userId) ?? 0) + credits
+            );
+          }
         }
       }
 
-      // totalCredits = balance + consumed_in_period so that
-      // totalCredits - consumed = balance (the actual remaining).
-      const totalCredits =
-        balanceCredits + consumedByUsersCredits + consumedByProgrammaticCredits;
+      // Pool user consumption = sum of each user's overflow beyond their seat allocation.
+      // Users without a seat: all their usage is pool consumption.
+      let consumedByUsersCredits = 0;
+      for (const [userId, userCredits] of perUserCredits) {
+        const seatAllocation = seatAllocationByUserId.get(userId) ?? 0;
+        consumedByUsersCredits += Math.max(0, userCredits - seatAllocation);
+      }
 
       return res.status(200).json({
         totalCredits,
