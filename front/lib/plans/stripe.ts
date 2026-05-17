@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
+import { AWU_CREDITS_PER_DOLLAR } from "@app/lib/metronome/types";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
@@ -929,17 +930,24 @@ export function getDefaultPaymentMethodId(
 }
 
 /**
- * Checks if a Stripe invoice is for a credit purchase.
+ * Checks if a Stripe invoice is for a programmatic credit purchase.
  */
 export function isCreditPurchaseInvoice(invoice: Stripe.Invoice): boolean {
   return invoice.metadata?.credit_purchase === "true";
 }
 
 /**
- * Checks if a Stripe invoice is for a credit purchase.
+ * Checks if a Stripe invoice is for a Metronome first-period charge.
  */
 export function isFirstPeriodInvoice(invoice: Stripe.Invoice): boolean {
   return invoice.metadata?.metronome_first_period === "true";
+}
+
+/**
+ * Checks if a Stripe invoice is for an AWU credit pool purchase.
+ */
+export function isAwuPurchaseInvoice(invoice: Stripe.Invoice): boolean {
+  return invoice.metadata?.awu_purchase === "true";
 }
 
 /**
@@ -1414,6 +1422,39 @@ export async function getInvoicePaymentUrl(
   const stripe = getStripeClient();
   const invoice = await stripe.invoices.retrieve(invoiceId);
   return invoice.hosted_invoice_url ?? null;
+}
+
+/**
+ * Creates a one-off AWU credit purchase invoice on a Stripe customer
+ */
+export async function makeAwuPurchaseInvoiceForCustomer({
+  stripeCustomerId,
+  workspaceId,
+  currency,
+  amountCredits,
+}: {
+  stripeCustomerId: string;
+  workspaceId: string;
+  currency: SupportedCurrency;
+  amountCredits: number;
+}): Promise<Result<Stripe.Invoice, { error_message: string }>> {
+  const amountDollars = amountCredits / AWU_CREDITS_PER_DOLLAR;
+
+  return makeInvoice({
+    target: { kind: "customer", stripeCustomerId, currency },
+    metadata: {
+      awu_purchase: "true",
+      awu_amount_credits: String(amountCredits),
+      workspace_id: workspaceId,
+    },
+    lineItem: {
+      priceId: getCreditPurchasePriceId(),
+      quantity: amountCredits,
+      description: `${amountCredits.toLocaleString()} credits for ($${amountDollars.toFixed(2)})`,
+    },
+    collectionMethod: "charge_automatically",
+    requestThreeDSecure: "challenge",
+  });
 }
 
 export function getAnnualizedSubscriptionValueMicroUsd(
