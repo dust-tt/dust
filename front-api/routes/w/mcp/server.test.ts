@@ -42,7 +42,7 @@ describe("POST /api/w/:wId/mcp/:serverId/sync", () => {
 
     expect(response.status).toBe(403);
     const body = await response.json();
-    expect(body.error.type).toBe("data_source_auth_error");
-    expect(body.error.message).toContain("Only users that are `admins`");
+    expect(body.error.type).toBe("workspace_auth_error");
+    expect(body.error.message).toContain("admin");
   });
 });
