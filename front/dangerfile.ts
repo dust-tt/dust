@@ -9,10 +9,6 @@ const sparkleVersionAckLabel = "sparkle-version-ack";
 const sseAckLabel = "sse-ack";
 const skipMigrationCheckLabel = "skip-migration-check";
 
-function errMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
 const REMOVE_INDEX_WARNING =
   "\n\nBefore deleting an index, make sure it is actually not used by running:" +
   "\n```sql" +
