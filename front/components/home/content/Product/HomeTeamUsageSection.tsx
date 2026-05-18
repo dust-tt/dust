@@ -490,7 +490,7 @@ export function HomeTeamUsageSection() {
           </HomeReveal>
           <HomeReveal delay={160}>
             <p className="m-0 max-w-[560px] text-base leading-[1.55] text-muted-foreground">
-              Pick your team to see what AI Operators are shipping there today.
+              Discover how AI Operators across departments are using Dust to rewire the way their companies work.
             </p>
           </HomeReveal>
         </div>

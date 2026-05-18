@@ -12,7 +12,7 @@ import { useEffect, useRef } from "react";
 const HEADLINE_LINE_1 = "Multiplayer AI for";
 const HEADLINE_LINE_2 = "human-agent collaboration.";
 const LEAD_COPY =
-  "Dust is where people and agents collaborate as co-contributors, so that work doesn't just get done, it gets rewired.";
+  "Dust is where people and agents collaborate as co-contributors, so that work doesn't just get done – it gets rewired.";
 
 const OFFICE_FIRST_NAMES = [
   "Aisha",

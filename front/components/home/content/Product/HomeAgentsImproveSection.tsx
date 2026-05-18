@@ -38,25 +38,25 @@ const CARDS: FeatureCard[] = [
   },
   {
     number: "02",
-    title: "AI is a team sport",
+    title: "Multiplayer AI",
     subtitle:
-      "Built for collaboration across departments. Skills travel; agents compound.",
+      "Built for collaboration across departments, teams, and agents. Dust is a team sport.",
     accent: "text-rose-500",
     hoverVideoSrc: "/static/landing/home/features/team-sport.mp4",
   },
   {
     number: "03",
-    title: "Always the best model",
+    title: "Model flexibility",
     subtitle:
-      "Switch between OpenAI, Anthropic, Google, Mistral, without rewriting the agent.",
+      "Switch seamlessly between frontier models from OpenAI, Anthropic, Google, and Mistral.",
     accent: "text-golden-500",
     hoverVideoSrc: "/static/landing/home/features/best-model.mp4",
   },
   {
     number: "04",
-    title: "Compounds across the org",
+    title: "Productivity that compounds",
     subtitle:
-      "Value grows with every team that joins. The fiftieth workflow is easier than the fifth.",
+      "Value grows with every teammate that joins. Skills, knowledge, and expertise flow.",
     accent: "text-green-700",
     hoverVideoSrc: "/static/landing/home/features/compounds.mp4",
   },
