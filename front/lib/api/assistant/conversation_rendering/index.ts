@@ -171,7 +171,7 @@ export async function renderConversationForModel(
     tokensMargin: TOKENS_MARGIN,
     messageCount: messages.length,
     interactionCount: interactions.length,
-    pokeUrl: `https://https://poke.dust.tt/${conversation.owner.sId}/conversation/${conversation.sId}`,
+    pokeUrl: `https://poke.dust.tt/${conversation.owner.sId}/conversation/${conversation.sId}`,
   };
 
   if (currentInteractionTokens > availableTokens) {

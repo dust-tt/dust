@@ -254,8 +254,17 @@ export async function runCompaction(
       summaryRes.value.summary,
       sourceConversation?.attachmentIdReplacements
     );
-    const renderedMessages = replaceStandaloneAttachmentIds(
-      summaryRes.value.renderedMessages,
+
+    // We generate the conversattion as text without `truncateTotalChars` to store as file.
+    let renderedMessages = renderConversationAsText(conversationToSummarize, {
+      includeTimestamps: true,
+      includeActions: true,
+      includeActionDetails: true,
+      skipRunningAgentMessages: true,
+    });
+
+    renderedMessages = replaceStandaloneAttachmentIds(
+      renderedMessages,
       sourceConversation?.attachmentIdReplacements
     );
 
@@ -351,7 +360,7 @@ async function generateCompactionSummary(
     compactionMessage: CompactionMessageType;
     model: SupportedModel;
   }
-): Promise<Result<{ summary: string; renderedMessages: string }, Error>> {
+): Promise<Result<{ summary: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
   const conversationToSummarize =
@@ -444,5 +453,5 @@ async function generateCompactionSummary(
     return new Err(new Error("Compaction LLM returned empty summary"));
   }
 
-  return new Ok({ summary, renderedMessages });
+  return new Ok({ summary });
 }
