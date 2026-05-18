@@ -4,6 +4,7 @@ import { FileExplorerFilters } from "@app/components/assistant/conversation/file
 import type { ViewMode } from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
 import { FileExplorerToolbar } from "@app/components/assistant/conversation/files_panel/FileExplorerToolbar";
 import { FilePreviewDialog } from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
+import { getFileExplorerPipeline } from "@app/components/assistant/conversation/files_panel/fileExplorerPipeline";
 import { SandboxStatusChip } from "@app/components/assistant/conversation/files_panel/SandboxStatusChip";
 import type {
   FileExplorerFilter,
@@ -11,7 +12,6 @@ import type {
   SandboxTreeNode,
 } from "@app/components/assistant/conversation/files_panel/types";
 import { useFileDownload } from "@app/components/assistant/conversation/files_panel/useFileDownload";
-import { useFileExplorerPipeline } from "@app/components/assistant/conversation/files_panel/useFileExplorerPipeline";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import type {
@@ -27,7 +27,7 @@ import {
   Button,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface FileExplorerBreadcrumbProps {
   folderStack: SandboxTreeNode[];
@@ -88,13 +88,17 @@ export function NewFileExplorer({
     fileCount,
     filesAtLevel,
     entryByRelativePath,
-  } = useFileExplorerPipeline({
-    files,
-    folderStack,
-    searchQuery,
-    activeFilter,
-    sortMode,
-  });
+  } = useMemo(
+    () =>
+      getFileExplorerPipeline({
+        files,
+        folderStack,
+        searchQuery,
+        activeFilter,
+        sortMode,
+      }),
+    [files, folderStack, searchQuery, activeFilter, sortMode]
+  );
 
   const handleFileDownload = useFileDownload({
     owner,
