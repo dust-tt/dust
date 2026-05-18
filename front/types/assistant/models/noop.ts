@@ -23,4 +23,8 @@ export const NOOP_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "noop_model_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };

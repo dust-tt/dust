@@ -46,6 +46,10 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
   availableIfOneOf: {
     featureFlag: "claude_4_opus_feature",
   },
@@ -72,6 +76,10 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -96,6 +104,10 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
 };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -118,6 +130,10 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -139,6 +155,10 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -161,6 +181,10 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
 };
 export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -188,6 +212,10 @@ export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "claude_4_5_opus_feature",
   },
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
 };
 export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -219,6 +247,10 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
 };
 export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -252,6 +284,10 @@ export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -282,6 +318,10 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   customThinkingType: "auto",
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
 };
 
 /**
@@ -307,6 +347,10 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -328,6 +372,10 @@ export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurat
     defaultReasoningEffort: "light",
     tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
     tokenizer: { type: "tiktoken", base: "anthropic_base" },
+    regionalAvailability: {
+      "us-central1": true,
+      "europe-west1": false,
+    },
   };
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -348,6 +396,10 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -368,4 +420,8 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };

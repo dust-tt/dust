@@ -34,6 +34,10 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GEMINI_3_1_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -56,6 +60,10 @@ export const GEMINI_3_1_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -78,6 +86,10 @@ export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -100,6 +112,10 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -123,6 +139,10 @@ export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   useNativeLightReasoning: true,
   supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GEMINI_3_1_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -146,6 +166,10 @@ export const GEMINI_3_1_PRO_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   useNativeLightReasoning: true,
   supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GEMINI_3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
@@ -168,4 +192,8 @@ export const GEMINI_3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
   useNativeLightReasoning: true,
   supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };

@@ -32,6 +32,10 @@ export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigur
     maximumReasoningEffort: "none",
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
+    regionalAvailability: {
+      "us-central1": true,
+      "europe-west1": false,
+    },
   };
 export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -52,6 +56,10 @@ export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigura
     maximumReasoningEffort: "none",
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
+    regionalAvailability: {
+      "us-central1": true,
+      "europe-west1": false,
+    },
   };
 export const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -72,6 +80,10 @@ export const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
     maximumReasoningEffort: "none",
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
+    regionalAvailability: {
+      "us-central1": true,
+      "europe-west1": false,
+    },
   };
 export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -92,6 +104,10 @@ export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
     maximumReasoningEffort: "none",
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
+    regionalAvailability: {
+      "us-central1": true,
+      "europe-west1": false,
+    },
   };
 export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "togetherai",
@@ -111,6 +127,10 @@ export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "togetherai",
@@ -130,4 +150,8 @@ export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
