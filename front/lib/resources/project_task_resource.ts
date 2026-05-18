@@ -463,12 +463,12 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
         where: childWhere,
         transaction,
       });
+      await ProjectTaskVersionModel.destroy({
+        where: childWhere,
+        transaction,
+      });
     }
 
-    await ProjectTaskVersionModel.destroy({
-      where: { workspaceId, spaceId },
-      transaction,
-    });
     await ProjectTaskModel.destroy({
       where: { workspaceId, spaceId },
       transaction,
