@@ -1,5 +1,7 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import type { BillingFrequency } from "@app/lib/metronome/types";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ActionCreditCoinsIcon,
   DataTable,
@@ -20,7 +22,7 @@ type RowData = {
   seatType: MembershipSeatType | null;
   seatUsagePercent: number | null;
   consumedWorkplacePoolCredits: number;
-  billingFrequency: "MONTHLY" | "ANNUAL" | null;
+  billingFrequency: BillingFrequency | null;
   onClick?: () => void;
 };
 
@@ -169,8 +171,21 @@ const columns: ColumnDef<RowData, string>[] = [
     accessorFn: (row) => row.billingFrequency ?? "",
     cell: (info: Info) => {
       const freq = info.row.original.billingFrequency;
-      const label =
-        freq === "MONTHLY" ? "Monthly" : freq === "ANNUAL" ? "Annual" : "—";
+      let label: string;
+      switch (freq) {
+        case "MONTHLY":
+          label = "Monthly";
+          break;
+        case "ANNUAL":
+          label = "Annual";
+          break;
+        case null:
+          label = "—";
+          break;
+        default:
+          assertNeverAndIgnore(freq);
+          label = "—";
+      }
       return (
         <DataTable.CellContent>
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">

@@ -7,6 +7,7 @@ import {
 } from "@app/lib/metronome/client";
 import { getMetricLlmProviderCostAwuId } from "@app/lib/metronome/constants";
 import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
+import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   MembershipResource,
   type MembershipsPaginationParams,
@@ -29,7 +30,7 @@ export type MemberUsageType = {
   // Pool consumption only (AWU credits): total usage minus what was covered by the seat credit.
   consumedWorkplacePoolCredits: number;
   // Billing cadence for the seat subscription the user is assigned to; null when unknown.
-  billingFrequency: "MONTHLY" | "ANNUAL" | null;
+  billingFrequency: BillingFrequency | null;
 };
 
 export type GetMembersUsageResponseBody = {

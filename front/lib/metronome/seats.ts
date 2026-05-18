@@ -9,6 +9,7 @@ import {
   getSeatTypeForProductId,
 } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
+import type { BillingFrequency } from "@app/lib/metronome/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -238,7 +239,7 @@ export async function syncSeatCount({
 
 export type SeatData = {
   awuAllocation: number;
-  billingFrequency: "MONTHLY" | "ANNUAL" | null;
+  billingFrequency: BillingFrequency | null;
 };
 
 /**
