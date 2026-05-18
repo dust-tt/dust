@@ -6,7 +6,7 @@ import { createReadStream } from "fs";
 import type { NextApiRequest, NextApiResponse } from "next";
 import path from "path";
 
-const EBOOK_FILENAME = "Dust_Connected_Enterprise_AI_Playbook.pdf";
+const EBOOK_FILENAME = "Dust_AI_Enterprise_Playbook.pdf";
 
 function isValidToken(token: string): boolean {
   const parts = token.split(".");

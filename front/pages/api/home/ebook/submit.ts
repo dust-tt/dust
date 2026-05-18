@@ -54,7 +54,7 @@ export default async function handler(
   const validPageUri = isString(pageUri) ? pageUri : "";
   const validPageName = isString(pageName)
     ? pageName
-    : "Ebook - The Connected Enterprise AI Playbook";
+    : "Ebook - The AI Enterprise Playbook";
 
   // Extract and validate domain
   const domain = extractDomain(formData.email);

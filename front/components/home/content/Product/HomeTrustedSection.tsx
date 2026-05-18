@@ -158,6 +158,56 @@ function ExternalArrowIcon() {
   );
 }
 
+function MarqueeMaskWrap({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="relative w-full overflow-hidden"
+      style={{
+        maskImage:
+          "linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%)",
+        WebkitMaskImage:
+          "linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%)",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Compact, chrome-less variant of the marquee — same logos and animation but
+ * without the title, background, or case-study chips. Use when you want the
+ * rolling logos inline (e.g. embedded in a landing page column).
+ */
+export function HomeTrustedMarqueeCompact() {
+  const logos = useLogoSet();
+  const marqueeLogos = [...logos, ...logos];
+  return (
+    <div className="w-full">
+      <style dangerouslySetInnerHTML={{ __html: MARQUEE_CSS }} />
+      <MarqueeMaskWrap>
+        <div className="home-trusted-track flex w-max items-center gap-x-10 sm:gap-x-12">
+          {marqueeLogos.map((logo, idx) => (
+            <div
+              key={`${logo.name}-${idx}`}
+              className="flex h-12 flex-shrink-0 items-center justify-center opacity-60"
+              aria-hidden={idx >= logos.length}
+            >
+              <Image
+                alt={idx >= logos.length ? "" : logo.name}
+                src={logo.src}
+                width={180}
+                height={48}
+                className="h-auto max-h-10 w-auto object-contain"
+              />
+            </div>
+          ))}
+        </div>
+      </MarqueeMaskWrap>
+    </div>
+  );
+}
+
 export function HomeTrustedSection() {
   const logos = useLogoSet();
   const marqueeLogos = [...logos, ...logos];
@@ -174,15 +224,7 @@ export function HomeTrustedSection() {
           </h2>
         </HomeReveal>
         <HomeReveal delay={120} className="w-full">
-          <div
-            className="relative w-full overflow-hidden"
-            style={{
-              maskImage:
-                "linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%)",
-              WebkitMaskImage:
-                "linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%)",
-            }}
-          >
+          <MarqueeMaskWrap>
             <div className="home-trusted-track flex w-max items-end gap-x-16 sm:gap-x-20 lg:gap-x-24">
               {marqueeLogos.map((logo, idx) => {
                 const caseStudyUrl =
@@ -237,7 +279,7 @@ export function HomeTrustedSection() {
                 );
               })}
             </div>
-          </div>
+          </MarqueeMaskWrap>
         </HomeReveal>
       </div>
     </section>
