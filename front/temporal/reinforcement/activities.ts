@@ -10,6 +10,8 @@ import {
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
+import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -31,6 +33,7 @@ import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
+  getMaxConversationsForBudget,
 } from "@app/lib/reinforcement/constants";
 import { getReinforcementMonthlyCapMicroUsd } from "@app/lib/reinforcement/consumption";
 import {
@@ -57,6 +60,7 @@ import {
   isReinforcementBatchModeAllowed,
 } from "@app/lib/reinforcement/workspace_check";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SelfImprovingSkillsUsageCreateBlob } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
@@ -555,6 +559,8 @@ export async function getReinforcementSettingsActivity({
       batchModeAllowed: boolean;
       globalConsumptionMicroUsd: number;
       globalCapMicroUsd: number;
+      programmaticUsageLimitReached: boolean;
+      maxConversationsForBudget: number;
     }
 > {
   const auth = await getAuthForWorkspace(workspaceId);
@@ -572,12 +578,28 @@ export async function getReinforcementSettingsActivity({
     );
   const globalCapMicroUsd = getReinforcementMonthlyCapMicroUsd(workspace);
 
+  const programmaticUsageLimitReached = (
+    await checkProgrammaticUsageLimits(auth)
+  ).isErr();
+
+  // Compute remaining programmatic budget: total remaining credits capped by
+  // the daily usage allowance.
+  const remainingCreditsMicroUsd =
+    await CreditResource.getRemainingMicroUsd(auth);
+  const remainingDailyCapMicroUsd = await getRemainingDailyCapMicroUsd(auth);
+  const remainingProgrammaticCreditsMicroUsd = Math.min(
+    remainingCreditsMicroUsd,
+    remainingDailyCapMicroUsd
+  );
+
   logger.info(
     {
       workspaceId,
       globalConsumptionMicroUsd,
       globalCapMicroUsd,
       capReached: globalConsumptionMicroUsd >= globalCapMicroUsd,
+      programmaticUsageLimitReached,
+      remainingProgrammaticCreditsMicroUsd,
     },
     "ReinforcedSkills: workspace consumption check"
   );
@@ -587,6 +609,12 @@ export async function getReinforcementSettingsActivity({
     batchModeAllowed: await isReinforcementBatchModeAllowed(auth),
     globalConsumptionMicroUsd,
     globalCapMicroUsd,
+    programmaticUsageLimitReached,
+    maxConversationsForBudget: getMaxConversationsForBudget({
+      globalConsumptionMicroUsd,
+      globalCapMicroUsd,
+      remainingProgrammaticCreditsMicroUsd,
+    }),
   };
 }
 
