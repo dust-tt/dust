@@ -65,6 +65,18 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
   }
 
+  private static async finalizeDestroyed(
+    sandbox: SandboxResource,
+    ctx: { workspaceId: string },
+    opts: { recordLifecycle: boolean }
+  ): Promise<void> {
+    await sandbox.updateStatus("deleted", { ctx });
+    SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
+    if (opts.recordLifecycle) {
+      recordLifecycleOperation("destroy", ctx);
+    }
+  }
+
   constructor(
     _model: ModelStatic<SandboxModel>,
     blob: Attributes<SandboxModel>
@@ -467,6 +479,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           tracingOpts
         );
         if (destroyResult.isErr()) {
+          // We swallow SandboxNotFoundError because it just means the sandbox was removed by the provider
+          // And we only log if failed to destroy because the sandbox will be eventually removed
+          // The most critical part is making sure we go through the "deleted" path
           if (!(destroyResult.error instanceof SandboxNotFoundError)) {
             logger.error(
               {
@@ -735,16 +750,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON() },
             "Sandbox not found at provider during destroy — marking deleted."
           );
-          await sandbox.updateStatus("deleted", { ctx });
-          SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
+          await SandboxResource.finalizeDestroyed(sandbox, ctx, {
+            recordLifecycle: false,
+          });
           return new Ok(undefined);
         }
         return result;
       }
 
-      await sandbox.updateStatus("deleted", { ctx });
-      SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
-      recordLifecycleOperation("destroy", ctx);
+      await SandboxResource.finalizeDestroyed(sandbox, ctx, {
+        recordLifecycle: true,
+      });
 
       void revokeAllExecTokensForSandbox(sandbox.sId).catch((err) =>
         logger.error(
@@ -825,16 +841,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON() },
             "Kill-requested sandbox not found at provider — marking deleted."
           );
-          await sandbox.updateStatus("deleted", { ctx });
-          SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
+          await SandboxResource.finalizeDestroyed(sandbox, ctx, {
+            recordLifecycle: false,
+          });
           return new Ok(undefined);
         }
         return result;
       }
 
-      await sandbox.updateStatus("deleted", { ctx });
-      SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
-      recordLifecycleOperation("destroy", ctx);
+      await SandboxResource.finalizeDestroyed(sandbox, ctx, {
+        recordLifecycle: true,
+      });
 
       void revokeAllExecTokensForSandbox(sandbox.sId).catch((err) =>
         logger.error(
