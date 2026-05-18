@@ -1441,6 +1441,7 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         mId: "test-message-id-user",
         sbId: "test-sandbox-id-user",
         execId: "test-exec-id-user",
+        actionId: "test-action-id",
       },
       workspace.sId
     );
@@ -1511,6 +1512,7 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
         mId: "test-message-id-admin",
         sbId: "test-sandbox-id-admin",
         execId: "test-exec-id-admin",
+        actionId: "test-action-id",
       },
       workspace.sId
     );

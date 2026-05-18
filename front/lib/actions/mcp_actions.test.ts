@@ -595,21 +595,6 @@ describe("tryCallMCPTool", () => {
       timeoutMs: undefined,
     };
 
-    // Create agent loop run context
-    const agentLoopRunContext: AgentLoopRunContextType = {
-      agentConfiguration: agentConfig,
-      agentMessage,
-      conversation,
-      stepContext: {
-        citationsCount: 10,
-        citationsOffset: 0,
-        retrievalTopK: 10,
-        resumeState: null,
-        websearchResultCount: 0,
-      },
-      toolConfiguration,
-    };
-
     // Create a mock action for the notification event
     const mockAction: AgentMCPActionWithOutputType = {
       id: agentMessage.agentMessageId as number, // Use the agentMessageId as the action id
@@ -634,6 +619,22 @@ describe("tryCallMCPTool", () => {
       displayLabels: null,
       output: null,
       generatedFiles: [],
+    };
+
+    // Create agent loop run context
+    const agentLoopRunContext: AgentLoopRunContextType = {
+      agentConfiguration: agentConfig,
+      agentMessage,
+      conversation,
+      stepContext: {
+        citationsCount: 10,
+        citationsOffset: 0,
+        retrievalTopK: 10,
+        resumeState: null,
+        websearchResultCount: 0,
+      },
+      currentAction: mockAction,
+      toolConfiguration,
     };
 
     // Call tryCallMCPTool

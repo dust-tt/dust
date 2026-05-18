@@ -78,6 +78,7 @@ export async function* runToolWithStreaming(
   const agentLoopRunContext: AgentLoopRunContextType = {
     agentConfiguration,
     agentMessage,
+    currentAction: action.toJSON(),
     conversation,
     stepContext: action.stepContext,
     toolConfiguration,
