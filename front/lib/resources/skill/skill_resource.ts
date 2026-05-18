@@ -2417,7 +2417,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         ...skill.skillReference,
         workspaceId: workspace.id,
         agentConfigurationId: agentConfiguration.id,
-      })),
+      }))
     );
   }
 
