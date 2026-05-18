@@ -29,6 +29,15 @@ export const LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS = "legacy-enterprise-eur";
 
 export type MetronomePackageTier = "pro" | "business" | "enterprise";
 
+export const PAYG_ELIGIBLE_TIERS: readonly MetronomePackageTier[] = [
+  "enterprise",
+  "business",
+];
+
+export function isPaygEligibleTier(tier: MetronomePackageTier): boolean {
+  return PAYG_ELIGIBLE_TIERS.includes(tier);
+}
+
 export type BillingFrequency = "MONTHLY" | "ANNUAL";
 
 /**

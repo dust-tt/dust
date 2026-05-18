@@ -27,7 +27,21 @@ export type WorkspaceCreditEvent =
    * machine's point of view these are indistinguishable and both bring the
    * pool back online.
    */
-  | { type: "credits_added" };
+  | { type: "credits_added" }
+  /**
+   * PAYG was turned off by an operator. Workspaces in `overage` were
+   * surviving on PAYG: with PAYG gone they have nothing left to spend, so
+   * they must move to `depleted`. `active` workspaces are unaffected — the
+   * pool will route correctly on the next `pool_exhausted`.
+   */
+  | { type: "payg_disabled" }
+  /**
+   * PAYG was turned on (or its cap raised) by an operator. Workspaces in
+   * `depleted` that were blocked for lack of PAYG can now spend against it,
+   * so they move to `overage`. `active` and `overage` workspaces are
+   * unaffected.
+   */
+  | { type: "payg_enabled" };
 
 type WorkspaceCreditTransition = {
   from: WorkspacePoolCreditState | WorkspacePoolCreditState[];
@@ -79,6 +93,16 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
     event: "credits_added",
     to: "active",
   },
+  {
+    from: "active",
+    event: "payg_enabled",
+    to: "active",
+  },
+  {
+    from: "active",
+    event: "payg_disabled",
+    to: "active",
+  },
 
   // overage -> ...
   {
@@ -100,6 +124,16 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
     event: "credits_added",
     to: "active",
   },
+  {
+    from: "overage",
+    event: "payg_disabled",
+    to: "depleted",
+  },
+  {
+    from: "overage",
+    event: "payg_enabled",
+    to: "overage",
+  },
 
   // depleted -> ...
   {
@@ -117,6 +151,16 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
     from: "depleted",
     event: "credits_added",
     to: "active",
+  },
+  {
+    from: "depleted",
+    event: "payg_enabled",
+    to: "overage",
+  },
+  {
+    from: "depleted",
+    event: "payg_disabled",
+    to: "depleted",
   },
 ];
 

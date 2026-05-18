@@ -4,12 +4,17 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
+import {
+  clearMetronomePaygCapAlert,
+  syncMetronomePaygCapAlert,
+} from "@app/lib/metronome/payg_alerts";
 import { PlanModel } from "@app/lib/models/plan";
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getStripeCustomer } from "@app/lib/plans/stripe";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -41,6 +46,17 @@ vi.mock("@app/lib/metronome/contracts", async () => {
     ...actual,
     ensureMetronomeCustomerForWorkspace: vi.fn(),
     provisionMetronomeContract: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/payg_alerts", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/payg_alerts")
+  >("@app/lib/metronome/payg_alerts");
+  return {
+    ...actual,
+    syncMetronomePaygCapAlert: vi.fn(),
+    clearMetronomePaygCapAlert: vi.fn(),
   };
 });
 
@@ -203,6 +219,10 @@ beforeEach(() => {
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
     new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
+  vi.mocked(syncMetronomePaygCapAlert).mockResolvedValue(
+    new Ok({ alertId: "alert_test" })
+  );
+  vi.mocked(clearMetronomePaygCapAlert).mockResolvedValue(new Ok(undefined));
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
@@ -520,5 +540,138 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
 
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.message).toContain("Metronome-billed");
+  });
+});
+
+describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
+  it("persists paygCapMicroUsd and syncs the Metronome alert when switching to enterprise with PAYG enabled", async () => {
+    await ensureEnterprisePlan();
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = enterpriseBody({ paygEnabled: true, paygCapDollars: 500 });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const config =
+      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(
+        adminAuth
+      );
+    expect(config?.paygCapMicroUsd).toBe(500 * 1_000_000);
+
+    expect(syncMetronomePaygCapAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metronomeCustomerId: METRONOME_CUSTOMER_ID,
+        paygCapDollars: 500,
+        workspaceSId: workspace.sId,
+      })
+    );
+  });
+
+  it("persists paygCapMicroUsd when switching to business with PAYG enabled", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody({ paygEnabled: true, paygCapDollars: 250 });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const config =
+      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(
+        adminAuth
+      );
+    expect(config?.paygCapMicroUsd).toBe(250 * 1_000_000);
+  });
+
+  it("rejects PAYG on a pro contract", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = proBody({ paygEnabled: true, paygCapDollars: 100 });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "Pay-as-you-go can only be enabled"
+    );
+    expect(provisionMetronomeContract).not.toHaveBeenCalled();
+  });
+
+  it("rejects when paygEnabled is true but paygCapDollars is missing", async () => {
+    await ensureEnterprisePlan();
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = enterpriseBody({ paygEnabled: true });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("PAYG cap");
+  });
+
+  it("clears paygCapMicroUsd and archives the Metronome alert when paygEnabled is false", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await ProgrammaticUsageConfigurationResource.makeNew(adminAuth, {
+      freeCreditMicroUsd: null,
+      defaultDiscountPercent: 0,
+      paygCapMicroUsd: 1_000 * 1_000_000,
+      dailyCapMicroUsd: null,
+    });
+
+    req.body = proBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const config =
+      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(
+        adminAuth
+      );
+    expect(config?.paygCapMicroUsd).toBeNull();
+
+    expect(clearMetronomePaygCapAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metronomeCustomerId: METRONOME_CUSTOMER_ID,
+        workspaceSId: workspace.sId,
+      })
+    );
   });
 });
