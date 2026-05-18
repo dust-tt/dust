@@ -1,6 +1,5 @@
 import {
   FileExplorerItem,
-  type FileExplorerItemMenuAction,
   FileExplorerViewToggle,
   fileExplorerCardGridClasses,
   type ViewMode,
@@ -29,7 +28,6 @@ import {
   PlusIcon,
   ScrollArea,
   Spinner,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
@@ -229,16 +227,6 @@ export function SkillBuilderFilesSection() {
 
   const fileItems = sortedFields.map(({ field, originalIndex }) => {
     const isAdded = isDiffMode && !compareFileIds.has(field.fileId);
-    const actions: FileExplorerItemMenuAction[] = !isDiffMode
-      ? [
-          {
-            icon: XMarkIcon,
-            id: "remove",
-            label: "Remove",
-            onClick: () => removeFile({ fileAttachment: field, originalIndex }),
-          },
-        ]
-      : [];
     const FileIcon = getFileTypeIcon(field.contentType, field.fileName);
 
     return (
@@ -252,7 +240,11 @@ export function SkillBuilderFilesSection() {
         subtitle={getSingularFileCategoryLabelForContentType(field.contentType)}
         onOpen={canPreviewFiles ? () => openPreviewDialog(field) : undefined}
         onDownload={() => downloadFile(field)}
-        actions={actions}
+        onRemove={
+          !isDiffMode
+            ? () => removeFile({ fileAttachment: field, originalIndex })
+            : undefined
+        }
       />
     );
   });

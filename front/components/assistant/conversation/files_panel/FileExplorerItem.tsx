@@ -22,6 +22,7 @@ import {
   MoreIcon,
   Spinner,
   Tooltip,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { intlFormatDistance } from "date-fns";
 import type { ComponentType } from "react";
@@ -32,7 +33,7 @@ export type ViewMode = "grid" | "list";
 export const fileExplorerCardGridClasses =
   "grid-cols-2 @xxs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5 @lg:grid-cols-6";
 
-export interface FileExplorerItemMenuAction {
+interface FileExplorerItemMenuAction {
   disabled?: boolean;
   icon?: ButtonProps["icon"];
   id: string;
@@ -42,9 +43,9 @@ export interface FileExplorerItemMenuAction {
 }
 
 export type FileExplorerItemProps = {
-  actions?: FileExplorerItemMenuAction[];
   onDownload?: () => Promise<void> | void;
   onOpen?: () => void;
+  onRemove?: () => Promise<void> | void;
   subtitle: string;
   titleClassName?: string;
   title: string;
@@ -85,9 +86,9 @@ export function FileExplorerViewToggle({
 // TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
 export function FileExplorerItem(props: FileExplorerItemProps) {
   const {
-    actions,
     onDownload,
     onOpen,
+    onRemove,
     subtitle,
     title,
     titleClassName,
@@ -124,7 +125,17 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
           },
         ]
       : []),
-    ...(actions ?? []),
+    ...(onRemove
+      ? [
+          {
+            icon: XMarkIcon,
+            id: "remove",
+            label: "Remove",
+            loadingLabel: "Removing…",
+            onClick: onRemove,
+          },
+        ]
+      : []),
   ];
 
   const handleMenuAction = async (
