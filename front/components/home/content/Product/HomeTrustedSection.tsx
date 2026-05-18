@@ -25,6 +25,8 @@ const CASE_STUDIES: Record<string, string> = {
   persona: "/customers/how-persona-hit-80-ai-agent-adoption-with-dust",
   profound: "/customers/profound-post-sales-team-reclaimed-1800-hours",
   qonto: "/customers/qonto-dust-ai-partnership",
+  spendesk:
+    "/customers/how-spendesk-achieved-90-ai-adoption-in-6-months-with-dust",
   wakam:
     "/customers/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
   watershed:
@@ -184,9 +186,7 @@ export function HomeTrustedSection() {
             <div className="home-trusted-track flex w-max items-end gap-x-16 sm:gap-x-20 lg:gap-x-24">
               {marqueeLogos.map((logo, idx) => {
                 const caseStudyUrl =
-                  idx < logos.length
-                    ? CASE_STUDIES[logo.name.toLowerCase().replace(/\s+/g, "")]
-                    : undefined;
+                  CASE_STUDIES[logo.name.toLowerCase().replace(/\s+/g, "")];
                 const itemClassName =
                   "home-trusted-item flex flex-shrink-0 flex-col items-center gap-1";
                 const inner = (

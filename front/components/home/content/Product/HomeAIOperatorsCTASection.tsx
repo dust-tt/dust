@@ -20,7 +20,7 @@ const STATS: CTAStat[] = [
   },
   {
     label: "Teams running on Dust",
-    display: "5,000+",
+    display: "3,000+",
     accent: "golden",
   },
   {
