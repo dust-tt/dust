@@ -19,7 +19,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExternalLinkIcon,
   Icon,
   Input,
   Spinner,
@@ -31,7 +30,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
-type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
+type PurchaseState = "idle" | "processing" | "success" | "error";
 type TopUpTab = "one-time" | "automatic";
 
 const QUICK_SELECT_AMOUNTS = [10, 50, 100] as const;
@@ -110,7 +109,6 @@ export function BuyAwuCreditsDialog({
   const [selectedTab, setSelectedTab] = useState<TopUpTab>("one-time");
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const { purchaseAwuCredits } = useAwuPurchase({ workspaceId });
 
   const resetModalStateAndClose = useCallback(() => {
@@ -118,7 +116,6 @@ export function BuyAwuCreditsDialog({
     setSelectedTab("one-time");
     setPurchaseState("idle");
     setErrorMessage("");
-    setPaymentUrl(null);
     onClose();
   }, [onClose]);
 
@@ -170,10 +167,6 @@ export function BuyAwuCreditsDialog({
         setPurchaseState("success");
         onPurchaseSuccess?.();
         break;
-      case "redirect":
-        setPaymentUrl(result.paymentUrl);
-        setPurchaseState("redirect");
-        break;
       case "error":
         setErrorMessage(result.message);
         setPurchaseState("error");
@@ -214,26 +207,6 @@ export function BuyAwuCreditsDialog({
                 <span className="font-semibold">
                   Invoice has been sent by email.
                 </span>
-              </p>
-            </div>
-          </div>
-        );
-
-      case "redirect":
-        return (
-          <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon
-              visual={ExternalLinkIcon}
-              size="lg"
-              className="text-primary dark:text-primary-night"
-            />
-            <div className="text-center">
-              <p className="text-lg font-medium text-foreground dark:text-foreground-night">
-                Payment confirmation required
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Please complete the payment to finalize your credit purchase or
-                contact support to cancel pending invoices.
               </p>
             </div>
           </div>
@@ -413,25 +386,6 @@ export function BuyAwuCreditsDialog({
             }}
           />
         );
-      case "redirect":
-        return (
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: resetModalStateAndClose,
-            }}
-            rightButtonProps={{
-              label: "Go to Payment",
-              variant: "primary",
-              onClick: () => {
-                if (paymentUrl) {
-                  window.open(paymentUrl, "_blank")?.focus();
-                }
-              },
-            }}
-          />
-        );
       case "error":
         return (
           <DialogFooter
@@ -485,11 +439,10 @@ export function BuyAwuCreditsDialog({
     );
   }
 
-  // Once a purchase is in flight (processing / redirect / success / error),
-  // drive the dialog from local state and ignore the refreshed
-  // awuPurchaseInfo — the just-created invoice would otherwise flip it to
-  // `pending_purchase` and bump the user off the "Payment confirmation
-  // required" screen before they can click through.
+  // Once a purchase is in flight (processing / success / error), drive the
+  // dialog from local state and ignore the refreshed awuPurchaseInfo — the
+  // just-created Metronome commit would otherwise flip it to
+  // `pending_purchase` and bump the user off the success screen.
   const isPurchaseInFlight = purchaseState !== "idle";
 
   // Cannot purchase: legacy plan.

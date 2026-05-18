@@ -1168,6 +1168,140 @@ export async function createMetronomeCommit({
 }
 
 /**
+ * Add a Stripe payment-gated PREPAID commit to an existing contract via
+ * `v2.contracts.edit`. Metronome will create the commit, generate the
+ * invoice, push it to Stripe, and unlock the commit once payment is
+ * collected (no manual grant needed on our side).
+ *
+ * `invoiceUnitPrice` is the per-credit fiat price in the invoice credit
+ * type's units — cents for USD, whole units for other fiat currencies
+ * (matches Metronome's fiat unit convention; see `metronomeAmount`).
+ * `invoiceQuantity` is the number of credits being invoiced. Passing
+ * unit_price + quantity (instead of a flat `amount`) lets Metronome
+ * construct Stripe `price_data` on push and auto-provision the Stripe
+ * Product for FIXED Metronome products that have never been invoiced
+ * via Stripe before.
+ *
+ * `tax_type` is intentionally omitted: each Metronome product carries a
+ * default tax category that Stripe uses, and overriding it from here
+ * would force Metronome to resolve a per-line Stripe Product mapping it
+ * doesn't have.
+ */
+export async function addPaymentGatedCommitToContract({
+  metronomeCustomerId,
+  metronomeContractId,
+  productId,
+  accessAmount,
+  accessCreditTypeId,
+  accessStartingAt,
+  accessEndingBefore,
+  invoiceUnitPrice,
+  invoiceQuantity,
+  invoiceCreditTypeId,
+  invoiceTimestamp,
+  priority,
+  name,
+  uniquenessKey,
+  stripeInvoiceMetadata,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  productId: string;
+  accessAmount: number;
+  accessCreditTypeId: string;
+  accessStartingAt: Date;
+  accessEndingBefore: Date;
+  invoiceUnitPrice: number;
+  invoiceQuantity: number;
+  invoiceCreditTypeId: string;
+  invoiceTimestamp: Date;
+  priority: number;
+  name: string;
+  uniquenessKey: string;
+  stripeInvoiceMetadata: Record<string, string>;
+}): Promise<Result<{ editId: string }, Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      uniqueness_key: uniquenessKey,
+      add_commits: [
+        {
+          product_id: productId,
+          type: "PREPAID",
+          name,
+          priority,
+          applicable_product_tags: ["usage"],
+          access_schedule: {
+            credit_type_id: accessCreditTypeId,
+            schedule_items: [
+              {
+                amount: accessAmount,
+                starting_at: floorToHourISO(accessStartingAt),
+                ending_before: floorToHourISO(accessEndingBefore),
+              },
+            ],
+          },
+          invoice_schedule: {
+            credit_type_id: invoiceCreditTypeId,
+            schedule_items: [
+              {
+                unit_price: invoiceUnitPrice,
+                quantity: invoiceQuantity,
+                timestamp: floorToHourISO(invoiceTimestamp),
+              },
+            ],
+          },
+          payment_gate_config: {
+            payment_gate_type: "STRIPE",
+            stripe_config: {
+              payment_type: "INVOICE",
+              invoice_metadata: stripeInvoiceMetadata,
+            },
+          },
+        },
+      ],
+    });
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        editId: response.data.id,
+        accessAmount,
+        invoiceUnitPrice,
+        invoiceQuantity,
+      },
+      "[Metronome] Payment-gated commit added to contract"
+    );
+
+    return new Ok({ editId: response.data.id });
+  } catch (err) {
+    if (err instanceof ConflictError) {
+      logger.info(
+        { metronomeCustomerId, metronomeContractId, uniquenessKey },
+        "[Metronome] Payment-gated commit edit already exists (idempotent)"
+      );
+      return new Ok({ editId: "" });
+    }
+
+    const error = normalizeError(err);
+    logger.error(
+      {
+        error,
+        metronomeCustomerId,
+        metronomeContractId,
+        accessAmount,
+        invoiceUnitPrice,
+        invoiceQuantity,
+      },
+      "[Metronome] Failed to add payment-gated commit to contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Find a customer-level commit by its uniqueness_key.
  * Used to recover the id after a 409 conflict on creation.
  * Scoped via covering_date so we don't paginate through expired commits.

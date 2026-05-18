@@ -9,7 +9,6 @@ import { getRedisCacheClient } from "@app/lib/api/redis";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { grantAwuCreditsFromPaidInvoice } from "@app/lib/credits/awu_purchase";
 import {
   deleteCreditFromVoidedInvoice,
   startCreditFromEnterpriseOneOffInvoice,
@@ -850,10 +849,11 @@ async function handler(
               isEnterprise: ctx.isEnterprise,
             });
           } else if (isAwuPurchaseInvoice(invoice)) {
-            await grantAwuCreditsFromPaidInvoice({
-              invoice,
-              auth: ctx.auth,
-            });
+            // AWU credit purchases are now provisioned as Metronome
+            // payment-gated commits — Metronome itself unlocks the commit
+            // on `invoice.paid`, no external grant needed here. Kept for
+            // observability; the metadata still flags the invoice so the
+            // pending-purchase eligibility check works.
           } else {
             await ctx.subscription.clearPaymentFailingStatus();
           }

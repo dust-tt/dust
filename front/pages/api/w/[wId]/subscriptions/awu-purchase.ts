@@ -22,10 +22,7 @@ const PostAwuPurchaseBody = z.object({
 });
 
 export type PostAwuPurchaseResponseBody = {
-  invoiceId: string;
   amountCredits: number;
-  amountCents: number;
-  paymentUrl: string | null;
 };
 
 async function handler(
