@@ -52,6 +52,7 @@ vi.mock("@app/lib/lock", () => ({
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -368,6 +369,141 @@ describe("SandboxResource.dangerouslyGetKillRequestedConversationIds", () => {
       });
 
     expect(rows).toHaveLength(0);
+  });
+});
+
+describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
+  let authenticator: Authenticator;
+  let agentConfigSId: string;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    agentConfigSId = agentConfig.sId;
+  });
+
+  async function makeConversation(): Promise<ConversationType> {
+    return ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfigSId,
+      messagesCreatedAt: [new Date()],
+    });
+  }
+
+  it("marks matching baseImage rows when no version is given", async () => {
+    const c1 = await makeConversation();
+    const c2 = await makeConversation();
+    const other = await makeConversation();
+
+    await SandboxFactory.create(authenticator, c1, {
+      baseImage: "dust-base",
+      version: "1.0.0",
+    });
+    await SandboxFactory.create(authenticator, c2, {
+      baseImage: "dust-base",
+      version: "2.0.0",
+    });
+    await SandboxFactory.create(authenticator, other, {
+      baseImage: "other-image",
+      version: "1.0.0",
+    });
+
+    const affected = await SandboxResource.dangerouslyRequestKillForBaseImage({
+      baseImage: "dust-base",
+      limit: 10,
+    });
+
+    expect(affected).toBe(2);
+    const stillUnmarked = await SandboxResource.fetchByConversationId(
+      authenticator,
+      other.sId
+    );
+    expect(stillUnmarked?.killRequestedAt).toBeNull();
+  });
+
+  it("with version, marks only rows whose version differs (incl. null)", async () => {
+    const cMatch = await makeConversation();
+    const cDifferent = await makeConversation();
+    const cNullVersion = await makeConversation();
+
+    await SandboxFactory.create(authenticator, cMatch, {
+      baseImage: "dust-base",
+      version: "2.0.0",
+    });
+    await SandboxFactory.create(authenticator, cDifferent, {
+      baseImage: "dust-base",
+      version: "1.0.0",
+    });
+    const nullVersionSandbox = await SandboxFactory.create(
+      authenticator,
+      cNullVersion,
+      { baseImage: "dust-base", version: "0.0.0-test" }
+    );
+    await SandboxModel.update(
+      { version: null },
+      { where: { id: nullVersionSandbox.id } }
+    );
+
+    const affected = await SandboxResource.dangerouslyRequestKillForBaseImage({
+      baseImage: "dust-base",
+      version: "2.0.0",
+      limit: 10,
+    });
+
+    expect(affected).toBe(2);
+    const matched = await SandboxResource.fetchByConversationId(
+      authenticator,
+      cMatch.sId
+    );
+    expect(matched?.killRequestedAt).toBeNull();
+  });
+
+  it("skips deleted rows and rows already marked", async () => {
+    const cDeleted = await makeConversation();
+    const cAlreadyMarked = await makeConversation();
+    const cFresh = await makeConversation();
+
+    await SandboxFactory.create(authenticator, cDeleted, {
+      baseImage: "dust-base",
+      status: "deleted",
+    });
+    await SandboxFactory.create(authenticator, cAlreadyMarked, {
+      baseImage: "dust-base",
+      killRequestedAt: new Date("2020-01-01"),
+    });
+    await SandboxFactory.create(authenticator, cFresh, {
+      baseImage: "dust-base",
+    });
+
+    const affected = await SandboxResource.dangerouslyRequestKillForBaseImage({
+      baseImage: "dust-base",
+      limit: 10,
+    });
+
+    expect(affected).toBe(1);
+    const alreadyMarked = await SandboxResource.fetchByConversationId(
+      authenticator,
+      cAlreadyMarked.sId
+    );
+    expect(alreadyMarked?.killRequestedAt?.toISOString()).toBe(
+      new Date("2020-01-01").toISOString()
+    );
+  });
+
+  it("respects the limit", async () => {
+    for (let i = 0; i < 3; i++) {
+      const c = await makeConversation();
+      await SandboxFactory.create(authenticator, c, { baseImage: "dust-base" });
+    }
+
+    const affected = await SandboxResource.dangerouslyRequestKillForBaseImage({
+      baseImage: "dust-base",
+      limit: 2,
+    });
+
+    expect(affected).toBe(2);
   });
 });
 

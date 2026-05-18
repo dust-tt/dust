@@ -775,6 +775,59 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
+   * Mark up to `limit` non-deleted sandboxes for the given `baseImage` (and,
+   * when `version` is set, any version different from it) with
+   * `killRequestedAt = now()`. Rows already marked are skipped. Returns the
+   * count of rows updated.
+   *
+   * WORKSPACE_ISOLATION_BYPASS: image rollouts span all workspaces.
+   */
+  static async dangerouslyRequestKillForBaseImage(opts: {
+    baseImage: string;
+    version?: string;
+    limit: number;
+  }): Promise<number> {
+    const versionClause =
+      opts.version !== undefined
+        ? {
+            [Op.or]: [
+              { version: { [Op.is]: null } },
+              { version: { [Op.ne]: opts.version } },
+            ],
+          }
+        : {};
+
+    const candidates = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      attributes: ["id"],
+      where: {
+        baseImage: opts.baseImage,
+        status: { [Op.ne]: "deleted" },
+        killRequestedAt: { [Op.is]: null },
+        ...versionClause,
+      },
+      limit: opts.limit,
+    });
+
+    if (candidates.length === 0) {
+      return 0;
+    }
+
+    const ids = candidates.map((c) => c.id);
+    const [affectedCount] = await this.model.update(
+      { killRequestedAt: new Date() },
+      {
+        where: {
+          id: { [Op.in]: ids },
+          killRequestedAt: { [Op.is]: null },
+        },
+      }
+    );
+    return affectedCount;
+  }
+
+  /**
    * Return conversation sIds for sandboxes with `killRequestedAt` set and not
    * yet deleted. The kill-requester workflow marks rows; the reaper (and the
    * bash path) is responsible for actually destroying them.
