@@ -1,5 +1,32 @@
 import type { EditedByUser } from "@app/types/user";
 
+// Workspace-level pool credit state for the Enterprise Pooled plan. Persisted
+// on `workspaces.poolCreditState`, driven by the workspace credit state
+// machine in `front/lib/metronome/workspace_credit_state_machine.ts`;
+//
+//   active:    pool has remaining commit balance
+//   overage:   pool exhausted, workspace is in PAYG mode
+//   depleted:  pool exhausted and PAYG unavailable (or PAYG cap reached);
+//              all users in the workspace blocked until next billing period
+//              or admin pool top-up.
+export const WORKSPACE_POOL_CREDIT_STATES = [
+  "active",
+  "overage",
+  "depleted",
+] as const;
+
+export type WorkspacePoolCreditState =
+  (typeof WORKSPACE_POOL_CREDIT_STATES)[number];
+
+export function isWorkspacePoolCreditState(
+  value: unknown
+): value is WorkspacePoolCreditState {
+  return (
+    typeof value === "string" &&
+    WORKSPACE_POOL_CREDIT_STATES.includes(value as WorkspacePoolCreditState)
+  );
+}
+
 export const CREDIT_TYPES = ["free", "payg", "committed", "excess"] as const;
 
 export type CreditType = (typeof CREDIT_TYPES)[number];

@@ -29,80 +29,163 @@ const baseAlertPropertiesSchema = z.object({
   triggered_by: z.string().nullish(),
 });
 
+// Metronome fires a `_resolved` companion to every `_reached` alert when the
+// underlying condition clears (e.g. balance climbs back above zero after a
+// top-up, or current_spend drops below threshold at a new billing cycle).
+// Resolved payloads share the same shape as their reached counterpart; the
+// only differences are the `type` discriminator and that the relevant balance
+// / spend value is typically on the safe side of the threshold.
+
+// alerts.low_remaining_credit_balance_*
+const lowRemainingCreditBalanceProps = baseAlertPropertiesSchema.extend({
+  credit_type_id: z.string().nullish(),
+  remaining_balance: z.number().nullish(),
+});
 const LowRemainingCreditBalanceReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.low_remaining_credit_balance_reached"),
-  properties: baseAlertPropertiesSchema.extend({
-    credit_type_id: z.string().nullish(),
-    remaining_balance: z.number().nullish(),
-  }),
+  properties: lowRemainingCreditBalanceProps,
+});
+const LowRemainingCreditBalanceResolvedSchema = z.object({
+  id: z.string(),
+  type: z.literal("alerts.low_remaining_credit_balance_resolved"),
+  properties: lowRemainingCreditBalanceProps,
 });
 
+// alerts.spend_threshold_*
+const spendThresholdProps = baseAlertPropertiesSchema.extend({
+  current_spend: z.number().nullish(),
+  credit_type_id: z.string().nullish(),
+  invoice_type: z.string().nullish(),
+  group_values: z
+    .array(
+      z.object({
+        key: z.string(),
+        value: z.string().nullish(),
+      })
+    )
+    .nullish(),
+});
 const SpendThresholdReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.spend_threshold_reached"),
-  properties: baseAlertPropertiesSchema.extend({
-    current_spend: z.number().nullish(),
-    credit_type_id: z.string().nullish(),
-    invoice_type: z.string().nullish(),
-    group_values: z
-      .array(
-        z.object({
-          key: z.string(),
-          value: z.string().nullish(),
-        })
-      )
-      .nullish(),
-  }),
+  properties: spendThresholdProps,
+});
+const SpendThresholdResolvedSchema = z.object({
+  id: z.string(),
+  type: z.literal("alerts.spend_threshold_resolved"),
+  properties: spendThresholdProps,
 });
 
+// alerts.low_remaining_commit_balance_*
+const lowRemainingCommitBalanceProps = baseAlertPropertiesSchema.extend({
+  commit_id: z.string().nullish(),
+  remaining_balance: z.number().nullish(),
+});
 const LowRemainingCommitBalanceReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.low_remaining_commit_balance_reached"),
-  properties: baseAlertPropertiesSchema.extend({
-    commit_id: z.string().nullish(),
-    remaining_balance: z.number().nullish(),
-  }),
+  properties: lowRemainingCommitBalanceProps,
+});
+const LowRemainingCommitBalanceResolvedSchema = z.object({
+  id: z.string(),
+  type: z.literal("alerts.low_remaining_commit_balance_resolved"),
+  properties: lowRemainingCommitBalanceProps,
 });
 
+// alerts.low_remaining_contract_credit_balance_*
 // Contract-level credit balance — fires for credits attached to a contract
 // (e.g. the recurring `Free Usage Credits (AWU)` credit). Not in the public
 // webhook docs but present in the UI's sample payload, distinct from
-// `alerts.low_remaining_credit_balance_reached` (customer-level credits).
-const LowRemainingContractCreditBalanceReachedSchema = z.object({
-  id: z.string(),
-  type: z.literal("alerts.low_remaining_contract_credit_balance_reached"),
-  properties: baseAlertPropertiesSchema.extend({
+// `alerts.low_remaining_credit_balance_*` (customer-level credits).
+const lowRemainingContractCreditBalanceProps = baseAlertPropertiesSchema.extend(
+  {
     contract_id: z.string().nullish(),
     credit_id: z.string().nullish(),
     credit_type_id: z.string().nullish(),
     remaining_balance: z.number().nullish(),
-  }),
+  }
+);
+const LowRemainingContractCreditBalanceReachedSchema = z.object({
+  id: z.string(),
+  type: z.literal("alerts.low_remaining_contract_credit_balance_reached"),
+  properties: lowRemainingContractCreditBalanceProps,
+});
+const LowRemainingContractCreditBalanceResolvedSchema = z.object({
+  id: z.string(),
+  type: z.literal("alerts.low_remaining_contract_credit_balance_resolved"),
+  properties: lowRemainingContractCreditBalanceProps,
 });
 
+// alerts.low_remaining_contract_credit_and_commit_balance_*
+// Combined alert: fires when the SUM of remaining contract credits and commit
+// balance reaches the threshold. This is the canonical "user can no longer
+// spend" signal for Enterprise Pooled — `low_remaining_commit_balance_*`
+// fires too early when free contract credits remain.
+const lowRemainingContractCreditAndCommitBalanceProps =
+  baseAlertPropertiesSchema.extend({
+    contract_id: z.string().nullish(),
+    credit_type_id: z.string().nullish(),
+    remaining_balance: z.number().nullish(),
+  });
+const LowRemainingContractCreditAndCommitBalanceReachedSchema = z.object({
+  id: z.string(),
+  type: z.literal(
+    "alerts.low_remaining_contract_credit_and_commit_balance_reached"
+  ),
+  properties: lowRemainingContractCreditAndCommitBalanceProps,
+});
+const LowRemainingContractCreditAndCommitBalanceResolvedSchema = z.object({
+  id: z.string(),
+  type: z.literal(
+    "alerts.low_remaining_contract_credit_and_commit_balance_resolved"
+  ),
+  properties: lowRemainingContractCreditAndCommitBalanceProps,
+});
+
+// alerts.usage_threshold_*
+const usageThresholdProps = baseAlertPropertiesSchema.extend({
+  billable_metric_id: z.string().nullish(),
+  current_usage: z.number().nullish(),
+});
 const UsageThresholdReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.usage_threshold_reached"),
-  properties: baseAlertPropertiesSchema.extend({
-    billable_metric_id: z.string().nullish(),
-    current_usage: z.number().nullish(),
-  }),
+  properties: usageThresholdProps,
+});
+const UsageThresholdResolvedSchema = z.object({
+  id: z.string(),
+  type: z.literal("alerts.usage_threshold_resolved"),
+  properties: usageThresholdProps,
 });
 
+// alerts.invoice_total_*
+const invoiceTotalProps = baseAlertPropertiesSchema.extend({
+  invoice_id: z.string().nullish(),
+  invoice_total: z.number().nullish(),
+});
 const InvoiceTotalReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.invoice_total_reached"),
-  properties: baseAlertPropertiesSchema.extend({
-    invoice_id: z.string().nullish(),
-    invoice_total: z.number().nullish(),
-  }),
+  properties: invoiceTotalProps,
+});
+const InvoiceTotalResolvedSchema = z.object({
+  id: z.string(),
+  type: z.literal("alerts.invoice_total_resolved"),
+  properties: invoiceTotalProps,
 });
 
+// alerts.low_remaining_seat_balance_*
 // Undocumented in the public webhook docs but emitted today. Assume the same
 // base alert envelope (other alerts.* all share `baseAlertPropertiesSchema`).
 const LowRemainingSeatBalanceReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.low_remaining_seat_balance_reached"),
+  properties: baseAlertPropertiesSchema,
+});
+const LowRemainingSeatBalanceResolvedSchema = z.object({
+  id: z.string(),
+  type: z.literal("alerts.low_remaining_seat_balance_resolved"),
   properties: baseAlertPropertiesSchema,
 });
 
@@ -372,12 +455,21 @@ const PaymentGateExternalInitiateSchema = z.object({
 
 export const MetronomeWebhookEventSchema = z.discriminatedUnion("type", [
   LowRemainingCreditBalanceReachedSchema,
+  LowRemainingCreditBalanceResolvedSchema,
   LowRemainingContractCreditBalanceReachedSchema,
+  LowRemainingContractCreditBalanceResolvedSchema,
+  LowRemainingContractCreditAndCommitBalanceReachedSchema,
+  LowRemainingContractCreditAndCommitBalanceResolvedSchema,
   LowRemainingSeatBalanceReachedSchema,
+  LowRemainingSeatBalanceResolvedSchema,
   SpendThresholdReachedSchema,
+  SpendThresholdResolvedSchema,
   LowRemainingCommitBalanceReachedSchema,
+  LowRemainingCommitBalanceResolvedSchema,
   UsageThresholdReachedSchema,
+  UsageThresholdResolvedSchema,
   InvoiceTotalReachedSchema,
+  InvoiceTotalResolvedSchema,
   ContractCreateSchema,
   ContractStartSchema,
   ContractEditSchema,
