@@ -94,9 +94,7 @@ export function useProjectFiles({
   const projectFilesFetcher: Fetcher<GetSpaceFilesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled || !spaceId
-      ? null
-      : `/api/w/${owner.sId}/spaces/${spaceId}/files`,
+    disabled || !spaceId ? null : `/api/w/${owner.sId}/spaces/${spaceId}/files`,
     projectFilesFetcher
   );
 
