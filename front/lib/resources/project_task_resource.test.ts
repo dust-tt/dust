@@ -1,7 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ProjectTaskModel } from "@app/lib/resources/storage/models/project_task";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -663,6 +665,21 @@ describe("ProjectTaskResource", () => {
           sourceUrl: null,
         },
       });
+      const conversation = await ConversationResource.makeNew(
+        auth,
+        {
+          sId: generateRandomModelSId(),
+          title: "Project task cleanup",
+          visibility: "test",
+          spaceId: space.id,
+          requestedSpaceIds: [space.id],
+          metadata: {},
+        },
+        space
+      );
+      await todo.addConversation(auth, {
+        conversationModelId: conversation.id,
+      });
       await todo.softDelete(auth);
 
       const otherTodo = await ProjectTaskResource.makeNew(
@@ -682,6 +699,12 @@ describe("ProjectTaskResource", () => {
         sIds: [todo.sId],
       });
       expect(sources.get(todo.sId) ?? []).toHaveLength(0);
+
+      const conversations =
+        await ProjectTaskResource.fetchConversationIdsForTaskIds(auth, {
+          sIds: [todo.sId],
+        });
+      expect(conversations.has(todo.sId)).toBe(false);
 
       await expect(
         ProjectTaskResource.fetchByModelIdWithDeleted(auth, otherTodo.id)
