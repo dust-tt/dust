@@ -9,7 +9,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import { Button, ContentMessage, PlanetIcon } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
-import { useFormContext, useWatch } from "react-hook-form";
+import { useController, useFormContext, useWatch } from "react-hook-form";
 
 interface SkillBuilderRequestedSpacesSectionProps {
   initialRequestedSpaceIds?: string[];
@@ -18,11 +18,7 @@ interface SkillBuilderRequestedSpacesSectionProps {
 export function SkillBuilderRequestedSpacesSection({
   initialRequestedSpaceIds,
 }: SkillBuilderRequestedSpacesSectionProps) {
-  const {
-    resetField,
-    setValue,
-    formState: { dirtyFields },
-  } = useFormContext<SkillBuilderFormData>();
+  const { resetField } = useFormContext<SkillBuilderFormData>();
 
   const tools = useWatch<SkillBuilderFormData, "tools">({ name: "tools" });
   const attachedKnowledge = useWatch<SkillBuilderFormData, "attachedKnowledge">(
@@ -30,10 +26,14 @@ export function SkillBuilderRequestedSpacesSection({
       name: "attachedKnowledge",
     }
   );
-  const additionalSpaces = useWatch<SkillBuilderFormData, "additionalSpaces">({
+
+  const {
+    field: additionalSpacesField,
+    fieldState: additionalSpacesFieldState,
+  } = useController<SkillBuilderFormData, "additionalSpaces">({
     name: "additionalSpaces",
   });
-  const selectedAdditionalSpaces = additionalSpaces ?? [];
+  const selectedAdditionalSpaces = additionalSpacesField.value ?? [];
 
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
@@ -100,7 +100,7 @@ export function SkillBuilderRequestedSpacesSection({
     if (
       !areSpaceRequirementsReady ||
       !initialRequestedSpaceIds ||
-      dirtyFields.additionalSpaces
+      additionalSpacesFieldState.isDirty
     ) {
       return;
     }
@@ -110,7 +110,7 @@ export function SkillBuilderRequestedSpacesSection({
     });
   }, [
     areSpaceRequirementsReady,
-    dirtyFields.additionalSpaces,
+    additionalSpacesFieldState.isDirty,
     initialAdditionalSpaces,
     initialRequestedSpaceIds,
     resetField,
@@ -130,10 +130,8 @@ export function SkillBuilderRequestedSpacesSection({
   }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
 
   const handleRemoveSpace = (space: SpaceType) => {
-    setValue(
-      "additionalSpaces",
-      selectedAdditionalSpaces.filter((spaceId) => spaceId !== space.sId),
-      { shouldDirty: true }
+    additionalSpacesField.onChange(
+      selectedAdditionalSpaces.filter((spaceId) => spaceId !== space.sId)
     );
   };
 
@@ -164,7 +162,7 @@ export function SkillBuilderRequestedSpacesSection({
   };
 
   const handleSaveSpaces = () => {
-    setValue("additionalSpaces", draftSelectedSpaces, { shouldDirty: true });
+    additionalSpacesField.onChange(draftSelectedSpaces);
     handleCloseSheet();
   };
 
