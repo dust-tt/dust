@@ -206,10 +206,6 @@ export function getAttachmentFromFileContentFragment(
     return null;
   }
 
-  // Here, snippet not null is actually to detect file attachments that are prior to the JIT
-  // actions, and differentiate them from the newer file attachments that do have a snippet.
-  // Former ones cannot be used in JIT.
-  const canDoJIT = cf.snippet !== null;
   const isInProjectContext = cf.isInProjectContext === true;
   const shouldSuppressTabularHints = shouldSuppressTabularAttachmentHints({
     contentType: cf.contentType,
@@ -217,13 +213,11 @@ export function getAttachmentFromFileContentFragment(
     skipFileProcessing: cf.skipFileProcessing === true,
   });
   const isQueryable =
-    !shouldSuppressTabularHints &&
-    canDoJIT &&
-    isQueryableContentType(cf.contentType);
+    !shouldSuppressTabularHints && isQueryableContentType(cf.contentType);
   const isIncludable =
     !shouldSuppressTabularHints &&
     isConversationIncludableFileContentType(cf.contentType);
-  const isSearchable = canDoJIT && isSearchableContentType(cf.contentType);
+  const isSearchable = isSearchableContentType(cf.contentType);
   const creator: AttachmentCreator | null = cf.context.fullName
     ? {
         type: "user",
@@ -289,13 +283,12 @@ export function makeFileAttachment({
   path?: string | null;
   creator?: AttachmentCreator | null;
 }): FileAttachmentType {
-  const canDoJIT = snippet !== null;
   const isIncludable = isConversationIncludableFileContentType(contentType);
-  const isQueryable = canDoJIT && isQueryableContentType(contentType);
+  const isQueryable = isQueryableContentType(contentType);
   // Files offloaded to disk because their tool output was too large are never indexed in Qdrant,
   // so they must not be advertised as searchable to the model.
   const isSearchable =
-    canDoJIT && isSearchableContentType(contentType) && !skipDataSourceIndexing;
+    isSearchableContentType(contentType) && !skipDataSourceIndexing;
 
   return {
     fileId,
