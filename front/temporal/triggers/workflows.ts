@@ -19,7 +19,6 @@ const { expireWakeUpActivity, runWakeUpActivity } = proxyActivities<
     backoffCoefficient: 2,
     maximumAttempts: 3,
     maximumInterval: "5 minutes",
-    nonRetryableErrorTypes: ["WakeUpNonRetryableError"],
   },
 });
 
@@ -42,17 +41,15 @@ export async function agentTriggerWorkflow({
   });
 }
 
-function isWakeUpActivityRetryExhausted(
-  error: unknown
-): error is ActivityFailure {
+function isRunWakeUpActivityFailure(error: unknown): error is ActivityFailure {
   if (!(error instanceof ActivityFailure)) {
     return false;
   }
 
-  if (error.activityType !== "runWakeUpActivity") {
-    return false;
-  }
+  return error.activityType === "runWakeUpActivity";
+}
 
+function isWakeUpActivityRetryExhausted(error: ActivityFailure): boolean {
   return (
     error.retryState === RetryState.MAXIMUM_ATTEMPTS_REACHED ||
     error.retryState === RetryState.TIMEOUT
@@ -69,9 +66,16 @@ export async function wakeUpWorkflow({
   try {
     await runWakeUpActivity({ workspaceId, wakeUpId });
   } catch (error) {
-    if (isWakeUpActivityRetryExhausted(error)) {
-      await expireWakeUpActivity({ workspaceId, wakeUpId });
-      return;
+    if (isRunWakeUpActivityFailure(error)) {
+      // Older workers used WakeUpNonRetryableError for expected stale wake-up states.
+      if (error.retryState === RetryState.NON_RETRYABLE_FAILURE) {
+        return;
+      }
+
+      if (isWakeUpActivityRetryExhausted(error)) {
+        await expireWakeUpActivity({ workspaceId, wakeUpId });
+        return;
+      }
     }
 
     throw error;
