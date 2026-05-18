@@ -30,8 +30,8 @@ export function HomeTeamSportSection() {
                 size="sm"
                 className="max-w-[480px] leading-[1.6] text-muted-foreground"
               >
-                Most teams are stuck in single-player AI mode. Dust changes
-                that with a multiplayer AI workspace that gives teams and agents
+                Most teams are stuck in single-player AI mode. Dust changes that
+                with a multiplayer AI workspace that gives teams and agents
                 shared access to the same knowledge, tools, conversations, and
                 notifications.
               </P>
