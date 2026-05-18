@@ -138,7 +138,7 @@ export function useAddProjectContextContentNodes({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to add references to pod",
+          title: "Failed to add references to Pod",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
@@ -153,8 +153,8 @@ export function useAddProjectContextContentNodes({
           type: "success",
           title:
             addedCount === 1
-              ? "Added to pod context"
-              : `Added ${addedCount} items to pod context`,
+              ? "Added to Pod context"
+              : `Added ${addedCount} items to Pod context`,
         });
       } else {
         sendNotification({
@@ -169,7 +169,7 @@ export function useAddProjectContextContentNodes({
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to add references to pod",
+        title: "Failed to add references to Pod",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
@@ -199,7 +199,7 @@ export function useRemoveProjectContextFile({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to remove file from pod",
+          title: "Failed to remove file from Pod",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
@@ -207,7 +207,7 @@ export function useRemoveProjectContextFile({
 
       sendNotification({
         type: "success",
-        title: "Removed from pod knowledge",
+        title: "Removed from Pod knowledge",
       });
 
       return new Ok(undefined);
@@ -215,7 +215,7 @@ export function useRemoveProjectContextFile({
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to remove file from pod",
+        title: "Failed to remove file from Pod",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
@@ -252,7 +252,7 @@ export function useRemoveProjectContextContentNodes({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to remove content nodes from pod",
+          title: "Failed to remove content nodes from Pod",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
@@ -262,8 +262,8 @@ export function useRemoveProjectContextContentNodes({
         type: "success",
         title:
           items.length === 1
-            ? "Removed from pod knowledge"
-            : `Removed ${items.length} items from pod knowledge`,
+            ? "Removed from Pod knowledge"
+            : `Removed ${items.length} items from Pod knowledge`,
       });
 
       return new Ok(undefined);
@@ -271,7 +271,7 @@ export function useRemoveProjectContextContentNodes({
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to remove content nodes from pod",
+        title: "Failed to remove content nodes from Pod",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));

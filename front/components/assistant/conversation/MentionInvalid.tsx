@@ -71,7 +71,7 @@ export function MentionInvalid({
       // Different message for project conversations (non-editor can't add members)
       const isProjectConv = isProjectConversation(conversation);
       const message = isProjectConv
-        ? "is not a member of this pod and only pod editors can add new members."
+        ? "is not a member of this Pod and only Pod editors can add new members."
         : "doesn't have access to this conversation's spaces and won't be able to view it nor be invited.";
 
       return (

@@ -359,14 +359,14 @@ export function FrameRenderer({
     const confirmed = await confirm({
       title: (
         <>
-          Save to <strong>{projectInfo?.name ?? "pod"}</strong>?
+          Save to <strong>{projectInfo?.name ?? "Pod"}</strong>?
         </>
       ),
       message: (
         <>
           <div>
-            The Frame will be part of the pod knowledge, and be able to be
-            edited by any pod member.
+            The Frame will be part of the Pod knowledge, and be able to be
+            edited by any Pod member.
           </div>
           <div>This action cannot be undone.</div>
         </>
@@ -391,22 +391,22 @@ export function FrameRenderer({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to save to pod",
+          title: "Failed to save to Pod",
           description: errorData.message,
         });
         return;
       }
       sendNotification({
         type: "success",
-        title: "Saved to pod",
-        description: `Frame saved to "${projectInfo?.name ?? "pod"}".`,
+        title: "Saved to Pod",
+        description: `Frame saved to "${projectInfo?.name ?? "Pod"}".`,
       });
       // Invalidate file metadata so parent and this component get updated projectId.
       await mutateFileMetadata();
     } catch (e) {
       sendNotification({
         type: "error",
-        title: "Failed to save to pod",
+        title: "Failed to save to Pod",
         description: e instanceof Error ? e.message : "An error occurred",
       });
     } finally {
@@ -464,7 +464,7 @@ export function FrameRenderer({
                 variant="ghost"
                 disabled={true}
                 label="Saved"
-                tooltip={`Saved in "${projectInfo?.name ?? "unknown pod"}"`}
+                tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
               />
             )}
             {projectSaveState === "supported" && (
@@ -473,7 +473,7 @@ export function FrameRenderer({
                 variant="ghost"
                 label={isSavingToProject ? "Saving…" : "Save"}
                 isLoading={isSavingToProject}
-                tooltip={`Save to "${projectInfo?.name ?? "unknown pod"}"`}
+                tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
                 onClick={handleSaveToProject}
               />
             )}

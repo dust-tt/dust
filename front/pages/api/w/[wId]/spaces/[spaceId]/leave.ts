@@ -31,7 +31,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "You can only leave pods, not regular spaces.",
+            message: "You can only leave Pods, not regular spaces.",
           },
         });
       }
@@ -42,7 +42,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message: "You are not a member of this pod.",
+            message: "You are not a member of this Pod.",
           },
         });
       }

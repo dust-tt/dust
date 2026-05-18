@@ -55,7 +55,7 @@ export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
     >
       <DialogTrigger asChild>
         <div className="flex w-full flex-col items-start">
-          <Button icon={TrashIcon} variant="warning" label="Delete pod" />
+          <Button icon={TrashIcon} variant="warning" label="Delete Pod" />
         </div>
       </DialogTrigger>
       <DialogContent size="md">
@@ -71,7 +71,7 @@ export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
             <DialogContainer className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Type <strong>delete</strong> below to confirm. This permanently
-                removes all pod content and cannot be undone.
+                removes all Pod content and cannot be undone.
               </p>
               <Input
                 name="delete-confirm"

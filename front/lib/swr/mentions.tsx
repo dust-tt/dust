@@ -197,7 +197,7 @@ export function useMentionValidation({
             type: "success",
             title: "Success",
             description: isProjectConversation
-              ? `${mention.label} has been added to the pod, and added to the conversation`
+              ? `${mention.label} has been added to the Pod, and added to the conversation`
               : `${mention.label} has been invited to the conversation.`,
           });
         }

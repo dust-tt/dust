@@ -527,7 +527,7 @@ export async function createSpaceAndGroup(
         if (spaceKind === "project") {
           assert(
             params.memberIds.length === 0,
-            "Cannot add members to pods on creation."
+            "Cannot add members to Pods on creation."
           );
           break;
         }
@@ -625,7 +625,7 @@ export async function createSpaceAndGroup(
             spaceId: space.sId,
             workspaceId: owner.sId,
           },
-          "Failed to create dust_project connector for pod, but space was created"
+          "Failed to create dust_project connector for Pod, but space was created"
         );
         // Don't fail space creation if connector creation fails
         // The connector can be created later if needed

@@ -1020,7 +1020,7 @@ export function useUpdateProjectMetadata({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Error updating pod metadata",
+        title: "Error updating Pod metadata",
         description: `Error: ${errorData.message}`,
       });
       return null;
@@ -1113,7 +1113,7 @@ export function useUpdateProjectNotificationPreference({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Error updating pod notification preference",
+        title: "Error updating Pod notification preference",
         description: `Error: ${errorData.message}`,
       });
       return null;
@@ -1165,15 +1165,15 @@ export function useLeaveProject({
       void mutateSpaceSummary();
       sendNotification({
         type: "success",
-        title: `${userName} left pod ${spaceName}`,
-        description: "You have successfully left the pod.",
+        title: `${userName} left Pod ${spaceName}`,
+        description: "You have successfully left the Pod.",
       });
       return true;
     } else {
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Could not leave pod",
+        title: "Could not leave Pod",
         description: `Error: ${errorData.message}`,
       });
       return false;
@@ -1216,7 +1216,7 @@ export function useJoinProject({
       void mutateSpaceSummary();
       sendNotification({
         type: "success",
-        title: `${userName} joined pod ${spaceName}`,
+        title: `${userName} joined Pod ${spaceName}`,
         description: "You can now participate in conversations.",
       });
       return true;
@@ -1224,7 +1224,7 @@ export function useJoinProject({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Could not join pod",
+        title: "Could not join Pod",
         description: `Error: ${errorData.message}`,
       });
       return false;

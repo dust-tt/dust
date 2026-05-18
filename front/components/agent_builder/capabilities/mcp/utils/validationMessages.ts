@@ -25,7 +25,7 @@ export const VALIDATION_MESSAGES = {
     invalid: "Please select a valid secret",
   },
   dustProject: {
-    required: "Please select one pod",
-    invalid: "Selected pod is not valid",
+    required: "Please select one Pod",
+    invalid: "Selected Pod is not valid",
   },
 } as const;

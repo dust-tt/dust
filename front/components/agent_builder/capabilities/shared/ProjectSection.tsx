@@ -121,8 +121,8 @@ export function ProjectSection() {
         title="Select Pod"
         error={fieldState.error?.message}
       >
-        <ProjectMessage title="No pods available">
-          No pods are available in your workspace. Create a pod first to use
+        <ProjectMessage title="No Pods available">
+          No Pods are available in your workspace. Create a Pod first to use
           this feature.
         </ProjectMessage>
       </ConfigurationSectionContainer>
@@ -136,15 +136,15 @@ export function ProjectSection() {
     >
       <div className="flex h-full flex-col gap-3">
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Choose the pod that the agent can access. The agent will have access
-          to pod metadata and context from the selected pod.
+          Choose the Pod that the agent can access. The agent will have access
+          to Pod metadata and context from the selected Pod.
         </div>
 
         <div className="inline-flex">
           <DropdownMenu open={searchOpen} onOpenChange={setSearchOpen}>
             <DropdownMenuTrigger asChild>
               <Button
-                label={selectedProject?.name ?? "Select pod..."}
+                label={selectedProject?.name ?? "Select Pod..."}
                 icon={
                   selectedProject ? getSpaceIcon(selectedProject) : undefined
                 }
@@ -184,7 +184,7 @@ export function ProjectSection() {
                 })
               ) : (
                 <div className="px-3 py-4 text-center text-xs italic text-muted-foreground dark:text-muted-foreground-night">
-                  {searchQuery ? "No matches" : "No pods"}
+                  {searchQuery ? "No matches" : "No Pods"}
                 </div>
               )}
             </DropdownMenuContent>

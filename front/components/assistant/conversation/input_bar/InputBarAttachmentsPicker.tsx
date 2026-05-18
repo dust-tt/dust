@@ -243,7 +243,7 @@ const ProjectFileItem = ({
   const fileKind = getSingularFileCategoryLabelForContentType(item.contentType);
   const description = projectName
     ? `${fileKind} in "${projectName}" knowledge`
-    : `${fileKind} in pod knowledge`;
+    : `${fileKind} in Pod knowledge`;
   return (
     <DropdownMenuCheckboxItem
       label={item.title}

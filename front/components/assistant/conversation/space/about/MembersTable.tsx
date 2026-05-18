@@ -288,13 +288,13 @@ export function MembersTable({
                       editorSettingItem,
                       {
                         kind: "item",
-                        label: "Remove from pod",
+                        label: "Remove from Pod",
                         icon: TrashIcon,
                         variant: "warning",
                         onClick: async () => {
                           const confirmed = await confirm({
                             title: "Remove member",
-                            message: `Are you sure you want to remove "${info.row.original.name}" from this pod?`,
+                            message: `Are you sure you want to remove "${info.row.original.name}" from this Pod?`,
                             validateLabel: "Remove",
                             validateVariant: "warning",
                           });

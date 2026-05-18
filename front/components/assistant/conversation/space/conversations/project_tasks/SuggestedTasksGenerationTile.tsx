@@ -17,12 +17,12 @@ import {
 import { useCallback, useContext, useRef, useState } from "react";
 
 const SUGGEST_TO_DOS_TOOLTIP =
-  "When this is on, Dust periodically reviews this pod's conversations and connected sources and adds suggested tasks. Turn it off if you only want tasks you create yourself.";
+  "When this is on, Dust periodically reviews this Pod's conversations and connected sources and adds suggested tasks. Turn it off if you only want tasks you create yourself.";
 
-const SUGGEST_TO_DOS_TOOLTIP_NON_EDITOR = `${SUGGEST_TO_DOS_TOOLTIP} Only pod editors can change this.`;
+const SUGGEST_TO_DOS_TOOLTIP_NON_EDITOR = `${SUGGEST_TO_DOS_TOOLTIP} Only Pod editors can change this.`;
 
 const LAST_SCAN_NEVER_TOOLTIP =
-  "Dust has not run an automatic scan for task suggestions for this pod yet.";
+  "Dust has not run an automatic scan for task suggestions for this Pod yet.";
 
 function lastScanTooltip(lastTodoAnalysisAt: number | null): string {
   if (lastTodoAnalysisAt == null) {
@@ -63,7 +63,7 @@ export function SuggestedTasksGenerationTile({
   const sliderDisabled = structurallyDisabled || isUpdatingTodoGeneration;
 
   const toggleTooltip = isProjectArchived
-    ? "This pod is archived; suggestion settings cannot be changed."
+    ? "This Pod is archived; suggestion settings cannot be changed."
     : !space.isEditor && space.isMember
       ? SUGGEST_TO_DOS_TOOLTIP_NON_EDITOR
       : SUGGEST_TO_DOS_TOOLTIP;
@@ -138,7 +138,7 @@ export function SuggestedTasksGenerationTile({
       <ProjectSettingsOptionLabel
         icon={SparklesIcon}
         title="Suggest tasks"
-        description="Automatic task suggestions from pod activity"
+        description="Automatic task suggestions from Pod activity"
         trailingInTitle={
           <Chip color="golden" label="Experimental" size="mini" />
         }

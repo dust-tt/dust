@@ -416,7 +416,7 @@ export function ConversationMenu({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 icon={ArrowRightIcon}
-                label={canMoveOutOfProject ? "Move to..." : "Move to pod"}
+                label={canMoveOutOfProject ? "Move to..." : "Move to Pod"}
                 disabled={
                   canMoveOutOfProject ? false : !filteredProjects.length
                 }

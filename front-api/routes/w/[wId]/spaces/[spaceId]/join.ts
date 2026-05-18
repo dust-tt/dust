@@ -25,7 +25,7 @@ app.post(
         {
           error: {
             type: "invalid_request_error",
-            message: "You can only join pods, not regular spaces.",
+            message: "You can only join Pods, not regular spaces.",
           },
         },
         400
@@ -37,7 +37,7 @@ app.post(
         {
           error: {
             type: "workspace_auth_error",
-            message: "This pod is restricted. You need to be invited to join.",
+            message: "This Pod is restricted. You need to be invited to join.",
           },
         },
         403
@@ -50,7 +50,7 @@ app.post(
           error: {
             type: "invalid_request_error",
             message:
-              "You cannot join this pod, its members are not managed manually.",
+              "You cannot join this Pod, its members are not managed manually.",
           },
         },
         403
@@ -62,7 +62,7 @@ app.post(
         {
           error: {
             type: "invalid_request_error",
-            message: "You are already a member of this pod.",
+            message: "You are already a member of this Pod.",
           },
         },
         400
@@ -79,7 +79,7 @@ app.post(
         {
           error: {
             type: "internal_server_error",
-            message: "There should be exactly one member group for the pod.",
+            message: "There should be exactly one member group for the Pod.",
           },
         },
         500

@@ -23,7 +23,7 @@ app.post(
         {
           error: {
             type: "invalid_request_error",
-            message: "You can only leave pods, not regular spaces.",
+            message: "You can only leave Pods, not regular spaces.",
           },
         },
         400
@@ -35,7 +35,7 @@ app.post(
         {
           error: {
             type: "workspace_auth_error",
-            message: "You are not a member of this pod.",
+            message: "You are not a member of this Pod.",
           },
         },
         403
@@ -56,7 +56,7 @@ app.post(
             error: {
               type: "workspace_auth_error",
               message:
-                "You cannot leave this pod as you are the last editor. Please add another editor first.",
+                "You cannot leave this Pod as you are the last editor. Please add another editor first.",
             },
           },
           403

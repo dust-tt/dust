@@ -61,7 +61,7 @@ export const ConversationLayout = ({
                 variant="ghost"
                 icon={ArrowLeftIcon}
                 onClick={() => navigate(backHref)}
-                tooltip="Go back to pod homepage"
+                tooltip="Go back to Pod homepage"
               />
             ) : (
               <Button

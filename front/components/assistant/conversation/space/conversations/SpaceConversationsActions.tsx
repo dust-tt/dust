@@ -12,7 +12,7 @@ export function SpaceConversationsActions({
   const suggestions = [
     {
       id: "onboarding-tasks",
-      label: "Get your pod off the ground",
+      label: "Get your Pod off the ground",
       icon: CheckIcon,
       description:
         "Add context, connect your knowledge, and bring the right people in. Flying solo? It still keeps everything in one place.",

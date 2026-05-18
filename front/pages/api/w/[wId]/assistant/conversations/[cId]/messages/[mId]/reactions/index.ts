@@ -64,7 +64,7 @@ async function handler(
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
-        message: "You are not a member of the pod.",
+        message: "You are not a member of the Pod.",
       },
     });
   }

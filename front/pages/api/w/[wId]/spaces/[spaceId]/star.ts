@@ -35,7 +35,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Pod star is only available for pod spaces.",
+        message: "Pod star is only available for Pod spaces.",
       },
     });
   }

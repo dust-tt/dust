@@ -31,7 +31,7 @@ interface CreateProjectModalProps {
 }
 
 const OPEN_PROJECTS_DISABLED_TOOLTIP =
-  "Open pods are disabled by your workspace admin.";
+  "Open Pods are disabled by your workspace admin.";
 
 export function CreateProjectModal({
   isOpen,
@@ -149,7 +149,7 @@ export function CreateProjectModal({
             <div className="flex flex-col">
               <Input
                 label="Pod name"
-                placeholder="Enter pod name"
+                placeholder="Enter Pod name"
                 value={projectName}
                 name="projectName"
                 onChange={(e) => {
@@ -162,7 +162,7 @@ export function CreateProjectModal({
               />
               {nameNotAvailable && (
                 <div className="mt-1 text-xs text-warning-500 dark:text-warning-500">
-                  A pod or space with this name already exists.
+                  A Pod or space with this name already exists.
                 </div>
               )}
             </div>
@@ -175,8 +175,8 @@ export function CreateProjectModal({
               />
               <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                 {isPublic
-                  ? "Anyone in the workspace can find and join this pod."
-                  : "Only invited members can access this pod."}
+                  ? "Anyone in the workspace can find and join this Pod."
+                  : "Only invited members can access this Pod."}
               </div>
             </div>
           </div>
