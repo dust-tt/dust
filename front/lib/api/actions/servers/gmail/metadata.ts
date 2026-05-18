@@ -220,11 +220,53 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .enum(["text/plain", "text/html"])
         .describe("The content type of the email (text/plain or text/html)."),
       body: z.string().describe("The body of the email"),
+      replyToMessageId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. The ID of the message to reply to. If provided, the email will be sent as a reply in the existing thread."
+        ),
     },
     stake: "high",
     displayLabels: {
       running: "Sending Gmail email",
       done: "Send Gmail email",
+    },
+  },
+
+  // create_label: {
+  //   description: "Create a new Gmail label.",
+  //   schema: {
+  //     name: z
+  //     .string()
+  //     .describe("the name of the label"),
+  //     color: z.object({
+  //       textColor: z.string(),
+  //       backgroundColor: z.string()
+  //     })
+  //     .optional()
+  //     .describe("Optional. The color of the label. Must use Gmail's predefined hex color codes. Example green: backgroundColor: '#16a766', textColor: '#ffffff'")
+  //   },
+  //   stake: "medium",
+  //   displayLabels: {
+  //     running: "creating the label",
+  //     done: "label created"
+  //   },
+  // },
+
+  get_thread: {
+    description: "Get all messages in a Gmail thread/conversation.",
+    schema: {
+      threadId: z
+        .string()
+        .describe(
+          "The ID of the thread to retrieve. Can be found in the threadId field of any message."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "getting Gmail thread",
+      done: "Get Gmail messages",
     },
   },
 });

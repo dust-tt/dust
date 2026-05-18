@@ -60,6 +60,7 @@ function buildAndEncodeEmail(params: {
   subject: string;
   contentType: string;
   body: string;
+  threadingHeaders?: string[];
 }): Err<MCPError> | Ok<string> {
   const encodedSubject = encodeSubject(params.subject);
 
@@ -83,6 +84,7 @@ function buildAndEncodeEmail(params: {
     `Subject: ${encodedSubject}`,
     `Content-Type: ${params.contentType}; charset=UTF-8`,
     "MIME-Version: 1.0",
+    ...(params.threadingHeaders ?? []),
     "",
     params.body,
   ].filter((line): line is string => line !== null);
@@ -270,6 +272,74 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: JSON.stringify({ labels: result.labels ?? [] }, null, 2),
+      },
+    ]);
+  },
+
+  // create_label: async (
+  //   {name},
+  //   {authInfo}
+  // ) => {
+  //   const accessToken = authInfo?.token;
+  //   if (!accessToken) {
+  //     return new Err(new MCPError("Authentication required"));
+  //   }
+  //   const response = await fetchFromGmail(
+  //     '/gmail/v1/users/me/labels',
+  //     accessToken,
+  //     {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         name: name,
+  //       }),
+  //     }
+  //     );
+  //     if (!response.ok) {
+  //     const errorText = await getErrorText(response);
+  //     return new Err(
+  //       new MCPError(`Failed to create label: ${errorText}`)
+  //     );
+  //   }
+  //   const result = await response.json();
+
+  //   return new Ok([
+  //     { type: "text" as const, text: "label created successfully" },
+  //     {
+  //       type: "text" as const,
+  //       text: JSON.stringify(
+  //         {
+  //           name: result.name,
+  //           id: result.id,
+  //           color: result.color
+  //         }
+  //       ),
+  //     },
+  //   ]);
+  //   },
+
+  get_thread: async ({ threadId }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+    const response = await fetchFromGmail(
+      `/gmail/v1/users/me/threads/${threadId}`,
+      accessToken,
+      { method: "GET" }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return new Err(new MCPError(`Failed to get thread: ${errorText}`));
+    }
+    const result = await response.json();
+
+    return new Ok([
+      { type: "text" as const, text: "thread fetched successfully" },
+      {
+        type: "text" as const,
+        text: JSON.stringify({ thread: result ?? [] }, null, 2),
       },
     ]);
   },
@@ -722,7 +792,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   send_mail: async (
-    { to, cc, bcc, from, subject, contentType, body },
+    { to, cc, bcc, from, subject, contentType, body, replyToMessageId },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -755,6 +825,47 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
     }
 
+    let threadingHeaders: string[] = [];
+    let threadId: string | undefined = undefined;
+
+    if (replyToMessageId) {
+      const messageResponse = await fetchFromGmail(
+        `/gmail/v1/users/me/messages/${replyToMessageId}?format=full`,
+        accessToken,
+        { method: "GET" }
+      );
+
+      if (!messageResponse.ok) {
+        const errorText = await getErrorText(messageResponse);
+        if (messageResponse.status === 404) {
+          return new Err(
+            new MCPError(`Message not found: ${replyToMessageId}`, {
+              tracked: false,
+            })
+          );
+        }
+        return new Err(
+          new MCPError(
+            `Failed to get original message: ${messageResponse.status} ${messageResponse.statusText} - ${errorText}`
+          )
+        );
+      }
+      const originalMessage: GmailMessage = await messageResponse.json();
+
+      threadId = originalMessage.threadId;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      const headers = originalMessage.payload?.headers || [];
+
+      // Extract header values
+      const originalMessageIdHeader = getHeaderValue(headers, "Message-ID");
+      const originalReferences = getHeaderValue(headers, "References");
+
+      // Create subject and headers
+      threadingHeaders = createThreadingHeaders(
+        originalMessageIdHeader,
+        originalReferences
+      );
+    }
     // Build and encode the email message
     const encodedMessageResult = buildAndEncodeEmail({
       to,
@@ -764,6 +875,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       subject,
       contentType,
       body,
+      threadingHeaders,
     });
 
     if (encodedMessageResult.isErr()) {
@@ -782,6 +894,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         },
         body: JSON.stringify({
           raw: encodedMessage,
+          ...(threadId ? { threadId: threadId } : {}),
         }),
       }
     );
