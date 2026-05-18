@@ -7,6 +7,7 @@ import {
   ActionTrashIcon,
   ContentMessageAction,
   ContentMessageInline,
+  Tooltip,
 } from "@dust-tt/sparkle";
 
 interface WakeUpBannerProps {
@@ -40,9 +41,15 @@ export const WakeUpBanner = ({
           normal foreground color, let the schedule text inherit the muted
           color. */}
       <div className="flex min-w-0 items-center gap-2">
-        <span className="min-w-0 truncate text-foreground dark:text-foreground-night">
-          {wakeUp.reason}
-        </span>
+        <Tooltip
+          label={wakeUp.reason}
+          tooltipTriggerAsChild
+          trigger={
+            <span className="min-w-0 truncate text-foreground dark:text-foreground-night">
+              {wakeUp.reason}
+            </span>
+          }
+        />
         <span className="shrink-0">{scheduleDescription}</span>
       </div>
       {isOwner && (
