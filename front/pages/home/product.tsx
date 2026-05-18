@@ -1,5 +1,6 @@
 import { H2 } from "@app/components/home/ContentComponents";
 import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
+import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
 import { InteractiveFeaturesSection } from "@app/components/home/content/Product/InteractiveFeaturesSection";
 import { JustUseDustSection } from "@app/components/home/content/Product/JustUseDustSection";
 import { ProductIntroSection } from "@app/components/home/content/Product/ProductIntroSection";
@@ -67,6 +68,7 @@ export function Landing() {
       <div className="mt-16">
         <JustUseDustSection />
       </div>
+      <HomeTrustedSection />
     </>
   );
 }

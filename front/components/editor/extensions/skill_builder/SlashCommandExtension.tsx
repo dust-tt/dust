@@ -28,7 +28,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
         <img
           alt="Knowledge Search Interface"
           className="aspect-[4/3] w-full rounded object-cover"
-          src="/static/landing/product/Knowledge_Tooltips.jpg"
+          src="/static/landing/product/Knowledge_Tooltips.png"
         />
       ),
     },

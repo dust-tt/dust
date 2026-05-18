@@ -43,7 +43,7 @@ const TABS: UsageTab[] = [
     id: "engineering",
     label: "Engineering",
     heading: "Engineering\nOperations",
-    imageSrc: "/static/landing/functions/engineering.jpg",
+    imageSrc: "/static/landing/functions/engineering.png",
     imageAlt: "Engineering team workflow placeholder",
     bg: "bg-orange-100/40",
     points: [
@@ -80,7 +80,7 @@ const TABS: UsageTab[] = [
     id: "support",
     label: "Customer Support",
     heading: "Customer Support\nOperations",
-    imageSrc: "/static/landing/functions/customersupport.jpg",
+    imageSrc: "/static/landing/functions/customersupport.png",
     imageAlt: "Customer support workflow placeholder",
     bg: "bg-blue-100/40",
     points: [
@@ -115,7 +115,7 @@ const TABS: UsageTab[] = [
     id: "sales",
     label: "Sales",
     heading: "Sales\nOperations",
-    imageSrc: "/static/landing/functions/sales.jpg",
+    imageSrc: "/static/landing/functions/sales.png",
     imageAlt: "Sales workflow placeholder",
     bg: "bg-green-100/40",
     points: [
@@ -149,7 +149,7 @@ const TABS: UsageTab[] = [
     id: "marketing",
     label: "Marketing & Content",
     heading: "Marketing & Content\nOperations",
-    imageSrc: "/static/landing/functions/marketing.jpg",
+    imageSrc: "/static/landing/functions/marketing.png",
     imageAlt: "Marketing workflow placeholder",
     bg: "bg-pink-100/40",
     points: [
@@ -184,7 +184,7 @@ const TABS: UsageTab[] = [
     id: "data",
     label: "Data & analytics",
     heading: "Data & Analytics\nOperations",
-    imageSrc: "/static/landing/functions/data.jpg",
+    imageSrc: "/static/landing/functions/data.png",
     imageAlt: "Data and analytics workflow placeholder",
     bg: "bg-violet-100/40",
     points: [

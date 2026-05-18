@@ -36,7 +36,7 @@ export function HeroVisual({ onWatch, showVideo }: HeroVisualProps) {
                 />
               ) : (
                 <Image
-                  src="/static/landing/header/header.jpg"
+                  src="/static/landing/header/header.png"
                   alt="Dust Platform"
                   width={1920}
                   height={1080}

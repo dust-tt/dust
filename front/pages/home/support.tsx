@@ -6,10 +6,10 @@ import {
   H4,
   P,
 } from "@app/components/home/ContentComponents";
+import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import TrustedBy from "@app/components/home/TrustedBy";
 import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
 import { useRouter } from "next/router";
@@ -297,7 +297,7 @@ export default function Support() {
         <SupportOptionsSection />
         <DocumentationSection />
         <CommitmentSection />
-        <TrustedBy logoSet="landing" />
+        <HomeTrustedSection />
         <JustUseDustSection />
       </div>
     </>

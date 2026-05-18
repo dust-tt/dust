@@ -1,10 +1,10 @@
 import { ContactForm } from "@app/components/home/ContactForm";
 import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
+import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import TrustedBy from "@app/components/home/TrustedBy";
 import { isString } from "@app/types/shared/utils/general";
 import type { GetStaticProps } from "next";
 import { useRouter } from "next/router";
@@ -69,7 +69,7 @@ export default function Contact() {
             />
           </div>
         </Grid>
-        <TrustedBy />
+        <HomeTrustedSection />
       </div>
     </>
   );

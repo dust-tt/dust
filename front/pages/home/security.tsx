@@ -6,6 +6,7 @@ import {
   P,
   Strong,
 } from "@app/components/home/ContentComponents";
+import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -247,6 +248,7 @@ export default function Security() {
           </div>
         </div>
       </div>
+      <HomeTrustedSection />
     </>
   );
 }

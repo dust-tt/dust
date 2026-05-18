@@ -184,9 +184,7 @@ export function HomeTrustedSection() {
             <div className="home-trusted-track flex w-max items-end gap-x-16 sm:gap-x-20 lg:gap-x-24">
               {marqueeLogos.map((logo, idx) => {
                 const caseStudyUrl =
-                  idx < logos.length
-                    ? CASE_STUDIES[logo.name.toLowerCase().replace(/\s+/g, "")]
-                    : undefined;
+                  CASE_STUDIES[logo.name.toLowerCase().replace(/\s+/g, "")];
                 const itemClassName =
                   "home-trusted-item flex flex-shrink-0 flex-col items-center gap-1";
                 const inner = (

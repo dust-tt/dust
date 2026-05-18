@@ -1,6 +1,7 @@
 import { ImgBlock, QuoteSection } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
+import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
 import { PlatformIntroSection } from "@app/components/home/content/Product/PlatformIntroSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
@@ -173,6 +174,7 @@ export default function DustPlatform() {
           </Link>
         </div>
       </div>
+      <HomeTrustedSection />
     </>
   );
 }

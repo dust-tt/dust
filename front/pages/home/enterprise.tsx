@@ -1,9 +1,9 @@
 import { H1, H2, H3, P } from "@app/components/home/ContentComponents";
+import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
 import { TestimonialSection } from "@app/components/home/content/Product/TestimonialSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import TrustedBy from "@app/components/home/TrustedBy";
 import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
 import {
@@ -1296,7 +1296,7 @@ export default function Enterprise() {
         <HowTeamsUseSection />
         <EnterpriseGradeSection />
         <SocialProofMosaicSection />
-        <TrustedBy logoSet="landing" />
+        <HomeTrustedSection />
       </div>
       <ReadyToMoveSection />
     </>
