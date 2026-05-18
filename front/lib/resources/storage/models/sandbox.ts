@@ -2,7 +2,7 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, Op } from "sequelize";
 
 export type SandboxStatus =
   | "running"
@@ -19,6 +19,9 @@ export class SandboxModel extends WorkspaceAwareModel<SandboxModel> {
   declare status: SandboxStatus;
   declare statusChangedAt: CreationOptional<Date>;
   declare lastActivityAt: Date;
+  declare baseImage: CreationOptional<string | null>;
+  declare version: CreationOptional<string | null>;
+  declare killRequestedAt: CreationOptional<Date | null>;
 
   // Associations.
   declare conversation: NonAttribute<ConversationModel>;
@@ -62,6 +65,18 @@ SandboxModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    baseImage: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    version: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    killRequestedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     modelName: "sandbox",
@@ -80,6 +95,15 @@ SandboxModel.init(
       {
         fields: ["status", "lastActivityAt"],
         name: "sandboxes_status_last_activity_idx",
+      },
+      {
+        fields: ["killRequestedAt"],
+        name: "sandboxes_kill_requested_at_idx",
+        where: { killRequestedAt: { [Op.ne]: null } },
+      },
+      {
+        fields: ["baseImage", "version"],
+        name: "sandboxes_base_image_version_idx",
       },
     ],
   }

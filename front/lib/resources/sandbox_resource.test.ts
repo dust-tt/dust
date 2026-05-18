@@ -238,7 +238,7 @@ describe("SandboxResource.ensureActive", () => {
     mockGetSandboxImage.mockReturnValue(
       new Ok({
         toCreateConfig: () => ({
-          imageId: { name: "test-image", tag: "latest" },
+          imageId: { imageName: "test-image", tag: "0.0.1" },
           envVars: {
             DST_API_TOKEN: "image-token",
             DD_API_KEY: "image-dd-token",
@@ -343,5 +343,44 @@ describe("SandboxResource.ensureActive", () => {
     expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
       "DST_SECRET_TOKEN"
     );
+  });
+
+  it("records baseImage and version from the registered image on fresh create", async () => {
+    const result = await SandboxResource.ensureActive(
+      authenticator,
+      conversation
+    );
+
+    expect(result.isOk()).toBe(true);
+
+    const persisted = await SandboxResource.fetchByConversationId(
+      authenticator,
+      conversation.sId
+    );
+    expect(persisted?.baseImage).toBe("test-image");
+    expect(persisted?.version).toBe("0.0.1");
+  });
+
+  it("refreshes baseImage and version when recreating from a deleted row", async () => {
+    await SandboxFactory.create(authenticator, conversation, {
+      status: "deleted",
+      baseImage: "stale-image",
+      version: "0.0.0-old",
+    });
+
+    const result = await SandboxResource.ensureActive(
+      authenticator,
+      conversation
+    );
+
+    expect(result.isOk()).toBe(true);
+
+    const persisted = await SandboxResource.fetchByConversationId(
+      authenticator,
+      conversation.sId
+    );
+    expect(persisted?.baseImage).toBe("test-image");
+    expect(persisted?.version).toBe("0.0.1");
+    expect(persisted?.providerId).toBe("provider-id");
   });
 });
