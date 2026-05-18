@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import uniq from "lodash/uniq";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
@@ -21,6 +20,8 @@ import {
 } from "@app/types/assistant/skill_configuration";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
+
+import { validate } from "@front-api/middleware/validator";
 
 import detect from "./detect";
 import importRoute from "./import";
@@ -225,7 +226,7 @@ app.get("/", async (c) => {
   });
 });
 
-app.post("/", async (c) => {
+app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
   const auth = c.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
@@ -240,23 +241,7 @@ app.post("/", async (c) => {
 
   const user = auth.getNonNullableUser();
 
-  const rawBody = await c.req.json().catch(() => null);
-  const bodyValidation = PostSkillRequestBodySchema.safeParse(rawBody);
-
-  if (!bodyValidation.success) {
-    const pathError = fromError(bodyValidation.error).toString();
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Invalid request body: ${pathError}`,
-        },
-      },
-      400
-    );
-  }
-
-  const body = bodyValidation.data;
+  const body = c.req.valid("json");
   const name = body.name.trim();
 
   if (!name) {
