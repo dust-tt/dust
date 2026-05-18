@@ -228,7 +228,9 @@ export default function SkillBuilder({
               specific needs before saving.
             </ContentMessage>
           )}
-          <SkillBuilderRequestedSpacesSection />
+          <SkillBuilderRequestedSpacesSection
+            initialRequestedSpaceIds={skill?.requestedSpaceIds}
+          />
           <SkillBuilderAgentFacingDescriptionSection />
           <SkillBuilderInstructionsSection />
           {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}

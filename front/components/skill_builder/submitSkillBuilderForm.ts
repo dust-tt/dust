@@ -55,6 +55,7 @@ export async function submitSkillBuilderForm({
           fileId: f.fileId,
         })),
         attachedKnowledge: formData.attachedKnowledge ?? [],
+        additionalRequestedSpaceIds: formData.additionalSpaces,
       }),
     });
 

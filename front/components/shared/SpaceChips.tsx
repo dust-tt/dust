@@ -5,9 +5,14 @@ import { Chip } from "@dust-tt/sparkle";
 interface SpaceChipsProps {
   spaces: SpaceType[];
   onRemoveSpace: (space: SpaceType) => void;
+  canRemoveSpace?: (space: SpaceType) => boolean;
 }
 
-export function SpaceChips({ spaces, onRemoveSpace }: SpaceChipsProps) {
+export function SpaceChips({
+  spaces,
+  onRemoveSpace,
+  canRemoveSpace,
+}: SpaceChipsProps) {
   return (
     <div className="flex flex-wrap gap-2">
       {spaces.map((space) => (
@@ -17,7 +22,9 @@ export function SpaceChips({ spaces, onRemoveSpace }: SpaceChipsProps) {
           label={getSpaceName(space)}
           icon={getSpaceIcon(space)}
           onRemove={
-            space.kind !== "global" ? () => onRemoveSpace(space) : undefined
+            space.kind !== "global" && (canRemoveSpace?.(space) ?? true)
+              ? () => onRemoveSpace(space)
+              : undefined
           }
         />
       ))}

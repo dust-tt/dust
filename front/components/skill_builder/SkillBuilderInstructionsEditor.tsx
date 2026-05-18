@@ -21,7 +21,7 @@ import type { Editor } from "@tiptap/react";
 import type { Config } from "dompurify";
 import DOMPurify from "dompurify";
 import debounce from "lodash/debounce";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
@@ -73,7 +73,8 @@ export function SkillBuilderInstructionsEditor({
   onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
-  const { setValue } = useFormContext<SkillBuilderFormData>();
+  const { resetField } = useFormContext<SkillBuilderFormData>();
+  const initializedAttachedKnowledgeEditorRef = useRef<Editor | null>(null);
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -99,28 +100,40 @@ export function SkillBuilderInstructionsEditor({
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
 
+  const syncAttachedKnowledgeFromEditor = useCallback(
+    (editor: Editor) => {
+      attachedKnowledgeField.onChange(
+        toAttachedKnowledge(collectKnowledgeItems(editor))
+      );
+    },
+    [attachedKnowledgeField.onChange]
+  );
+
+  const syncInstructionsFromEditor = useCallback(
+    (editor: Editor) => {
+      instructionsField.onChange(
+        postProcessMarkdown(editor.getMarkdown()).trim()
+      );
+      instructionsHtmlField.onChange(
+        sanitizeSkillInstructionsHtml(editor.getHTML())
+      );
+      syncAttachedKnowledgeFromEditor(editor);
+    },
+    [
+      instructionsField.onChange,
+      instructionsHtmlField.onChange,
+      syncAttachedKnowledgeFromEditor,
+    ]
+  );
+
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: Editor) => {
         if (!isDiffMode && !editor.isDestroyed) {
-          setValue(
-            INSTRUCTIONS_FIELD_NAME,
-            postProcessMarkdown(editor.getMarkdown()).trim(),
-            { shouldDirty: true }
-          );
-          setValue(
-            INSTRUCTIONS_HTML_FIELD_NAME,
-            sanitizeSkillInstructionsHtml(editor.getHTML()),
-            { shouldDirty: true }
-          );
-          setValue(
-            ATTACHED_KNOWLEDGE_FIELD_NAME,
-            toAttachedKnowledge(collectKnowledgeItems(editor)),
-            { shouldDirty: true }
-          );
+          syncInstructionsFromEditor(editor);
         }
       }, 250),
-    [isDiffMode, setValue]
+    [isDiffMode, syncInstructionsFromEditor]
   );
 
   const handleUpdate = useCallback(
@@ -140,13 +153,9 @@ export function SkillBuilderInstructionsEditor({
 
   const handleDelete = useCallback(
     (editorInstance: Editor) => {
-      setValue(
-        ATTACHED_KNOWLEDGE_FIELD_NAME,
-        toAttachedKnowledge(collectKnowledgeItems(editorInstance)),
-        { shouldDirty: true }
-      );
+      syncAttachedKnowledgeFromEditor(editorInstance);
     },
-    [setValue]
+    [syncAttachedKnowledgeFromEditor]
   );
 
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
@@ -243,25 +252,31 @@ export function SkillBuilderInstructionsEditor({
         }
       }
 
-      // Sync the editor's new content back to the form.
-      setValue(
-        INSTRUCTIONS_HTML_FIELD_NAME,
-        sanitizeSkillInstructionsHtml(editor.getHTML()),
-        { shouldDirty: true }
-      );
-      setValue(
-        INSTRUCTIONS_FIELD_NAME,
-        postProcessMarkdown(editor.getMarkdown()).trim(),
-        {
-          shouldDirty: true,
-        }
-      );
+      syncInstructionsFromEditor(editor);
     });
 
     return () => {
       setAcceptInstructionEdits(null);
     };
-  }, [editor, setValue, setAcceptInstructionEdits]);
+  }, [editor, syncInstructionsFromEditor, setAcceptInstructionEdits]);
+
+  useEffect(() => {
+    if (
+      !editor ||
+      !isContentReady ||
+      isDiffMode ||
+      initializedAttachedKnowledgeEditorRef.current === editor
+    ) {
+      return;
+    }
+
+    initializedAttachedKnowledgeEditorRef.current = editor;
+    resetField(ATTACHED_KNOWLEDGE_FIELD_NAME, {
+      defaultValue: toAttachedKnowledge(collectKnowledgeItems(editor)),
+      keepError: true,
+      keepTouched: true,
+    });
+  }, [editor, isContentReady, isDiffMode, resetField]);
 
   // Apply pending instruction suggestions as inline diff decorations.
   // "Reject all + re-apply current" on every change so that accepts and

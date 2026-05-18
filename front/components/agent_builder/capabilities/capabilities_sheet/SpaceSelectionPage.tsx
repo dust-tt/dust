@@ -10,10 +10,18 @@ import {
   ListGroup,
   ListItem,
   ListItemSection,
+  SearchInput,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 type SpaceRowData = {
   sId: string;
@@ -28,14 +36,105 @@ type SpaceRowData = {
 
 interface SpaceSelectionPageProps {
   alreadyRequestedSpaceIds: Set<string>;
+  includeProjects?: boolean;
   selectedSpaces: string[];
   setSelectedSpaces: React.Dispatch<React.SetStateAction<string[]>>;
   searchQuery?: string;
   missingSpaceIds?: string[];
 }
 
+interface SpaceSelectionSheetProps
+  extends Omit<SpaceSelectionPageProps, "searchQuery"> {
+  entityName: "agent" | "skill";
+  onClose: () => void;
+  onSave: () => void;
+  open: boolean;
+}
+
+export function SpaceSelectionSheet({
+  alreadyRequestedSpaceIds,
+  entityName,
+  includeProjects = true,
+  missingSpaceIds,
+  onClose,
+  onSave,
+  open,
+  selectedSpaces,
+  setSelectedSpaces,
+}: SpaceSelectionSheetProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const { hasFeature } = useFeatureFlags();
+  const isProjectsEnabled = includeProjects && hasFeature("projects");
+
+  const handleClose = () => {
+    setSearchQuery("");
+    onClose();
+  };
+
+  const handleSave = () => {
+    setSearchQuery("");
+    onSave();
+  };
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          handleClose();
+        }
+      }}
+    >
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>
+            {isProjectsEnabled ? "Add Spaces and Projects" : "Add Spaces"}
+          </SheetTitle>
+          <SheetDescription>
+            {isProjectsEnabled
+              ? `Choose the spaces and projects you want the ${entityName} to have access to.`
+              : `Choose the spaces you want the ${entityName} to have access to.`}
+          </SheetDescription>
+          <SearchInput
+            name="space"
+            onChange={(query) => setSearchQuery(query)}
+            value={searchQuery}
+            placeholder={
+              isProjectsEnabled ? "Search spaces and projects" : "Search spaces"
+            }
+            className="mt-4"
+          />
+        </SheetHeader>
+        <SheetContainer isListSelector>
+          <SpaceSelectionPageContent
+            alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
+            includeProjects={includeProjects}
+            selectedSpaces={selectedSpaces}
+            setSelectedSpaces={setSelectedSpaces}
+            searchQuery={searchQuery}
+            missingSpaceIds={missingSpaceIds}
+          />
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: handleClose,
+          }}
+          rightButtonProps={{
+            label: "Save",
+            variant: "primary",
+            onClick: handleSave,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export function SpaceSelectionPageContent({
   alreadyRequestedSpaceIds,
+  includeProjects = true,
   selectedSpaces,
   setSelectedSpaces,
   searchQuery = "",
@@ -53,13 +152,14 @@ export function SpaceSelectionPageContent({
 
   const { hasFeature } = useFeatureFlags();
 
-  const isProjectsEnabled = hasFeature("projects");
+  const isProjectsEnabled = includeProjects && hasFeature("projects");
 
   const selectableSpaces = useMemo(() => {
     return allSpaces
       .filter(
         (s) =>
           s.kind !== "global" &&
+          (includeProjects || s.kind !== "project") &&
           s.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
       .sort((a, b) => {
@@ -72,7 +172,7 @@ export function SpaceSelectionPageContent({
         }
         return getSpaceName(a).localeCompare(getSpaceName(b));
       });
-  }, [allSpaces, searchQuery]);
+  }, [allSpaces, includeProjects, searchQuery]);
 
   const selectedSpaceIds = useMemo(
     () => new Set(selectedSpaces),
@@ -249,7 +349,9 @@ export function SpaceSelectionPageContent({
         <div className="py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
           {searchQuery.length > 0
             ? "No results found for your search"
-            : "No spaces and projects available"}
+            : isProjectsEnabled
+              ? "No spaces and projects available"
+              : "No spaces available"}
         </div>
       )}
     </div>
