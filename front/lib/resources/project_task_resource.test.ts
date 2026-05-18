@@ -1,7 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ProjectTaskModel } from "@app/lib/resources/storage/models/project_task";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -41,6 +43,7 @@ describe("ProjectTaskResource", () => {
   let user: UserResource;
   let auth: Authenticator;
   let space: SpaceResource;
+  let otherSpace: SpaceResource;
 
   beforeEach(async () => {
     const setup = await createResourceTest({ role: "user" });
@@ -48,6 +51,7 @@ describe("ProjectTaskResource", () => {
     user = setup.user;
     auth = setup.authenticator;
     space = setup.globalSpace;
+    otherSpace = setup.systemSpace;
   });
 
   describe("makeNew", () => {
@@ -646,6 +650,65 @@ describe("ProjectTaskResource", () => {
       // The main row is gone — no observable version leakage through the public API.
       const fetched = await ProjectTaskResource.fetchBySId(auth, sId);
       expect(fetched).toBeNull();
+    });
+  });
+
+  describe("deleteAllBySpace", () => {
+    it("should delete soft-deleted todos and their child rows", async () => {
+      const todo = await ProjectTaskResource.makeNewWithSource(auth, {
+        blob: makeTodoBlob(space.id, user.id),
+        itemId: "item-delete-space",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-delete-space",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+      const conversation = await ConversationResource.makeNew(
+        auth,
+        {
+          sId: generateRandomModelSId(),
+          title: "Project task cleanup",
+          visibility: "test",
+          spaceId: space.id,
+          requestedSpaceIds: [space.id],
+          metadata: {},
+        },
+        space
+      );
+      await todo.addConversation(auth, {
+        conversationModelId: conversation.id,
+      });
+      await todo.softDelete(auth);
+
+      const otherTodo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(otherSpace.id, user.id)
+      );
+
+      await ProjectTaskResource.deleteAllBySpace(auth, {
+        spaceModelId: space.id,
+      });
+
+      await expect(
+        ProjectTaskResource.fetchByModelIdWithDeleted(auth, todo.id)
+      ).resolves.toBeNull();
+
+      const sources = await ProjectTaskResource.fetchSourcesForTaskIds(auth, {
+        sIds: [todo.sId],
+      });
+      expect(sources.get(todo.sId) ?? []).toHaveLength(0);
+
+      const conversations =
+        await ProjectTaskResource.fetchConversationIdsForTaskIds(auth, {
+          sIds: [todo.sId],
+        });
+      expect(conversations.has(todo.sId)).toBe(false);
+
+      await expect(
+        ProjectTaskResource.fetchByModelIdWithDeleted(auth, otherTodo.id)
+      ).resolves.not.toBeNull();
     });
   });
 });
