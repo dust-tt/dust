@@ -728,6 +728,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "power_bi_mcp"
   | "reinforced_agents"
   | "reinforcement_ui"
+  | "self_improving_skills_report_usage"
   | "metronome_billing"
   | "plan_mode"
   | "poke_mcp"

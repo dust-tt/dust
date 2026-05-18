@@ -37,7 +37,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   agent_sidekick: "user",
   project_kickoff: "user",
   reinforced_skill_notification: "user",
-  reinforcement: "user",
+  reinforcement: "programmatic",
   branch_anchor: "user",
 };
 

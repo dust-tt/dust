@@ -251,6 +251,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the reinforcement suggestions UI panel in the Skills Builder.",
     stage: "dust_only",
   },
+  self_improving_skills_report_usage: {
+    description:
+      "Report reinforcement LLM costs to Metronome, ES analytics, and programmatic usage tracking.",
+    stage: "dust_only",
+  },
   collapsible_messages: {
     description: "Enable collapsible messages in conversations",
     stage: "dust_only",
