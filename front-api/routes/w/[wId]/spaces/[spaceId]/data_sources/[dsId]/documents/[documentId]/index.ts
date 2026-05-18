@@ -144,8 +144,7 @@ app.delete(
         {
           error: {
             type: "data_source_auth_error",
-            message:
-              "You cannot delete a document from a managed data source.",
+            message: "You cannot delete a document from a managed data source.",
           },
         },
         403
