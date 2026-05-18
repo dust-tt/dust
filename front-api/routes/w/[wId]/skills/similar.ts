@@ -1,0 +1,89 @@
+import { Hono } from "hono";
+
+import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
+import logger from "@app/logger/logger";
+import { isString } from "@app/types/shared/utils/general";
+
+export type GetSimilarSkillsResponseBody = {
+  similar_skills: string[];
+};
+
+// Mounted at /api/w/:wId/skills/similar.
+const app = new Hono();
+
+app.post("/", async (c) => {
+  const auth = c.get("auth");
+  const owner = auth.getNonNullableWorkspace();
+
+  const body = await c.req.json().catch(() => null);
+  const naturalDescription = body?.naturalDescription;
+  const excludeSkillId = body?.excludeSkillId;
+
+  if (!isString(naturalDescription)) {
+    return c.json(
+      {
+        error: {
+          type: "invalid_request_error",
+          message: "naturalDescription is required and must be a string.",
+        },
+      },
+      400
+    );
+  }
+
+  if (excludeSkillId !== undefined && !isString(excludeSkillId)) {
+    return c.json(
+      {
+        error: {
+          type: "invalid_request_error",
+          message: "excludeSkillId must be a string if provided.",
+        },
+      },
+      400
+    );
+  }
+
+  const result = await getSimilarSkills(auth, {
+    naturalDescription,
+    excludeSkillId: excludeSkillId ?? null,
+  });
+
+  if (result.isErr()) {
+    logger.error(
+      { error: result.error, workspaceId: owner.sId },
+      "Error fetching similar skills"
+    );
+    return c.json(
+      {
+        error: {
+          type: "internal_server_error",
+          message: result.error.message,
+        },
+      },
+      500
+    );
+  }
+  const similarSkills = result.value.similar_skills;
+  if (similarSkills.length > 0) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        naturalDescription,
+        similarSkills,
+      },
+      `Successfully fetched ${similarSkills.length} similar skills`
+    );
+  } else {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        naturalDescription,
+      },
+      "No similar skills found"
+    );
+  }
+
+  return c.json(result.value);
+});
+
+export default app;
