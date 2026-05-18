@@ -338,6 +338,13 @@ label to the PR.
 When migrating a new handler, add the marker to the Next file immediately,
 and place the Hono file at the mirrored path under `front-api/routes/`.
 
+A Next handler typically dispatches by method inside a single `switch
+(req.method)` block, with shared work above the switch running once per
+request. The Hono mirror registers one `app.<verb>(...)` per method, so
+naively translating would duplicate the pre-switch work across each method.
+When the shared work is more than a few lines, factor it out in the Hono
+file.
+
 Reviewer: If a PR touches a file that is part of a migrated pair (a Next file
 carrying `@migration-status: MIGRATED_TO_HONO` paired with a Hono file at the
 same path under `front-api/routes/`), verify the counterpart is also updated
