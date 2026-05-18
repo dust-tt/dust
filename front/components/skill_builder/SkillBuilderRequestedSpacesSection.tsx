@@ -4,7 +4,6 @@ import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActio
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
@@ -35,12 +34,9 @@ export function SkillBuilderRequestedSpacesSection({
   });
   const selectedAdditionalSpaces = additionalSpaces ?? [];
 
-  const { hasFeature } = useFeatureFlags();
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
   const { spaces, owner, isSpacesLoading } = useSpacesContext();
-
-  const isProjectsEnabled = hasFeature("projects");
 
   const missingSpaceIds = useMemo(() => {
     if (isSpacesLoading || !initialRequestedSpaceIds?.length) {
@@ -57,7 +53,9 @@ export function SkillBuilderRequestedSpacesSection({
   });
 
   const allSpaces = useMemo(() => {
-    return [...spaces, ...missingSpaces];
+    return [...spaces, ...missingSpaces].filter(
+      (space) => space.kind !== "project"
+    );
   }, [spaces, missingSpaces]);
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -178,7 +176,7 @@ export function SkillBuilderRequestedSpacesSection({
       <div className="flex items-start justify-between">
         <div>
           <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-            {isProjectsEnabled ? "Spaces and Projects" : "Spaces"}
+            Spaces
           </h3>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Set what knowledge and tools the skill can access.
@@ -215,6 +213,7 @@ export function SkillBuilderRequestedSpacesSection({
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
         entityName="skill"
+        includeProjects={false}
         missingSpaceIds={missingSpaceIds}
         onClose={handleCloseSheet}
         onSave={handleSaveSpaces}
