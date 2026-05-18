@@ -276,48 +276,6 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     ]);
   },
 
-  // create_label: async (
-  //   {name},
-  //   {authInfo}
-  // ) => {
-  //   const accessToken = authInfo?.token;
-  //   if (!accessToken) {
-  //     return new Err(new MCPError("Authentication required"));
-  //   }
-  //   const response = await fetchFromGmail(
-  //     '/gmail/v1/users/me/labels',
-  //     accessToken,
-  //     {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         name: name,
-  //       }),
-  //     }
-  //     );
-  //     if (!response.ok) {
-  //     const errorText = await getErrorText(response);
-  //     return new Err(
-  //       new MCPError(`Failed to create label: ${errorText}`)
-  //     );
-  //   }
-  //   const result = await response.json();
-
-  //   return new Ok([
-  //     { type: "text" as const, text: "label created successfully" },
-  //     {
-  //       type: "text" as const,
-  //       text: JSON.stringify(
-  //         {
-  //           name: result.name,
-  //           id: result.id,
-  //           color: result.color
-  //         }
-  //       ),
-  //     },
-  //   ]);
-  //   },
-
   get_thread: async ({ threadId }, { authInfo }) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
