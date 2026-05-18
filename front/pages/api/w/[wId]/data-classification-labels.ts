@@ -2,19 +2,23 @@
 import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
+import {
+  getConnectorAccessToken,
+  getMCPConnectionAccessToken,
+  getMicrosoftSensitivityLabels,
+  type MicrosoftSensitivityLabel,
+  parseAllowedLabelsConfig,
+} from "@app/lib/api/data_classification_labels";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import type { WorkspaceSensitivityLabelConfigType } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -22,19 +26,14 @@ import { fromError } from "zod-validation-error";
 const MICROSOFT_SENSITIVITY_LABELS_CONFIG_KEY =
   "microsoftSensitivityLabelsToInclude";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-export type MicrosoftSensitivityLabel = {
-  id: string;
-  name: string;
-};
+// Re-exported so existing consumers (`components/shared/labels/types.ts`)
+// keep importing from the route file.
+export type { MicrosoftSensitivityLabel };
 
 export type DataClassificationLabelsResponseBody = {
   labels: MicrosoftSensitivityLabel[];
   allowedLabels: MicrosoftAllowedLabel[];
 };
-
-// ─── Request schema ──────────────────────────────────────────────────────────
 
 const SourceSchema = z
   .object({
@@ -53,110 +52,6 @@ const SourceSchema = z
 const PostBodySchema = z.object({
   allowedLabels: z.array(z.string()),
 });
-
-const AllowedLabelsConfigSchema = z.array(z.string());
-
-function parseAllowedLabelsConfig(
-  configValue: string | null
-):
-  | { isValid: true; allowedLabels: MicrosoftAllowedLabel[] }
-  | { isValid: false; error: unknown } {
-  if (!configValue || configValue.trim() === "") {
-    return { isValid: true, allowedLabels: [] };
-  }
-
-  let parsedJson: unknown;
-  try {
-    parsedJson = JSON.parse(configValue);
-  } catch (error) {
-    return { isValid: false, error };
-  }
-
-  const parsed = AllowedLabelsConfigSchema.safeParse(parsedJson);
-  if (!parsed.success) {
-    return { isValid: false, error: fromError(parsed.error) };
-  }
-
-  return { isValid: true, allowedLabels: parsed.data };
-}
-
-// ─── Token helpers ───────────────────────────────────────────────────────────
-
-async function getConnectorAccessToken(
-  dataSource: DataSourceResource
-): Promise<string | null> {
-  if (!dataSource.connectorId) {
-    return null;
-  }
-  const connectorsAPI = new ConnectorsAPI(
-    config.getConnectorsAPIConfig(),
-    logger
-  );
-  const connRes = await connectorsAPI.getConnector(dataSource.connectorId);
-  if (connRes.isErr() || !connRes.value.connectionId) {
-    return null;
-  }
-  const tokRes = await getOAuthConnectionAccessToken({
-    config: config.getOAuthAPIConfig(),
-    logger,
-    connectionId: connRes.value.connectionId,
-  });
-  if (tokRes.isOk() && tokRes.value.access_token) {
-    return tokRes.value.access_token;
-  }
-  return null;
-}
-
-async function getMCPConnectionAccessToken(
-  auth: Authenticator,
-  internalMCPServerId: string
-): Promise<string | null> {
-  const connsResult = await MCPServerConnectionResource.listByMCPServer(auth, {
-    mcpServerId: internalMCPServerId,
-  });
-  if (connsResult.isErr()) {
-    return null;
-  }
-  const conn = connsResult.value.find((c) => c.connectionType === "workspace");
-  if (!conn?.connectionId) {
-    return null;
-  }
-  const tokRes = await getOAuthConnectionAccessToken({
-    config: config.getOAuthAPIConfig(),
-    logger,
-    connectionId: conn.connectionId,
-  });
-  if (tokRes.isOk() && tokRes.value.access_token) {
-    return tokRes.value.access_token;
-  }
-  return null;
-}
-
-// ─── Microsoft helpers ───────────────────────────────────────────────────────
-
-async function getMicrosoftSensitivityLabels(
-  accessToken: string
-): Promise<MicrosoftSensitivityLabel[]> {
-  const client = GraphClient.init({
-    authProvider: (done) => done(null, accessToken),
-  });
-
-  const res = await client
-    .api("/security/dataSecurityAndGovernance/sensitivityLabels")
-    .get();
-
-  const rawLabels: { id?: string; name?: string; displayName?: string }[] =
-    res?.value ?? [];
-
-  return rawLabels
-    .filter((l) => l.id)
-    .map((l) => ({
-      id: l.id as string,
-      name: l.name ?? l.displayName ?? l.id ?? "",
-    }));
-}
-
-// ─── Handler ─────────────────────────────────────────────────────────────────
 
 async function handler(
   req: NextApiRequest,
