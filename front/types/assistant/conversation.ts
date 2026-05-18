@@ -490,6 +490,7 @@ export type ConversationForkedFromType = {
   sourceMessageId: string;
   branchedAt: number;
   user: UserType;
+  gcsMountStatus: "pending" | "copied";
 };
 
 /**

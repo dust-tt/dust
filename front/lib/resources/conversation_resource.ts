@@ -147,7 +147,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       {
         association: "forkedFrom" as const,
         required: false,
-        attributes: ["branchedAt", "childConversationId"],
+        attributes: ["branchedAt", "childConversationId", "gcsMountStatus"],
         include: [
           {
             association: "parentConversation" as const,
@@ -207,6 +207,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         UserResource.model,
         fork.createdByUser.get()
       ).toJSON(),
+      gcsMountStatus: fork.gcsMountStatus,
     };
   }
 
@@ -420,6 +421,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
                 sourceMessageId,
                 branchedAt: branchedAtMs,
                 user,
+                gcsMountStatus: fork.gcsMountStatus,
               },
             },
             title: fork.childConversation.title,

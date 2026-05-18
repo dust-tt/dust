@@ -186,6 +186,7 @@
  *         - parentConversationTitle
  *         - sourceMessageId
  *         - branchedAt
+ *         - gcsMountStatus
  *         - user
  *       properties:
  *         parentConversationId:
@@ -197,6 +198,9 @@
  *           type: string
  *         branchedAt:
  *           type: integer
+ *         gcsMountStatus:
+ *           type: string
+ *           enum: [pending, copied]
  *         user:
  *           $ref: '#/components/schemas/PrivateConversationForkUser'
  *     PrivateConversationForkedChild:

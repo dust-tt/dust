@@ -1,8 +1,11 @@
+import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/conversation_fork_queue/config";
 import { makeConversationForkWorkflowId } from "@app/temporal/conversation_fork_queue/helpers";
 import { conversationForkWorkflow } from "@app/temporal/conversation_fork_queue/workflows";
+import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -12,10 +15,20 @@ export async function launchConversationForkWorkflow({
   workspaceId,
   sourceConversationId,
   destConversationId,
+  authType,
+  compactionMessageId,
+  compactionMessageVersion,
+  model,
+  sourceConversation,
 }: {
   workspaceId: string;
   sourceConversationId: string;
   destConversationId: string;
+  authType?: AuthenticatorType;
+  compactionMessageId?: string;
+  compactionMessageVersion?: number;
+  model?: SupportedModel;
+  sourceConversation?: CompactionSourceConversation;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeConversationForkWorkflowId({
@@ -25,7 +38,18 @@ export async function launchConversationForkWorkflow({
 
   try {
     await client.workflow.start(conversationForkWorkflow, {
-      args: [{ workspaceId, sourceConversationId, destConversationId }],
+      args: [
+        {
+          workspaceId,
+          sourceConversationId,
+          destConversationId,
+          authType,
+          compactionMessageId,
+          compactionMessageVersion,
+          model,
+          sourceConversation,
+        },
+      ],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: {

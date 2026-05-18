@@ -74,6 +74,7 @@ describe("runCompaction", () => {
     conversation = fetchedConversationResult.value;
 
     vi.clearAllMocks();
+    vi.mocked(launchCompactionWorkflow).mockResolvedValue(new Ok(undefined));
     vi.mocked(createGCSMountFile).mockImplementation(
       async (_auth, scope, { relativeFilePath, content, contentType }) =>
         new Ok({

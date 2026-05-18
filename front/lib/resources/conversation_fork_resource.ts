@@ -34,6 +34,7 @@ export type ConversationForkType = {
   createdByUserId: string;
   sourceMessageId: string;
   branchedAt: number;
+  gcsMountStatus: "pending" | "copied";
 };
 
 type ConversationForkResourceIds = Pick<
@@ -337,6 +338,22 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     });
   }
 
+  static async markGcsMountCopied(
+    auth: Authenticator,
+    { childConversationModelId }: { childConversationModelId: ModelId }
+  ): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+    await this.model.update(
+      { gcsMountStatus: "copied" },
+      {
+        where: {
+          childConversationId: childConversationModelId,
+          workspaceId: owner.id,
+        },
+      }
+    );
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -374,6 +391,7 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
       createdByUserId: this.resourceIds.createdByUserId,
       sourceMessageId: this.resourceIds.sourceMessageId,
       branchedAt: this.branchedAt.getTime(),
+      gcsMountStatus: this.gcsMountStatus,
     };
   }
 }

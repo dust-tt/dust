@@ -57,7 +57,10 @@
  *       400:
  *         description: Invalid request body
  */
-import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
+import {
+  CompactionError,
+  compactConversation,
+} from "@app/lib/api/assistant/conversation/compaction";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -146,10 +149,44 @@ async function handler(
         model,
       });
       if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: result.error.status_code,
-          api_error: result.error.api_error,
-        });
+        if (!(result.error instanceof CompactionError)) {
+          throw result.error;
+        }
+        switch (result.error.code) {
+          case "running_agent":
+            return apiError(req, res, {
+              status_code: 409,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Answer the pending agent message first.",
+              },
+            });
+          case "running_compaction":
+            return apiError(req, res, {
+              status_code: 409,
+              api_error: {
+                type: "invalid_request_error",
+                message: "A compaction is already in progress. Please wait.",
+              },
+            });
+          case "just_compacted":
+            return apiError(req, res, {
+              status_code: 409,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "This conversation was just compacted. Send a new message before compacting again.",
+              },
+            });
+          case "workflow_launch_failed":
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to start compaction workflow.",
+              },
+            });
+        }
       }
 
       return res.status(200).json({

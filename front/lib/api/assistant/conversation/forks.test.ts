@@ -33,7 +33,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { launchCompactionWorkflow } from "@app/temporal/agent_loop/client";
+import { launchConversationForkWorkflow } from "@app/temporal/conversation_fork_queue/client";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -63,7 +63,13 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/temporal/agent_loop/client", () => ({
   launchAgentLoopWorkflow: vi.fn(),
-  launchCompactionWorkflow: vi.fn(),
+}));
+
+vi.mock("@app/temporal/conversation_fork_queue/client", () => ({
+  launchConversationForkWorkflow: vi.fn(async () => {
+    const { Ok } = await import("@app/types/shared/result");
+    return new Ok(undefined);
+  }),
 }));
 
 async function createUserMessage(
@@ -514,6 +520,7 @@ describe("createConversationFork", () => {
         sourceMessageId: sourceMessage.sId,
         branchedAt: expect.any(Number),
         user: user.toJSON(),
+        gcsMountStatus: "pending",
       },
     });
     expect(childConversation.content).toHaveLength(1);
@@ -525,10 +532,10 @@ describe("createConversationFork", () => {
         ? childConversation.content[0]![0]!.status
         : null
     ).toBe("created");
-    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+    expect(vi.mocked(launchConversationForkWorkflow)).toHaveBeenCalledWith(
       expect.objectContaining({
-        auth,
-        conversationId: childConversation.sId,
+        destConversationId: childConversation.sId,
+        sourceConversationId: parentConversation.sId,
         sourceConversation: {
           conversationId: parentConversation.sId,
           messageRank: sourceMessage.rank,
@@ -615,10 +622,10 @@ describe("createConversationFork", () => {
     });
 
     expect(result.isErr()).toBe(false);
-    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+    expect(vi.mocked(launchConversationForkWorkflow)).toHaveBeenCalledWith(
       expect.objectContaining({
-        auth,
-        conversationId: expect.any(String),
+        destConversationId: expect.any(String),
+        sourceConversationId: parentConversation.sId,
         model: {
           providerId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
           modelId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
@@ -972,10 +979,10 @@ describe("createConversationFork", () => {
     expect(processAndUpsertToDataSourceSpy.mock.calls[0]?.[2].file.sId).toBe(
       copiedFiles[0]?.sId
     );
-    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+    expect(vi.mocked(launchConversationForkWorkflow)).toHaveBeenCalledWith(
       expect.objectContaining({
-        auth,
-        conversationId: childConversation.sId,
+        destConversationId: childConversation.sId,
+        sourceConversationId: parentConversation.sId,
         sourceConversation: expect.objectContaining({
           conversationId: parentConversation.sId,
           messageRank: sourceMessage.rank,
@@ -1118,10 +1125,10 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 const frameFileId = "${copiedFrameAttachment!.fileId}";
 const untouched = "prefix${referencedFile.sId}suffix";`
     );
-    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+    expect(vi.mocked(launchConversationForkWorkflow)).toHaveBeenCalledWith(
       expect.objectContaining({
-        auth,
-        conversationId: childConversation.sId,
+        destConversationId: childConversation.sId,
+        sourceConversationId: parentConversation.sId,
         sourceConversation: expect.objectContaining({
           conversationId: parentConversation.sId,
           messageRank: sourceMessage.rank,
@@ -1345,10 +1352,10 @@ const untouched = "prefix${referencedFile.sId}suffix";`
     expect(processAndUpsertToDataSourceSpy.mock.calls[0]?.[2].file.sId).toBe(
       copiedFiles[0]?.sId
     );
-    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+    expect(vi.mocked(launchConversationForkWorkflow)).toHaveBeenCalledWith(
       expect.objectContaining({
-        auth,
-        conversationId: childConversation.sId,
+        destConversationId: childConversation.sId,
+        sourceConversationId: parentConversation.sId,
         sourceConversation: expect.objectContaining({
           conversationId: parentConversation.sId,
           messageRank: sourceMessage.rank,
@@ -1607,10 +1614,10 @@ const untouched = "prefix${referencedFile.sId}suffix";`
       childConversation,
       "node_before_fork"
     );
-    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+    expect(vi.mocked(launchConversationForkWorkflow)).toHaveBeenCalledWith(
       expect.objectContaining({
-        auth,
-        conversationId: childConversation.sId,
+        destConversationId: childConversation.sId,
+        sourceConversationId: parentConversation.sId,
         sourceConversation: expect.objectContaining({
           conversationId: parentConversation.sId,
           messageRank: sourceMessage.rank,

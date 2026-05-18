@@ -29,7 +29,10 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import {
+  launchAgentLoopWorkflow,
+  launchCompactionWorkflow,
+} from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -2969,6 +2972,7 @@ describe("compactConversation", () => {
     conversation = fetched.value;
 
     vi.clearAllMocks();
+    vi.mocked(launchCompactionWorkflow).mockResolvedValue(new Ok(undefined));
   });
 
   it("should create a compaction message on an idle conversation", async () => {
@@ -3014,7 +3018,7 @@ describe("compactConversation", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.status_code).toBe(409);
+      expect(result.error.code).toBe("just_compacted");
     }
   });
 
@@ -3057,7 +3061,7 @@ describe("compactConversation", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.status_code).toBe(409);
+      expect(result.error.code).toBe("running_agent");
     }
   });
 });
@@ -4350,6 +4354,7 @@ describe("conversation fetch forkingData", () => {
           parentConversationTitle,
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
+          gcsMountStatus: "pending",
           user: auth.getNonNullableUser().toJSON(),
         },
       });
@@ -4368,6 +4373,7 @@ describe("conversation fetch forkingData", () => {
           parentConversationTitle,
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
+          gcsMountStatus: "pending",
           user: auth.getNonNullableUser().toJSON(),
         },
       });

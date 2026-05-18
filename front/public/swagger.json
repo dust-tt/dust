@@ -10117,6 +10117,7 @@
           "parentConversationTitle",
           "sourceMessageId",
           "branchedAt",
+          "gcsMountStatus",
           "user"
         ],
         "properties": {
@@ -10132,6 +10133,13 @@
           },
           "branchedAt": {
             "type": "integer"
+          },
+          "gcsMountStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "copied"
+            ]
           },
           "user": {
             "$ref": "#/components/schemas/PrivateConversationForkUser"

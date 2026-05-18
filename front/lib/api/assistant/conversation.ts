@@ -633,6 +633,20 @@ export async function postUserMessage(
     });
   }
 
+  if (
+    conversation.forkingData?.forkedFrom &&
+    conversation.forkingData.forkedFrom.gcsMountStatus !== "copied"
+  ) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "User messages cannot be posted while files are being copied to this conversation.",
+      },
+    });
+  }
+
   const canInteractRes = await WakeUpResource.canUserInteract(
     auth,
     conversation

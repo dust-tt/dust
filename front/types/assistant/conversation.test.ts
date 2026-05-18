@@ -21,6 +21,7 @@ describe("getConversationDisplayTitle", () => {
       image: null,
       lastLoginAt: null,
     },
+    gcsMountStatus: "copied" as const,
   };
 
   it("returns the persisted title when present", () => {

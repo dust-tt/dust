@@ -159,6 +159,7 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
         sourceMessageId: sourceMessage.sId,
         branchedAt: expect.any(Number),
         user: auth.getNonNullableUser().toJSON(),
+        gcsMountStatus: "pending",
       },
     });
     expect(conversation.depth).toBe(1);
@@ -204,6 +205,7 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
         sourceMessageId: sourceMessage.sId,
         branchedAt: expect.any(Number),
         user: auth.getNonNullableUser().toJSON(),
+        gcsMountStatus: "pending",
       },
     });
   });

@@ -208,6 +208,7 @@ describe("ConversationResource", () => {
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
           user: auth.getNonNullableUser().toJSON(),
+          gcsMountStatus: "pending",
         },
       });
 
@@ -240,6 +241,7 @@ describe("ConversationResource", () => {
             sourceMessageId: sourceMessage.sId,
             branchedAt: branchedAt.getTime(),
             user: auth.getNonNullableUser().toJSON(),
+            gcsMountStatus: "pending",
           },
         });
       }
@@ -339,6 +341,7 @@ describe("ConversationResource", () => {
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
           user: adminAuth.getNonNullableUser().toJSON(),
+          gcsMountStatus: "pending",
         },
       });
     });

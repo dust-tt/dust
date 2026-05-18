@@ -17,6 +17,7 @@ export class ConversationForkModel extends WorkspaceAwareModel<ConversationForkM
   declare createdByUserId: ForeignKey<UserModel["id"]>;
   declare sourceMessageId: ForeignKey<MessageModel["id"]>;
   declare branchedAt: Date;
+  declare gcsMountStatus: CreationOptional<"pending" | "copied">;
 
   declare parentConversation?: NonAttribute<ConversationModel>;
   declare childConversation?: NonAttribute<ConversationModel>;
@@ -39,6 +40,11 @@ ConversationForkModel.init(
     branchedAt: {
       type: DataTypes.DATE,
       allowNull: false,
+    },
+    gcsMountStatus: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "pending",
     },
   },
   {

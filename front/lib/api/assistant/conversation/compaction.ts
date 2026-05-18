@@ -25,34 +25,42 @@ import {
   isCompactionMessageType,
 } from "@app/types/assistant/conversation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
-import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+export class CompactionError extends Error {
+  constructor(
+    readonly code:
+      | "running_agent"
+      | "running_compaction"
+      | "just_compacted"
+      | "workflow_launch_failed"
+  ) {
+    super(code);
+  }
+}
+
 /**
- * Create a CompactionMessage in the conversation and launch the compaction workflow.
+ * Create a CompactionMessage in the conversation and publish the compaction_message_new event.
+ * Does NOT launch any workflow — the caller is responsible for starting the actual compaction.
  *
  * The CompactionMessage is created with status "created" inside the conversation advisory lock,
- * ensuring it's serialized with other conversation operations. The workflow is launched
- * fire-and-forget after the transaction commits.
+ * ensuring it's serialized with other conversation operations.
  */
-export async function compactConversation(
+export async function createAndPublishCompactionMessage(
   auth: Authenticator,
   {
     conversation,
-    model,
     sourceConversation,
   }: {
     conversation: ConversationType;
-    model: SupportedModel;
     sourceConversation?: CompactionSourceConversation;
   }
 ): Promise<
-  Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
+  Result<{ compactionMessage: CompactionMessageType }, CompactionError>
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  // Block compaction while an agent message is running or a compaction is running.
   const runningAgentMessage = conversation.content
     .flat()
     .find(
@@ -68,23 +76,11 @@ export async function compactConversation(
   const lastMessage = conversation.content.at(-1)?.at(-1);
 
   if (runningAgentMessage) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Answer the pending agent message first.",
-      },
-    });
+    return new Err(new CompactionError("running_agent"));
   }
 
   if (runningCompaction) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message: "A compaction is already in progress. Please wait.",
-      },
-    });
+    return new Err(new CompactionError("running_compaction"));
   }
 
   if (
@@ -92,22 +88,14 @@ export async function compactConversation(
     isCompactionMessageType(lastMessage) &&
     lastMessage.status === "succeeded"
   ) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "This conversation was just compacted. Send a new message before compacting again.",
-      },
-    });
+    return new Err(new CompactionError("just_compacted"));
   }
 
   const { compactionMessage } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    // Re-check the existence of a compaction message or running agent message inside the critical
-    // section of the advisory lock to avoid stacking compaction with other compaction or running
-    // agent loop.
+    // Re-check inside the critical section of the advisory lock to avoid stacking compaction with
+    // other compaction or running agent loop.
     const [runningCompactionMessage, runningAgentMessage] = await Promise.all([
       MessageModel.findOne({
         where: {
@@ -165,14 +153,7 @@ export async function compactConversation(
   });
 
   if (!compactionMessage) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Cannot compact while another compaction or an agent message is running.",
-      },
-    });
+    return new Err(new CompactionError("running_compaction"));
   }
 
   await publishConversationEvent(
@@ -185,7 +166,99 @@ export async function compactConversation(
     { conversationId: conversation.sId }
   );
 
-  void launchCompactionWorkflow({
+  return new Ok({ compactionMessage });
+}
+
+/**
+ * Conditionally fail a CompactionMessage if it is still in "created" state.
+ * Returns the updated CompactionMessageType if the update happened, null if already processed.
+ * This is idempotent: calling it multiple times is safe.
+ */
+export async function failCompactionMessageIfCreated(
+  auth: Authenticator,
+  { compactionMessageId }: { compactionMessageId: string }
+): Promise<CompactionMessageType | null> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const messageRow = await MessageModel.findOne({
+    where: { sId: compactionMessageId, workspaceId: owner.id },
+    include: [
+      {
+        model: CompactionMessageModel,
+        as: "compactionMessage",
+        required: true,
+        where: { status: "created" },
+      },
+    ],
+  });
+
+  if (!messageRow?.compactionMessage) {
+    return null;
+  }
+
+  const [updatedCount] = await CompactionMessageModel.update(
+    { status: "failed" },
+    {
+      where: {
+        id: messageRow.compactionMessage.id,
+        status: "created",
+        workspaceId: owner.id,
+      },
+    }
+  );
+
+  if (updatedCount === 0) {
+    return null;
+  }
+
+  return {
+    type: "compaction_message",
+    id: messageRow.id,
+    compactionMessageId: messageRow.compactionMessage.id,
+    sId: messageRow.sId,
+    created: messageRow.createdAt.getTime(),
+    visibility: messageRow.visibility,
+    version: messageRow.version,
+    rank: messageRow.rank,
+    branchId: messageRow.getBranchId(),
+    sourceConversationId: messageRow.compactionMessage.sourceConversationId,
+    status: "failed",
+    content: null,
+  };
+}
+
+/**
+ * Create a CompactionMessage in the conversation and launch the compaction workflow.
+ *
+ * If the workflow fails to launch, the CompactionMessage is immediately failed so the conversation
+ * is not left permanently blocked.
+ */
+export async function compactConversation(
+  auth: Authenticator,
+  {
+    conversation,
+    model,
+    sourceConversation,
+  }: {
+    conversation: ConversationType;
+    model: SupportedModel;
+    sourceConversation?: CompactionSourceConversation;
+  }
+): Promise<
+  Result<{ compactionMessage: CompactionMessageType }, CompactionError>
+> {
+  const createResult = await createAndPublishCompactionMessage(auth, {
+    conversation,
+    sourceConversation,
+  });
+
+  if (createResult.isErr()) {
+    return createResult;
+  }
+
+  const { compactionMessage } = createResult.value;
+
+  const launchResult = await launchCompactionWorkflow({
     auth,
     conversationId: conversation.sId,
     compactionMessageId: compactionMessage.sId,
@@ -193,6 +266,26 @@ export async function compactConversation(
     model,
     sourceConversation,
   });
+
+  if (launchResult.isErr()) {
+    const failedMessage = await failCompactionMessageIfCreated(auth, {
+      compactionMessageId: compactionMessage.sId,
+    });
+
+    if (failedMessage) {
+      await publishConversationEvent(
+        {
+          type: "compaction_message_done",
+          created: Date.now(),
+          messageId: failedMessage.sId,
+          message: failedMessage,
+        },
+        { conversationId: conversation.sId }
+      );
+    }
+
+    return new Err(new CompactionError("workflow_launch_failed"));
+  }
 
   return new Ok({ compactionMessage });
 }
