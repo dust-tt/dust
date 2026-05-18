@@ -24,7 +24,7 @@ function FunctionsSection() {
         "Answer prospect questions and RFPs with product and competitor insights.",
         "Analyze calls to improve pitch delivery and objection handling.",
       ],
-      visualSrc: "/static/landing/functions/sales.png",
+      visualSrc: "/static/landing/functions/sales_min.png",
       href: "/home/solutions/sales",
     },
     {
@@ -36,7 +36,7 @@ function FunctionsSection() {
         "Translate while maintaining brand voice.",
         "Extract actionable insights from feedback.",
       ],
-      visualSrc: "/static/landing/functions/marketing.png",
+      visualSrc: "/static/landing/functions/marketing_min.png",
       href: "/home/solutions/marketing",
     },
     {
@@ -48,7 +48,7 @@ function FunctionsSection() {
         "Auto-create FAQs from resolved tickets.",
         "Auto-route tickets based on queries and expertise.",
       ],
-      visualSrc: "/static/landing/functions/customersupport.png",
+      visualSrc: "/static/landing/functions/customersupport_min.png",
       href: "/home/solutions/customer-support",
     },
     {
@@ -60,7 +60,7 @@ function FunctionsSection() {
         "Build and maintain searchable knowledge bases.",
         "Surface relevant context for decision-making.",
       ],
-      visualSrc: "/static/landing/functions/knowledge.png",
+      visualSrc: "/static/landing/functions/knowledge_min.png",
       href: "/home/solutions/knowledge",
     },
     {
@@ -72,7 +72,7 @@ function FunctionsSection() {
         "Transform insights into visual stories.",
         "Connect multiple data sources for unified analysis.",
       ],
-      visualSrc: "/static/landing/functions/data.png",
+      visualSrc: "/static/landing/functions/data_min.png",
       href: "/home/solutions/data-analytics",
     },
     {
@@ -84,7 +84,7 @@ function FunctionsSection() {
         "Manage and track IT assets and requests.",
         "Answer questions about security protocols and tools.",
       ],
-      visualSrc: "/static/landing/functions/it.png",
+      visualSrc: "/static/landing/functions/it_min.png",
       href: "/home/solutions/it",
     },
     {
@@ -96,7 +96,7 @@ function FunctionsSection() {
         "Auto-review code to ensure standards and security compliance at scale.",
         "Auto-generate and update documentation from code changes.",
       ],
-      visualSrc: "/static/landing/functions/engineering.png",
+      visualSrc: "/static/landing/functions/engineering_min.png",
       href: "/home/solutions/engineering",
     },
     {
@@ -108,7 +108,7 @@ function FunctionsSection() {
         "Streamline cross-team communication and workflows.",
         "Transform raw data into structured reports.",
       ],
-      visualSrc: "/static/landing/functions/productivity.png",
+      visualSrc: "/static/landing/functions/productivity_min.png",
       href: "/home/solutions/productivity",
     },
     {
@@ -120,7 +120,7 @@ function FunctionsSection() {
         "Assist managers with employee feedback and development.",
         "Support recruitment and interview processes.",
       ],
-      visualSrc: "/static/landing/functions/people.png",
+      visualSrc: "/static/landing/functions/people_min.png",
       href: "/home/solutions/recruiting-people",
     },
     {
@@ -132,7 +132,7 @@ function FunctionsSection() {
         "Generate standard legal documents from templates.",
         "Track policy updates and ensure team awareness.",
       ],
-      visualSrc: "/static/landing/functions/legal.png",
+      visualSrc: "/static/landing/functions/legal_min.png",
       href: "/home/solutions/legal",
     },
   ];
