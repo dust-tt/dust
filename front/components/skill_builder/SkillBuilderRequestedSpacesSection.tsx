@@ -10,6 +10,7 @@ import type {
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { SpaceType } from "@app/types/space";
 import { Button, ContentMessage, PlanetIcon } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
@@ -147,6 +148,32 @@ export function SkillBuilderRequestedSpacesSection({
     );
   }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
 
+  const handleRemoveSpace = async (space: SpaceType) => {
+    if (!areSpaceRequirementsReady) {
+      return;
+    }
+
+    if (spaceIdsUsedBySkill.has(space.sId)) {
+      await confirmBlockedSpaceRemoval({
+        space,
+        actions: spaceIdToActions[space.sId] ?? [],
+        knowledgeInInstructions: knowledgeBySpaceId[space.sId] ?? [],
+      });
+      return;
+    }
+
+    additionalSpacesField.onChange(
+      selectedAdditionalSpaces.filter((spaceId) => spaceId !== space.sId)
+    );
+  };
+
+  const canRemoveSpace = (space: SpaceType) => {
+    return (
+      areSpaceRequirementsReady &&
+      (additionalSpaceIds.has(space.sId) || spaceIdsUsedBySkill.has(space.sId))
+    );
+  };
+
   const handleOpenSheet = () => {
     if (!areSpaceRequirementsReady) {
       return;
@@ -213,29 +240,8 @@ export function SkillBuilderRequestedSpacesSection({
       )}
       <SpaceChips
         spaces={spacesToDisplay}
-        onRemoveSpace={async (space) => {
-          if (!areSpaceRequirementsReady) {
-            return;
-          }
-
-          if (spaceIdsUsedBySkill.has(space.sId)) {
-            await confirmBlockedSpaceRemoval({
-              space,
-              actions: spaceIdToActions[space.sId] ?? [],
-              knowledgeInInstructions: knowledgeBySpaceId[space.sId] ?? [],
-            });
-            return;
-          }
-
-          additionalSpacesField.onChange(
-            selectedAdditionalSpaces.filter((spaceId) => spaceId !== space.sId)
-          );
-        }}
-        canRemoveSpace={(space) =>
-          areSpaceRequirementsReady &&
-          (additionalSpaceIds.has(space.sId) ||
-            spaceIdsUsedBySkill.has(space.sId))
-        }
+        onRemoveSpace={handleRemoveSpace}
+        canRemoveSpace={canRemoveSpace}
       />
 
       <SpaceSelectionSheet
