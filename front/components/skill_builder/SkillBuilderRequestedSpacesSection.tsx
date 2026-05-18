@@ -201,7 +201,7 @@ export function SkillBuilderRequestedSpacesSection({
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
             Based on your selection of spaces, knowledge, and tools, this skill
-            can only be used by users with access to:{" "}
+            can only be used by users with access to:&nbsp;
             <strong>
               {nonGlobalSpacesWithRestrictions
                 .map((space) => space.name)

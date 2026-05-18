@@ -188,7 +188,8 @@ export function useBlockedSkillSpaceRemovalConfirm({
             ))}
           </div>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Update the skill to stop relying on these items, then remove the{" "}
+            Update the skill to stop relying on these items, then remove
+            the&nbsp;
             {spaceKind}.
           </p>
         </div>
