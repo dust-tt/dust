@@ -39,9 +39,6 @@ async function importAgentConfiguration(
   auth: Authenticator,
   yamlConfig: AgentYAMLConfig,
   agentConfigurationId?: string,
-  // When provided, these actions are used as-is instead of converting from the
-  // YAML toolset. This is used by patchAgentConfigurationFromJSON to preserve
-  // the current actions when the patch does not touch the toolset.
   resolvedActions?: AgentConfigurationType["actions"]
 ): Promise<ImportResult> {
   const isSaveAgentConfigurationsEnabled =
@@ -84,6 +81,8 @@ async function importAgentConfiguration(
   let mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"];
   let skippedActions: { action: { name?: string }; reason: string }[] = [];
 
+  // When provided, these actions are used as-is instead of converting from the
+  // YAML toolset. 
   if (resolvedActions) {
     const serverSideActions = resolvedActions.filter(
       isServerSideMCPServerConfiguration
