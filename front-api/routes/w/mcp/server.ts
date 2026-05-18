@@ -8,6 +8,7 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 
+import { requireRole } from "../../../middleware/require_role";
 import { validate } from "../../../middleware/validator";
 
 export type SyncMCPServerResponseBody = {
@@ -39,23 +40,10 @@ export type PatchMCPServerToolsPermissionsResponseBody = {
 export const serverApp = new Hono();
 
 // POST /sync — admin-only, refreshes the cached metadata for a remote MCP server.
-serverApp.post("/sync", async (c) => {
+serverApp.post("/sync", requireRole("admin"), async (c) => {
   const auth = c.get("auth");
   // serverId is guaranteed present: the parent route is mounted at /:serverId.
   const serverId = c.req.param("serverId") ?? "";
-
-  if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can manage MCP servers.",
-        },
-      },
-      403
-    );
-  }
 
   const server = await RemoteMCPServerResource.fetchById(auth, serverId);
   if (!server) {
@@ -102,24 +90,12 @@ serverApp.post("/sync", async (c) => {
 // PATCH /tools/:toolName — update per-tool permission / enabled flag.
 serverApp.patch(
   "/tools/:toolName",
+  requireRole("user"),
   validate("json", UpdateMCPToolSettingsBodySchema),
   async (c) => {
     const auth = c.get("auth");
     const serverId = c.req.param("serverId") ?? "";
     const toolName = c.req.param("toolName") ?? "";
-
-    if (!auth.isUser()) {
-      return c.json(
-        {
-          error: {
-            type: "mcp_auth_error",
-            message:
-              "You are not authorized to make request to inspect an MCP server.",
-          },
-        },
-        401
-      );
-    }
 
     const { id } = getServerTypeAndIdFromSId(serverId);
     if (!id) {

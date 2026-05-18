@@ -4,6 +4,8 @@ import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import type { ProviderType } from "@app/types/provider";
 import { redactString } from "@app/types/shared/utils/string_utils";
 
+import { requireRole } from "../../middleware/require_role";
+
 export type GetProvidersResponseBody = {
   providers: ProviderType[];
 };
@@ -19,22 +21,8 @@ function redactConfig(config: string) {
 
 export const providersApp = new Hono();
 
-providersApp.get("/", async (c) => {
+providersApp.get("/", requireRole("builder"), async (c) => {
   const auth = c.get("auth");
-
-  if (!auth.isBuilder()) {
-    return c.json(
-      {
-        error: {
-          type: "provider_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can list providers.",
-        },
-      },
-      403
-    );
-  }
-
   const owner = auth.getNonNullableWorkspace();
   const providers = await ProviderModel.findAll({
     where: {

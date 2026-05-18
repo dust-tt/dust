@@ -9,6 +9,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 
+import { requireRole } from "../../../middleware/require_role";
 import { validate } from "../../../middleware/validator";
 
 export const PostRequestActionsAccessBodySchema = z.object({
@@ -27,23 +28,11 @@ export const requestAccessApp = new Hono();
 
 requestAccessApp.post(
   "/",
+  requireRole("user"),
   validate("json", PostRequestActionsAccessBodySchema),
   async (c) => {
     const auth = c.get("auth");
     const user = auth.getNonNullableUser();
-
-    if (!auth.isUser()) {
-      return c.json(
-        {
-          error: {
-            type: "mcp_auth_error",
-            message: "You are not authorized to submit actions requests.",
-          },
-        },
-        401
-      );
-    }
-
     const { emailMessage, mcpServerViewId } = c.req.valid("json");
     const emailRequester = user.email;
 
