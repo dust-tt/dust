@@ -36,6 +36,41 @@ export const DEFAULT_REINFORCEMENT_CAP_MICRO_USD = 100_000_000;
 // $20 = 20_000_000 microUSD.
 export const DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD = 20_000_000;
 
+// Estimated cost per conversation analysis (in microUSD).
+// $0.10 = 100_000 microUSD.
+const ESTIMATED_COST_PER_CONVERSATION_MICRO_USD = 100_000;
+
+/**
+ * Compute the maximum number of conversations to analyze based on the
+ * remaining reinforcement budget and remaining programmatic credits.
+ * Takes the most restrictive limit, capped at DEFAULT_MAX_CONVERSATIONS_PER_RUN.
+ */
+export function getMaxConversationsForBudget({
+  globalConsumptionMicroUsd,
+  globalCapMicroUsd,
+  remainingProgrammaticCreditsMicroUsd,
+}: {
+  globalConsumptionMicroUsd: number;
+  globalCapMicroUsd: number;
+  remainingProgrammaticCreditsMicroUsd: number;
+}): number {
+  const remainingReinforcementMicroUsd =
+    globalCapMicroUsd - globalConsumptionMicroUsd;
+  const remainingMicroUsd = Math.min(
+    remainingReinforcementMicroUsd,
+    remainingProgrammaticCreditsMicroUsd
+  );
+  if (remainingMicroUsd <= 0) {
+    return 0;
+  }
+
+  const fromBudget = Math.floor(
+    remainingMicroUsd / ESTIMATED_COST_PER_CONVERSATION_MICRO_USD
+  );
+
+  return Math.min(fromBudget, DEFAULT_MAX_CONVERSATIONS_PER_RUN);
+}
+
 // Scoring weights for conversation selection.
 export const WEIGHT_FEEDBACK = 0.45;
 export const WEIGHT_TOOL_ERRORS = 0.3;

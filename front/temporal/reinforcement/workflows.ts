@@ -327,17 +327,26 @@ export async function reinforcementWorkspaceWorkflow({
     // Cap reached: activity already logged the details. Stop immediately.
     return;
   }
+  if (settings.programmaticUsageLimitReached) {
+    // Programmatic usage limit reached: stop to avoid consuming credits the
+    // workspace no longer has.
+    return;
+  }
 
   // Resolve effective batch mode: the caller may request batch mode, but the
   // workspace setting can override it to streaming.
   const effectiveBatchMode = useBatchMode && settings.batchModeAllowed;
 
   // Phase 1: Discover conversations with skills.
+  // Limit the number of conversations based on the remaining reinforcement
+  // budget (estimated $0.10 per conversation).
+  const maxConversations = settings.maxConversationsForBudget;
   const conversationsWithSkills =
     await getRecentConversationsWithSkillsActivity({
       workspaceId,
       lookbackDays: conversationLookbackDays,
       skillId,
+      maxConversations,
     });
 
   if (conversationsWithSkills.length === 0) {
