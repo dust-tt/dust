@@ -95,7 +95,6 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
 
       // Clean region params from URL once consumed.
       params.delete("region");
-      params.delete("regionUrl");
       const qs = params.toString();
       const newUrl =
         window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;

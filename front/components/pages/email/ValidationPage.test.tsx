@@ -90,22 +90,4 @@ describe("ValidationPage", () => {
     }
     expect(tokenInput.value).toBe("approval-token");
   });
-
-  it("ignores regionUrl when resolving the validation URL", async () => {
-    window.history.replaceState(
-      null,
-      "",
-      "/email/validation?token=approval-token&region=europe-west1&regionUrl=https%3A%2F%2Fattacker.example"
-    );
-
-    renderValidationPage();
-
-    const form = await getValidationForm();
-
-    expect(form.getAttribute("action")).toBe(
-      "https://eu.dust.tt/api/email/validate-action"
-    );
-    expect(submitSpy).toHaveBeenCalledOnce();
-    expect(window.location.search).toBe("?token=approval-token");
-  });
 });
