@@ -10,7 +10,11 @@ import {
   getRelatedPosts,
 } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
-import { renderRichTextFromContentful } from "@app/lib/contentful/richTextRenderer";
+import {
+  renderCtaFromContentful,
+  renderRichTextFromContentful,
+  splitDocumentForMidCta,
+} from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -22,6 +26,7 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactElement } from "react";
+import { useMemo } from "react";
 
 export const getStaticPaths: GetStaticPaths = async () => {
   // Don't pre-generate any paths at build time to minimize Contentful API calls.
@@ -96,6 +101,18 @@ export default function BlogPost({
   const ogImageUrl = post.image?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/blog/${post.slug}`;
   const tocItems = extractTableOfContents(post.body);
+  const ctaContent = useMemo(
+    () => renderCtaFromContentful(post.cta),
+    [post.cta]
+  );
+  const inlineCtaContent = useMemo(
+    () => renderCtaFromContentful(post.cta, "inline"),
+    [post.cta]
+  );
+  const bodySplit = useMemo(
+    () => (inlineCtaContent ? splitDocumentForMidCta(post.body) : null),
+    [inlineCtaContent, post.body]
+  );
 
   return (
     <>
@@ -256,11 +273,21 @@ export default function BlogPost({
           <div className={classNames(WIDE_CLASSES, "mt-4")}>
             <div className="grid gap-8 lg:grid-cols-12">
               <div className="min-w-0 lg:col-span-9">
-                {renderRichTextFromContentful(post.body)}
+                {bodySplit ? (
+                  <>
+                    {renderRichTextFromContentful(bodySplit.first)}
+                    <aside className="my-10 flex justify-center">
+                      {inlineCtaContent}
+                    </aside>
+                    {renderRichTextFromContentful(bodySplit.second)}
+                  </>
+                ) : (
+                  renderRichTextFromContentful(post.body)
+                )}
               </div>
-              {tocItems.length > 0 && (
+              {(tocItems.length > 0 || ctaContent) && (
                 <div className="hidden lg:col-span-3 lg:block">
-                  <TableOfContents items={tocItems} />
+                  <TableOfContents items={tocItems} cta={ctaContent} />
                 </div>
               )}
             </div>

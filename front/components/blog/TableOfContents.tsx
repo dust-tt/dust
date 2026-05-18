@@ -8,6 +8,7 @@ interface TableOfContentsProps {
   items: TocItem[];
   className?: string;
   onItemClick?: () => void;
+  cta?: React.ReactNode;
 }
 
 interface TocItemWithChildren extends TocItem {
@@ -106,6 +107,7 @@ export function TableOfContents({
   items,
   className,
   onItemClick,
+  cta,
 }: TableOfContentsProps) {
   const { activeId, handleClick } = useScrollSpy(items);
   const hierarchy = useMemo(() => buildHierarchy(items), [items]);
@@ -118,30 +120,46 @@ export function TableOfContents({
     onItemClick?.();
   };
 
-  if (items.length === 0) {
+  if (items.length === 0 && !cta) {
     return null;
   }
 
   return (
     <div
       className={classNames(
-        "sticky top-5 max-h-[calc(100vh-8rem)] overflow-y-auto",
+        "sticky top-5 flex max-h-[calc(100vh-2.5rem)] flex-col",
         className ?? null
       )}
     >
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
-        Table of contents
-      </h3>
-      <nav className="space-y-1" aria-label="Table of contents">
-        {hierarchy.map((item) => (
-          <TocItemComponent
-            key={item.id}
-            item={item}
-            activeId={activeId}
-            onItemClick={handleItemClick}
-          />
-        ))}
-      </nav>
+      {items.length > 0 && (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+            Table of contents
+          </h3>
+          <nav className="space-y-1" aria-label="Table of contents">
+            {hierarchy.map((item) => (
+              <TocItemComponent
+                key={item.id}
+                item={item}
+                activeId={activeId}
+                onItemClick={handleItemClick}
+              />
+            ))}
+          </nav>
+        </div>
+      )}
+      {cta && (
+        <div
+          className={classNames(
+            "flex-none",
+            items.length > 0
+              ? "mt-6 border-t border-border pt-6 dark:border-border-night"
+              : null
+          )}
+        >
+          {cta}
+        </div>
+      )}
     </div>
   );
 }

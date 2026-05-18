@@ -633,6 +633,7 @@ function contentfulEntryToBlogPost(
     : sys.createdAt;
 
   const body = isContentfulDocument(fields.body) ? fields.body : EMPTY_DOCUMENT;
+  const cta = isContentfulDocument(fields.cta) ? fields.cta : null;
   const image = isContentfulAsset(fields.image) ? fields.image : undefined;
   const authors = Array.isArray(fields.authors)
     ? fields.authors
@@ -656,6 +657,7 @@ function contentfulEntryToBlogPost(
     title,
     description: generateDescription(body),
     body,
+    cta,
     tags,
     image: contentfulAssetToBlogImage(image, title),
     authors,

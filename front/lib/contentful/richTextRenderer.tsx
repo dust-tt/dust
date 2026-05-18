@@ -11,9 +11,14 @@ import { isString } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { Options } from "@contentful/rich-text-react-renderer";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
-import type { Block, Document, Inline } from "@contentful/rich-text-types";
+import type {
+  Block,
+  Document,
+  Inline,
+  Text,
+} from "@contentful/rich-text-types";
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
-import { cn } from "@dust-tt/sparkle";
+import { Button, cn } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -446,6 +451,172 @@ export function renderRichTextFromContentful(document: Document): ReactNode {
     return null;
   }
   return documentToReactComponents(document, renderOptions);
+}
+
+function ctaEntryHref(entry: {
+  sys?: { contentType?: { sys?: { id?: string } } };
+  fields?: Record<string, unknown>;
+}): string | null {
+  const contentType = entry?.sys?.contentType?.sys?.id;
+  const slug = isString(entry?.fields?.slug) ? entry.fields.slug : null;
+  if (!slug) {
+    return null;
+  }
+  switch (contentType) {
+    case "blogPage":
+      return `/blog/${slug}`;
+    case "customerStory":
+      return `/customers/${slug}`;
+    case "course":
+      return `/academy/${slug}`;
+    case "chapter":
+      return `/academy/chapter/${slug}`;
+    case "lesson":
+      return `/academy/lessons/${slug}`;
+    default:
+      return null;
+  }
+}
+
+function ctaLinkLabel(children: ReactNode): string {
+  return extractTextFromChildren(children).trim();
+}
+
+function hasCtaContent(document: Document | null): document is Document {
+  if (!document?.content) {
+    return false;
+  }
+  const hasLink = (node: Block | Inline | Text): boolean => {
+    if (!isBlockOrInline(node)) {
+      return false;
+    }
+    if (
+      node.nodeType === INLINES.HYPERLINK ||
+      node.nodeType === INLINES.ENTRY_HYPERLINK
+    ) {
+      return true;
+    }
+    return node.content.some(hasLink);
+  };
+  return document.content.some(hasLink);
+}
+
+type CtaLayout = "sidebar" | "inline";
+
+export function renderCtaFromContentful(
+  document: Document | null,
+  layout: CtaLayout = "sidebar"
+): ReactNode {
+  if (!hasCtaContent(document)) {
+    return null;
+  }
+  let linkIndex = 0;
+  const buttonVariantForNextLink = (): "highlight" | "outline" => {
+    const variant = linkIndex === 0 ? "highlight" : "outline";
+    linkIndex += 1;
+    return variant;
+  };
+  const options: Options = {
+    renderMark: {
+      [MARKS.BOLD]: (text) => <strong className="font-semibold">{text}</strong>,
+    },
+    renderNode: {
+      [BLOCKS.PARAGRAPH]: (_node, children) => <>{children}</>,
+      [INLINES.HYPERLINK]: (node, children) => {
+        const url = isString(node.data.uri) ? node.data.uri : "";
+        const isExternal = url.startsWith("http");
+        const label = ctaLinkLabel(children);
+        if (!url || !label) {
+          return null;
+        }
+        return (
+          <Button
+            variant={buttonVariantForNextLink()}
+            size="sm"
+            label={label}
+            href={url}
+            target={isExternal ? "_blank" : undefined}
+            rel={isExternal ? "noopener noreferrer" : undefined}
+          />
+        );
+      },
+      [INLINES.ENTRY_HYPERLINK]: (node, children) => {
+        const href = ctaEntryHref(node.data.target);
+        const label = ctaLinkLabel(children);
+        if (!href || !label) {
+          return null;
+        }
+        return (
+          <Button
+            variant={buttonVariantForNextLink()}
+            size="sm"
+            label={label}
+            href={href}
+          />
+        );
+      },
+    },
+  };
+  const layoutClass =
+    layout === "inline"
+      ? "flex flex-wrap items-center justify-center gap-3"
+      : "flex flex-col gap-3 [&>a]:w-full [&>a]:justify-center";
+  return (
+    <div className={layoutClass}>
+      {documentToReactComponents(document, options)}
+    </div>
+  );
+}
+
+function isHeadingBlock(node: Block | Inline | Text): boolean {
+  if (!isBlockOrInline(node)) {
+    return false;
+  }
+  switch (node.nodeType) {
+    case BLOCKS.HEADING_1:
+    case BLOCKS.HEADING_2:
+    case BLOCKS.HEADING_3:
+    case BLOCKS.HEADING_4:
+    case BLOCKS.HEADING_5:
+    case BLOCKS.HEADING_6:
+      return true;
+    default:
+      return false;
+  }
+}
+
+export function splitDocumentForMidCta(
+  document: Document | null
+): { first: Document; second: Document } | null {
+  if (!document?.content || document.content.length < 6) {
+    return null;
+  }
+  const headingIndices: number[] = [];
+  for (let i = 0; i < document.content.length; i++) {
+    if (isHeadingBlock(document.content[i])) {
+      headingIndices.push(i);
+    }
+  }
+  if (headingIndices.length === 0) {
+    return null;
+  }
+  const midIndex = Math.floor(document.content.length / 2);
+  let splitIndex = headingIndices[0];
+  let bestDistance = Math.abs(splitIndex - midIndex);
+  for (const idx of headingIndices) {
+    const distance = Math.abs(idx - midIndex);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      splitIndex = idx;
+    }
+  }
+  if (splitIndex < 2 || splitIndex > document.content.length - 2) {
+    return null;
+  }
+  return {
+    first: { ...document, content: document.content.slice(0, splitIndex) },
+    second: { ...document, content: document.content.slice(splitIndex) },
+  };
 }
 
 function extractPlainText(node: Block | Inline | Document): string {

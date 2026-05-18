@@ -14,6 +14,7 @@ export interface BlogPageFields {
   title: string;
   slug?: string;
   body: Document;
+  cta?: Document;
   image?: Asset;
   publishedAt?: string;
   authors?: Entry<AuthorSkeleton>[];
@@ -42,6 +43,7 @@ export interface BlogPost {
   title: string;
   description: string | null;
   body: Document;
+  cta: Document | null;
   tags: string[];
   image: BlogImage | null;
   authors: BlogAuthor[];
