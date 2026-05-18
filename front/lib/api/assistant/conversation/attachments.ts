@@ -206,9 +206,7 @@ export function getAttachmentFromFileContentFragment(
     return null;
   }
 
-  // Here, snippet not null is actually to detect file attachments that are prior to the JIT
-  // actions, and differentiate them from the newer file attachments that do have a snippet.
-  // Former ones cannot be used in JIT.
+  // We rely on snippet not being null to detect file that have been processed (e.g. uploaded to GCS for tables).
   const canDoJIT = cf.snippet !== null;
   const isInProjectContext = cf.isInProjectContext === true;
   const shouldSuppressTabularHints = shouldSuppressTabularAttachmentHints({
@@ -289,6 +287,7 @@ export function makeFileAttachment({
   path?: string | null;
   creator?: AttachmentCreator | null;
 }): FileAttachmentType {
+  // We rely on snippet not being null to detect file that have been processed (e.g. uploaded to GCS for tables).
   const canDoJIT = snippet !== null;
   const isIncludable = isConversationIncludableFileContentType(contentType);
   const isQueryable = canDoJIT && isQueryableContentType(contentType);
