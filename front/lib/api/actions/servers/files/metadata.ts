@@ -12,6 +12,7 @@ export const FILES_GREP_ACTION_NAME = "grep" as const;
 export const FILES_CREATE_ACTION_NAME = "create" as const;
 export const FILES_DELETE_ACTION_NAME = "delete" as const;
 export const FILES_COPY_ACTION_NAME = "copy" as const;
+export const FILES_RESOLVE_ACTION_NAME = "resolve" as const;
 
 export const CAT_LINES_DEFAULT = 200;
 export const CAT_LINES_MAX = 500;
@@ -123,6 +124,29 @@ const COPY_PROJECT_AWARE_TOOL = {
 // Stake levels in this record are typed via `as const` so the object can be spread into
 // `createToolsRecord`, which expects the narrowed `MCPToolStakeLevelType` literal.
 const FILES_TOOLS_COMMON_METADATA = {
+  [FILES_RESOLVE_ACTION_NAME]: {
+    description:
+      "Resolve a file ID (e.g. `fil_abc123`) to its scoped file system path " +
+      "(e.g. `conversation/report.pdf` or `project/data.csv`). " +
+      "Use this when you have a raw file identifier but need the path accepted by other tools " +
+      "such as `" +
+      getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME) +
+      "` or `" +
+      getPrefixedToolName(FILES_SERVER_NAME, FILES_GREP_ACTION_NAME) +
+      "`.",
+    schema: {
+      file_id: z
+        .string()
+        .describe(
+          "File identifier starting with `fil_` (e.g. `fil_abc123def456`)"
+        ),
+    },
+    stake: "never_ask" as const,
+    displayLabels: {
+      running: "Resolving file ID",
+      done: "Resolved file ID",
+    },
+  },
   [FILES_CAT_ACTION_NAME]: {
     description:
       "Read the content of a file. " +
