@@ -29,9 +29,8 @@ export async function dispatchPerUserCapReached({
   if (!user) {
     logger.warn(
       { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_reached: user not found, applying legacy block"
+      "[CreditStateDispatcher] per_user_cap_reached: user not found, skipping"
     );
-    await setUserCapBlocked(workspace.sId, userId);
     return;
   }
 
@@ -44,9 +43,8 @@ export async function dispatchPerUserCapReached({
   if (!membership) {
     logger.warn(
       { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] per_user_cap_reached: no active membership, applying legacy block"
+      "[CreditStateDispatcher] per_user_cap_reached: no active membership, skipping"
     );
-    await setUserCapBlocked(workspace.sId, userId);
     return;
   }
 
