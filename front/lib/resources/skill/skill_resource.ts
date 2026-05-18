@@ -1264,39 +1264,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  static async listAgentEnabledByConversation(
-    auth: Authenticator,
-    {
-      conversation,
-      agentConfiguration,
-      transaction,
-    }: {
-      conversation: ConversationWithoutContentType;
-      agentConfiguration?: LightAgentConfigurationType;
-      transaction?: Transaction;
-    }
-  ): Promise<(SkillResource & { extendedSkill: SkillResource | null })[]> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const conversationSkills = await ConversationSkillModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-        source: "agent_enabled",
-        ...(agentConfiguration
-          ? { agentConfigurationId: agentConfiguration.sId }
-          : {}),
-      },
-      transaction,
-    });
-
-    const skills = await this.fetchBySkillReferences(auth, conversationSkills, {
-      transaction,
-    });
-
-    return this.augmentSkillsWithExtendedSkills(auth, skills);
-  }
-
   /**
    * List skills for the agent loop, returning system skills, (extended) enabled skills,
    * and equipped skills.

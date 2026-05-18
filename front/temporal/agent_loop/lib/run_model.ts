@@ -30,11 +30,7 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import { getSkillNamesEnabledSinceLastCompaction } from "@app/lib/api/assistant/skills_compatibility";
-import {
-  renderEnabledSkillUserMessages,
-  renderEquippedSkillsUserMessage,
-} from "@app/lib/api/assistant/skills_rendering";
+import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -81,7 +77,6 @@ import type {
   AgentMessageType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import { hasSucceededCompactionMessage } from "@app/types/assistant/conversation";
 import { isTextContent } from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -234,7 +229,6 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
-    legacyEnabledSkills,
     hasConditionalJITTools,
     mcpActions,
     mcpToolsListingError,
@@ -257,25 +251,6 @@ export async function runModel(
 
     const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, runAgentData);
-    const skillsEnabledSinceLastCompaction = hasSucceededCompactionMessage(
-      conversation
-    )
-      ? getSkillNamesEnabledSinceLastCompaction(conversation, {
-          agentConfigurationId: agentConfiguration.sId,
-        })
-      : new Set<string>();
-    // Temporary compatibility while removing the feature flag: conversations that enabled
-    // skills before the user-role rendering rollout may still carry agent-enabled skills across
-    // an older compaction boundary, without any visible enable_skill action in the current window.
-    const legacyEnabledSkills =
-      enabledSkills.length > 0 && hasSucceededCompactionMessage(conversation)
-        ? (
-            await SkillResource.listAgentEnabledByConversation(auth, {
-              conversation,
-              agentConfiguration,
-            })
-          ).filter((skill) => !skillsEnabledSinceLastCompaction.has(skill.name))
-        : [];
 
     const skillServers = await getSkillServers(auth, {
       agentConfiguration,
@@ -302,7 +277,6 @@ export async function runModel(
       hasConditionalJITTools,
       enabledSkills,
       equippedSkills,
-      legacyEnabledSkills,
       systemSkills,
       mcpActions,
       mcpToolsListingError,
@@ -426,7 +400,6 @@ export async function runModel(
     hasSandboxTools,
   });
   const leadingMessages = [
-    ...renderEnabledSkillUserMessages(legacyEnabledSkills),
     ...removeNulls([renderEquippedSkillsUserMessage(equippedSkills)]),
   ];
 

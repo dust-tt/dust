@@ -160,9 +160,6 @@ export async function renderAllMessages(
   const enabledSkillById = new Map(
     enabledSkills.map((skill) => [skill.sId, skill])
   );
-  const enabledSkillByName = new Map(
-    enabledSkills.map((skill) => [skill.name, skill])
-  );
 
   // Find the last succeeded compaction to use as a history boundary. Messages before it are
   // already summarized in the compaction content, so we skip them to avoid redundancy and
@@ -196,7 +193,6 @@ export async function renderAllMessages(
             conversationId: conversation.sId,
             onMissingAction,
             enabledSkillById,
-            enabledSkillByName,
             renderSkillsAsUserMessages,
           });
 

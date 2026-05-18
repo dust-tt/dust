@@ -420,19 +420,6 @@ export function isCompactionMessageType(
   return arg.type === "compaction_message";
 }
 
-export function hasSucceededCompactionMessage(conversation: {
-  content: ConversationType["content"];
-}): boolean {
-  return conversation.content.some((versions) => {
-    const latestMessage = versions[versions.length - 1];
-    return (
-      latestMessage !== undefined &&
-      isCompactionMessageType(latestMessage) &&
-      latestMessage.status === "succeeded"
-    );
-  });
-}
-
 /**
  * Conversations
  */
