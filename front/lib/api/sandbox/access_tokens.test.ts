@@ -60,11 +60,11 @@ async function setupTest() {
   });
 
   const mockAction: AgentMCPActionType = {
-    id: agentMessage.agentMessageId as number, // Use the agentMessageId as the action id
+    id: agentMessage.agentMessageId,
     sId: generateRandomModelSId(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    agentMessageId: agentMessage.agentMessageId as number,
+    agentMessageId: agentMessage.agentMessageId,
     internalMCPServerName: "search",
     toolName: "semantic_search",
     mcpServerId: sandboxServer.id,
