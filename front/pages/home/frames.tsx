@@ -7,7 +7,6 @@ import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
-import { appendUTMParams } from "@app/lib/utils/utm";
 import {
   Button,
   CheckCircleIcon,

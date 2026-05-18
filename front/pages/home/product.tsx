@@ -1,7 +1,7 @@
 import { H2 } from "@app/components/home/ContentComponents";
 import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
-import { InteractiveFeaturesSection } from "@app/components/home/content/Product/InteractiveFeaturesSection";
 import { HomeAIOperatorsCTASection } from "@app/components/home/content/Product/HomeAIOperatorsCTASection";
+import { InteractiveFeaturesSection } from "@app/components/home/content/Product/InteractiveFeaturesSection";
 import { ProductIntroSection } from "@app/components/home/content/Product/ProductIntroSection";
 import { SecurityFeaturesSection } from "@app/components/home/content/Product/SecurityFeaturesSection";
 import { TestimonialSection } from "@app/components/home/content/Product/TestimonialSection";
