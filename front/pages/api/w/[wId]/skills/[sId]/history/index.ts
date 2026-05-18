@@ -16,6 +16,7 @@ export type GetSkillHistoryResponseBody = {
   history: SkillWithVersionType[];
 };
 
+// Dummy comment to test missing Hono change
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
