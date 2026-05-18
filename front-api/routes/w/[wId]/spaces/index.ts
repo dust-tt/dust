@@ -15,6 +15,9 @@ import type { ProjectType, SpaceType } from "@app/types/space";
 
 import { validate } from "@front-api/middleware/validator";
 
+import checkName from "./check-name";
+import projectsLookup from "./projects-lookup";
+import searchProjects from "./search_projects";
 import spaceId from "./[spaceId]";
 
 const PostSpaceRequestBodySchema = z.intersection(
@@ -177,6 +180,11 @@ app.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
   return c.json(responseBody, 201);
 });
 
+// Register static paths BEFORE `/:spaceId` so the param route does not
+// swallow these names as ids.
+app.route("/check-name", checkName);
+app.route("/projects-lookup", projectsLookup);
+app.route("/search_projects", searchProjects);
 app.route("/:spaceId", spaceId);
 
 export default app;

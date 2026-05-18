@@ -8,6 +8,7 @@ import { APP_NAME_REGEXP } from "@app/types/app";
 import { spaceResource } from "@front-api/middleware/space_resource";
 import { validate } from "@front-api/middleware/validator";
 
+import datasets from "./datasets";
 import runs from "./runs";
 import state from "./state";
 
@@ -129,5 +130,6 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
 
 app.route("/state", state);
 app.route("/runs", runs);
+app.route("/datasets", datasets);
 
 export default app;

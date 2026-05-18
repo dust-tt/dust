@@ -1,0 +1,247 @@
+import { Hono } from "hono";
+import path from "path";
+
+import {
+  getProjectFilesBasePath,
+  parseScopedFilePath,
+} from "@app/lib/api/files/mount_path";
+import {
+  deleteProjectFile,
+  renameProjectFile,
+} from "@app/lib/api/projects/context";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import logger from "@app/logger/logger";
+import { isString } from "@app/types/shared/utils/general";
+
+import { spaceResource } from "@front-api/middleware/space_resource";
+
+// Catch-all for /api/w/:wId/spaces/:spaceId/files/<...rel>.
+//
+// Mounted from `files/index.ts` at the root path. Hono's `:rel{.+}` wildcard
+// captures everything past `/files/` (matching Next's `[...rel]`).
+const app = new Hono();
+
+async function buildContext(c: any) {
+  const space = c.get("space");
+  const auth = c.get("auth");
+
+  if (!space.isProject()) {
+    return {
+      error: c.json(
+        {
+          error: {
+            type: "invalid_request_error",
+            message: "Files are only available for project spaces.",
+          },
+        },
+        400
+      ),
+    };
+  }
+
+  const rel = c.req.param("rel");
+  if (!isString(rel) || rel.length === 0) {
+    return {
+      error: c.json(
+        {
+          error: {
+            type: "invalid_request_error",
+            message: "Missing file path.",
+          },
+        },
+        400
+      ),
+    };
+  }
+
+  const scopedPath = parseScopedFilePath(rel);
+  if (!scopedPath || scopedPath.prefix !== "project") {
+    return {
+      error: c.json(
+        {
+          error: {
+            type: "invalid_request_error",
+            message: "Path must start with the scope prefix `project/`.",
+          },
+        },
+        400
+      ),
+    };
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+  const basePath = getProjectFilesBasePath({
+    workspaceId: owner.sId,
+    projectId: space.sId,
+  });
+  const normalizedGcsPath = path.posix.normalize(
+    `${basePath}${scopedPath.rel}`
+  );
+  if (!normalizedGcsPath.startsWith(basePath)) {
+    return {
+      error: c.json(
+        {
+          error: {
+            type: "workspace_auth_error",
+            message: "Access denied: path is outside project scope.",
+          },
+        },
+        403
+      ),
+    };
+  }
+
+  return {
+    auth,
+    space,
+    normalizedGcsPath,
+    normalizedRelative: scopedPath.rel,
+  };
+}
+
+app.get("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
+  const ctx = await buildContext(c);
+  if ("error" in ctx) {
+    return ctx.error;
+  }
+  const { normalizedGcsPath } = ctx;
+
+  const bucket = getPrivateUploadBucket();
+  const contentTypeResult = await bucket.getFileContentType(normalizedGcsPath);
+  if (contentTypeResult.isErr()) {
+    return c.json(
+      {
+        error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      },
+      404
+    );
+  }
+
+  const contentType = contentTypeResult.value ?? "application/octet-stream";
+  const readStream = bucket.file(normalizedGcsPath).createReadStream();
+
+  // Stream the file as the Hono response body.
+  const webStream = new ReadableStream({
+    start(controller) {
+      readStream.on("data", (chunk) => controller.enqueue(chunk));
+      readStream.on("end", () => controller.close());
+      readStream.on("error", (err) => {
+        logger.error(
+          { err, gcsPath: normalizedGcsPath },
+          "Error streaming project file (GCS)"
+        );
+        controller.error(err);
+      });
+    },
+    cancel() {
+      readStream.destroy();
+    },
+  });
+
+  return new Response(webStream, {
+    status: 200,
+    headers: { "Content-Type": contentType },
+  });
+});
+
+app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
+  const ctx = await buildContext(c);
+  if ("error" in ctx) {
+    return ctx.error;
+  }
+  const { auth, space, normalizedRelative } = ctx;
+
+  if (!space.canWrite(auth)) {
+    return c.json(
+      {
+        error: {
+          type: "workspace_auth_error",
+          message: "You do not have write access to this project.",
+        },
+      },
+      403
+    );
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const { fileName } = body ?? {};
+  if (
+    !isString(fileName) ||
+    fileName.trim() === "" ||
+    fileName.includes("/") ||
+    fileName.includes("\\")
+  ) {
+    return c.json(
+      {
+        error: {
+          type: "invalid_request_error",
+          message:
+            "fileName is required and must be a non-empty string without path separators.",
+        },
+      },
+      400
+    );
+  }
+
+  const renameResult = await renameProjectFile(auth, {
+    space,
+    relativeFilePath: normalizedRelative,
+    newFileName: fileName.trim(),
+  });
+  if (renameResult.isErr()) {
+    return c.json(
+      {
+        error: {
+          type: "internal_server_error",
+          message: renameResult.error.message,
+        },
+      },
+      500
+    );
+  }
+
+  return c.json({});
+});
+
+app.delete("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
+  const ctx = await buildContext(c);
+  if ("error" in ctx) {
+    return ctx.error;
+  }
+  const { auth, space, normalizedRelative } = ctx;
+
+  if (!space.canWrite(auth)) {
+    return c.json(
+      {
+        error: {
+          type: "workspace_auth_error",
+          message: "You do not have write access to this project.",
+        },
+      },
+      403
+    );
+  }
+
+  const deleteResult = await deleteProjectFile(auth, {
+    space,
+    relativeFilePath: normalizedRelative,
+  });
+  if (deleteResult.isErr()) {
+    return c.json(
+      {
+        error: {
+          type: "internal_server_error",
+          message: deleteResult.error.message,
+        },
+      },
+      500
+    );
+  }
+
+  return c.json({});
+});
+
+export default app;
