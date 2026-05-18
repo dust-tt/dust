@@ -152,14 +152,14 @@ export function useBlockedSkillSpaceRemovalConfirm({
 }) {
   const confirm = useContext(ConfirmContext);
 
-  return async ({
+  return ({
     space,
     actions,
     knowledgeInInstructions,
-  }: ConfirmBlockedSkillSpaceRemovalParams): Promise<void> => {
+  }: ConfirmBlockedSkillSpaceRemovalParams): Promise<boolean> => {
     const spaceKind = space.kind === "project" ? "project" : "space";
 
-    await confirm({
+    return confirm({
       title: `${getSpaceName(space)} can't be removed`,
       message: (
         <div className="space-y-3">
