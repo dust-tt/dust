@@ -52,6 +52,7 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
+  SparklesIcon,
   Tabs,
   TabsContent,
   TrashIcon,
@@ -338,6 +339,13 @@ const TODO_SUGGESTION_TEXTS = [
   "Add the latest constraints to the implementation notes.",
   "Validate the current numbers against the source export.",
   "Write the rollout risk notes before the planning review.",
+];
+
+const PROJECT_SETUP_TODO_SUGGESTION_TEXTS = [
+  "Set up the project description and goals",
+  "Bring in knowledge from company data",
+  "Search for and add project members",
+  "Build a list of initial tasks",
 ];
 
 const PARTICIPANT_TODO_SUGGESTION_TEXTS = [
@@ -1101,6 +1109,56 @@ function computeSummaryDiffByKey(
   return diffs;
 }
 
+function GroupConversationTabContent({
+  value,
+  contentClassName,
+  children,
+}: {
+  value: string;
+  contentClassName?: string;
+  children: ReactNode;
+}) {
+  return (
+    <TabsContent value={value}>
+      <div className="s-flex s-h-full s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-5">
+        <div
+          className={cn(
+            "s-mx-auto s-flex s-w-full s-h-full s-max-w-4xl s-flex-col s-py-8 s-gap-6",
+            contentClassName
+          )}
+        >
+          {children}
+        </div>
+      </div>
+    </TabsContent>
+  );
+}
+
+function ProjectSetupEmptyState({
+  onSetupProject,
+}: {
+  onSetupProject: () => void;
+}) {
+  return (
+    <div className="s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-0 s-text-center">
+      <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+        It's quiet in here.
+      </h3>
+      <p className="s-text-muted-foreground s-textbase s-mb-3">
+        Your Pod is ready but empty! Let us help you invite people, add key
+        data, and more.
+      </p>
+      <Button
+        label="Let's go"
+        icon={SparklesIcon}
+        size="md"
+        variant="highlight"
+        onClick={onSetupProject}
+      />
+    </div>
+  );
+}
+
 export function GroupConversationView({
   space,
   conversations,
@@ -1221,10 +1279,13 @@ export function GroupConversationView({
   // Active tab — controlled externally if activeTab/onTabChange props are provided
   const [internalActiveTab, setInternalActiveTab] = useState("conversations");
   const activeTab = controlledActiveTab ?? internalActiveTab;
-  const setActiveTab = (tab: string) => {
-    setInternalActiveTab(tab);
-    onTabChange?.(tab);
-  };
+  const setActiveTab = useCallback(
+    (tab: string) => {
+      setInternalActiveTab(tab);
+      onTabChange?.(tab);
+    },
+    [onTabChange]
+  );
 
   // Files tab state
   const [dataSources, setDataSources] = useState<DataSource[]>(() =>
@@ -2042,34 +2103,65 @@ export function GroupConversationView({
     [space.id, todoParticipants]
   );
 
+  const generateProjectSetupTodoSuggestions =
+    useCallback((): TodoSuggestionItem[] => {
+      const participant = todoParticipants[0];
+      if (!participant) {
+        return [];
+      }
+
+      return PROJECT_SETUP_TODO_SUGGESTION_TEXTS.map((text, index) => {
+        return {
+          id: `todo-suggestion-${todoSuggestionCounterRef.current + index}`,
+          userId: participant.id,
+          text,
+        };
+      });
+    }, [todoParticipants]);
+
   const participantTodoLists = useMemo((): ParticipantTodoList[] => {
-    if (todoParticipants.length === 0 || !ongoingSummary) {
+    if (todoParticipants.length === 0) {
       return [];
     }
-
-    const fakeTodoItems = [...FAKE_PROJECT_TODO_ITEMS]
-      .sort(
-        (a, b) =>
-          seededRandom(`${space.id}-${a.id}-fake-todo`, 0) -
-          seededRandom(`${space.id}-${b.id}-fake-todo`, 0)
-      )
-      .slice(0, Math.max(8, todoParticipants.length * 2))
-      .filter(
-        (item) =>
-          !hiddenFakeTodoItemKeys.has(getSummaryItemKey("needAttention", item))
-      );
-    const todoItems = [...ongoingSummary.needAttention, ...fakeTodoItems];
 
     const lists: ParticipantTodoList[] = todoParticipants.map((user) => ({
       user,
       items: [],
     }));
-    todoItems.forEach((item, index) => {
-      lists[index % lists.length].items.push(item);
+
+    if (ongoingSummary) {
+      const fakeTodoItems = [...FAKE_PROJECT_TODO_ITEMS]
+        .sort(
+          (a, b) =>
+            seededRandom(`${space.id}-${a.id}-fake-todo`, 0) -
+            seededRandom(`${space.id}-${b.id}-fake-todo`, 0)
+        )
+        .slice(0, Math.max(8, todoParticipants.length * 2))
+        .filter(
+          (item) =>
+            !hiddenFakeTodoItemKeys.has(
+              getSummaryItemKey("needAttention", item)
+            )
+        );
+      const todoItems = [...ongoingSummary.needAttention, ...fakeTodoItems];
+
+      todoItems.forEach((item, index) => {
+        lists[index % lists.length].items.push(item);
+      });
+    }
+
+    lists.forEach((list) => {
+      list.items.push(...(todoDraftItemsByUserId[list.user.id] ?? []));
     });
 
     return lists;
-  }, [hiddenFakeTodoItemKeys, ongoingSummary, space.id, todoParticipants]);
+  }, [
+    hiddenFakeTodoItemKeys,
+    ongoingSummary,
+    space.id,
+    todoDraftItemsByUserId,
+    todoParticipants,
+  ]);
 
   const closedParticipantTodoLists = useMemo((): ParticipantTodoList[] => {
     if (todoParticipants.length === 0) {
@@ -2151,6 +2243,8 @@ export function GroupConversationView({
   const hasVisibleTodoItems = visibleParticipantTodoLists.some(
     (list) => list.items.length > 0
   );
+  const shouldShowTodoLists =
+    (hasHistory && ongoingSummary !== null) || hasDisplayedTodoItems;
 
   const handleCleanTodoItems = useCallback(() => {
     const checkedKeys = new Set(
@@ -2451,13 +2545,8 @@ export function GroupConversationView({
     []
   );
 
-  const handleCreateTodoSuggestions = useCallback(
-    (prompt: string) => {
-      const normalizedPrompt = prompt.trim();
-      if (normalizedPrompt.length === 0) {
-        return;
-      }
-
+  const startTodoSuggestions = useCallback(
+    (createSuggestions: () => TodoSuggestionItem[]) => {
       if (todoSuggestionTimeoutRef.current !== null) {
         window.clearTimeout(todoSuggestionTimeoutRef.current);
       }
@@ -2468,15 +2557,32 @@ export function GroupConversationView({
 
       const delayMs = 500 + Math.floor(Math.random() * 1000);
       todoSuggestionTimeoutRef.current = window.setTimeout(() => {
-        const suggestions = generateTodoSuggestions(normalizedPrompt);
+        const suggestions = createSuggestions();
         todoSuggestionCounterRef.current += suggestions.length;
         setTodoSuggestions(suggestions);
         setTodoSuggestionStatus("ready");
         todoSuggestionTimeoutRef.current = null;
       }, delayMs);
     },
-    [generateTodoSuggestions]
+    []
   );
+
+  const handleCreateTodoSuggestions = useCallback(
+    (prompt: string) => {
+      const normalizedPrompt = prompt.trim();
+      if (normalizedPrompt.length === 0) {
+        return;
+      }
+
+      startTodoSuggestions(() => generateTodoSuggestions(normalizedPrompt));
+    },
+    [generateTodoSuggestions, startTodoSuggestions]
+  );
+
+  const handleSetupProject = useCallback(() => {
+    setActiveTab("todos");
+    startTodoSuggestions(generateProjectSetupTodoSuggestions);
+  }, [generateProjectSetupTodoSuggestions, setActiveTab, startTodoSuggestions]);
 
   useEffect(() => {
     const hasCheckedTodoItems = Object.entries(checkedSummaryItems).some(
@@ -2762,9 +2868,10 @@ export function GroupConversationView({
       );
     });
   }, [members, membersSearchText]);
+  const isShowingTodoSuggestions = todoSuggestionStatus !== "idle";
 
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background dark:s-bg-background-night">
+    <div className="s-flex s-h-full s-w-full s-h-full s-flex-col s-bg-background dark:s-bg-background-night">
       {/* Tabs */}
       <Tabs
         value={activeTab}
@@ -2772,1175 +2879,1073 @@ export function GroupConversationView({
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
         {/* Conversations Tab */}
-        <TabsContent value="conversations">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-4">
-            <div
-              className={`s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 ${
-                !hasHistory ? "s-h-full s-justify-center s-py-8" : "s-py-8"
-              }`}
-            >
-              {/* New conversation section */}
-              <div className="s-flex s-flex-col s-gap-3">
-                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  {getProjectPageTitle("conversation")}
-                </h2>
+        <GroupConversationTabContent value="conversations">
+          {/* New conversation section */}
+          <div className="s-flex s-flex-col s-h-full s-gap-3">
+            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+              {getProjectPageTitle("conversation")}
+            </h2>
 
-                {/* Suggestions for empty rooms */}
-                {!hasHistory && (
-                  <div className="s-flex s-flex-col s-gap-5">
-                    <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                      Start a first conversation!
-                    </h3>
-                  </div>
-                )}
-                <InputBar placeholder={`Get work done in ${space.name}`} />
-                {hasHistory && (
-                  <div className="s-flex s-w-full s-gap-2 s-px-4">
-                    <SearchInputWithPopover
-                      name="conversation-search"
-                      value={searchText}
-                      onChange={(value) => {
-                        setSearchText(value);
-                        if (!value.trim()) {
-                          setIsSearchOpen(false);
-                        }
-                      }}
-                      open={isSearchOpen}
-                      onOpenChange={setIsSearchOpen}
-                      placeholder={`Search in ${space.name}`}
-                      className="s-w-full"
-                      items={searchResults}
-                      availableHeight
-                      noResults={
-                        searchText.trim()
-                          ? "No results found"
-                          : "Start typing to search"
-                      }
-                      onItemSelect={handleSearchItemSelect}
-                      renderItem={(item, selected) => (
-                        <SearchResultItem item={item} selected={selected} />
-                      )}
-                    />
-                  </div>
-                )}
-
-                {!hasHistory && (
-                  <div className="s-flex s-flex-col s-gap-3">
-                    <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                      New Project? Let us help you setup.
-                    </h3>
-                    <CardGrid>
-                      {[
-                        {
-                          id: "add-knowledge",
-                          label: "Add files",
-                          variant: "primary" as const,
-                          icon: FolderIcon,
-                          description:
-                            "Add files, links, or data sources relevant to this project.",
-                          onClick: () => setActiveTab("knowledge"),
-                          isPulsing: false,
-                        },
-                        {
-                          id: "invite-members",
-                          label: "Manage members",
-                          variant: "primary" as const,
-                          icon: UserGroupIcon,
-                          description:
-                            "Invite people to this project as members or editors.",
-                          onClick: () => onInviteMembers?.(),
-                          isPulsing: false,
-                        },
-                      ].map((suggestion) => (
-                        <Card
-                          key={suggestion.id}
-                          variant={suggestion.variant}
-                          size="lg"
-                          onClick={suggestion.onClick}
-                          className="s-cursor-pointer"
-                        >
-                          <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-sm">
-                            <div className="s-flex s-w-full s-items-center s-gap-2 s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                              <Icon visual={suggestion.icon} size="sm" />
-                              <div className="s-w-full">{suggestion.label}</div>
-                            </div>
-                            {suggestion.description && (
-                              <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                {suggestion.description}
-                              </div>
-                            )}
-                          </div>
-                        </Card>
-                      ))}
-                    </CardGrid>
-                  </div>
-                )}
+            {/* Suggestions for empty rooms */}
+            {!hasHistory && (
+              <div className="s-flex s-flex-col s-gap-5">
+                <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                  Start a first conversation!
+                </h3>
               </div>
-              {/* Conversations list */}
-              <div className="s-flex s-flex-col s-gap-3">
-                {hasHistory &&
-                  ongoingSummary &&
-                  ongoingSummary.projectPulse.length > 0 && (
-                    <div className="s-flex s-flex-col s-gap-2">
-                      <div className="s-inline-flex s-items-center s-gap-2 s-flex-wrap">
-                        <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                          {isSummaryUpdating ? (
-                            <AnimatedText
-                              variant="primary"
-                              className="s-text-muted-foreground"
-                            >
-                              Catching-up
-                            </AnimatedText>
-                          ) : (
-                            "Catching-up"
-                          )}
-                        </h3>
-                      </div>
-                      <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                        {ongoingSummary.projectPulse.map((item, index) => {
-                          const itemKey = getSummaryItemKey(
-                            "projectPulse",
-                            item
-                          );
-                          const relatedConversationIds =
-                            summaryRelatedConversations[itemKey] ?? [];
-                          const shouldTypePulseItem =
-                            typingItemKeys.has(itemKey) &&
-                            (summaryItemDiffByKey[itemKey] === "modified" ||
-                              summaryItemDiffByKey[itemKey] === "added");
-
-                          return (
-                            <span key={itemKey}>
-                              {shouldTypePulseItem ? (
-                                <TypingAnimation
-                                  key={`${itemKey}-${typingVersion}`}
-                                  text={item.segments
-                                    .map((segment) => segment.text)
-                                    .join("")}
-                                  duration={16}
-                                />
-                              ) : (
-                                renderProjectPulseItemWithInlineLinks(
-                                  item,
-                                  relatedConversationIds,
-                                  false
-                                )
-                              )}
-                              {index < ongoingSummary.projectPulse.length - 1
-                                ? " "
-                                : null}
-                            </span>
-                          );
-                        })}
-                      </div>
-                      <Separator className="s-mt-4" />
-                      <div className="s-flex s-w-full s-items-center s-justify-between s-gap-2">
-                        <ButtonsSwitchList
-                          defaultValue={goodToKnowFilter}
-                          onValueChange={(value) => {
-                            if (
-                              value === "all" ||
-                              value === "shared" ||
-                              value === "mine"
-                            ) {
-                              setGoodToKnowFilter(value);
-                            }
-                          }}
-                        >
-                          <ButtonsSwitch
-                            value="mine"
-                            label="Mine"
-                            tooltip="Conversations you started"
-                          />
-                          <ButtonsSwitch
-                            value="shared"
-                            label="Group"
-                            tooltip="Conversations with more than one person"
-                          />
-                          <ButtonsSwitch
-                            value="all"
-                            label="All"
-                            tooltip="Every conversation in this project"
-                          />
-                        </ButtonsSwitchList>
-                        {hasHistory && (
-                          <SearchInputWithPopover
-                            name="conversation-search"
-                            value={searchText}
-                            onChange={(value) => {
-                              setSearchText(value);
-                              if (!value.trim()) {
-                                setIsSearchOpen(false);
-                              }
-                            }}
-                            open={isSearchOpen}
-                            onOpenChange={setIsSearchOpen}
-                            placeholder={`Search in ${space.name}`}
-                            className="s-w-full"
-                            items={searchResults}
-                            availableHeight
-                            noResults={
-                              searchText.trim()
-                                ? "No results found"
-                                : "Start typing to search"
-                            }
-                            onItemSelect={handleSearchItemSelect}
-                            renderItem={(item, selected) => (
-                              <SearchResultItem
-                                item={item}
-                                selected={selected}
-                              />
-                            )}
-                          />
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          icon={CheckDoubleIcon}
-                          label="Mark all as read"
-                          onClick={() => {
-                            setCheckedSummaryItems((previous) => ({
-                              ...previous,
-                              ...Object.fromEntries(
-                                ongoingSummary.projectPulse.map((item) => [
-                                  getSummaryItemKey("projectPulse", item),
-                                  true,
-                                ])
-                              ),
-                            }));
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                {expandedConversations.length > 0 && (
-                  <>
-                    <div className="s-flex s-flex-col">
-                      {(
-                        [
-                          "Today",
-                          "Yesterday",
-                          "Last Week",
-                          "Last Month",
-                        ] as const
-                      ).map((bucketKey) => {
-                        const bucketConversations =
-                          conversationsByBucket[bucketKey];
-                        if (bucketConversations.length === 0) return null;
-
-                        return (
-                          <Fragment key={bucketKey}>
-                            <ListItemSection>{bucketKey}</ListItemSection>
-                            <ListGroup className="!s-border-transparent">
-                              {bucketConversations.map((conversation) => {
-                                const participants = getRandomParticipants(
-                                  conversation,
-                                  users,
-                                  agents
-                                );
-                                const creator = getRandomCreator(
-                                  conversation,
-                                  users
-                                );
-                                const avatarProps =
-                                  participantsToAvatarProps(participants);
-
-                                // Format time from updatedAt
-                                const time = conversation.updatedAt
-                                  .toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: false,
-                                  })
-                                  .replace("24:", "00:");
-
-                                // Generate random counts respecting mentionCount <= unreadCount <= replyCount
-                                const replyCount = Math.floor(
-                                  Math.random() * 8 + 1
-                                );
-                                const messageCount = Math.floor(
-                                  Math.random() * replyCount + 1
-                                );
-                                const mentionCount = Math.floor(
-                                  Math.random() * (messageCount + 1)
-                                );
-
-                                const baseConversationId =
-                                  getBaseConversationId(
-                                    conversation,
-                                    conversations
-                                  );
-
-                                const conversationForLookup = {
-                                  ...conversation,
-                                  id: baseConversationId,
-                                };
-
-                                return (
-                                  <div
-                                    id={getConversationRowDomId(
-                                      conversation.id
-                                    )}
-                                    key={conversation.id}
-                                  >
-                                    <ConversationListItem
-                                      conversation={conversation}
-                                      creator={creator || undefined}
-                                      className="s-border-border s-border-t dark:s-border-border-night"
-                                      time={time}
-                                      showFocus={
-                                        conversationIdToShowFocus ===
-                                        conversation.id
-                                      }
-                                      replySection={
-                                        <ReplySection
-                                          replyCount={replyCount}
-                                          unreadCount={
-                                            bucketKey === "Today"
-                                              ? messageCount
-                                              : 0
-                                          }
-                                          mentionCount={
-                                            bucketKey === "Today"
-                                              ? mentionCount
-                                              : 0
-                                          }
-                                          avatars={avatarProps}
-                                          lastMessageBy={
-                                            avatarProps[0]?.name || "Unknown"
-                                          }
-                                        />
-                                      }
-                                      onClick={() => {
-                                        onConversationClick?.(
-                                          conversationForLookup
-                                        );
-                                      }}
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </ListGroup>
-                          </Fragment>
-                        );
-                      })}
-                    </div>
-                    <div className="s-flex s-flex-col s-gap-3 s-py-8">
-                      <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                        Do more with your project!
-                      </h3>
-                      <CardGrid>
-                        {[
-                          {
-                            id: "kickoff",
-                            label: "Get your project running",
-                            icon: MagicIcon,
-                            variant: "highlight" as const,
-                            description:
-                              "Answer a few questions and an agent will fill in your project details.",
-                            onClick: () => {},
-                            isPulsing: true,
-                          },
-                          {
-                            id: "add-knowledge",
-                            label: "Add files",
-                            variant: "primary" as const,
-                            icon: FolderIcon,
-                            description:
-                              "Add files, links, or data sources relevant to this project.",
-                            onClick: () => setActiveTab("knowledge"),
-                            isPulsing: false,
-                          },
-                          {
-                            id: "invite-members",
-                            label: "Manage members",
-                            variant: "primary" as const,
-                            icon: UserGroupIcon,
-                            description:
-                              "Invite people to this project as members or editors.",
-                            onClick: () => onInviteMembers?.(),
-                            isPulsing: false,
-                          },
-                        ].map((suggestion) => (
-                          <Card
-                            key={suggestion.id}
-                            variant={suggestion.variant}
-                            size="lg"
-                            onClick={suggestion.onClick}
-                            className="s-cursor-pointer"
-                          >
-                            <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-base">
-                              <div
-                                className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
-                                  suggestion.variant === "highlight"
-                                    ? "s-text-highlight-600 dark:s-text-highlight-400"
-                                    : "s-text-foreground dark:s-text-foreground-night"
-                                }`}
-                              >
-                                <Icon visual={suggestion.icon} size="sm" />
-                                <div className="s-w-full">
-                                  {suggestion.label}
-                                </div>
-                              </div>
-                              {suggestion.description && (
-                                <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                  {suggestion.description}
-                                </div>
-                              )}
-                            </div>
-                          </Card>
-                        ))}
-                      </CardGrid>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* Tasks Tab */}
-        <TabsContent value="todos">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
-            <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8 s-px-4">
-              <div className="s-flex s-flex-col s-gap-3">
-                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  {getProjectPageTitle("tasks")}
-                </h2>
-                <TodoInputBar
-                  placeholder="Describe the tasks to create"
-                  onCreateTasks={handleCreateTodoSuggestions}
-                />
-              </div>
-
-              {todoSuggestionStatus !== "idle" && (
-                <SuggestionBox
-                  status={todoSuggestionStatus}
-                  workingLabel="Creating suggested tasks..."
-                  items={todoSuggestions.map((suggestion) => {
-                    const participant = todoParticipants.find(
-                      (user) => user.id === suggestion.userId
-                    );
-
-                    return {
-                      id: suggestion.id,
-                      groupTitle: participant?.fullName ?? "Participant",
-                      groupVisual: (
-                        <Avatar
-                          name={participant?.fullName ?? "Participant"}
-                          visual={participant?.portrait}
-                          size="xs"
-                          isRounded
-                        />
-                      ),
-                      text: suggestion.text,
-                    };
-                  })}
-                  textById={todoSuggestionTextById}
-                  acceptItemLabel="Add this task"
-                  acceptAllLabel="Accept all"
-                  rejectAllLabel="Cancel"
-                  onTextChange={(id, text) => {
-                    setTodoSuggestionTextById((previousTextById) => ({
-                      ...previousTextById,
-                      [id]: text,
-                    }));
-                  }}
-                  onAcceptItem={(id) => {
-                    const suggestion = todoSuggestions.find(
-                      (item) => item.id === id
-                    );
-                    if (suggestion) {
-                      acceptTodoSuggestions([suggestion]);
+            )}
+            <InputBar placeholder={`Get work done in ${space.name}`} />
+            {hasHistory && (
+              <div className="s-flex s-w-full s-gap-2 s-px-4">
+                <SearchInputWithPopover
+                  name="conversation-search"
+                  value={searchText}
+                  onChange={(value) => {
+                    setSearchText(value);
+                    if (!value.trim()) {
+                      setIsSearchOpen(false);
                     }
                   }}
-                  onAcceptAll={() => acceptTodoSuggestions(todoSuggestions)}
-                  onRejectAll={rejectTodoSuggestions}
+                  open={isSearchOpen}
+                  onOpenChange={setIsSearchOpen}
+                  placeholder={`Search in ${space.name}`}
+                  className="s-w-full"
+                  items={searchResults}
+                  availableHeight
+                  noResults={
+                    searchText.trim()
+                      ? "No results found"
+                      : "Start typing to search"
+                  }
+                  onItemSelect={handleSearchItemSelect}
+                  renderItem={(item, selected) => (
+                    <SearchResultItem item={item} selected={selected} />
+                  )}
                 />
-              )}
+              </div>
+            )}
 
-              {hasHistory && ongoingSummary ? (
-                <div className="s-flex s-flex-col s-gap-6">
+            {!hasHistory && (
+              <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
+            )}
+          </div>
+          {/* Conversations list */}
+          <div className="s-flex s-flex-col s-gap-3">
+            {hasHistory &&
+              ongoingSummary &&
+              ongoingSummary.projectPulse.length > 0 && (
+                <div className="s-flex s-flex-col s-gap-2">
+                  <div className="s-inline-flex s-items-center s-gap-2 s-flex-wrap">
+                    <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                      {isSummaryUpdating ? (
+                        <AnimatedText
+                          variant="primary"
+                          className="s-text-muted-foreground"
+                        >
+                          Catching-up
+                        </AnimatedText>
+                      ) : (
+                        "Catching-up"
+                      )}
+                    </h3>
+                  </div>
+                  <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    {ongoingSummary.projectPulse.map((item, index) => {
+                      const itemKey = getSummaryItemKey("projectPulse", item);
+                      const relatedConversationIds =
+                        summaryRelatedConversations[itemKey] ?? [];
+                      const shouldTypePulseItem =
+                        typingItemKeys.has(itemKey) &&
+                        (summaryItemDiffByKey[itemKey] === "modified" ||
+                          summaryItemDiffByKey[itemKey] === "added");
+
+                      return (
+                        <span key={itemKey}>
+                          {shouldTypePulseItem ? (
+                            <TypingAnimation
+                              key={`${itemKey}-${typingVersion}`}
+                              text={item.segments
+                                .map((segment) => segment.text)
+                                .join("")}
+                              duration={16}
+                            />
+                          ) : (
+                            renderProjectPulseItemWithInlineLinks(
+                              item,
+                              relatedConversationIds,
+                              false
+                            )
+                          )}
+                          {index < ongoingSummary.projectPulse.length - 1
+                            ? " "
+                            : null}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <Separator className="s-mt-4" />
                   <div className="s-flex s-w-full s-items-center s-justify-between s-gap-2">
-                    <div className="s-flex s-items-center s-gap-2">
-                      <ButtonsSwitchList
-                        defaultValue={todoScopeFilter}
+                    <ButtonsSwitchList
+                      defaultValue={goodToKnowFilter}
+                      onValueChange={(value) => {
+                        if (
+                          value === "all" ||
+                          value === "shared" ||
+                          value === "mine"
+                        ) {
+                          setGoodToKnowFilter(value);
+                        }
+                      }}
+                    >
+                      <ButtonsSwitch
+                        value="mine"
+                        label="Mine"
+                        tooltip="Conversations you started"
+                      />
+                      <ButtonsSwitch
+                        value="shared"
+                        label="Group"
+                        tooltip="Conversations with more than one person"
+                      />
+                      <ButtonsSwitch
+                        value="all"
+                        label="All"
+                        tooltip="Every conversation in this project"
+                      />
+                    </ButtonsSwitchList>
+                    {hasHistory && (
+                      <SearchInputWithPopover
+                        name="conversation-search"
+                        value={searchText}
+                        onChange={(value) => {
+                          setSearchText(value);
+                          if (!value.trim()) {
+                            setIsSearchOpen(false);
+                          }
+                        }}
+                        open={isSearchOpen}
+                        onOpenChange={setIsSearchOpen}
+                        placeholder={`Search in ${space.name}`}
+                        className="s-w-full"
+                        items={searchResults}
+                        availableHeight
+                        noResults={
+                          searchText.trim()
+                            ? "No results found"
+                            : "Start typing to search"
+                        }
+                        onItemSelect={handleSearchItemSelect}
+                        renderItem={(item, selected) => (
+                          <SearchResultItem item={item} selected={selected} />
+                        )}
+                      />
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      icon={CheckDoubleIcon}
+                      label="Mark all as read"
+                      onClick={() => {
+                        setCheckedSummaryItems((previous) => ({
+                          ...previous,
+                          ...Object.fromEntries(
+                            ongoingSummary.projectPulse.map((item) => [
+                              getSummaryItemKey("projectPulse", item),
+                              true,
+                            ])
+                          ),
+                        }));
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            {expandedConversations.length > 0 && (
+              <>
+                <div className="s-flex s-flex-col">
+                  {(
+                    ["Today", "Yesterday", "Last Week", "Last Month"] as const
+                  ).map((bucketKey) => {
+                    const bucketConversations =
+                      conversationsByBucket[bucketKey];
+                    if (bucketConversations.length === 0) return null;
+
+                    return (
+                      <Fragment key={bucketKey}>
+                        <ListItemSection>{bucketKey}</ListItemSection>
+                        <ListGroup className="!s-border-transparent">
+                          {bucketConversations.map((conversation) => {
+                            const participants = getRandomParticipants(
+                              conversation,
+                              users,
+                              agents
+                            );
+                            const creator = getRandomCreator(
+                              conversation,
+                              users
+                            );
+                            const avatarProps =
+                              participantsToAvatarProps(participants);
+
+                            // Format time from updatedAt
+                            const time = conversation.updatedAt
+                              .toLocaleTimeString("en-US", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                              })
+                              .replace("24:", "00:");
+
+                            // Generate random counts respecting mentionCount <= unreadCount <= replyCount
+                            const replyCount = Math.floor(
+                              Math.random() * 8 + 1
+                            );
+                            const messageCount = Math.floor(
+                              Math.random() * replyCount + 1
+                            );
+                            const mentionCount = Math.floor(
+                              Math.random() * (messageCount + 1)
+                            );
+
+                            const baseConversationId = getBaseConversationId(
+                              conversation,
+                              conversations
+                            );
+
+                            const conversationForLookup = {
+                              ...conversation,
+                              id: baseConversationId,
+                            };
+
+                            return (
+                              <div
+                                id={getConversationRowDomId(conversation.id)}
+                                key={conversation.id}
+                              >
+                                <ConversationListItem
+                                  conversation={conversation}
+                                  creator={creator || undefined}
+                                  className="s-border-border s-border-t dark:s-border-border-night"
+                                  time={time}
+                                  showFocus={
+                                    conversationIdToShowFocus ===
+                                    conversation.id
+                                  }
+                                  replySection={
+                                    <ReplySection
+                                      replyCount={replyCount}
+                                      unreadCount={
+                                        bucketKey === "Today" ? messageCount : 0
+                                      }
+                                      mentionCount={
+                                        bucketKey === "Today" ? mentionCount : 0
+                                      }
+                                      avatars={avatarProps}
+                                      lastMessageBy={
+                                        avatarProps[0]?.name || "Unknown"
+                                      }
+                                    />
+                                  }
+                                  onClick={() => {
+                                    onConversationClick?.(
+                                      conversationForLookup
+                                    );
+                                  }}
+                                />
+                              </div>
+                            );
+                          })}
+                        </ListGroup>
+                      </Fragment>
+                    );
+                  })}
+                </div>
+                <div className="s-flex s-flex-col s-gap-3 s-py-8">
+                  <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                    Do more with your project!
+                  </h3>
+                  <CardGrid>
+                    {[
+                      {
+                        id: "kickoff",
+                        label: "Get your project running",
+                        icon: MagicIcon,
+                        variant: "highlight" as const,
+                        description:
+                          "Answer a few questions and an agent will fill in your project details.",
+                        onClick: () => {},
+                        isPulsing: true,
+                      },
+                      {
+                        id: "add-knowledge",
+                        label: "Add files",
+                        variant: "primary" as const,
+                        icon: FolderIcon,
+                        description:
+                          "Add files, links, or data sources relevant to this project.",
+                        onClick: () => setActiveTab("knowledge"),
+                        isPulsing: false,
+                      },
+                      {
+                        id: "invite-members",
+                        label: "Manage members",
+                        variant: "primary" as const,
+                        icon: UserGroupIcon,
+                        description:
+                          "Invite people to this project as members or editors.",
+                        onClick: () => onInviteMembers?.(),
+                        isPulsing: false,
+                      },
+                    ].map((suggestion) => (
+                      <Card
+                        key={suggestion.id}
+                        variant={suggestion.variant}
+                        size="lg"
+                        onClick={suggestion.onClick}
+                        className="s-cursor-pointer"
+                      >
+                        <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-base">
+                          <div
+                            className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
+                              suggestion.variant === "highlight"
+                                ? "s-text-highlight-600 dark:s-text-highlight-400"
+                                : "s-text-foreground dark:s-text-foreground-night"
+                            }`}
+                          >
+                            <Icon visual={suggestion.icon} size="sm" />
+                            <div className="s-w-full">{suggestion.label}</div>
+                          </div>
+                          {suggestion.description && (
+                            <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                              {suggestion.description}
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </CardGrid>
+                </div>
+              </>
+            )}
+          </div>
+        </GroupConversationTabContent>
+
+        {/* Tasks Tab */}
+        <GroupConversationTabContent value="todos" contentClassName="s-gap-4">
+          <div className="s-flex s-flex-col s-gap-3">
+            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+              {getProjectPageTitle("tasks")}
+            </h2>
+            <TodoInputBar
+              placeholder="Describe the tasks to create"
+              onCreateTasks={handleCreateTodoSuggestions}
+            />
+          </div>
+
+          {isShowingTodoSuggestions && (
+            <SuggestionBox
+              status={todoSuggestionStatus}
+              workingLabel="Creating suggested tasks..."
+              items={todoSuggestions.map((suggestion) => {
+                const participant = todoParticipants.find(
+                  (user) => user.id === suggestion.userId
+                );
+
+                return {
+                  id: suggestion.id,
+                  groupTitle: participant?.fullName ?? "Participant",
+                  groupVisual: (
+                    <Avatar
+                      name={participant?.fullName ?? "Participant"}
+                      visual={participant?.portrait}
+                      size="xs"
+                      isRounded
+                    />
+                  ),
+                  text: suggestion.text,
+                };
+              })}
+              textById={todoSuggestionTextById}
+              acceptItemLabel="Add this task"
+              acceptAllLabel="Accept all"
+              rejectAllLabel="Cancel"
+              onTextChange={(id, text) => {
+                setTodoSuggestionTextById((previousTextById) => ({
+                  ...previousTextById,
+                  [id]: text,
+                }));
+              }}
+              onAcceptItem={(id) => {
+                const suggestion = todoSuggestions.find(
+                  (item) => item.id === id
+                );
+                if (suggestion) {
+                  acceptTodoSuggestions([suggestion]);
+                }
+              }}
+              onAcceptAll={() => acceptTodoSuggestions(todoSuggestions)}
+              onRejectAll={rejectTodoSuggestions}
+            />
+          )}
+
+          {shouldShowTodoLists ? (
+            <div className="s-flex s-flex-col s-gap-6">
+              <div className="s-flex s-w-full s-items-center s-justify-between s-gap-2">
+                <div className="s-flex s-items-center s-gap-2">
+                  <ButtonsSwitchList
+                    defaultValue={todoScopeFilter}
+                    size="sm"
+                    onValueChange={(value) => {
+                      if (value === "all" || value === "mine") {
+                        setTodoScopeFilter(value);
+                      }
+                    }}
+                  >
+                    <ButtonsSwitch value="mine" label="Mine" />
+                    <ButtonsSwitch value="all" label="Everyone" />
+                  </ButtonsSwitchList>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
                         size="sm"
+                        variant="outline"
+                        label={`Status: ${TODO_HISTORY_FILTER_LABELS[todoHistoryFilter]}`}
+                        isSelect
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <div className="s-px-2 s-py-1.5 s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        Status
+                      </div>
+                      <DropdownMenuRadioGroup
+                        value={todoHistoryFilter}
                         onValueChange={(value) => {
-                          if (value === "all" || value === "mine") {
-                            setTodoScopeFilter(value);
+                          if (
+                            value === "ongoing" ||
+                            value === "today" ||
+                            value === "last7" ||
+                            value === "last30"
+                          ) {
+                            setTodoHistoryFilter(value);
                           }
                         }}
                       >
-                        <ButtonsSwitch value="mine" label="Mine" />
-                        <ButtonsSwitch value="all" label="Everyone" />
-                      </ButtonsSwitchList>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            label={`Status: ${TODO_HISTORY_FILTER_LABELS[todoHistoryFilter]}`}
-                            isSelect
+                        {TODO_HISTORY_FILTER_OPTIONS.map((option) => (
+                          <DropdownMenuRadioItem
+                            key={option}
+                            value={option}
+                            label={TODO_HISTORY_FILTER_LABELS[option]}
                           />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          <div className="s-px-2 s-py-1.5 s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
-                            Status
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <SearchInput
+                  name="todo-search"
+                  value={todoSearchText}
+                  onChange={setTodoSearchText}
+                  placeholder="Search tasks..."
+                  className="s-w-full"
+                />
+              </div>
+              {hasDisplayedTodoItems ? (
+                hasVisibleTodoItems ? (
+                  visibleParticipantTodoLists.map((list) => {
+                    const visibleItems = list.items;
+                    if (visibleItems.length === 0) {
+                      return null;
+                    }
+                    const visibleItemsToRender = visibleItems.filter(
+                      (item) =>
+                        !deletedTodoItemKeys.has(
+                          getSummaryItemKey("needAttention", item)
+                        )
+                    );
+                    const participantTodoSuggestions =
+                      participantTodoSuggestionsByUserId[list.user.id] ?? [];
+
+                    return (
+                      <div
+                        key={list.user.id}
+                        className="s-flex s-flex-col s-gap-3"
+                      >
+                        <div className="s-flex s-items-center s-gap-3">
+                          <Avatar
+                            name={list.user.fullName}
+                            visual={list.user.portrait}
+                            size="xs"
+                            isRounded={true}
+                          />
+                          <div className="s-flex s-flex-col">
+                            <h4 className="s-heading-base s-text-muted-foreground dark:s-text-foreground-night">
+                              {list.user.fullName}
+                            </h4>
                           </div>
-                          <DropdownMenuRadioGroup
-                            value={todoHistoryFilter}
-                            onValueChange={(value) => {
-                              if (
-                                value === "ongoing" ||
-                                value === "today" ||
-                                value === "last7" ||
-                                value === "last30"
-                              ) {
-                                setTodoHistoryFilter(value);
+                        </div>
+                        {participantTodoSuggestions.length > 0 && (
+                          <SuggestionBox
+                            status="ready"
+                            workingLabel="Creating suggested tasks..."
+                            title="Suggestions"
+                            items={participantTodoSuggestions.map(
+                              (suggestion) => ({
+                                id: suggestion.id,
+                                text: suggestion.text,
+                              })
+                            )}
+                            textById={participantTodoSuggestionTextById}
+                            acceptItemLabel="Add this task"
+                            onTextChange={(id, text) => {
+                              setParticipantTodoSuggestionTextById(
+                                (previousTextById) => ({
+                                  ...previousTextById,
+                                  [id]: text,
+                                })
+                              );
+                            }}
+                            onAcceptItem={(id) => {
+                              const suggestion =
+                                participantTodoSuggestions.find(
+                                  (item) => item.id === id
+                                );
+                              if (suggestion) {
+                                acceptParticipantTodoSuggestion(suggestion);
                               }
                             }}
-                          >
-                            {TODO_HISTORY_FILTER_OPTIONS.map((option) => (
-                              <DropdownMenuRadioItem
-                                key={option}
-                                value={option}
-                                label={TODO_HISTORY_FILTER_LABELS[option]}
-                              />
-                            ))}
-                          </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <SearchInput
-                      name="todo-search"
-                      value={todoSearchText}
-                      onChange={setTodoSearchText}
-                      placeholder="Search tasks..."
-                      className="s-w-full"
-                    />
-                  </div>
-                  {hasDisplayedTodoItems ? (
-                    hasVisibleTodoItems ? (
-                      visibleParticipantTodoLists.map((list) => {
-                        const visibleItems = list.items;
-                        if (visibleItems.length === 0) {
-                          return null;
-                        }
-                        const visibleItemsWithDrafts = [
-                          ...visibleItems,
-                          ...(todoDraftItemsByUserId[list.user.id] ?? []),
-                        ].filter(
-                          (item) =>
-                            !deletedTodoItemKeys.has(
-                              getSummaryItemKey("needAttention", item)
-                            )
-                        );
-                        const participantTodoSuggestions =
-                          participantTodoSuggestionsByUserId[list.user.id] ??
-                          [];
+                            onAcceptAll={() => {
+                              participantTodoSuggestions.forEach(
+                                acceptParticipantTodoSuggestion
+                              );
+                            }}
+                            onRejectAll={() => {
+                              participantTodoSuggestions.forEach(
+                                rejectParticipantTodoSuggestion
+                              );
+                            }}
+                          />
+                        )}
+                        <div className="s-flex s-flex-col s-gap-2 s-pl-4">
+                          {visibleItemsToRender.map((item) => {
+                            const itemKey = getSummaryItemKey(
+                              "needAttention",
+                              item
+                            );
+                            const todoItemText =
+                              todoItemTextByKey[itemKey] ?? item.text;
+                            const itemDiff = summaryItemDiffByKey[itemKey];
+                            const isClosedHistoryItem =
+                              closedTodoItemKeys.has(itemKey);
+                            const isChecked =
+                              isClosedHistoryItem ||
+                              (checkedSummaryItems[itemKey] ?? false);
+                            const relatedConversationIds =
+                              summaryRelatedConversations[itemKey] ?? [];
+                            const isAdded = itemDiff === "added";
+                            const hasEntered = enteringItemKeys.has(itemKey);
+                            const isExiting = exitingItemKeys.has(itemKey);
+                            const shouldTypeChecklistItem =
+                              typingItemKeys.has(itemKey) &&
+                              itemDiff === "modified";
+                            const autoCheckRationale =
+                              autoCheckRationaleByKey[itemKey];
+                            const isEditingTodoItem =
+                              editingTodoItemKey === itemKey;
 
-                        return (
-                          <div
-                            key={list.user.id}
-                            className="s-flex s-flex-col s-gap-3"
-                          >
-                            <div className="s-flex s-items-center s-gap-3">
-                              <Avatar
-                                name={list.user.fullName}
-                                visual={list.user.portrait}
-                                size="xs"
-                                isRounded={true}
-                              />
-                              <div className="s-flex s-flex-col">
-                                <h4 className="s-heading-base s-text-muted-foreground dark:s-text-foreground-night">
-                                  {list.user.fullName}
-                                </h4>
-                              </div>
-                            </div>
-                            {participantTodoSuggestions.length > 0 && (
-                              <SuggestionBox
-                                status="ready"
-                                workingLabel="Creating suggested tasks..."
-                                title="Suggestions"
-                                items={participantTodoSuggestions.map(
-                                  (suggestion) => ({
-                                    id: suggestion.id,
-                                    text: suggestion.text,
+                            return (
+                              <TaskItem
+                                key={itemKey}
+                                id={itemKey}
+                                text={todoItemText}
+                                isEditable={!isClosedHistoryItem}
+                                isChecked={isChecked}
+                                isDisabled={isClosedHistoryItem}
+                                isEditing={isEditingTodoItem}
+                                isMutedAfterCheck
+                                className={cn(
+                                  "s-w-full s-overflow-hidden s-pl-6 s-py-1",
+                                  "s-transition-all s-duration-200",
+                                  isExiting
+                                    ? "s-max-h-0 s-opacity-0"
+                                    : isAdded && !hasEntered
+                                      ? "s-max-h-0 s-opacity-0"
+                                      : "s-max-h-32 s-opacity-100"
+                                )}
+                                renderText={
+                                  shouldTypeChecklistItem ? (
+                                    <TypingAnimation
+                                      key={`${itemKey}-${typingVersion}`}
+                                      text={todoItemText}
+                                      duration={16}
+                                    />
+                                  ) : undefined
+                                }
+                                autoCheckRationale={autoCheckRationale}
+                                relatedConversations={relatedConversationIds.map(
+                                  (conversationId) => ({
+                                    id: conversationId,
+                                    label:
+                                      conversationTitleById.get(
+                                        conversationId
+                                      ) ?? conversationId,
                                   })
                                 )}
-                                textById={participantTodoSuggestionTextById}
-                                acceptItemLabel="Add this task"
-                                onTextChange={(id, text) => {
-                                  setParticipantTodoSuggestionTextById(
-                                    (previousTextById) => ({
-                                      ...previousTextById,
-                                      [id]: text,
-                                    })
-                                  );
-                                }}
-                                onAcceptItem={(id) => {
-                                  const suggestion =
-                                    participantTodoSuggestions.find(
-                                      (item) => item.id === id
+                                actionsClassName="s-pr-4"
+                                editorRef={(node) => {
+                                  if (node) {
+                                    todoItemEditorRefs.current.set(
+                                      itemKey,
+                                      node
                                     );
-                                  if (suggestion) {
-                                    acceptParticipantTodoSuggestion(suggestion);
+                                  } else {
+                                    todoItemEditorRefs.current.delete(itemKey);
                                   }
                                 }}
-                                onAcceptAll={() => {
-                                  participantTodoSuggestions.forEach(
-                                    acceptParticipantTodoSuggestion
-                                  );
+                                onCheckedChange={(checked) => {
+                                  if (isClosedHistoryItem) {
+                                    return;
+                                  }
+                                  setCheckedSummaryItems((previous) => ({
+                                    ...previous,
+                                    [itemKey]: checked,
+                                  }));
                                 }}
-                                onRejectAll={() => {
-                                  participantTodoSuggestions.forEach(
-                                    rejectParticipantTodoSuggestion
-                                  );
-                                }}
-                              />
-                            )}
-                            <div className="s-flex s-flex-col s-gap-2 s-pl-4">
-                              {visibleItemsWithDrafts.map((item) => {
-                                const itemKey = getSummaryItemKey(
-                                  "needAttention",
-                                  item
-                                );
-                                const todoItemText =
-                                  todoItemTextByKey[itemKey] ?? item.text;
-                                const itemDiff = summaryItemDiffByKey[itemKey];
-                                const isClosedHistoryItem =
-                                  closedTodoItemKeys.has(itemKey);
-                                const isChecked =
-                                  isClosedHistoryItem ||
-                                  (checkedSummaryItems[itemKey] ?? false);
-                                const relatedConversationIds =
-                                  summaryRelatedConversations[itemKey] ?? [];
-                                const isAdded = itemDiff === "added";
-                                const hasEntered =
-                                  enteringItemKeys.has(itemKey);
-                                const isExiting = exitingItemKeys.has(itemKey);
-                                const shouldTypeChecklistItem =
-                                  typingItemKeys.has(itemKey) &&
-                                  itemDiff === "modified";
-                                const autoCheckRationale =
-                                  autoCheckRationaleByKey[itemKey];
-                                const isEditingTodoItem =
-                                  editingTodoItemKey === itemKey;
-
-                                return (
-                                  <TaskItem
-                                    key={itemKey}
-                                    id={itemKey}
-                                    text={todoItemText}
-                                    isEditable={!isClosedHistoryItem}
-                                    isChecked={isChecked}
-                                    isDisabled={isClosedHistoryItem}
-                                    isEditing={isEditingTodoItem}
-                                    isMutedAfterCheck
-                                    className={cn(
-                                      "s-w-full s-overflow-hidden s-pl-6 s-py-1",
-                                      "s-transition-all s-duration-200",
-                                      isExiting
-                                        ? "s-max-h-0 s-opacity-0"
-                                        : isAdded && !hasEntered
-                                          ? "s-max-h-0 s-opacity-0"
-                                          : "s-max-h-32 s-opacity-100"
-                                    )}
-                                    renderText={
-                                      shouldTypeChecklistItem ? (
-                                        <TypingAnimation
-                                          key={`${itemKey}-${typingVersion}`}
-                                          text={todoItemText}
-                                          duration={16}
-                                        />
-                                      ) : undefined
+                                onEditingChange={(isEditing) => {
+                                  setEditingTodoItemKey((previousKey) => {
+                                    if (isEditing) {
+                                      return itemKey;
                                     }
-                                    autoCheckRationale={autoCheckRationale}
-                                    relatedConversations={relatedConversationIds.map(
-                                      (conversationId) => ({
-                                        id: conversationId,
-                                        label:
-                                          conversationTitleById.get(
-                                            conversationId
-                                          ) ?? conversationId,
-                                      })
-                                    )}
-                                    actionsClassName="s-pr-4"
-                                    editorRef={(node) => {
-                                      if (node) {
-                                        todoItemEditorRefs.current.set(
-                                          itemKey,
-                                          node
-                                        );
-                                      } else {
-                                        todoItemEditorRefs.current.delete(
-                                          itemKey
-                                        );
-                                      }
-                                    }}
-                                    onCheckedChange={(checked) => {
-                                      if (isClosedHistoryItem) {
-                                        return;
-                                      }
-                                      setCheckedSummaryItems((previous) => ({
-                                        ...previous,
-                                        [itemKey]: checked,
-                                      }));
-                                    }}
-                                    onEditingChange={(isEditing) => {
-                                      setEditingTodoItemKey((previousKey) => {
-                                        if (isEditing) {
-                                          return itemKey;
+                                    return previousKey === itemKey
+                                      ? null
+                                      : previousKey;
+                                  });
+                                }}
+                                onCommit={(nextText) => {
+                                  saveTodoItemText(
+                                    itemKey,
+                                    item.text,
+                                    nextText
+                                  );
+                                }}
+                                onRemove={() => removeTodoItem(itemKey)}
+                                onAddAfter={() =>
+                                  addDraftTodoItemAfter(list.user.id, itemKey)
+                                }
+                                onRelatedConversationClick={
+                                  scrollToConversationRow
+                                }
+                                actions={
+                                  <>
+                                    <DropdownMenu
+                                      onOpenChange={(open) => {
+                                        if (!open) {
+                                          setTodoReassignSearchText("");
                                         }
-                                        return previousKey === itemKey
-                                          ? null
-                                          : previousKey;
-                                      });
-                                    }}
-                                    onCommit={(nextText) => {
-                                      saveTodoItemText(
-                                        itemKey,
-                                        item.text,
-                                        nextText
-                                      );
-                                    }}
-                                    onRemove={() => removeTodoItem(itemKey)}
-                                    onAddAfter={() =>
-                                      addDraftTodoItemAfter(
-                                        list.user.id,
-                                        itemKey
-                                      )
-                                    }
-                                    onRelatedConversationClick={
-                                      scrollToConversationRow
-                                    }
-                                    actions={
-                                      <>
-                                        <DropdownMenu
-                                          onOpenChange={(open) => {
-                                            if (!open) {
-                                              setTodoReassignSearchText("");
-                                            }
-                                          }}
-                                        >
-                                          <DropdownMenuTrigger asChild>
-                                            <Button
-                                              icon={MoreIcon}
-                                              size="xs"
-                                              variant="ghost"
-                                              tooltip="More actions"
-                                              aria-label="More actions"
-                                            />
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end">
-                                            <DropdownMenuItem
-                                              label="Delete"
-                                              icon={TrashIcon}
-                                              variant="warning"
-                                            />
-                                            <DropdownMenuSub>
-                                              <DropdownMenuSubTrigger label="Re-assign to" />
-                                              <DropdownMenuSubContent
-                                                className="s-w-64"
-                                                dropdownHeaders={
-                                                  <DropdownMenuSearchbar
-                                                    placeholder="Search participants"
-                                                    name="todo-reassign-search"
-                                                    value={
-                                                      todoReassignSearchText
-                                                    }
-                                                    onChange={
-                                                      setTodoReassignSearchText
-                                                    }
-                                                    autoFocus
-                                                  />
+                                      }}
+                                    >
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          icon={MoreIcon}
+                                          size="xs"
+                                          variant="ghost"
+                                          tooltip="More actions"
+                                          aria-label="More actions"
+                                        />
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                          label="Delete"
+                                          icon={TrashIcon}
+                                          variant="warning"
+                                        />
+                                        <DropdownMenuSub>
+                                          <DropdownMenuSubTrigger label="Re-assign to" />
+                                          <DropdownMenuSubContent
+                                            className="s-w-64"
+                                            dropdownHeaders={
+                                              <DropdownMenuSearchbar
+                                                placeholder="Search participants"
+                                                name="todo-reassign-search"
+                                                value={todoReassignSearchText}
+                                                onChange={
+                                                  setTodoReassignSearchText
                                                 }
-                                              >
-                                                {reassignTodoParticipants.length >
-                                                0 ? (
-                                                  reassignTodoParticipants.map(
-                                                    (participant) => (
-                                                      <DropdownMenuItem
-                                                        key={participant.id}
-                                                        label={
+                                                autoFocus
+                                              />
+                                            }
+                                          >
+                                            {reassignTodoParticipants.length >
+                                            0 ? (
+                                              reassignTodoParticipants.map(
+                                                (participant) => (
+                                                  <DropdownMenuItem
+                                                    key={participant.id}
+                                                    label={participant.fullName}
+                                                    icon={
+                                                      <Avatar
+                                                        name={
                                                           participant.fullName
                                                         }
-                                                        icon={
-                                                          <Avatar
-                                                            name={
-                                                              participant.fullName
-                                                            }
-                                                            visual={
-                                                              participant.portrait
-                                                            }
-                                                            size="xs"
-                                                            isRounded={true}
-                                                          />
+                                                        visual={
+                                                          participant.portrait
                                                         }
+                                                        size="xs"
+                                                        isRounded={true}
                                                       />
-                                                    )
-                                                  )
-                                                ) : (
-                                                  <DropdownMenuItem
-                                                    label="No participants found"
-                                                    disabled
+                                                    }
                                                   />
-                                                )}
-                                              </DropdownMenuSubContent>
-                                            </DropdownMenuSub>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                        <Button
-                                          icon={ArrowRightIcon}
-                                          size="xs"
-                                          variant="highlight"
-                                          tooltip="Start working on task"
-                                          aria-label="Start task"
-                                          onClick={() => {
-                                            setActiveTaskCommand({
-                                              id: itemKey,
-                                              label: todoItemText,
-                                              contextAttachments:
-                                                relatedConversationIds.map(
-                                                  (conversationId) => ({
-                                                    id: conversationId,
-                                                    label:
-                                                      conversationTitleById.get(
-                                                        conversationId
-                                                      ) ?? conversationId,
-                                                    tooltip:
-                                                      "Conversation context",
-                                                    visual:
-                                                      ChatBubbleLeftRightIcon,
-                                                  })
-                                                ),
-                                            });
-                                          }}
-                                        />
-                                      </>
-                                    }
-                                  />
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
-                        No tasks match your filters.
+                                                )
+                                              )
+                                            ) : (
+                                              <DropdownMenuItem
+                                                label="No participants found"
+                                                disabled
+                                              />
+                                            )}
+                                          </DropdownMenuSubContent>
+                                        </DropdownMenuSub>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    <Button
+                                      icon={ArrowRightIcon}
+                                      size="xs"
+                                      variant="highlight"
+                                      tooltip="Start working on task"
+                                      aria-label="Start task"
+                                      onClick={() => {
+                                        setActiveTaskCommand({
+                                          id: itemKey,
+                                          label: todoItemText,
+                                          contextAttachments:
+                                            relatedConversationIds.map(
+                                              (conversationId) => ({
+                                                id: conversationId,
+                                                label:
+                                                  conversationTitleById.get(
+                                                    conversationId
+                                                  ) ?? conversationId,
+                                                tooltip: "Conversation context",
+                                                visual: ChatBubbleLeftRightIcon,
+                                              })
+                                            ),
+                                        });
+                                      }}
+                                    />
+                                  </>
+                                }
+                              />
+                            );
+                          })}
+                        </div>
                       </div>
-                    )
-                  ) : (
-                    <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
-                      You're all caught up!
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
-                  Start a conversation to generate project tasks.
+                    );
+                  })
+                ) : (
+                  <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
+                    No tasks match your filters.
+                  </div>
+                )
+              ) : isShowingTodoSuggestions ? null : (
+                <div className="s-flex s-flex-col s-items-center s-gap-0 s-text-center">
+                  <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                    No pending Tasks
+                  </h3>
+                  <p className="s-text-muted-foreground s-textbase">
+                    You're all good.
+                  </p>
                 </div>
               )}
             </div>
-          </div>
-        </TabsContent>
+          ) : isShowingTodoSuggestions ? null : (
+            <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
+          )}
+        </GroupConversationTabContent>
 
         {/* Files Tab */}
-        <TabsContent value="knowledge">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-4">
-            <div className="s-mx-auto s-flex s-w-full s-flex-col s-gap-3 s-py-8">
-              <div className="s-flex s-gap-2">
-                <h3 className="s-heading-2xl s-flex-1 s-items-center">
-                  {getProjectPageTitle("files")}
-                </h3>
-                <Button
-                  variant="outline"
+        <GroupConversationTabContent
+          value="knowledge"
+          contentClassName="s-gap-3"
+        >
+          <div className="s-flex s-gap-2">
+            <h3 className="s-heading-2xl s-flex-1 s-items-center">
+              {getProjectPageTitle("files")}
+            </h3>
+            <Button
+              variant="outline"
+              icon={ArrowDownOnSquareIcon}
+              label="Add files"
+            />
+          </div>
+          {dataSources.length === 0 ? (
+            <EmptyCTA
+              message="No files in this room yet."
+              action={
+                <EmptyCTAButton
                   icon={ArrowDownOnSquareIcon}
                   label="Add files"
                 />
-              </div>
-              {dataSources.length === 0 ? (
-                <EmptyCTA
-                  message="No files in this room yet."
-                  action={
-                    <EmptyCTAButton
-                      icon={ArrowDownOnSquareIcon}
-                      label="Add files"
-                    />
-                  }
-                />
-              ) : (
-                <>
-                  <SearchInput
-                    name="knowledge-search"
-                    value={knowledgeSearchText}
-                    onChange={setKnowledgeSearchText}
-                    placeholder="Search files..."
-                    className="s-w-full"
+              }
+            />
+          ) : (
+            <>
+              <SearchInput
+                name="knowledge-search"
+                value={knowledgeSearchText}
+                onChange={setKnowledgeSearchText}
+                placeholder="Search files..."
+                className="s-w-full"
+              />
+              <DataTable
+                columns={columns}
+                data={dataSourcesWithClick}
+                filter={knowledgeSearchText}
+                filterColumn="fileName"
+                sorting={[{ id: "fileName", desc: false }]}
+              />
+            </>
+          )}
+        </GroupConversationTabContent>
+
+        {/* About Tab */}
+        {showToolsAndAboutTabs && (
+          <GroupConversationTabContent value="about" contentClassName="s-gap-4">
+            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+              {getProjectPageTitle("about")}
+            </h2>
+            <p className="s-text-foreground dark:s-text-foreground-night">
+              {space.description}
+            </p>
+          </GroupConversationTabContent>
+        )}
+
+        {/* Settings Tab */}
+        <GroupConversationTabContent
+          value="settings"
+          contentClassName="s-gap-8"
+        >
+          {/* Room Name Section */}
+          <div className="s-flex s-gap-2">
+            <h3 className="s-heading-2xl s-flex-1">
+              {getProjectPageTitle("settings")}
+            </h3>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" icon={MoreIcon} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {isProjectArchived ? (
+                  <DropdownMenuItem
+                    icon={ArrowUpOnSquareIcon}
+                    label="Unarchive project"
+                    onClick={handleUnarchiveProject}
                   />
-                  <DataTable
-                    columns={columns}
-                    data={dataSourcesWithClick}
-                    filter={knowledgeSearchText}
-                    filterColumn="fileName"
-                    sorting={[{ id: "fileName", desc: false }]}
+                ) : (
+                  <DropdownMenuItem
+                    icon={ArchiveIcon}
+                    label="Archive project"
+                    variant="warning"
+                    onClick={handleArchiveProject}
+                  />
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          {isProjectArchived && (
+            <ContentMessage variant="info" size="lg">
+              This project has been archived.
+            </ContentMessage>
+          )}
+          <div className="s-flex s-w-full s-flex-col s-gap-2">
+            <h3 className="s-heading-lg">Name</h3>
+            <div className="s-flex s-w-full s-min-w-0 s-gap-2">
+              <Input
+                value={roomName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setRoomName(e.target.value);
+                  setIsEditingName(e.target.value !== space.name);
+                }}
+                placeholder="Enter room name"
+                containerClassName="s-flex-1"
+              />
+              {isEditingName && (
+                <>
+                  <Button
+                    label="Save"
+                    variant="highlight"
+                    onClick={() => setShowNameSaveDialog(true)}
+                  />
+                  <Button
+                    label="Cancel"
+                    variant="outline"
+                    onClick={() => {
+                      setRoomName(space.name);
+                      setIsEditingName(false);
+                    }}
                   />
                 </>
               )}
             </div>
           </div>
-        </TabsContent>
-
-        {/* About Tab */}
-        {showToolsAndAboutTabs && (
-          <TabsContent value="about">
-            <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-4">
-              <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8">
-                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  {getProjectPageTitle("about")}
-                </h2>
-                <p className="s-text-foreground dark:s-text-foreground-night">
-                  {space.description}
-                </p>
-              </div>
-            </div>
-          </TabsContent>
-        )}
-
-        {/* Settings Tab */}
-        <TabsContent value="settings">
-          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-4">
-            <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-px-4 s-py-8">
-              {/* Room Name Section */}
-              <div className="s-flex s-gap-2">
-                <h3 className="s-heading-2xl s-flex-1">
-                  {getProjectPageTitle("settings")}
-                </h3>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" icon={MoreIcon} />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {isProjectArchived ? (
-                      <DropdownMenuItem
-                        icon={ArrowUpOnSquareIcon}
-                        label="Unarchive project"
-                        onClick={handleUnarchiveProject}
-                      />
-                    ) : (
-                      <DropdownMenuItem
-                        icon={ArchiveIcon}
-                        label="Archive project"
-                        variant="warning"
-                        onClick={handleArchiveProject}
-                      />
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              {isProjectArchived && (
-                <ContentMessage variant="info" size="lg">
-                  This project has been archived.
-                </ContentMessage>
-              )}
-              <div className="s-flex s-w-full s-flex-col s-gap-2">
-                <h3 className="s-heading-lg">Name</h3>
-                <div className="s-flex s-w-full s-min-w-0 s-gap-2">
-                  <Input
-                    value={roomName}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      setRoomName(e.target.value);
-                      setIsEditingName(e.target.value !== space.name);
-                    }}
-                    placeholder="Enter room name"
-                    containerClassName="s-flex-1"
-                  />
-                  {isEditingName && (
-                    <>
-                      <Button
-                        label="Save"
-                        variant="highlight"
-                        onClick={() => setShowNameSaveDialog(true)}
-                      />
-                      <Button
-                        label="Cancel"
-                        variant="outline"
-                        onClick={() => {
-                          setRoomName(space.name);
-                          setIsEditingName(false);
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="s-flex s-w-full s-flex-col s-gap-2">
-                <h3 className="s-heading-lg">Description</h3>
-                <div className="s-flex s-w-full s-min-w-0 s-gap-2">
-                  <Input
-                    value={roomDescription}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      setRoomDescription(e.target.value);
-                      setIsEditingDescription(
-                        e.target.value !== (space.description ?? "")
-                      );
-                    }}
-                    placeholder="Enter room description"
-                    containerClassName="s-flex-1"
-                  />
-                  {isEditingDescription && (
-                    <>
-                      <Button
-                        label="Save"
-                        variant="highlight"
-                        onClick={() => {
-                          setIsEditingDescription(false);
-                        }}
-                      />
-                      <Button
-                        label="Cancel"
-                        variant="outline"
-                        onClick={() => {
-                          setRoomDescription(space.description ?? "");
-                          setIsEditingDescription(false);
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-              {/* Open to Everyone Section */}
-
-              <div className="s-flex s-w-full s-flex-col s-gap-2">
-                <h3 className="s-heading-lg">Visibility</h3>
-                <div className="s-flex s-items-start s-items-center s-justify-between s-gap-4 s-border-y s-border-border dark:s-border-border-night s-py-4">
-                  <div className="s-flex s-flex-col">
-                    <div className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
-                      Opened to everyone
-                    </div>
-                    <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                      Anyone in the workspace can find and join the room.
-                    </div>
-                  </div>
-                  <SliderToggle
-                    size="xs"
-                    selected={isPublic}
-                    onClick={() => {
-                      const nextValue = !isPublic;
-                      setShowPublicToggleDialog(true);
-                      // Store the intended new value temporarily
-                      setPendingPublicValue(nextValue);
-                    }}
-                  />
-                </div>
-              </div>
-              {/* Members Section */}
-              <div className="s-flex s-flex-col s-gap-3">
-                <div className="s-flex s-items-center s-gap-2">
-                  <h3 className="s-heading-lg s-flex-1">Members & Editors</h3>
+          <div className="s-flex s-w-full s-flex-col s-gap-2">
+            <h3 className="s-heading-lg">Description</h3>
+            <div className="s-flex s-w-full s-min-w-0 s-gap-2">
+              <Input
+                value={roomDescription}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setRoomDescription(e.target.value);
+                  setIsEditingDescription(
+                    e.target.value !== (space.description ?? "")
+                  );
+                }}
+                placeholder="Enter room description"
+                containerClassName="s-flex-1"
+              />
+              {isEditingDescription && (
+                <>
                   <Button
-                    label="Manage"
+                    label="Save"
+                    variant="highlight"
+                    onClick={() => {
+                      setIsEditingDescription(false);
+                    }}
+                  />
+                  <Button
+                    label="Cancel"
                     variant="outline"
+                    onClick={() => {
+                      setRoomDescription(space.description ?? "");
+                      setIsEditingDescription(false);
+                    }}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+          {/* Open to Everyone Section */}
+
+          <div className="s-flex s-w-full s-flex-col s-gap-2">
+            <h3 className="s-heading-lg">Visibility</h3>
+            <div className="s-flex s-items-start s-items-center s-justify-between s-gap-4 s-border-y s-border-border dark:s-border-border-night s-py-4">
+              <div className="s-flex s-flex-col">
+                <div className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
+                  Opened to everyone
+                </div>
+                <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  Anyone in the workspace can find and join the room.
+                </div>
+              </div>
+              <SliderToggle
+                size="xs"
+                selected={isPublic}
+                onClick={() => {
+                  const nextValue = !isPublic;
+                  setShowPublicToggleDialog(true);
+                  // Store the intended new value temporarily
+                  setPendingPublicValue(nextValue);
+                }}
+              />
+            </div>
+          </div>
+          {/* Members Section */}
+          <div className="s-flex s-flex-col s-gap-3">
+            <div className="s-flex s-items-center s-gap-2">
+              <h3 className="s-heading-lg s-flex-1">Members & Editors</h3>
+              <Button
+                label="Manage"
+                variant="outline"
+                icon={UserGroupIcon}
+                onClick={() => onInviteMembers?.()}
+              />
+            </div>
+            {members.length === 0 ? (
+              <EmptyCTA
+                message="Feeling lonely? Invite participants!."
+                action={
+                  <EmptyCTAButton
                     icon={UserGroupIcon}
+                    label="Invite"
                     onClick={() => onInviteMembers?.()}
                   />
-                </div>
-                {members.length === 0 ? (
-                  <EmptyCTA
-                    message="Feeling lonely? Invite participants!."
-                    action={
-                      <EmptyCTAButton
-                        icon={UserGroupIcon}
-                        label="Invite"
-                        onClick={() => onInviteMembers?.()}
-                      />
-                    }
-                  />
-                ) : (
-                  <>
-                    <SearchInput
-                      name="members-search"
-                      value={membersSearchText}
-                      onChange={setMembersSearchText}
-                      placeholder="Search members..."
-                      className="s-w-full"
-                    />
-                    <DataTable
-                      columns={memberColumns}
-                      data={filteredMembers}
-                      sorting={[{ id: "name", desc: false }]}
-                    />
-                  </>
-                )}
-              </div>
+                }
+              />
+            ) : (
+              <>
+                <SearchInput
+                  name="members-search"
+                  value={membersSearchText}
+                  onChange={setMembersSearchText}
+                  placeholder="Search members..."
+                  className="s-w-full"
+                />
+                <DataTable
+                  columns={memberColumns}
+                  data={filteredMembers}
+                  sorting={[{ id: "name", desc: false }]}
+                />
+              </>
+            )}
+          </div>
 
-              <div className="s-flex s-w-full s-flex-col s-gap-8 s-border-t s-border-border dark:s-border-border-night s-pt-8">
-                <div className="s-flex s-w-full s-flex-col s-gap-3">
-                  <h3 className="s-heading-lg">Danger Zone</h3>
-                  <h4 className="s-heading-base">Archive</h4>
-                  {!isProjectArchived && (
-                    <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                      This project will be removed from the sidebar. Its data
-                      stays intact and can still be used as a data source.
+          <div className="s-flex s-w-full s-flex-col s-gap-8 s-border-t s-border-border dark:s-border-border-night s-pt-8">
+            <div className="s-flex s-w-full s-flex-col s-gap-3">
+              <h3 className="s-heading-lg">Danger Zone</h3>
+              <h4 className="s-heading-base">Archive</h4>
+              {!isProjectArchived && (
+                <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  This project will be removed from the sidebar. Its data stays
+                  intact and can still be used as a data source.
+                </p>
+              )}
+              {isProjectArchived ? (
+                <div className="s-flex s-flex-col s-gap-3">
+                  {archivedAt && archivedByName && (
+                    <p className="s-text-sm s-text-foreground dark:s-text-foreground-night">
+                      Archived on{" "}
+                      <span className="s-font-medium">
+                        {formatDate(archivedAt)} ·{" "}
+                        {archivedAt.toLocaleTimeString("en-US", {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </span>{" "}
+                      by <span className="s-font-medium">{archivedByName}</span>
+                      .
                     </p>
                   )}
-                  {isProjectArchived ? (
-                    <div className="s-flex s-flex-col s-gap-3">
-                      {archivedAt && archivedByName && (
-                        <p className="s-text-sm s-text-foreground dark:s-text-foreground-night">
-                          Archived on{" "}
-                          <span className="s-font-medium">
-                            {formatDate(archivedAt)} ·{" "}
-                            {archivedAt.toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
-                          </span>{" "}
-                          by{" "}
-                          <span className="s-font-medium">
-                            {archivedByName}
-                          </span>
-                          .
-                        </p>
-                      )}
-                      <div className="s-flex s-w-full s-flex-col s-items-start">
-                        <Button
-                          icon={ArrowUpOnSquareIcon}
-                          variant="outline"
-                          label="Unarchive"
-                          onClick={handleUnarchiveProject}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="s-flex s-w-full s-flex-col s-items-start">
-                      <Button
-                        icon={ArchiveIcon}
-                        variant="warning-secondary"
-                        label="Archive"
-                        onClick={handleArchiveProject}
-                      />
-                    </div>
-                  )}
-                  <h4 className="s-heading-base">Delete</h4>
-                  <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    {`This permanently removes all content—conversations, folders, websites, and data sources. Assistants using this project's tools will be impacted. This cannot be undone.`}
-                  </p>
                   <div className="s-flex s-w-full s-flex-col s-items-start">
                     <Button
-                      icon={TrashIcon}
-                      variant="warning"
-                      label="Delete project"
-                      onClick={() => setShowDeleteProjectDialog(true)}
+                      icon={ArrowUpOnSquareIcon}
+                      variant="outline"
+                      label="Unarchive"
+                      onClick={handleUnarchiveProject}
                     />
                   </div>
                 </div>
+              ) : (
+                <div className="s-flex s-w-full s-flex-col s-items-start">
+                  <Button
+                    icon={ArchiveIcon}
+                    variant="warning-secondary"
+                    label="Archive"
+                    onClick={handleArchiveProject}
+                  />
+                </div>
+              )}
+              <h4 className="s-heading-base">Delete</h4>
+              <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                {`This permanently removes all content—conversations, folders, websites, and data sources. Assistants using this project's tools will be impacted. This cannot be undone.`}
+              </p>
+              <div className="s-flex s-w-full s-flex-col s-items-start">
+                <Button
+                  icon={TrashIcon}
+                  variant="warning"
+                  label="Delete project"
+                  onClick={() => setShowDeleteProjectDialog(true)}
+                />
               </div>
             </div>
           </div>
-        </TabsContent>
+        </GroupConversationTabContent>
       </Tabs>
 
       {activeTaskCommand && (

@@ -19,10 +19,10 @@ import {
 const MOBILE_BREAKPOINT = 768;
 const MIN_NAV = 160,
   MAX_NAV = 320;
-const MIN_P2 = 320,
-  MAX_P2 = 760;
+const MIN_P2 = 260,
+  MAX_P2 = 960;
 const MIN_P3 = 260,
-  MAX_P3 = 560;
+  MAX_P3 = 1200;
 const MIN_MAIN = 320;
 const P3_OPEN_HIDE_NAV_BELOW = 1280;
 
@@ -175,8 +175,8 @@ export function PanelLayout({ children }: PanelLayoutProps) {
 
   // ── Internal geometry state ─────────────────────────────────────────────
   const [navW, setNavW] = useState(260);
-  const [p2W, setP2W] = useState(480);
-  const [p3W, setP3W] = useState(360);
+  const [p2W, setP2W] = useState<number | null>(null);
+  const [p3W, setP3W] = useState<number | null>(null);
 
   const [navIntent, setNavIntent] = useState(true);
   const [navOverlay, setNavOverlay] = useState(false);
@@ -195,6 +195,9 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       if (Math.abs(w - last) > 0.5) {
         last = w;
         setStageW(w);
+        // Seed proportional defaults on first valid measure
+        setP2W((prev) => prev ?? Math.max(MIN_P2, Math.round(w * 0.3)));
+        setP3W((prev) => prev ?? Math.max(MIN_P3, Math.round(w * 0.5)));
         setDragging(true);
         clearTimeout(timer);
         timer = window.setTimeout(() => setDragging(false), 80);
@@ -246,6 +249,8 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   // ── Layout widths ───────────────────────────────────────────────────────
   const layout = (() => {
     const W = Math.max(0, stageW);
+    const resolvedP2W = p2W ?? Math.max(MIN_P2, Math.round(W * 0.3));
+    const resolvedP3W = p3W ?? Math.max(MIN_P3, Math.round(W * 0.5));
     let nav = 0,
       w2 = 0,
       w3 = 0,
@@ -257,11 +262,11 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       else if (navIntent) nav = W;
       else w2 = W;
     } else if (p4Open) {
-      w3 = Math.min(p3W, Math.max(MIN_P3, W - 1));
+      w3 = Math.min(resolvedP3W, Math.max(MIN_P3, W - 1));
       w4 = Math.max(0, W - w3);
     } else if (p3Open) {
       nav = showNavInline ? navW : 0;
-      w2 = Math.min(p2W, Math.max(MIN_P2, W - nav - MIN_P3));
+      w2 = Math.min(resolvedP2W, Math.max(MIN_P2, W - nav - MIN_P3));
       w3 = Math.max(0, W - nav - w2);
     } else {
       nav = showNavInline ? navW : 0;
@@ -428,7 +433,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         <ResizeHandle
           visible={layout.p2 > 0 && layout.p3 > 0}
           onPointerDown={drag({
-            getCurrent: () => p2W,
+            getCurrent: () => p2W ?? Math.max(MIN_P2, Math.round(stageW * 0.3)),
             set: setP2W,
             min: MIN_P2,
             max: MAX_P2,
@@ -478,7 +483,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         <ResizeHandle
           visible={layout.p3 > 0 && layout.p4 > 0}
           onPointerDown={drag({
-            getCurrent: () => p3W,
+            getCurrent: () => p3W ?? Math.max(MIN_P3, Math.round(stageW * 0.5)),
             set: setP3W,
             min: MIN_P3,
             max: MAX_P3,

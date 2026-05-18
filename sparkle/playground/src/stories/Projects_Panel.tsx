@@ -10,7 +10,6 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   CheckCircleIcon,
-  FolderIcon,
   CheckDoubleIcon,
   Cog6ToothIcon,
   ContactsUserIcon,
@@ -28,10 +27,10 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  FolderIcon,
   HeartIcon,
   LightbulbIcon,
   LinkIcon,
-  ListSelectIcon,
   LogoutIcon,
   MoreIcon,
   NavigationList,
@@ -59,6 +58,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AgentBuilderView } from "../components/AgentBuilderView";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
+import { FreeButtonSwitch } from "../components/FreeButtonSwitch";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
@@ -605,43 +605,36 @@ function Projects_Panel() {
   // ── Panel top bars ────────────────────────────────────────────────────────
   const conversationActions = (
     <>
-      <Button size="sm" variant="ghost" icon={AttachmentIcon} isSelect />
-      <Button size="sm" variant="ghost" icon={MoreIcon} />
+      <Button
+        size="sm"
+        variant="ghost-secondary"
+        icon={AttachmentIcon}
+        isSelect
+      />
+      <Button size="sm" variant="ghost-secondary" icon={MoreIcon} />
     </>
   );
 
   const spaceTopBarLeft =
     p2View.kind === "space" ? (
-      <div className="s-flex s-items-center s-gap-0.5">
-        <Button
-          variant={spaceActiveTab === "conversations" ? "outline" : "ghost"}
-          size="sm"
-          label="Conversations"
-          icon={ChatBubbleLeftRightIcon}
-          onClick={() => setSpaceActiveTab("conversations")}
-        />
-        <Button
-          variant={spaceActiveTab === "todos" ? "outline" : "ghost"}
-          size="sm"
-          label="Tasks"
-          icon={CheckCircleIcon}
-          onClick={() => setSpaceActiveTab("todos")}
-        />
-        <Button
-          variant={spaceActiveTab === "knowledge" ? "outline" : "ghost"}
-          size="sm"
-          label="Files"
-          icon={FolderIcon}
-          onClick={() => setSpaceActiveTab("knowledge")}
-        />
-        <Button
-          variant={spaceActiveTab === "settings" ? "outline" : "ghost"}
-          size="sm"
-          icon={Cog6ToothIcon}
-          tooltip="Room settings"
-          onClick={() => setSpaceActiveTab("settings")}
-        />
-      </div>
+      <FreeButtonSwitch
+        value={spaceActiveTab}
+        onValueChange={setSpaceActiveTab}
+        options={[
+          {
+            value: "conversations",
+            label: "Conversations",
+            icon: ChatBubbleLeftRightIcon,
+          },
+          { value: "todos", label: "Tasks", icon: CheckCircleIcon },
+          { value: "knowledge", label: "Files", icon: FolderIcon },
+          {
+            value: "settings",
+            icon: Cog6ToothIcon,
+            tooltip: "Room settings",
+          },
+        ]}
+      />
     ) : null;
 
   const spaceTopBarRight = (() => {
@@ -743,28 +736,15 @@ function Projects_Panel() {
 
   // ── Sidebar (Nav) top bar ─────────────────────────────────────────────────
   const navTopBar = (
-    <div className="s-flex s-items-center s-gap-0.5">
-      <Button
-        variant={activeTab === "chat" ? "outline" : "ghost"}
-        size="sm"
-        label="Chat"
-        icon={ChatBubbleLeftRightIcon}
-        onClick={() => setActiveTab("chat")}
-      />
-      <Button
-        variant={activeTab === "spaces" ? "outline" : "ghost"}
-        size="sm"
-        label="Spaces"
-        icon={PlanetIcon}
-        onClick={() => setActiveTab("spaces")}
-      />
-      <Button
-        variant={activeTab === "admin" ? "outline" : "ghost"}
-        size="sm"
-        icon={Cog6ToothIcon}
-        onClick={() => setActiveTab("admin")}
-      />
-    </div>
+    <FreeButtonSwitch<"chat" | "spaces" | "admin">
+      value={activeTab}
+      onValueChange={setActiveTab}
+      options={[
+        { value: "chat", label: "Chat", icon: ChatBubbleLeftRightIcon },
+        { value: "spaces", label: "Spaces", icon: PlanetIcon },
+        { value: "admin", icon: Cog6ToothIcon },
+      ]}
+    />
   );
 
   // ── Sidebar (Nav) content ─────────────────────────────────────────────────
@@ -796,7 +776,7 @@ function Projects_Panel() {
               >
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="ghost"
+                    variant="ghost-secondary"
                     size="sm"
                     icon={MoreIcon}
                     aria-label="More options"
@@ -887,7 +867,7 @@ function Projects_Panel() {
                     <Button
                       size="xmini"
                       icon={CheckDoubleIcon}
-                      variant="ghost"
+                      variant="ghost-secondary"
                       tooltip="Mark all as read"
                       onClick={(e) => {
                         e.preventDefault();
@@ -899,7 +879,7 @@ function Projects_Panel() {
                         <Button
                           size="xmini"
                           icon={MoreIcon}
-                          variant="ghost"
+                          variant="ghost-secondary"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -961,7 +941,7 @@ function Projects_Panel() {
                       <Button
                         size="xmini"
                         icon={PlusIcon}
-                        variant="ghost"
+                        variant="ghost-secondary"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -973,7 +953,7 @@ function Projects_Panel() {
                           <Button
                             size="xmini"
                             icon={MoreIcon}
-                            variant="ghost"
+                            variant="ghost-secondary"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1151,7 +1131,7 @@ function Projects_Panel() {
                       <Button
                         size="xmini"
                         icon={ChatBubbleLeftRightIcon}
-                        variant="ghost"
+                        variant="ghost-secondary"
                         tooltip="New Conversation"
                         onClick={(e) => {
                           e.preventDefault();
@@ -1163,7 +1143,7 @@ function Projects_Panel() {
                           <Button
                             size="xmini"
                             icon={MoreIcon}
-                            variant="ghost"
+                            variant="ghost-secondary"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
