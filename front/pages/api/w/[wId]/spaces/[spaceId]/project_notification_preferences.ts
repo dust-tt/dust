@@ -150,7 +150,7 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message:
-          "Project notification preferences are only available for project spaces.",
+          "Pod notification preferences are only available for pod spaces.",
       },
     });
   }

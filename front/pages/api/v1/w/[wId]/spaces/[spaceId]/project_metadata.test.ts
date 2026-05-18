@@ -121,7 +121,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Project metadata is only available for project spaces.",
+        message: "Pod metadata is only available for pod spaces.",
       },
     });
   });

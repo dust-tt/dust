@@ -39,7 +39,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Project metadata is only available for project spaces.",
+        message: "Pod metadata is only available for pod spaces.",
       },
     });
   }
@@ -58,7 +58,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message: "Only project editors can update project metadata.",
+            message: "Only pod editors can update pod metadata.",
           },
         });
       }
