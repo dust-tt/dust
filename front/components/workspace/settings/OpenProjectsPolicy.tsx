@@ -16,15 +16,15 @@ import {
 const OPEN_PROJECTS_POLICIES = [
   {
     value: "private_and_open",
-    label: "Private and open projects",
-    description: "Members can create either private or open projects.",
+    label: "Private and open pods",
+    description: "Members can create either private or open pods.",
     icon: SpaceOpenIcon,
     allowOpenProjects: true,
   },
   {
     value: "private_only",
-    label: "Private projects only",
-    description: "Members can only create private projects.",
+    label: "Private pods only",
+    description: "Members can only create private pods.",
     icon: SpaceClosedIcon,
     allowOpenProjects: false,
   },
@@ -45,8 +45,8 @@ export function OpenProjectsPolicy({ owner }: { owner: WorkspaceType }) {
 
   return (
     <ContextItem
-      title="Project visibility policy"
-      subElement="Control whether projects can be private only or private and open."
+      title="Pod visibility policy"
+      subElement="Control whether pods can be private only or private and open."
       visual={<SpaceClosedIcon className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={

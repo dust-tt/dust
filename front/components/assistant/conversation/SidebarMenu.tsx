@@ -273,7 +273,7 @@ function SearchResults({
     <div className="h-full overflow-y-auto">
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
-          label="Projects"
+          label="Pods"
           type="collapse"
           open={projectsSectionOpen}
           onOpenChange={setProjectsSectionOpen}
@@ -758,7 +758,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
-          label={showCount ? `Projects (${projectCountInSummary})` : "Projects"}
+          label={showCount ? `Pods (${projectCountInSummary})` : "Pods"}
           type="collapse"
           visibleItems={VISIBLE_PROJECTS}
           overflowCount={hiddenOverflowCount}
@@ -797,7 +797,7 @@ export function AgentSidebarMenu({
             })
           ) : (
             <NavigationListItem
-              label="Create a Project"
+              label="Create a Pod"
               icon={PlusIcon}
               onClick={() => setIsCreateProjectModalOpen(true)}
             />

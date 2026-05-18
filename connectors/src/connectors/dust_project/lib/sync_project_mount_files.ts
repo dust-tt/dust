@@ -94,9 +94,9 @@ export async function deleteProjectMountFile({
       },
     });
     await mountRow.delete();
-    localLogger.info("Deleted project mount file from data source");
+    localLogger.info("Deleted pod mount file from data source");
   } catch (error) {
-    localLogger.error({ error }, "Failed to delete project mount file");
+    localLogger.error({ error }, "Failed to delete pod mount file");
     throw error;
   }
 }
@@ -263,5 +263,5 @@ export async function syncProjectMountFile({
     });
   }
 
-  localLogger.info({ documentId }, "Synced project mount file");
+  localLogger.info({ documentId }, "Synced pod mount file");
 }

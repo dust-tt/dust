@@ -416,7 +416,7 @@ export function ConversationMenu({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 icon={ArrowRightIcon}
-                label={canMoveOutOfProject ? "Move to..." : "Move to project"}
+                label={canMoveOutOfProject ? "Move to..." : "Move to pod"}
                 disabled={
                   canMoveOutOfProject ? false : !filteredProjects.length
                 }
@@ -436,7 +436,7 @@ export function ConversationMenu({
                         }
                       />
                       <DropdownMenuSeparator />
-                      <DropdownMenuLabel label="Projects" />
+                      <DropdownMenuLabel label="Pods" />
                     </>
                   )}
                   {filteredProjects.map((project) => (

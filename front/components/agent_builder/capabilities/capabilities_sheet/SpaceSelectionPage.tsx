@@ -88,11 +88,11 @@ export function SpaceSelectionSheet({
       <SheetContent>
         <SheetHeader>
           <SheetTitle>
-            {isProjectsEnabled ? "Add Spaces and Projects" : "Add Spaces"}
+            {isProjectsEnabled ? "Add Spaces and Pods" : "Add Spaces"}
           </SheetTitle>
           <SheetDescription>
             {isProjectsEnabled
-              ? `Choose the spaces and projects you want the ${entityName} to have access to.`
+              ? `Choose the spaces and Pods you want the ${entityName} to have access to.`
               : `Choose the spaces you want the ${entityName} to have access to.`}
           </SheetDescription>
           <SearchInput
@@ -100,7 +100,7 @@ export function SpaceSelectionSheet({
             onChange={(query) => setSearchQuery(query)}
             value={searchQuery}
             placeholder={
-              isProjectsEnabled ? "Search spaces and projects" : "Search spaces"
+              isProjectsEnabled ? "Search spaces and Pods" : "Search spaces"
             }
             className="mt-4"
           />
@@ -290,7 +290,7 @@ export function SpaceSelectionPageContent({
           </ListGroup>
           {isProjectsEnabled && (
             <>
-              <ListItemSection size="sm">Projects</ListItemSection>
+              <ListItemSection size="sm">Pods</ListItemSection>
               <ListGroup>
                 {projectsTableData.map((row) => {
                   const ProjectIcon = getSpaceIcon(row.space);
@@ -350,7 +350,7 @@ export function SpaceSelectionPageContent({
           {searchQuery.length > 0
             ? "No results found for your search"
             : isProjectsEnabled
-              ? "No spaces and projects available"
+              ? "No spaces and Pods available"
               : "No spaces available"}
         </div>
       )}

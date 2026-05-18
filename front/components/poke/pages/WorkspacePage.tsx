@@ -265,7 +265,7 @@ export function WorkspacePage() {
               <TabsTrigger value="featureflags" label="Feature Flags" />
               <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="mcpviews" label="MCP Server Views" />
-              <TabsTrigger value="projects" label="Projects" />
+              <TabsTrigger value="pods" label="Pods" />
               <TabsTrigger value="skills" label="Skills" />
               <TabsTrigger value="spaces" label="Spaces" />
 
@@ -284,7 +284,7 @@ export function WorkspacePage() {
             <TabsContent value="mcpviews">
               <MCPServerViewsDataTable owner={owner} loadOnInit />
             </TabsContent>
-            <TabsContent value="projects">
+            <TabsContent value="pods">
               <ProjectsDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="spaces">

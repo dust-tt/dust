@@ -48,7 +48,7 @@ interface SpaceAboutTabProps {
 }
 
 const OPEN_PROJECTS_DISABLED_TOOLTIP =
-  "Open projects are disabled by your workspace admin.";
+  "Open pods are disabled by your workspace admin.";
 
 export function SpaceAboutTab({
   owner,
@@ -124,8 +124,8 @@ export function SpaceAboutTab({
       return;
     }
     const confirmed = await confirm({
-      title: "Update project name?",
-      message: `The project name will be changed to "${newProjectName}".`,
+      title: "Update pod name?",
+      message: `The pod name will be changed to "${newProjectName}".`,
       validateVariant: "warning",
     });
 
@@ -143,8 +143,8 @@ export function SpaceAboutTab({
         name: newProjectName,
       },
       {
-        title: "Successfully updated project name",
-        description: "Project name was successfully updated.",
+        title: "Successfully updated pod name",
+        description: "pod name was successfully updated.",
       }
     );
 
@@ -178,7 +178,7 @@ export function SpaceAboutTab({
     const newIsPublic = !isPublic;
     const title = newIsPublic ? "Switch to public?" : "Switch to restricted?";
     const message = newIsPublic
-      ? "All workspace members will be able to join and see everything in this project — including existing conversations and files."
+      ? "All workspace members will be able to join and see everything in this pod — including existing conversations and files."
       : "Access will be limited to invited members only.";
 
     const confirmed = await confirm({
@@ -201,8 +201,8 @@ export function SpaceAboutTab({
         name: space.name,
       },
       {
-        title: "Successfully updated project visibility",
-        description: "Project visibility was successfully updated.",
+        title: "Successfully updated pod visibility",
+        description: "Pod visibility was successfully updated.",
       }
     );
 
@@ -234,13 +234,13 @@ export function SpaceAboutTab({
                 {projectMetadata?.archivedAt ? (
                   <DropdownMenuItem
                     icon={ArrowUpOnSquareIcon}
-                    label="Unarchive project"
+                    label="Unarchive pod"
                     onClick={handleArchiveToggle}
                   />
                 ) : (
                   <DropdownMenuItem
                     icon={ArchiveIcon}
-                    label="Archive project"
+                    label="Archive pod"
                     variant="warning"
                     onClick={handleArchiveToggle}
                   />
@@ -251,7 +251,7 @@ export function SpaceAboutTab({
         </div>
         {space.archivedAt && (
           <ContentMessage variant="info" size="lg">
-            This project has been archived.
+            This pod has been archived.
           </ContentMessage>
         )}
         <div className="flex w-full flex-col gap-2">
@@ -265,7 +265,7 @@ export function SpaceAboutTab({
                 setNameToCheck(e.target.value);
                 setIsEditingName(e.target.value.trim() !== space.name.trim());
               }}
-              placeholder="Enter project name"
+              placeholder="Enter pod name"
               containerClassName="flex-1"
             />
             {isEditingName && (
@@ -290,7 +290,7 @@ export function SpaceAboutTab({
           </div>
           {isEditingName && nameNotAvailable && (
             <div className="text-xs text-warning-500">
-              A project or space with this name already exists.
+              A pod or space with this name already exists.
             </div>
           )}
         </div>
@@ -308,7 +308,7 @@ export function SpaceAboutTab({
               placeholder={
                 isProjectMetadataLoading
                   ? "Loading..."
-                  : "Describe what this project is about..."
+                  : "Describe what this pod is about..."
               }
               disabled={isProjectMetadataLoading || !isProjectEditor}
               minRows={3}
@@ -341,7 +341,7 @@ export function SpaceAboutTab({
               <ProjectSettingsOptionLabel
                 icon={GlobeAltIcon}
                 title="Open to everyone"
-                description="Anyone in the workspace can find and join the project."
+                description="Anyone in the workspace can find and join the pod."
               />
               <div className="flex shrink-0 items-center gap-2">
                 {isVisibilityToggleDisabled ? (
@@ -438,7 +438,7 @@ export function SpaceAboutTab({
             ) : (
               <>
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  This project will be removed from the sidebar. Its data stays
+                  This pod will be removed from the sidebar. Its data stays
                   intact and can still be used as a data source.
                 </p>
                 <Button
@@ -453,8 +453,8 @@ export function SpaceAboutTab({
             <h4 className="heading-base">Delete</h4>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               This permanently removes all content—conversations, folders,
-              websites, and data sources. Assistants using this project's tools
-              will be impacted. This cannot be undone.
+              websites, and data sources. Assistants using this pod's tools will
+              be impacted. This cannot be undone.
             </p>
             <DeleteSpaceDialog owner={owner} space={space} />
           </div>

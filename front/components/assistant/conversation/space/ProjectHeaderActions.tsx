@@ -95,18 +95,18 @@ export function ProjectHeaderActions({
             <DropdownMenuContent collisionPadding={8}>
               {!canLeaveProject ? (
                 <DropdownTooltipTrigger
-                  description="You are the last editor of this project and cannot leave it."
+                  description="You are the last editor of this pod and cannot leave it."
                   side="left"
                 >
                   <DropdownMenuItem
-                    label="Leave the project"
+                    label="Leave the pod"
                     icon={XMarkIcon}
                     disabled={true}
                   />
                 </DropdownTooltipTrigger>
               ) : (
                 <DropdownMenuItem
-                  label="Leave the project"
+                  label="Leave the pod"
                   icon={XMarkIcon}
                   onClick={openLeaveDialog}
                 />

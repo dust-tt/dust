@@ -32,11 +32,11 @@ export async function syncProjectMetadata({
   });
 
   if (!metadata) {
-    localLogger.info("No metadata found for project. Skipping sync.");
+    localLogger.info("No metadata found for pod. Skipping sync.");
     return;
   }
 
-  localLogger.info("Syncing project metadata (only description for now)");
+  localLogger.info("Syncing pod metadata (only description for now)");
 
   const metadataText = formatProjectMetadata(metadata);
 
@@ -77,7 +77,7 @@ export async function syncProjectMetadata({
     upsertContext: {
       sync_type: "batch",
     },
-    title: "Project metadata",
+    title: "Pod metadata",
     mimeType: "text/markdown",
     async: true,
   });

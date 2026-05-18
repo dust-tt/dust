@@ -445,7 +445,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     return (
       <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
         <EmptyCTA
-          message="This conversation belongs to an archived project. No new messages can be sent."
+          message="This conversation belongs to an archived pod. No new messages can be sent."
           action={null}
         />
       </div>

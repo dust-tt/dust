@@ -27,7 +27,7 @@ export function ProjectTaskCreateBar() {
   if (projectMembers.length === 0 || !defaultNewAssigneeId) {
     return (
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        No project members available to assign.
+        No pod members available to assign.
       </p>
     );
   }

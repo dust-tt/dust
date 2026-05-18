@@ -16,14 +16,14 @@ interface ProjectPageProps {
 
 export function ProjectPage({ details }: ProjectPageProps) {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Project`);
+  useDocumentTitle(`Poke - ${owner.name} - Pod`);
 
   const { members, metadata, space } = details;
 
   return (
     <>
       <h3 className="text-xl font-bold">
-        Project {space.name} within workspace{" "}
+        Pod {space.name} within workspace{" "}
         <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </LinkWrapper>

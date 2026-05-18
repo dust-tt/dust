@@ -105,7 +105,7 @@ export function ProjectSection() {
   if (isSpacesLoading) {
     return (
       <ConfigurationSectionContainer
-        title="Select Project"
+        title="Select Pod"
         error={fieldState.error?.message}
       >
         <div className="flex h-32 w-full items-center justify-center">
@@ -118,12 +118,12 @@ export function ProjectSection() {
   if (allProjects.length === 0) {
     return (
       <ConfigurationSectionContainer
-        title="Select Project"
+        title="Select Pod"
         error={fieldState.error?.message}
       >
-        <ProjectMessage title="No projects available">
-          No projects are available in your workspace. Create a project first to
-          use this feature.
+        <ProjectMessage title="No pods available">
+          No pods are available in your workspace. Create a pod first to use
+          this feature.
         </ProjectMessage>
       </ConfigurationSectionContainer>
     );
@@ -131,20 +131,20 @@ export function ProjectSection() {
 
   return (
     <ConfigurationSectionContainer
-      title="Select Project"
+      title="Select Pod"
       error={fieldState.error?.message}
     >
       <div className="flex h-full flex-col gap-3">
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Choose the project that the agent can access. The agent will have
-          access to project metadata and context from the selected project.
+          Choose the pod that the agent can access. The agent will have access
+          to pod metadata and context from the selected pod.
         </div>
 
         <div className="inline-flex">
           <DropdownMenu open={searchOpen} onOpenChange={setSearchOpen}>
             <DropdownMenuTrigger asChild>
               <Button
-                label={selectedProject?.name ?? "Select project..."}
+                label={selectedProject?.name ?? "Select pod..."}
                 icon={
                   selectedProject ? getSpaceIcon(selectedProject) : undefined
                 }
@@ -184,7 +184,7 @@ export function ProjectSection() {
                 })
               ) : (
                 <div className="px-3 py-4 text-center text-xs italic text-muted-foreground dark:text-muted-foreground-night">
-                  {searchQuery ? "No matches" : "No projects"}
+                  {searchQuery ? "No matches" : "No pods"}
                 </div>
               )}
             </DropdownMenuContent>

@@ -243,7 +243,7 @@ const ProjectFileItem = ({
   const fileKind = getSingularFileCategoryLabelForContentType(item.contentType);
   const description = projectName
     ? `${fileKind} in "${projectName}" knowledge`
-    : `${fileKind} in project knowledge`;
+    : `${fileKind} in pod knowledge`;
   return (
     <DropdownMenuCheckboxItem
       label={item.title}
@@ -499,7 +499,7 @@ export const InputBarAttachmentsPicker = ({
         value: key,
         label:
           key === PROJECT_FILTER_KEY
-            ? "Projects"
+            ? "Pods"
             : getDisplayNameForDataSource(r.dataSource, true),
       });
     }
@@ -515,7 +515,7 @@ export const InputBarAttachmentsPicker = ({
     if (projectFilesWithResults.length > 0) {
       options.set(PROJECT_FILTER_KEY, {
         value: PROJECT_FILTER_KEY,
-        label: "Projects",
+        label: "Pods",
       });
     }
 

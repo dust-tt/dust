@@ -7,7 +7,7 @@ export function buildPromptForSourceType(
   switch (sourceType) {
     case "project_conversation":
       return (
-        "IMPORTANT CONTEXT: This is a conversation that was created within the project itself.\n" +
+        "IMPORTANT CONTEXT: This is a conversation that was created within the pod itself.\n" +
         "Messages from the agents are AI-generated responses, NOT from a human participant.\n" +
         "- Do NOT treat user questions that the agents already answered as open action items.\n" +
         "- Only extract action items that represent real commitments between human participants, " +
@@ -18,8 +18,8 @@ export function buildPromptForSourceType(
       );
     case "project_knowledge":
       return (
-        "IMPORTANT CONTEXT: This is a project knowledge document.\n" +
-        "It has been added to the project knowledge base explicitly\n\n"
+        "IMPORTANT CONTEXT: This is a pod knowledge document.\n" +
+        "It has been added to the pod knowledge base explicitly\n\n"
       );
     case "slack":
       return (
@@ -35,27 +35,27 @@ export function buildPromptForSourceType(
     case "notion":
       return (
         "IMPORTANT CONTEXT: This is a notion document.\n" +
-        "It has been added to the project knowledge base explicitly\n\n"
+        "It has been added to the pod knowledge base explicitly\n\n"
       );
     case "gdrive":
       return (
         "IMPORTANT CONTEXT: This is a gdrive document.\n" +
-        "It has been added to the project knowledge base explicitly\n\n"
+        "It has been added to the pod knowledge base explicitly\n\n"
       );
     case "confluence":
       return (
         "IMPORTANT CONTEXT: This is a confluence document.\n" +
-        "It has been added to the project knowledge base explicitly\n\n"
+        "It has been added to the pod knowledge base explicitly\n\n"
       );
     case "github":
       return (
         "IMPORTANT CONTEXT: This is a github document (issue, pull request, discussion, or code file).\n" +
-        "It has been added to the project knowledge base explicitly\n\n"
+        "It has been added to the pod knowledge base explicitly\n\n"
       );
     case "microsoft":
       return (
         "IMPORTANT CONTEXT: This is a Microsoft document (SharePoint, OneDrive, or Teams file).\n" +
-        "It has been added to the project knowledge base explicitly\n\n"
+        "It has been added to the pod knowledge base explicitly\n\n"
       );
     default:
       assertNever(sourceType);

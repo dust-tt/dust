@@ -31,7 +31,7 @@ export const LeaveProjectDialog = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Leave this project?</DialogTitle>
+          <DialogTitle>Leave this pod?</DialogTitle>
           <DialogDescription>
             {isRestricted ? (
               <>
@@ -39,7 +39,7 @@ export const LeaveProjectDialog = ({
                 <strong>{spaceName}</strong>.
               </>
             ) : (
-              "You can rejoin this project anytime."
+              "You can rejoin this pod anytime."
             )}
           </DialogDescription>
         </DialogHeader>

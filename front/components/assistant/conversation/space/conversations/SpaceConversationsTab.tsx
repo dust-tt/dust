@@ -103,7 +103,7 @@ export function SpaceConversationsTab({
       case "all":
         return "No conversations found.";
       case "group":
-        return "No group conversations yet in this project.";
+        return "No group conversations yet in this pod.";
       case "with_me":
         return "You are not a participant in any conversation yet.";
     }
@@ -184,7 +184,7 @@ export function SpaceConversationsTab({
             {spaceInfo.archivedAt ? (
               <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
                 <EmptyCTA
-                  message="This project is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
+                  message="This pod is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
                   action={null}
                 />
               </div>
@@ -290,7 +290,7 @@ export function SpaceConversationsTab({
                       <ButtonsSwitch
                         value="all"
                         label="All"
-                        tooltip="Every conversation in this project."
+                        tooltip="Every conversation in this pod."
                         onClick={() => onConversationFilterChange("all")}
                       />
                     </ButtonsSwitchList>

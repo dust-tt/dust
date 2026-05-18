@@ -65,7 +65,7 @@ export function MembersTable({
       const updatedMembers = selectedMembers.filter((m) => m.sId !== userId);
       if (!updatedMembers.some((m) => m.isEditor)) {
         sendNotifications({
-          title: "Projects must have at least one editor.",
+          title: "Pods must have at least one editor.",
           description: "You cannot remove the last editor.",
           type: "error",
         });
@@ -85,7 +85,7 @@ export function MembersTable({
         },
         {
           title: "Successfully removed member",
-          description: "Project member was successfully removed.",
+          description: "Pod member was successfully removed.",
         }
       );
       if (updateMember) {
@@ -114,7 +114,7 @@ export function MembersTable({
 
       if (updatedMembers.filter((m) => m.isEditor).length === 0) {
         sendNotifications({
-          title: "Projects must have at least one editor.",
+          title: "Pods must have at least one editor.",
           description: "You cannot remove the last editor.",
           type: "error",
         });
@@ -139,8 +139,8 @@ export function MembersTable({
             ? "Successfully added editor"
             : "Successfully removed editor",
           description: newIsEditorValue
-            ? "Project editor was successfully added."
-            : "Project editor was successfully removed.",
+            ? "Pod editor was successfully added."
+            : "Pod editor was successfully removed.",
         }
       );
       if (updateMember) {
@@ -288,13 +288,13 @@ export function MembersTable({
                       editorSettingItem,
                       {
                         kind: "item",
-                        label: "Remove from project",
+                        label: "Remove from pod",
                         icon: TrashIcon,
                         variant: "warning",
                         onClick: async () => {
                           const confirmed = await confirm({
                             title: "Remove member",
-                            message: `Are you sure you want to remove "${info.row.original.name}" from this project?`,
+                            message: `Are you sure you want to remove "${info.row.original.name}" from this pod?`,
                             validateLabel: "Remove",
                             validateVariant: "warning",
                           });

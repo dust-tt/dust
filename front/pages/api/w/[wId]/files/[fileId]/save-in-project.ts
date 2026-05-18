@@ -66,7 +66,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only Frame files can be saved to a project.",
+        message: "Only Frame files can be saved to a pod.",
       },
     });
   }
@@ -78,7 +78,7 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message:
-          "Only conversation frame files can be saved to a project. This file is already in a project or has another use case.",
+          "Only conversation frame files can be saved to a pod. This file is already in a pod or has another use case.",
       },
     });
   }

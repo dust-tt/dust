@@ -17,14 +17,14 @@ const PROJECT_KNOWLEDGE_POLICIES = [
   {
     value: "enabled",
     label: "Manual updates allowed",
-    description: "Members can manually add files to project.",
+    description: "Members can manually add files to pod.",
     icon: BookOpenIcon,
     allowManualProjectKnowledgeManagement: true,
   },
   {
     value: "disabled",
     label: "Manual updates disabled",
-    description: "Members cannot manually add files to project.",
+    description: "Members cannot manually add files to pod.",
     icon: LockIcon,
     allowManualProjectKnowledgeManagement: false,
   },
@@ -50,8 +50,8 @@ export function ProjectKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
 
   return (
     <ContextItem
-      title="Project files policy"
-      subElement="Control whether members can manually add files to project."
+      title="Pod files policy"
+      subElement="Control whether members can manually add files to pods."
       visual={<BookOpenIcon className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={

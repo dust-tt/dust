@@ -108,8 +108,8 @@ function getDynamicToolDisplayLabels({
       if (toolName === "semantic_search" && isSearchInputTypeWithTags(inputs)) {
         const q = truncateQuery(inputs.query);
         return {
-          running: `Searching “${q}” in project`,
-          done: `Search “${q}” in project`,
+          running: `Searching “${q}” in pod`,
+          done: `Search “${q}” in pod`,
         };
       }
       return null;
