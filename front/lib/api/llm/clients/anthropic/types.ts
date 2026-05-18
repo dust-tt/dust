@@ -101,7 +101,11 @@ export const isAnthropicWhitelistedModelId = (
   );
 };
 
-export const VERTEX_MODEL_ID_MAP: Partial<Record<ModelIdType, string>> = {
+// Typed as `${string}@${string}` so the model id and version can be split on `@`
+// — the Vertex token counting API only requires the name.
+export const VERTEX_MODEL_ID_MAP: Partial<
+  Record<ModelIdType, `${string}@${string}`>
+> = {
   [CLAUDE_4_5_SONNET_20250929_MODEL_ID]: "claude-sonnet-4-5@20250929",
   [CLAUDE_SONNET_4_6_MODEL_ID]: "claude-sonnet-4-6@default",
   [CLAUDE_OPUS_4_6_MODEL_ID]: "claude-opus-4-6@default",

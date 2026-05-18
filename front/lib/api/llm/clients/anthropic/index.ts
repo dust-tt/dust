@@ -198,10 +198,12 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       return undefined;
     }
 
+    const model = this.useVertex ? this.getModel().split("@")[0] : this.modelId;
+
     return (body: MessageCountTokensParams) =>
       this.inferenceClient.messages.countTokens({
         ...body,
-        model: this.getModel(),
+        model,
       });
   }
 
