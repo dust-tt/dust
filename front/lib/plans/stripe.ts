@@ -929,17 +929,24 @@ export function getDefaultPaymentMethodId(
 }
 
 /**
- * Checks if a Stripe invoice is for a credit purchase.
+ * Checks if a Stripe invoice is for a programmatic credit purchase.
  */
 export function isCreditPurchaseInvoice(invoice: Stripe.Invoice): boolean {
   return invoice.metadata?.credit_purchase === "true";
 }
 
 /**
- * Checks if a Stripe invoice is for a credit purchase.
+ * Checks if a Stripe invoice is for a Metronome first-period charge.
  */
 export function isFirstPeriodInvoice(invoice: Stripe.Invoice): boolean {
   return invoice.metadata?.metronome_first_period === "true";
+}
+
+/**
+ * Checks if a Stripe invoice is for an AWU credit pool purchase.
+ */
+export function isAwuPurchaseInvoice(invoice: Stripe.Invoice): boolean {
+  return invoice.metadata?.awu_purchase === "true";
 }
 
 /**

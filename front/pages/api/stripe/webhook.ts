@@ -43,6 +43,7 @@ import {
   createCustomerPortalSession,
   getStripeClient,
   getStripeSubscription,
+  isAwuPurchaseInvoice,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
   isFirstPeriodInvoice,
@@ -847,6 +848,12 @@ async function handler(
               auth: ctx.auth,
               isEnterprise: ctx.isEnterprise,
             });
+          } else if (isAwuPurchaseInvoice(invoice)) {
+            // AWU credit purchases are now provisioned as Metronome
+            // payment-gated commits — Metronome itself unlocks the commit
+            // on `invoice.paid`, no external grant needed here. Kept for
+            // observability; the metadata still flags the invoice so the
+            // pending-purchase eligibility check works.
           } else {
             await ctx.subscription.clearPaymentFailingStatus();
           }
@@ -863,11 +870,18 @@ async function handler(
           const isMetronomeInvoice = typeof invoice.subscription !== "string";
           const isCreditPurchase = isCreditPurchaseInvoice(invoice);
           const isFirstPeriod = isFirstPeriodInvoice(invoice);
+          const isAwuPurchase = isAwuPurchaseInvoice(invoice);
 
           // Only Metronome subscription invoices need the force-charge.
           // Stripe-subscription invoices have their own auto-charge flow;
-          // credit-purchase invoices have their own flow too.
-          if (isMetronomeInvoice && !isCreditPurchase && !isFirstPeriod) {
+          // credit-purchase, first-period, and AWU purchase invoices have
+          // their own flow too.
+          if (
+            isMetronomeInvoice &&
+            !isCreditPurchase &&
+            !isFirstPeriod &&
+            !isAwuPurchase
+          ) {
             await forceChargeMetronomeFinalizedInvoice(invoice);
           }
           break;

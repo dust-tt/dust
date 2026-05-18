@@ -156,6 +156,11 @@ export const getProductSeatSubscriptionCreditsId = () =>
 export const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
 export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
 
+// AWU commit priorities — lower number is consumed first.
+// Seat allocations are consumed before purchased top-ups.
+export const AWU_PRIORITY_SEAT_ALLOCATION = 200;
+export const AWU_PRIORITY_PURCHASED_COMMIT = 300;
+
 export function getAwuAllocationForSeatType(
   seatType: MembershipSeatType | null
 ): number {
