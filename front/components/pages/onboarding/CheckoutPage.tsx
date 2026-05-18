@@ -128,16 +128,23 @@ export function CheckoutPage() {
   });
   const { validateCoupon } = useValidateCoupon({ workspaceId: owner.sId });
 
-  const { preparePayment, isPreparePaymentLoading, isPreparePaymentError } =
-    usePreparePayment({
-      workspaceId: owner.sId,
-      setupSessionId,
-      disabled:
-        phase !== "payment_review" &&
-        phase !== "confirming" &&
-        phase !== "activating" &&
-        phase !== "error",
-    });
+  const {
+    preparePayment: livePreparePayment,
+    isPreparePaymentLoading,
+    isPreparePaymentError,
+  } = usePreparePayment({
+    workspaceId: owner.sId,
+    setupSessionId,
+    disabled: phase !== "payment_review",
+  });
+
+  const [preparePayment, setPreparePayment] =
+    useState<typeof livePreparePayment>(null);
+  useEffect(() => {
+    if (livePreparePayment) {
+      setPreparePayment(livePreparePayment);
+    }
+  }, [livePreparePayment]);
 
   const {
     register: registerCoupon,
@@ -269,6 +276,7 @@ export function CheckoutPage() {
     setSetupSessionId(null);
     setPhaseError(null);
     setAppliedCoupon(null);
+    setPreparePayment(null);
     resetCoupon();
     confirmCalledRef.current = false;
     setPhase("card_capture");
@@ -297,13 +305,7 @@ export function CheckoutPage() {
 
   const fallbackCurrency = useUserBillingCurrency();
 
-  // In payment_review and confirming phases, use actual values from the API.
-  const showActualTax =
-    (phase === "payment_review" ||
-      phase === "confirming" ||
-      phase === "activating" ||
-      phase === "error") &&
-    preparePayment !== null;
+  const showActualTax = preparePayment !== null;
 
   const currency = showActualTax ? preparePayment.currency : fallbackCurrency;
   const seats = seatsCount ?? 1;
