@@ -16,6 +16,7 @@ import { AWU_PRICE_PER_CREDIT } from "@app/lib/metronome/types";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
+import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
@@ -90,11 +91,15 @@ async function checkAwuPurchaseEligibility(
   const workspace = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
 
-  if (!subscription?.metronomeContractId || !workspace.metronomeCustomerId) {
+  const { metronomeCustomerId } = workspace;
+
+  if (
+    !subscription ||
+    !metronomeCustomerId ||
+    isSubscriptionMetronomeBilled(subscription)
+  ) {
     return new Err({ code: "not_metronome_billed" });
   }
-
-  const { metronomeCustomerId } = workspace;
 
   const onLegacyPlan = await isLegacyPlan(workspace.sId);
   if (onLegacyPlan) {
