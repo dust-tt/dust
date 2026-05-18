@@ -1130,7 +1130,11 @@ export function useConfirmPayment({ workspaceId }: { workspaceId: string }) {
           }
         );
         if (!res.ok) {
-          return null;
+          try {
+            return res.json() as Promise<PostCheckoutPaymentResponseBody>;
+          } catch {
+            return null;
+          }
         }
         return res.json() as Promise<PostCheckoutPaymentResponseBody>;
       } finally {

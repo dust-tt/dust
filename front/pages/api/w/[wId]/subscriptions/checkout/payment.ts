@@ -193,7 +193,7 @@ async function handler(
       currency,
     });
     if (chargeResult.isErr()) {
-      return res.status(500).json({ error: "payment_failed" });
+      return res.status(200).json({ error: "payment_failed" });
     }
   }
 
