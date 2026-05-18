@@ -80,7 +80,7 @@ export function useRemoveSpaceConfirm({
 }: UseRemoveSpaceConfirmParams) {
   const confirm = useContext(ConfirmContext);
 
-  return async ({
+  return ({
     space,
     actions,
     knowledgeInInstructions = [],
