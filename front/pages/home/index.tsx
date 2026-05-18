@@ -32,8 +32,8 @@ export function Landing({ news }: HomeProps) {
   return (
     <>
       <PageMetadata
-        title="Dust - Build Custom AI Agents for Your Organization"
-        description="Break down knowledge silos and amplify team performance with data-augmented, customizable and secure AI agents. Deploy in minutes, no coding required."
+        title="Dust - Multiplayer AI for human-agent collaboration"
+        description="Dust is where people and agents collaborate as co-contributors, so that work doesn't just get done – it gets rewired."
         pathname={router.asPath}
       />
       <IntroSection news={news} />
