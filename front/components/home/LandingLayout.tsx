@@ -237,6 +237,14 @@ export default function LandingLayout({
             `}
           </Script>
         )}
+        {cookieValue === "true" && (
+          // Marketing tier requires explicit Accept; skip the geo-based "auto" consent path.
+          <Script
+            id="claydar"
+            src="https://static.claydar.com/init.v1.js?id=clmYho8v0U"
+            strategy="afterInteractive"
+          />
+        )}
         {!hideNavigation && <FooterNavigation />}
       </main>
     </>
