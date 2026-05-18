@@ -135,6 +135,7 @@
  *       401:
  *         description: Unauthorized
  */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
