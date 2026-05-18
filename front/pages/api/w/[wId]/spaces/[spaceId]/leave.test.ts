@@ -76,7 +76,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/leave", () => {
 
       expect(res._getStatusCode()).toBe(400);
       expect(res._getJSONData().error.type).toBe("invalid_request_error");
-      expect(res._getJSONData().error.message).toContain("only leave projects");
+      expect(res._getJSONData().error.message).toContain("only leave Pods");
     });
 
     it("should return 403 when user is not a member of the project", async () => {
