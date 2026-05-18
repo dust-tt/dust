@@ -1,6 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H1, P } from "@app/components/home/ContentComponents";
-import { HeroVisual } from "@app/components/home/content/Product/IntroSection";
+import { HeroVisual } from "@app/components/home/content/Product/HeroVisual";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";

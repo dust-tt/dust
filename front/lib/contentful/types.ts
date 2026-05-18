@@ -195,6 +195,31 @@ export interface CustomerStoryListingPageProps {
   gtmTrackingId: string | null;
 }
 
+// Homepage news / press list
+//
+// Contentful content type id: `homepageNewsItem`. Editors create one entry
+// per press link; the homepage renders the most-recent N entries sorted by
+// the Date & Time field. Draft entries are hidden automatically — the
+// Content Delivery API only returns published entries.
+export interface HomepageNewsItemFields {
+  source: string;
+  title: string;
+  date: string;
+  href: string;
+}
+
+export type HomepageNewsItemSkeleton = EntrySkeletonType<
+  HomepageNewsItemFields,
+  "homepageNewsItem"
+>;
+
+export interface NewsItem {
+  source: string;
+  title: string;
+  date: string;
+  href: string;
+}
+
 export interface CustomerStoryPageProps {
   story: CustomerStory;
   relatedStories: CustomerStorySummary[];

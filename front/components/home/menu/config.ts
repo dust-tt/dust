@@ -2,8 +2,8 @@ interface NavItem {
   title: string;
   href?: string;
   isExternal?: boolean;
-  label?: string;
   rows?: number;
+  tag?: string;
 }
 
 interface NavItemWithChildren extends NavItem {
@@ -151,6 +151,9 @@ const SolutionsMenuConfig: MenuConfig = {
       title: "",
     },
     {
+      title: "",
+    },
+    {
       title: "Knowledge",
       href: "/home/solutions/knowledge",
     },
@@ -169,9 +172,6 @@ const SolutionsMenuConfig: MenuConfig = {
     {
       title: "Productivity",
       href: "/home/solutions/productivity",
-    },
-    {
-      title: "",
     },
     {
       title: "",
@@ -259,7 +259,8 @@ const ExploreMenuConfig: MenuConfig = {
   items: [
     {
       title: "Blog",
-      href: "/blog",
+      href: "https://dust.tt/blog",
+      isExternal: true,
     },
     {
       title: "Webinars",
@@ -340,19 +341,16 @@ export const menuConfig: DocsConfig = {
   mainNav: [
     {
       title: ProductMenuConfig.title,
-      label: "Discover Dust",
       rows: 2,
       items: ProductMenuConfig.items,
     },
     {
       title: SolutionsMenuConfig.title,
-      label: "Dust for...",
       rows: 7,
       items: SolutionsMenuConfig.items,
     },
     {
       title: ResourcesMenuConfig.title,
-      label: "Resources",
       rows: 5,
       items: ResourcesMenuConfig.items,
     },
@@ -440,6 +438,7 @@ export const menuConfig: DocsConfig = {
           title: "Jobs",
           href: "/jobs",
           isExternal: true,
+          tag: "We're hiring",
         },
         {
           title: "Brand resources",

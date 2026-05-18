@@ -67,24 +67,28 @@ export function MobileNavigation() {
                     </div>
                   )}
                   {item?.items?.length &&
-                    item.items.map((item, itemIndex) => (
-                      <React.Fragment key={item.href ?? `item-${itemIndex}`}>
-                        {item.href ? (
-                          <MobileLink
-                            href={item.href}
-                            onOpenChange={setOpen}
-                            isExternal={item.isExternal}
-                          >
-                            <ChevronRightIcon className="h-5 w-5 text-slate-400" />{" "}
-                            {item.title}
-                          </MobileLink>
-                        ) : (
-                          <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-primary-600 no-underline outline-none">
-                            {item.title}
-                          </div>
-                        )}
-                      </React.Fragment>
-                    ))}
+                    item.items
+                      .filter((subItem) => subItem.title.trim() !== "")
+                      .map((subItem, itemIndex) => (
+                        <React.Fragment
+                          key={subItem.href ?? `item-${itemIndex}`}
+                        >
+                          {subItem.href ? (
+                            <MobileLink
+                              href={subItem.href}
+                              onOpenChange={setOpen}
+                              isExternal={subItem.isExternal}
+                            >
+                              <ChevronRightIcon className="h-5 w-5 text-slate-400" />{" "}
+                              {subItem.title}
+                            </MobileLink>
+                          ) : (
+                            <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-primary-600 no-underline outline-none">
+                              {subItem.title}
+                            </div>
+                          )}
+                        </React.Fragment>
+                      ))}
                 </div>
               ))}
             </div>

@@ -8,7 +8,7 @@ import * as React from "react";
 
 export function FooterNavigation() {
   return (
-    <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-b border-t border-border bg-muted-background pb-16 pt-12">
+    <div className="z-11 flex w-full flex-col items-center gap-6 border-b border-t border-border bg-muted-background pb-16 pt-12">
       <div className="w-full px-6 sm:px-12">
         <Grid gap="gap-6">
           <div className="col-span-12">
@@ -41,6 +41,7 @@ export function FooterNavigation() {
                         <FooterLink
                           href={item.href}
                           isExternal={item.isExternal}
+                          tag={item.tag}
                         >
                           {item.title}
                         </FooterLink>
@@ -63,14 +64,28 @@ interface FooterLinkProps extends LinkProps {
   children: React.ReactNode;
   className?: string;
   isExternal?: boolean;
+  tag?: string;
 }
 
-function FooterLink({ href, children, isExternal, ...props }: FooterLinkProps) {
+function FooterLink({
+  href,
+  children,
+  isExternal,
+  tag,
+  ...props
+}: FooterLinkProps) {
   return (
     <Link href={href} target={isExternal ? "_blank" : undefined} {...props}>
-      <A variant="secondary" className="label-sm">
-        {children}
-      </A>
+      <span className="inline-flex items-center gap-2">
+        <A variant="secondary" className="label-sm">
+          {children}
+        </A>
+        {tag && (
+          <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium leading-none tracking-wide text-blue-600">
+            {tag}
+          </span>
+        )}
+      </span>
     </Link>
   );
 }

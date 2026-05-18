@@ -23,8 +23,10 @@ import type {
   CustomerStoryFilters,
   CustomerStorySkeleton,
   CustomerStorySummary,
+  HomepageNewsItemSkeleton,
   Lesson,
   LessonSkeleton,
+  NewsItem,
   QuizSettings,
   QuizSettingsSkeleton,
   SearchableItem,
@@ -1796,6 +1798,85 @@ export async function getLessonBySlug(
     return new Ok(null);
   } catch (error) {
     logger.error({ error }, "[Contentful] Failed to get lesson by slug");
+    return new Err(normalizeError(error));
+  }
+}
+
+// Homepage news / press list.
+
+// Server-side renders the date in en-US `MMM D, YYYY` shape regardless of
+// the host's locale, so the formatted string is deterministic between
+// pods and matches what the design expects.
+const NEWS_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+function formatNewsDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return iso;
+  }
+  return NEWS_DATE_FORMATTER.format(d);
+}
+
+function contentfulEntryToNewsItem(
+  entry: Entry<HomepageNewsItemSkeleton>
+): NewsItem | null {
+  const { source, title, date, href } = entry.fields;
+  if (
+    !isString(source) ||
+    !isString(title) ||
+    !isString(date) ||
+    !isString(href)
+  ) {
+    return null;
+  }
+  // Defense in depth: reject hrefs that aren't http(s) so a malicious or
+  // mis-pasted `javascript:` / `data:` URI can't sneak through into an
+  // anchor element on the homepage.
+  if (!/^https?:\/\//i.test(href)) {
+    return null;
+  }
+  return {
+    source,
+    title,
+    date: formatNewsDate(date),
+    href,
+  };
+}
+
+export async function getAllHomepageNews(
+  resolvedUrl: string = ""
+): Promise<Result<NewsItem[], Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+    const response =
+      await contentfulClient.getEntries<HomepageNewsItemSkeleton>({
+        content_type: "homepageNewsItem",
+        limit: 20,
+      });
+    // Sort by the raw ISO `date` field before we format it into a display
+    // string. Falls back to entry sys.createdAt when the field is missing
+    // so an entry without a date doesn't break the sort.
+    const items = response.items
+      .map((entry) => {
+        const item = contentfulEntryToNewsItem(entry);
+        if (!item) {
+          return null;
+        }
+        const rawDate = isString(entry.fields.date)
+          ? entry.fields.date
+          : entry.sys.createdAt;
+        return { item, sortKey: new Date(rawDate).getTime() };
+      })
+      .filter(isNonNull)
+      .sort((a, b) => b.sortKey - a.sortKey)
+      .map((x) => x.item);
+    return new Ok(items);
+  } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to fetch homepage news");
     return new Err(normalizeError(error));
   }
 }
