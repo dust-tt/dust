@@ -3,6 +3,7 @@ import {
   resource,
 } from "@app/lib/api/instrumentation/init";
 import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporter";
+import { markShuttingDownWithDelayedAbort } from "@app/lib/shutdown_signal";
 import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
@@ -32,8 +33,11 @@ import {
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
-// We need to give the worker some time to finish the current activity before shutting down.
-const SHUTDOWN_GRACE_TIME = "2 minutes";
+// Must match front-agent-loop-worker's terminationGracePeriodSeconds.
+const SHUTDOWN_GRACE_TIME_MS = 120 * 1_000;
+const SHUTDOWN_ABORT_BUFFER_MS = 10 * 1_000;
+const SHUTDOWN_TOOL_ABORT_DELAY_MS =
+  SHUTDOWN_GRACE_TIME_MS - SHUTDOWN_ABORT_BUFFER_MS;
 
 export async function runAgentLoopWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
@@ -63,7 +67,7 @@ export async function runAgentLoopWorker() {
     taskQueue: QUEUE_NAME,
     connection,
     namespace,
-    shutdownGraceTime: SHUTDOWN_GRACE_TIME,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     // This also bounds the time until an activity may receive a cancellation signal.
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
     maxHeartbeatThrottleInterval: "20 seconds",
@@ -106,7 +110,10 @@ export async function runAgentLoopWorker() {
   });
 
   // TODO(2025-11-12 INSTRUMENTATION): Drain Langfuse data before shutdown.
-  process.on("SIGTERM", () => worker.shutdown());
+  process.on("SIGTERM", () => {
+    markShuttingDownWithDelayedAbort(SHUTDOWN_TOOL_ABORT_DELAY_MS);
+    void worker.shutdown();
+  });
 
   try {
     await worker.run(); // this resolves after shutdown completes
