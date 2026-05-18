@@ -69,7 +69,7 @@ export function SkillBuilderRequestedSpacesSection({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>([]);
 
-  const spaceIdToActions = useMemo(() => {
+  const actionsBySpaceId = useMemo(() => {
     return getSpaceIdToActionsMap(tools ?? [], mcpServerViews);
   }, [tools, mcpServerViews]);
 
@@ -78,12 +78,12 @@ export function SkillBuilderRequestedSpacesSection({
   }, [attachedKnowledge]);
 
   const spaceIdsUsedBySkill = useMemo(() => {
-    const actionRequestedSpaceIds = Object.keys(spaceIdToActions).filter(
-      (spaceId) => spaceIdToActions[spaceId]?.length > 0
+    const actionRequestedSpaceIds = Object.keys(actionsBySpaceId).filter(
+      (spaceId) => actionsBySpaceId[spaceId]?.length > 0
     );
 
     return new Set([...actionRequestedSpaceIds, ...spaceIdsFromKnowledge]);
-  }, [spaceIdToActions, spaceIdsFromKnowledge]);
+  }, [actionsBySpaceId, spaceIdsFromKnowledge]);
 
   const areSpaceRequirementsReady =
     !isMCPServerViewsLoading &&
@@ -156,7 +156,7 @@ export function SkillBuilderRequestedSpacesSection({
     if (spaceIdsUsedBySkill.has(space.sId)) {
       await confirmBlockedSpaceRemoval({
         space,
-        actions: spaceIdToActions[space.sId] ?? [],
+        actions: actionsBySpaceId[space.sId] ?? [],
         knowledgeInInstructions: knowledgeBySpaceId[space.sId] ?? [],
       });
       return;
