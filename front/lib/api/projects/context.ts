@@ -5,13 +5,6 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
-import type {
-  UpsertDocumentArgs,
-  UpsertTableArgs,
-} from "@app/lib/api/data_sources";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
-import { PROJECT_CONTEXT_FOLDER_ID } from "@app/lib/api/projects/constants";
-import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { MessageModel } from "@app/lib/models/agent/conversation";
@@ -20,13 +13,10 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import logger from "@app/logger/logger";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
-import { isSupportedDelimitedTextContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { slugify } from "@app/types/shared/utils/string_utils";
 import { Op } from "sequelize";
 
 /**
@@ -253,62 +243,14 @@ export async function addFileToProject(
     });
   }
 
+  // TODO(projects) this is not sufficient, the file mountpoint is not updated on GCS.
   await file.updateUseCase(auth, "project_context", {
     spaceId: space.sId,
     conversationId: undefined,
     sourceConversationId,
   });
 
-  const projectContextDatasource = await fetchProjectDataSource(auth, space);
-  if (projectContextDatasource.isErr()) {
-    return new Err(projectContextDatasource.error);
-  }
-
-  let upsertArgs: UpsertDocumentArgs | UpsertTableArgs;
-
-  const commonArgs = {
-    title: file.fileName,
-    parents: [file.sId, PROJECT_CONTEXT_FOLDER_ID],
-  };
-
-  if (isSupportedDelimitedTextContentType(file.contentType)) {
-    upsertArgs = {
-      parentId: PROJECT_CONTEXT_FOLDER_ID,
-      tableId: file.sId,
-      name: slugify(file.fileName),
-      description: `Project context: ${file.fileName}`,
-      truncate: true,
-      mimeType: file.contentType,
-      ...commonArgs,
-    };
-  } else {
-    upsertArgs = {
-      parent_id: PROJECT_CONTEXT_FOLDER_ID,
-      document_id: file.sId,
-      dataSource: projectContextDatasource.value,
-      auth,
-      mime_type: file.contentType,
-      ...commonArgs,
-    };
-  }
-
-  const rUpsert = await processAndUpsertToDataSource(
-    auth,
-    projectContextDatasource.value,
-    { file, upsertArgs }
-  );
-
-  if (rUpsert.isErr()) {
-    logger.warn(
-      {
-        workspaceId: auth.workspace()?.sId,
-        fileId: file.sId,
-        error: rUpsert.error,
-      },
-      "Project context Core upsert failed; file may still be used raw. Syncing content fragment."
-    );
-  }
-
+  // TODO(projects) once the source of truth for the project's files is GCS, we can remove this.
   const fragmentRes =
     await ContentFragmentResource.upsertLatestProjectFileFragment(
       auth,
