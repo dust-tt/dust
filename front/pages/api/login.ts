@@ -376,7 +376,6 @@ const buildPostLoginUrl = (
 
   const currentRegion = multiRegionsConfig.getCurrentRegion();
   searchParams.set("region", currentRegion);
-  searchParams.set("regionUrl", multiRegionsConfig.getRegionUrl(currentRegion));
 
   const queryString = searchParams.toString();
   return queryString ? `${path}?${queryString}` : path;

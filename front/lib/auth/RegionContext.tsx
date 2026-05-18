@@ -92,19 +92,17 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
     if (region && isRegionType(region)) {
       regionInfo = getRegionInfo(region);
       setStoredRegionInfo(regionInfo);
-    } else {
-      const storedRegion = getStoredRegion();
-      regionInfo = storedRegion ? getRegionInfo(storedRegion) : null;
-    }
 
-    if (region || params.has("regionUrl")) {
-      // Clean region params from URL.
+      // Clean region params from URL once consumed.
       params.delete("region");
       params.delete("regionUrl");
       const qs = params.toString();
       const newUrl =
         window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
       window.history.replaceState(null, "", newUrl);
+    } else {
+      const storedRegion = getStoredRegion();
+      regionInfo = storedRegion ? getRegionInfo(storedRegion) : null;
     }
 
     const resolvedRegionInfo = regionInfo ?? DEFAULT_REGION_INFO;
