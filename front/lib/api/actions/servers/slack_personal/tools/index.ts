@@ -551,7 +551,15 @@ export function createSlackPersonalTools(
     },
 
     post_message: async (
-      { to, message, threadTs, fileId, unfurlLinks, unfurlMedia },
+      {
+        to,
+        message,
+        threadTs,
+        fileId,
+        unfurlLinks,
+        unfurlMedia,
+        omitAttribution,
+      },
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
@@ -574,6 +582,7 @@ export function createSlackPersonalTools(
           unfurlLinks,
           unfurlMedia,
           accessToken,
+          omitAttribution,
         });
       } catch (error) {
         const authError = handleSlackAuthError(error);
@@ -587,7 +596,15 @@ export function createSlackPersonalTools(
     },
 
     schedule_message: async (
-      { to, message, post_at, threadTs, unfurlLinks, unfurlMedia },
+      {
+        to,
+        message,
+        post_at,
+        threadTs,
+        unfurlLinks,
+        unfurlMedia,
+        omitAttribution,
+      },
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
@@ -610,6 +627,7 @@ export function createSlackPersonalTools(
           unfurlLinks,
           unfurlMedia,
           accessToken,
+          omitAttribution,
         });
       } catch (error) {
         const authError = handleSlackAuthError(error);

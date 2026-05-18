@@ -45,6 +45,7 @@ export function createSlackBotTools(
           unfurlLinks,
           unfurlMedia,
           accessToken,
+          omitAttribution: undefined,
         });
       } catch (error) {
         return new Err(

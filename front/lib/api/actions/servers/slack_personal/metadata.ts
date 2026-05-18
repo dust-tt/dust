@@ -128,6 +128,14 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .describe(
           "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
         ),
+      omitAttribution: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, omits the '_Sent via [Agent] on Dust_' footer so the message appears fully authored by the user. " +
+            "Defaults to false (footer is included). Only set to true when the agent's instructions explicitly require " +
+            "messages to appear without agent attribution (e.g., for senior stakeholders or sensitive communications)."
+        ),
     },
     stake: "medium",
     displayLabels: {
@@ -174,6 +182,14 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe(
           "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
+        ),
+      omitAttribution: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, omits the '_Sent via [Agent] on Dust_' footer so the message appears fully authored by the user. " +
+            "Defaults to false (footer is included). Only set to true when the agent's instructions explicitly require " +
+            "messages to appear without agent attribution (e.g., for senior stakeholders or sensitive communications)."
         ),
     },
     stake: "medium",

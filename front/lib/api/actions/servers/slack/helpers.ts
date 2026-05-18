@@ -743,6 +743,26 @@ export async function executeListPublicChannels(
   ]);
 }
 
+function formatMessageWithAttribution(
+  auth: Authenticator,
+  agentLoopContext: AgentLoopContextType,
+  message: string,
+  omitAttribution: boolean | undefined
+): string {
+  const formatted = slackifyMarkdown(message);
+  if (omitAttribution) {
+    return formatted;
+  }
+  const agentUrl = getConversationRoute(
+    auth.getNonNullableWorkspace().sId,
+    "new",
+    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
+    config.getAppUrl()
+  );
+  const agentName = agentLoopContext.runContext?.agentConfiguration.name;
+  return `${formatted}\n_Sent via <${agentUrl}|${agentName} Agent> on Dust_`;
+}
+
 export async function executePostMessage(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType,
@@ -754,6 +774,7 @@ export async function executePostMessage(
     fileId,
     unfurlLinks,
     unfurlMedia,
+    omitAttribution,
   }: {
     accessToken: string;
     to: string | string[];
@@ -762,6 +783,7 @@ export async function executePostMessage(
     fileId: string | undefined;
     unfurlLinks: boolean | undefined;
     unfurlMedia: boolean | undefined;
+    omitAttribution: boolean | undefined;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
@@ -782,15 +804,12 @@ export async function executePostMessage(
     return new Err(new MCPError("Failed to open group DM"));
   }
 
-  const originalMessage = message;
-
-  const agentUrl = getConversationRoute(
-    auth.getNonNullableWorkspace().sId,
-    "new",
-    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
-    config.getAppUrl()
+  message = formatMessageWithAttribution(
+    auth,
+    agentLoopContext,
+    message,
+    omitAttribution
   );
-  message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
   if (!(await hasSlackScope(accessToken, "files:write"))) {
     fileId = undefined;
@@ -920,6 +939,7 @@ export async function executeScheduleMessage(
     threadTs,
     unfurlLinks,
     unfurlMedia,
+    omitAttribution,
   }: {
     accessToken: string;
     to: string;
@@ -928,18 +948,16 @@ export async function executeScheduleMessage(
     threadTs: string | undefined;
     unfurlLinks: boolean | undefined;
     unfurlMedia: boolean | undefined;
+    omitAttribution: boolean | undefined;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
-  const originalMessage = message;
-
-  const agentUrl = getConversationRoute(
-    auth.getNonNullableWorkspace().sId,
-    "new",
-    `agentDetails=${agentLoopContext.runContext?.agentConfiguration.sId}`,
-    config.getAppUrl()
+  message = formatMessageWithAttribution(
+    auth,
+    agentLoopContext,
+    message,
+    omitAttribution
   );
-  message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
 
   // Convert post_at to Unix timestamp in seconds.
   let timestampSeconds: number;
