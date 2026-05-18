@@ -121,7 +121,8 @@ app.patch(
         {
           error: {
             type: "invalid_request_error",
-            message: "Self-improving skills are not enabled for this workspace.",
+            message:
+              "Self-improving skills are not enabled for this workspace.",
           },
         },
         400
