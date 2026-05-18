@@ -223,10 +223,47 @@ struct DbQueryPayload {
     timeout_ms: Option<u64>,
 }
 
+#[derive(Deserialize)]
+struct DbQueryByIdPayload {
+    database_id: String,
+    query: String,
+    tables: Vec<Table>,
+    timeout_ms: Option<u64>,
+}
+
+#[derive(Deserialize)]
+struct DbInvalidatePayload {
+    database_id: String,
+}
+
 async fn databases_query(
     Path(database_id): Path<String>,
     State(state): State<Arc<WorkerState>>,
     Json(payload): Json<DbQueryPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    run_database_query(database_id, state, payload).await
+}
+
+async fn databases_query_by_id(
+    State(state): State<Arc<WorkerState>>,
+    Json(payload): Json<DbQueryByIdPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    run_database_query(
+        payload.database_id,
+        state,
+        DbQueryPayload {
+            query: payload.query,
+            tables: payload.tables,
+            timeout_ms: payload.timeout_ms,
+        },
+    )
+    .await
+}
+
+async fn run_database_query(
+    database_id: String,
+    state: Arc<WorkerState>,
+    payload: DbQueryPayload,
 ) -> (StatusCode, Json<APIResponse>) {
     let database = {
         let mut registry = state.registry.lock().await;
@@ -310,6 +347,20 @@ async fn databases_delete(
     Path(database_id): Path<String>,
     State(state): State<Arc<WorkerState>>,
 ) -> (StatusCode, Json<APIResponse>) {
+    run_database_delete(database_id, state).await
+}
+
+async fn databases_delete_by_id(
+    State(state): State<Arc<WorkerState>>,
+    Json(payload): Json<DbInvalidatePayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    run_database_delete(payload.database_id, state).await
+}
+
+async fn run_database_delete(
+    database_id: String,
+    state: Arc<WorkerState>,
+) -> (StatusCode, Json<APIResponse>) {
     state.invalidate_database(&database_id).await;
 
     (
@@ -338,6 +389,19 @@ async fn expire_all(State(state): State<Arc<WorkerState>>) -> (StatusCode, Json<
     )
 }
 
+fn make_router(state: Arc<WorkerState>) -> Router {
+    Router::new()
+        .route("/databases/by-id/query", post(databases_query_by_id))
+        .route("/databases/by-id/invalidate", post(databases_delete_by_id))
+        .route("/databases", delete(expire_all))
+        .route("/databases/{database_id}", post(databases_query))
+        .route("/databases/{database_id}", delete(databases_delete))
+        .layer(OtelInResponseLayer::default())
+        // Start OpenTelemetry trace on incoming request.
+        .layer(OtelAxumLayer::default())
+        .with_state(state)
+}
+
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(32)
@@ -352,14 +416,7 @@ fn main() {
 
         let state = Arc::new(WorkerState::new(databases_store));
 
-        let router = Router::new()
-            .route("/databases", delete(expire_all))
-            .route("/databases/{database_id}", post(databases_query))
-            .route("/databases/{database_id}", delete(databases_delete))
-            .layer(OtelInResponseLayer::default())
-            // Start OpenTelemetry trace on incoming request.
-            .layer(OtelAxumLayer::default())
-            .with_state(state.clone());
+        let router = make_router(state.clone());
 
         let health_check_router = Router::new()
             .route("/", get(index))
@@ -440,5 +497,57 @@ fn main() {
             error!(error = %e, "sqlite_worker server error");
             std::process::exit(1);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use axum_test::TestServer;
+
+    const TEST_LONG_DATABASE_TABLE_COUNT: usize = 128;
+    const TEST_TABLE_UNIQUE_ID_PREFIX: &str = concat!(
+        "2015170__345b17988d792986f8229fd27f68a0f439c900a28ec691362fdbbfd405a133a6",
+        "__fil_"
+    );
+
+    fn make_long_database_id() -> String {
+        (0..TEST_LONG_DATABASE_TABLE_COUNT)
+            .map(|i| format!("{TEST_TABLE_UNIQUE_ID_PREFIX}{i}"))
+            .collect::<Vec<_>>()
+            .join("/")
+    }
+
+    #[tokio::test]
+    async fn invalidates_long_database_id_from_request_body() -> Result<()> {
+        let database_id = make_long_database_id();
+        let state = Arc::new(WorkerState::new(Box::new(
+            GoogleCloudStorageDatabasesStore::new(),
+        )));
+
+        {
+            let mut registry = state.registry.lock().await;
+            registry.insert(
+                database_id.clone(),
+                DatabaseEntry {
+                    database: Arc::new(Mutex::new(SqliteDatabase::new())),
+                    last_accessed: Instant::now(),
+                },
+            );
+        }
+
+        let server = TestServer::new(make_router(state.clone()))?;
+        let response = server
+            .post("/databases/by-id/invalidate")
+            .json(&json!({
+                "database_id": database_id,
+            }))
+            .await;
+
+        response.assert_status_ok();
+        assert!(state.registry.lock().await.is_empty());
+
+        Ok(())
     }
 }
