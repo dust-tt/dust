@@ -73,7 +73,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Project metadata is only available for project spaces.",
+            message: "Pod metadata is only available for Pod spaces.",
           },
         });
       }
@@ -86,7 +86,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "project_metadata_not_found",
-            message: "Project metadata not found for this space.",
+            message: "Pod metadata not found for this space.",
           },
         });
       }

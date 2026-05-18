@@ -149,7 +149,7 @@ function FileCards({
                     {row.isInProjectContext && (
                       <Tooltip
                         tooltipTriggerAsChild
-                        label="Saved to Project"
+                        label="Saved to Pod"
                         trigger={
                           <span className="inline-flex">
                             <Icon visual={SpaceClosedIcon} size="md" />
@@ -194,7 +194,7 @@ function FileCards({
                   {row.isInProjectContext && (
                     <Tooltip
                       tooltipTriggerAsChild
-                      label="Saved to Project"
+                      label="Saved to Pod"
                       trigger={
                         <span className="inline-flex">
                           <Icon

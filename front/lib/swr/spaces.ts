@@ -1020,7 +1020,7 @@ export function useUpdateProjectMetadata({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Error updating project metadata",
+        title: "Error updating Pod metadata",
         description: `Error: ${errorData.message}`,
       });
       return null;
@@ -1033,13 +1033,13 @@ export function useUpdateProjectMetadata({
     const title =
       updates.archive !== undefined
         ? updates.archive
-          ? "Project archived"
-          : "Project unarchived"
+          ? "Pod archived"
+          : "Pod unarchived"
         : updates.todoGenerationEnabled !== undefined
           ? updates.todoGenerationEnabled
             ? "Automatic task suggestions turned on"
             : "Automatic task suggestions turned off"
-          : "Project updated";
+          : "Pod updated";
 
     sendNotification({
       type: "success",
@@ -1113,7 +1113,7 @@ export function useUpdateProjectNotificationPreference({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Error updating project notification preference",
+        title: "Error updating Pod notification preference",
         description: `Error: ${errorData.message}`,
       });
       return null;
@@ -1123,7 +1123,7 @@ export function useUpdateProjectNotificationPreference({
 
     sendNotification({
       type: "success",
-      title: "Project notification preference updated",
+      title: "Pod notification preference updated",
     });
 
     const response: PatchUserProjectNotificationPreferenceResponseBody =
@@ -1165,15 +1165,15 @@ export function useLeaveProject({
       void mutateSpaceSummary();
       sendNotification({
         type: "success",
-        title: `${userName} left project ${spaceName}`,
-        description: "You have successfully left the project.",
+        title: `${userName} left Pod ${spaceName}`,
+        description: "You have successfully left the Pod.",
       });
       return true;
     } else {
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Could not leave project",
+        title: "Could not leave Pod",
         description: `Error: ${errorData.message}`,
       });
       return false;
@@ -1216,7 +1216,7 @@ export function useJoinProject({
       void mutateSpaceSummary();
       sendNotification({
         type: "success",
-        title: `${userName} joined project ${spaceName}`,
+        title: `${userName} joined Pod ${spaceName}`,
         description: "You can now participate in conversations.",
       });
       return true;
@@ -1224,7 +1224,7 @@ export function useJoinProject({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Could not join project",
+        title: "Could not join Pod",
         description: `Error: ${errorData.message}`,
       });
       return false;

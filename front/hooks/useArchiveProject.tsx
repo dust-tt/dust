@@ -19,9 +19,9 @@ export function useArchiveProject({
 
   const archiveProject = useCallback(async () => {
     const confirmed = await confirm({
-      title: "Archive project?",
+      title: "Archive Pod?",
       message:
-        "You'll no longer be able to create new conversations in this project and it will be hidden from the sidebar. However, existing content can still be used by agents. Unarchive it to get back access to it.",
+        "You'll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. However, existing content can still be used by agents. Unarchive it to get back access to it.",
       validateVariant: "warning",
     });
 

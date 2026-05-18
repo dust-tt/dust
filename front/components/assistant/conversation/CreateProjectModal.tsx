@@ -31,7 +31,7 @@ interface CreateProjectModalProps {
 }
 
 const OPEN_PROJECTS_DISABLED_TOOLTIP =
-  "Open projects are disabled by your workspace admin.";
+  "Open Pods are disabled by your workspace admin.";
 
 export function CreateProjectModal({
   isOpen,
@@ -101,8 +101,8 @@ export function CreateProjectModal({
         spaceKind: "project",
       },
       {
-        title: "Project created",
-        description: `Project "${trimmedName}" has been created.`,
+        title: "Pod created",
+        description: `Pod "${trimmedName}" has been created.`,
       }
     );
 
@@ -142,14 +142,14 @@ export function CreateProjectModal({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create a new Project</DialogTitle>
+          <DialogTitle>Create a new Pod</DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <div className="flex w-full flex-col gap-y-4">
             <div className="flex flex-col">
               <Input
-                label="Project name"
-                placeholder="Enter project name"
+                label="Pod name"
+                placeholder="Enter Pod name"
                 value={projectName}
                 name="projectName"
                 onChange={(e) => {
@@ -162,7 +162,7 @@ export function CreateProjectModal({
               />
               {nameNotAvailable && (
                 <div className="mt-1 text-xs text-warning-500 dark:text-warning-500">
-                  A project or space with this name already exists.
+                  A Pod or space with this name already exists.
                 </div>
               )}
             </div>
@@ -175,8 +175,8 @@ export function CreateProjectModal({
               />
               <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                 {isPublic
-                  ? "Anyone in the workspace can find and join this project."
-                  : "Only invited members can access this project."}
+                  ? "Anyone in the workspace can find and join this Pod."
+                  : "Only invited members can access this Pod."}
               </div>
             </div>
           </div>

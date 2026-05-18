@@ -30,12 +30,12 @@ export function ProjectJoinCTA({
   };
 
   const message = isRestricted
-    ? "You need to be invited to participate in this project."
-    : "Join this project to participate in conversations.";
+    ? "You need to be invited to participate in this Pod."
+    : "Join this Pod to participate in conversations.";
 
   const action = isRestricted ? null : (
     <Button
-      label={isJoining ? "Joining..." : `Join the ${spaceName} project`}
+      label={isJoining ? "Joining..." : `Join the ${spaceName} Pod`}
       variant="highlight"
       onClick={handleJoin}
       disabled={isJoining}

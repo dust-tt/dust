@@ -15,7 +15,7 @@ export function ProjectsDataTable({
 }: ProjectsDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
-      header="Projects"
+      header="Pods"
       owner={owner}
       loadOnInit={loadOnInit}
       useSWRHook={usePokeProjects}

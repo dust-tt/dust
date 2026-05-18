@@ -440,9 +440,9 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
   },
   dust_project: {
     hide: true,
-    description: "Use Dust project as a data source.",
+    description: "Use Dust Pod as a data source.",
     limitations: null,
-    mismatchError: `You cannot change the Dust project. Please add a new Dust project connection instead.`,
+    mismatchError: `You cannot change the Dust Pod. Please add a new Dust Pod connection instead.`,
     guideLink: null,
     getLogoComponent: () => {
       return DustLogoSquare;

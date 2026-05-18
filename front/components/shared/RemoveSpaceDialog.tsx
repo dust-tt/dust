@@ -101,12 +101,12 @@ export function useRemoveSpaceConfirm({
     const hasKnowledge = knowledgeInInstructions.length > 0;
 
     return confirm({
-      title: `Remove ${getSpaceName(space)} ${space.kind === "project" ? "project" : "space"}`,
+      title: `Remove ${getSpaceName(space)} ${space.kind === "project" ? "Pod" : "space"}`,
       message: (
         <div className="space-y-3">
           <p className="text-sm">
             {hasKnowledge
-              ? `The following elements from this ${space.kind === "project" ? "project" : "space"} are used in the ${entityName}:`
+              ? `The following elements from this ${space.kind === "project" ? "Pod" : "space"} are used in the ${entityName}:`
               : `This will remove the following elements from the ${entityName}:`}
           </p>
           <span className="flex flex-wrap items-center gap-1">
@@ -126,8 +126,8 @@ export function useRemoveSpaceConfirm({
           </span>
           {hasKnowledge && (
             <p className="dark:text-warning-night text-sm">
-              To remove this {space.kind === "project" ? "project" : "space"},
-              first update your instructions to remove the knowledge references.
+              To remove this {space.kind === "project" ? "Pod" : "space"}, first
+              update your instructions to remove the knowledge references.
             </p>
           )}
         </div>

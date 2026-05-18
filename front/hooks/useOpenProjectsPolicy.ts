@@ -29,14 +29,14 @@ export function useOpenProjectsPolicy({ owner }: UseOpenProjectsPolicyProps) {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update project visibility policy.");
+        throw new Error("Failed to update Pod visibility policy.");
       }
 
       setAllowOpenProjects(nextValue);
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update project visibility policy",
+        title: "Failed to update Pod visibility policy",
         description: normalizeError(error).message,
       });
       return false;

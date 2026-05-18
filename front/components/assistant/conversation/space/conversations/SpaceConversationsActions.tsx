@@ -12,7 +12,7 @@ export function SpaceConversationsActions({
   const suggestions = [
     {
       id: "onboarding-tasks",
-      label: "Get your project off the ground",
+      label: "Get your Pod off the ground",
       icon: CheckIcon,
       description:
         "Add context, connect your knowledge, and bring the right people in. Flying solo? It still keeps everything in one place.",
@@ -27,7 +27,7 @@ export function SpaceConversationsActions({
   return (
     <div className="flex flex-col gap-3">
       <h3 className="heading-lg text-foreground dark:text-foreground-night">
-        New Project? Let us help you setup.
+        New Pod? Let us help you setup.
       </h3>
       <CardGrid>
         {suggestions.map((suggestion) => (

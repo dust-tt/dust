@@ -61,7 +61,7 @@ const NOTIFICATION_CONDITION_DESCRIPTIONS: Record<
   NotificationCondition,
   string
 > = {
-  all_messages: "New messages in projects and conversations",
+  all_messages: "New messages in Pods and conversations",
   only_mentions: "New messages when directly mentioned",
   never: "No notifications",
 };

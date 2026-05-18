@@ -574,9 +574,7 @@ export function parseProjectConfigurationURI(
 ): Result<ProjectConfigInfo, Error> {
   const match = uri.match(PROJECT_CONFIGURATION_URI_PATTERN);
   if (!match) {
-    return new Err(
-      new Error(`Invalid URI for a project configuration: ${uri}`)
-    );
+    return new Err(new Error(`Invalid URI for a pod configuration: ${uri}`));
   }
 
   const [, workspaceId, projectId] = match;

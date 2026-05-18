@@ -34,13 +34,12 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
       space: SpaceType
     ): Promise<boolean> => {
       const confirmed = await confirm({
-        title: "Move conversation to project",
+        title: "Move conversation to Pod",
         message: (
           <div>
             The content of the conversation{" "}
             <strong>{getConversationDisplayTitle(conversation)}</strong> will be
-            available to all members of the project{" "}
-            <strong>{space.name}</strong>.
+            available to all members of the Pod <strong>{space.name}</strong>.
           </div>
         ),
         validateLabel: "Move",
@@ -79,7 +78,7 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
       void mutateSpaceSummary();
       void sendNotification({
         title: "Conversation moved.",
-        description: "The conversation has been moved to the project.",
+        description: "The conversation has been moved to the Pod.",
         type: "success",
       });
 

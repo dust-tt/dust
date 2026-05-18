@@ -177,7 +177,7 @@ export function AgentBuilderSpacesBlock({
       <div className="flex items-start justify-between">
         <div>
           <h2 className="heading-lg text-foreground dark:text-foreground-night">
-            {isProjectsEnabled ? "Spaces and Projects" : "Spaces"}
+            {isProjectsEnabled ? "Spaces and Pods" : "Spaces"}
           </h2>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Set what knowledge and capabilities the agent can access.

@@ -40,12 +40,12 @@ export function useMoveConversationOutOfProject(
   return useCallback(
     async (conversation: ConversationListItemType): Promise<boolean> => {
       const confirmed = await confirm({
-        title: "Remove from project?",
+        title: "Remove from Pod?",
         message: (
           <div>
             <strong>{getConversationDisplayTitle(conversation)}</strong> will be
-            removed from the project. Participants who no longer have access to
-            the required spaces will be removed from the conversation.
+            removed from the Pod. Participants who no longer have access to the
+            required spaces will be removed from the conversation.
           </div>
         ),
         validateLabel: "Remove",
@@ -70,7 +70,7 @@ export function useMoveConversationOutOfProject(
         const errorData = await getErrorFromResponse(res);
 
         sendNotification({
-          title: "Error removing conversation from project.",
+          title: "Error removing conversation from Pod.",
           description: errorData.message,
           type: "error",
         });
@@ -82,7 +82,7 @@ export function useMoveConversationOutOfProject(
       void mutateConversation();
       void sendNotification({
         title: "Conversation removed.",
-        description: "The conversation has been removed from the project.",
+        description: "The conversation has been removed from the Pod.",
         type: "success",
       });
 

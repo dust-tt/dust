@@ -74,7 +74,7 @@ export function MentionValidationRequired({
   }
 
   const title = isProjectMembership
-    ? `Add ${mention.label} to this project?`
+    ? `Add ${mention.label} to this Pod?`
     : `Invite ${mention.label} to this conversation?`;
 
   const description = isAgentMessageWithStreaming(message) ? (
@@ -82,11 +82,11 @@ export function MentionValidationRequired({
       <span className="font-semibold">@{message.configuration.name}</span>{" "}
       mentioned <span className="font-semibold">{mention.label}</span>.
       {isProjectMembership
-        ? " Do you want to add them to this project?"
+        ? " Do you want to add them to this Pod?"
         : " Do you want to invite them? They'll see the full history and be able to reply."}
     </>
   ) : isProjectMembership ? (
-    "They'll have access to all project conversations."
+    "They'll have access to all Pod conversations."
   ) : (
     "They'll see the full history and be able to reply."
   );
@@ -109,7 +109,7 @@ export function MentionValidationRequired({
             <Button
               variant="highlight"
               size="sm"
-              label={isProjectMembership ? "Add to project" : "Invite"}
+              label={isProjectMembership ? "Add to Pod" : "Invite"}
               disabled={isSubmitting}
               isLoading={isSubmitting}
               onClick={handleApprove}

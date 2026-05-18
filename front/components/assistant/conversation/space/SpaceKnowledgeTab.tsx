@@ -80,7 +80,7 @@ interface SpaceKnowledgeTabProps {
 }
 
 const PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP =
-  "Adding files to projects is disabled by your workspace admin.";
+  "Adding files to Pods is disabled by your workspace admin.";
 
 // TODO(2026-05 FILE SYSTEM): Remove once the file explorer supports rendering
 // path-only files natively. Sentinel id needed today to squeeze path-only entries
@@ -493,7 +493,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     }
     const confirmed = await confirm({
       title: "Remove content node?",
-      message: `Are you sure you want to remove "${item.title}" from this project?`,
+      message: `Are you sure you want to remove "${item.title}" from this Pod?`,
       validateLabel: "Remove",
       validateVariant: "warning",
     });
@@ -903,8 +903,8 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
             <EmptyCTA
               message={
                 isArchived
-                  ? "This project is archived. No files have been added."
-                  : "No files have been added to this project yet."
+                  ? "This Pod is archived. No files have been added."
+                  : "No files have been added to this Pod yet."
               }
               action={
                 isArchived ? null : (

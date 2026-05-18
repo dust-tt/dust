@@ -161,7 +161,7 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   },
   agent_sidekick: { label: "Sidekick", color: buildColorClass("emerald", 300) },
   project_kickoff: {
-    label: "Project Kickoff",
+    label: "Pod Kickoff",
     color: buildColorClass("lime", 300),
   },
 };

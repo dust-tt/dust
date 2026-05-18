@@ -268,7 +268,7 @@ export function ProjectMenu({
             shouldWaitBeforeFetching={shouldWaitBeforeFetching}
           />
           <DropdownMenuSeparator />
-          <DropdownMenuLabel label="Project" />
+          <DropdownMenuLabel label="Pod" />
           {canRename && (
             <DropdownMenuItem
               label="Rename"

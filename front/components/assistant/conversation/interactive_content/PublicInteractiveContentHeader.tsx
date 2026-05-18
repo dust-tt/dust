@@ -75,7 +75,7 @@ export function PublicInteractiveContentHeader({
           )}
           {user && projectUrl && (
             <Button
-              label="Go to project"
+              label="Go to Pod"
               href={projectUrl}
               variant="outline"
               // TODO(projects) this does not show the correct icon for open projects.

@@ -114,7 +114,7 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
           <div className="shrink-0 p-3 pb-2">
             <SearchInput
               name="browse-projects-search"
-              placeholder="Search projects..."
+              placeholder="Search Pods..."
               value={searchQuery}
               onChange={setSearchQuery}
             />
@@ -124,7 +124,7 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
               <ProjectBrowseItemSkeleton count={5} />
             ) : filteredProjects.length === 0 ? (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
-                No projects found
+                No Pods found
               </div>
             ) : (
               <>

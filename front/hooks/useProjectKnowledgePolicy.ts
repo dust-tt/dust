@@ -32,14 +32,14 @@ export function useProjectKnowledgePolicy({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update project knowledge policy.");
+        throw new Error("Failed to update Pod knowledge policy.");
       }
 
       setAllowManualProjectKnowledgeManagement(nextValue);
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update project knowledge policy",
+        title: "Failed to update Pod knowledge policy",
         description: normalizeError(error).message,
       });
       return false;

@@ -123,8 +123,8 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
           name: props.space.name,
         },
         {
-          title: "Successfully updated project members",
-          description: "Project members were successfully updated.",
+          title: "Successfully updated Pod members",
+          description: "Pod members were successfully updated.",
         }
       );
 

@@ -71,7 +71,7 @@ export function MentionInvalid({
       // Different message for project conversations (non-editor can't add members)
       const isProjectConv = isProjectConversation(conversation);
       const message = isProjectConv
-        ? "is not a member of this project and only project editors can add new members."
+        ? "is not a member of this Pod and only Pod editors can add new members."
         : "doesn't have access to this conversation's spaces and won't be able to view it nor be invited.";
 
       return (
@@ -104,7 +104,7 @@ export function MentionInvalid({
             <div>
               <span className="font-semibold">{mention.label}</span> can't be
               invoked as it is configured to use at least one space that the
-              conversation cannot use. Projects conversations cannot use private
+              conversation cannot use. Pods conversations cannot use private
               spaces.
             </div>
             <div className="ml-auto">

@@ -113,12 +113,12 @@ export const EditProjectTitleDialog = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit project title</DialogTitle>
+          <DialogTitle>Edit Pod name</DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <Input
             ref={inputRef}
-            placeholder="Enter new title..."
+            placeholder="Enter new name..."
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);
@@ -133,7 +133,7 @@ export const EditProjectTitleDialog = ({
           />
           {nameNotAvailable && (
             <div className="text-xs text-warning-500">
-              A project or space with this name already exists.
+              A Pod or space with this name already exists.
             </div>
           )}
         </DialogContainer>

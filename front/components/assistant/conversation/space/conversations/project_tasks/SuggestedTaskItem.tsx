@@ -42,7 +42,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
 
   const canAct = viewerUserId !== null && !isReadOnly;
   const rationaleText =
-    task.actorRationale?.trim() || "Suggested from your project takeaways.";
+    task.actorRationale?.trim() || "Suggested from your Pod takeaways.";
 
   return (
     <div className="group/suggestion-item flex items-start gap-3 py-1 pl-6">

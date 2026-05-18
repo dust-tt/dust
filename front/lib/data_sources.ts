@@ -41,7 +41,7 @@ export function getDisplayNameForDataSource(
 ) {
   if (ds.connectorProvider) {
     if (ds.connectorProvider === "dust_project") {
-      return aggregate ? "Projects" : ds.name;
+      return aggregate ? "Pods" : ds.name;
     }
     if (ds.connectorProvider === "webcrawler") {
       return aggregate ? "Websites" : ds.name;

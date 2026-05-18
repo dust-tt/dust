@@ -27,7 +27,7 @@ app.post(
         {
           error: {
             type: "invalid_request_error",
-            message: "Project star is only available for project spaces.",
+            message: "You can only star Pods.",
           },
         },
         400

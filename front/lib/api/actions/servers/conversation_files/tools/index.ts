@@ -71,7 +71,7 @@ export const contentFromAttachments = (
     .forEach((attachment, i) => {
       if (i === 0) {
         content +=
-          "The following files are currently attached to the conversation via the project context:\n";
+          "The following files are currently attached to the conversation via the pod context:\n";
       } else {
         content += "\n";
       }

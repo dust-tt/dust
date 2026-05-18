@@ -34,7 +34,7 @@ export async function getApprovalArgsLabel({
       if (parsedProject.isOk()) {
         const { workspaceId, projectId } = parsedProject.value;
         if (workspaceId !== auth.getNonNullableWorkspace().sId) {
-          return `Always allow @${agentName} to ${asDisplayName(toolName)} in project ${parsed.data.uri}`;
+          return `Always allow @${agentName} to ${asDisplayName(toolName)} in Pod ${parsed.data.uri}`;
         }
 
         const space = await SpaceResource.fetchById(auth, projectId);
