@@ -92,7 +92,7 @@ impl SqliteWorker {
         query: &str,
     ) -> Result<Vec<QueryResult>, SqliteWorkerError> {
         let worker_url = self.url();
-        let uri = format!("{}/databases/query", worker_url);
+        let uri = format!("{}/databases/by-id/query", worker_url);
 
         let req = reqwest::Client::new()
             .post(&uri)
@@ -144,7 +144,7 @@ impl SqliteWorker {
         database_unique_id: &str,
     ) -> Result<(), SqliteWorkerError> {
         let worker_url = self.url();
-        let uri = format!("{}/databases/invalidate", worker_url);
+        let uri = format!("{}/databases/by-id/invalidate", worker_url);
 
         let req = reqwest::Client::new()
             .post(&uri)

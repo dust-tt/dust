@@ -391,8 +391,8 @@ async fn expire_all(State(state): State<Arc<WorkerState>>) -> (StatusCode, Json<
 
 fn make_router(state: Arc<WorkerState>) -> Router {
     Router::new()
-        .route("/databases/query", post(databases_query_by_id))
-        .route("/databases/invalidate", post(databases_delete_by_id))
+        .route("/databases/by-id/query", post(databases_query_by_id))
+        .route("/databases/by-id/invalidate", post(databases_delete_by_id))
         .route("/databases", delete(expire_all))
         .route("/databases/{database_id}", post(databases_query))
         .route("/databases/{database_id}", delete(databases_delete))
@@ -539,7 +539,7 @@ mod tests {
 
         let server = TestServer::new(make_router(state.clone()))?;
         let response = server
-            .post("/databases/invalidate")
+            .post("/databases/by-id/invalidate")
             .json(&json!({
                 "database_id": database_id,
             }))
