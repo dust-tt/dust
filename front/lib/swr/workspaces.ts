@@ -35,6 +35,8 @@ import type {
   GetSubscriptionsResponseBody,
   PostSubscriptionResponseBody,
 } from "@app/pages/api/w/[wId]/subscriptions";
+import type { PostCheckoutPaymentResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout/payment";
+import type { GetPreparePaymentResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout/prepare-payment";
 import type { GetCheckoutStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout-status";
 import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
 import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
@@ -833,20 +835,22 @@ export function useCheckoutStatus({
 }: {
   workspaceId: string;
   sessionId: string;
-  planCode: string;
+  planCode?: string;
   disabled?: boolean;
   pollIntervalMs?: number;
 }) {
   const { fetcher } = useFetcher();
   const checkoutFetcher: Fetcher<GetCheckoutStatusResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`,
-    checkoutFetcher,
-    { refreshInterval: pollIntervalMs }
-  );
+  const url = disabled
+    ? null
+    : planCode
+      ? `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`
+      : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, checkoutFetcher, {
+    refreshInterval: pollIntervalMs,
+  });
 
   return {
     checkoutStatus: data ?? null,
@@ -1055,6 +1059,88 @@ export function useCreateCheckoutSession({
   );
 
   return { createSession, isCreating };
+}
+
+export function usePreparePayment({
+  workspaceId,
+  setupSessionId,
+  disabled,
+}: {
+  workspaceId: string;
+  setupSessionId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const preparePaymentFetcher: Fetcher<GetPreparePaymentResponseBody> = fetcher;
+
+  const url =
+    disabled || !setupSessionId
+      ? null
+      : `/api/w/${workspaceId}/subscriptions/checkout/prepare-payment?setup_session_id=${setupSessionId}`;
+
+  const [pollTimedOut, setPollTimedOut] = useState(false);
+
+  const { data, error } = useSWRWithDefaults(url, preparePaymentFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 500,
+    refreshInterval: (d) =>
+      d?.status === "pending" && !pollTimedOut ? 500 : 0,
+  });
+
+  const isPending = data?.status === "pending";
+
+  useEffect(() => {
+    if (!isPending) {
+      setPollTimedOut(false);
+      return;
+    }
+    const timer = setTimeout(() => setPollTimedOut(true), 5_000);
+    return () => clearTimeout(timer);
+  }, [isPending]);
+
+  const completeData = data?.status === "success" ? data : null;
+
+  return {
+    preparePayment: completeData,
+    isPreparePaymentLoading:
+      (!error && !data && !disabled && !!setupSessionId) ||
+      (isPending && !pollTimedOut),
+    isPreparePaymentError: !!error || pollTimedOut,
+  };
+}
+
+export function useConfirmPayment({ workspaceId }: { workspaceId: string }) {
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  const confirmPayment = useCallback(
+    async ({
+      setupSessionId,
+    }: {
+      setupSessionId: string;
+    }): Promise<PostCheckoutPaymentResponseBody | null> => {
+      setIsConfirming(true);
+      try {
+        const res = await clientFetch(
+          `/api/w/${workspaceId}/subscriptions/checkout/payment`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ setupSessionId }),
+          }
+        );
+        if (!res.ok) {
+          return null;
+        }
+        return res.json() as Promise<PostCheckoutPaymentResponseBody>;
+      } finally {
+        setIsConfirming(false);
+      }
+    },
+    [workspaceId]
+  );
+
+  return { confirmPayment, isConfirming };
 }
 
 export function useValidateCoupon({ workspaceId }: { workspaceId: string }) {

@@ -3,6 +3,11 @@ import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  BUSINESS_PLAN_COST_MONTHLY,
+  PRO_PLAN_COST_MONTHLY,
+  PRO_PLAN_COST_YEARLY,
+} from "@app/lib/client/subscription";
 import { DustError } from "@app/lib/error";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
@@ -1244,6 +1249,20 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
 
     if (useMetronomeBilling) {
+      const seatCount = await MembershipResource.countActiveSeatsInWorkspace(
+        owner.sId
+      );
+
+      // Per-period per-seat price in cents. Business has no yearly variant.
+      const pricePerMonth = isBusiness
+        ? BUSINESS_PLAN_COST_MONTHLY
+        : billingPeriod === "yearly"
+          ? PRO_PLAN_COST_YEARLY
+          : PRO_PLAN_COST_MONTHLY;
+      const pricePerMonthCents = pricePerMonth * 100;
+      const monthsInPeriod = !isBusiness && billingPeriod === "yearly" ? 12 : 1;
+      const pricePerSeatCents = pricePerMonthCents * monthsInPeriod;
+
       const { clientSecret, sessionId } =
         await createEmbeddedMetronomeSetupCheckoutSession({
           owner,
@@ -1252,6 +1271,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           metronomePackageAlias,
           allowedPaymentMethods,
           couponCode,
+          seatCount,
+          pricePerSeatCents,
         });
       return {
         mode: "embedded",
