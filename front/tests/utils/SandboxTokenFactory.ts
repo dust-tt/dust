@@ -1,6 +1,8 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import { Authenticator } from "@app/lib/auth";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -9,6 +11,7 @@ import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { AgentMCPActionType } from "@app/types/actions";
 
 process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
@@ -58,12 +61,41 @@ export async function createSandboxTokenTestContext({
     throw new Error("Expected sandbox token test conversation agent message.");
   }
 
+  const sandboxServer = await InternalMCPServerInMemoryResource.makeNew(auth, {
+    name: "sandbox",
+    useCase: null,
+  });
+
+  const mockAction: AgentMCPActionType = {
+    id: agentMessage.agentMessageId as number, // Use the agentMessageId as the action id
+    sId: generateRandomModelSId(),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    agentMessageId: agentMessage.agentMessageId as number,
+    internalMCPServerName: "search",
+    toolName: "semantic_search",
+    mcpServerId: sandboxServer.id,
+    functionCallName: "semantic_search",
+    functionCallId: generateRandomModelSId(),
+    params: {
+      query: "test query",
+      relativeTimeFrame: "all",
+      dataSources: [],
+    },
+    citationsAllocated: 0,
+    status: "running",
+    step: 0,
+    executionDurationMs: null,
+    displayLabels: null,
+  };
+
   const token = await generateSandboxExecToken(auth, {
     agentConfiguration: agentConfig,
     agentMessage,
     conversation,
     sandbox,
     execId: `test-exec-${sandbox.sId}`,
+    sandboxAction: mockAction,
   });
 
   return {

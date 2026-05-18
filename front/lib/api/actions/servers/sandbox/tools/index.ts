@@ -228,7 +228,8 @@ export async function runSandboxBashTool(
   const conversation = agentLoopContext?.runContext?.conversation;
   const agentConfiguration = agentLoopContext?.runContext?.agentConfiguration;
   const agentMessage = agentLoopContext?.runContext?.agentMessage;
-  if (!conversation || !agentConfiguration || !agentMessage) {
+  const sandboxAction = agentLoopContext?.runContext?.currentAction;
+  if (!conversation || !agentConfiguration || !agentMessage || !sandboxAction) {
     return new Err(new MCPError("No conversation context available."));
   }
 
@@ -247,6 +248,7 @@ export async function runSandboxBashTool(
     sandbox,
     execId,
     expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
+    sandboxAction,
   });
 
   const metricsCtx = { workspaceId: auth.getNonNullableWorkspace().sId };

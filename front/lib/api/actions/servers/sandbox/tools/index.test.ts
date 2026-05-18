@@ -233,6 +233,7 @@ describe("runSandboxBashTool", () => {
           },
           agentMessage: { sId: "message-id" },
           conversation: { sId: "conversation-id" },
+          currentAction: { sId: "sandbox-action-id" },
         },
       },
       signal: new AbortController().signal,

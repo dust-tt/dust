@@ -3,6 +3,7 @@ import type {
   LightMCPToolConfigurationType,
   MCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { AgentMCPActionType } from "@app/types/actions";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -116,7 +117,7 @@ export type ActionGeneratedFileType =
 export type AgentLoopRunContextType = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
-  clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
+  currentAction: AgentMCPActionType;
   conversation: ConversationType;
   stepContext: StepContext;
   toolConfiguration: LightMCPToolConfigurationType;

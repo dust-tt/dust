@@ -31,14 +31,6 @@ import type { CallMCPToolResponseType } from "@dust-tt/client";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const DEFAULT_SANDBOX_STEP_CONTEXT = {
-  citationsCount: 0,
-  citationsOffset: 0,
-  resumeState: null,
-  retrievalTopK: 10,
-  websearchResultCount: 10,
-} as const;
-
 async function extractSandboxClaims(
   req: NextApiRequest
 ): Promise<SandboxExecTokenPayload | null> {
@@ -74,6 +66,15 @@ async function buildSandboxAgentLoopContext(
   }
 
   const conversation = conversationResult.value;
+
+  // Fetch the parent action's stepContext (the running sandbox bash tool).
+  const parentAction = await AgentMCPActionResource.fetchById(
+    auth,
+    claims.actionId
+  );
+  if (!parentAction) {
+    return undefined;
+  }
 
   const agentMessage = conversation.content
     .flat()
@@ -139,23 +140,15 @@ async function buildSandboxAgentLoopContext(
     ...toolConfiguration
   } = fullToolConfiguration;
 
-  // Fetch the parent action's stepContext (the running sandbox bash tool).
-  // There is at most one running sandbox action per agent message.
-  const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
-    agentMessage.agentMessageId,
-  ]);
-  const parentAction = actions.find(
-    (a) =>
-      a.status === "running" && a.toolConfiguration.mcpServerName === "sandbox"
-  );
-  const stepContext = parentAction?.stepContext ?? DEFAULT_SANDBOX_STEP_CONTEXT;
-
   return {
     runContext: {
       agentConfiguration,
       agentMessage,
       conversation,
-      stepContext,
+      // TODO(adrien 2026-18-05): migrate currentAction to actual current action
+      // once we have a proper mcp action (in ~2/3 PRs).
+      currentAction: parentAction.toJSON(),
+      stepContext: parentAction.stepContext,
       toolConfiguration,
     },
   };

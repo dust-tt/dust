@@ -4,13 +4,16 @@ import {
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
 import { Authenticator } from "@app/lib/auth";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { AgentMCPActionType } from "@app/types/actions";
 import jwt from "jsonwebtoken";
 import { describe, expect, it, vi } from "vitest";
 
@@ -51,13 +54,47 @@ async function setupTest() {
     agentConfig,
   });
 
-  return { auth, agentConfig, agentMessage, conversation, sandbox };
+  const sandboxServer = await InternalMCPServerInMemoryResource.makeNew(auth, {
+    name: "sandbox",
+    useCase: null,
+  });
+
+  const mockAction: AgentMCPActionType = {
+    id: agentMessage.agentMessageId as number, // Use the agentMessageId as the action id
+    sId: generateRandomModelSId(),
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    agentMessageId: agentMessage.agentMessageId as number,
+    internalMCPServerName: "search",
+    toolName: "semantic_search",
+    mcpServerId: sandboxServer.id,
+    functionCallName: "semantic_search",
+    functionCallId: generateRandomModelSId(),
+    params: {
+      query: "test query",
+      relativeTimeFrame: "all",
+      dataSources: [],
+    },
+    citationsAllocated: 0,
+    status: "running",
+    step: 0,
+    executionDurationMs: null,
+    displayLabels: null,
+  };
+
+  return { auth, agentConfig, agentMessage, conversation, sandbox, mockAction };
 }
 
 describe("sandbox access tokens", () => {
   it("round-trip: generate → verify → check claims", async () => {
-    const { auth, agentConfig, agentMessage, conversation, sandbox } =
-      await setupTest();
+    const {
+      auth,
+      agentConfig,
+      agentMessage,
+      conversation,
+      sandbox,
+      mockAction,
+    } = await setupTest();
 
     const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
@@ -65,6 +102,7 @@ describe("sandbox access tokens", () => {
       conversation,
       sandbox,
       execId: "test-exec-id",
+      sandboxAction: mockAction,
     });
 
     expect(token.startsWith(SANDBOX_TOKEN_PREFIX)).toBe(true);
@@ -81,8 +119,14 @@ describe("sandbox access tokens", () => {
   });
 
   it("tampered token is rejected", async () => {
-    const { auth, agentConfig, agentMessage, conversation, sandbox } =
-      await setupTest();
+    const {
+      auth,
+      agentConfig,
+      agentMessage,
+      conversation,
+      sandbox,
+      mockAction,
+    } = await setupTest();
 
     const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
@@ -90,6 +134,7 @@ describe("sandbox access tokens", () => {
       conversation,
       sandbox,
       execId: "test-exec-id",
+      sandboxAction: mockAction,
     });
 
     // Decode, modify, re-sign with a wrong secret.
@@ -106,8 +151,14 @@ describe("sandbox access tokens", () => {
   });
 
   it("token without sbt- prefix is rejected", async () => {
-    const { auth, agentConfig, agentMessage, conversation, sandbox } =
-      await setupTest();
+    const {
+      auth,
+      agentConfig,
+      agentMessage,
+      conversation,
+      sandbox,
+      mockAction,
+    } = await setupTest();
 
     const token = await generateSandboxExecToken(auth, {
       agentConfiguration: agentConfig,
@@ -115,6 +166,7 @@ describe("sandbox access tokens", () => {
       conversation,
       sandbox,
       execId: "test-exec-id",
+      sandboxAction: mockAction,
     });
     const raw = token.slice(SANDBOX_TOKEN_PREFIX.length);
 
