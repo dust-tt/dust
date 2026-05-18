@@ -27,7 +27,7 @@ app.post(
         {
           error: {
             type: "invalid_request_error",
-            message: "Pod star is only available for Pod spaces.",
+            message: "You can only star Pods.",
           },
         },
         400
