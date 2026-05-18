@@ -37,8 +37,8 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude 4 Opus model, a powerful model in the Claude 4 family (200k context).",
   shortDescription: "A powerful Claude 4 model.",
-  isLegacy: false,
-  isLatest: true,
+  isLegacy: true,
+  isLatest: false,
   generationTokensCount: 32_000,
   supportsVision: true,
   minimumReasoningEffort: "light",
@@ -62,7 +62,7 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude 4 Sonnet model, balancing power and efficiency (200k context).",
   shortDescription: "Anthropic's balanced Claude 4 model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
@@ -85,7 +85,7 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 4.5 Sonnet model with enhanced reasoning and tool use (200k context).",
   shortDescription: "Anthropic's previous balanced model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: true,
@@ -108,7 +108,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude 3.5 Haiku model, cost effective and high throughput (200k context).",
   shortDescription: "Anthropic's cost-effective model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: false,
@@ -130,7 +130,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude 3 Haiku model, cost effective and high throughput (200k context).",
   shortDescription: "Anthropic's cost-effective model.",
-  isLegacy: false,
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: true,
