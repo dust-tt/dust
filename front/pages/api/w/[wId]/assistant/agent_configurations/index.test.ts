@@ -263,6 +263,41 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - Skills with restric
       restrictedSpace.sId
     );
   });
+
+  it("should add multiple skills when creating an agent", async () => {
+    const { req, res, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "POST",
+    });
+
+    await SpaceFactory.defaults(auth);
+
+    const customSkill = await SkillFactory.create(auth, {
+      name: "Custom skill to add",
+    });
+
+    req.body = {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        name: "Test Agent with Multiple Skills",
+        editors: [{ sId: user.sId }],
+        skills: [{ sId: customSkill.sId }, { sId: "frames" }],
+      },
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    const skills = await SkillResource.listByAgentConfiguration(
+      auth,
+      data.agentConfiguration
+    );
+
+    expect(skills.map((skill) => skill.sId).sort()).toEqual(
+      [customSkill.sId, "frames"].sort()
+    );
+  });
 });
 
 describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequestedSpaceIds", () => {
