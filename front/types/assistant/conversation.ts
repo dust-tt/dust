@@ -243,6 +243,8 @@ export type AgentMessageStatus =
   | "gracefully_stopped";
 
 export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
+  // Message can be in "created" status when we stop the loop to ask for user permission for instance.
+  "created",
   "succeeded",
   "cancelled",
   "interrupted",

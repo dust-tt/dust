@@ -242,6 +242,12 @@ export async function emitMetronomeUsageEventsActivity(
     return;
   }
 
+  // Only send usage events for statuses we track for billing. This ensures
+  // Metronome stays consistent with ES analytics and credit consumption.
+  if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status)) {
+    return;
+  }
+
   // Use dustRunIds from this specific agent loop execution if available,
   // fall back to all accumulated runIds on the message (legacy behavior).
   const effectiveRunIds = agentLoopArgs.dustRunIds ?? agentMessage.runIds;
