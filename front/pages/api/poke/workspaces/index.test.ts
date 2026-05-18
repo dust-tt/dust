@@ -17,13 +17,13 @@ async function createNamedWorkspace(name: string) {
 
 describe("GET /api/poke/workspaces — workspace name search", () => {
   it("matches by prefix", async () => {
-    const workspace = await createNamedWorkspace("Bouygues Construction");
+    const workspace = await createNamedWorkspace("Zorbix Industries");
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       isSuperUser: true,
       workspace,
     });
-    req.query.search = encodeURIComponent("Bouygues");
+    req.query.search = encodeURIComponent("Zorbix");
     req.query.limit = "20";
 
     await handler(req, res);
@@ -36,13 +36,13 @@ describe("GET /api/poke/workspaces — workspace name search", () => {
   });
 
   it("matches by a word in the middle of the name", async () => {
-    const workspace = await createNamedWorkspace("Bouygues Construction");
+    const workspace = await createNamedWorkspace("Zorbix Industries");
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       isSuperUser: true,
       workspace,
     });
-    req.query.search = encodeURIComponent("Construction");
+    req.query.search = encodeURIComponent("Industries");
     req.query.limit = "20";
 
     await handler(req, res);
@@ -55,13 +55,13 @@ describe("GET /api/poke/workspaces — workspace name search", () => {
   });
 
   it("matches case-insensitively", async () => {
-    const workspace = await createNamedWorkspace("Bouygues Construction");
+    const workspace = await createNamedWorkspace("Zorbix Industries");
     const { req, res } = await createPrivateApiMockRequest({
       method: "GET",
       isSuperUser: true,
       workspace,
     });
-    req.query.search = encodeURIComponent("construction");
+    req.query.search = encodeURIComponent("industries");
     req.query.limit = "20";
 
     await handler(req, res);
