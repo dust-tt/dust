@@ -33,6 +33,7 @@ const SUPPORTED_CONTENT_TYPES: Set<AllSupportedFileContentType> = new Set([
   "application/vnd.ms-excel",
   "text/csv",
   "text/tab-separated-values",
+  "text/tsv",
 
   // Plain text and code (used as-is).
   "application/octet-stream",
