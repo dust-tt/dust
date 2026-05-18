@@ -1,5 +1,5 @@
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { resolveConversationFile } from "@app/lib/api/actions/servers/files/tools/utils";
+import { resolveFile } from "@app/lib/api/actions/servers/files/tools/utils";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
@@ -53,11 +53,7 @@ export async function resolveConversationFileRef(
   const parsed = parseScopedFilePath(fileId);
   if (parsed) {
     const conversation = agentLoopContext.runContext.conversation;
-    const resolvedRes = await resolveConversationFile(
-      auth,
-      conversation,
-      fileId
-    );
+    const resolvedRes = await resolveFile(auth, conversation, fileId);
     if (resolvedRes.isErr()) {
       return new Err(resolvedRes.error.message);
     }
@@ -125,11 +121,7 @@ export async function getFileFromConversationAttachment(
   const parsed = parseScopedFilePath(fileId);
   if (parsed) {
     const conversation = agentLoopContext.runContext.conversation;
-    const resolvedRes = await resolveConversationFile(
-      auth,
-      conversation,
-      fileId
-    );
+    const resolvedRes = await resolveFile(auth, conversation, fileId);
     if (resolvedRes.isErr()) {
       return new Err(resolvedRes.error.message);
     }

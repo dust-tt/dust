@@ -12,7 +12,10 @@ import {
 } from "@app/types/shared/text_extraction";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Client } from "@microsoft/microsoft-graph-client";
-import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
+import {
+  Client as GraphClient,
+  ResponseType,
+} from "@microsoft/microsoft-graph-client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import AdmZip from "adm-zip";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
@@ -450,10 +453,43 @@ export async function searchMicrosoftDriveItems({
 }
 
 /**
+ * Downloads a DriveItem as a buffer, falling back to an authenticated Graph API download
+ * when the pre-signed @microsoft.graph.downloadUrl is not available (e.g. OneDrive for
+ * Business files stored in SharePoint personal sites).
+ */
+export async function downloadDriveItemAsBuffer(
+  client: Client,
+  endpoint: string,
+  downloadUrl?: string
+): Promise<Buffer> {
+  if (downloadUrl) {
+    const response = await untrustedFetch(downloadUrl);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download file: ${response.status} ${response.statusText}`
+      );
+    }
+    return Buffer.from(await response.arrayBuffer());
+  }
+  // Authenticated fallback: download via Graph API when pre-signed URL is unavailable.
+  const arrayBuffer: ArrayBuffer = await client
+    .api(`${endpoint}/content`)
+    .responseType(ResponseType.ARRAYBUFFER)
+    .get();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
  * Downloads and processes a Microsoft file to extract its text content.
  * Shared utility used by both the get_file_content MCP tool and universal search.
  *
+ * When client + endpoint are provided, uses downloadDriveItemAsBuffer which falls back
+ * to an authenticated Graph API download if @microsoft.graph.downloadUrl is absent.
+ * When only downloadUrl is provided (e.g. from search), downloads directly.
+ *
  * @param downloadUrl - The @microsoft.graph.downloadUrl from file metadata
+ * @param client - Authenticated Graph client (required when downloadUrl may be absent)
+ * @param endpoint - Graph API endpoint for the DriveItem (required with client)
  * @param mimeType - The file's MIME type
  * @param fileName - The file name (for error messages)
  * @param extractAsXml - For Word documents, extract raw document.xml instead of text (optional, defaults to false)
@@ -461,24 +497,35 @@ export async function searchMicrosoftDriveItems({
  */
 export async function downloadAndProcessMicrosoftFile({
   downloadUrl,
+  client,
+  endpoint,
   mimeType,
   fileName,
   extractAsXml = false,
 }: {
-  downloadUrl: string;
+  downloadUrl?: string;
+  client?: Client;
+  endpoint?: string;
   mimeType: string;
   fileName: string;
   extractAsXml?: boolean;
 }): Promise<string> {
-  // Download the file
-  const docResponse = await untrustedFetch(downloadUrl);
-  if (!docResponse.ok) {
+  let buffer: Buffer;
+  if (client && endpoint) {
+    buffer = await downloadDriveItemAsBuffer(client, endpoint, downloadUrl);
+  } else if (downloadUrl) {
+    const docResponse = await untrustedFetch(downloadUrl);
+    if (!docResponse.ok) {
+      throw new Error(
+        `Failed to download file: ${docResponse.status} ${docResponse.statusText}`
+      );
+    }
+    buffer = Buffer.from(await docResponse.arrayBuffer());
+  } else {
     throw new Error(
-      `Failed to download file: ${docResponse.status} ${docResponse.statusText}`
+      "Either (client + endpoint) or downloadUrl must be provided"
     );
   }
-
-  const buffer = Buffer.from(await docResponse.arrayBuffer());
 
   let content: string;
 

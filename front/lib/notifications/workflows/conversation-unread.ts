@@ -24,7 +24,7 @@ import { renderEmail } from "@app/lib/notifications/email-templates/conversation
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
-import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -1116,9 +1116,12 @@ export const filterParticipantsByNotifyCondition = async ({
   }
 
   const projectPreferenceMap = spaceModelId
-    ? await UserProjectNotificationPreferenceResource.fetchAllBySpaceAndUsers(
+    ? await UserProjectPreferencesResource.fetchNotificationPreferenceMap(
         auth,
-        { spaceModelId, userModelIds }
+        {
+          spaceModelId,
+          userModelIds,
+        }
       )
     : new Map<ModelId, NotificationCondition>();
 

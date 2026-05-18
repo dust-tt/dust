@@ -55,11 +55,12 @@ export class ProviderWorkflowError extends DustConnectorWorkflowError {
 
 export class ProviderRateLimitError extends ProviderWorkflowError {
   constructor(
+    provider: ConnectorProvider,
     message: string,
     originalError?: Error | APIError,
-    readonly retryAfter?: number
+    readonly retryAfterMs?: number
   ) {
-    super("slack", message, "rate_limit_error", originalError);
+    super(provider, message, "rate_limit_error", originalError);
   }
 }
 

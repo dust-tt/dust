@@ -110,7 +110,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import {
@@ -157,15 +157,21 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const preference =
-        await UserProjectNotificationPreferenceResource.fetchByProject(
-          auth,
-          space.id
-        );
+      const preference = await UserProjectPreferencesResource.fetchBySpace(
+        auth,
+        space.id
+      );
+      const serialized = preference?.toJSON();
       return res.status(200).json({
-        userProjectNotificationPreference: preference
-          ? preference.toJSON()
-          : null,
+        userProjectNotificationPreference:
+          serialized && serialized.notificationPreference !== null
+            ? {
+                sId: serialized.sId,
+                spaceId: serialized.spaceId,
+                userId: serialized.userId,
+                preference: serialized.notificationPreference,
+              }
+            : null,
       });
     }
 
@@ -189,13 +195,22 @@ async function handler(
       const body = bodyValidation.data;
 
       const preferenceResource =
-        await UserProjectNotificationPreferenceResource.setPreference(auth, {
+        await UserProjectPreferencesResource.setNotificationPreference(auth, {
           spaceModelId: space.id,
-          preference: body.preference,
+          notificationPreference: body.preference,
         });
 
+      const serialized = preferenceResource.toJSON();
       return res.status(200).json({
-        userProjectNotificationPreference: preferenceResource.toJSON(),
+        userProjectNotificationPreference:
+          serialized.notificationPreference !== null
+            ? {
+                sId: serialized.sId,
+                spaceId: serialized.spaceId,
+                userId: serialized.userId,
+                preference: serialized.notificationPreference,
+              }
+            : null,
       });
     }
 

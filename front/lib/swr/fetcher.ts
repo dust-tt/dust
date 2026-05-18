@@ -34,10 +34,10 @@ const makeResHandler =
             url: res.url,
             statusCode: res.status,
           },
-          "[fetcher] Force client reload - ignored"
+          "[fetcher] Force client reload"
         );
         sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
-        // TODO - reenable once clients cache are cleaned - window.location.reload();
+        window.location.reload();
         // Return a never-resolving promise to prevent SWR from processing.
         return new Promise(() => {});
       }

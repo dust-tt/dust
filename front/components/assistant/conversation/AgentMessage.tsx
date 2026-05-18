@@ -121,6 +121,9 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
+// TODO(sessions-branching): Re-enable once branching from a source message is fixed.
+const SHOW_BRANCH_FROM_HERE_ACTION = false;
+
 function PrunedContextChip() {
   return (
     <Tooltip
@@ -166,8 +169,39 @@ function PrunedContextChip() {
   );
 }
 
+function buildMountFilePreviewHref({
+  apiBaseUrl,
+  ownerId,
+  conversationId,
+  spaceId,
+  filePath,
+}: {
+  apiBaseUrl: string;
+  ownerId: string;
+  conversationId: string;
+  spaceId: string | null;
+  filePath: string;
+}): string | undefined {
+  if (filePath.startsWith("conversation/")) {
+    const rel = filePath.slice("conversation/".length);
+    return `${apiBaseUrl}/api/w/${ownerId}/assistant/conversations/${conversationId}/files/${rel}`;
+  }
+
+  if (filePath.startsWith("project/")) {
+    if (!spaceId) {
+      return undefined;
+    }
+
+    const rel = filePath.slice("project/".length);
+    return `${apiBaseUrl}/api/w/${ownerId}/spaces/${spaceId}/files/${rel}`;
+  }
+
+  return undefined;
+}
+
 interface AgentMessageProps {
   conversationId: string;
+  spaceId: string | null;
   hideHeader: boolean;
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
@@ -176,7 +210,6 @@ interface AgentMessageProps {
   user: UserType;
   triggeringUser: UserType | null;
   isOnboardingConversation: boolean;
-  onConversationBranched?: () => Promise<void> | void;
   onCompletionStatusClick?: (messageId: string, actionId?: string) => void;
   handleSubmit: (
     input: string,
@@ -190,6 +223,7 @@ interface AgentMessageProps {
 
 export function AgentMessage({
   conversationId,
+  spaceId,
   hideHeader,
   isLastMessage,
   agentMessage,
@@ -198,7 +232,6 @@ export function AgentMessage({
   user,
   triggeringUser,
   isOnboardingConversation,
-  onConversationBranched,
   onCompletionStatusClick,
   handleSubmit,
   additionalMarkdownComponents,
@@ -679,8 +712,7 @@ export function AgentMessage({
     !isAgentMessageHandingOver &&
     !isProjectArchived;
 
-  const canBranchConversation =
-    hasFeature("sessions_branching") && shouldShowCopy;
+  const canBranchConversation = SHOW_BRANCH_FROM_HERE_ACTION && shouldShowCopy;
 
   const shouldShowFeedback =
     !isDeleted &&
@@ -696,7 +728,6 @@ export function AgentMessage({
   const { branchConversation, isBranching } = useBranchConversation({
     owner,
     conversationId,
-    onConversationBranched,
   });
 
   const retryHandler = useCallback(
@@ -987,6 +1018,7 @@ export function AgentMessage({
           onQuickReplySend={handleQuickReply}
           owner={owner}
           conversationId={conversationId}
+          spaceId={spaceId}
           retryHandler={retryHandler}
           reloadMessage={reloadMessage}
           isRetryHandlerProcessing={isRetryHandlerProcessing}
@@ -1083,6 +1115,7 @@ function AgentMessageContent({
   streamError,
   owner,
   conversationId,
+  spaceId,
   activeReferences,
   setActiveReferences,
   retryHandler,
@@ -1098,6 +1131,7 @@ function AgentMessageContent({
   isLastMessage: boolean;
   owner: LightWorkspaceType;
   conversationId: string;
+  spaceId: string | null;
   retryHandler: (params: {
     conversationId: string;
     messageId: string;
@@ -1378,7 +1412,13 @@ function AgentMessageContent({
                 const href = file.fileId
                   ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`
                   : file.filePath
-                    ? `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${file.filePath.replace("conversation/", "")}`
+                    ? buildMountFilePreviewHref({
+                        apiBaseUrl: config.getApiBaseUrl(),
+                        ownerId: owner.sId,
+                        conversationId,
+                        spaceId,
+                        filePath: file.filePath,
+                      })
                     : undefined;
                 return {
                   index: -1,
@@ -1395,10 +1435,13 @@ function AgentMessageContent({
             })}
           </div>
         )}
-        {agentMessage.status === "cancelled" && (
+        {(agentMessage.status === "cancelled" ||
+          agentMessage.status === "interrupted") && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint dark:text-faint-night">
-              Message generation stopped by user
+              {agentMessage.status === "interrupted"
+                ? "Skipped. Running your next message."
+                : "Generation stopped."}
             </div>
             <div>
               <ButtonGroupDropdown

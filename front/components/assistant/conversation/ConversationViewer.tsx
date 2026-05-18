@@ -7,6 +7,7 @@ import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -46,7 +47,6 @@ import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
 import {
@@ -251,8 +251,7 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const sendNotification = useSendNotification();
-  const { hasFeature } = useFeatureFlags();
-  const isCompactionEnabled = hasFeature("enable_compaction");
+  const { incrementPendingSteeringCount } = useGenerationContext();
 
   const { mutateConversationAttachments } = useConversationAttachments({
     conversationId,
@@ -333,7 +332,7 @@ export const ConversationViewer = ({
   });
 
   const { mutateContextUsage } = useConversationContextUsage({
-    conversationId: isCompactionEnabled ? conversationId : null,
+    conversationId,
     workspaceId: owner.sId,
     options: { disabled: true },
   });
@@ -748,6 +747,16 @@ export const ConversationViewer = ({
               void mutateConversationParticipants(async (participants) =>
                 getUpdatedParticipantsFromEvent(participants, event)
               );
+
+              void mutateConversations(
+                (currentData: ConversationListItemType[] | undefined) =>
+                  currentData?.map((c) =>
+                    c.sId === conversationId
+                      ? { ...c, isRunningAgentLoop: true }
+                      : c
+                  ),
+                { revalidate: false }
+              );
             }
             break;
 
@@ -787,38 +796,59 @@ export const ConversationViewer = ({
             void mutateContextUsage();
 
             // Update the messages SWR cache in place so a future remount
-            // of this conversation (e.g. navigating away and back) sees the
-            // message as terminal instead of the stale "created" snapshot
-            // (which would otherwise re-open an SSE replay). We only flip
-            // status here to avoid a network refetch on every termination,
-            // which on prod was slow enough to delay retry feedback. The
-            // richer final state (activitySteps, content, gracefully_stopped
-            // vs cancelled) is restored by the next real fetch when needed.
-            void mutateMessages(
-              (pages) =>
-                pages?.map((page) => ({
-                  ...page,
-                  messages: page.messages.map((m) =>
-                    isLightAgentMessageType(m) && m.sId === event.messageId
-                      ? {
-                          ...m,
-                          status:
-                            event.status === "error"
-                              ? ("failed" as const)
-                              : ("succeeded" as const),
-                        }
-                      : m
-                  ),
-                })),
-              { revalidate: false }
-            );
+            // (e.g. navigating away and back) sees the full terminal state.
+            // The message-level SSE fires agent_message_success before this
+            // conversation-level event, so Virtuoso already holds the final
+            // content, completionDurationMs, and activitySteps. We copy them
+            // into the SWR snapshot to avoid a blank message body on remount.
+            // If Virtuoso hasn't committed the update yet (rare race between
+            // two independent SSE streams), we fall back to a real revalidation.
+            {
+              const vMsg = virtuosoMessageListRef.current?.data.find(
+                (m) => m.sId === event.messageId
+              );
+              const msg =
+                vMsg && isAgentMessageWithStreaming(vMsg) ? vMsg : null;
+
+              void mutateMessages(
+                (pages) =>
+                  pages?.map((page) => ({
+                    ...page,
+                    messages: page.messages.map((m) =>
+                      isLightAgentMessageType(m) && m.sId === event.messageId
+                        ? {
+                            ...m,
+                            status:
+                              event.status === "error"
+                                ? ("failed" as const)
+                                : ("succeeded" as const),
+                            ...(msg !== null
+                              ? {
+                                  content: msg.content,
+                                  completionDurationMs:
+                                    msg.completionDurationMs,
+                                  activitySteps:
+                                    msg.streaming.inlineActivitySteps,
+                                }
+                              : {}),
+                          }
+                        : m
+                    ),
+                  })),
+                { revalidate: msg === null }
+              );
+            }
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
               (currentData: ConversationListItemType[] | undefined) =>
                 currentData?.map((c) =>
                   c.sId === event.conversationId
-                    ? { ...c, hasError: event.status === "error" }
+                    ? {
+                        ...c,
+                        hasError: event.status === "error",
+                        isRunningAgentLoop: false,
+                      }
                     : c
                 ),
               { revalidate: false }
@@ -1000,6 +1030,10 @@ export const ConversationViewer = ({
           .get()
           .some((m) => m.type === "agent_message" && m.status === "created");
 
+        if (hasRunningAgent && conversationId) {
+          incrementPendingSteeringCount(conversationId);
+        }
+
         const placeholderAgentMessages: VirtuosoMessage[] = [];
         if (!hasRunningAgent) {
           for (const mention of mentions) {
@@ -1149,6 +1183,7 @@ export const ConversationViewer = ({
       setLimitReachedCode,
       submitMessage,
       user,
+      incrementPendingSteeringCount,
     ]
   );
 
@@ -1213,11 +1248,6 @@ export const ConversationViewer = ({
     ? (spaceInfo?.isMember ?? false) // Default false while loading (restrictive)
     : undefined;
 
-  const onConversationBranched = useCallback(() => {
-    void mutateConversation();
-    void mutateConversations();
-  }, [mutateConversation, mutateConversations]);
-
   // After reversal in the hook, messages[0] is the oldest page. This only
   // returns the actual first conversation message when all pages are loaded
   // (works for onboarding conversations which are short / single-page).
@@ -1231,7 +1261,6 @@ export const ConversationViewer = ({
     return {
       user,
       owner,
-      onConversationBranched,
       handleSubmit,
       conversation,
       isOnboardingConversation,
@@ -1251,7 +1280,6 @@ export const ConversationViewer = ({
   }, [
     user,
     owner,
-    onConversationBranched,
     handleSubmit,
     conversation,
     isOnboardingConversation,

@@ -29,7 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -57,15 +57,19 @@ type ChartDataPoint = {
   [key: string]: string | number | undefined;
 };
 
-const GROUP_BY_OPTIONS: {
-  value: "global" | MetronomeUsageGroupByType;
+const GROUP_BY_TYPE_OPTIONS: {
+  value: MetronomeUsageGroupByType;
   label: string;
 }[] = [
-  { value: "global", label: "Global" },
   { value: "api_key", label: "By API Key" },
   { value: "model", label: "By Model" },
   { value: "origin", label: "By Source" },
 ];
+
+const GROUP_BY_OPTIONS: {
+  value: "global" | MetronomeUsageGroupByType;
+  label: string;
+}[] = [{ value: "global", label: "Global" }, ...GROUP_BY_TYPE_OPTIONS];
 
 const TOP_K_OPTIONS = [
   { value: 5, label: "Top 5" },
@@ -169,6 +173,8 @@ export function BaseMetronomeUsageChart({
   setGroupBy,
   groupByCount,
   setGroupByCount,
+  filter,
+  setFilter,
   selectedPeriod,
   setSelectedPeriod,
   billingCycleStartDay,
@@ -182,6 +188,8 @@ export function BaseMetronomeUsageChart({
   setGroupBy: (v: MetronomeUsageGroupByType | undefined) => void;
   groupByCount: number;
   setGroupByCount: (v: number) => void;
+  filter: Partial<Record<MetronomeUsageGroupByType, string[]>>;
+  setFilter: (v: Partial<Record<MetronomeUsageGroupByType, string[]>>) => void;
   selectedPeriod: string;
   setSelectedPeriod: (v: string) => void;
   billingCycleStartDay: number;
@@ -189,6 +197,13 @@ export function BaseMetronomeUsageChart({
   setDisplayMode: (v: DisplayMode) => void;
 }) {
   const [nowMs] = useState(() => Date.now());
+  // Cache labels per groupBy dimension so filter chips keep readable labels
+  // even after switching to a different groupBy.
+  const [labelCache, setLabelCache] =
+    useState<
+      Partial<Record<MetronomeUsageGroupByType, Record<string, string>>>
+    >();
+
   const [year, month] = selectedPeriod.split("-").map(Number);
   const currentDate = new Date(Date.UTC(year, month - 1, billingCycleStartDay));
 
@@ -265,6 +280,85 @@ export function BaseMetronomeUsageChart({
     );
   }, [points, maxCumulatedValue, nowMs, displayMode]);
 
+  // Cache group labels per dimension so filter chips stay readable after
+  // switching to a different groupBy.
+  const enabledGroupKeys = groupBy ? filter[groupBy] : undefined;
+
+  useEffect(() => {
+    if (!groupBy || availableGroupsArray.length === 0) {
+      return;
+    }
+    const entries: Record<string, string> = {};
+    for (const group of availableGroupsArray) {
+      if (group.groupKey === "others") {
+        entries[group.groupKey] = OTHER_LABEL.label;
+      } else if (groupBy === "origin" && isUserMessageOrigin(group.groupKey)) {
+        entries[group.groupKey] =
+          USER_MESSAGE_ORIGIN_LABELS[group.groupKey].label;
+      } else {
+        entries[group.groupKey] = group.groupLabel;
+      }
+    }
+    setLabelCache((prev) => ({ ...prev, [groupBy]: entries }));
+  }, [groupBy, availableGroupsArray]);
+
+  const getFilterLabel = useCallback(
+    (type: MetronomeUsageGroupByType, key: string) =>
+      labelCache?.[type]?.[key] ?? key,
+    [labelCache]
+  );
+
+  const handleFilterChange = useCallback(
+    (groupKey: string) => {
+      if (!groupBy) {
+        return;
+      }
+      const current = filter[groupBy] ?? [];
+      const isCurrentlyEnabled = current.includes(groupKey);
+      if (isCurrentlyEnabled) {
+        const newEnabled = current.filter((k) => k !== groupKey);
+        setFilter({
+          ...filter,
+          [groupBy]: newEnabled.length === 0 ? undefined : newEnabled,
+        });
+      } else {
+        const newEnabled = [...current, groupKey];
+        const allKeys = availableGroupsArray
+          .map((g) => g.groupKey)
+          .filter((k) => !["total", "others"].includes(k));
+        setFilter({
+          ...filter,
+          // reset to all if we have selected all values
+          [groupBy]:
+            newEnabled.length === allKeys.length ? undefined : newEnabled,
+        });
+      }
+    },
+    [groupBy, availableGroupsArray, filter, setFilter]
+  );
+
+  const handleRemoveFilter = useCallback(
+    (type: MetronomeUsageGroupByType, filterKey: string) => {
+      const current = filter[type] ?? [];
+      const newFilter = current.filter((k) => k !== filterKey);
+      setFilter({
+        ...filter,
+        [type]: newFilter.length === 0 ? undefined : newFilter,
+      });
+    },
+    [filter, setFilter]
+  );
+
+  const activeFilterChips = useMemo(() => {
+    return GROUP_BY_TYPE_OPTIONS.flatMap(({ value: type }) =>
+      (filter[type] ?? []).map((key) => ({
+        groupByType: type,
+        filterKey: key,
+        label: getFilterLabel(type, key),
+      }))
+    );
+  }, [filter, getFilterLabel]);
+
   const legendItems: LegendItem[] = useMemo(() => {
     const items: LegendItem[] = availableGroupsArray.map((group) => {
       const colorClassName = getColorClassName(
@@ -279,11 +373,18 @@ export function BaseMetronomeUsageChart({
         label = USER_MESSAGE_ORIGIN_LABELS[group.groupKey].label;
       }
       const isVisible = visibleGroupKeys.has(group.groupKey);
+      const canFilter =
+        groupBy && !["total", "others"].includes(group.groupKey);
+      const isActive =
+        !enabledGroupKeys || enabledGroupKeys.includes(group.groupKey);
       return {
         key: group.groupKey,
         label,
         colorClassName: !isVisible ? OTHER_LABEL.color : colorClassName,
-        isActive: true,
+        onClick: canFilter
+          ? () => handleFilterChange(group.groupKey)
+          : undefined,
+        isActive,
       };
     });
 
@@ -303,6 +404,8 @@ export function BaseMetronomeUsageChart({
     groupBy,
     visibleGroupKeys,
     shouldShowTotalCredits,
+    enabledGroupKeys,
+    handleFilterChange,
   ]);
 
   const chartData = useMemo(() => {
@@ -370,6 +473,14 @@ export function BaseMetronomeUsageChart({
       }
       additionalControls={
         <div className="flex items-center gap-2">
+          {activeFilterChips.length > 0 && (
+            <Button
+              label="Clear filters"
+              size="xs"
+              variant="ghost"
+              onClick={() => setFilter({})}
+            />
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -443,6 +554,23 @@ export function BaseMetronomeUsageChart({
           )}
         </div>
       }
+      bottomControls={
+        activeFilterChips.length > 0 ? (
+          <div className="flex items-center gap-2">
+            {activeFilterChips.map((chip) => (
+              <Chip
+                key={`${chip.groupByType}:${chip.filterKey}`}
+                label={`${chip.groupByType}: ${chip.label}`}
+                size="xs"
+                onRemove={() =>
+                  handleRemoveFilter(chip.groupByType, chip.filterKey)
+                }
+                className="capitalize"
+              />
+            ))}
+          </div>
+        ) : undefined
+      }
       height={CHART_HEIGHT}
       legendItems={legendItems}
       isAllowFullScreen
@@ -497,49 +625,56 @@ export function BaseMetronomeUsageChart({
             boxShadow: "none",
           }}
         />
-        {allGroupKeys.map((groupKey) => {
-          const colorClassName = getColorClassName(
-            groupBy,
-            groupKey,
-            allGroupKeys
-          );
-          if (displayMode === "daily") {
-            return (
-              <Bar
+        {allGroupKeys
+          .filter(
+            (key) =>
+              ["total", "others"].includes(key) ||
+              !enabledGroupKeys ||
+              enabledGroupKeys.includes(key)
+          )
+          .map((groupKey) => {
+            const colorClassName = getColorClassName(
+              groupBy,
+              groupKey,
+              allGroupKeys
+            );
+            if (displayMode === "daily") {
+              return (
+                <Bar
+                  key={groupKey}
+                  dataKey={groupKey}
+                  stackId={groupBy ? "usage" : undefined}
+                  fill="currentColor"
+                  className={colorClassName}
+                />
+              );
+            }
+            return groupBy ? (
+              <Area
                 key={groupKey}
+                type="monotone"
                 dataKey={groupKey}
-                stackId={groupBy ? "usage" : undefined}
+                stackId="usage"
+                stroke="currentColor"
                 fill="currentColor"
+                fillOpacity={0.6}
+                strokeWidth={2}
                 className={colorClassName}
               />
+            ) : (
+              <Line
+                key={groupKey}
+                type="monotone"
+                className={colorClassName}
+                dataKey={groupKey}
+                name={groupKey}
+                stroke="currentColor"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 5 }}
+              />
             );
-          }
-          return groupBy ? (
-            <Area
-              key={groupKey}
-              type="monotone"
-              dataKey={groupKey}
-              stackId="usage"
-              stroke="currentColor"
-              fill="currentColor"
-              fillOpacity={0.6}
-              strokeWidth={2}
-              className={colorClassName}
-            />
-          ) : (
-            <Line
-              key={groupKey}
-              type="monotone"
-              className={colorClassName}
-              dataKey={groupKey}
-              name={groupKey}
-              stroke="currentColor"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 5 }}
-            />
-          );
-        })}
+          })}
         {shouldShowTotalCredits && (
           <Line
             type="monotone"
@@ -567,6 +702,9 @@ export function MetronomeUsageChart({
   );
   const [groupByCount, setGroupByCount] = useState<number>(5);
   const [displayMode, setDisplayMode] = useState<DisplayMode>("cumulative");
+  const [filter, setFilter] = useState<
+    Partial<Record<MetronomeUsageGroupByType, string[]>>
+  >({});
 
   const [selectedPeriod, setSelectedPeriod] = useState<string>(() => {
     const currentBillingCycle = getBillingCycleFromDay(
@@ -596,6 +734,8 @@ export function MetronomeUsageChart({
       setGroupBy={setGroupBy}
       groupByCount={groupByCount}
       setGroupByCount={setGroupByCount}
+      filter={filter}
+      setFilter={setFilter}
       selectedPeriod={selectedPeriod}
       setSelectedPeriod={setSelectedPeriod}
       billingCycleStartDay={billingCycleStartDay}

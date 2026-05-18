@@ -16,6 +16,9 @@
 #   dhd   - destroy
 #   dhw   - warm
 #   dhc   - cool
+#   dhx   - spawn -C -c "codex"
+#   dhb   - open app URL in browser
+#   dhdb  - open psql on environment database
 #   dhcd  - cd into environment worktree (changes dir in current shell)
 
 _dust_hive_services=(sdk sparkle front core oauth connectors front-workers front-spa-poke front-spa-app viz)
@@ -290,6 +293,75 @@ dhl() { command dust-hive list "$@"; }
 dhd() { command dust-hive destroy "$@"; }
 dhw() { command dust-hive warm "$@"; }
 dhc() { command dust-hive cool "$@"; }
+dhx() { command dust-hive spawn -C -c "codex" "$@"; }
+
+_dust_hive_matching_row() {
+  local query="${1:?usage: _dust_hive_matching_row <worktree-name-query>}"
+
+  command dust-hive list | awk '
+    /^[[:space:]]*$/ { next }
+    /^NAME[[:space:]]/ { next }
+    /^-+/ { next }
+    {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^[0-9]+-[0-9]+$/) {
+          print $1 "\t" $i "\t" $0
+          next
+        }
+      }
+    }
+  ' | fzf --filter="$query" --delimiter=$'\t' --nth=1,3 | head -n 1
+}
+
+_dust_hive_base_port() {
+  local query="${1:?usage: _dust_hive_base_port <worktree-name-query>}"
+  local row range
+
+  row="$(_dust_hive_matching_row "$query")"
+
+  if [[ -z "$row" ]]; then
+    echo "No matching dust-hive worktree for: $query" >&2
+    return 1
+  fi
+
+  range="$(printf '%s\n' "$row" | cut -f2)"
+  printf '%s\n' "${range%%-*}"
+}
+
+dhb() {
+  local query="${1:?usage: dhb <worktree-name-query>}"
+  local offset="${DHB_PORT_OFFSET:-11}"
+  local base port url
+
+  base="$(_dust_hive_base_port "$query")" || return
+  port=$((base + offset))
+  url="http://localhost:${port}"
+
+  echo "Opening $url"
+  open "$url"
+}
+
+dhdb() {
+  local query="${1:?usage: dhdb <worktree-name-query> [dust_front|dust_connectors|dust_api|dust_oauth]}"
+  local db="${2:-dust_front}"
+  local offset="${DHDB_PORT_OFFSET:-432}"
+  local base port
+
+  case "$db" in
+    dust_front|dust_connectors|dust_api|dust_oauth) ;;
+    *)
+      echo "Invalid database: $db" >&2
+      echo "usage: dhdb <worktree-name-query> [dust_front|dust_connectors|dust_api|dust_oauth]" >&2
+      return 2
+      ;;
+  esac
+
+  base="$(_dust_hive_base_port "$query")" || return
+  port=$((base + offset))
+
+  echo "Connecting to $db on localhost:$port"
+  command psql "postgres://dev:dev@localhost:${port}/${db}"
+}
 
 # dhcd: cd into an environment's worktree in the current shell
 dhcd() {
@@ -314,6 +386,19 @@ _dhl()  { :; }
 _dhd()  { local COMP_WORDS=("dust-hive" "destroy" "${COMP_WORDS[@]:1}"); local COMP_CWORD=$(( COMP_CWORD + 1 )); _dust_hive_complete; }
 _dhw()  { local COMP_WORDS=("dust-hive" "warm" "${COMP_WORDS[@]:1}"); local COMP_CWORD=$(( COMP_CWORD + 1 )); _dust_hive_complete; }
 _dhc()  { local COMP_WORDS=("dust-hive" "cool" "${COMP_WORDS[@]:1}"); local COMP_CWORD=$(( COMP_CWORD + 1 )); _dust_hive_complete; }
+_dhx()  { local COMP_WORDS=("dust-hive" "spawn" "${COMP_WORDS[@]:1}"); local COMP_CWORD=$(( COMP_CWORD + 1 )); _dust_hive_complete; }
+_dhb() {
+  if (( COMP_CWORD == 1 )); then
+    COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "${COMP_WORDS[COMP_CWORD]}"))
+  fi
+}
+_dhdb() {
+  if (( COMP_CWORD == 1 )); then
+    COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "${COMP_WORDS[COMP_CWORD]}"))
+  elif (( COMP_CWORD == 2 )); then
+    COMPREPLY=($(compgen -W "dust_front dust_connectors dust_api dust_oauth" -- "${COMP_WORDS[COMP_CWORD]}"))
+  fi
+}
 _dhcd() { local COMP_WORDS=("dust-hive" "cd" "${COMP_WORDS[@]:1}"); local COMP_CWORD=$(( COMP_CWORD + 1 )); _dust_hive_complete; }
 
 complete -F _dhs  dhs
@@ -322,4 +407,7 @@ complete -F _dhl  dhl
 complete -F _dhd  dhd
 complete -F _dhw  dhw
 complete -F _dhc  dhc
+complete -F _dhx  dhx
+complete -F _dhb  dhb
+complete -F _dhdb dhdb
 complete -F _dhcd dhcd

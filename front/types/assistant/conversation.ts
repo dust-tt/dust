@@ -239,11 +239,15 @@ export type AgentMessageStatus =
   | "succeeded"
   | "failed"
   | "cancelled"
+  | "interrupted"
   | "gracefully_stopped";
 
 export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
+  // Message can be in "created" status when we stop the loop to ask for user permission for instance.
+  "created",
   "succeeded",
   "cancelled",
+  "interrupted",
   "gracefully_stopped",
 ];
 
@@ -254,6 +258,7 @@ export function isTerminalAgentMessageStatus(
     case "succeeded":
     case "failed":
     case "cancelled":
+    case "interrupted":
     case "gracefully_stopped":
       return true;
     case "created":
@@ -445,7 +450,7 @@ export const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
 
 export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
-  projectTodoId?: string;
+  projectTaskId?: string;
   useFileSystem?: boolean;
 };
 
@@ -516,6 +521,7 @@ export type ConversationListItemType = {
   triggerId: string | null;
   unread: boolean;
   updated: number;
+  isRunningAgentLoop: boolean;
 };
 
 /**

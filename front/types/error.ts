@@ -49,6 +49,7 @@ const API_ERROR_TYPES = [
   "action_unknown_error",
   "action_api_error",
   "membership_not_found",
+  "membership_revoked",
   "invitation_not_found",
   "plan_limit_error",
   "template_not_found",
@@ -118,11 +119,13 @@ const API_ERROR_TYPES = [
   "space_already_exists",
   "space_not_found",
   // Project todos:
-  "project_todo_not_found",
+  "project_task_not_found",
   // Groups:
   "group_not_found",
   // Coupons:
   "coupon_not_found",
+  "coupon_not_redeemable",
+  "coupon_already_redeemed",
   // Plugins:
   "plugin_not_found",
   "plugin_execution_failed",

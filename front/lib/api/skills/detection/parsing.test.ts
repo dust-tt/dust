@@ -85,7 +85,21 @@ describe("findSkillDirectories", () => {
     });
   });
 
-  test("skips SKILL.md at the root", () => {
+  test("uses SKILL.md at the root when no nested skills exist", () => {
+    const entries: FileEntry[] = [
+      { path: "SKILL.md", sizeBytes: 100 },
+      { path: "README.md", sizeBytes: 100 },
+    ];
+
+    const dirs = findSkillDirectories(entries);
+    expect(dirs).toHaveLength(1);
+    expect(dirs[0]).toEqual({
+      dirPath: ".",
+      skillMdPath: "SKILL.md",
+    });
+  });
+
+  test("prefers nested skills over SKILL.md at the root", () => {
     const entries: FileEntry[] = [
       { path: "SKILL.md", sizeBytes: 100 },
       { path: "sub/SKILL.md", sizeBytes: 100 },

@@ -2,12 +2,16 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import type { CreditPurchaseBillingTarget } from "@app/lib/credits/committed";
 import {
   createEnterpriseCreditPurchase,
   createProCreditPurchase,
 } from "@app/lib/credits/committed";
 import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
+import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
+import { resolveCurrencyForExistingMetronomeCustomer } from "@app/lib/metronome/contracts";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getCreditPurchasePriceId,
   getStripePricingData,
@@ -17,16 +21,16 @@ import {
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { SupportedCurrency } from "@app/types/currency";
 import { isSupportedCurrency } from "@app/types/currency";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { StripePricingData } from "@app/types/stripe/pricing";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const PostCreditPurchaseRequestBody = t.type({
-  amountDollars: t.number,
+export const PostCreditPurchaseRequestBody = z.object({
+  amountDollars: z.number(),
 });
 
 type PostCreditPurchaseResponseBody = {
@@ -66,48 +70,93 @@ async function handler(
     });
   }
 
-  const subscription = auth.subscription();
-  if (!subscription || !subscription.stripeSubscriptionId) {
+  const subscription = auth.subscriptionResource();
+  if (
+    !subscription?.stripeSubscriptionId &&
+    !subscription?.isMetronomeOnlyBilled
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "subscription_not_found",
         message:
-          "No active Stripe subscription found. Please subscribe to a plan first.",
+          "No active subscription found. Please subscribe to a plan first.",
       },
     });
   }
 
+  const isMetronomeOnly = subscription.isMetronomeOnlyBilled;
+
   switch (req.method) {
     case "GET": {
-      const stripeSubscription = await getStripeSubscription(
-        subscription.stripeSubscriptionId
-      );
-
       let isEnterprise = false;
       let currency = "usd";
       let creditPurchaseLimits: CreditPurchaseLimits | null = null;
       let billingCycleStartDay: number | null = null;
 
-      if (stripeSubscription) {
-        isEnterprise = isEnterpriseSubscription(stripeSubscription);
-        currency = isSupportedCurrency(stripeSubscription.currency)
-          ? stripeSubscription.currency
-          : "usd";
-        creditPurchaseLimits = await getCreditPurchaseLimits(
-          auth,
-          stripeSubscription
-        );
-      }
+      if (isMetronomeOnly) {
+        isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
+        creditPurchaseLimits = await getCreditPurchaseLimits(auth, {
+          type: "metronome",
+          subscription,
+        });
 
-      // Get billingCycleStartDay from subscription start date (use UTC to match client-side).
-      // Prioritize subscription.startDate to align with getBillingCycle used in the header.
-      if (subscription.startDate) {
-        billingCycleStartDay = new Date(subscription.startDate).getUTCDate();
-      } else if (stripeSubscription?.current_period_start) {
-        billingCycleStartDay = new Date(
-          stripeSubscription.current_period_start * 1000
-        ).getUTCDate();
+        // Bill in the same currency as the contract / Stripe customer.
+        const workspace = auth.getNonNullableWorkspace();
+        if (workspace.metronomeCustomerId) {
+          const currencyResult =
+            await resolveCurrencyForExistingMetronomeCustomer({
+              metronomeCustomerId: workspace.metronomeCustomerId,
+              stripeSubscriptionId: null,
+            });
+          if (currencyResult.isErr()) {
+            logger.warn(
+              {
+                workspaceId: workspace.sId,
+                error: currencyResult.error.message,
+              },
+              "[Credit Purchase] Failed to resolve currency for Metronome-only workspace, defaulting to usd"
+            );
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message:
+                  "Failed to resolve billing currency for this workspace.",
+              },
+            });
+          }
+          currency = currencyResult.value;
+        }
+
+        if (subscription.startDate) {
+          billingCycleStartDay = new Date(subscription.startDate).getUTCDate();
+        }
+      } else {
+        const stripeSubscription = await getStripeSubscription(
+          subscription.stripeSubscriptionId!
+        );
+
+        if (stripeSubscription) {
+          isEnterprise = isEnterpriseSubscription(stripeSubscription);
+          currency = isSupportedCurrency(stripeSubscription.currency)
+            ? stripeSubscription.currency
+            : "usd";
+          creditPurchaseLimits = await getCreditPurchaseLimits(auth, {
+            type: "stripe-subscription",
+            stripeSubscription,
+          });
+        }
+
+        // Get billingCycleStartDay from subscription start date (use UTC to match client-side).
+        // Prioritize subscription.startDate to align with getBillingCycle used in the header.
+        if (subscription.startDate) {
+          billingCycleStartDay = new Date(subscription.startDate).getUTCDate();
+        } else if (stripeSubscription?.current_period_start) {
+          billingCycleStartDay = new Date(
+            stripeSubscription.current_period_start * 1000
+          ).getUTCDate();
+        }
       }
 
       const programmaticConfig =
@@ -130,9 +179,9 @@ async function handler(
 
     case "POST": {
       const workspace = auth.getNonNullableWorkspace();
-      const bodyValidation = PostCreditPurchaseRequestBody.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostCreditPurchaseRequestBody.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -142,7 +191,7 @@ async function handler(
         });
       }
 
-      const { amountDollars } = bodyValidation.right;
+      const { amountDollars } = bodyValidation.data;
 
       // Validate amount is positive.
       if (amountDollars <= 0) {
@@ -155,33 +204,114 @@ async function handler(
         });
       }
 
-      // Get Stripe subscription and determine if Enterprise.
-      const stripeSubscription = await getStripeSubscription(
-        subscription.stripeSubscriptionId
-      );
-      if (!stripeSubscription) {
-        logger.error(
-          {
-            workspaceId: workspace.sId,
-            stripeError: true,
-            stripeSubscriptionId: subscription.stripeSubscriptionId,
-          },
-          "Failed to retrieve Stripe subscription"
-        );
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "subscription_not_found",
-            message: "[Credit Purchase] Stripe subscription not found.",
-          },
-        });
-      }
       // Convert dollars to micro USD for internal storage.
       const amountMicroUsd = Math.round(amountDollars * 1_000_000);
-      const isEnterprise = isEnterpriseSubscription(stripeSubscription);
 
-      // Validate against purchase limits.
-      const limits = await getCreditPurchaseLimits(auth, stripeSubscription);
+      // Resolve enterprise + limits depending on the billing path.
+      let isEnterprise: boolean;
+      let limits: CreditPurchaseLimits;
+      let metronomeStripeCustomerId: string | null = null;
+      let metronomeCurrency: SupportedCurrency = "usd";
+
+      if (isMetronomeOnly) {
+        isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
+        limits = await getCreditPurchaseLimits(auth, {
+          type: "metronome",
+          subscription,
+        });
+
+        // Resolve the Stripe customer linked to the Metronome customer's
+        // billing config — this is where we'll issue the one-off invoice.
+        if (!workspace.metronomeCustomerId) {
+          logger.error(
+            { workspaceId: workspace.sId },
+            "[Credit Purchase] Metronome-only workspace has no metronomeCustomerId"
+          );
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Workspace is not provisioned in Metronome.",
+            },
+          });
+        }
+        const stripeCustomerIdResult =
+          await getMetronomeCustomerStripeCustomerId(
+            workspace.metronomeCustomerId
+          );
+        if (stripeCustomerIdResult.isErr() || !stripeCustomerIdResult.value) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              metronomeCustomerId: workspace.metronomeCustomerId,
+              error: stripeCustomerIdResult.isErr()
+                ? stripeCustomerIdResult.error.message
+                : "no stripe billing config",
+            },
+            "[Credit Purchase] Failed to resolve Stripe customer for Metronome-only workspace"
+          );
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message:
+                "No Stripe billing configuration found for this workspace.",
+            },
+          });
+        }
+        metronomeStripeCustomerId = stripeCustomerIdResult.value;
+
+        // Bill in the same currency as the contract / Stripe customer.
+        const currencyResult =
+          await resolveCurrencyForExistingMetronomeCustomer({
+            metronomeCustomerId: workspace.metronomeCustomerId,
+            stripeSubscriptionId: null,
+          });
+        if (currencyResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              error: currencyResult.error.message,
+            },
+            "[Credit Purchase] Failed to resolve currency for Metronome-only workspace"
+          );
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to resolve billing currency for this workspace.",
+            },
+          });
+        }
+        metronomeCurrency = currencyResult.value;
+      } else {
+        const stripeSubscription = await getStripeSubscription(
+          subscription.stripeSubscriptionId!
+        );
+        if (!stripeSubscription) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              stripeError: true,
+              stripeSubscriptionId: subscription.stripeSubscriptionId,
+            },
+            "Failed to retrieve Stripe subscription"
+          );
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "subscription_not_found",
+              message: "[Credit Purchase] Stripe subscription not found.",
+            },
+          });
+        }
+        isEnterprise = isEnterpriseSubscription(stripeSubscription);
+        limits = await getCreditPurchaseLimits(auth, {
+          type: "stripe-subscription",
+          stripeSubscription,
+        });
+      }
+
       if (!limits.canPurchase) {
         const message =
           limits.reason === "trialing"
@@ -233,10 +363,22 @@ async function handler(
 
       const user = auth.getNonNullableUser();
 
+      const billingTarget: CreditPurchaseBillingTarget =
+        isMetronomeOnly && metronomeStripeCustomerId
+          ? {
+              type: "metronome",
+              stripeCustomerId: metronomeStripeCustomerId,
+              currency: metronomeCurrency,
+            }
+          : {
+              type: "stripe-subscription",
+              stripeSubscriptionId: subscription.stripeSubscriptionId!,
+            };
+
       if (isEnterprise) {
         const result = await createEnterpriseCreditPurchase({
           auth,
-          stripeSubscriptionId: subscription.stripeSubscriptionId,
+          billingTarget,
           amountMicroUsd,
           discountPercent,
           boughtByUserId: user.id,
@@ -259,9 +401,10 @@ async function handler(
           paymentUrl: null,
         });
       }
+
       const result = await createProCreditPurchase({
         auth,
-        stripeSubscriptionId: subscription.stripeSubscriptionId,
+        billingTarget,
         amountMicroUsd,
         discountPercent,
         boughtByUserId: user.id,

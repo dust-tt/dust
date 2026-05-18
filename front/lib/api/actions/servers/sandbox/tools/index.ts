@@ -17,33 +17,23 @@ import {
   generateSandboxExecToken,
   revokeExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
-import {
-  checkEgressForwarderHealth,
-  readNewDenyLogEntries,
-  setupEgressForwarder,
-} from "@app/lib/api/sandbox/egress";
+import { readNewDenyLogEntries } from "@app/lib/api/sandbox/egress";
 import {
   addSandboxPolicyDomain,
   parseExactEgressDomain,
 } from "@app/lib/api/sandbox/egress_policy";
 import {
-  mountConversationFiles,
-  refreshGcsToken,
-} from "@app/lib/api/sandbox/gcs/mount";
-import {
   createToolManifest,
-  getSandboxImage,
   getToolsForProvider,
   toolManifestToJSON,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image";
 import { wrapCommand } from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
+import { ensureSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
-import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -242,90 +232,12 @@ export async function runSandboxBashTool(
     return new Err(new MCPError("No conversation context available."));
   }
 
-  const ensureResult = await SandboxResource.ensureActive(auth, conversation);
+  const ensureResult = await ensureSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
 
-  const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
-
-  // Egress forwarder setup must run BEFORE GCS mounts. When the MITM
-  // experiment is enabled, sandbox_resource.buildSandboxEnvVars exports
-  // SSL_CERT_FILE / CURL_CA_BUNDLE pointing at /etc/dust/ca-bundle.pem, which
-  // setupEgressForwarder is responsible for creating. Mounting (gcsfuse and
-  // friends) makes HTTPS calls that read the trust bundle via those env vars,
-  // so the bundle has to exist first.
-  if (freshlyCreated) {
-    const setupResult = await setupEgressForwarder(auth, sandbox);
-    if (setupResult.isErr()) {
-      return new Err(new MCPError(setupResult.error.message));
-    }
-  }
-
-  const imageResult = getSandboxImage(auth);
-  if (imageResult.isOk()) {
-    const image = imageResult.value;
-
-    void startTelemetry(auth, sandbox, conversation).catch((err) =>
-      logger.error({ err }, "Telemetry start failed (fire-and-forget)")
-    );
-
-    if (freshlyCreated || wokeFromSleep) {
-      const mountResult = await mountConversationFiles(
-        auth,
-        sandbox,
-        conversation,
-        image
-      );
-      if (mountResult.isErr()) {
-        return new Err(new MCPError(mountResult.error.message));
-      }
-    } else {
-      const refreshResult = await refreshGcsToken(
-        auth,
-        sandbox,
-        conversation,
-        image
-      );
-      if (refreshResult.isErr()) {
-        return new Err(new MCPError(refreshResult.error.message));
-      }
-    }
-  } else {
-    logger.error(
-      { err: imageResult.error },
-      "Failed to get sandbox image for GCS mount"
-    );
-  }
-
-  const healthResult = await checkEgressForwarderHealth(auth, sandbox);
-  if (healthResult.isErr()) {
-    return new Err(new MCPError(healthResult.error.message));
-  }
-
-  if (!healthResult.value) {
-    logger.warn(
-      {
-        event: "egress.health_fail",
-        providerId: sandbox.providerId,
-        sandboxId: sandbox.sId,
-      },
-      "Sandbox egress forwarder health check failed, restarting"
-    );
-    const setupResult = await setupEgressForwarder(auth, sandbox);
-    if (setupResult.isErr()) {
-      return new Err(new MCPError(setupResult.error.message));
-    }
-  } else {
-    logger.info(
-      {
-        event: "egress.health_ok",
-        providerId: sandbox.providerId,
-        sandboxId: sandbox.sId,
-      },
-      "Sandbox egress forwarder health check succeeded"
-    );
-  }
+  const sandbox = ensureResult.value;
 
   const execId = generateExecId();
   const sandboxToken = await generateSandboxExecToken(auth, {
@@ -349,7 +261,7 @@ export async function runSandboxBashTool(
   const sandboxAPIBase =
     isDevelopment() && config.getSandboxDevFrontHostName()
       ? `https://${config.getSandboxDevFrontHostName()}`
-      : config.getClientFacingUrl();
+      : config.getApiBaseUrl();
 
   const execResult = await sandbox.exec(auth, wrappedCommand, {
     workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
@@ -423,11 +335,11 @@ export async function addEgressDomainTool(
     return new Err(new MCPError("No conversation context available."));
   }
 
-  const ensureResult = await SandboxResource.ensureActive(auth, conversation);
+  const ensureResult = await ensureSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
-  const { sandbox } = ensureResult.value;
+  const sandbox = ensureResult.value;
 
   const parsed = parseExactEgressDomain(domain);
   if (parsed.isErr()) {

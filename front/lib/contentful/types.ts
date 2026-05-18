@@ -18,6 +18,8 @@ export interface BlogPageFields {
   publishedAt?: string;
   authors?: Entry<AuthorSkeleton>[];
   isSeoArticle?: boolean;
+  isGeoArticle?: boolean;
+  isThoughtLeadership?: boolean;
 }
 
 export type BlogPageSkeleton = EntrySkeletonType<BlogPageFields, "blogPage">;
@@ -46,6 +48,8 @@ export interface BlogPost {
   createdAt: string;
   updatedAt: string;
   isSeoArticle: boolean;
+  isGeoArticle: boolean;
+  isThoughtLeadership: boolean;
 }
 
 export interface BlogPostSummary {
@@ -57,6 +61,8 @@ export interface BlogPostSummary {
   image: BlogImage | null;
   createdAt: string;
   isSeoArticle: boolean;
+  isGeoArticle: boolean;
+  isThoughtLeadership: boolean;
 }
 
 export interface BlogListingPageProps {

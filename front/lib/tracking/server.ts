@@ -19,9 +19,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types/user";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import * as _ from "lodash";
-
+import keyBy from "lodash/keyBy";
 import type { UserResource } from "../resources/user_resource";
 
 export class ServerSideTracking {
@@ -67,7 +65,7 @@ export class ServerSideTracking {
           user.workspaces.map((w) => w.id)
         );
 
-      const seatsByWorkspaceId = _.keyBy(
+      const seatsByWorkspaceId = keyBy(
         await Promise.all(
           user.workspaces.map(async (workspace) => {
             const seats = await MembershipResource.countActiveSeatsInWorkspace(
@@ -169,7 +167,6 @@ export class ServerSideTracking {
     workspaceSeats,
     subscriptionStartAt,
   }: {
-    userId: string;
     workspace: LightWorkspaceType;
     planCode: string;
     workspaceSeats: number;

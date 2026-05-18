@@ -8,13 +8,13 @@ import {
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -28,10 +28,12 @@ export async function validateAction(
     actionId,
     approvalState,
     messageId,
+    resumeAncestorConversations = false,
   }: {
     actionId: string;
     approvalState: ActionApprovalStateType;
     messageId: string;
+    resumeAncestorConversations?: boolean;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -75,20 +77,6 @@ export async function validateAction(
   if (!action) {
     return new Err(
       new DustError("action_not_found", `Action not found: ${actionId}`)
-    );
-  }
-
-  const agentStepContent =
-    await AgentStepContentResource.fetchByModelIdWithAuth(
-      auth,
-      action.stepContentId
-    );
-  if (!agentStepContent) {
-    return new Err(
-      new DustError(
-        "internal_error",
-        `Agent step content not found: ${action.stepContentId}`
-      )
     );
   }
 
@@ -201,7 +189,7 @@ export async function validateAction(
       userMessageOrigin,
     },
     // Resume from the step where the action was created.
-    startStep: agentStepContent.step,
+    startStep: action.stepContent.step,
     // Wait for completion of the agent loop workflow that triggered the
     // validation. This avoids race conditions where validation re-triggers the
     // agent loop before it completes, and thus throws a workflow already
@@ -219,5 +207,11 @@ export async function validateAction(
     `Action ${approvalState === "approved" ? "approved" : "rejected"} by user`
   );
 
-  return new Ok(undefined);
+  if (!resumeAncestorConversations) {
+    return new Ok(undefined);
+  }
+
+  return resumeAncestorConversationsHelper(auth, conversation, {
+    agentMessageId,
+  });
 }

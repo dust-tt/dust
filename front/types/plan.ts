@@ -58,6 +58,7 @@ export type LimitsType = {
 
 export const SUBSCRIPTION_STATUSES = [
   "active",
+  "created_backend_only", // Provisioned in DB, waiting on contract.start to flip to "active"
   "ended",
   "ended_backend_only", // Ended on the backend but not yet propagated to Stripe
 ] as const;
@@ -189,7 +190,11 @@ export type FreePlanUpgradeFormType = t.TypeOf<
   typeof FreePlanUpgradeFormSchema
 >;
 
-export type CheckoutUrlResult = {
-  checkoutUrl: string;
-  plan: PlanType;
-};
+export type CheckoutUrlResult =
+  | { mode: "hosted"; checkoutUrl: string; plan: PlanType }
+  | {
+      mode: "embedded";
+      clientSecret: string;
+      sessionId: string;
+      plan: PlanType;
+    };

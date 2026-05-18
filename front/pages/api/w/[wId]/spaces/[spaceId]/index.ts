@@ -201,10 +201,9 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import uniqBy from "lodash/uniqBy";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export type SpaceCategoryInfo = {
   usage: AgentsUsageType;
@@ -370,20 +369,18 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchSpaceRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      const bodyValidation = PatchSpaceRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
 
-      const { content, name } = bodyValidation.right;
+      const { content, name } = bodyValidation.data;
 
       if (content) {
         const currentViews = await DataSourceViewResource.listBySpace(

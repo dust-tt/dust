@@ -7,9 +7,8 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { TagType } from "@app/types/tag";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type GetTagsResponseBody = {
   tags: TagType[];
@@ -19,9 +18,9 @@ export type CreateTagResponseBody = {
   tag: TagType;
 };
 
-const PostBodySchema = t.type({
-  name: t.string,
-  agentIds: t.union([t.undefined, t.array(t.string)]),
+const PostBodySchema = z.object({
+  name: z.string(),
+  agentIds: z.array(z.string()).optional(),
 });
 
 async function handler(
@@ -42,7 +41,7 @@ async function handler(
       });
     }
     case "POST": {
-      const r = PostBodySchema.decode(req.body);
+      const r = PostBodySchema.safeParse(req.body);
 
       if (!auth.isAdmin()) {
         return apiError(req, res, {
@@ -54,7 +53,7 @@ async function handler(
         });
       }
 
-      if (isLeft(r)) {
+      if (!r.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -64,7 +63,7 @@ async function handler(
         });
       }
 
-      const body = r.right;
+      const body = r.data;
       const { name, agentIds } = body;
 
       const existingTag = await TagResource.findByName(auth, name);

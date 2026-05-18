@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/apps.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,14 +9,13 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { AppType } from "@app/types/app";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export const PostStateRequestBodySchema = t.type({
-  specification: t.string,
-  config: t.string,
-  run: t.union([t.string, t.undefined]),
+export const PostStateRequestBodySchema = z.object({
+  specification: z.string(),
+  config: z.string(),
+  run: z.string().optional(),
 });
 
 export type PostStateResponseBody = {
@@ -61,8 +62,8 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const body = PostStateRequestBodySchema.decode(req.body);
-      if (isLeft(body)) {
+      const body = PostStateRequestBodySchema.safeParse(req.body);
+      if (!body.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -78,12 +79,12 @@ async function handler(
         savedConfig: string;
         savedRun?: string;
       } = {
-        savedSpecification: body.right.specification,
-        savedConfig: body.right.config,
+        savedSpecification: body.data.specification,
+        savedConfig: body.data.config,
       };
 
-      if (body.right.run) {
-        updateParams.savedRun = body.right.run;
+      if (body.data.run) {
+        updateParams.savedRun = body.data.run;
       }
 
       await app.updateState(auth, updateParams);

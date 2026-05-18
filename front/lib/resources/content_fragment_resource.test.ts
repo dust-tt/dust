@@ -21,10 +21,14 @@ function makeFileFragment(
   contentType: SupportedContentFragmentType,
   {
     generatedTables = [],
+    path = null,
     snippet = null,
+    skipFileProcessing = false,
   }: {
     generatedTables?: string[];
+    path?: string | null;
     snippet?: string | null;
+    skipFileProcessing?: boolean;
   } = {}
 ): FileContentFragmentType {
   return {
@@ -44,6 +48,8 @@ function makeFileFragment(
     contentFragmentVersion: "latest",
     expiredReason: null,
     contentFragmentType: "file",
+    path,
+    skipFileProcessing,
     fileId: "fil_abc123",
     snippet,
     generatedTables,
@@ -210,6 +216,22 @@ describe("renderLightContentFragmentForModel", () => {
       expect(result?.content[0]).toMatchObject({
         type: "text",
         text: `<file name="file" path="conversation/file">First 256 chars...\n</file>`,
+      });
+    });
+
+    it("renders a slim file reference using the mount path when available", async () => {
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("application/pdf", {
+          path: "conversation/report_fil_abc123.pdf",
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: true }
+      );
+      expect(result).not.toBeNull();
+      expect(result?.content[0]).toMatchObject({
+        type: "text",
+        text: `<file name="file" path="conversation/report_fil_abc123.pdf"/>`,
       });
     });
 

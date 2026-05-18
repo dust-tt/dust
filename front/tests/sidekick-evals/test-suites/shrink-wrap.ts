@@ -1,5 +1,5 @@
+import { buildShrinkWrapPrompt } from "@app/lib/api/assistant/builder/sidekick_prompts";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
-import { buildFirstMessage } from "@app/pages/api/w/[wId]/assistant/builder/sidekick/prompt/shrink-wrap";
 import {
   mockAgentMessage,
   mockConversation,
@@ -231,7 +231,7 @@ Missing null check on payment.user.subscription in PaymentService.processRefund(
 
 function buildShrinkWrapInitialMessage(messages: MockMessage[]): string {
   const conversationText = buildConversationString(messages);
-  return buildFirstMessage(conversationText);
+  return buildShrinkWrapPrompt(conversationText);
 }
 
 function buildShrinkWrapConversationWithClarifyingInstructions(

@@ -7,8 +7,10 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import type { SubscriptionsDisplayType } from "@app/components/poke/subscriptions/columns";
 import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
+import DowngradeToNoPlanButton from "@app/components/poke/subscriptions/DowngradeToNoPlanButton";
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
+import SwitchContractDialog from "@app/components/poke/subscriptions/SwitchContractDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { getMetronomeContractUrl } from "@app/lib/metronome/urls";
@@ -21,6 +23,10 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
+import {
+  isSubscriptionMetronomeBilled,
+  isSubscriptionStripeBilled,
+} from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WorkspaceType } from "@app/types/user";
@@ -119,11 +125,13 @@ const STATUS_CONFIG: Record<
 
 interface SubscriptionsDataTableProps {
   owner: WorkspaceType;
+  metronomeCustomerId: string | null;
   subscriptions: SubscriptionType[];
 }
 
 function prepareSubscriptionsForDisplay(
   owner: WorkspaceType,
+  metronomeCustomerId: string | null,
   subscriptions: SubscriptionType[]
 ): SubscriptionsDisplayType[] {
   return subscriptions.map((s) => {
@@ -132,6 +140,11 @@ function prepareSubscriptionsForDisplay(
       name: s.plan.code,
       status: s.status,
       stripeSubscriptionId: s.stripeSubscriptionId,
+      metronomeContractId: s.metronomeContractId,
+      metronomeContractUrl:
+        s.metronomeContractId && metronomeCustomerId
+          ? getMetronomeContractUrl(metronomeCustomerId, s.metronomeContractId)
+          : null,
       startDate: s.startDate
         ? `${new Date(s.startDate).toLocaleDateString()} ${new Date(
             s.startDate
@@ -150,6 +163,7 @@ function prepareSubscriptionsForDisplay(
 
 export function SubscriptionsDataTable({
   owner,
+  metronomeCustomerId,
   subscriptions,
 }: SubscriptionsDataTableProps) {
   return (
@@ -157,9 +171,105 @@ export function SubscriptionsDataTable({
       <h2 className="text-md mb-4 font-bold">History of subscriptions:</h2>
       <PokeDataTable
         columns={makeColumnsForSubscriptions()}
-        data={prepareSubscriptionsForDisplay(owner, subscriptions)}
+        data={prepareSubscriptionsForDisplay(
+          owner,
+          metronomeCustomerId,
+          subscriptions
+        )}
       />
     </div>
+  );
+}
+
+interface SubscriptionDetailsTableProps {
+  subscription: SubscriptionType;
+  metronomeCustomerId: string | null;
+}
+
+function SubscriptionDetailsTable({
+  subscription,
+  metronomeCustomerId,
+}: SubscriptionDetailsTableProps) {
+  return (
+    <PokeTable>
+      <PokeTableBody>
+        <PokeTableRow>
+          <PokeTableCell>Plan Name</PokeTableCell>
+          <PokeTableCell>{subscription.plan.name}</PokeTableCell>
+        </PokeTableRow>
+        <PokeTableRow>
+          <PokeTableCell>Plan Code</PokeTableCell>
+          <PokeTableCell>{subscription.plan.code}</PokeTableCell>
+        </PokeTableRow>
+        <PokeTableRow>
+          <PokeTableCell>Is in Trial?</PokeTableCell>
+          <PokeTableCell>{subscription.trialing ? "✅" : "❌"}</PokeTableCell>
+        </PokeTableRow>
+        <PokeTableRow>
+          <PokeTableCell>Stripe Subscription Id</PokeTableCell>
+          <PokeTableCell>
+            {subscription.stripeSubscriptionId ? (
+              <LinkWrapper
+                href={
+                  isDevelopment()
+                    ? `https://dashboard.stripe.com/test/subscriptions/${subscription.stripeSubscriptionId}`
+                    : `https://dashboard.stripe.com/subscriptions/${subscription.stripeSubscriptionId}`
+                }
+                target="_blank"
+                className="text-xs text-highlight-400"
+              >
+                {subscription.stripeSubscriptionId}
+              </LinkWrapper>
+            ) : (
+              "No subscription id"
+            )}
+          </PokeTableCell>
+        </PokeTableRow>
+        {subscription.metronomeContractId && metronomeCustomerId && (
+          <PokeTableRow>
+            <PokeTableCell>Metronome Contract</PokeTableCell>
+            <PokeTableCell>
+              <LinkWrapper
+                href={getMetronomeContractUrl(
+                  metronomeCustomerId,
+                  subscription.metronomeContractId
+                )}
+                target="_blank"
+                className="text-xs text-highlight-400"
+              >
+                {subscription.metronomeContractId}
+              </LinkWrapper>
+            </PokeTableCell>
+          </PokeTableRow>
+        )}
+        <PokeTableRow>
+          <PokeTableCell>Start Date</PokeTableCell>
+          <PokeTableCell>
+            {subscription.startDate
+              ? format(subscription.startDate, "yyyy-MM-dd HH:mm")
+              : "/"}
+          </PokeTableCell>
+        </PokeTableRow>
+        <PokeTableRow>
+          <PokeTableCell>End Date</PokeTableCell>
+          <PokeTableCell>
+            {subscription.endDate ? (
+              <span
+                className={cn(
+                  subscription.status === "active" &&
+                    subscription.endDate <= Date.now() &&
+                    "font-semibold text-red-500"
+                )}
+              >
+                {format(subscription.endDate, "yyyy-MM-dd HH:mm")}
+              </span>
+            ) : (
+              "/"
+            )}
+          </PokeTableCell>
+        </PokeTableRow>
+      </PokeTableBody>
+    </PokeTable>
   );
 }
 
@@ -167,6 +277,7 @@ interface ActiveSubscriptionTableProps {
   owner: WorkspaceType;
   metronomeCustomerId: string | null;
   subscription: SubscriptionType;
+  pendingSubscription: SubscriptionType | null;
   subscriptions: SubscriptionType[];
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   hasMetronomeBillingFeature: boolean;
@@ -177,6 +288,7 @@ export function ActiveSubscriptionTable({
   owner,
   metronomeCustomerId,
   subscription,
+  pendingSubscription,
   subscriptions,
   programmaticUsageConfig,
   hasMetronomeBillingFeature,
@@ -185,112 +297,80 @@ export function ActiveSubscriptionTable({
   const status = getSubscriptionDisplayStatus(subscription);
   const { chipColor, chipLabel, cardClass } = STATUS_CONFIG[status];
 
+  // For workspaces with no paid subscription yet, the flow is selected by the
+  // Metronome billing feature; otherwise it follows the active billing rail.
+  const hasNoBillingYet =
+    !isSubscriptionStripeBilled(subscription) &&
+    !isSubscriptionMetronomeBilled(subscription);
+  const useMetronomeFlow =
+    isSubscriptionMetronomeBilled(subscription) ||
+    (hasNoBillingYet && hasMetronomeBillingFeature);
+
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-3">
       <div className="flex justify-between gap-3">
         <div
           className={`flex flex-grow flex-col rounded-lg border p-4 pb-2 ${cardClass}`}
         >
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-md flex flex-grow items-center gap-2 pb-4 font-bold">
-              Subscription
+          <div className="flex items-center justify-between gap-3 pb-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-md font-bold">Subscription</h2>
               <Chip color={chipColor} label={chipLabel} size="xs" />
-            </h2>
-            <SubscriptionsHistoryModal
-              owner={owner}
-              subscriptions={subscriptions}
-            />
-            <UpgradeDowngradeModal
-              owner={owner}
-              subscription={subscription}
-              programmaticUsageConfig={programmaticUsageConfig}
-              hasMetronomeBillingFeature={hasMetronomeBillingFeature}
-              stripeCustomerId={stripeCustomerId}
-            />
+              <SubscriptionsHistoryModal
+                owner={owner}
+                metronomeCustomerId={metronomeCustomerId}
+                subscriptions={subscriptions}
+              />
+            </div>
+            {!useMetronomeFlow && (
+              <UpgradeDowngradeModal
+                owner={owner}
+                subscription={subscription}
+                programmaticUsageConfig={programmaticUsageConfig}
+                hasMetronomeBillingFeature={hasMetronomeBillingFeature}
+                stripeCustomerId={stripeCustomerId}
+              />
+            )}
           </div>
-          <PokeTable>
-            <PokeTableBody>
-              <PokeTableRow>
-                <PokeTableCell>Plan Name</PokeTableCell>
-                <PokeTableCell>{subscription.plan.name}</PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableCell>Plan Code</PokeTableCell>
-                <PokeTableCell>{subscription.plan.code}</PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableCell>Is in Trial?</PokeTableCell>
-                <PokeTableCell>
-                  {subscription.trialing ? "✅" : "❌"}
-                </PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableCell>Stripe Subscription Id</PokeTableCell>
-                <PokeTableCell>
-                  {subscription.stripeSubscriptionId ? (
-                    <LinkWrapper
-                      href={
-                        isDevelopment()
-                          ? `https://dashboard.stripe.com/test/subscriptions/${subscription.stripeSubscriptionId}`
-                          : `https://dashboard.stripe.com/subscriptions/${subscription.stripeSubscriptionId}`
-                      }
-                      target="_blank"
-                      className="text-xs text-highlight-400"
-                    >
-                      {subscription.stripeSubscriptionId}
-                    </LinkWrapper>
-                  ) : (
-                    "No subscription id"
-                  )}
-                </PokeTableCell>
-              </PokeTableRow>
-              {subscription.metronomeContractId && metronomeCustomerId && (
-                <PokeTableRow>
-                  <PokeTableCell>Metronome Contract</PokeTableCell>
-                  <PokeTableCell>
-                    <LinkWrapper
-                      href={getMetronomeContractUrl(
-                        metronomeCustomerId,
-                        subscription.metronomeContractId
-                      )}
-                      target="_blank"
-                      className="text-xs text-highlight-400"
-                    >
-                      {subscription.metronomeContractId}
-                    </LinkWrapper>
-                  </PokeTableCell>
-                </PokeTableRow>
-              )}
-              <PokeTableRow>
-                <PokeTableCell>Start Date</PokeTableCell>
-                <PokeTableCell>
-                  {subscription.startDate
-                    ? format(subscription.startDate, "yyyy-MM-dd")
-                    : "/"}
-                </PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableCell>End Date</PokeTableCell>
-                <PokeTableCell>
-                  {subscription.endDate ? (
-                    <span
-                      className={cn(
-                        subscription.status === "active" &&
-                          subscription.endDate <= Date.now() &&
-                          "font-semibold text-red-500"
-                      )}
-                    >
-                      {format(subscription.endDate, "yyyy-MM-dd")}
-                    </span>
-                  ) : (
-                    "/"
-                  )}
-                </PokeTableCell>
-              </PokeTableRow>
-            </PokeTableBody>
-          </PokeTable>
+          {useMetronomeFlow && (
+            <div className="flex flex-wrap items-center gap-2 pb-4">
+              <SwitchContractDialog
+                owner={owner}
+                programmaticUsageConfig={programmaticUsageConfig}
+                stripeCustomerId={stripeCustomerId}
+              />
+              <FreePlanUpgradeDialog owner={owner} />
+              <DowngradeToNoPlanButton
+                owner={owner}
+                subscription={subscription}
+                programmaticUsageConfig={programmaticUsageConfig}
+              />
+            </div>
+          )}
+          <SubscriptionDetailsTable
+            subscription={subscription}
+            metronomeCustomerId={metronomeCustomerId}
+          />
         </div>
       </div>
+      {pendingSubscription && (
+        <div className="flex justify-between gap-3">
+          <div className="flex flex-grow flex-col rounded-lg border border-blue-200 bg-blue-50 p-4 pb-2 dark:border-blue-200-night dark:bg-blue-50-night">
+            <div className="flex items-center gap-2 pb-4">
+              <h2 className="text-md font-bold">Pending Subscription</h2>
+              <Chip color="blue" label="Pending activation" size="xs" />
+            </div>
+            <p className="pb-2 text-xs text-muted-foreground">
+              Provisioned in DB. The `contract.start` Metronome webhook will
+              flip it to active and end the current subscription.
+            </p>
+            <SubscriptionDetailsTable
+              subscription={pendingSubscription}
+              metronomeCustomerId={metronomeCustomerId}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -454,34 +534,6 @@ function UpgradeDowngradeModal({
   const router = useAppRouter();
   const { plans } = usePokePlans();
 
-  const { submit: onDowngrade } = useSubmitFunction(async () => {
-    if (
-      !window.confirm(
-        "Confirm workspace downgrade to no plan? This action will pause all connectors and delete data after the retention period expires."
-      )
-    ) {
-      return;
-    }
-    try {
-      const r = await clientFetch(
-        `/api/poke/workspaces/${owner.sId}/downgrade`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!r.ok) {
-        throw new Error("Failed to downgrade workspace.");
-      }
-      router.reload();
-    } catch (e) {
-      console.error(e);
-      window.alert("An error occurred while downgrading the workspace.");
-    }
-  });
-
   const { submit: onUpgradeToProPlan } = useSubmitFunction(
     async (plan: PlanType) => {
       if (
@@ -541,14 +593,10 @@ function UpgradeDowngradeModal({
               </div>
             )}
             <div>
-              <Button
-                variant="warning"
-                onClick={onDowngrade}
-                disabled={
-                  subscription.plan.code === FREE_NO_PLAN_CODE ||
-                  !!programmaticUsageConfig?.paygCapMicroUsd
-                }
-                label="Downgrade to NO PLAN"
+              <DowngradeToNoPlanButton
+                owner={owner}
+                subscription={subscription}
+                programmaticUsageConfig={programmaticUsageConfig}
               />
             </div>
             <Separator />
@@ -606,9 +654,11 @@ function UpgradeDowngradeModal({
 
 function SubscriptionsHistoryModal({
   owner,
+  metronomeCustomerId,
   subscriptions,
 }: {
   owner: WorkspaceType;
+  metronomeCustomerId: string | null;
   subscriptions: SubscriptionType[];
 }) {
   return (
@@ -621,7 +671,11 @@ function SubscriptionsHistoryModal({
           <SheetTitle>Workspace subscriptions history</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <SubscriptionsDataTable owner={owner} subscriptions={subscriptions} />
+          <SubscriptionsDataTable
+            owner={owner}
+            metronomeCustomerId={metronomeCustomerId}
+            subscriptions={subscriptions}
+          />
         </SheetContainer>
       </SheetContent>
     </Sheet>

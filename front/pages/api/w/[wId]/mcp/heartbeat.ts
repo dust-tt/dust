@@ -1,20 +1,21 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/mcp/heartbeat.ts
 import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/client_side_registry";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const PostMCPHeartbeatRequestBodyCodec = t.type({
-  serverId: t.string,
+const PostMCPHeartbeatRequestBodySchema = z.object({
+  serverId: z.string(),
 });
 
-export type PostMCPHeartbeatRequestBody = t.TypeOf<
-  typeof PostMCPHeartbeatRequestBodyCodec
+export type PostMCPHeartbeatRequestBody = z.infer<
+  typeof PostMCPHeartbeatRequestBodySchema
 >;
 
 interface MCPServerHeartbeatSuccess {
@@ -45,19 +46,18 @@ async function handler(
     });
   }
 
-  const bodyValidation = PostMCPHeartbeatRequestBodyCodec.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = PostMCPHeartbeatRequestBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid server id: ${pathError}`,
+        message: `Invalid server id: ${fromError(bodyValidation.error).toString()}`,
       },
     });
   }
 
-  const { serverId } = bodyValidation.right;
+  const { serverId } = bodyValidation.data;
 
   // Update the heartbeat for the server.
   const result = await updateMCPServerHeartbeat(auth, {

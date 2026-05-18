@@ -38,7 +38,7 @@ const getRobotsPolicies = () => {
 
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
-  siteUrl: process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL,
+  siteUrl: process.env.NEXT_PUBLIC_DUST_API_URL,
   exclude: EXCLUDED_PATHS,
   generateIndexSitemap: false,
   changefreq: "weekly",

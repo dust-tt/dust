@@ -111,6 +111,7 @@ export function SpaceConversationListItem({
   return (
     <>
       <ConversationListItem
+        className="border-t-0 border-b-0"
         key={conversation.sId}
         conversation={{
           id: conversation.sId,

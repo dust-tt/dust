@@ -152,6 +152,27 @@ export async function renderConversationForModel(
 
   let availableTokens = allowedTokenCount - baseTokens;
 
+  const logDetails = {
+    workspaceId: conversation.owner.sId,
+    conversationId: conversation.sId,
+    agentConfigurationId: agentConfiguration?.sId,
+    allowedTokenCount,
+    model: {
+      providerId: model.providerId,
+      modelId: model.modelId,
+      contextSize: model.contextSize,
+      generationTokensCount: model.generationTokensCount,
+      tokenCountAdjustment: model.tokenCountAdjustment,
+      tokenizer: model.tokenizer,
+    },
+    baseTokens,
+    promptCount,
+    toolDefinitionsCount,
+    tokensMargin: TOKENS_MARGIN,
+    messageCount: messages.length,
+    interactionCount: interactions.length,
+  };
+
   if (currentInteractionTokens > availableTokens) {
     // The last interaction does not fit within the token budget.
     // We apply progressive pruning to that interaction until it fits within the token budget.
@@ -162,8 +183,7 @@ export async function renderConversationForModel(
     if (currentInteraction.prunedContext) {
       logger.warn(
         {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
+          ...logDetails,
           currentInteractionTokens,
           availableTokens,
         },
@@ -174,8 +194,10 @@ export async function renderConversationForModel(
     if (currentInteractionTokens > availableTokens) {
       logger.error(
         {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
+          ...logDetails,
+          failureStage: "interaction_exceeds_after_pruning",
+          currentInteractionTokens,
+          availableTokens,
         },
         "Render Conversation V2: No interactions fit in context window."
       );
@@ -245,8 +267,11 @@ export async function renderConversationForModel(
   if (selected.length === 0) {
     logger.error(
       {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
+        ...logDetails,
+        failureStage: "no_interactions_selected",
+        tokensUsed,
+        availableTokens,
+        selectedMessageCount: selected.length,
       },
       "Render Conversation V2: No interactions fit in context window."
     );

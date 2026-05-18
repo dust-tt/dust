@@ -150,9 +150,8 @@ import type { ConnectorType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isLeft } from "fp-ts/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export type PatchDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;
@@ -218,22 +217,19 @@ async function handler(
         });
       }
 
-      const patchBodyValidation = PatchDataSourceViewSchema.decode(req.body);
+      const patchBodyValidation = PatchDataSourceViewSchema.safeParse(req.body);
 
-      if (isLeft(patchBodyValidation)) {
-        const pathError = reporter.formatValidationErrors(
-          patchBodyValidation.left
-        );
+      if (!patchBodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
-            message: `invalid request body: ${pathError}`,
+            message: `invalid request body: ${fromError(patchBodyValidation.error).toString()}`,
             type: "invalid_request_error",
           },
         });
       }
 
-      const { right: patchBody } = patchBodyValidation;
+      const { data: patchBody } = patchBodyValidation;
 
       const r = await handlePatchDataSourceView(
         auth,

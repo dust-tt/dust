@@ -436,7 +436,7 @@ describe("PATCH /api/w/[wId]/assistant/skills/[sId]/suggestions", () => {
 
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.message).toContain(
-      "Reinforcement is not enabled"
+      "Self-improving skills are not enabled"
     );
   });
 });

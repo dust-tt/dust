@@ -256,7 +256,7 @@ export function WorkspaceToolUsageChart({
     lineActiveDot,
     decorate,
     hoverHandlers,
-  } = useSelectableSeries();
+  } = useSelectableSeries(toolsWithData);
 
   const legendItems = decorate(
     toolsWithData.map((tool) => ({

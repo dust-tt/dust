@@ -95,8 +95,7 @@ import {
 } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import { chunk } from "lodash";
+import chunk from "lodash/chunk";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
 
@@ -106,6 +105,8 @@ const logger = mainLogger.child({ provider: "notion" });
 const SKIP_DELETION_CONNECTOR_ID_HASHES = new Set<string>([
   "pDddXWMzWYw4oN/acYfLiOwxB3tlp51IH6MuMYD3YXQ=",
 ]);
+const MIN_ATTEMPTS_BEFORE_SKIPPING_UNHEALTHY_NOTION_RESOURCE = 15;
+const RETRIABLE_NOTION_ERROR_CODES_AFTER_SKIP_THRESHOLD = ["rate_limited"];
 
 const wrapWithErrorCheck = async <T>(
   callback: () => Promise<T>,
@@ -921,6 +922,16 @@ export async function garbageCollectBatch({
       stillAccessiblePagesCount,
       stillAccessibleDatabasesCount,
     });
+    const shouldSkipUnhealthyNotionResource =
+      Context.current().info.attempt >=
+      MIN_ATTEMPTS_BEFORE_SKIPPING_UNHEALTHY_NOTION_RESOURCE;
+    const accessibilityCheckRetryOptions = shouldSkipUnhealthyNotionResource
+      ? {
+          onProgress: heartbeat,
+          retriableErrorCodes:
+            RETRIABLE_NOTION_ERROR_CODES_AFTER_SKIP_THRESHOLD,
+        }
+      : { onProgress: heartbeat };
 
     let resourceIsAccessible: boolean;
     try {
@@ -928,7 +939,8 @@ export async function garbageCollectBatch({
         notionAccessToken,
         x.id,
         x.type,
-        iterationLogger
+        iterationLogger,
+        accessibilityCheckRetryOptions
       );
     } catch (e) {
       // Sometimes a request will consistently fail with a 500 We don't want to delete the page in
@@ -943,7 +955,7 @@ export async function garbageCollectBatch({
           (typeof potentialNotionError.status === "number" &&
             potentialNotionError.status >= 500 &&
             potentialNotionError.status < 600)) &&
-        Context.current().info.attempt >= 15
+        shouldSkipUnhealthyNotionResource
       ) {
         iterationLogger.error(
           {

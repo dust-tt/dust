@@ -138,7 +138,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   skill_management: "platform",
   schedules_management: "platform",
   project_manager: "platform",
-  project_todos: "platform",
+  project_tasks: "platform",
   poke: "platform",
   sandbox: "platform",
   ask_user_question: "platform",
@@ -261,12 +261,14 @@ export function buildLlmUsageEvents({
       completion_tokens: group.completionTokens,
       cached_tokens: group.cachedTokens,
       cache_creation_tokens: group.cacheCreationTokens,
-      // Provider cost without markup — markup is applied in Metronome rate card.
+      // Provider cost without markup — markup is applied in Metronome rate card. Only used for legacy rates.
       cost_micro_usd: group.costMicroUsd,
       // TODO: This is a temporary conversion factor. Includes markup. Actual cost TBD.
       cost_awu: Math.ceil((group.costMicroUsd * 1.3) / 10_000),
+      // TODO: Remove is_programmatic_usage & is_free_usage, this is replaced by single property "usage type"
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
       is_free_usage: "false",
+      usage_type: isProgrammaticUsage ? "programmatic" : "user",
       auth_method: authMethod ?? "unknown",
       api_key_name: apiKeyName ?? "unknown",
       message_status: messageStatus,
@@ -377,7 +379,9 @@ export function buildToolUseEvents({
       status: action.status,
       count,
       total_execution_duration_ms: totalDurationMs,
+      // TODO: Remove is_programmatic_usage, this is replaced by single property "usage type"
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
+      usage_type: isProgrammaticUsage ? "programmatic" : "user",
       message_status: messageStatus,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,

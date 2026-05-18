@@ -371,70 +371,79 @@ export class ProductboardClient {
       queryParams.pageCursor = filters.pageCursor;
     }
 
-    const searchData: {
-      type: string;
-      name?: string;
-      archived?: boolean;
-      parent?: { id: string };
-      ids?: string[];
-      statuses?: Array<{ id?: string; name?: string }>;
-      owners?: Array<{ id?: string; email?: string }>;
-      timeframe?: { startDate?: string; endDate?: string };
-      fields?: "all" | "default";
-    } = {
+    const filterData: Record<string, unknown> = {
       type: filters.type,
     };
 
+    if (filters.ids !== undefined && filters.ids.length > 0) {
+      filterData.id = filters.ids;
+    }
+
+    const fieldFilters: Record<string, unknown> = {};
     if (filters.name !== undefined) {
-      searchData.name = filters.name;
+      fieldFilters.name = filters.name;
     }
     if (filters.archived !== undefined) {
-      searchData.archived = filters.archived;
+      fieldFilters.archived = filters.archived;
     }
+    if (Object.keys(fieldFilters).length > 0) {
+      filterData.fields = fieldFilters;
+    }
+
+    const relationshipFilters: Record<string, unknown> = {};
     if (filters.parentId !== undefined) {
-      searchData.parent = { id: filters.parentId };
+      relationshipFilters.parent = { id: filters.parentId };
     }
-    if (filters.ids !== undefined && filters.ids.length > 0) {
-      searchData.ids = filters.ids;
-    }
-    if (filters.statusIds !== undefined && filters.statusIds.length > 0) {
-      searchData.statuses = filters.statusIds.map((id) => ({ id }));
-    }
-    if (filters.statusNames !== undefined && filters.statusNames.length > 0) {
-      if (searchData.statuses) {
-        searchData.statuses.push(
-          ...filters.statusNames.map((name) => ({ name }))
-        );
-      } else {
-        searchData.statuses = filters.statusNames.map((name) => ({ name }));
+    if (
+      (filters.statusIds !== undefined && filters.statusIds.length > 0) ||
+      (filters.statusNames !== undefined && filters.statusNames.length > 0)
+    ) {
+      const statuses: Array<{ id?: string; name?: string }> = [];
+      if (filters.statusIds) {
+        statuses.push(...filters.statusIds.map((id) => ({ id })));
       }
-    }
-    if (filters.ownerIds !== undefined && filters.ownerIds.length > 0) {
-      searchData.owners = filters.ownerIds.map((id) => ({ id }));
-    }
-    if (filters.ownerEmails !== undefined && filters.ownerEmails.length > 0) {
-      if (searchData.owners) {
-        searchData.owners.push(
-          ...filters.ownerEmails.map((email) => ({ email }))
-        );
-      } else {
-        searchData.owners = filters.ownerEmails.map((email) => ({ email }));
+      if (filters.statusNames) {
+        statuses.push(...filters.statusNames.map((name) => ({ name })));
       }
+      relationshipFilters.statuses = statuses;
     }
+    if (
+      (filters.ownerIds !== undefined && filters.ownerIds.length > 0) ||
+      (filters.ownerEmails !== undefined && filters.ownerEmails.length > 0)
+    ) {
+      const owners: Array<{ id?: string; email?: string }> = [];
+      if (filters.ownerIds) {
+        owners.push(...filters.ownerIds.map((id) => ({ id })));
+      }
+      if (filters.ownerEmails) {
+        owners.push(...filters.ownerEmails.map((email) => ({ email })));
+      }
+      relationshipFilters.owners = owners;
+    }
+    if (Object.keys(relationshipFilters).length > 0) {
+      filterData.relationships = relationshipFilters;
+    }
+
     if (
       filters.timeframeStartDate !== undefined ||
       filters.timeframeEndDate !== undefined
     ) {
-      searchData.timeframe = {};
+      const timeframe: { startDate?: string; endDate?: string } = {};
       if (filters.timeframeStartDate !== undefined) {
-        searchData.timeframe.startDate = filters.timeframeStartDate;
+        timeframe.startDate = filters.timeframeStartDate;
       }
       if (filters.timeframeEndDate !== undefined) {
-        searchData.timeframe.endDate = filters.timeframeEndDate;
+        timeframe.endDate = filters.timeframeEndDate;
       }
+      filterData.timeframe = timeframe;
     }
+
+    const bodyData: Record<string, unknown> = {
+      filter: filterData,
+    };
+
     if (filters.fields !== undefined) {
-      searchData.fields = filters.fields;
+      bodyData.return = { fields: filters.fields };
     }
 
     const result = await this.request(
@@ -442,7 +451,7 @@ export class ProductboardClient {
       ProductboardEntitiesSearchResponseSchema,
       {
         method: "POST",
-        body: { data: searchData },
+        body: { data: bodyData },
         params: queryParams,
       }
     );

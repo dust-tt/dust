@@ -9,6 +9,7 @@ import { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import {
   DustProjectConfigurationModel,
   DustProjectConversationModel,
+  DustProjectMountFileModel,
 } from "@connectors/lib/models/dust_project";
 import {
   GithubCodeDirectoryModel,
@@ -158,6 +159,7 @@ async function main(): Promise<void> {
   await GongUserModel.sync({ alter: true });
   await DustProjectConfigurationModel.sync({ alter: true });
   await DustProjectConversationModel.sync({ alter: true });
+  await DustProjectMountFileModel.sync({ alter: true });
 
   // enable the `unaccent` extension
   // biome-ignore lint/plugin/noRawSql: DB setup requires raw SQL for extensions

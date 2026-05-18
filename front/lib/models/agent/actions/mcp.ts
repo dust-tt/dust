@@ -207,7 +207,7 @@ export class AgentMCPActionModel extends WorkspaceAwareModel<AgentMCPActionModel
   declare updatedAt: CreationOptional<Date>;
 
   declare mcpServerConfigurationId: string;
-  declare version: number;
+  declare version?: number;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
@@ -319,13 +319,13 @@ AgentMessageModel.hasMany(AgentMCPActionModel, {
 });
 
 AgentMCPActionModel.belongsTo(AgentStepContentModel, {
-  foreignKey: { name: "stepContentId", allowNull: false },
+  foreignKey: { name: "stepContentId", allowNull: true },
   as: "stepContent",
   onDelete: "RESTRICT",
 });
 
 AgentStepContentModel.hasMany(AgentMCPActionModel, {
-  foreignKey: { name: "stepContentId", allowNull: false },
+  foreignKey: { name: "stepContentId", allowNull: true },
   as: "agentMCPActions",
 });
 

@@ -31,8 +31,7 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import maxBy from "lodash/maxBy";
 import {
   fn,
   type InferAttributes,
@@ -331,6 +330,13 @@ export async function processEventForDatabase(
       // Ensure we handle all event types.
       break;
   }
+
+  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
+    await ConversationResource.setIsRunningAgentLoop(auth, {
+      conversation,
+      isRunningAgentLoop: false,
+    });
+  }
 }
 
 // Process unread state for agent events before publishing to Redis.
@@ -576,7 +582,7 @@ export async function finalizeCancellation(
     runAgentDataRes.value;
 
   // get the last step of the agent message
-  const step = _.maxBy(agentMessage.contents, "step")?.step ?? 0;
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
 
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
@@ -599,6 +605,7 @@ export async function finalizeCancellation(
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
+      status: "cancelled",
     },
     agentMessage,
     conversation,
@@ -611,6 +618,72 @@ export async function finalizeCancellation(
     },
     "Agent generation cancelled"
   );
+}
+
+/**
+ * Activity executed after an interrupt signal. Like cancellation, in-flight activities are killed
+ * immediately. Unlike cancellation, pending queued messages are promoted and a new agent message
+ * is created to continue processing them.
+ */
+export async function finalizeInterruption(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  if (runAgentDataRes.isErr()) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
+      return;
+    }
+    throw new Error(
+      `Failed to get run agent data: ${runAgentDataRes.error.message}`
+    );
+  }
+  const { auth, agentConfiguration, agentMessage, conversation } =
+    runAgentDataRes.value;
+
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
+
+  const contentParser = new AgentMessageContentParser(
+    agentConfiguration,
+    agentMessage.sId,
+    getDelimitersConfiguration({ agentConfiguration })
+  );
+
+  for await (const tokenEvent of contentParser.flushTokens()) {
+    await updateResourceAndPublishEvent(auth, {
+      event: tokenEvent,
+      agentMessage,
+      conversation,
+      step,
+    });
+  }
+
+  // Published before updateAgentMessageWithFinalStatus so clients drop the old message from
+  // generatingMessages before the new agent message appears.
+  await publishConversationRelatedEvent({
+    event: {
+      type: "agent_generation_cancelled",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      status: "interrupted",
+    },
+    conversationId: conversation.sId,
+    step,
+  });
+
+  await updateAgentMessageWithFinalStatus(auth, {
+    conversation,
+    agentMessage,
+    status: "interrupted",
+  });
 }
 
 /**
@@ -640,7 +713,7 @@ export async function finalizeGracefulStop(
   const { auth, agentConfiguration, agentMessage, conversation } =
     runAgentDataRes.value;
 
-  const step = _.maxBy(agentMessage.contents, "step")?.step ?? 0;
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
 
   await updateResourceAndPublishEvent(auth, {
     event: {

@@ -59,24 +59,21 @@ export async function getBotUserIdResponse(
   }
 }
 
-export async function getUserName(
+export async function getUserInfo(
   slackUserId: string,
   connectorId: ModelId,
   slackClient: WebClient
-): Promise<string | null> {
+): Promise<{ name: string | null; email: string | null }> {
   try {
     const info = await getSlackUserInfoMemoized(
       connectorId,
       slackClient,
       slackUserId
     );
-
-    const userName = info.display_name || info.real_name || info.name;
-
-    if (userName) {
-      return userName;
-    }
-    return null;
+    return {
+      name: info.display_name || info.real_name || info.name || null,
+      email: info.email,
+    };
   } catch (err) {
     if (isSlackWebAPIPlatformError(err)) {
       if (err.data.error === "user_not_found") {
@@ -84,7 +81,7 @@ export async function getUserName(
           { provider: "slack", connectorId, slackUserId },
           "Slack user not found."
         );
-        return null;
+        return { name: null, email: null };
       }
     }
     throw err;
@@ -204,5 +201,7 @@ export async function getBotOrUserName(
 ): Promise<string | null> {
   return message.bot_id
     ? getBotNameMemoized({ botId: message.bot_id, connectorId, slackClient })
-    : getUserName(message.user as string, connectorId, slackClient);
+    : getUserInfo(message.user as string, connectorId, slackClient).then(
+        ({ name }) => name
+      );
 }

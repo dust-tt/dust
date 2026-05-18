@@ -9,6 +9,7 @@ import {
   createMetronomeCredit,
   floorToHourISO,
   getMetronomeRateCardById,
+  listMetronomePackages,
   updateMetronomeCreditEndDate,
 } from "@app/lib/metronome/client";
 import {
@@ -34,21 +35,15 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { addMonths } from "date-fns";
 
-export async function getCreditTypeFromContract(
-  contract: CachedContract
+async function getCreditTypeFromRateCardId(
+  rateCardId: string
 ): Promise<
   Result<{ creditTypeId: string; currency: SupportedCurrency }, Error>
 > {
-  if (!contract.rate_card_id) {
-    return new Err(new Error("Contract has no rate_card_id"));
-  }
-  const result = await getMetronomeRateCardById({
-    rateCardId: contract.rate_card_id,
-  });
+  const result = await getMetronomeRateCardById({ rateCardId });
   if (result.isErr()) {
     return result;
   }
-
   const fiat_credit_type_id = result.value.fiat_credit_type?.id;
   if (!fiat_credit_type_id) {
     return new Err(new Error("Rate card has no fiat_credit_type_id"));
@@ -65,6 +60,38 @@ export async function getCreditTypeFromContract(
     );
   }
   return new Ok({ creditTypeId: fiat_credit_type_id, currency });
+}
+
+export async function getCreditTypeFromContract(
+  contract: CachedContract
+): Promise<
+  Result<{ creditTypeId: string; currency: SupportedCurrency }, Error>
+> {
+  if (!contract.rate_card_id) {
+    return new Err(new Error("Contract has no rate_card_id"));
+  }
+  return getCreditTypeFromRateCardId(contract.rate_card_id);
+}
+
+export async function getCreditTypeFromPackage(
+  packageAlias: string
+): Promise<
+  Result<{ creditTypeId: string; currency: SupportedCurrency }, Error>
+> {
+  const packagesResult = await listMetronomePackages();
+  if (packagesResult.isErr()) {
+    return packagesResult;
+  }
+  const pkg = packagesResult.value.find((p) =>
+    p.aliases.includes(packageAlias)
+  );
+  if (!pkg) {
+    return new Err(new Error(`No package found for alias: ${packageAlias}`));
+  }
+  if (!pkg.rateCardId) {
+    return new Err(new Error(`Package ${packageAlias} has no rate_card_id`));
+  }
+  return getCreditTypeFromRateCardId(pkg.rateCardId);
 }
 
 function getApplicableProductIdsForDiscountType(
@@ -93,43 +120,27 @@ export async function createCouponCredit({
   creditTypeId: string;
   currency: SupportedCurrency;
 }): Promise<Result<string[], Error>> {
-  const scheduleItems =
-    coupon.durationMonths === null
-      ? [{ startingAt: redeemedAt, endingBefore: addMonths(redeemedAt, 1) }]
-      : Array.from({ length: coupon.durationMonths }, (_, i) => ({
-          startingAt: addMonths(redeemedAt, i),
-          endingBefore: addMonths(redeemedAt, i + 1),
-        }));
+  const durationMonths = coupon.durationMonths ?? 1;
+  const result = await createMetronomeCredit({
+    metronomeCustomerId,
+    productId: getProductSeatSubscriptionCreditsId(),
+    creditTypeId,
+    amount: metronomeAmount(coupon.amount * 100, currency),
+    startingAt: floorToHourISO(redeemedAt),
+    endingBefore: ceilToHourISO(addMonths(redeemedAt, durationMonths)),
+    name: `Coupon: ${coupon.code}`,
+    idempotencyKey: `coupon-${redemptionId}-0`,
+    priority: 0,
+    applicableProductIds: getApplicableProductIdsForDiscountType(
+      coupon.discountType
+    ),
+  });
 
-  const creditIds: string[] = [];
-
-  for (let i = 0; i < scheduleItems.length; i++) {
-    const item = scheduleItems[i];
-    const result = await createMetronomeCredit({
-      metronomeCustomerId,
-      productId: getProductSeatSubscriptionCreditsId(),
-      creditTypeId,
-      amount: metronomeAmount(coupon.amount * 100, currency),
-      startingAt: floorToHourISO(item.startingAt),
-      endingBefore: ceilToHourISO(item.endingBefore),
-      name: `Coupon: ${coupon.code}`,
-      idempotencyKey: `coupon-${redemptionId}-${i}`,
-      priority: 0,
-      applicableProductIds: getApplicableProductIdsForDiscountType(
-        coupon.discountType
-      ),
-    });
-
-    if (result.isErr()) {
-      return new Err(result.error);
-    }
-
-    if (result.value !== null) {
-      creditIds.push(result.value.id);
-    }
+  if (result.isErr()) {
+    return new Err(result.error);
   }
 
-  return new Ok(creditIds);
+  return new Ok(result.value !== null ? [result.value.id] : []);
 }
 
 export async function endCouponCredit({
@@ -163,7 +174,13 @@ export type RedeemCouponError =
 
 export async function redeemCoupon(
   auth: Authenticator,
-  { coupon }: { coupon: CouponResource }
+  {
+    coupon,
+    metronomePackageAlias,
+  }: {
+    coupon: CouponResource;
+    metronomePackageAlias?: string;
+  }
 ): Promise<Result<CouponRedemptionResource, RedeemCouponError | Error>> {
   const validation = coupon.validateRedemption();
   if (validation.isErr()) {
@@ -191,22 +208,22 @@ export async function redeemCoupon(
     });
   }
 
-  const contract = await getActiveContract(workspace.sId);
-  if (!contract) {
-    return new Err(
-      new Error("No active Metronome contract found for workspace")
-    );
+  let creditTypeIdResult;
+  if (metronomePackageAlias) {
+    creditTypeIdResult = await getCreditTypeFromPackage(metronomePackageAlias);
+  } else {
+    const contract = await getActiveContract(workspace.sId);
+    if (!contract) {
+      return new Err(
+        new Error("No active Metronome contract found for workspace")
+      );
+    }
+    creditTypeIdResult = await getCreditTypeFromContract(contract);
   }
-
-  const creditTypeIdResult = await getCreditTypeFromContract(contract);
   if (creditTypeIdResult.isErr()) {
     return creditTypeIdResult;
   }
   const { creditTypeId, currency } = creditTypeIdResult.value;
-  logger.info(
-    { creditTypeId, currency, workspaceId: workspace.sId },
-    "[Metronome] Resolved credit type for coupon redemption"
-  );
 
   let redemption: CouponRedemptionResource;
   try {

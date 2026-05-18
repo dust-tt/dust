@@ -4,6 +4,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
 import {
+  ActionPieChartIcon,
   BarChartIcon,
   BoltIcon,
   BracesIcon,
@@ -19,6 +20,7 @@ import {
   LockIcon,
   PlanetIcon,
   ShapesIcon,
+  SparklesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
 
@@ -83,7 +85,9 @@ export type SubNavigationAdminId =
   | "dev_secrets"
   | "sandbox"
   | "analytics"
-  | "credits_usage";
+  | "credits_usage"
+  | "usage"
+  | "self_improving_skills";
 
 export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
@@ -96,6 +100,8 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   providers: ["/w/[wId]/developers/providers"],
   dev_secrets: ["/w/[wId]/developers/dev-secrets"],
   sandbox: ["/w/[wId]/developers/sandbox"],
+  usage: ["/w/[wId]/usage"],
+  self_improving_skills: ["/w/[wId]/developers/self-improving-skills"],
 };
 
 export type SubNavigationAppId =
@@ -205,6 +211,8 @@ export const getTopNavigationTabs = (
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
           "/w/[wId]/developers/sandbox",
+          "/w/[wId]/usage",
+          "/w/[wId]/developers/self-improving-skills",
         ]),
       sizing: "hug",
     });
@@ -250,6 +258,14 @@ export const subNavigationAdmin = ({
           icon: CompanyIcon,
           href: `/w/${owner.sId}/workspace`,
           current: isCurrent("workspace"),
+        },
+        {
+          id: "usage",
+          label: "Usage",
+          icon: ActionPieChartIcon,
+          href: `/w/${owner.sId}/usage`,
+          current: isCurrent("usage"),
+          featureFlag: "metronome_billing_usage_page",
         },
         {
           id: "model_providers",
@@ -324,6 +340,14 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/developers/sandbox`,
           current: isCurrent("sandbox"),
           featureFlag: "sandbox_workspace_admin",
+        },
+        {
+          id: "self_improving_skills",
+          label: "Self-Improving Skills",
+          icon: SparklesIcon,
+          href: `/w/${owner.sId}/developers/self-improving-skills`,
+          current: isCurrent("self_improving_skills"),
+          featureFlag: "reinforcement_ui",
         },
       ],
     });

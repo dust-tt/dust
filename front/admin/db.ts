@@ -1,3 +1,4 @@
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
@@ -12,7 +13,6 @@ import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_vie
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
-import { SandboxToolExecutionModel } from "@app/lib/models/agent/actions/sandbox_tool_execution";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfigurationModel,
@@ -63,6 +63,7 @@ import {
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
+import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { TagModel } from "@app/lib/models/tags";
 import { WorkspaceSensitivityLabelConfigModel } from "@app/lib/models/workspace_sensitivity_label_config";
@@ -103,12 +104,12 @@ import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
-  ProjectTodoConversationModel,
-  ProjectTodoModel,
-  ProjectTodoSourceModel,
-  ProjectTodoVersionModel,
-} from "@app/lib/resources/storage/models/project_todo";
-import { ProjectTodoStateModel } from "@app/lib/resources/storage/models/project_todo_state";
+  ProjectTaskConversationModel,
+  ProjectTaskModel,
+  ProjectTaskSourceModel,
+  ProjectTaskVersionModel,
+} from "@app/lib/resources/storage/models/project_task";
+import { ProjectTaskStateModel } from "@app/lib/resources/storage/models/project_task_state";
 import {
   RunModel,
   RunUsageModel,
@@ -126,7 +127,7 @@ import {
   UserModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
-import { UserProjectNotificationPreferenceModel } from "@app/lib/resources/storage/models/user_project_notification_preferences";
+import { UserProjectPreferencesModel } from "@app/lib/resources/storage/models/user_project_preferences";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
@@ -212,7 +213,7 @@ export function loadAllModels() {
     AgentStepContentModel,
     AgentMCPActionModel,
     AgentMCPActionOutputItemModel,
-    SandboxToolExecutionModel,
+    AgentStepContentToolExecutionModel,
     AgentChildAgentConfigurationModel,
     FeatureFlagModel,
     GlobalFeatureFlagModel,
@@ -233,6 +234,7 @@ export function loadAllModels() {
     SkillMCPServerConfigurationModel,
     SkillFileAttachmentModel,
     SkillSuggestionModel,
+    SelfImprovingSkillsUsageModel,
     WorkspaceVerificationAttemptModel,
     AgentSuggestionModel,
     AcademyQuizAttemptModel,
@@ -240,15 +242,15 @@ export function loadAllModels() {
     SandboxModel,
     ConversationBranchModel,
     ConversationForkModel,
-    ProjectTodoModel,
-    ProjectTodoConversationModel,
-    ProjectTodoSourceModel,
-    ProjectTodoStateModel,
-    ProjectTodoVersionModel,
+    ProjectTaskModel,
+    ProjectTaskConversationModel,
+    ProjectTaskSourceModel,
+    ProjectTaskStateModel,
+    ProjectTaskVersionModel,
     TakeawaysModel,
     TakeawaySourcesModel,
     TakeawaysVersionModel,
-    UserProjectNotificationPreferenceModel,
+    UserProjectPreferencesModel,
     WorkspaceSensitivityLabelConfigModel,
     WorkspaceSandboxEnvVarModel,
   ];

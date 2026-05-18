@@ -13,7 +13,6 @@ import {
 } from "@app/types/oauth/lib";
 import { isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { isLeft } from "fp-ts/lib/Either";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetOAuthSetupResponseBody {
@@ -70,8 +69,8 @@ async function handler(
         },
       });
     }
-    const bodyValidation = ExtraConfigTypeSchema.decode(parseRes.value);
-    if (isLeft(bodyValidation)) {
+    const bodyValidation = ExtraConfigTypeSchema.safeParse(parseRes.value);
+    if (!bodyValidation.success) {
       return apiError(req, res, {
         status_code: 400,
         api_error: {
@@ -80,7 +79,7 @@ async function handler(
         },
       });
     }
-    parsedExtraConfig = bodyValidation.right;
+    parsedExtraConfig = bodyValidation.data;
   }
 
   const urlRes = await createConnectionAndGetSetupUrl(

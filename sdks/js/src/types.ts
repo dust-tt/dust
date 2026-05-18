@@ -230,6 +230,8 @@ export const supportedAudioFileFormats = {
   "audio/wav": [".wav"],
   "audio/x-wav": [".wav"],
   "audio/webm": [".webm"],
+  // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
+  "video/webm": [".webm"],
 } as const;
 
 // Webhook trigger endpoint (skeleton) response type
@@ -689,7 +691,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "confluence_tool"
   | "sessions_branching"
-  | "project_todo"
   | "projects"
   | "databricks_tool"
   | "deepseek_feature"
@@ -752,13 +753,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_reasoning_token_count"
   | "collapsible_messages"
   | "use_dust_keys"
-  | "enable_compaction"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
   | "conversation_search_indexing"
   | "conversation_search_read"
   | "new_file_explorer"
   | "use_vertex_for_anthropic_models"
+  | "metronome_billing_usage_page"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2654,6 +2655,47 @@ export const GetSpaceMetadataResponseSchema = z.object({
 });
 export type GetSpaceMetadataResponseType = z.infer<
   typeof GetSpaceMetadataResponseSchema
+>;
+
+export const ProjectMountFileEntrySchema = z.object({
+  isDirectory: z.literal(false),
+  fileName: z.string(),
+  path: z.string(),
+  sizeBytes: z.number(),
+  lastModifiedMs: z.number(),
+  contentType: z.string(),
+  fileId: z.string().nullable(),
+  thumbnailUrl: z.string().nullable(),
+  signedDownloadUrl: z.string().nullable(),
+});
+export type ProjectMountFileEntryType = z.infer<
+  typeof ProjectMountFileEntrySchema
+>;
+
+export const ProjectMountDirectoryEntrySchema = z.object({
+  isDirectory: z.literal(true),
+  fileName: z.string(),
+  path: z.string(),
+  sizeBytes: z.number(),
+  lastModifiedMs: z.number(),
+});
+export type ProjectMountDirectoryEntryType = z.infer<
+  typeof ProjectMountDirectoryEntrySchema
+>;
+
+export const ProjectMountListEntrySchema = z.discriminatedUnion("isDirectory", [
+  ProjectMountDirectoryEntrySchema,
+  ProjectMountFileEntrySchema,
+]);
+export type ProjectMountListEntryType = z.infer<
+  typeof ProjectMountListEntrySchema
+>;
+
+export const GetProjectFilesResponseSchema = z.object({
+  files: z.array(ProjectMountListEntrySchema),
+});
+export type GetProjectFilesResponseType = z.infer<
+  typeof GetProjectFilesResponseSchema
 >;
 
 const GetDocumentsResponseSchema = z.object({

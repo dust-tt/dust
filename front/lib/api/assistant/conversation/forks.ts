@@ -1,17 +1,16 @@
-import {
-  compactConversation,
-  postNewContentFragment,
-} from "@app/lib/api/assistant/conversation";
+import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import {
   type ContentNodeAttachmentType,
   type FileAttachmentType,
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
+import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
@@ -29,6 +28,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { launchConversationForkWorkflow } from "@app/temporal/conversation_fork_queue/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -49,8 +49,10 @@ import type { Transaction } from "sequelize";
 
 export type CreateConversationForkErrorCode =
   | "conversation_not_found"
+  | "failed_to_copy_files"
+  | "internal_error"
   | "invalid_request_error"
-  | "internal_error";
+  | "unauthorized";
 
 type CarriedAttachment = {
   carriedAttachment:
@@ -297,6 +299,10 @@ async function addFileToConversationDatasource(
     carriedFile: FileResource;
   }
 ): Promise<void> {
+  if (isSandboxRawDelimitedConversationFile(carriedFile)) {
+    return;
+  }
+
   const childDataSourceRes = await getOrCreateConversationDataSourceFromFile(
     auth,
     carriedFile
@@ -494,6 +500,7 @@ async function carryOverConversationAttachments(
       const shouldCopyFileToDatasource =
         carriedFile !== null &&
         !carriedFile.useCaseMetadata?.skipDataSourceIndexing &&
+        !isSandboxRawDelimitedConversationFile(carriedFile) &&
         isFileTypeUpsertableForUseCase(carriedFile);
 
       if (shouldCopyFileToDatasource) {
@@ -545,6 +552,12 @@ async function carryOverConversationAttachments(
   return attachmentIdReplacements;
 }
 
+type ConversationForkResult = {
+  conversationId: string;
+  parentConversationTitle: string | null;
+  spaceId: string | null;
+};
+
 export async function createConversationFork(
   auth: Authenticator,
   {
@@ -554,7 +567,9 @@ export async function createConversationFork(
     conversationId: string;
     sourceMessageId?: string;
   }
-): Promise<Result<string, DustError<CreateConversationForkErrorCode>>> {
+): Promise<
+  Result<ConversationForkResult, DustError<CreateConversationForkErrorCode>>
+> {
   const parentConversation = await ConversationResource.fetchById(
     auth,
     conversationId
@@ -563,6 +578,13 @@ export async function createConversationFork(
   if (!parentConversation) {
     return new Err(
       new DustError("conversation_not_found", "Conversation not found.")
+    );
+  }
+
+  const parentSpace = parentConversation.space;
+  if (parentSpace?.isProject() && !parentSpace.isMember(auth)) {
+    return new Err(
+      new DustError("unauthorized", "You are not a member of the project.")
     );
   }
 
@@ -674,6 +696,30 @@ export async function createConversationFork(
     childConversationId.value.childConversationId
   );
 
+  const launchForkWorkflowResult = await launchConversationForkWorkflow({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    sourceConversationId: parentConversation.sId,
+    destConversationId: childConversationId.value.childConversationId,
+  });
+  if (launchForkWorkflowResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        parentConversationId: parentConversation.sId,
+        childConversationId: childConversationId.value.childConversationId,
+        error: launchForkWorkflowResult.error,
+      },
+      "Failed to launch conversation fork workflow."
+    );
+
+    return new Err(
+      new DustError(
+        "failed_to_copy_files",
+        "Failed to copy files from source conversation."
+      )
+    );
+  }
+
   const childConversation = await getConversation(
     auth,
     childConversationId.value.childConversationId
@@ -689,7 +735,11 @@ export async function createConversationFork(
       "Failed to reload child conversation for fork attachment carryover."
     );
 
-    return new Ok(childConversationId.value.childConversationId);
+    return new Ok({
+      conversationId: childConversationId.value.childConversationId,
+      parentConversationTitle: parentConversation.title,
+      spaceId: parentConversation.space?.sId ?? null,
+    });
   }
 
   const parentConversationWithContent = await getConversation(
@@ -740,8 +790,16 @@ export async function createConversationFork(
       },
       "Failed to initialize forked conversation compaction."
     );
-    return new Ok(childConversation.value.sId);
+    return new Ok({
+      conversationId: childConversation.value.sId,
+      parentConversationTitle: parentConversation.title,
+      spaceId: parentConversation.space?.sId ?? null,
+    });
   }
 
-  return new Ok(childConversation.value.sId);
+  return new Ok({
+    conversationId: childConversation.value.sId,
+    parentConversationTitle: parentConversation.title,
+    spaceId: parentConversation.space?.sId ?? null,
+  });
 }

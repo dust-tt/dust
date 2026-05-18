@@ -1,3 +1,4 @@
+import type { BillingCycle } from "@app/lib/client/subscription";
 import {
   ceilToHourISO,
   createMetronomeContract,
@@ -7,6 +8,8 @@ import {
   floorToHourISO,
   getMetronomeClient,
   getMetronomeContractById,
+  getMetronomeCustomerStripeCustomerId,
+  listMetronomeContracts,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import {
@@ -23,12 +26,19 @@ import {
   syncMauCount,
 } from "@app/lib/metronome/mau_sync";
 import {
-  getSeatSubscriptionIdFromContract,
+  hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { LEGACY_ENTERPRISE_PACKAGE_ALIAS } from "@app/lib/metronome/types";
-import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
-import { getStripeClient } from "@app/lib/plans/stripe";
+import {
+  resolveCurrencyFromStripe,
+  resolvePackageAliasForCurrency,
+} from "@app/lib/plans/billing_currency";
+import {
+  getStripeClient,
+  getStripeCustomer,
+  getStripeSubscription,
+} from "@app/lib/plans/stripe";
 import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import {
   isEnterpriseReportUsage,
@@ -45,60 +55,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
 import { metronomeAmount } from "./amounts";
-
-/**
- * Switch a Metronome contract to a different package (end old + create new).
- * Customer must already exist.
- */
-export async function switchMetronomeContractPackage({
-  metronomeCustomerId,
-  oldContractId,
-  workspace,
-  packageAlias,
-  enableStripeBilling,
-}: {
-  metronomeCustomerId: string;
-  oldContractId: string;
-  workspace: LightWorkspaceType;
-  packageAlias: string;
-  enableStripeBilling: boolean;
-}): Promise<Result<{ metronomeContractId: string }, Error>> {
-  // Round up to the next hour boundary (Metronome requires hour-aligned dates)
-  // so the new contract starts exactly when the old one ends.
-  const switchAt = new Date(ceilToHourISO(new Date()));
-
-  const endResult = await scheduleMetronomeContractEnd({
-    metronomeCustomerId,
-    contractId: oldContractId,
-    endingBefore: switchAt,
-  });
-  if (endResult.isErr()) {
-    return new Err(endResult.error);
-  }
-
-  const contractResult = await createMetronomeContract({
-    metronomeCustomerId,
-    packageAlias,
-    startingAt: switchAt,
-    enableStripeBilling,
-  });
-  if (contractResult.isErr()) {
-    return new Err(contractResult.error);
-  }
-
-  const { contractId: metronomeContractId } = contractResult.value;
-  const syncResult = await syncContractQuantities(
-    metronomeCustomerId,
-    metronomeContractId,
-    workspace,
-    switchAt.toISOString()
-  );
-  if (syncResult.isErr()) {
-    return new Err(syncResult.error);
-  }
-
-  return new Ok({ metronomeContractId });
-}
 
 /**
  * Idempotently ensure a Metronome customer exists for a workspace and that
@@ -170,9 +126,81 @@ export async function ensureMetronomeCustomerForWorkspace({
 }
 
 /**
+ * Resolve the billing currency for a workspace whose Metronome customer
+ * already exists. Tries the Stripe subscription first (when the workspace
+ * is Stripe-billed); falls back to the Stripe customer that's wired into
+ * the Metronome billing configuration (Metronome-only billing path).
+ *
+ * Returns an error when neither path yields a usable signal — existing
+ * customers are expected to have either a Stripe subscription or a linked
+ * Stripe billing config on the Metronome customer.
+ */
+export async function resolveCurrencyForExistingMetronomeCustomer({
+  metronomeCustomerId,
+  stripeSubscriptionId,
+}: {
+  metronomeCustomerId: string;
+  stripeSubscriptionId: string | null;
+}): Promise<Result<SupportedCurrency, Error>> {
+  const stripeSubscription = stripeSubscriptionId
+    ? await getStripeSubscription(stripeSubscriptionId)
+    : null;
+  if (stripeSubscription) {
+    return new Ok(resolveCurrencyFromStripe({ stripeSubscription }));
+  }
+
+  // Metronome-only billing path: no Stripe sub. Read the Stripe customer
+  // through the Metronome billing config, then derive currency from its
+  // currency / address.country.
+  const stripeCustomerIdResult =
+    await getMetronomeCustomerStripeCustomerId(metronomeCustomerId);
+  if (stripeCustomerIdResult.isErr()) {
+    return new Err(
+      new Error(
+        "Failed to resolve billing currency for Metronome customer " +
+          `${metronomeCustomerId}: could not read Stripe billing config: ` +
+          stripeCustomerIdResult.error.message
+      )
+    );
+  }
+
+  const stripeCustomerId = stripeCustomerIdResult.value;
+  if (!stripeCustomerId) {
+    return new Err(
+      new Error(
+        "Failed to resolve billing currency for Metronome customer " +
+          `${metronomeCustomerId}: no Stripe billing config found.`
+      )
+    );
+  }
+
+  const stripeCustomer = await getStripeCustomer(stripeCustomerId);
+  if (!stripeCustomer) {
+    return new Err(
+      new Error(
+        "Failed to resolve billing currency for Metronome customer " +
+          `${metronomeCustomerId}: Stripe customer ${stripeCustomerId} could ` +
+          "not be retrieved."
+      )
+    );
+  }
+
+  return new Ok(resolveCurrencyFromStripe({ stripeCustomer }));
+}
+
+/**
  * Provision a Metronome contract on an already-existing Metronome customer.
- * Creates the contract from the given package alias, then syncs seat / MAU
- * subscription quantities seeded by the package.
+ * Snaps `startingAt` to an hour boundary, ends any non-archived existing
+ * contracts that would overlap the new start (a customer must never have two
+ * overlapping active contracts), creates the contract from the given package
+ * alias, then syncs seat / MAU subscription quantities seeded by the package.
+ *
+ * `swapAt` controls how `startingAt` is snapped:
+ *  - `"current-hour"` (default): floor — for seat-based plans where the
+ *    current partial hour has no usage to attribute. New contract is active
+ *    immediately.
+ *  - `"next-hour"`: ceil — preserves the current partial hour on whatever
+ *    contract was running; required when usage attribution matters.
  *
  * The Metronome customer must already exist (call
  * `ensureMetronomeCustomerForWorkspace` first).
@@ -183,33 +211,99 @@ export async function provisionMetronomeContract({
   packageAlias,
   uniquenessKey,
   startingAt,
+  swapAt = "current-hour",
   enableStripeBilling = true,
+  planCode,
 }: {
   metronomeCustomerId: string;
   workspace: LightWorkspaceType;
   packageAlias: string;
-  uniquenessKey: string;
-  // Must already be on an hour boundary (Metronome requirement).
+  uniquenessKey?: string;
   startingAt: Date;
+  swapAt?: "current-hour" | "next-hour";
   enableStripeBilling?: boolean;
+  planCode: string;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
+  const alignedStart = new Date(
+    swapAt === "current-hour"
+      ? floorToHourISO(startingAt)
+      : ceilToHourISO(startingAt)
+  );
+
+  logger.info(
+    {
+      metronomeCustomerId,
+      workspaceId: workspace.sId,
+      packageAlias,
+      enableStripeBilling,
+      startingAt: alignedStart.toISOString(),
+      swapAt,
+    },
+    "[Metronome] Provisioning contract"
+  );
+
   const contractResult = await createMetronomeContract({
     metronomeCustomerId,
     packageAlias,
     uniquenessKey,
-    startingAt,
+    startingAt: alignedStart,
     enableStripeBilling,
+    planCode,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
   }
-
   const { contractId: metronomeContractId } = contractResult.value;
+
+  const contractsResult = await listMetronomeContracts(metronomeCustomerId);
+  if (contractsResult.isErr()) {
+    return new Err(
+      new Error(
+        `Created new contract ${metronomeContractId} but failed to list ` +
+          `existing contracts to sunset: ${contractsResult.error.message}. ` +
+          "Manual cleanup may be required."
+      )
+    );
+  }
+  const newStartMs = alignedStart.getTime();
+  for (const existing of contractsResult.value) {
+    if (existing.id === metronomeContractId) {
+      continue;
+    }
+    if (existing.archived_at) {
+      continue;
+    }
+    const existingStartMs = new Date(existing.starting_at).getTime();
+    if (existingStartMs > newStartMs) {
+      continue;
+    }
+    const existingEndsBeforeMs = existing.ending_before
+      ? new Date(existing.ending_before).getTime()
+      : null;
+    if (existingEndsBeforeMs !== null && existingEndsBeforeMs <= newStartMs) {
+      continue;
+    }
+    const sunsetResult = await scheduleMetronomeContractEnd({
+      metronomeCustomerId,
+      contractId: existing.id,
+      endingBefore: alignedStart,
+    });
+    if (sunsetResult.isErr()) {
+      return new Err(
+        new Error(
+          `Created new contract ${metronomeContractId} but failed to ` +
+            `sunset existing contract ${existing.id}: ` +
+            `${sunsetResult.error.message}. Manual cleanup may be required.`
+        )
+      );
+    }
+  }
+
   const syncResult = await syncContractQuantities(
     metronomeCustomerId,
     metronomeContractId,
     workspace,
-    startingAt.toISOString()
+    alignedStart.toISOString()
   );
   if (syncResult.isErr()) {
     return new Err(syncResult.error);
@@ -265,8 +359,7 @@ export async function syncContractQuantities(
 
   const contract = contractResult.value;
 
-  const seatSubscriptionId = getSeatSubscriptionIdFromContract(contract);
-  const shouldSyncSeats = seatSubscriptionId !== undefined;
+  const shouldSyncSeats = hasContractSeatSubscription(contract);
   const shouldSyncMau = hasMauSubscriptionInContract(contract);
 
   const syncFns = [
@@ -333,7 +426,7 @@ export async function countMauForWorkspace(
     since: thirtyDaysAgo,
     workspace,
   });
-  return Math.max(count, 1);
+  return count;
 }
 
 /**
@@ -906,9 +999,11 @@ export async function applyEnterpriseOverrides({
 export async function provisionShadowEnterpriseMetronomeContract({
   workspace,
   stripeSubscription,
+  planCode,
 }: {
   workspace: LightWorkspaceType;
   stripeSubscription: Stripe.Subscription;
+  planCode: string;
 }): Promise<
   Result<{ metronomeCustomerId: string; metronomeContractId: string }, Error>
 > {
@@ -958,19 +1053,24 @@ export async function provisionShadowEnterpriseMetronomeContract({
   }
   const { metronomeCustomerId } = customerResult.value;
 
-  // Create the (empty) contract directly — overrides below will add the MAU
-  // subscriptions with the right initial quantities.
-  const contractResult = await createMetronomeContract({
+  // Create the (initially empty) contract — overrides below will add the
+  // MAU subscriptions with the right initial quantities. The shared provision
+  // helper also sunsets any overlapping contracts on the customer; the inner
+  // quantity sync is a no-op here because no seat/MAU subscriptions exist
+  // until `applyEnterpriseOverrides` runs.
+  const contractResult = await provisionMetronomeContract({
     metronomeCustomerId,
+    workspace,
     packageAlias,
     uniquenessKey: stripeSubscription.id,
     startingAt: new Date(startDate),
     enableStripeBilling: false,
+    planCode,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
   }
-  const { contractId: metronomeContractId } = contractResult.value;
+  const { metronomeContractId } = contractResult.value;
 
   // Count MAUs for initial subscription quantities on the first invoice.
   const initialMauCount = await countMauForWorkspace(
@@ -990,4 +1090,54 @@ export async function provisionShadowEnterpriseMetronomeContract({
   });
 
   return new Ok({ metronomeCustomerId, metronomeContractId });
+}
+
+/**
+ * Retrieve the current billing period from the Metronome contract.
+ *
+ * Returns:
+ * - Ok(BillingCycle) when the period is found on the contract.
+ * - Ok(null) when Metronome is not set up for this workspace (missing IDs).
+ * - Err when the Metronome API call fails or no subscription has a billing period.
+ */
+export async function getMetronomeCurrentBillingPeriod({
+  metronomeContractId,
+  metronomeCustomerId,
+}: {
+  metronomeContractId: string | null;
+  metronomeCustomerId: string | null;
+}): Promise<Result<BillingCycle | null, Error>> {
+  if (!metronomeContractId || !metronomeCustomerId) {
+    if (metronomeContractId !== null || metronomeCustomerId !== null) {
+      logger.warn(
+        { metronomeContractId, metronomeCustomerId },
+        "[Metronome] Partial Metronome configuration: one of metronomeContractId or metronomeCustomerId is missing"
+      );
+    }
+    return new Ok(null);
+  }
+
+  const contractResult = await getMetronomeContractById({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+
+  if (contractResult.isErr()) {
+    return new Err(contractResult.error);
+  }
+
+  const currentPeriod = contractResult.value.subscriptions
+    ?.map((s) => s.billing_periods?.current)
+    .find((bp) => bp !== undefined);
+
+  if (!currentPeriod) {
+    return new Err(
+      new Error("No current billing period found on Metronome contract")
+    );
+  }
+
+  return new Ok({
+    cycleStart: new Date(currentPeriod.starting_at),
+    cycleEnd: new Date(currentPeriod.ending_before),
+  });
 }

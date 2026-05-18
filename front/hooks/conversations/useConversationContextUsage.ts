@@ -1,5 +1,6 @@
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetConversationContextUsageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/context-usage";
+import { useMemo, useRef } from "react";
 import type { Fetcher } from "swr";
 
 export const CONTEXT_USAGE_PERCENT_THRESHOLDS = {
@@ -29,13 +30,23 @@ export function useConversationContextUsage({
     options
   );
 
-  const percentage =
-    data &&
-    data.contextUsage !== null &&
-    data.contextSize !== null &&
-    data.contextSize > 0
-      ? Math.round((data.contextUsage / data.contextSize) * 100)
-      : 0;
+  const lastValidPercentageRef = useRef<number>(0);
+
+  const percentage = useMemo(() => {
+    if (
+      data &&
+      data.contextUsage !== null &&
+      data.contextSize !== null &&
+      data.contextSize > 0
+    ) {
+      const computed = Math.round((data.contextUsage / data.contextSize) * 100);
+      lastValidPercentageRef.current = computed;
+      return computed;
+    }
+    // API is in pending state (new run has no usages yet) — keep the last
+    // known value to avoid a jarring drop to 0% while the message processes.
+    return lastValidPercentageRef.current;
+  }, [data]);
 
   return {
     contextUsage: data ?? null,

@@ -1324,14 +1324,12 @@ export async function getSession(
 }
 
 /**
- * Gets the Bearer token from the request.
- * @param req
- * @returns
+ * Extracts the Bearer token from an Authorization header value.
  */
 export async function getBearerToken(
-  req: NextApiRequest
+  authHeader: string | undefined
 ): Promise<Result<string, APIErrorWithStatusCode>> {
-  if (!req.headers.authorization) {
+  if (!authHeader) {
     return new Err({
       status_code: 401,
       api_error: {
@@ -1341,9 +1339,7 @@ export async function getBearerToken(
     });
   }
 
-  const parse = req.headers.authorization.match(
-    /^Bearer\s+([A-Za-z0-9-._~+/]+=*)$/i
-  );
+  const parse = authHeader.match(/^Bearer\s+([A-Za-z0-9-._~+/]+=*)$/i);
   if (!parse || !parse[1]) {
     return new Err({
       status_code: 401,
@@ -1374,9 +1370,9 @@ export type BearerTokenError =
  * or Ok(null) if no bearer token is present, or Ok(session) on success.
  */
 export async function getSessionFromBearerToken(
-  req: NextApiRequest
+  authHeader: string | undefined
 ): Promise<Result<SessionWithUser | null, BearerTokenError>> {
-  const bearerTokenRes = await getBearerToken(req);
+  const bearerTokenRes = await getBearerToken(authHeader);
   if (bearerTokenRes.isErr()) {
     return new Ok(null);
   }
@@ -1429,14 +1425,13 @@ export async function getSessionFromBearerToken(
 }
 
 /**
- * Retrieves the API Key from the request.
- * @param req NextApiRequest request object
+ * Retrieves the API Key from the Authorization header value.
  * @returns Result<Key, APIErrorWithStatusCode>
  */
 export async function getAPIKey(
-  req: NextApiRequest
+  authHeader: string | undefined
 ): Promise<Result<KeyResource, APIErrorWithStatusCode>> {
-  const token = await getBearerToken(req);
+  const token = await getBearerToken(authHeader);
 
   if (token.isErr()) {
     return new Err(token.error);

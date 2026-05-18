@@ -13,8 +13,8 @@ interface LLMTraceContextBase {
   /** Type of operation that triggered the LLM call */
   operationType:
     | "agent_builder_description_suggestion"
-    | "project_todo_analyze_document"
-    | "project_todo_deduplicate_candidates"
+    | "project_task_analyze_document"
+    | "project_task_deduplicate_candidates"
     | "agent_builder_emoji_suggestion"
     | "agent_builder_name_suggestion"
     | "agent_builder_tags_suggestion"

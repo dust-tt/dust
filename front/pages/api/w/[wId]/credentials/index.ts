@@ -17,39 +17,38 @@ import {
   SnowflakeCredentialsSchema,
 } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const PostSnowflakeCredentialsBodySchema = t.type({
-  provider: t.literal("snowflake"),
+const PostSnowflakeCredentialsBodySchema = z.object({
+  provider: z.literal("snowflake"),
   credentials: SnowflakeCredentialsSchema,
 });
 
-const PostBigQueryCredentialsBodySchema = t.type({
-  provider: t.literal("bigquery"),
+const PostBigQueryCredentialsBodySchema = z.object({
+  provider: z.literal("bigquery"),
   credentials: BigQueryCredentialsWithLocationSchema,
 });
 
-const PostSalesforceCredentialsBodySchema = t.type({
-  provider: t.literal("salesforce"),
+const PostSalesforceCredentialsBodySchema = z.object({
+  provider: z.literal("salesforce"),
   credentials: SalesforceCredentialsSchema,
 });
 
-const PostNotionCredentialsBodySchema = t.type({
-  provider: t.literal("notion"),
+const PostNotionCredentialsBodySchema = z.object({
+  provider: z.literal("notion"),
   credentials: NotionCredentialsSchema,
 });
 
-const PostCredentialsBodySchema = t.union([
+const PostCredentialsBodySchema = z.union([
   PostSnowflakeCredentialsBodySchema,
   PostBigQueryCredentialsBodySchema,
   PostSalesforceCredentialsBodySchema,
   PostNotionCredentialsBodySchema,
 ]);
 
-export type PostCredentialsBody = t.TypeOf<typeof PostCredentialsBodySchema>;
+export type PostCredentialsBody = z.infer<typeof PostCredentialsBodySchema>;
 export type PostCredentialsResponseBody = {
   credentials: {
     id: string;
@@ -77,9 +76,9 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostCredentialsBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostCredentialsBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -93,10 +92,10 @@ async function handler(
         apiConfig.getOAuthAPIConfig(),
         logger
       ).postCredentials({
-        provider: bodyValidation.right.provider,
+        provider: bodyValidation.data.provider,
         workspaceId: owner.sId,
         userId: user.sId,
-        credentials: bodyValidation.right.credentials,
+        credentials: bodyValidation.data.credentials,
       });
 
       if (response.isErr()) {
@@ -115,7 +114,7 @@ async function handler(
         targets: [buildAuditLogTarget("workspace", owner)],
         context: getAuditLogContext(auth, req),
         metadata: {
-          provider: String(bodyValidation.right.provider),
+          provider: String(bodyValidation.data.provider),
           credential_type: "oauth",
           credential_id: response.value.credential.credential_id,
         },

@@ -6,6 +6,7 @@ import {
 } from "@app/lib/metronome/client";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import { PlanModel } from "@app/lib/models/plan";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -56,7 +57,6 @@ const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const OLD_CONTRACT_ID = "contract_old_xxx";
 const NEW_CONTRACT_ID = "contract_new_yyy";
 const ENT_PLAN_CODE = "ENT_TEST_PLAN";
-const NON_ENTERPRISE_PLAN_CODE = "PRO_PLAN_SEAT_29";
 
 async function ensureEnterprisePlan(): Promise<void> {
   await PlanModel.upsert({
@@ -128,7 +128,8 @@ function makeWebhookRequest(eventBody: Record<string, unknown>) {
 }
 
 async function setupMetronomeWorkspace(
-  contractId: string
+  contractId: string,
+  { stripeSubscriptionId = null }: { stripeSubscriptionId?: string | null } = {}
 ): Promise<WorkspaceType> {
   const workspace = await WorkspaceFactory.basic();
   const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
@@ -148,7 +149,7 @@ async function setupMetronomeWorkspace(
       status: "active",
       startDate: new Date(),
       endDate: null,
-      stripeSubscriptionId: null,
+      stripeSubscriptionId,
       metronomeContractId: contractId,
     },
     sub!.getPlan()
@@ -201,8 +202,14 @@ describe("Metronome webhook — contract.start", () => {
     expect(restoreWorkspaceAfterSubscription).not.toHaveBeenCalled();
   });
 
-  it("does nothing when PLAN_CODE refers to a non-enterprise plan", async () => {
-    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+  it("does nothing when the active subscription is shadow-billed (Stripe + Metronome)", async () => {
+    // Shadow-billed: Stripe is the source of truth, Metronome runs in
+    // parallel. The webhook must not flip the subscription on contract.start
+    // — Stripe drives that transition on its own webhook.
+    await ensureEnterprisePlan();
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID, {
+      stripeSubscriptionId: "sub_shadow_xxx",
+    });
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
     mockUnwrap(event);
     vi.mocked(getMetronomeContractById).mockResolvedValue(
@@ -211,7 +218,7 @@ describe("Metronome webhook — contract.start", () => {
         customer_id: METRONOME_CUSTOMER_ID,
         starting_at: new Date().toISOString(),
         custom_fields: {
-          [PLAN_CODE_CUSTOM_FIELD_KEY]: NON_ENTERPRISE_PLAN_CODE,
+          [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE,
         },
       } as never)
     );
@@ -321,6 +328,64 @@ describe("Metronome webhook — contract.start", () => {
       refreshed!.id
     );
     expect(sub!.metronomeContractId).toBe(NEW_CONTRACT_ID);
+  });
+
+  it("flips a pending (created_backend_only) subscription to active and ends the prior active", async () => {
+    await ensureEnterprisePlan();
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    // Stage the pending sub that switch_contract would have created.
+    const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
+      .id;
+    const targetPlan = await PlanModel.findOne({
+      where: { code: ENT_PLAN_CODE },
+    });
+    await SubscriptionResource.makeNew(
+      {
+        sId: generateRandomModelSId(),
+        workspaceId: workspaceModelId,
+        planId: targetPlan!.id,
+        status: "created_backend_only",
+        startDate: new Date(),
+        endDate: null,
+        stripeSubscriptionId: null,
+        metronomeContractId: NEW_CONTRACT_ID,
+      },
+      renderPlanFromModel({ plan: targetPlan! })
+    );
+
+    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
+    mockUnwrap(event);
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: NEW_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: new Date().toISOString(),
+        custom_fields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
+      } as never)
+    );
+
+    const { req, res } = makeWebhookRequest(event);
+    await handler(req, res as never);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    // Pending sub is now active.
+    const refreshed = await WorkspaceResource.fetchById(workspace.sId);
+    const activeSub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+      refreshed!.id
+    );
+    expect(activeSub!.metronomeContractId).toBe(NEW_CONTRACT_ID);
+    expect(activeSub!.status).toBe("active");
+    expect(activeSub!.getPlan().code).toBe(ENT_PLAN_CODE);
+
+    // Prior active is ended_backend_only (was Metronome-billed).
+    const oldSub = await SubscriptionResource.fetchByMetronomeContractId(
+      refreshed!,
+      OLD_CONTRACT_ID
+    );
+    expect(oldSub!.status).toBe("ended_backend_only");
+
+    expect(restoreWorkspaceAfterSubscription).toHaveBeenCalledTimes(1);
   });
 });
 

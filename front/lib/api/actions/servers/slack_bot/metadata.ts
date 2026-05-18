@@ -31,6 +31,18 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional file to attach to the Slack message. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
         ),
+      unfurlLinks: z
+        .boolean()
+        .optional()
+        .describe(
+          "If false, disable link previews (unfurling) for URLs in the message. Useful when posting newsletters or curated lists where previews add clutter. Defaults to Slack's behavior."
+        ),
+      unfurlMedia: z
+        .boolean()
+        .optional()
+        .describe(
+          "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
+        ),
     },
     stake: "low",
     displayLabels: {

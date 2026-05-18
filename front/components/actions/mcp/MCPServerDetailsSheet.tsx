@@ -2,6 +2,7 @@ import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpS
 import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
 import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDetailsSharing";
 import { ConfirmContext } from "@app/components/Confirm";
+import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import {
   getMcpServerDisplayName,
   getMcpServerViewDescription,
@@ -44,6 +45,7 @@ interface MCPServerDetailsSheetProps {
   onCancel: () => void;
   spaces: SpaceType[];
   readOnly?: boolean;
+  sensitivityLabelsController?: SensitivityLabelsController;
 }
 
 export function MCPServerDetailsSheet({
@@ -55,6 +57,7 @@ export function MCPServerDetailsSheet({
   onCancel,
   spaces,
   readOnly = false,
+  sensitivityLabelsController,
 }: MCPServerDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("info");
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
@@ -210,6 +213,9 @@ export function MCPServerDetailsSheet({
                       <MCPServerDetailsInfo
                         mcpServerView={mcpServerView}
                         owner={owner}
+                        sensitivityLabelsController={
+                          sensitivityLabelsController
+                        }
                       />
                     </div>
                   )}

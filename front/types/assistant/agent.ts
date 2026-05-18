@@ -267,6 +267,7 @@ export function getMaxActionsPerStep(depth: number): number {
 export const AgentErrorCategories = [
   "retryable_model_error",
   "context_window_exceeded",
+  "empty_content",
   "provider_internal_error",
   "stream_error",
   "unknown_error",
@@ -369,6 +370,7 @@ export type AgentGenerationCancelledEvent = {
   created: number;
   configurationId: string;
   messageId: string;
+  status: "cancelled" | "interrupted";
 };
 
 // Event sent when the agent loop was gracefully stopped (current step completed, then exited).

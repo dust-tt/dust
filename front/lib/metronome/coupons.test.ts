@@ -7,6 +7,7 @@ import {
   createCouponCredit,
   endCouponCredit,
   getCreditTypeFromContract,
+  getCreditTypeFromPackage,
   redeemCoupon,
   revokeCouponRedemption,
 } from "@app/lib/metronome/coupons";
@@ -48,12 +49,14 @@ const {
   mockGetActiveContract,
   mockEmitAuditLogEvent,
   mockGetMetronomeRateCardById,
+  mockListMetronomePackages,
 } = vi.hoisted(() => ({
   mockCreateMetronomeCredit: vi.fn(),
   mockUpdateMetronomeCreditEndDate: vi.fn(),
   mockGetActiveContract: vi.fn().mockResolvedValue(null),
   mockEmitAuditLogEvent: vi.fn().mockResolvedValue(undefined),
   mockGetMetronomeRateCardById: vi.fn(),
+  mockListMetronomePackages: vi.fn(),
 }));
 
 vi.mock("@app/lib/metronome/client", async () => {
@@ -64,6 +67,7 @@ vi.mock("@app/lib/metronome/client", async () => {
     ...actual,
     createMetronomeCredit: mockCreateMetronomeCredit,
     getMetronomeRateCardById: mockGetMetronomeRateCardById,
+    listMetronomePackages: mockListMetronomePackages,
     updateMetronomeCreditEndDate: mockUpdateMetronomeCreditEndDate,
   };
 });
@@ -113,6 +117,23 @@ function makeCoupon(
     amount: overrides.amount ?? 10,
     durationMonths: overrides.durationMonths ?? null,
   } as unknown as CouponResource;
+}
+
+function makePackageSummary(
+  overrides: Partial<{
+    id: string;
+    name: string;
+    aliases: string[];
+    rateCardId: string | undefined;
+  }> = {}
+) {
+  return {
+    id: overrides.id ?? "pkg-1",
+    name: overrides.name ?? "Test Package",
+    aliases: overrides.aliases ?? ["test-alias"],
+    rateCardId:
+      "rateCardId" in overrides ? overrides.rateCardId : "rate-card-1",
+  };
 }
 
 function makeContract(rateCardId: string | undefined = "rate-card-1"): {
@@ -171,6 +192,7 @@ beforeEach(() => {
   mockGetActiveContract.mockReset();
   mockEmitAuditLogEvent.mockReset();
   mockGetMetronomeRateCardById.mockReset();
+  mockListMetronomePackages.mockReset();
   mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "credit-id-1" }));
   mockUpdateMetronomeCreditEndDate.mockResolvedValue(new Ok(undefined));
   mockGetActiveContract.mockResolvedValue({ rate_card_id: "rate-card-1" });
@@ -178,6 +200,7 @@ beforeEach(() => {
   mockGetMetronomeRateCardById.mockResolvedValue(
     new Ok(makeRateCard(CREDIT_TYPE_USD_ID))
   );
+  mockListMetronomePackages.mockResolvedValue(new Ok([makePackageSummary()]));
 });
 
 // ---------------------------------------------------------------------------
@@ -243,6 +266,68 @@ describe("getCreditTypeFromContract", () => {
 });
 
 // ---------------------------------------------------------------------------
+// getCreditTypeFromPackage
+// ---------------------------------------------------------------------------
+
+describe("getCreditTypeFromPackage", () => {
+  it("returns Ok with USD credit type resolved via package alias", async () => {
+    mockListMetronomePackages.mockResolvedValueOnce(
+      new Ok([
+        makePackageSummary({ aliases: ["pro-monthly"], rateCardId: "rc-usd" }),
+      ])
+    );
+    mockGetMetronomeRateCardById.mockResolvedValueOnce(
+      new Ok(makeRateCard(CREDIT_TYPE_USD_ID))
+    );
+
+    const result = await getCreditTypeFromPackage("pro-monthly");
+
+    expect(unwrapOk(result)).toEqual({
+      creditTypeId: CREDIT_TYPE_USD_ID,
+      currency: "usd",
+    });
+    expect(mockGetMetronomeRateCardById).toHaveBeenCalledWith({
+      rateCardId: "rc-usd",
+    });
+  });
+
+  it("returns Err when no package matches the alias", async () => {
+    mockListMetronomePackages.mockResolvedValueOnce(
+      new Ok([makePackageSummary({ aliases: ["other-alias"] })])
+    );
+
+    const result = await getCreditTypeFromPackage("unknown-alias");
+
+    expect(result.isErr()).toBe(true);
+    expect(unwrapErr(result).message).toContain("unknown-alias");
+    expect(mockGetMetronomeRateCardById).not.toHaveBeenCalled();
+  });
+
+  it("returns Err when the package has no rateCardId", async () => {
+    mockListMetronomePackages.mockResolvedValueOnce(
+      new Ok([
+        makePackageSummary({ aliases: ["no-rc-alias"], rateCardId: undefined }),
+      ])
+    );
+
+    const result = await getCreditTypeFromPackage("no-rc-alias");
+
+    expect(result.isErr()).toBe(true);
+    expect(mockGetMetronomeRateCardById).not.toHaveBeenCalled();
+  });
+
+  it("returns Err when listMetronomePackages fails", async () => {
+    mockListMetronomePackages.mockResolvedValueOnce(
+      new Err(new Error("packages api down"))
+    );
+
+    const result = await getCreditTypeFromPackage("any-alias");
+
+    expect(unwrapErr(result).message).toBe("packages api down");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // createCouponCredit
 // ---------------------------------------------------------------------------
 
@@ -293,43 +378,7 @@ describe("createCouponCredit", () => {
     );
   });
 
-  it("creates N monthly credits for a repeating coupon (durationMonths = N)", async () => {
-    mockCreateMetronomeCredit
-      .mockResolvedValueOnce(new Ok({ id: "credit-0" }))
-      .mockResolvedValueOnce(new Ok({ id: "credit-1" }))
-      .mockResolvedValueOnce(new Ok({ id: "credit-2" }));
-
-    const coupon = makeCoupon({ durationMonths: 3 });
-
-    const result = await createCouponCredit({
-      metronomeCustomerId: "cust-1",
-      coupon,
-      redemptionId: REDEMPTION_ID,
-      redeemedAt: REDEEMED_AT,
-      creditTypeId: CREDIT_TYPE_USD_ID,
-      currency: "usd",
-    });
-
-    expect(unwrapOk(result)).toEqual(["credit-0", "credit-1", "credit-2"]);
-    expect(mockCreateMetronomeCredit).toHaveBeenCalledTimes(3);
-
-    // Each call gets a sequential idempotency key
-    for (let i = 0; i < 3; i++) {
-      expect(mockCreateMetronomeCredit).toHaveBeenNthCalledWith(
-        i + 1,
-        expect.objectContaining({
-          idempotencyKey: `coupon-${REDEMPTION_ID}-${i}`,
-        })
-      );
-    }
-  });
-
-  it("uses correct monthly date boundaries for a 3-month repeating coupon", async () => {
-    mockCreateMetronomeCredit
-      .mockResolvedValueOnce(new Ok({ id: "c0" }))
-      .mockResolvedValueOnce(new Ok({ id: "c1" }))
-      .mockResolvedValueOnce(new Ok({ id: "c2" }));
-
+  it("uses correct date boundaries for a 3-month repeating coupon", async () => {
     const coupon = makeCoupon({ durationMonths: 3 });
 
     await createCouponCredit({
@@ -341,20 +390,11 @@ describe("createCouponCredit", () => {
       currency: "usd",
     });
 
-    // Month 0: Apr → May
-    expect(mockCreateMetronomeCredit).toHaveBeenNthCalledWith(
-      1,
+    expect(mockCreateMetronomeCredit).toHaveBeenCalledTimes(1);
+    expect(mockCreateMetronomeCredit).toHaveBeenCalledWith(
       expect.objectContaining({
         startingAt: "2026-04-01T10:00:00.000Z",
-        endingBefore: "2026-05-01T11:00:00.000Z",
-      })
-    );
-    // Month 1: May → Jun
-    expect(mockCreateMetronomeCredit).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        startingAt: "2026-05-01T10:00:00.000Z",
-        endingBefore: "2026-06-01T11:00:00.000Z",
+        endingBefore: "2026-07-01T11:00:00.000Z",
       })
     );
   });
@@ -521,30 +561,6 @@ describe("redeemCoupon", () => {
     );
   });
 
-  it("durationMonths=3 coupon → 3 credit IDs stored, status active", async () => {
-    const { auth } = await makeWorkspaceWithUserAuth();
-    const coupon = await CouponFactory.create({ durationMonths: 3 });
-    mockCreateMetronomeCredit
-      .mockResolvedValueOnce(new Ok({ id: "credit-1" }))
-      .mockResolvedValueOnce(new Ok({ id: "credit-2" }))
-      .mockResolvedValueOnce(new Ok({ id: "credit-3" }));
-
-    const result = await redeemCoupon(auth, { coupon });
-
-    expect(result.isOk()).toBe(true);
-    if (!result.isOk()) {
-      return;
-    }
-
-    expect(result.value.status).toBe("active");
-    expect(result.value.metronomeCreditIds).toEqual([
-      "credit-1",
-      "credit-2",
-      "credit-3",
-    ]);
-    expect(mockCreateMetronomeCredit).toHaveBeenCalledTimes(3);
-  });
-
   it("no active contract → Err", async () => {
     const { auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create();
@@ -618,6 +634,49 @@ describe("redeemCoupon", () => {
     // blocks a second pending/active row for the same workspace+coupon.
     const second = await redeemCoupon(auth, { coupon });
     expect(second.isErr()).toBe(true);
+  });
+
+  it("metronomePackageAlias provided → resolves credit type from package, does not fetch contract", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create({ durationMonths: null });
+    mockListMetronomePackages.mockResolvedValueOnce(
+      new Ok([
+        makePackageSummary({ aliases: ["pro-monthly"], rateCardId: "rc-pkg" }),
+      ])
+    );
+    mockGetMetronomeRateCardById.mockResolvedValueOnce(
+      new Ok(makeRateCard(CREDIT_TYPE_EUR_ID))
+    );
+    mockCreateMetronomeCredit.mockResolvedValue(new Ok({ id: "credit-eur" }));
+
+    const result = await redeemCoupon(auth, {
+      coupon,
+      metronomePackageAlias: "pro-monthly",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockGetActiveContract).not.toHaveBeenCalled();
+    expect(mockGetMetronomeRateCardById).toHaveBeenCalledWith({
+      rateCardId: "rc-pkg",
+    });
+    expect(mockCreateMetronomeCredit).toHaveBeenCalledWith(
+      expect.objectContaining({ creditTypeId: CREDIT_TYPE_EUR_ID })
+    );
+  });
+
+  it("metronomePackageAlias provided but alias not found → Err, no credit created", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create();
+    mockListMetronomePackages.mockResolvedValueOnce(new Ok([]));
+
+    const result = await redeemCoupon(auth, {
+      coupon,
+      metronomePackageAlias: "nonexistent-alias",
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(mockGetActiveContract).not.toHaveBeenCalled();
+    expect(mockCreateMetronomeCredit).not.toHaveBeenCalled();
   });
 
   it("Metronome failure → status failed, redemptionCount decremented, same workspace can retry", async () => {

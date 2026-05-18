@@ -36,6 +36,10 @@ export type ProjectType = SpaceType & {
   archivedAt: number | null;
 };
 
+export type ProjectListItemType = ProjectType & {
+  isStarred: boolean;
+};
+
 export function isProjectType(
   space: SpaceType | ProjectType
 ): space is ProjectType {

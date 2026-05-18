@@ -1,13 +1,15 @@
 import type { Authenticator } from "@app/lib/auth";
+import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
+import { getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd } from "@app/lib/reinforcement/consumption";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { daysAgo } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
-
 import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
   PENDING_SUGGESTION_MAX_AGE_DAYS,
@@ -71,6 +73,7 @@ function isEligibleCurrentSkillVersionRecord(
  * - It has not been modified in the last SKILL_STALENESS_THRESHOLD_DAYS days.
  * - It has pending suggestions with source=reinforcement younger than
  *   PENDING_SUGGESTION_MAX_AGE_DAYS days.
+ * - It has not reached the cap of credits for self-improving already.
  */
 async function fetchEligibleSkillIds(
   auth: Authenticator
@@ -101,17 +104,38 @@ async function fetchEligibleSkillIds(
     (skill) => !skillsWithPendingSuggestions.has(skill.id)
   );
 
+  // Filter out skills that have reached their per-skill consumption cap.
+  const { cycleStart } = await getCurrentPeriod(auth);
+  const skillConsumptionMap =
+    await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDateForSkills(
+      auth,
+      {
+        createdAfter: cycleStart,
+        skillModelIds: eligibleSkills.map((s) => s.id),
+      }
+    );
+
+  const defaultCapMicroUsd =
+    getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(workspace);
+  const capEligibleSkills = eligibleSkills.filter((skill) => {
+    const consumedMicroUsd = skillConsumptionMap.get(skill.id) ?? 0;
+    const capMicroUsd =
+      skill.selfImprovementCostsCapMicroUsd ?? defaultCapMicroUsd;
+    return consumedMicroUsd < capMicroUsd;
+  });
+
   logger.info(
     {
       workspaceId: workspace.sId,
       recentSkillCount: recentSkills.length,
       pendingSuggestionSkillCount: skillsWithPendingSuggestions.size,
       eligibleSkillCount: eligibleSkills.length,
+      capEligibleSkillCount: capEligibleSkills.length,
     },
     "ReinforcedSkills: eligible skill determination"
   );
 
-  return eligibleSkills;
+  return capEligibleSkills;
 }
 
 /**

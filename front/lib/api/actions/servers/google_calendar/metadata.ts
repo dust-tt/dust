@@ -4,35 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-const autoDeclineMode = z
-  .enum([
-    "declineNone",
-    "declineAllConflictingInvitations",
-    "declineOnlyNewConflictingInvitations",
-  ])
-  .optional();
-
-// Fields specific to eventType — grouped adjacent to eventType in both tools.
-const eventTypeSpecificFields = {
-  focusTimeProperties: z
-    .object({
-      autoDeclineMode,
-      chatStatus: z.enum(["available", "doNotDisturb"]).optional(),
-      declineMessage: z.string().max(500).optional(),
-    })
-    .optional()
-    .describe("Only applies when eventType is 'focusTime'."),
-  outOfOfficeProperties: z
-    .object({
-      autoDeclineMode,
-      declineMessage: z.string().max(500).optional(),
-    })
-    .optional()
-    .describe(
-      "Only applies when eventType is 'outOfOffice'. Controls auto-decline behavior for conflicting invitations."
-    ),
-};
-
 const sharedEventFields = {
   transparency: z
     .enum(["opaque", "transparent"])
@@ -167,7 +138,6 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .describe(
           "'focusTime' creates a native Focus Time block (DND in Google Chat, auto-decline). 'outOfOffice' creates an OOO block. Primary calendar only. Cannot be changed after creation."
         ),
-      ...eventTypeSpecificFields,
       ...sharedEventFields,
     },
     stake: "medium",
@@ -206,7 +176,6 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Whether to create a conference (Google Meet) for the event. If not provided, existing conference settings are preserved."
         ),
-      ...eventTypeSpecificFields,
       ...sharedEventFields,
     },
     stake: "medium",

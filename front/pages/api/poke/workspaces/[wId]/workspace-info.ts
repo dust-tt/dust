@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -32,6 +33,7 @@ export type PokeGetWorkspaceInfo = {
   hasMetronomeFeature: boolean;
   membersCount: number;
   metronomeCustomerId: string | null;
+  pendingSubscription: SubscriptionType | null;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeCustomerId: string | null;
   stripeSubscription: Stripe.Subscription | null;
@@ -105,10 +107,13 @@ async function handler(
         "dummy_feature_for_flag_testing"
       );
 
-      const hasMetronomeFeature = await hasFeatureFlag(
-        auth,
-        "metronome_billing"
-      );
+      const hasMetronomeFeature = await isMetronomeBillingEnabled(auth);
+
+      const pendingSubscriptionResource =
+        await SubscriptionResource.fetchPendingByWorkspaceModelId(
+          workspaceResource.id
+        );
+      const pendingSubscription = pendingSubscriptionResource?.toJSON() ?? null;
 
       const membersCount = await MembershipResource.getMembersCountForWorkspace(
         {
@@ -151,6 +156,7 @@ async function handler(
         hasMetronomeFeature,
         membersCount,
         metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
+        pendingSubscription,
         stripeCustomerId,
         stripeSubscription,
         subscriptions,

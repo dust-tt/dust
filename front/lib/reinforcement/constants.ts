@@ -32,6 +32,10 @@ export const PER_SKILL_CONVERSATION_CAP = 20;
 // $100 = 100_000_000 microUSD.
 export const DEFAULT_REINFORCEMENT_CAP_MICRO_USD = 100_000_000;
 
+// Default per-skill cap for self-improvement cost (in microUSD).
+// $20 = 20_000_000 microUSD.
+export const DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD = 20_000_000;
+
 // Scoring weights for conversation selection.
 export const WEIGHT_FEEDBACK = 0.45;
 export const WEIGHT_TOOL_ERRORS = 0.3;

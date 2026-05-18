@@ -1,19 +1,13 @@
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { CONVERSATION_FILES_SERVER_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import {
-  CONVERSATION_CAT_FILE_ACTION_NAME,
-  CONVERSATION_FILES_SERVER_NAME,
-  CONVERSATION_SEARCH_FILES_ACTION_NAME,
-} from "@app/lib/api/actions/servers/conversation_files/metadata";
-import { TOOLS } from "@app/lib/api/actions/servers/conversation_files/tools";
+  TOOLS,
+  TOOLS_WITH_FILESYSTEM,
+} from "@app/lib/api/actions/servers/conversation_files/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
-const NEW_FILE_EXPLORER_HIDDEN_TOOLS = new Set([
-  CONVERSATION_CAT_FILE_ACTION_NAME,
-  CONVERSATION_SEARCH_FILES_ACTION_NAME,
-]);
 
 async function createServer(
   auth: Authenticator,
@@ -21,14 +15,12 @@ async function createServer(
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("conversation_files");
 
-  const useFileSystem =
-    agentLoopContext?.runContext?.conversation.metadata?.useFileSystem === true;
+  const conversation =
+    agentLoopContext?.runContext?.conversation ??
+    agentLoopContext?.listToolsContext?.conversation;
+  const useFileSystem = conversation?.metadata?.useFileSystem === true;
 
-  for (const tool of TOOLS) {
-    if (useFileSystem && NEW_FILE_EXPLORER_HIDDEN_TOOLS.has(tool.name)) {
-      continue;
-    }
-
+  for (const tool of useFileSystem ? TOOLS_WITH_FILESYSTEM : TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
       monitoringName: CONVERSATION_FILES_SERVER_NAME,
     });

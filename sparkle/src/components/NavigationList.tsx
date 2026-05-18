@@ -1,4 +1,5 @@
 import type * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import { AnimatedText } from "@sparkle/components/AnimatedText";
 import { Button } from "@sparkle/components/Button";
 import {
   Collapsible,
@@ -12,6 +13,7 @@ import {
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import { TypingAnimation } from "@sparkle/components/TypingAnimation";
 import { ChevronDownIcon, ChevronUpIcon, MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -74,6 +76,8 @@ interface NavigationListItemProps
     Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
   label?: string;
+  labelAnimation?: "none" | "typing" | "streaming";
+  onTypingAnimationComplete?: () => void;
   icon?: React.ComponentType;
   avatar?: React.ReactNode;
   moreMenu?: React.ReactNode;
@@ -92,6 +96,8 @@ const NavigationListItem = React.forwardRef<
       className,
       selected,
       label,
+      labelAnimation = "none",
+      onTypingAnimationComplete,
       icon,
       avatar,
       href,
@@ -176,7 +182,17 @@ const NavigationListItem = React.forwardRef<
                   hasActivity && "s-font-semibold"
                 )}
               >
-                {label}
+                {labelAnimation === "typing" ? (
+                  <TypingAnimation
+                    text={label}
+                    duration={32}
+                    onComplete={onTypingAnimationComplete}
+                  />
+                ) : labelAnimation === "streaming" ? (
+                  <AnimatedText variant="muted">{label}</AnimatedText>
+                ) : (
+                  label
+                )}
               </span>
             )}
             {suffix && (
@@ -337,6 +353,7 @@ NavigationListCompactLabel.displayName = "NavigationListCompactLabel";
 interface NavigationListCollapsibleSectionProps
   extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
+  icon?: React.ComponentType;
   action?: React.ReactNode;
   actionOnHover?: boolean;
   defaultOpen?: boolean;
@@ -391,6 +408,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
   (
     {
       label,
+      icon,
       action,
       actionOnHover = true,
       children,
@@ -413,18 +431,25 @@ const NavigationListCollapsibleSection = React.forwardRef<
     const hasPartialCollapse =
       visibleItems !== undefined && visibleItems < childArray.length;
 
-    const visibleChildrenSlice =
-      hasPartialCollapse && !isShowingAll
-        ? childArray.slice(0, visibleItems)
-        : childArray;
+    const visibleChildrenSlice = hasPartialCollapse
+      ? childArray.slice(0, visibleItems)
+      : childArray;
 
-    const overflowChildren =
-      hasPartialCollapse && !isShowingAll ? childArray.slice(visibleItems) : [];
+    const overflowChildren = hasPartialCollapse
+      ? childArray.slice(visibleItems)
+      : [];
 
     const isCollapsible = type !== "static";
     const labelElement = (
       <div className={collapseableStyles({ variant, isCollapsible })}>
-        {label}
+        {icon ? (
+          <span className="s-flex s-items-center s-gap-1.5">
+            <Icon visual={icon} size="xs" />
+            <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
+          </span>
+        ) : (
+          label
+        )}
       </div>
     );
 
@@ -433,7 +458,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
         className={cn(
           "s-m-1.5 s-flex s-gap-1 s-pr-0.5 s-transition-opacity",
           actionOnHover
-            ? "[@media(hover:hover)]:s-opacity-0 hover:s-opacity-100 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
+            ? "[@media(hover:hover)]:s-opacity-0 hover:s-opacity-100 group-has-[:focus-visible]/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
             : "s-opacity-100"
         )}
         onClick={(e) => {

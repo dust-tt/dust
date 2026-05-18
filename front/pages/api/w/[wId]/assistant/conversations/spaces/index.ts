@@ -3,15 +3,16 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectType } from "@app/types/space";
+import type { ProjectListItemType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetBySpacesSummaryResponseBody = {
   summary: Array<{
-    space: ProjectType;
+    space: ProjectListItemType;
     unreadConversations: ConversationWithoutContentType[];
     nonParticipantUnreadConversations: ConversationWithoutContentType[];
   }>;
@@ -56,6 +57,11 @@ async function handler(
           auth,
           nonArchivedSpaces.map((s) => s.id)
         );
+
+      const starredSpaceModelIds =
+        await UserProjectPreferencesResource.fetchStarred(auth, {
+          spaceIds: nonArchivedSpaces.map((s) => s.id),
+        });
 
       // Group conversations by space
       const spaceIdToSpaceMap = new Map(
@@ -120,6 +126,7 @@ async function handler(
             // We excluded archived projects and we only list projects where the user is a member.
             archivedAt: null,
             isMember: true,
+            isStarred: starredSpaceModelIds.has(space.id),
           },
           unreadConversations:
             conversationsBySpace.get(space.id)?.unreadConversations ?? [],

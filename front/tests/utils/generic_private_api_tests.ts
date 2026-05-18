@@ -4,6 +4,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
+import type { WorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { RequestMethod } from "node-mocks-http";
 import { createMocks } from "node-mocks-http";
@@ -47,12 +48,14 @@ export const createPrivateApiMockRequest = async ({
   method = "GET",
   role = "user",
   isSuperUser = false,
+  workspace: existingWorkspace,
 }: {
   method?: RequestMethod;
   role?: MembershipRoleType;
   isSuperUser?: boolean;
+  workspace?: WorkspaceType;
 } = {}) => {
-  const workspace = await WorkspaceFactory.basic();
+  const workspace = existingWorkspace ?? (await WorkspaceFactory.basic());
   const user = await (isSuperUser
     ? UserFactory.superUser()
     : UserFactory.basic());

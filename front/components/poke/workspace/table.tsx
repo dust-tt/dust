@@ -10,6 +10,7 @@ import { getMetronomeCustomerUrl } from "@app/lib/metronome/urls";
 import { usePokeWorkOSDSyncStatus } from "@app/lib/swr/poke";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { ExtensionConfigurationType } from "@app/types/extension";
+import { isDevelopment } from "@app/types/shared/env";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
@@ -19,6 +20,7 @@ export function WorkspaceInfoTable({
   owner,
   membersCount,
   metronomeCustomerId,
+  stripeCustomerId,
   workspaceVerifiedDomains,
   workspaceCreationDay,
   extensionConfig,
@@ -30,6 +32,7 @@ export function WorkspaceInfoTable({
   owner: WorkspaceType;
   membersCount: number;
   metronomeCustomerId: string | null;
+  stripeCustomerId: string | null;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
@@ -113,6 +116,26 @@ export function WorkspaceInfoTable({
                   >
                     {owner.workOSOrganizationId}
                   </LinkWrapper>
+                )}
+              </PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>Stripe customer</PokeTableCell>
+              <PokeTableCell>
+                {stripeCustomerId ? (
+                  <LinkWrapper
+                    href={
+                      isDevelopment()
+                        ? `https://dashboard.stripe.com/test/customers/${stripeCustomerId}`
+                        : `https://dashboard.stripe.com/customers/${stripeCustomerId}`
+                    }
+                    target="_blank"
+                    className="text-xs text-highlight-400"
+                  >
+                    {stripeCustomerId}
+                  </LinkWrapper>
+                ) : (
+                  "Not provisioned"
                 )}
               </PokeTableCell>
             </PokeTableRow>
@@ -228,7 +251,7 @@ export function WorkspaceInfoTable({
               </>
             )}
             <PokeTableRow>
-              <PokeTableCell>Reinforcement</PokeTableCell>
+              <PokeTableCell>Self-Improving Skills</PokeTableCell>
               <PokeTableCell>
                 <LinkWrapper
                   href={`https://cloud.temporal.io/namespaces/${temporalFrontNamespace}/schedules?query=%60ScheduleId%60%3D%22reinforcement-workspace-${owner.sId}%22`}

@@ -20,6 +20,7 @@ export const importAppPlugin = createPlugin({
       },
     },
   },
+  isApplicableTo: (_auth, space) => !space?.isProject(),
   execute: async (auth, space, args) => {
     if (!space) {
       return new Err(new Error("Space not found"));

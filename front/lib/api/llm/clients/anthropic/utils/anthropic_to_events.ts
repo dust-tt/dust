@@ -454,10 +454,13 @@ async function estimateReasoningTokens(
     tokenUsageAccumulator.outputTokens =
       tokenUsageAccumulator.outputTokens - reasoningTokens;
   } catch (err) {
-    logger.error("Failed getting token details from Anthropic", {
-      error: normalizeError(err),
-      metadata,
-    });
+    logger.error(
+      {
+        errorDetails: normalizeError(err),
+        metadata,
+      },
+      "Failed getting token details from Anthropic"
+    );
   }
 }
 

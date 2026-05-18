@@ -21,9 +21,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type GetMCPServerViewsResponseBody = {
   success: boolean;
@@ -35,21 +34,17 @@ export type PostMCPServerViewResponseBody = {
   serverView: MCPServerViewType;
 };
 
-const GetQueryParamsSchema = t.type({
-  availability: t.union([
-    t.undefined,
-    t.literal("manual"),
-    t.literal("auto"),
-    t.literal("auto_hidden_builder"),
-    t.literal("all"),
-  ]),
+const GetQueryParamsSchema = z.object({
+  availability: z
+    .enum(["manual", "auto", "auto_hidden_builder", "all"])
+    .optional(),
 });
 
-const PostQueryParamsSchema = t.type({
-  mcpServerId: t.string,
+const PostQueryParamsSchema = z.object({
+  mcpServerId: z.string(),
 });
 
-export type PostMCPServersQueryParams = t.TypeOf<typeof PostQueryParamsSchema>;
+export type PostMCPServersQueryParams = z.infer<typeof PostQueryParamsSchema>;
 
 async function notifyWorkspaceAdminsAboutAffectedAgents(
   auth: Authenticator,
@@ -133,9 +128,9 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      const r = GetQueryParamsSchema.decode(req.query);
+      const r = GetQueryParamsSchema.safeParse(req.query);
 
-      if (isLeft(r)) {
+      if (!r.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -145,7 +140,7 @@ async function handler(
         });
       }
 
-      const { availability = "manual" } = r.right;
+      const { availability = "manual" } = r.data;
 
       const serverViews = (
         await MCPServerViewResource.listBySpace(auth, space)
@@ -210,9 +205,9 @@ async function handler(
       });
     }
     case "POST": {
-      const r = PostQueryParamsSchema.decode(req.body);
+      const r = PostQueryParamsSchema.safeParse(req.body);
 
-      if (isLeft(r)) {
+      if (!r.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -222,7 +217,7 @@ async function handler(
         });
       }
 
-      const { mcpServerId } = r.right;
+      const { mcpServerId } = r.data;
 
       if (!auth.isAdmin()) {
         return apiError(req, res, {

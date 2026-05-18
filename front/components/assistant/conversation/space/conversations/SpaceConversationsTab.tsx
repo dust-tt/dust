@@ -147,6 +147,7 @@ export function SpaceConversationsTab({
   const isProjectEmpty = !isConversationsLoading && isSpaceEmpty;
   const isFilteredEmpty =
     !isConversationsLoading && !isSpaceEmpty && !hasHistory;
+  const isSingleMemberProject = spaceInfo.members.length === 1;
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
@@ -195,6 +196,7 @@ export function SpaceConversationsTab({
                 draftKey={`space-${spaceInfo.sId}-new-conversation`}
                 space={spaceInfo}
                 disableAutoFocus={false}
+                placeholder={`Start a conversation in ${spaceInfo.name}`}
               />
             ) : (
               <ProjectJoinCTA
@@ -267,30 +269,32 @@ export function SpaceConversationsTab({
                   </div>
                 </div>
                 <div className="flex flex-row items-center justify-between gap-3">
-                  <ButtonsSwitchList
-                    key={conversationFilter}
-                    defaultValue={conversationFilter}
-                    size="xs"
-                  >
-                    <ButtonsSwitch
-                      value="group"
-                      label="Shared"
-                      tooltip="Show only threads where at least two people have sent messages."
-                      onClick={() => onConversationFilterChange("group")}
-                    />
-                    <ButtonsSwitch
-                      value="with_me"
-                      label="Just mine"
-                      tooltip="Show only conversations where you have sent a message."
-                      onClick={() => onConversationFilterChange("with_me")}
-                    />
-                    <ButtonsSwitch
-                      value="all"
-                      label="All project's"
-                      tooltip="Show every conversation in this project."
-                      onClick={() => onConversationFilterChange("all")}
-                    />
-                  </ButtonsSwitchList>
+                  {!isSingleMemberProject && (
+                    <ButtonsSwitchList
+                      key={conversationFilter}
+                      defaultValue={conversationFilter}
+                      size="xs"
+                    >
+                      <ButtonsSwitch
+                        value="with_me"
+                        label="Mine"
+                        tooltip="Conversations where you have sent a message."
+                        onClick={() => onConversationFilterChange("with_me")}
+                      />
+                      <ButtonsSwitch
+                        value="group"
+                        label="Group"
+                        tooltip="Conversations with more than one person"
+                        onClick={() => onConversationFilterChange("group")}
+                      />
+                      <ButtonsSwitch
+                        value="all"
+                        label="All"
+                        tooltip="Every conversation in this project."
+                        onClick={() => onConversationFilterChange("all")}
+                      />
+                    </ButtonsSwitchList>
+                  )}
                   <Button
                     size="xs"
                     variant="outline"
@@ -331,7 +335,7 @@ export function SpaceConversationsTab({
                       return (
                         <div key={dateLabel}>
                           <ListItemSection>{dateLabel}</ListItemSection>
-                          <ListGroup>
+                          <ListGroup className="border-b-0">
                             {dateConversations
                               .toSorted((a, b) => b.updated - a.updated)
                               .map((conversation) => (

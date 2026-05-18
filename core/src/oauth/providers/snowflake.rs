@@ -51,13 +51,16 @@ impl SnowflakeConnectionProvider {
         )
     }
 
-    /// Builds the Basic auth header for Snowflake OAuth
+    /// Builds the Basic auth header for Snowflake OAuth.
+    /// RFC 6749 §2.3.1 requires URL-encoding client_id and client_secret before base64-encoding.
     fn build_auth_header(client_id: &str, client_secret: &str) -> String {
+        let encoded_id = urlencoding::encode(client_id);
+        let encoded_secret = urlencoding::encode(client_secret);
         format!(
             "Basic {}",
             base64::Engine::encode(
                 &base64::engine::general_purpose::STANDARD,
-                format!("{}:{}", client_id, client_secret)
+                format!("{}:{}", encoded_id, encoded_secret)
             )
         )
     }
@@ -224,5 +227,97 @@ impl Provider for SnowflakeConnectionProvider {
                 self.default_handle_provider_request_error(error)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::Engine;
+
+    fn decode_basic_header(header: &str) -> String {
+        let encoded = header
+            .strip_prefix("Basic ")
+            .expect("header must start with 'Basic '");
+        String::from_utf8(
+            base64::engine::general_purpose::STANDARD
+                .decode(encoded)
+                .expect("valid base64"),
+        )
+        .expect("valid UTF-8")
+    }
+
+    #[test]
+    fn test_build_auth_header_plain_credentials() {
+        let header = SnowflakeConnectionProvider::build_auth_header("myclient", "mysecret");
+        assert_eq!(decode_basic_header(&header), "myclient:mysecret");
+    }
+
+    #[test]
+    fn test_build_auth_header_url_encodes_special_chars() {
+        // Snowflake-generated secrets often contain '+', '/', '=' from base64 output.
+        // RFC 6749 §2.3.1 requires these to be percent-encoded before base64-encoding.
+        let header = SnowflakeConnectionProvider::build_auth_header(
+            "client+id",
+            "secret+with/special=chars",
+        );
+        assert_eq!(
+            decode_basic_header(&header),
+            "client%2Bid:secret%2Bwith%2Fspecial%3Dchars"
+        );
+    }
+
+    #[test]
+    fn test_get_token_endpoint_format() {
+        let url = SnowflakeConnectionProvider::get_token_endpoint("my-account");
+        assert_eq!(
+            url,
+            "https://my-account.snowflakecomputing.com/oauth/token-request"
+        );
+    }
+
+    #[test]
+    fn test_get_token_endpoint_trims_whitespace() {
+        let url = SnowflakeConnectionProvider::get_token_endpoint("  my-account  ");
+        assert_eq!(
+            url,
+            "https://my-account.snowflakecomputing.com/oauth/token-request"
+        );
+    }
+
+    #[test]
+    fn test_parse_token_response_happy_path() {
+        let raw = serde_json::json!({
+            "access_token": "tok_abc",
+            "expires_in": 600,
+            "refresh_token": "refresh_xyz"
+        });
+        let (access, expires, refresh) =
+            SnowflakeConnectionProvider::parse_token_response(&raw).unwrap();
+        assert_eq!(access, "tok_abc");
+        assert_eq!(expires, 600);
+        assert_eq!(refresh, Some("refresh_xyz".to_string()));
+    }
+
+    #[test]
+    fn test_parse_token_response_no_refresh_token() {
+        let raw = serde_json::json!({
+            "access_token": "tok_abc",
+            "expires_in": 3600
+        });
+        let (_, _, refresh) = SnowflakeConnectionProvider::parse_token_response(&raw).unwrap();
+        assert_eq!(refresh, None);
+    }
+
+    #[test]
+    fn test_parse_token_response_missing_access_token_errors() {
+        let raw = serde_json::json!({ "expires_in": 600 });
+        assert!(SnowflakeConnectionProvider::parse_token_response(&raw).is_err());
+    }
+
+    #[test]
+    fn test_parse_token_response_missing_expires_in_errors() {
+        let raw = serde_json::json!({ "access_token": "tok" });
+        assert!(SnowflakeConnectionProvider::parse_token_response(&raw).is_err());
     }
 }

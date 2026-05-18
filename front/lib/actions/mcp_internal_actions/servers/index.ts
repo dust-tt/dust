@@ -53,7 +53,7 @@ import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
 import { default as projectManagerServer } from "@app/lib/api/actions/servers/project_manager";
-import { default as projectTodosServer } from "@app/lib/api/actions/servers/project_todos";
+import { default as projectTasksServer } from "@app/lib/api/actions/servers/project_tasks";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as runAgentServer } from "@app/lib/api/actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
@@ -252,8 +252,8 @@ export async function getInternalMCPServer(
       return productboardServer(auth, agentLoopContext);
     case "project_manager":
       return projectManagerServer(auth, agentLoopContext);
-    case "project_todos":
-      return projectTodosServer(auth, agentLoopContext);
+    case "project_tasks":
+      return projectTasksServer(auth, agentLoopContext);
     case "poke":
       return pokeServer(auth, agentLoopContext);
     case "ask_user_question":

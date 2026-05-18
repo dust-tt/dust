@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/search_conversations.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { searchProjectConversations } from "@app/lib/api/projects/search";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";

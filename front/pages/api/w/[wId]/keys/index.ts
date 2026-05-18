@@ -13,9 +13,8 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { KeyType } from "@app/types/key";
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 const MAX_API_KEY_CREATION_PER_DAY = 30;
 
@@ -27,17 +26,12 @@ export type PostKeysResponseBody = {
   key: KeyType;
 };
 
-const CreateKeyPostBodySchema = t.type({
-  name: t.string,
-  group_id: t.union([t.string, t.undefined]),
-  group_ids: t.union([t.array(t.string), t.undefined]),
-  monthly_cap_micro_usd: t.union([t.number, t.null, t.undefined]),
-  role: t.union([
-    t.literal("user"),
-    t.literal("builder"),
-    t.literal("admin"),
-    t.undefined,
-  ]),
+const CreateKeyPostBodySchema = z.object({
+  name: z.string(),
+  group_id: z.string().optional(),
+  group_ids: z.array(z.string()).optional(),
+  monthly_cap_micro_usd: z.number().nullish(),
+  role: z.enum(["user", "builder", "admin"]).optional(),
 });
 
 async function handler(
@@ -72,8 +66,8 @@ async function handler(
       return;
 
     case "POST":
-      const bodyValidation = CreateKeyPostBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
+      const bodyValidation = CreateKeyPostBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -84,7 +78,7 @@ async function handler(
       }
 
       const { name, group_id, group_ids, monthly_cap_micro_usd, role } =
-        bodyValidation.right;
+        bodyValidation.data;
       const trimmedName = name.trim();
       const keyRole = role ?? "builder";
 

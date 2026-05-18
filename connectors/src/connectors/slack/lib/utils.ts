@@ -1,7 +1,6 @@
 import type { SlackChannelModel } from "@connectors/lib/models/slack";
 import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import last from "lodash/last";
 
 export function getWeekStart(date: Date): Date {
   const dateCopy = new Date(date);
@@ -79,11 +78,11 @@ export function isSlackNonThreadedMessagesInternalId(
 export function slackChannelInternalIdFromSlackChannelId(
   channel: string
 ): SlackChannelInternalId {
-  return `slack-channel-${_.last(channel.split("slack-channel-"))!}`;
+  return `slack-channel-${last(channel.split("slack-channel-"))!}`;
 }
 
 export function slackChannelIdFromInternalId(nodeId: SlackChannelInternalId) {
-  return _.last(nodeId.split("slack-channel-"))!;
+  return last(nodeId.split("slack-channel-"))!;
 }
 
 export type SlackThreadIdentifier = {

@@ -3,6 +3,7 @@ import { InternalMCPBearerTokenForm } from "@app/components/actions/mcp/Internal
 import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
+import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import {
   isRemoteMCPServerType,
   requiresBearerTokenConfiguration,
@@ -17,12 +18,14 @@ type MCPServerDetailsInfoProps = {
   mcpServerView: MCPServerViewType | null;
   owner: LightWorkspaceType;
   readOnly?: boolean;
+  sensitivityLabelsController?: SensitivityLabelsController;
 };
 
 export function MCPServerDetailsInfo({
   mcpServerView,
   owner,
   readOnly = false,
+  sensitivityLabelsController,
 }: MCPServerDetailsInfoProps) {
   const editedAt = useMemo(() => {
     const d = new Date(0);
@@ -74,7 +77,11 @@ export function MCPServerDetailsInfo({
       <MCPServerViewForm mcpServerView={mcpServerView} />
       <Separator />
       {mcpServerView.server.authorization && (
-        <MCPServerSettings mcpServerView={mcpServerView} owner={owner} />
+        <MCPServerSettings
+          mcpServerView={mcpServerView}
+          owner={owner}
+          sensitivityLabelsController={sensitivityLabelsController}
+        />
       )}
       {isRemoteMCPServerType(mcpServerView.server) ? (
         <RemoteMCPForm mcpServer={mcpServerView.server} owner={owner} />

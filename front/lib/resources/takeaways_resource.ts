@@ -10,12 +10,12 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
-  ProjectTodoSourceInfo,
-  ProjectTodoSourceType,
-} from "@app/types/project_todo";
+  ProjectTaskSourceInfo,
+  ProjectTaskSourceType,
+} from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
-import type { TodoVersionedActionItem } from "@app/types/takeaways";
+import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type {
   Attributes,
   CreationAttributes,
@@ -29,13 +29,13 @@ export type TakeawaySourceDocument = {
   title: string;
   text: string;
   id: string;
-  type: ProjectTodoSourceType;
+  type: ProjectTaskSourceType;
   uri: string;
 };
 
 export type TakeawaysWithSource = {
   takeaway: TakeawaysResource;
-  source: ProjectTodoSourceInfo;
+  source: ProjectTaskSourceInfo;
 };
 
 type TakeawaysVersionCreationAttributes = CreationAttributes<TakeawaysModel> & {
@@ -255,7 +255,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     });
 
     // One source per takeaway (a takeaway is produced by one source).
-    const sourceByTakeawaysId = new Map<ModelId, ProjectTodoSourceInfo>(
+    const sourceByTakeawaysId = new Map<ModelId, ProjectTaskSourceInfo>(
       sources.map((s) => [
         s.takeawaysId,
         {
@@ -289,7 +289,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     {
       sourceId,
       sourceType,
-    }: { sourceId: string; sourceType: ProjectTodoSourceType },
+    }: { sourceId: string; sourceType: ProjectTaskSourceType },
     transaction?: Transaction
   ): Promise<TakeawaysResource | null> {
     const source = await TakeawaySourcesModel.findOne({
@@ -333,11 +333,11 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       spaceId: string;
       document: {
         id: string;
-        type: ProjectTodoSourceType;
+        type: ProjectTaskSourceType;
         title: string | null;
         uri: string | null;
       };
-      actionItems: TodoVersionedActionItem[];
+      actionItems: TaskVersionedActionItem[];
     },
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
@@ -406,7 +406,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     }: {
       conversationId: string;
       spaceId: string;
-      actionItems: TodoVersionedActionItem[];
+      actionItems: TaskVersionedActionItem[];
     },
     transaction?: Transaction
   ): Promise<TakeawaysResource> {

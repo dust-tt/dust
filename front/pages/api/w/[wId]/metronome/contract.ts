@@ -7,14 +7,14 @@ import {
   reactivateWorkspaceContract,
 } from "@app/lib/metronome/contract_lifecycle";
 import { parseMauTiers } from "@app/lib/metronome/mau_sync";
+import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type MetronomeContractSummary = {
   planFamily: "pro" | "enterprise";
@@ -26,6 +26,8 @@ export type MetronomeContractSummary = {
   mauTiers: Array<{ start: number; end: number | null }> | null;
   /** ms epoch — set when the contract is scheduled to end (cancellation or fixed term). */
   contractEndingAtMs: number | null;
+  /** True if the contract has at least one seat-billed subscription */
+  hasSeatSubscription: boolean;
 };
 
 export type GetMetronomeContractResponseBody = {
@@ -36,8 +38,8 @@ type PatchMetronomeContractResponseBody = {
   success: boolean;
 };
 
-export const PatchMetronomeContractRequestBody = t.type({
-  action: t.union([t.literal("cancel"), t.literal("reactivate")]),
+export const PatchMetronomeContractRequestBody = z.object({
+  action: z.enum(["cancel", "reactivate"]),
 });
 
 async function handler(
@@ -131,6 +133,7 @@ async function handleGet(
       planFamily,
       mauTiers,
       contractEndingAtMs,
+      hasSeatSubscription: hasContractSeatSubscription(contract),
     },
   });
 }
@@ -142,9 +145,9 @@ async function handlePatch(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const bodyValidation = PatchMetronomeContractRequestBody.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = PatchMetronomeContractRequestBody.safeParse(req.body);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -154,7 +157,7 @@ async function handlePatch(
     });
   }
 
-  const { action } = bodyValidation.right;
+  const { action } = bodyValidation.data;
 
   switch (action) {
     case "cancel": {

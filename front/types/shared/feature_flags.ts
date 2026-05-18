@@ -231,10 +231,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",
   },
-  project_todo: {
-    description: "Enable project todo tab (todos and what's new digest)",
-    stage: "dust_only",
-  },
   conversations_slack_notifications: {
     description: "Enable slack notifications",
     stage: "dust_only",
@@ -244,10 +240,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "After a response from Anthropic, make an additional API call to get the reasoning token count for better usage tracking",
     // Not really on_demand but we want to be able to enable it for customers
     stage: "on_demand",
-  },
-  sessions_branching: {
-    description: "Enable sessions branching",
-    stage: "dust_only",
   },
   reinforced_agents: {
     description:
@@ -297,11 +289,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Dummy feature flag used for testing feature flag behavior",
     stage: "dust_only",
   },
-  enable_compaction: {
-    description:
-      "Enable context compaction: summarize older messages to free up context window",
-    stage: "dust_only",
-  },
   browser_extension_mcp_tools: {
     description:
       "Show the browser extension MCP tools toggle in workspace access settings",
@@ -324,6 +311,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   new_file_explorer: {
     description:
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
+    stage: "dust_only",
+  },
+  metronome_billing_usage_page: {
+    description:
+      "Enable the new Usage admin page with credit pool display and workspace usage management.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

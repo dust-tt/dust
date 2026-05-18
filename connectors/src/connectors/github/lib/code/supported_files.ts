@@ -66,6 +66,8 @@ const EXTENSION_WHITELIST = [
   ".properties", // Java properties files
   ".avsc", // Apache Avro schema definition
   ".avdl", // Apache Avro IDL definition
+  ".lkml", // Looker LookML model/view files
+  ".lookml", // Looker legacy dashboard files
 
   ".item", // Talend files, a data integration/ETL platform.
 

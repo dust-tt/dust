@@ -306,16 +306,21 @@ const adaptiveGridClasses = cn(
 
 interface CardGridProps extends React.HTMLAttributes<HTMLDivElement> {
   adaptColumns?: boolean;
+  gridClassName?: string;
 }
 
 export const CardGrid = React.forwardRef<HTMLDivElement, CardGridProps>(
-  ({ children, className, adaptColumns = false, ...props }, ref) => {
+  (
+    { children, className, gridClassName, adaptColumns = false, ...props },
+    ref
+  ) => {
     return (
       <div ref={ref} className={cn("s-@container", className)} {...props}>
         <div
           className={cn(
             "s-grid s-grid-cols-1 s-gap-2",
-            adaptColumns ? adaptiveGridClasses : uncappedGridClasses
+            gridClassName ??
+              (adaptColumns ? adaptiveGridClasses : uncappedGridClasses)
           )}
         >
           {children}

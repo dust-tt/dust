@@ -36,15 +36,12 @@ export const actionItemsSuite: TakeawayTestSuite = {
       expectedAssertions: [
         shouldExtractActionItem("migration", {
           assigneeUserId: "user-bob",
-          status: "open",
         }),
         shouldExtractActionItem("review", {
           assigneeUserId: "user-alice",
-          status: "open",
         }),
         shouldExtractActionItem("monitoring", {
           assigneeUserId: "user-carol",
-          status: "open",
         }),
       ],
       judgeCriteria: `Three clear action items with explicit assignees:
@@ -55,7 +52,7 @@ export const actionItemsSuite: TakeawayTestSuite = {
 Score 0 if fewer than 2 action items extracted.
 Score 1 if items extracted but assignees are wrong.
 Score 2 if all items extracted, most assignees correct.
-Score 3 if all 3 items extracted with correct assignees and open status.`,
+Score 3 if all 3 items extracted with correct assignees.`,
     },
 
     // ── Agent response should NOT become action item ──────────────────────────
@@ -92,66 +89,6 @@ Score 0 if the agent's responses are extracted as action items.
 Score 1 if Alice's action item is missing.
 Score 2 if Alice's item is extracted but agent items also appear.
 Score 3 if only Alice's action item is extracted, agent responses correctly ignored.`,
-    },
-
-    // ── Status transition to done ─────────────────────────────────────────────
-
-    {
-      scenarioId: "status-transition-to-done",
-      document: {
-        id: "doc-3",
-        title: "Sprint review",
-        type: "slack",
-        text: [
-          "Bob: Quick update — the migration script is done, deployed to staging yesterday",
-          "Alice: I've reviewed the PR, looks good. Still need to update the API docs though",
-        ].join("\n"),
-        uri: "https://example.com/doc-3",
-      },
-      members: [
-        { sId: "user-alice", fullName: "Alice Martin", email: "alice@co.com" },
-        { sId: "user-bob", fullName: "Bob Chen", email: "bob@co.com" },
-      ],
-      previousVersion: {
-        actionItems: [
-          {
-            sId: "prev-action-1",
-            shortDescription: "Write the migration script",
-            assigneeUserId: "user-bob",
-            assigneeName: "Bob Chen",
-            status: "open",
-            detectedDoneAt: null,
-            detectedDoneRationale: null,
-            detectedCreationRationale: null,
-          },
-          {
-            sId: "prev-action-2",
-            shortDescription: "Review the PR",
-            assigneeUserId: "user-alice",
-            assigneeName: "Alice Martin",
-            status: "open",
-            detectedDoneAt: null,
-            detectedDoneRationale: null,
-            detectedCreationRationale: null,
-          },
-        ],
-      },
-      expectedAssertions: [
-        shouldExtractActionItem("migration", { status: "done" }),
-        shouldExtractActionItem("review", { status: "done" }),
-        shouldExtractActionItem("API docs", { status: "open" }),
-        shouldPreserveSId("actionItem", "prev-action-1"),
-        shouldPreserveSId("actionItem", "prev-action-2"),
-      ],
-      judgeCriteria: `Two previously tracked action items should transition to done:
-- The migration script is explicitly stated as done by Bob → status "done"
-- The PR review is explicitly completed by Alice → status "done"
-- A new action item for updating API docs should be created (status "open")
-
-Score 0 if status transitions are wrong (done items shown as open or vice versa).
-Score 1 if only one of the two items is correctly marked as done.
-Score 2 if both done transitions are correct but the new API docs item is missing.
-Score 3 if all 3 items present with correct statuses (2 done, 1 open).`,
     },
 
     // ── Invalid assignee should be filtered ───────────────────────────────────
@@ -212,7 +149,6 @@ Score 3 if Dave's action has no assignee_user_id and Bob's action is correctly a
         shouldNotExtractActionItem("error messages"),
         shouldExtractActionItem("hotfix", {
           assigneeUserId: "user-alice",
-          status: "open",
         }),
         maxActionItems(2),
       ],
@@ -287,11 +223,9 @@ Score 3 if only the hotfix is extracted as an action item.`,
       expectedAssertions: [
         shouldExtractActionItem("show", {
           assigneeUserId: "abcdef",
-          status: "open",
         }),
         shouldExtractActionItem("opt-in", {
           assigneeUserId: "zxcvb",
-          status: "open",
         }),
         shouldNotExtractActionItem("1 and 2"),
         maxActionItems(4),
@@ -299,8 +233,8 @@ Score 3 if only the hotfix is extracted as an action item.`,
       judgeCriteria: `Seb commits to working on items 3, 4, and 5 of the TODO UX improvements, and defers 1 and 2 to further brainstorming.
 Rcs is described as owning the opt-in part.
 
-- Rcs's opt-in ownership → action item assigned to user-rcs (open)
-- Seb's commitment to items 3, 4 and 5 → action items assigned to user-seb (open); these can be grouped or individual
+- Rcs's opt-in ownership → action item assigned to user-rcs
+- Seb's commitment to items 3, 4 and 5 → action items assigned to user-seb; these can be grouped or individual
 - Items 1 and 2 (manually add / edit TODO) are explicitly deferred — NOT action items
 
 Score 0 if deferred items 1 and 2 are extracted as action items.
@@ -334,9 +268,6 @@ Score 3 if Rcs's opt-in item and Seb's items 3/4/5 are correctly extracted, item
             shortDescription: "Write the migration script for the users table",
             assigneeUserId: "user-alice",
             assigneeName: "Alice Martin",
-            status: "open",
-            detectedDoneAt: null,
-            detectedDoneRationale: null,
             detectedCreationRationale:
               "Alice committed to writing the migration script by Friday",
           },
@@ -345,9 +276,6 @@ Score 3 if Rcs's opt-in item and Seb's items 3/4/5 are correctly extracted, item
             shortDescription: "Review the migration PR once it's ready",
             assigneeUserId: "user-bob",
             assigneeName: "Bob Chen",
-            status: "open",
-            detectedDoneAt: null,
-            detectedDoneRationale: null,
             detectedCreationRationale:
               "Bob committed to reviewing the migration PR",
           },
@@ -391,15 +319,14 @@ Score 3 if the two existing items are preserved with their original sIds and no 
       expectedAssertions: [
         shouldExtractActionItem("runbook", {
           assigneeUserId: "user-bob",
-          status: "open",
         }),
         maxActionItems(1),
       ],
       judgeCriteria: `One new task assigned:
-- Bob asked to update the runbook (open)
+- Bob asked to update the runbook
 
-Score 0 if no tasks are extracted as open.
-Score 3 if the task item are correct with right statuses and no spurious extractions.`,
+Score 0 if no tasks are extracted.
+Score 3 if the task item is correct and no spurious extractions.`,
     },
   ],
 };

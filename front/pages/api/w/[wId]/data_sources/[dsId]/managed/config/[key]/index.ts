@@ -7,13 +7,12 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const PostManagedDataSourceConfigRequestBodySchema = t.type({
-  configValue: t.string,
+export const PostManagedDataSourceConfigRequestBodySchema = z.object({
+  configValue: z.string(),
 });
 
 export type GetOrPostManagedDataSourceConfigResponseBody = {
@@ -98,6 +97,7 @@ async function handler(
       "gongPermissionProfiles",
       "gongExcludeTitleKeywords",
       "privateIntegrationCredentialId",
+      "microsoftSensitivityLabelsToInclude",
     ].includes(configKey)
   ) {
     return apiError(req, res, {
@@ -144,9 +144,9 @@ async function handler(
       }
 
       const bodyValidation =
-        PostManagedDataSourceConfigRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        PostManagedDataSourceConfigRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -159,7 +159,7 @@ async function handler(
       const setConfigRes = await connectorsAPI.setConnectorConfig(
         dataSource.connectorId,
         configKey,
-        bodyValidation.right.configValue
+        bodyValidation.data.configValue
       );
 
       if (setConfigRes.isErr()) {
@@ -173,7 +173,7 @@ async function handler(
         });
       }
 
-      res.status(200).json({ configValue: bodyValidation.right.configValue });
+      res.status(200).json({ configValue: bodyValidation.data.configValue });
       return;
 
     default:

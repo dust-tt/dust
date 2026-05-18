@@ -1,3 +1,6 @@
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/healthz.ts
+
 /** @ignoreswagger */
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { NextApiRequest, NextApiResponse } from "next";

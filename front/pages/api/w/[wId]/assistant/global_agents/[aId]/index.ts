@@ -4,16 +4,15 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 type PatchGlobalAgentSettingResponseBody = {
   success: boolean;
 };
-const PatchGlobalAgentSettingsRequestBodySchema = t.type({
-  status: t.union([t.literal("active"), t.literal("disabled_by_admin")]),
+const PatchGlobalAgentSettingsRequestBodySchema = z.object({
+  status: z.enum(["active", "disabled_by_admin"]),
 });
 
 async function handler(
@@ -36,11 +35,10 @@ async function handler(
 
   switch (req.method) {
     case "PATCH":
-      const bodyValidation = PatchGlobalAgentSettingsRequestBodySchema.decode(
-        req.body
-      );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation =
+        PatchGlobalAgentSettingsRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -52,7 +50,7 @@ async function handler(
 
       const created = await upsertGlobalAgentSettings(auth, {
         agentId: req.query.aId as string,
-        status: bodyValidation.right.status,
+        status: bodyValidation.data.status,
       });
 
       if (!created) {

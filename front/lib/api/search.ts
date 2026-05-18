@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import config from "@app/lib/api/config";
 import {
   getContentNodeFromCoreNode,
@@ -21,8 +20,8 @@ import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import * as t from "io-ts";
-import type { NextApiRequest } from "next";
+import type { ParsedUrlQuery } from "querystring";
+import { z } from "zod";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -41,58 +40,42 @@ type SearchError = {
   error: APIError;
 };
 
-const SearchSort = t.array(
-  t.type({
-    field: t.union([t.literal("title"), t.literal("timestamp")]),
-    direction: t.union([t.literal("asc"), t.literal("desc")]),
+const SearchSort = z.array(
+  z.object({
+    field: z.enum(["title", "timestamp"]),
+    direction: z.enum(["asc", "desc"]),
   })
 );
-const BaseSearchBody = t.refinement(
-  t.intersection([
-    t.type({
-      viewType: t.union([
-        t.literal("table"),
-        t.literal("document"),
-        t.literal("all"),
-      ]),
-      spaceIds: t.union([t.array(t.string), t.undefined]),
-      includeDataSources: t.boolean,
-      limit: t.number,
-    }),
-    t.type({
-      viewType: t.union([
-        t.literal("table"),
-        t.literal("document"),
-        t.literal("all"),
-      ]),
-      spaceIds: t.union([t.array(t.string), t.undefined]),
-      includeDataSources: t.boolean,
-      limit: t.number,
-    }),
-    t.partial({
-      // Search can be narrowed to specific data source view ids for each space.
-      dataSourceViewIdsBySpaceId: t.record(t.string, t.array(t.string)),
-      /**
-       * Search uses the "read" permission by default so admins can't search
-       * spaces they aren't in as users. If allowAdminSpaces is true, the search
-       * will use the "admin" permission instead, allowing admins to search all
-       * spaces they can administrate.
-       *
-       * Used to allow admins to useSpaces on global
-       */
-      allowAdminSearch: t.boolean,
-      excludeNonRemoteDatabaseTables: t.boolean,
-      parentId: t.string,
-      searchSort: SearchSort,
-      /**
-       * When true, returns only the highest priority data source view per node
-       * based on space access priority (global > non-restricted > restricted).
-       * When false or undefined, returns all matching data source views (default behavior).
-       */
-      prioritizeSpaceAccess: t.boolean,
-    }),
-  ]),
-  ({ spaceIds, dataSourceViewIdsBySpaceId }) => {
+const BaseSearchBody = z
+  .object({
+    viewType: z.enum(["table", "document", "all"]),
+    spaceIds: z.array(z.string()).optional(),
+    includeDataSources: z.boolean(),
+    limit: z.number(),
+    // Search can be narrowed to specific data source view ids for each space.
+    dataSourceViewIdsBySpaceId: z
+      .record(z.string(), z.array(z.string()))
+      .optional(),
+    /**
+     * Search uses the "read" permission by default so admins can't search
+     * spaces they aren't in as users. If allowAdminSpaces is true, the search
+     * will use the "admin" permission instead, allowing admins to search all
+     * spaces they can administrate.
+     *
+     * Used to allow admins to useSpaces on global
+     */
+    allowAdminSearch: z.boolean().optional(),
+    excludeNonRemoteDatabaseTables: z.boolean().optional(),
+    parentId: z.string().optional(),
+    searchSort: SearchSort.optional(),
+    /**
+     * When true, returns only the highest priority data source view per node
+     * based on space access priority (global > non-restricted > restricted).
+     * When false or undefined, returns all matching data source views (default behavior).
+     */
+    prioritizeSpaceAccess: z.boolean().optional(),
+  })
+  .refine(({ spaceIds, dataSourceViewIdsBySpaceId }) => {
     if (!spaceIds || !dataSourceViewIdsBySpaceId) {
       return true;
     }
@@ -100,34 +83,27 @@ const BaseSearchBody = t.refinement(
     const spaceIdsSet = new Set(spaceIds);
 
     return dsvSpaceIds.every((sId) => spaceIdsSet.has(sId));
-  }
+  });
+
+const TextSearchBody = BaseSearchBody.and(
+  z.object({
+    query: z.string(),
+    nodeIds: z.undefined().optional(),
+    searchSourceUrls: z.boolean().optional(),
+  })
 );
 
-const TextSearchBody = t.intersection([
-  BaseSearchBody,
-  t.type({
-    query: t.string,
-  }),
-  t.partial({
-    nodeIds: t.undefined,
-    searchSourceUrls: t.boolean,
-  }),
-]);
+const NodeIdSearchBody = BaseSearchBody.and(
+  z.object({
+    nodeIds: z.array(z.string()),
+    query: z.undefined().optional(),
+    searchSourceUrls: z.boolean().optional(),
+  })
+);
 
-const NodeIdSearchBody = t.intersection([
-  BaseSearchBody,
-  t.type({
-    nodeIds: t.array(t.string),
-  }),
-  t.partial({
-    query: t.undefined,
-    searchSourceUrls: t.boolean,
-  }),
-]);
+export const SearchRequestBody = z.union([TextSearchBody, NodeIdSearchBody]);
 
-export const SearchRequestBody = t.union([TextSearchBody, NodeIdSearchBody]);
-
-export type SearchRequestBodyType = t.TypeOf<typeof SearchRequestBody>;
+export type SearchRequestBodyType = z.infer<typeof SearchRequestBody>;
 
 function getSpaceAccessPriority(space: SpaceResource) {
   // Global spaces have highest priority.
@@ -170,7 +146,7 @@ function selectHighestPriorityDataSourceView(
 }
 
 export async function handleSearch(
-  req: NextApiRequest,
+  reqQuery: ParsedUrlQuery,
   auth: Authenticator,
   {
     allowAdminSearch,
@@ -274,7 +250,7 @@ export async function handleSearch(
 
   const searchFilter = searchFilterRes.value;
 
-  const paginationRes = getCursorPaginationParams(req);
+  const paginationRes = getCursorPaginationParams(reqQuery);
   if (paginationRes.isErr()) {
     return new Err({
       status: 400,

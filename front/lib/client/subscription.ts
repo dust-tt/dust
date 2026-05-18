@@ -2,6 +2,7 @@ import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import { useGeolocation } from "@app/lib/swr/geo";
 import type { SupportedCurrency } from "@app/types/currency";
+import { useKillSwitches } from "../swr/kill";
 
 // If mention the price of the PRO plan in a few different places in the code base,
 // so this is just a way to have that value hardcoded in one place.
@@ -31,10 +32,16 @@ export function formatPriceWithCurrency(
 export function useUserBillingCurrency(): SupportedCurrency {
   const { geoData } = useGeolocation();
   const { hasFeature } = useFeatureFlags();
-  const metronomeBilled = hasFeature("metronome_billing");
+  const { killSwitches } = useKillSwitches();
+  const isMetronomeBillingEnabled =
+    hasFeature("metronome_billing") ||
+    !killSwitches?.includes("global_disable_metronome_billing");
 
   if (geoData?.countryCode) {
-    return getBillingCurrencyForCountry(geoData.countryCode, metronomeBilled);
+    return getBillingCurrencyForCountry(
+      geoData.countryCode,
+      isMetronomeBillingEnabled
+    );
   }
   // No geo data yet — Stripe default (EUR base, USD for US only).
   return "eur";

@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/data_source_views.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getFlattenedContentNodesOfViewTypeForDataSourceView } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
@@ -33,7 +35,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const paginationRes = getCursorPaginationParams(req);
+      const paginationRes = getCursorPaginationParams(req.query);
       if (paginationRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,

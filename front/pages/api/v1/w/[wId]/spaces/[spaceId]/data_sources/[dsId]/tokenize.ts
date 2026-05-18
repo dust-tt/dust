@@ -8,17 +8,16 @@ import { apiError } from "@app/logger/withlogging";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { TokenizeResponseType } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type PostDatasourceTokenizeBody = {
   text: string;
 };
 
-const PostDatasourceTokenizeBodySchema = t.type({
-  text: t.string,
+const PostDatasourceTokenizeBodySchema = z.object({
+  text: z.string(),
 });
 
 /**
@@ -93,19 +92,19 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const bodyValidation = PostDatasourceTokenizeBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      const bodyValidation = PostDatasourceTokenizeBodySchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
-      const text = bodyValidation.right.text;
+      const text = bodyValidation.data.text;
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const coreTokenizeRes = await coreAPI.dataSourceTokenize(
         {

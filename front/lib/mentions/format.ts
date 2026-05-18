@@ -25,7 +25,7 @@ import type { JSONContent } from "@tiptap/react";
 export const AGENT_MENTION_REGEX = /:mention\[([^\]]+)]\{sId=([^}]+?)}/g;
 export const AGENT_MENTION_REGEX_BEGINNING = new RegExp(
   "^" + AGENT_MENTION_REGEX.source,
-  AGENT_MENTION_REGEX.flags
+  AGENT_MENTION_REGEX.flags.replace("g", "")
 );
 
 /**
@@ -35,8 +35,12 @@ export const AGENT_MENTION_REGEX_BEGINNING = new RegExp(
 export const USER_MENTION_REGEX = /:mention_user\[([^\]]+)]\{sId=([^}]+?)}/g;
 export const USER_MENTION_REGEX_BEGINNING = new RegExp(
   "^" + USER_MENTION_REGEX.source,
-  USER_MENTION_REGEX.flags
+  USER_MENTION_REGEX.flags.replace("g", "")
 );
+
+export function startsWithUserMention(markdown: string): boolean {
+  return USER_MENTION_REGEX_BEGINNING.test(markdown.trimStart());
+}
 
 /**
  * Extracts mentions from content.

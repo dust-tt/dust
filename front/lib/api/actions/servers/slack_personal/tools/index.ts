@@ -349,7 +349,7 @@ function isSlackTokenRevoked(error: unknown): boolean {
 // or null if the error should be handled by the caller.
 function handleSlackAuthError(error: unknown) {
   if (isSlackTokenRevoked(error) || isSlackMissingScope(error)) {
-    return new Ok(makePersonalAuthenticationError("slack").content);
+    return new Ok(makePersonalAuthenticationError("slack_tools").content);
   }
   return null;
 }
@@ -550,7 +550,10 @@ export function createSlackPersonalTools(
       }
     },
 
-    post_message: async ({ to, message, threadTs, fileId }, { authInfo }) => {
+    post_message: async (
+      { to, message, threadTs, fileId, unfurlLinks, unfurlMedia },
+      { authInfo }
+    ) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
@@ -568,6 +571,8 @@ export function createSlackPersonalTools(
           message,
           threadTs,
           fileId,
+          unfurlLinks,
+          unfurlMedia,
           accessToken,
         });
       } catch (error) {
@@ -582,7 +587,7 @@ export function createSlackPersonalTools(
     },
 
     schedule_message: async (
-      { to, message, post_at, threadTs },
+      { to, message, post_at, threadTs, unfurlLinks, unfurlMedia },
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
@@ -602,6 +607,8 @@ export function createSlackPersonalTools(
           message,
           post_at,
           threadTs,
+          unfurlLinks,
+          unfurlMedia,
           accessToken,
         });
       } catch (error) {
@@ -744,7 +751,7 @@ export function createSlackPersonalTools(
       if (!response.ok) {
         // Trigger authentication flow for missing_scope.
         if (response.error === "missing_scope") {
-          return new Ok(makePersonalAuthenticationError("slack").content);
+          return new Ok(makePersonalAuthenticationError("slack_tools").content);
         }
         return new Err(
           new MCPError(response.error ?? "Failed to list threads")

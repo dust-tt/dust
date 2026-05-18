@@ -1,6 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { WorkspaceSandboxEnvVarKind } from "@app/types/sandbox/env_var";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -10,6 +11,9 @@ export class WorkspaceSandboxEnvVarModel extends WorkspaceAwareModel<WorkspaceSa
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
+  declare kind: CreationOptional<WorkspaceSandboxEnvVarKind>;
+  declare placeholderNonce: Buffer | null;
+  declare allowedDomains: string[] | null;
   declare encryptedValue: string;
   declare createdByUserId: ForeignKey<UserModel["id"]> | null;
   declare lastUpdatedByUserId: ForeignKey<UserModel["id"]> | null;
@@ -33,6 +37,21 @@ WorkspaceSandboxEnvVarModel.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    kind: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "config",
+    },
+    placeholderNonce: {
+      type: DataTypes.BLOB,
+      allowNull: true,
+      field: "placeholder_nonce",
+    },
+    allowedDomains: {
+      type: DataTypes.ARRAY(DataTypes.TEXT),
+      allowNull: true,
+      field: "allowed_domains",
     },
     encryptedValue: {
       type: DataTypes.TEXT,

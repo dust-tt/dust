@@ -31,8 +31,7 @@ import { isEqualNode } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import uniqBy from "lodash/uniqBy";
 import React, {
   useCallback,
   useContext,
@@ -63,7 +62,9 @@ interface InputBarProps {
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
   isAgentBuilder?: boolean;
+  disableInput?: boolean;
   submitBlockMessage?: string | null;
+  placeholder?: string;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -80,7 +81,9 @@ export const InputBar = React.memo(function InputBar({
   isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
+  disableInput = false,
   submitBlockMessage = null,
+  placeholder,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
@@ -256,18 +259,14 @@ export const InputBar = React.memo(function InputBar({
     }
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
-    // When single-agent input is enabled, inject the selected agent into mentions
-    // since it's no longer in the editor as a mention node.
-    const hasUserMention = rawMentions.some((m) => m.type === "user");
     const shouldInjectSelectedAgent =
       selectedSingleAgent &&
-      !hasUserMention &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
 
     const allMentions = shouldInjectSelectedAgent
       ? [selectedSingleAgent, ...rawMentions]
       : rawMentions;
-    const mentions = _.uniqBy(allMentions, "id");
+    const mentions = uniqBy(allMentions, "id");
     const uploadedFiles = fileUploaderService.getFileBlobs();
     const mentionedAgents = agentConfigurations.filter((a) =>
       mentions.some((m) => m.id === a.sId && m.type === "agent")
@@ -371,12 +370,11 @@ export const InputBar = React.memo(function InputBar({
     setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
-  const handleResetSelections = () => {
+  const handleResetMCPServerViews = () => {
     setSelectedMCPServerViews((prev) => {
       prev.forEach((sv) => void deleteTool(sv.sId));
       return [];
     });
-    setAttachedNodes([]);
   };
 
   const handleShake = useCallback(() => {
@@ -448,17 +446,16 @@ export const InputBar = React.memo(function InputBar({
             selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
-            onResetSelections={handleResetSelections}
+            onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}
             getDraft={getDraft}
             user={user}
-            disableAgentSelector={
-              isBlockedByAgentSwitch || submitBlockMessage !== null
-            }
-            disableInput={submitBlockMessage !== null}
+            disableAgentSelector={isBlockedByAgentSwitch}
+            disableInput={disableInput}
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
+            placeholder={placeholder}
             onShake={handleShake}
           />
         </div>

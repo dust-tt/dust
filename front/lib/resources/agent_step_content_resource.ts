@@ -24,8 +24,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import chunk from "lodash/chunk";
+import groupBy from "lodash/groupBy";
 import type {
   Attributes,
   CreationAttributes,
@@ -150,7 +150,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     contents: AgentStepContentModel[],
     groupByFields: string[]
   ): AgentStepContentModel[] {
-    const grouped = _.groupBy(contents, (content) =>
+    const grouped = groupBy(contents, (content) =>
       groupByFields
         .map((field) => content[field as keyof AgentStepContentModel])
         .join("-")
@@ -184,7 +184,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       return [];
     }
 
-    const chunks = _.chunk(
+    const chunks = chunk(
       allowedAgentMessageIds,
       FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE
     );

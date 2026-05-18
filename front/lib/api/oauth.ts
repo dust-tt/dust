@@ -37,6 +37,7 @@ import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
@@ -48,6 +49,7 @@ import type { OAuthAPIError } from "@app/types/oauth/oauth_api";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import type { ParsedUrlQuery } from "querystring";
 
 export type OAuthError = {
@@ -230,6 +232,11 @@ export async function createConnectionAndGetSetupUrl(
     },
   });
 
+  const forceLabelsScope =
+    provider === "microsoft"
+      ? await hasFeatureFlag(auth, "sensitivity_labels")
+      : false;
+
   return new Ok(
     providerStrategy.setupUri({
       connection,
@@ -237,6 +244,7 @@ export async function createConnectionAndGetSetupUrl(
       relatedCredential,
       useCase,
       clientId,
+      forceLabelsScope,
     })
   );
 }
@@ -250,8 +258,14 @@ export async function finalizeConnection(
   const code = providerStrategy.codeFromQuery(query);
 
   if (!code) {
+    const { error, error_description: errorDescription } = query;
+    const oauthError = isString(error) ? error : undefined;
+    const oauthErrorDescription = isString(errorDescription)
+      ? errorDescription
+      : undefined;
+
     logger.error(
-      { provider, step: "code_extraction" },
+      { provider, step: "code_extraction", oauthError, oauthErrorDescription },
       "OAuth: Failed to finalize connection"
     );
     return new Err({

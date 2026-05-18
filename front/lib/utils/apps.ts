@@ -14,8 +14,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { ApiAppImportType, ApiAppType } from "@dust-tt/client";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import isEqual from "lodash/isEqual";
+import omit from "lodash/omit";
 
 async function updateOrCreateApp(
   auth: Authenticator,
@@ -130,7 +130,7 @@ async function updateDatasets(
         );
         if (dataset) {
           if (
-            !_.isEqual(dataset.schema, datasetToImport.schema) ||
+            !isEqual(dataset.schema, datasetToImport.schema) ||
             dataset.description !== datasetToImport.description
           ) {
             await dataset.update({
@@ -192,7 +192,7 @@ async function updateAppSpecifications(
     });
     if (existingHashes.isOk()) {
       // Remove hashes that already exist in core
-      coreSpecifications = _.omit(
+      coreSpecifications = omit(
         coreSpecifications,
         existingHashes.value.hashes
       );

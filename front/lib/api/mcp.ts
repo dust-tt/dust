@@ -78,6 +78,7 @@ export type MCPServerType = {
   developerSecretSelectionDescription?: string | null;
   sharedSecret?: string | null;
   customHeaders?: Record<string, string> | null;
+  meta?: Record<string, string> | null;
 };
 
 export type MCPServerViewTypeType = "remote" | "internal";

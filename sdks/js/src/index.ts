@@ -75,6 +75,7 @@ import {
   GetFeedbacksResponseSchema,
   GetMCPServerViewsResponseSchema,
   GetMentionSuggestionsResponseBodySchema,
+  GetProjectFilesResponseSchema,
   GetSpaceConversationIdsResponseSchema,
   GetSpaceConversationsForDataSourceResponseSchema,
   GetSpaceMetadataResponseSchema,
@@ -1522,6 +1523,27 @@ export class DustAPI {
     });
 
     return this._resultFromResponse(GetSpaceMetadataResponseSchema, res);
+  }
+
+  async getSpaceProjectFiles({
+    spaceId,
+    updatedSince,
+  }: {
+    spaceId: string;
+    updatedSince?: number | null;
+  }) {
+    const query = new URLSearchParams();
+    if (updatedSince !== undefined && updatedSince !== null) {
+      query.append("updatedSince", String(updatedSince));
+    }
+
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/project_files`,
+      query,
+    });
+
+    return this._resultFromResponse(GetProjectFilesResponseSchema, res);
   }
 
   async postFeedback(

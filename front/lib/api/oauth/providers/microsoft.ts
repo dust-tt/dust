@@ -24,9 +24,11 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
     relatedCredential,
+    forceLabelsScope,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
+    forceLabelsScope?: boolean;
     relatedCredential?: {
       content: Record<string, string>;
       metadata: { workspace_id: string; user_id: string };
@@ -39,6 +41,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
         "User.Read",
         "Sites.Read.All",
         "Files.Read.All",
+        ...(forceLabelsScope ? ["SensitivityLabels.Read.All"] : []),
         "offline_access",
       ];
 

@@ -34,15 +34,23 @@ const config = {
   // Dynamic API base URL: uses a custom resolver when set (SPA region switching),
   // otherwise falls back to getClientFacingUrl().
   getApiBaseUrl: (): string => {
-    return baseUrlResolver?.() || config.getClientFacingUrl();
-  },
+    const url = baseUrlResolver?.();
+    if (url) {
+      return url;
+    }
 
-  // Deprecated: use getStaticWebsiteUrl, getApiBaseUrl or getAppUrl instead, depending on the context.
-  getClientFacingUrl: (): string => {
-    // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
+    // We override the NEXT_PUBLIC_DUST_API_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
     // public API URL.
-    const override = EnvironmentConfig.getOptionalEnvVariable(
+    let override = EnvironmentConfig.getOptionalEnvVariable(
+      "DUST_INTERNAL_API_URL"
+    );
+    if (override) {
+      return override;
+    }
+
+    // Remove this when transitioned to DUST_INTERNAL_API_URL
+    override = EnvironmentConfig.getOptionalEnvVariable(
       "DUST_INTERNAL_CLIENT_FACING_URL"
     );
     if (override) {
@@ -50,13 +58,18 @@ const config = {
     }
 
     // Using process.env here to make sure the function is usable on the client side.
-    if (!process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL) {
-      throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
+    if (!process.env.NEXT_PUBLIC_DUST_API_URL) {
+      throw new Error("NEXT_PUBLIC_DUST_API_URL is not set");
     }
-    return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+    return process.env.NEXT_PUBLIC_DUST_API_URL;
   },
+
   getStaticWebsiteUrl: (): string => {
-    return config.getClientFacingUrl();
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL) {
+      throw new Error("NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL is not set");
+    }
+    return process.env.NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL;
   },
   // URL for the main app pages (/w/..., /share/..., etc.).
   // Use this for page URLs, not API endpoints.
@@ -73,7 +86,7 @@ const config = {
     return EnvironmentConfig.getEnvVariable("POKE_APP_URL");
   },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
-  // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
+  // from NEXT_PUBLIC_DUST_API_URL. Falls back to getClientFacingUrl() when not set.
   getAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
@@ -104,6 +117,13 @@ const config = {
     return EnvironmentConfig.getEnvVariable(
       "SENDGRID_GENERIC_EMAIL_TEMPLATE_ID"
     );
+  },
+  getStripePublishableKey: (): string => {
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+      throw new Error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set");
+    }
+    return process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   },
   getStripeSecretKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_KEY");
@@ -217,22 +237,6 @@ const config = {
   getEgressProxyInternalUrl: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "EGRESS_PROXY_INTERNAL_URL"
-    );
-  },
-  // PHASE0(remove with the experiment): hostname for which dsbx terminates
-  // inner TLS and rewrites the experiment placeholder. Empty / unset disables
-  // MITM entirely.
-  getEgressMitmExperimentHost: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "EGRESS_MITM_EXPERIMENT_HOST"
-    );
-  },
-  // PHASE0(remove with the experiment): shared bearer token required to hit
-  // the egress-experiment endpoint. Set alongside EGRESS_MITM_EXPERIMENT_HOST.
-  // Unset = endpoint always 404s even if the host is set.
-  getEgressMitmExperimentToken: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "EGRESS_MITM_EXPERIMENT_TOKEN"
     );
   },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
@@ -545,6 +549,20 @@ const config = {
       "SBX_DEV_FRONT_URL"
     )?.replace(/^https?:\/\//, "");
   },
+  // Dev-only switch to fully unrestrict sandbox network egress: skips the
+  // dsbx forwarder, tears down in-sandbox nftables redirect, and lets E2B
+  // allow all outbound traffic. Only honored when isDevelopment() to avoid
+  // accidental enablement in production.
+  getSandboxDevUnrestrictedEgress: (): boolean => {
+    if (!isDevelopment()) {
+      return false;
+    }
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "SBX_DEV_UNRESTRICTED_EGRESS"
+      ) === "true"
+    );
+  },
   getSandboxGcpArtifactServiceAccountPath: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT"
@@ -575,6 +593,9 @@ const config = {
   },
   getMetronomeWebhookSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("METRONOME_WEBHOOK_SECRET");
+  },
+  getVertexAiProjectId: (): string => {
+    return EnvironmentConfig.getEnvVariable("VERTEX_AI_PROJECT_ID");
   },
 };
 

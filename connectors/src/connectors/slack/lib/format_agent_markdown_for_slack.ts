@@ -3,7 +3,8 @@ import logger from "@connectors/logger/logger";
 
 const AGENT_MENTION_REGEX = /:mention\[([^\]]+)]\{sId=([^}]+?)}/g;
 const USER_MENTION_REGEX = /:mention_user\[([^\]]+)]\{sId=([^}]+?)}/g;
-const PROJECT_TODO_REGEX = /:todo\[([^\]]+)]\{sId=([^}]+?)}/g;
+const PROJECT_TASK_DIRECTIVE_REGEX =
+  /(?::project_task|:todo)\[([^\]]+)]\{sId=([^}]+?)}/g;
 const TOOL_SETUP_REGEX = /:toolSetup\[([^\]]+)]\{sId=([^}]+?)}/g;
 const QUICK_REPLY_REGEX = /:quickReply\[([^\]]+)]\{([^}]*)\}/g;
 const CONTENT_NODE_REGEX = /:content_node_mention\[([^\]]+)](?:\{([^}]*)\})?/g;
@@ -49,10 +50,10 @@ function replaceMentionsForSlack(
   );
 }
 
-function replaceProjectTodosForSlack(text: string): string {
+function replaceProjectTasksForSlack(text: string): string {
   return text.replaceAll(
-    PROJECT_TODO_REGEX,
-    (_, label: string) => `*Todo:* ${normalizeInlineLabel(label)}`
+    PROJECT_TASK_DIRECTIVE_REGEX,
+    (_, label: string) => `*Task:* ${normalizeInlineLabel(label)}`
   );
 }
 
@@ -179,7 +180,7 @@ export function formatAgentMarkdownForSlack(
   out = replaceVisualizationBlocksForSlack(out);
   out = replaceInstructionBlocksForSlack(out);
   out = replaceToolSetupForSlack(out);
-  out = replaceProjectTodosForSlack(out);
+  out = replaceProjectTasksForSlack(out);
   out = replaceQuickRepliesForSlack(out);
   out = replaceContentNodeMentionsForSlack(out);
   out = replacePastedAttachmentsForSlack(out);

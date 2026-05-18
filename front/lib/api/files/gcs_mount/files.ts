@@ -1,14 +1,27 @@
 import config from "@app/lib/api/config";
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import {
+  getConversationFilesBasePath,
+  getProjectFilesBasePath,
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { isSupportedImageContentType } from "@app/types/files";
-import { Err, Ok } from "@app/types/shared/result";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
+import {
+  isSupportedImageContentType,
+  stripMimeParameters,
+} from "@app/types/files";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+
+const GCS_MOUNT_COPY_CONCURRENCY = 4;
+const GCS_MOUNT_COPY_MAX_FILES = 5000;
 
 type GCSMountEntryBase = {
   fileName: string;
@@ -26,14 +39,15 @@ export type GCSMountFileEntry = GCSMountEntryBase & {
   contentType: string;
   fileId: string | null;
   thumbnailUrl: string | null;
+  /** Present when the listing endpoint adds read-signed URLs (e.g. system project_files API). */
+  signedDownloadUrl?: string | null;
 };
 
 export type GCSMountEntry = GCSMountDirectoryEntry | GCSMountFileEntry;
 
-export type GCSMountPoint = {
-  useCase: "conversation";
-  conversationId: string;
-};
+export type GCSMountPoint =
+  | { useCase: "conversation"; conversationId: string }
+  | { useCase: "project"; projectId: string };
 
 function resolvePrefix(
   owner: LightWorkspaceType,
@@ -46,8 +60,14 @@ function resolvePrefix(
         conversationId: scope.conversationId,
       });
 
+    case "project":
+      return getProjectFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: scope.projectId,
+      });
+
     default:
-      assertNever(scope.useCase);
+      assertNever(scope);
   }
 }
 
@@ -100,7 +120,7 @@ function makeFileEntry(
     fileName,
     relativeFilePath,
     sizeBytes,
-    contentType,
+    contentType: rawContentType,
     lastModifiedMs,
     fileId,
   }: {
@@ -114,6 +134,10 @@ function makeFileEntry(
   scope: GCSMountPoint,
   workspaceId: string
 ): GCSMountFileEntry {
+  // GCS metadata commonly carries MIME parameters (e.g. `text/csv; charset=utf-8`).
+  // Strip them at the module boundary so every downstream consumer sees a clean type
+  // that matches our content-type lookup tables exactly.
+  const contentType = stripMimeParameters(rawContentType);
   return {
     isDirectory: false,
     fileName,
@@ -122,24 +146,77 @@ function makeFileEntry(
     contentType,
     lastModifiedMs,
     fileId,
-    thumbnailUrl: isSupportedImageContentType(contentType)
-      ? `${config.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`
-      : null,
+    thumbnailUrl: makeThumbnailUrl({
+      contentType,
+      relativeFilePath,
+      scope,
+      workspaceId,
+    }),
   };
+}
+
+function makeThumbnailUrl({
+  contentType,
+  relativeFilePath,
+  scope,
+  workspaceId,
+}: {
+  contentType: string;
+  relativeFilePath: string;
+  scope: GCSMountPoint;
+  workspaceId: string;
+}): string | null {
+  if (!isSupportedImageContentType(contentType)) {
+    return null;
+  }
+
+  switch (scope.useCase) {
+    case "conversation":
+      return `${config.getApiBaseUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`;
+
+    case "project":
+      // TODO(2026-05-10: FILE SYSTEM) Expose a project files thumbnail endpoint.
+      return null;
+
+    default:
+      assertNever(scope);
+  }
 }
 
 /**
  * List files from a GCS mount point (mounted bucket as source of truth).
+ *
+ * `.processed.<ext>` siblings are filtered out by default — they are
+ * auto-generated artifacts (resized images, transcripts, extracted text) and
+ * the UI file panel should not surface them. The MCP `files__list` tool opts
+ * in via `includeProcessed: true` so the agent can read them directly.
  */
 export async function listGCSMountFiles(
   auth: Authenticator,
-  scope: GCSMountPoint
+  scope: GCSMountPoint,
+  { includeProcessed = false }: { includeProcessed?: boolean } = {}
 ): Promise<GCSMountEntry[]> {
   const owner = auth.getNonNullableWorkspace();
   const prefix = resolvePrefix(owner, scope);
 
   const bucket = getPrivateUploadBucket();
-  const gcsFiles = await bucket.getFiles({ prefix, maxResults: 200 });
+  const { files: gcsFiles, pageFetchCount } = await bucket.getAllFilesByPrefix({
+    prefix,
+    pageSize: 200,
+  });
+
+  if (pageFetchCount > 1) {
+    logger.warn(
+      {
+        workspaceId: owner.sId,
+        prefix,
+        scope,
+        pageFetchCount,
+        objectCount: gcsFiles.length,
+      },
+      "GCS mount file listing required multiple list requests; prefix has many objects."
+    );
+  }
 
   // GCS folder placeholders are zero-byte objects whose path ends with "/".
   const folderPlaceholders = gcsFiles.filter((f) => f.name.endsWith("/"));
@@ -147,6 +224,11 @@ export async function listGCSMountFiles(
     if (f.name.endsWith("/")) {
       return false;
     }
+
+    if (includeProcessed) {
+      return true;
+    }
+
     const name = f.name.split("/").pop() ?? "";
     return !name.includes(".processed.");
   });
@@ -167,8 +249,12 @@ export async function listGCSMountFiles(
     (f) => {
       const trimmed = f.name.replace(/\/$/, "");
       const name = trimmed.split("/").pop() ?? "";
-      // Skip hidden folders (name starting with ".").
-      if (!name || name.startsWith(".")) {
+      // Skip hidden folders (name starting with "."), except the tool outputs folder which is
+      // surfaced to users despite its dot prefix.
+      if (
+        !name ||
+        (name.startsWith(".") && name !== TOOL_OUTPUTS_FOLDER_NAME)
+      ) {
         return [];
       }
 
@@ -227,9 +313,7 @@ export async function getConversationFileMountSignedUrl(
   const prefix = resolvePrefix(owner, scope);
   if (!gcsPath.startsWith(prefix)) {
     return new Err(
-      new Error(
-        `GCS path does not belong to the expected conversation file system.`
-      )
+      new Error(`GCS path does not belong to the expected mount point.`)
     );
   }
   try {
@@ -256,25 +340,122 @@ export async function createGCSMountFile(
     content: Buffer;
     contentType: string;
   }
-): Promise<GCSMountFileEntry> {
+): Promise<Result<GCSMountFileEntry, Error>> {
   const owner = auth.getNonNullableWorkspace();
   const prefix = resolvePrefix(owner, scope);
 
   const gcsPath = `${prefix}${relativeFilePath}`;
   const bucket = getPrivateUploadBucket();
-  await bucket.file(gcsPath).save(content, { contentType });
+  try {
+    await bucket.file(gcsPath).save(content, { contentType });
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 
   const fileName = relativeFilePath.split("/").pop() ?? relativeFilePath;
-  return makeFileEntry(
-    {
-      fileName,
-      relativeFilePath,
-      sizeBytes: content.length,
-      contentType,
-      lastModifiedMs: Date.now(),
-      fileId: null,
-    },
-    scope,
-    owner.sId
+  return new Ok(
+    makeFileEntry(
+      {
+        fileName,
+        relativeFilePath,
+        sizeBytes: content.length,
+        contentType,
+        lastModifiedMs: Date.now(),
+        fileId: null,
+      },
+      scope,
+      owner.sId
+    )
   );
+}
+
+/**
+ * Copy a single file from one mount to another, preserving the relative file path on both sides.
+ */
+export async function copyMountFile(
+  auth: Authenticator,
+  {
+    source,
+    dest,
+  }: {
+    source: { scope: GCSMountPoint; relativeFilePath: string };
+    dest: { scope: GCSMountPoint; relativeFilePath: string };
+  }
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const sourceGcsPath = `${resolvePrefix(owner, source.scope)}${source.relativeFilePath}`;
+  const destGcsPath = `${resolvePrefix(owner, dest.scope)}${dest.relativeFilePath}`;
+
+  const bucket = getPrivateUploadBucket();
+
+  try {
+    await bucket.copyFile(sourceGcsPath, destGcsPath);
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+export async function copyConversationGCSMount(
+  auth: Authenticator,
+  {
+    source,
+    dest,
+  }: {
+    source: ConversationResource;
+    dest: ConversationResource;
+  }
+): Promise<Result<{ copiedCount: number }, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const sourcePrefix = resolvePrefix(owner, {
+    useCase: "conversation",
+    conversationId: source.sId,
+  });
+  const destPrefix = resolvePrefix(owner, {
+    useCase: "conversation",
+    conversationId: dest.sId,
+  });
+
+  if (sourcePrefix === destPrefix) {
+    return new Ok({ copiedCount: 0 });
+  }
+
+  const bucket = getPrivateUploadBucket();
+
+  try {
+    const gcsFiles = await bucket.getFiles({
+      prefix: sourcePrefix,
+      maxResults: GCS_MOUNT_COPY_MAX_FILES,
+    });
+
+    if (gcsFiles.length >= GCS_MOUNT_COPY_MAX_FILES) {
+      logger.warn(
+        {
+          workspaceId: owner.sId,
+          sourceConversationId: source.sId,
+          destConversationId: dest.sId,
+          maxFiles: GCS_MOUNT_COPY_MAX_FILES,
+        },
+        "GCS mount copy hit the max files cap; some files may not be copied."
+      );
+
+      // TODO(2026-05-11 CONVERSATION BRANCHING): Flag error state on the conversation.
+      throw new Error("GCS mount copy hit the max files cap");
+    }
+
+    await concurrentExecutor(
+      gcsFiles,
+      async (gcsFile) => {
+        const relativePath = gcsFile.name.slice(sourcePrefix.length);
+        const destPath = `${destPrefix}${relativePath}`;
+        await bucket.copyFile(gcsFile.name, destPath);
+      },
+      { concurrency: GCS_MOUNT_COPY_CONCURRENCY }
+    );
+
+    return new Ok({ copiedCount: gcsFiles.length });
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 }

@@ -1,12 +1,12 @@
 import { Authenticator } from "@app/lib/auth";
-import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
+import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { describe, expect, it } from "vitest";
 
-describe("ProjectTodoStateResource", () => {
+describe("ProjectTaskStateResource", () => {
   describe("fetchBySpace", () => {
     it("returns null when no state exists for the user", async () => {
       const { workspace, authenticator } = await createResourceTest({
@@ -14,7 +14,7 @@ describe("ProjectTodoStateResource", () => {
       });
       const space = await SpaceFactory.project(workspace);
 
-      const result = await ProjectTodoStateResource.fetchBySpace(
+      const result = await ProjectTaskStateResource.fetchBySpace(
         authenticator,
         { spaceId: space.id }
       );
@@ -37,12 +37,12 @@ describe("ProjectTodoStateResource", () => {
         workspace.sId
       );
 
-      await ProjectTodoStateResource.upsertBySpace(otherAuth, {
+      await ProjectTaskStateResource.upsertBySpace(otherAuth, {
         spaceId: space.id,
         lastReadAt: new Date(),
       });
 
-      const result = await ProjectTodoStateResource.fetchBySpace(
+      const result = await ProjectTaskStateResource.fetchBySpace(
         authenticator,
         { spaceId: space.id }
       );
@@ -67,16 +67,16 @@ describe("ProjectTodoStateResource", () => {
         workspace.sId
       );
 
-      await ProjectTodoStateResource.upsertBySpace(authenticator, {
+      await ProjectTaskStateResource.upsertBySpace(authenticator, {
         spaceId: space.id,
         lastReadAt: new Date("2025-01-01T00:00:00Z"),
       });
-      await ProjectTodoStateResource.upsertBySpace(otherAuth, {
+      await ProjectTaskStateResource.upsertBySpace(otherAuth, {
         spaceId: space.id,
         lastReadAt: new Date("2025-01-02T00:00:00Z"),
       });
 
-      const results = await ProjectTodoStateResource.fetchAllBySpace(
+      const results = await ProjectTaskStateResource.fetchAllBySpace(
         authenticator,
         { spaceId: space.id }
       );
@@ -94,12 +94,12 @@ describe("ProjectTodoStateResource", () => {
       const space1 = await SpaceFactory.project(workspace);
       const space2 = await SpaceFactory.project(workspace);
 
-      await ProjectTodoStateResource.upsertBySpace(authenticator, {
+      await ProjectTaskStateResource.upsertBySpace(authenticator, {
         spaceId: space1.id,
         lastReadAt: new Date(),
       });
 
-      const results = await ProjectTodoStateResource.fetchAllBySpace(
+      const results = await ProjectTaskStateResource.fetchAllBySpace(
         authenticator,
         { spaceId: space2.id }
       );
@@ -116,7 +116,7 @@ describe("ProjectTodoStateResource", () => {
       const space = await SpaceFactory.project(workspace);
       const lastReadAt = new Date("2025-06-01T00:00:00Z");
 
-      const state = await ProjectTodoStateResource.upsertBySpace(
+      const state = await ProjectTaskStateResource.upsertBySpace(
         authenticator,
         { spaceId: space.id, lastReadAt }
       );
@@ -131,66 +131,23 @@ describe("ProjectTodoStateResource", () => {
       });
       const space = await SpaceFactory.project(workspace);
 
-      await ProjectTodoStateResource.upsertBySpace(authenticator, {
+      await ProjectTaskStateResource.upsertBySpace(authenticator, {
         spaceId: space.id,
         lastReadAt: new Date("2025-01-01T00:00:00Z"),
       });
 
       const updatedAt = new Date("2025-06-01T00:00:00Z");
-      await ProjectTodoStateResource.upsertBySpace(authenticator, {
+      await ProjectTaskStateResource.upsertBySpace(authenticator, {
         spaceId: space.id,
         lastReadAt: updatedAt,
       });
 
-      const result = await ProjectTodoStateResource.fetchBySpace(
+      const result = await ProjectTaskStateResource.fetchBySpace(
         authenticator,
         { spaceId: space.id }
       );
 
       expect(result!.lastReadAt).toEqual(updatedAt);
-    });
-  });
-
-  describe("upsertLastCleanedAtBySpace", () => {
-    it("creates a state with lastCleanedAt when none exists", async () => {
-      const { workspace, authenticator } = await createResourceTest({
-        role: "user",
-      });
-      const space = await SpaceFactory.project(workspace);
-      const lastCleanedAt = new Date("2025-06-01T00:00:00Z");
-
-      const state = await ProjectTodoStateResource.upsertLastCleanedAtBySpace(
-        authenticator,
-        { spaceId: space.id, lastCleanedAt }
-      );
-
-      expect(state.lastCleanedAt).toEqual(lastCleanedAt);
-      expect(state.lastReadAt).toBeDefined();
-    });
-
-    it("updates lastCleanedAt on subsequent calls", async () => {
-      const { workspace, authenticator } = await createResourceTest({
-        role: "user",
-      });
-      const space = await SpaceFactory.project(workspace);
-
-      await ProjectTodoStateResource.upsertLastCleanedAtBySpace(authenticator, {
-        spaceId: space.id,
-        lastCleanedAt: new Date("2025-01-01T00:00:00Z"),
-      });
-
-      const newCleanedAt = new Date("2025-06-01T00:00:00Z");
-      await ProjectTodoStateResource.upsertLastCleanedAtBySpace(authenticator, {
-        spaceId: space.id,
-        lastCleanedAt: newCleanedAt,
-      });
-
-      const result = await ProjectTodoStateResource.fetchBySpace(
-        authenticator,
-        { spaceId: space.id }
-      );
-
-      expect(result!.lastCleanedAt).toEqual(newCleanedAt);
     });
   });
 });

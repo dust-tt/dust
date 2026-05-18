@@ -3,6 +3,7 @@ import {
   isToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -53,11 +54,13 @@ export async function resolveAuthentication(
     messageId,
     outcome,
     kind = "authentication",
+    resumeAncestorConversations = false,
   }: {
     actionId: string;
     messageId: string;
     outcome: ResolveAuthenticationOutcome;
     kind?: ResolveAuthenticationKind;
+    resumeAncestorConversations?: boolean;
   }
 ): Promise<Result<void, DustError>> {
   const { blockedStatus, isMatchingEvent, label } = KIND_CONFIG[kind];
@@ -181,12 +184,19 @@ export async function resolveAuthentication(
     `${label} ${outcome}, agent loop resumed`
   );
 
-  return new Ok(undefined);
+  if (!resumeAncestorConversations) {
+    return new Ok(undefined);
+  }
+
+  return resumeAncestorConversationsHelper(auth, conversation, {
+    agentMessageId,
+  });
 }
 
 const ResolveAuthenticationSchema = z.object({
   actionId: z.string(),
   outcome: z.enum(["completed", "denied"]),
+  resumeAncestorConversations: z.boolean().optional(),
 });
 
 export type ResolveAuthenticationResponse = {
@@ -245,13 +255,14 @@ export function makeResolveAuthenticationHandler(
       });
     }
 
-    const { actionId, outcome } = parseResult.data;
+    const { actionId, outcome, resumeAncestorConversations } = parseResult.data;
 
     const result = await resolveAuthentication(auth, conversation, {
       actionId,
       messageId: mId,
       outcome,
       kind,
+      resumeAncestorConversations,
     });
 
     if (result.isErr()) {

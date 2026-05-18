@@ -7,6 +7,7 @@ import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities
 import {
   finalizeCancellation,
   finalizeGracefulStop,
+  finalizeInterruption,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
@@ -56,6 +57,30 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
     launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
 
+    conversationUnreadNotificationActivity(authType, agentLoopArgs),
+    handleMentions(authType, agentLoopArgs),
+  ]);
+}
+
+/**
+ * Interrupt mirrors the cancelled path (immediate kill) but also continues processing
+ * any pending queued messages: the user chose to redirect, not abort entirely.
+ *
+ * Intentionally omits `sendEmailReplyOnError`: a new agent message is immediately created
+ * to handle the queued request, so there is nothing to report as an error. If you add a
+ * new side-effect to `finalizeCancelledAgentLoopActivity`, consider whether it also applies here.
+ */
+export async function finalizeInterruptedAgentLoopActivity(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  await finalizeInterruption(authType, agentLoopArgs);
+
+  await Promise.all([
+    snapshotAgentMessageSkills(authType, agentLoopArgs),
+    launchAgentMessageAnalytics(authType, agentLoopArgs),
+    launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentions(authType, agentLoopArgs),
   ]);

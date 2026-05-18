@@ -23,7 +23,7 @@ import type { ReactElement } from "react";
 
 interface BlogPageProps {
   posts: BlogPostSummary[];
-  seoPosts: BlogPostSummary[];
+  furtherReadingPosts: BlogPostSummary[];
   currentPage: number;
   totalPages: number;
   totalPosts: number;
@@ -73,9 +73,14 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
 
   const allPosts = result.value;
 
-  // Split into regular and SEO articles.
-  const regularPosts = allPosts.filter((post) => !post.isSeoArticle);
-  const seoPosts = allPosts.filter((post) => post.isSeoArticle);
+  // SEO and GEO articles are surfaced in the "Further reading" list rather
+  // than the main grid. Thought-leadership posts stay in the main grid.
+  const regularPosts = allPosts.filter(
+    (post) => !post.isSeoArticle && !post.isGeoArticle
+  );
+  const furtherReadingPosts = allPosts.filter(
+    (post) => post.isSeoArticle || post.isGeoArticle
+  );
 
   // Extract all tags.
   const tagSet = new Set<string>();
@@ -99,7 +104,7 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
   const startIndex = (page - 1) * BLOG_PAGE_SIZE;
   const posts = remainingPosts.slice(startIndex, startIndex + BLOG_PAGE_SIZE);
   const seoStartIndex = (page - 1) * SEO_PAGE_SIZE;
-  const paginatedSeoPosts = seoPosts.slice(
+  const paginatedFurtherReadingPosts = furtherReadingPosts.slice(
     seoStartIndex,
     seoStartIndex + SEO_PAGE_SIZE
   );
@@ -107,7 +112,7 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
   return {
     props: {
       posts,
-      seoPosts: paginatedSeoPosts,
+      furtherReadingPosts: paginatedFurtherReadingPosts,
       currentPage: page,
       totalPages,
       totalPosts: remainingPosts.length,
@@ -121,7 +126,7 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function BlogPage({
   posts,
-  seoPosts,
+  furtherReadingPosts,
   currentPage,
   totalPages,
   totalPosts,
@@ -191,7 +196,7 @@ export default function BlogPage({
           </div>
         )}
 
-        <SeoArticleList posts={seoPosts} />
+        <SeoArticleList posts={furtherReadingPosts} />
       </BlogLayout>
     </>
   );

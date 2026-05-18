@@ -93,6 +93,7 @@ async function handler(
             spaceId: c.space?.sId ?? null,
             metadata: c.metadata,
             branchId: null,
+            isRunningAgentLoop: c.isRunningAgentLoop,
           };
         });
 

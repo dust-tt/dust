@@ -4,6 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   ConversationModel,
+  ConversationParticipantModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -6290,11 +6291,144 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     expect(sIds).toContain(convo1.sId);
     expect(sIds).toContain(convo2.sId);
   });
+
+  it("group filter includes conversations with two participants posted or subscribed", async () => {
+    const convo = await createConvoWithUpdatedAt(1);
+    const adminUser = adminAuth.getNonNullableUser();
+
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const addRes = await space.addMembers(adminAuth, {
+      userIds: [otherUser.sId],
+    });
+    assert(addRes.isOk(), "Failed to add user to space");
+
+    await ConversationParticipantModel.create({
+      workspaceId: workspace.id,
+      conversationId: convo.id,
+      userId: adminUser.id,
+      action: "posted",
+      actionRequired: false,
+    });
+    await ConversationParticipantModel.create({
+      workspaceId: workspace.id,
+      conversationId: convo.id,
+      userId: otherUser.id,
+      action: "subscribed",
+      actionRequired: false,
+    });
+
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        filter: "group",
+        pagination: { limit: 10 },
+      }
+    );
+
+    expect(result.conversations.map((c) => c.sId)).toContain(convo.sId);
+  });
+
+  it("group filter includes conversations with two distinct message authors when a participant row was removed", async () => {
+    const convo = await createConvoWithUpdatedAt(1);
+    const adminUser = adminAuth.getNonNullableUser();
+
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const addRes = await space.addMembers(adminAuth, {
+      userIds: [otherUser.sId],
+    });
+    assert(addRes.isOk(), "Failed to add user to space");
+
+    await ConversationParticipantModel.create({
+      workspaceId: workspace.id,
+      conversationId: convo.id,
+      userId: adminUser.id,
+      action: "posted",
+      actionRequired: false,
+    });
+    await ConversationParticipantModel.create({
+      workspaceId: workspace.id,
+      conversationId: convo.id,
+      userId: otherUser.id,
+      action: "posted",
+      actionRequired: false,
+    });
+
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    await ConversationFactory.createUserMessageWithRank({
+      auth: otherAuth,
+      workspace,
+      conversationId: convo.id,
+      rank: 2,
+      content: "Second user message",
+    });
+
+    await ConversationParticipantModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: convo.id,
+        userId: otherUser.id,
+      },
+    });
+
+    const result = await ConversationResource.listConversationsInSpacePaginated(
+      adminAuth,
+      {
+        spaceId: space.sId,
+        filter: "group",
+        pagination: { limit: 10 },
+      }
+    );
+
+    expect(result.conversations.map((c) => c.sId)).toContain(convo.sId);
+  });
+
+  it("getDistinctUserCountsByConversationIds counts distinct user message authors", async () => {
+    expect(
+      (
+        await ConversationResource.getDistinctUserCountsByConversationIds(
+          workspace.id,
+          []
+        )
+      ).size
+    ).toBe(0);
+
+    const convo = await createConvoWithUpdatedAt(1);
+
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    await ConversationFactory.createUserMessageWithRank({
+      auth: otherAuth,
+      workspace,
+      conversationId: convo.id,
+      rank: 2,
+      content: "Second user",
+    });
+
+    const counts =
+      await ConversationResource.getDistinctUserCountsByConversationIds(
+        workspace.id,
+        [convo.id]
+      );
+
+    expect(counts.get(convo.id)).toBe(2);
+  });
 });
 
 const KNOWN_CONVERSATION_RELATED_MODELS = [
   "agent_message_skills",
   "agent_message_feedback",
+  "agent_step_content_tool_execution",
   "agent_suggestion",
   "conversation_branch",
   "conversation_fork",
@@ -6308,6 +6442,9 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   // skill_suggestion.notificationConversationId is ON DELETE SET NULL, so no
   // explicit cleanup is needed in destroyConversation — the DB clears it.
   "skill_suggestion",
+  // self_improving_skills_usage.conversationId is ON DELETE SET NULL, so no
+  // explicit cleanup is needed in destroyConversation — the DB clears it.
+  "self_improving_skills_usage",
   "user_conversation_reads",
   "wake_up",
 ];

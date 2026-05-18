@@ -1,0 +1,24 @@
+{
+  "name": "@dust-tt/front-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx ./server.ts",
+    "start": "NODE_ENV=production node dist/server.js",
+    "build": "tsx esbuild.server.ts",
+    "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
+    "tsgo": "tsgo"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.10",
+    "@hono/zod-validator": "^0.7.6",
+    "hono": "^4.12.15",
+    "next": "^14.2.35",
+    "zod": "^3.25.76",
+    "zod-validation-error": "^3.4.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3",
+    "tsx": "^4.21.0"
+  }
+}

@@ -1,10 +1,13 @@
+import {
+  getCompactionInProgressLabel,
+  getCompactionSuccessLabel,
+} from "@app/components/assistant/conversation/utils";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   CompactionMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { truncate } from "@app/types/shared/utils/string_utils";
 import {
   AnimatedText,
   ContentMessage,
@@ -12,33 +15,9 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 
-const MAX_SOURCE_CONVERSATION_TITLE_LENGTH = 50;
-
 interface CompactionMessageProps {
   message: CompactionMessageType;
   conversation: ConversationWithoutContentType;
-}
-
-function getCompactionSuccessLabel(
-  message: CompactionMessageType,
-  conversation: ConversationWithoutContentType
-): string {
-  if (
-    !message.sourceConversationId ||
-    message.sourceConversationId === conversation.sId
-  ) {
-    return "Context compacted";
-  }
-
-  const parentConversation = conversation.forkingData?.forkedFrom;
-  const isParentConversation =
-    parentConversation?.parentConversationId === message.sourceConversationId;
-
-  if (isParentConversation && parentConversation.parentConversationTitle) {
-    return `Summarized '${truncate(parentConversation.parentConversationTitle, MAX_SOURCE_CONVERSATION_TITLE_LENGTH)}' here`;
-  }
-
-  return "Summarized another conversation here";
 }
 
 export function CompactionMessage({
@@ -69,18 +48,7 @@ export function CompactionMessage({
         </div>
       );
     case "created": {
-      const parentConversation = conversation.forkingData?.forkedFrom;
-      const parentConversationTitle =
-        parentConversation?.parentConversationTitle;
-      const isCompactingOtherConversation = Boolean(
-        message.sourceConversationId &&
-          message.sourceConversationId !== conversation.sId &&
-          parentConversation?.parentConversationId ===
-            message.sourceConversationId
-      );
-      const label = isCompactingOtherConversation
-        ? `Summarizing '${truncate(parentConversationTitle ?? "External conversation", MAX_SOURCE_CONVERSATION_TITLE_LENGTH)}', this may take a moment`
-        : "Compacting context, this may take a moment…";
+      const label = getCompactionInProgressLabel(message, conversation);
 
       return (
         <div className="flex items-center justify-center gap-1.5">

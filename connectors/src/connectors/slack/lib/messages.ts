@@ -1,6 +1,6 @@
 import {
   getBotOrUserName,
-  getUserName,
+  getUserInfo,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
@@ -21,7 +21,11 @@ async function processMessageForMentions(
   }
   for (const m of matches) {
     const userId = m.replace(/<|@|>/g, "");
-    const userName = await getUserName(userId, connectorId, slackClient);
+    const { name: userName } = await getUserInfo(
+      userId,
+      connectorId,
+      slackClient
+    );
     if (!userName) {
       continue;
     }
@@ -55,11 +59,17 @@ export async function formatMessagesForUpsert({
         slackClient
       );
 
-      const authorName = await getBotOrUserName(
-        message,
-        connectorId,
-        slackClient
-      );
+      let authorName: string | null;
+      let authorEmail: string | null = null;
+      if (message.bot_id) {
+        authorName = await getBotOrUserName(message, connectorId, slackClient);
+      } else {
+        ({ name: authorName, email: authorEmail } = await getUserInfo(
+          message.user as string,
+          connectorId,
+          slackClient
+        ));
+      }
       const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
       const messageDateStr = formatDateForUpsert(messageDate);
 
@@ -76,6 +86,7 @@ export async function formatMessagesForUpsert({
         messageDate,
         dateStr: messageDateStr,
         authorName,
+        authorEmail,
         text: text + filesInfo,
         content: text + "\n",
         sections: [],
@@ -104,7 +115,7 @@ export async function formatMessagesForUpsert({
       prefix: null,
       content: null,
       sections: data.map((d) => ({
-        prefix: `>> @${d.authorName} [${d.dateStr}]:\n`,
+        prefix: `>> @${d.authorName}${d.authorEmail ? ` (${d.authorEmail})` : ""} [${d.dateStr}]:\n`,
         content: d.text + "\n",
         sections: [],
       })),

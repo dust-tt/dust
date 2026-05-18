@@ -49,7 +49,12 @@ export type FileUseCaseMetadata = {
   sourceProvider?: string;
   sourceIcon?: string;
   hideFromUser?: boolean;
+  // `skipDataSourceIndexing` means "do not write this file to Qdrant / data source"
+  // (audio/webm, pasted, Slack threads, Chrome captures, tool-output offloads).
+  // `skipFileProcessing` means "do not run upload-time processing (Tika / resize / transcribe)";
+  // only the original blob exists. Stamped together for sandbox-mounted raw delimited files.
   skipDataSourceIndexing?: boolean;
+  skipFileProcessing?: boolean;
   // Plan mode. `isPlanFile: true` marks a file as agent-owned (user can't directly mutate).
   // `planModeLastApproval` is set when the agent's `request_plan_approval` is approved.
   // `isPlanClosed: true` marks the plan as retired — hidden from UI and ignored by the skill.
@@ -119,13 +124,35 @@ export type FileFormatCategory =
   | "audio";
 
 // Define max sizes for each category.
-export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
+export const MAX_FILE_SIZES_DEFAULT: Record<FileFormatCategory, number> = {
   data: 50 * 1024 * 1024, // 50MB.
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
   image: 20 * 1024 * 1024, // 20MB - Gemini limit due to base64 conversion overhead
   audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
+
+export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
+  FileFormatCategory,
+  number
+> = {
+  ...MAX_FILE_SIZES_DEFAULT,
+  delimited: 350 * 1024 * 1024,
+};
+
+export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
+
+export function resolveMaxFileSizes({
+  hasSandboxTools,
+  useCase,
+}: {
+  hasSandboxTools: boolean;
+  useCase: FileUseCase;
+}): Record<FileFormatCategory, number> {
+  const eligible = hasSandboxTools && useCase === "conversation";
+
+  return eligible ? MAX_FILE_SIZES_LARGE_DELIMITED : MAX_FILE_SIZES_DEFAULT;
+}
 
 export function fileSizeToHumanReadable(size: number, decimals = 0) {
   if (size < 1024) {
@@ -152,12 +179,16 @@ export function isBigFileSize(size: number) {
 // Function to ensure file size is within max limit for given content type.
 export function ensureFileSize(
   contentType: AllSupportedFileContentType,
-  fileSize: number
+  fileSize: number,
+  opts: {
+    hasSandboxTools: boolean;
+    useCase: FileUseCase;
+  }
 ): boolean {
   const format = getFileFormat(contentType);
 
   if (format) {
-    return fileSize <= MAX_FILE_SIZES[format.cat];
+    return fileSize <= resolveMaxFileSizes(opts)[format.cat];
   }
 
   return false;
@@ -165,9 +196,13 @@ export function ensureFileSize(
 
 export function ensureFileSizeByFormatCategory(
   category: FileFormatCategory,
-  fileSize: number
+  fileSize: number,
+  opts: {
+    hasSandboxTools: boolean;
+    useCase: FileUseCase;
+  }
 ): boolean {
-  return fileSize <= MAX_FILE_SIZES[category];
+  return fileSize <= resolveMaxFileSizes(opts)[category];
 }
 
 type FileFormat = {
@@ -391,6 +426,8 @@ export const FILE_FORMATS = {
   "audio/x-wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
   "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: true },
   "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
+  // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
+  "video/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
   // Unknown.
   "application/octet-stream": {
@@ -638,6 +675,8 @@ const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
 > = {
   ".csv": "text/csv",
   ".tsv": "text/tsv",
+  ".xls": "application/vnd.ms-excel",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
 export function stripMimeParameters(contentType: string): string {

@@ -83,7 +83,26 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     for (const body of [
       { name: "api_token", value: "super-secret-token" },
       { name: "_API_TOKEN", value: "super-secret-token" },
-      { name: "DUST_API_KEY", value: "super-secret-token" },
+      { name: "API-TOKEN", value: "super-secret-token" },
+      { name: "DSEC_API_TOKEN", value: "super-secret-token" },
+      {
+        name: "DST_API_TOKEN",
+        value: "super-secret-token",
+        kind: "https_secret",
+        allowedDomains: ["api.example.com"],
+      },
+      {
+        name: "DSEC_API_TOKEN",
+        value: "line one\nline two",
+        kind: "https_secret",
+        allowedDomains: ["api.example.com"],
+      },
+      {
+        name: "DSEC_API_TOKEN",
+        value: "super-secret-token",
+        kind: "https_secret",
+        allowedDomains: [],
+      },
       { name: "DST_API_TOKEN", value: "" },
       { name: "DST_API_TOKEN", value: "abc\u0000def" },
       { name: "DST_API_TOKEN", value: "a".repeat(32 * 1024 + 1) },
@@ -108,7 +127,7 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
 
     for (let i = 0; i < 50; i++) {
       const seedResult = await WorkspaceSandboxEnvVarResource.upsert(auth, {
-        name: `DST_VAR_${i}`,
+        name: `VAR_${i}`,
         value: `value-${i}`,
       });
       expect(seedResult.isOk()).toBe(true);
@@ -143,7 +162,7 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     expect(envResult.value.DST_VAR_0).toBe("rotated-secret-token");
   });
 
-  it("creates multiline values, overwrites by name, audits without values, and never lists values", async () => {
+  it("creates from prefixed and suffix-only names, overwrites by name, audits without values, and never lists values", async () => {
     const first = await createEnvVarRequest({
       method: "POST",
       body: {
@@ -154,7 +173,12 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     await handler(first.req, first.res);
     expect(first.res._getStatusCode()).toBe(201);
     expect(JSON.parse(first.res._getData())).toEqual({
-      envVar: expect.objectContaining({ name: "DST_API_TOKEN" }),
+      envVar: expect.objectContaining({
+        name: "DST_API_TOKEN",
+        kind: "config",
+        placeholderNonce: null,
+        allowedDomains: null,
+      }),
       created: true,
     });
 
@@ -173,12 +197,44 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
       created: false,
     });
 
+    const suffixOnly = createEnvVarHttpRequest({
+      method: "POST",
+      workspace: first.workspace,
+      body: {
+        name: "SECOND_TOKEN",
+        value: "second-token",
+      },
+    });
+    await handler(suffixOnly.req, suffixOnly.res);
+    expect(suffixOnly.res._getStatusCode()).toBe(201);
+    expect(JSON.parse(suffixOnly.res._getData())).toEqual({
+      envVar: expect.objectContaining({ name: "DST_SECOND_TOKEN" }),
+      created: true,
+    });
+
+    const prefixLikeSuffix = createEnvVarHttpRequest({
+      method: "POST",
+      workspace: first.workspace,
+      body: {
+        name: "DST_DST_LEGACY_TOKEN",
+        value: "legacy-token",
+      },
+    });
+    await handler(prefixLikeSuffix.req, prefixLikeSuffix.res);
+    expect(prefixLikeSuffix.res._getStatusCode()).toBe(201);
+    expect(JSON.parse(prefixLikeSuffix.res._getData())).toEqual({
+      envVar: expect.objectContaining({ name: "DST_DST_LEGACY_TOKEN" }),
+      created: true,
+    });
+
     const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(first.auth);
     expect(envResult.isOk()).toBe(true);
     if (envResult.isErr()) {
       throw envResult.error;
     }
     expect(envResult.value.DST_API_TOKEN).toBe("rotated-secret-token");
+    expect(envResult.value.DST_DST_LEGACY_TOKEN).toBe("legacy-token");
+    expect(envResult.value.DST_SECOND_TOKEN).toBe("second-token");
 
     const listRequest = createEnvVarHttpRequest({
       method: "GET",
@@ -192,6 +248,12 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
         expect.objectContaining({
           name: "DST_API_TOKEN",
         }),
+        expect.objectContaining({
+          name: "DST_DST_LEGACY_TOKEN",
+        }),
+        expect.objectContaining({
+          name: "DST_SECOND_TOKEN",
+        }),
       ],
     });
     expect(JSON.stringify(responseBody)).not.toContain("rotated-secret-token");
@@ -199,20 +261,69 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "sandbox_env_var.created",
-        metadata: { name: "DST_API_TOKEN" },
+        metadata: expect.objectContaining({ name: "DST_API_TOKEN" }),
       })
     );
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "sandbox_env_var.updated",
-        metadata: {
+        metadata: expect.objectContaining({
           name: "DST_API_TOKEN",
           previously_existed: "true",
-        },
+        }),
       })
     );
     expect(JSON.stringify(mockEmitAuditLogEvent.mock.calls)).not.toContain(
       "rotated-secret-token"
+    );
+  });
+
+  it("creates HTTPS secrets with allowed domains and omits them from loadEnv", async () => {
+    const request = await createEnvVarRequest({
+      method: "POST",
+      body: {
+        name: "DSEC_API_TOKEN",
+        value: "super-secret-token",
+        kind: "https_secret",
+        allowedDomains: [" API.GitHub.COM. ", "*.Example.com"],
+      },
+    });
+
+    await handler(request.req, request.res);
+
+    expect(request.res._getStatusCode()).toBe(201);
+    const responseBody = JSON.parse(request.res._getData());
+    expect(responseBody).toEqual({
+      envVar: expect.objectContaining({
+        name: "DSEC_API_TOKEN",
+        kind: "https_secret",
+        allowedDomains: ["api.github.com", "*.example.com"],
+      }),
+      created: true,
+    });
+    expect(responseBody.envVar.placeholderNonce).toMatch(/^[0-9a-f]{32}$/);
+
+    const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(
+      request.auth
+    );
+    expect(envResult.isOk()).toBe(true);
+    if (envResult.isErr()) {
+      throw envResult.error;
+    }
+    expect(envResult.value).toEqual({});
+
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "sandbox_env_var.created",
+        metadata: expect.objectContaining({
+          name: "DSEC_API_TOKEN",
+          kind: "https_secret",
+          allowed_domains: JSON.stringify(["api.github.com", "*.example.com"]),
+        }),
+      })
+    );
+    expect(JSON.stringify(mockEmitAuditLogEvent.mock.calls)).not.toContain(
+      "super-secret-token"
     );
   });
 });

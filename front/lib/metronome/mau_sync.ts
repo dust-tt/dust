@@ -6,6 +6,7 @@ import {
   getProductMauId,
   getProductMauTierIds,
 } from "@app/lib/metronome/constants";
+import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -138,22 +139,8 @@ interface TieredMauInfo {
 
 type MauInfo = SimpleMauInfo | TieredMauInfo;
 
-interface MauContractLike {
-  id?: string;
-  custom_fields?: Record<string, string>;
-  subscriptions?: Array<{
-    id?: string;
-    subscription_rate: { product: { id: string } };
-    quantity_schedule?: Array<{ quantity: number }>;
-    billing_periods?: {
-      next?: { starting_at?: string };
-      current?: { starting_at?: string };
-    };
-  }>;
-}
-
 export function hasMauSubscriptionInContract(
-  contract: MauContractLike
+  contract: CachedContract
 ): boolean {
   const subscriptions = contract.subscriptions ?? [];
   const productIds = new Set(
@@ -178,7 +165,7 @@ function getContractMauInfoFromContract({
   contract,
 }: {
   workspaceId: string;
-  contract: MauContractLike;
+  contract: CachedContract;
 }): MauInfo | undefined {
   if (!contract?.subscriptions?.length) {
     return undefined;
@@ -286,7 +273,7 @@ export async function syncMauCount({
   contractId: string;
   workspace: LightWorkspaceType;
   startingAt?: string;
-  contract?: MauContractLike;
+  contract?: CachedContract;
 }): Promise<Result<void, Error>> {
   let contractData = contract;
   if (!contractData) {
@@ -324,15 +311,13 @@ export async function syncMauCount({
     workspace,
   });
 
-  const totalMau = Math.max(mauCount, 1);
-
   // Get subscriptions that need updating (works for both simple and tiered).
   const subscriptions =
     mauInfo.type === "simple" ? [mauInfo.subscription] : mauInfo.subscriptions;
-  const toUpdate = distributeMauAcrossTiers(totalMau, subscriptions);
+  const toUpdate = distributeMauAcrossTiers(mauCount, subscriptions);
 
   logger.info(
-    { workspaceId: workspace.sId, contractId, toUpdate, totalMau },
+    { workspaceId: workspace.sId, contractId, toUpdate, mauCount },
     "[Metronome] Updating MAU quantities"
   );
 

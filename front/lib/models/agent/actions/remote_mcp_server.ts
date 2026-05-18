@@ -28,6 +28,7 @@ export class RemoteMCPServerModel extends WorkspaceAwareModel<RemoteMCPServerMod
   declare sharedSecret: string | null;
   declare authorization: AuthorizationInfo | null;
   declare customHeaders: Record<string, string> | null;
+  declare meta: Record<string, string> | null;
 }
 
 RemoteMCPServerModel.init(
@@ -87,6 +88,11 @@ RemoteMCPServerModel.init(
       defaultValue: null,
     },
     customHeaders: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
+    meta: {
       type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: null,

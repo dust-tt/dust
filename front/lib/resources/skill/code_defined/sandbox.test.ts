@@ -30,6 +30,20 @@ describe("sandboxSkill", () => {
     expect(instructionsWithDsbxTools).toContain("name: dsbx");
   });
 
+  it("instructs the model to analyze mounted tabular files with code", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+
+    const instructions = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).toContain("tabular files (CSV, TSV, Excel)");
+    expect(instructions).toContain("pandas.read_csv");
+    expect(instructions).toContain("DuckDB");
+  });
+
   it("hides agent egress request instructions until enabled", async () => {
     const {
       authenticator: auth,

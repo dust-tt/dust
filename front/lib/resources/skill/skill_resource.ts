@@ -1551,6 +1551,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
+        selfImprovementCostsCapMicroUsd: null,
+        selfImprovementLock: false,
       },
       {
         // Global skills do not have data source configurations.
@@ -1810,6 +1812,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           isDefault: versionModel.isDefault,
           reinforcement: "auto",
           lastReinforcementAnalysisAt: null,
+          selfImprovementCostsCapMicroUsd:
+            versionModel.selfImprovementCostsCapMicroUsd,
+          selfImprovementLock: versionModel.selfImprovementLock,
         },
         {
           // We ignore data source configurations for historical versions.
@@ -2019,6 +2024,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     reinforcement: SkillReinforcementMode
   ): Promise<void> {
     await this.update({ reinforcement });
+  }
+
+  async updateSelfImprovementLock(selfImprovementLock: boolean): Promise<void> {
+    await this.update({ selfImprovementLock });
+  }
+
+  async updateSelfImprovementCostsCap(
+    selfImprovementCostsCapMicroUsd: number | null
+  ): Promise<void> {
+    await this.update({ selfImprovementCostsCapMicroUsd });
   }
 
   async recordReinforcementAnalysisCompletion(): Promise<void> {
@@ -2627,6 +2642,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
+    await AgentMessageSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await ConversationSkillModel.destroy({
+      where: { workspaceId },
+    });
+
     await SkillConfigurationModel.destroy({
       where: { workspaceId },
     });
@@ -2658,6 +2681,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
+      selfImprovementLock: this.selfImprovementLock,
+      selfImprovementCostsCapMicroUsd: this.selfImprovementCostsCapMicroUsd,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
       tools: this.mcpServerViews.map((view) => {

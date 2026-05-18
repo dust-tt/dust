@@ -1,11 +1,15 @@
 import type { LLMConfig } from "@app/lib/api/assistant/call_llm";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation";
+import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation/compaction";
 import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
+import {
+  createGCSMountFile,
+  type GCSMountFileEntry,
+} from "@app/lib/api/files/gcs_mount/files";
 import { isProviderWhitelisted } from "@app/lib/assistant";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -108,6 +112,60 @@ function findCompactionMessage(
   return undefined;
 }
 
+function formatCompactionHistoryTimestamp(date: Date): string {
+  return date
+    .toISOString()
+    .slice(0, 16)
+    .replace(/-/g, "")
+    .replace("T", "-")
+    .replace(":", "");
+}
+
+async function createCompactionHistoryFile(
+  auth: Authenticator,
+  {
+    targetConversation,
+    sourceConversation,
+    compactionMessage,
+    renderedMessages,
+  }: {
+    targetConversation: ConversationType;
+    sourceConversation: ConversationType;
+    compactionMessage: CompactionMessageType;
+    renderedMessages: string;
+  }
+): Promise<Result<GCSMountFileEntry, Error>> {
+  const generatedAt = new Date();
+  const relativeFilePath = `history/${formatCompactionHistoryTimestamp(generatedAt)}-compaction-${compactionMessage.sId}.history`;
+  const metadataLines = [
+    "# Conversation History Before Compaction",
+    "",
+    `Generated at: ${generatedAt.toISOString()}`,
+    `Conversation: ${sourceConversation.sId}`,
+    "",
+    "## Conversation",
+    "",
+  ];
+
+  const entryRes = await createGCSMountFile(
+    auth,
+    { useCase: "conversation", conversationId: targetConversation.sId },
+    {
+      relativeFilePath,
+      content: Buffer.from(
+        `${metadataLines.join("\n")}${renderedMessages}`,
+        "utf8"
+      ),
+      contentType: "text/plain",
+    }
+  );
+
+  if (entryRes.isErr()) {
+    return entryRes;
+  }
+  return new Ok(entryRes.value);
+}
+
 export async function runCompaction(
   auth: Authenticator,
   {
@@ -183,7 +241,7 @@ export async function runCompaction(
   const summaryRes = await generateCompactionSummary(auth, {
     sourceConversation: conversationToSummarize,
     sourceMessageRank: sourceConversation?.messageRank,
-    targetConversationId: targetConversation.sId,
+    targetConversation: targetConversation,
     compactionMessage,
     model,
   });
@@ -192,22 +250,52 @@ export async function runCompaction(
   let status: "succeeded" | "failed";
 
   if (summaryRes.isOk()) {
-    content = replaceStandaloneAttachmentIds(
-      summaryRes.value,
+    const summary = replaceStandaloneAttachmentIds(
+      summaryRes.value.summary,
       sourceConversation?.attachmentIdReplacements
     );
-    status = "succeeded";
-
-    logger.info(
-      {
-        workspaceId: owner.sId,
-        conversationId,
-        sourceConversationId: sourceConversation?.conversationId,
-        compactionMessageId,
-        status,
-      },
-      "Compaction generation succeeded"
+    const renderedMessages = replaceStandaloneAttachmentIds(
+      summaryRes.value.renderedMessages,
+      sourceConversation?.attachmentIdReplacements
     );
+
+    const historyFileRes = await createCompactionHistoryFile(auth, {
+      targetConversation: targetConversation,
+      sourceConversation: conversationToSummarize,
+      compactionMessage,
+      renderedMessages,
+    });
+
+    if (historyFileRes.isOk()) {
+      content = `${summary}\n\n---\n\nFull conversation history before compaction: ${historyFileRes.value.path}`;
+      status = "succeeded";
+
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          conversationId,
+          sourceConversationId: sourceConversation?.conversationId,
+          compactionMessageId,
+          historyFilePath: historyFileRes.value.path,
+          status,
+        },
+        "Compaction generation succeeded"
+      );
+    } else {
+      content = null;
+      status = "failed";
+
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          conversationId,
+          sourceConversationId: sourceConversation?.conversationId,
+          compactionMessageId,
+          error: historyFileRes.error,
+        },
+        "Compaction history file creation failed"
+      );
+    }
   } else {
     content = null;
     status = "failed";
@@ -253,17 +341,17 @@ async function generateCompactionSummary(
   {
     sourceConversation,
     sourceMessageRank,
-    targetConversationId,
+    targetConversation,
     compactionMessage,
     model,
   }: {
     sourceConversation: ConversationType;
     sourceMessageRank?: number;
-    targetConversationId: string;
+    targetConversation: ConversationType;
     compactionMessage: CompactionMessageType;
     model: SupportedModel;
   }
-): Promise<Result<string, Error>> {
+): Promise<Result<{ summary: string; renderedMessages: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
   const conversationToSummarize =
@@ -281,13 +369,21 @@ async function generateCompactionSummary(
     includeActions: true,
     includeActionDetails: true,
     skipRunningAgentMessages: true,
+    truncateTotalChars: 512000, // Simple heuristic to avoid context overflow with most models.
   });
 
-  // TODO(compaction): Ensure we don't exceeds the model context size here, as we have no guarantee
-  // that the current conversation is not exceeding it already.
   // TODO(compaction): We may want to be more mechanical about files available to the model in
-  // conversation and projects by including a lsit as part of the summary.
+  // conversation and projects by including a list as part of the summary.
   // TODO(compaction: We may want to add retries around the LLM call
+
+  logger.info(
+    {
+      workspaceId: owner.sId,
+      conversationId: conversationToSummarize.sId,
+      renderedMessagesLength: renderedMessages.length,
+    },
+    "Compaction generation started"
+  );
 
   const conv: ModelConversationTypeMultiActions = {
     messages: [
@@ -321,7 +417,7 @@ async function generateCompactionSummary(
     {
       context: {
         operationType: "compaction",
-        conversationId: targetConversationId,
+        conversationId: targetConversation.sId,
         userId: auth.user()?.sId,
         workspaceId: owner.sId,
       },
@@ -348,5 +444,5 @@ async function generateCompactionSummary(
     return new Err(new Error("Compaction LLM returned empty summary"));
   }
 
-  return new Ok(summary);
+  return new Ok({ summary, renderedMessages });
 }

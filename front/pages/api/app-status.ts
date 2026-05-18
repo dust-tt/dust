@@ -1,3 +1,6 @@
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/app-status.ts
+
 /** @ignoreswagger */
 import type { AppStatus } from "@app/lib/api/status";
 import {

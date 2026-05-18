@@ -130,7 +130,10 @@ export function SkillUsageChart({
       ? versionData.chartData.length === 0
       : filteredSourceItems.length === 0;
 
-  const { selectedKey, isDimmed, decorate } = useSelectableSeries();
+  const visibleSeriesKeys =
+    skillMode === "version" ? versionData.topTools : filteredSkillNames;
+  const { selectedKey, isDimmed, decorate } =
+    useSelectableSeries(visibleSeriesKeys);
 
   const legendItems = useMemo(() => {
     if (skillMode === "version") {

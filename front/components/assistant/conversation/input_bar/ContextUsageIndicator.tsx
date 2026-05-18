@@ -114,36 +114,34 @@ export function ContextUsageIndicator({
             }
           />
         </PopoverTrigger>
-        <PopoverContent side="top" align="end" className="w-auto p-3">
+        <PopoverContent side="top" className="w-auto p-3">
           <div className="flex flex-col items-start gap-3">
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {contextUsagePercentage}% of context used.
-            </span>
-            <div className="flex items-center gap-3">
-              {contextUsagePercentage >
-                CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  label={isCompacting ? "Compacting" : "Compact now"}
-                  onClick={() => {
-                    if (contextUsage?.model) {
-                      void compact(contextUsage.model);
-                    }
-                  }}
-                  disabled={isCompacting || !contextUsage?.model}
-                  isLoading={isCompacting}
-                />
-              )}
+              {contextUsagePercentage}% of context used.{" "}
               <LinkWrapper
                 href={COMPACTION_GUIDE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-highlight underline hover:text-highlight-light dark:text-highlight-night dark:hover:text-highlight-light-night"
+                className="ml-0.5 text-sm underline"
               >
                 Learn more
               </LinkWrapper>
-            </div>
+            </span>
+            {contextUsagePercentage >
+              CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
+              <Button
+                variant="outline"
+                size="xs"
+                label={isCompacting ? "Compacting" : "Compact now"}
+                onClick={() => {
+                  if (contextUsage?.model) {
+                    void compact(contextUsage.model);
+                  }
+                }}
+                disabled={isCompacting || !contextUsage?.model}
+                isLoading={isCompacting}
+              />
+            )}
           </div>
         </PopoverContent>
       </PopoverRoot>

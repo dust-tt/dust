@@ -13,9 +13,8 @@ import { apiError } from "@app/logger/withlogging";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { DatasetType } from "@app/types/dataset";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 import { PostDatasetRequestBodySchema } from "..";
 
@@ -118,9 +117,9 @@ async function handler(
         });
       }
 
-      const bodyValidation = PostDatasetRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostDatasetRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -132,8 +131,8 @@ async function handler(
 
       // Check name validity
       if (
-        !bodyValidation.right.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
-        bodyValidation.right.dataset.name.length === 0
+        !bodyValidation.data.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
+        bodyValidation.data.dataset.name.length === 0
       ) {
         return apiError(req, res, {
           status_code: 400,
@@ -145,7 +144,7 @@ async function handler(
           },
         });
       }
-      if (req.query.name !== bodyValidation.right.dataset.name) {
+      if (req.query.name !== bodyValidation.data.dataset.name) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -159,8 +158,8 @@ async function handler(
       // Check data validity.
       try {
         checkDatasetData({
-          data: bodyValidation.right.dataset.data,
-          schema: bodyValidation.right.schema,
+          data: bodyValidation.data.dataset.data,
+          schema: bodyValidation.data.schema,
         });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
@@ -175,7 +174,7 @@ async function handler(
       }
 
       // Reorder all keys as Dust API expects them ordered.
-      const data = bodyValidation.right.dataset.data.map((d: any) => {
+      const data = bodyValidation.data.dataset.data.map((d: any) => {
         return Object.keys(d)
           .sort()
           .reduce((obj: { [key: string]: any }, key) => {
@@ -188,7 +187,7 @@ async function handler(
       // Register dataset with the Dust internal API.
       const d = await coreAPI.createDataset({
         projectId: app.dustAPIProjectId,
-        datasetId: bodyValidation.right.dataset.name,
+        datasetId: bodyValidation.data.dataset.name,
         data,
       });
       if (d.isErr()) {
@@ -203,19 +202,19 @@ async function handler(
       }
 
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const description = bodyValidation.right.dataset.description
-        ? bodyValidation.right.dataset.description
+      const description = bodyValidation.data.dataset.description
+        ? bodyValidation.data.dataset.description
         : null;
 
       await dataset.update({
-        name: bodyValidation.right.dataset.name,
+        name: bodyValidation.data.dataset.name,
         description,
-        schema: bodyValidation.right.schema,
+        schema: bodyValidation.data.schema,
       });
 
       res.status(200).json({
         dataset: {
-          name: bodyValidation.right.dataset.name,
+          name: bodyValidation.data.dataset.name,
           description,
           data: null,
         },

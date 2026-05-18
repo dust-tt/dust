@@ -5,7 +5,7 @@ import type {
   FileVersion,
 } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
-import { stripMimeParameters } from "@app/types/files";
+import { resolveFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { File } from "formidable";
@@ -48,7 +48,8 @@ export const parseUploadRequest = async (
         !part.mimetype ||
         part.mimetype === "application/octet-stream" ||
         // The mime params are already stripped from the file content type.
-        stripMimeParameters(part.mimetype) === file.contentType,
+        resolveFileContentType(part.mimetype, file.fileName) ===
+          file.contentType,
     });
 
     const [, files] = await form.parse(req);

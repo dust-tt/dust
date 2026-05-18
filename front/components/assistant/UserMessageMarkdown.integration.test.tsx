@@ -267,8 +267,8 @@ Quote text
       expect(container).toBeInTheDocument();
     });
 
-    it("renders project todo directives", () => {
-      const content = ":todo[Review PR]{sId=ptodo_123}";
+    it("renders project task directives", () => {
+      const content = ":project_task[Review PR]{sId=ptodo_123}";
       const message = { ...mockMessage, content };
       const { container } = render(
         <UserMessageMarkdown
@@ -278,8 +278,8 @@ Quote text
         />
       );
       expect(
-        container.querySelector("[data-project-todo-sid]")
-      ).toHaveAttribute("data-project-todo-sid", "ptodo_123");
+        container.querySelector("[data-project-task-sid]")
+      ).toHaveAttribute("data-project-task-sid", "ptodo_123");
       expect(container.textContent).toContain("Review PR");
     });
 

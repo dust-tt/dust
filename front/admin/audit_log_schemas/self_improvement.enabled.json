@@ -1,0 +1,9 @@
+{
+  "action": "self_improvement.enabled",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "enabled": "string"
+  }
+}

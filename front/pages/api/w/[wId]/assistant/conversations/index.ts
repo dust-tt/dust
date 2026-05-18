@@ -147,9 +147,8 @@ import type {
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export type GetConversationsResponseBody = {
   conversations: ConversationListItemType[];
@@ -181,7 +180,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const paginationRes = getPaginationParams(req, {
+      const paginationRes = getPaginationParams(req.query, {
         defaultLimit: 100,
         defaultOrderColumn: "updatedAt",
         defaultOrderDirection: "desc",
@@ -224,12 +223,11 @@ async function handler(
         req.body.spaceId = null;
       }
 
-      const bodyValidation = InternalPostConversationsRequestBodySchema.decode(
-        req.body
-      );
+      const bodyValidation =
+        InternalPostConversationsRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
 
         return apiError(req, res, {
           status_code: 400,
@@ -248,7 +246,7 @@ async function handler(
         contentFragments,
         metadata,
         skipToolsValidation,
-      } = bodyValidation.right;
+      } = bodyValidation.data;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(

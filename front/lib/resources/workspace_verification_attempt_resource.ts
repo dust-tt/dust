@@ -5,12 +5,15 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { expireRateLimiterKey } from "@app/lib/utils/rate_limiter";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { VerificationStatus } from "@app/types/workspace_verification";
 import { createHash } from "crypto";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
+
+export const PHONE_REGEXP = /^\+[1-9]\d{1,14}$/;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceVerificationAttemptResource
@@ -201,5 +204,30 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
+  }
+
+  static async deleteByPhoneHash(phoneNumberHash: string): Promise<number> {
+    const rows = await this.model.findAll({
+      // Match the partial unique index (phoneNumberHash WHERE verifiedAt IS NOT NULL):
+      // unverified rows don't block reuse, so leave them alone.
+      where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
+      // WORKSPACE_ISOLATION_BYPASS: A verified phone is globally unique across workspaces;
+      // resetting it for reuse must clear rows in any workspace that previously claimed it.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    let deletedCount = 0;
+    for (const row of rows) {
+      deletedCount += await WorkspaceVerificationAttemptModel.destroy({
+        where: { id: row.id, workspaceId: row.workspaceId },
+      });
+    }
+
+    await expireRateLimiterKey({
+      key: `verification:phone:${phoneNumberHash}`,
+    });
+
+    return deletedCount;
   }
 }

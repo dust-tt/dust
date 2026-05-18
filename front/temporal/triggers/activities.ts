@@ -4,6 +4,7 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   buildAuditLogTarget,
@@ -16,16 +17,16 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
-import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -37,13 +38,13 @@ async function createConversationForAgentConfiguration({
   agentConfiguration,
   trigger,
   lastRunAt,
-  contentFragment,
+  webhookRequest,
 }: {
   auth: Authenticator;
   agentConfiguration: AgentConfigurationType;
   trigger: TriggerType;
   lastRunAt: Date | null;
-  contentFragment?: ContentFragmentInputWithFileIdType;
+  webhookRequest: WebhookRequestResource | null;
 }): Promise<Result<ConversationType, APIErrorWithStatusCode>> {
   const newConversation = await createConversation(auth, {
     title: null,
@@ -65,8 +66,69 @@ async function createConversationForAgentConfiguration({
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,
   };
 
-  if (contentFragment) {
-    await postNewContentFragment(auth, newConversation, contentFragment, null);
+  if (
+    webhookRequest &&
+    trigger.kind === "webhook" &&
+    trigger.configuration.includePayload
+  ) {
+    // If we need the payload, create a content fragment for it.
+    const payloadRes = await getWebhookRequestPayloadFromGCS(auth, {
+      webhookRequest,
+    });
+    if (payloadRes.isErr()) {
+      logger.error(
+        {
+          triggerId: trigger.sId,
+          error: payloadRes.error,
+        },
+        "Error getting webhook request payload from GCS."
+      );
+      return new Err({
+        api_error: {
+          type: "webhook_storage_error",
+          message: "Webhook request payload not found.",
+        },
+        status_code: 500,
+      });
+    }
+
+    const contentFragmentRes = await toFileContentFragment(auth, {
+      conversation: newConversation,
+      contentFragment: {
+        contentType: "application/json",
+        content: JSON.stringify(payloadRes.value.body),
+        title: `Webhook body (source id: ${webhookRequest.webhookSourceId}, date: ${new Date().toISOString()})`,
+      },
+      fileName: `webhook_body_${webhookRequest.webhookSourceId}_${Date.now()}.json`,
+      skipDataSourceIndexing: true,
+    });
+
+    if (contentFragmentRes.isErr()) {
+      const errorMessage =
+        "Error creating file content fragment from webhook request.";
+      await webhookRequest.markAsFailed(errorMessage);
+      logger.error(
+        {
+          workspaceId: auth.workspace()?.sId,
+          webhookRequestId: webhookRequest.id,
+        },
+        errorMessage
+      );
+      return new Err({
+        api_error: {
+          type: "webhook_storage_error",
+          message: "Error creating file content fragment from webhook request.",
+        },
+        status_code: 500,
+      });
+    }
+
+    await postNewContentFragment(
+      auth,
+      newConversation,
+      contentFragmentRes.value,
+      null
+    );
   }
 
   const messageRes = await postUserMessage(auth, {
@@ -100,13 +162,11 @@ export async function runTriggeredAgentsActivity({
   userId,
   workspaceId,
   triggerId,
-  contentFragment,
   webhookRequestId,
 }: {
   userId: string;
   workspaceId: string;
   triggerId: string;
-  contentFragment?: ContentFragmentInputWithFileIdType;
   webhookRequestId?: number;
 }) {
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -179,6 +239,7 @@ export async function runTriggeredAgentsActivity({
   }
 
   let lastRunAt: Date | null = null;
+  let webhookRequest: WebhookRequestResource | null = null;
   switch (trigger.kind) {
     case "schedule": {
       const client = await getTemporalClientForAgentNamespace();
@@ -205,6 +266,12 @@ export async function runTriggeredAgentsActivity({
     }
 
     case "webhook": {
+      if (webhookRequestId) {
+        webhookRequest = await WebhookRequestResource.fetchByModelIdWithAuth(
+          auth,
+          webhookRequestId
+        );
+      }
       break;
     }
 
@@ -219,16 +286,18 @@ export async function runTriggeredAgentsActivity({
     agentConfiguration,
     trigger,
     lastRunAt,
-    contentFragment,
+    webhookRequest,
   });
   if (conversationResult.isErr()) {
     const { type: errorType, message: errorMessage } =
       conversationResult.error.api_error;
     const isNonRetryable =
       errorType === "plan_message_limit_exceeded" ||
+      errorType === "credits_exhausted" ||
       errorType === "model_disabled" ||
       errorType === "invalid_request_error" ||
-      errorType === "agent_inaccessible";
+      errorType === "agent_inaccessible" ||
+      errorType === "webhook_storage_error";
 
     if (isNonRetryable) {
       // If the agent is inaccessible, disable the trigger.
@@ -244,19 +313,12 @@ export async function runTriggeredAgentsActivity({
         await triggerResource.disable(auth);
       }
 
-      if (webhookRequestId && trigger.kind === "webhook") {
-        const webhookRequest =
-          await WebhookRequestResource.fetchByModelIdWithAuth(
-            auth,
-            webhookRequestId
-          );
-        if (webhookRequest) {
-          await webhookRequest.markRelatedTrigger({
-            trigger,
-            status: "workflow_start_failed",
-            errorMessage,
-          });
-        }
+      if (webhookRequest) {
+        await webhookRequest.markRelatedTrigger({
+          trigger,
+          status: "workflow_start_failed",
+          errorMessage,
+        });
       }
       // Return without throwing, this is normal behaviour so we don't want an error
       return;

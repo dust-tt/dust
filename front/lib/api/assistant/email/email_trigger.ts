@@ -625,6 +625,7 @@ export async function triggerFromEmail(
 
   if (restOfThread.length > 0) {
     const cfRes = await toFileContentFragment(auth, {
+      conversation,
       contentFragment: {
         title: `Email thread: ${email.subject}`,
         content: restOfThread,
@@ -878,7 +879,7 @@ export async function sendToolValidationEmail({
     ? email.subject
     : `Re: ${email.subject}`;
 
-  const baseUrl = config.getClientFacingUrl();
+  const baseUrl = config.getAppUrl();
   const conversationUrl = getConversationRoute(
     workspace.sId,
     conversation.sId,

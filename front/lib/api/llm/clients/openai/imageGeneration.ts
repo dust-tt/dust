@@ -74,7 +74,7 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
       credentials,
     }: {
       modelId: ImageModelIdType;
-      credentials: { OPENAI_API_KEY?: string };
+      credentials: { OPENAI_API_KEY?: string; OPENAI_BASE_URL?: string };
     }
   ) {
     super(auth, { modelId, credentials });
@@ -82,7 +82,10 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
     this.supportedContentTypes = ["image/jpeg", "image/png", "image/webp"];
 
     assert(credentials.OPENAI_API_KEY, "OPENAI_API_KEY credential is required");
-    this.client = new OpenAI({ apiKey: credentials.OPENAI_API_KEY });
+    this.client = new OpenAI({
+      apiKey: credentials.OPENAI_API_KEY,
+      baseURL: credentials.OPENAI_BASE_URL,
+    });
   }
 
   async generateImage(

@@ -388,7 +388,13 @@ docs). Node reads `NODE_EXTRA_CA_CERTS` at process start only (Node CLI
 docs).
 
 The replace/append distinction drives the trust setup. The sandbox image
-maintains two files and points each env var at the right one:
+maintains two files and points each env var at the right one. To avoid
+an early-boot race where replace-style env vars resolve to a missing
+file before dsbx writes the CA, the image **pre-populates
+`/etc/dust/ca-bundle.pem` at build time** as a copy of the system
+bundle. From boot zero, replace-style env vars resolve to a valid trust
+set (the system bundle); the runtime install step later atomically
+rebuilds the file with the dsbx CA appended.
 
 1. **Install the dsbx-issued CA into the system store** at boot:
    ```
@@ -396,8 +402,13 @@ maintains two files and points each env var at the right one:
    update-ca-certificates
    ```
 2. **Maintain `/etc/dust/ca-bundle.pem` = system bundle ∪ dust-egress
-   CA**, computed at boot from `/etc/ssl/certs/ca-certificates.crt`. This
-   is what replace-style env vars point at.
+   CA**, computed at boot from `/etc/ssl/certs/ca-certificates.crt`.
+   This is what replace-style env vars point at. The image build
+   pre-populates this file with the system bundle so the path
+   resolves to a valid bundle from boot zero (closes the
+   early-process race for any container service that runs before
+   `setupEgressForwarder`); the boot-time CA install rebuilds the
+   file atomically with the dsbx CA appended.
 3. **Export env vars system-wide** in `/etc/environment` and the agent
    user's profile. Replace-style vars get the bundle; append-style vars
    get the single-CA file:
@@ -551,31 +562,34 @@ Implementation footprint:
   point `SSL_CERT_FILE`/`CURL_CA_BUNDLE` at the merged bundle.
 - Central egress proxy: no change.
 
-### Two classes of sandbox env vars
+### Two kinds of sandbox env vars
 
-The `WorkspaceSandboxEnvVar` model splits into two distinct classes,
-with different semantics and different injection paths:
+The `WorkspaceSandboxEnvVar` model gains a `kind` discriminator with
+two values, each with different semantics and different injection
+paths:
 
-1. **Config vars** (the `WorkspaceSandboxEnvVar` of today). Plain
+1. **`kind = 'config'`** (the `WorkspaceSandboxEnvVar` of today). Plain
    strings meant to be used offline inside the sandbox: feature flags,
    non-sensitive config, default region, etc. Injected as-is into the
-   agent env. Not substituted on the wire. Not bound to a domain. The
-   bash-output redactor still applies to these (best-effort, since
-   they're in env in plaintext).
-2. **Secrets** (new). Sensitive values meant to be used in HTTPS
-   requests only, scoped to a per-secret `allowedDomains` list. The
-   agent env contains only the placeholder; the real value lives in
+   agent env under the `DST_*` prefix. Not substituted on the wire.
+   Not bound to a domain. The bash-output redactor still applies to
+   these (best-effort, since they're in env in plaintext).
+2. **`kind = 'https_secret'`** (new). Sensitive values meant to be used
+   in HTTPS requests only, scoped to a per-secret `allowedDomains`
+   list. The agent env contains only the placeholder under the
+   `DSEC_*` prefix; the real value lives in
    `/run/dust/egress-secrets.json` (tmpfs, root-owned 0600) as
    plaintext, and is substituted on the wire by dsbx when the
    destination domain matches the secret's allowlist. Cannot be used
    offline (no real value in env).
 
-   File schema (one record per secret):
+   File schema (one record per secret; `name` is the suffix only,
+   no `DSEC_` prefix - dsbx matches by placeholder, not by name):
 
    ```json
    [
      {
-       "name": "DSEC_OPENAI_API_KEY",
+       "name": "OPENAI_API_KEY",
        "placeholder": "__DSEC_<32hex>__",
        "value": "sk-...",
        "allowedDomains": ["api.openai.com"]
@@ -590,10 +604,19 @@ with different semantics and different injection paths:
    never escalates to root" invariant, root-only tmpfs is sufficient.
    tmpfs is RAM-backed and never hits durable storage.
 
-Admins pick the class when creating the row. Migration path for
-existing rows: leave them as config vars by default; admins explicitly
-promote sensitive ones to secrets and set `allowedDomains` at promotion
-time.
+**DB storage of `name`**: the `name` column stores the **suffix only**
+(e.g. `FOO`), not the user-facing prefixed form. Front prepends `DST_`
+or `DSEC_` based on `kind` at injection time and at API serialization
+time. This avoids the ambiguity of having two prefixes potentially
+collide on the same suffix and keeps the rename of an existing row
+between `kind` values cleanly out of scope (we don't allow it - see
+"promotion" below).
+
+Admins pick the `kind` when creating the row. Migration path for
+existing rows: leave them as `kind = 'config'` by default; admins
+explicitly promote sensitive ones to `kind = 'https_secret'` and set
+`allowedDomains` at promotion time. Promotion is one-way in Phase 1
+(no `https_secret -> config` demotion).
 
 ### Phase 1, MVP - HTTP/1.1
 
@@ -714,17 +737,25 @@ time.
 
 - **Live update / rotation: deferred to a later phase.** We
   knowingly do **not** ship file-watch / inotify / push-on-rotate in
-  Phase 1. The Phase 1 propagation model is **rewrite-on-wake**:
-  - On sandbox create or wake, `front` rewrites the secrets file
-    from current admin state before any agent code runs.
+  Phase 1. The Phase 1 propagation model is **rewrite-on-wake plus
+  dsbx restart-on-wake**:
+  - On sandbox create, `front` writes the secrets file before
+    starting dsbx. dsbx loads the file once at startup.
+  - On sandbox wake, `front` rewrites the secrets file from current
+    admin state, then **kills the existing dsbx process and
+    re-runs `setupEgressForwarder`**. The fresh dsbx loads the
+    just-rewritten file. This is the deliberate Phase 1 propagation
+    primitive: dsbx itself does not reload, no inotify, no IPC.
   - On admin rotation/deletion of a secret while sandboxes are
-    sleeping, the next wake picks up the new state.
+    sleeping, the next wake picks up the new state via the restart.
   - On admin rotation/deletion while a sandbox is **active**, the
     Phase 1 model accepts that the running sandbox keeps using the
     old value until it sleeps and wakes again, OR until front
-    explicitly kills+recreates it. The kill-and-recreate path
-    exists for the "rotated/deleted secret must not linger" case
-    but is operator-driven, not automatic.
+    explicitly kills dsbx (oncall script via `pkill dsbx`) which
+    triggers `setupEgressForwarder` health-recovery on the next
+    exec. The kill-and-restart path exists for the "rotated/deleted
+    secret must not linger" case but is operator-driven, not
+    automatic.
 
   The race / serialization questions (admin rotation mid-wake,
   multi-instance front coordination, push-to-active-sandbox
@@ -732,10 +763,7 @@ time.
   later "live update" phase will address them - likely with
   inotify + atomic write + fail-closed parse + a coordination
   primitive for concurrent rotations - but we're not committing
-  to a design now. Callout for design pass: the inotify/atomic-
-  rename/fail-closed-parse pattern from earlier drafts is a good
-  starting point but didn't fully cover wake races; we revisit
-  with fresh eyes when we sequence that phase.
+  to a design now.
 
   Why this is acceptable for Phase 1: the only workspace consuming
   this on rollout is our internal one (see "Migration of existing
@@ -759,22 +787,22 @@ time.
   Rust webpki, cert-pinning, and mTLS clients documented as known
   holes that fail loudly.
 - **Secret env-var naming**: secrets are exposed in the agent env
-  under a dedicated prefix (e.g. `DSEC_*`; final prefix TBD), not
-  under SDK-natural names. Agents that use SDKs which auto-discover
-  env vars by exact name (e.g. OpenAI, Stripe) write a one-line
-  mapping at the top of their script (`import os; os.environ["OPENAI_API_KEY"]
-  = os.environ["DSEC_OPENAI_API_KEY"]`). The skill prompt
-  documents this convention up front. The lexical signal in env
-  preserves the agent's ability to enumerate which env vars are
-  secrets at a glance, at the cost of one mapping line per SDK.
+  under the `DSEC_*` prefix, not under SDK-natural names. Agents that
+  use SDKs which auto-discover env vars by exact name (e.g. OpenAI,
+  Stripe) write a one-line mapping at the top of their script
+  (`import os; os.environ["OPENAI_API_KEY"] =
+  os.environ["DSEC_OPENAI_API_KEY"]`). The skill prompt documents
+  this convention up front. The lexical signal in env preserves the
+  agent's ability to enumerate which env vars are secrets at a
+  glance, at the cost of one mapping line per SDK.
 - Bash redactor (#25051) keeps applying to config vars (defense in
   depth for plaintext-in-env). Skill prompt updated to tell the agent
   secrets will substitute on the wire, distinguish them from config,
   and walk through the foot-guns.
-- Admin UI: secrets get an `allowedDomains` column; the create flow
-  asks for the class up front.
-- Audit log: per-secret allowlist changes, class promotions, rotations,
-  deletions.
+- Admin UI: `https_secret` rows get an `allowedDomains` column; the
+  create flow asks for the `kind` up front.
+- Audit log: per-secret allowlist changes, kind promotions
+  (`config -> https_secret`), rotations, deletions.
 - Estimate: ~2 engineer-weeks. Live-update push-to-active-sandbox
   lands in a later phase (see "Live update / rotation").
 
@@ -870,9 +898,10 @@ with secrets. With Phase 3 they can, after the admin sets
   `client_secret`, webhook signing, and multipart forms come in Phase 3
   with an opt-in `includeBody` flag. Advertise the limit loudly in the
   admin UI when admins create a secret.
-- **Bash redactor (#25051)**: kept, but only applies to config vars (the
-  plaintext-in-env class). Secrets don't need it: the placeholder is
-  what's in env, not the real value.
+- **Bash redactor (#25051)**: kept, but only applies to
+  `kind = 'config'` rows (the plaintext-in-env kind). `https_secret`
+  rows don't need it: the placeholder is what's in env, not the
+  real value.
 - **Trust coverage**: full mainstream coverage in Phase 1 (Node, Python,
   Bun, Deno, Go, Java, Rust native-tls, AWS SDKs, Git). Rust
   `rustls-webpki` and cert-pinning clients documented as known holes
@@ -963,9 +992,9 @@ with secrets. With Phase 3 they can, after the admin sets
   table.
 - **Skill prompt**: explicit + concise. Names the substitution
   mechanism so the agent can use secrets correctly and explain failure
-  modes to users. Two prefixes distinguish config vars (`DST_*`) from
-  secrets (different prefix, TBD). Hard "DO NOT" list at the top of
-  the prompt for the known foot-guns; per-secret inline notes
+  modes to users. Two prefixes distinguish `kind = 'config'` (`DST_*`)
+  from `kind = 'https_secret'` (`DSEC_*`). Hard "DO NOT" list at the
+  top of the prompt for the known foot-guns; per-secret inline notes
   deferred. See "Skill prompt" below for details.
 - **Secret env-var naming**: secrets are exposed under the dedicated
   prefix only (e.g. `DSEC_*`), not under SDK-natural names. Agents map
@@ -998,6 +1027,18 @@ with secrets. With Phase 3 they can, after the admin sets
   fresh outbound TLS without a client cert; client-auth flows to a
   domain in the allowlist union fail at the upstream's handshake.
   mTLS to non-MITM domains (TCP-spliced) is unaffected.
+- **Workspace-scoped secrets only**: Phase 1 has no user-scoped
+  secret tier. A `kind = 'https_secret'` row is owned by a
+  workspace; every sandbox in that workspace sees the same
+  placeholder for it. User-scoped secrets are out of scope until a
+  later phase decides on the policy/UX shape.
+- **DB stores `name` suffix only**: the `name` column on
+  `WorkspaceSandboxEnvVar` holds the suffix without prefix
+  (e.g. `FOO`). Front prepends `DST_` for `kind = 'config'` and
+  `DSEC_` for `kind = 'https_secret'` at injection time and at API
+  serialization time. The API contract is preserved by composing
+  the prefixed name on read and accepting both prefixed and
+  suffix-only forms on write.
 
 ### Skill prompt
 
@@ -1012,11 +1053,12 @@ modes to users instead of flailing.
   value, and helps it explain to users when something fails (e.g. a
   secret used in a config file context, a cert-pinned client, or a
   non-allowlisted destination).
-- **Two env-var prefixes** distinguish the classes lexically (no per-row
+- **Two env-var prefixes** distinguish the kinds lexically (no per-row
   prompt bloat):
-  - Config vars: `DST_*` (today's prefix, plaintext, offline use ok).
-  - Secrets: a different prefix, TBD (e.g. `DSEC_*`). Substituted on
-    the wire only, HTTPS only, scoped to `allowedDomains`.
+  - `kind = 'config'`: `DST_*` (today's prefix, plaintext, offline
+    use ok).
+  - `kind = 'https_secret'`: `DSEC_*`. Substituted on the wire only,
+    HTTPS only, scoped to `allowedDomains`.
   A future `dsbx list-secrets` command may surface available secret
   names dynamically; for now the agent discovers them via env.
 - **SDK aliasing**. SDKs that auto-discover env vars by exact name

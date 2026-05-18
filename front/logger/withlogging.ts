@@ -119,7 +119,9 @@ export function withLogging<T>(
 
     // Try bearer token first, then fall back to cookie-based session.
     const sessionResult = await tracer.trace("auth.getSession", async () => {
-      const bearerTokenRes = await getSessionFromBearerToken(req);
+      const bearerTokenRes = await getSessionFromBearerToken(
+        req.headers.authorization
+      );
       if (bearerTokenRes.isErr() || bearerTokenRes.value) {
         return bearerTokenRes;
       }

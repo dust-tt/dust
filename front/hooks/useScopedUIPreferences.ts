@@ -1,16 +1,16 @@
-import { normalizeTodosOwnerFilterFromPersistedBlob } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { normalizeTasksOwnerFilterFromPersistedBlob } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
+import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 
 const SCOPED_UI_PREFERENCES_KEY_PREFIX = "scopedUIPreferences";
 
 const scopedUIPreferencesSchemaByScope = {
   projectUI: z.object({
-    tab: z.enum(["conversations", "todos", "knowledge", "settings", "alpha"]),
+    tab: z.enum(["conversations", "tasks", "files", "settings", "alpha"]),
     conversationsFilter: z.enum(["all", "group", "with_me"]),
-    todosOwnerFilter: z
+    tasksOwnerFilter: z
       .unknown()
-      .transform(normalizeTodosOwnerFilterFromPersistedBlob),
+      .transform(normalizeTasksOwnerFilterFromPersistedBlob),
   }),
 } as const;
 
@@ -70,24 +70,6 @@ function writePersistedValue(storageKey: string, value: unknown) {
   }
 }
 
-/** Read persisted preferences synchronously (e.g. when `spaceId` changes before hook state catches up). */
-export function readScopedUIPreferencesValue<
-  TScope extends ScopedUIPreferencesScope,
->(
-  scope: TScope,
-  resourceId: string | null | undefined,
-  defaultValue: ScopeValue<TScope>
-): ScopeValue<TScope> {
-  if (resourceId === null || resourceId === undefined || resourceId === "") {
-    return defaultValue;
-  }
-  const storageKey = `${SCOPED_UI_PREFERENCES_KEY_PREFIX}:${scope}:${resourceId}`;
-  const schema = scopedUIPreferencesSchemaByScope[scope];
-  const candidateValue = readPersistedValue(storageKey);
-  const parsedValue = schema.safeParse(candidateValue);
-  return parsedValue.success ? parsedValue.data : defaultValue;
-}
-
 export function useScopedUIPreferences<
   TScope extends ScopedUIPreferencesScope,
 >({
@@ -103,22 +85,24 @@ export function useScopedUIPreferences<
     return `${SCOPED_UI_PREFERENCES_KEY_PREFIX}:${scope}:${resourceId}`;
   }, [resourceId, scope]);
 
-  const readValue = useCallback((): ScopeValue<TScope> => {
+  const readValue = (): ScopeValue<TScope> => {
     if (!storageKey) {
       return defaultValue;
     }
     const candidateValue = readPersistedValue(storageKey);
     const parsedValue = schema.safeParse(candidateValue);
     return parsedValue.success ? parsedValue.data : defaultValue;
-  }, [defaultValue, schema, storageKey]);
+  };
 
   const [value, setValueState] = useState<ScopeValue<TScope>>(() =>
     readValue()
   );
+  const [seenStorageKey, setSeenStorageKey] = useState(storageKey);
 
-  useLayoutEffect(() => {
+  if (seenStorageKey !== storageKey) {
+    setSeenStorageKey(storageKey);
     setValueState(readValue());
-  }, [readValue]);
+  }
 
   const setValue = useCallback(
     (newValue: ScopeValue<TScope>) => {

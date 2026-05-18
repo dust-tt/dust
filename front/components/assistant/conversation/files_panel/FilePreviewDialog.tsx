@@ -12,6 +12,8 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
   Button,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CodeBlock,
   cn,
   DataTable,
@@ -26,6 +28,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useEffect, useState } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -48,7 +51,7 @@ function getConversationFileUrl(
   const scoped = parseScopedFilePath(filePath);
   const rel = scoped ? scoped.rel : filePath;
 
-  return `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${rel}`;
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${rel}`;
 }
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
@@ -287,8 +290,10 @@ interface FilePreviewDialogProps {
   conversationId: string;
   entry: GCSMountFileEntry | null;
   isOpen: boolean;
-  onDownload: (entry: GCSMountFileEntry) => void;
+  onDownload: (entry: GCSMountFileEntry) => Promise<void>;
+  onNext?: () => void;
   onOpenChange: (open: boolean) => void;
+  onPrev?: () => void;
   owner: LightWorkspaceType;
 }
 
@@ -299,7 +304,48 @@ export function FilePreviewDialog({
   onOpenChange,
   owner,
   onDownload,
+  onPrev,
+  onNext,
 }: FilePreviewDialogProps) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!entry) {
+      return;
+    }
+    setIsDownloading(true);
+    try {
+      await onDownload(entry);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      if (e.key === "ArrowLeft" && onPrev) {
+        e.preventDefault();
+        onPrev();
+      } else if (e.key === "ArrowRight" && onNext) {
+        e.preventDefault();
+        onNext();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onPrev, onNext]);
+
   const mimeType = stripMimeParameters(entry?.contentType ?? "");
   const { category } = getFilePreviewConfig(mimeType);
 
@@ -339,7 +385,7 @@ export function FilePreviewDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent size="xl" height="xl" className="gap-4">
+      <DialogContent size="2xl" height="2xl" className="gap-4 px-4">
         <DialogHeader className="flex gap-4">
           <DialogTitle>Preview Data</DialogTitle>
           <div className="flex items-center justify-between">
@@ -353,7 +399,7 @@ export function FilePreviewDialog({
               )}
               <span
                 className={cn(
-                  "line-clamp-1 text-sm font-medium leading-5",
+                  "line-clamp-1 text-sm leading-5",
                   "text-foreground dark:text-foreground-night"
                 )}
               >
@@ -409,14 +455,34 @@ export function FilePreviewDialog({
           </div>
         )}
         <DialogFooter className="px-4">
-          <Button
-            variant="outline"
-            size="sm"
-            icon={ArrowDownOnSquareIcon}
-            label="Download"
-            onClick={() => entry && onDownload(entry)}
-            disabled={!entry}
-          />
+          <div className="flex w-full items-center justify-between">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                icon={ChevronLeftIcon}
+                onClick={onPrev}
+                disabled={!onPrev}
+                tooltip="Previous"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                icon={ChevronRightIcon}
+                onClick={onNext}
+                disabled={!onNext}
+                tooltip="Next"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={ArrowDownOnSquareIcon}
+              label={isDownloading ? "Downloading…" : "Download"}
+              onClick={handleDownload}
+              disabled={!entry || isDownloading}
+            />
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

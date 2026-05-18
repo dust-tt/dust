@@ -13,8 +13,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.3";
-const DSBX_CLI_VERSION = "0.1.5";
+const DUST_BASE_IMAGE_VERSION = "0.8.10";
+const DSBX_CLI_VERSION = "0.1.7";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
@@ -45,7 +45,6 @@ const PYTHON_LIBRARIES: PythonLibrary[] = [
   { name: "plotly", version: "6.6.0", description: "Interactive plots" },
   { name: "requests", version: "2.32.5", description: "HTTP library" },
   { name: "openpyxl", version: "3.1.5", description: "Excel file support" },
-  { name: "xlsxwriter", version: "3.2.9", description: "Excel file writer" },
   { name: "pdfplumber", version: "0.11.9", description: "PDF extraction" },
   { name: "pypdf", version: "6.8.0", description: "PDF manipulation" },
   { name: "reportlab", version: "4.4.10", description: "PDF generation" },
@@ -67,6 +66,21 @@ const PYTHON_LIBRARIES: PythonLibrary[] = [
     name: "opencv-python",
     version: "4.13.0.92",
     description: "OpenCV package for python",
+  },
+  {
+    name: "duckdb",
+    version: "1.4.4",
+    description: "In-process OLAP / SQL on dataframes",
+  },
+  {
+    name: "markitdown",
+    version: "0.1.3",
+    description: "Office file to Markdown conversion",
+  },
+  {
+    name: "pdf2image",
+    version: "1.17.0",
+    description: "PDF to image conversion",
   },
 ];
 
@@ -90,6 +104,23 @@ function getLocalContent(dir: string, filename: string): () => string {
   return () => fs.readFileSync(path.join(dir, filename), "utf-8");
 }
 
+function getLocalDirContent(
+  dir: string,
+  subdir: string
+): () => Map<string, Buffer> {
+  return () => {
+    const full = path.join(dir, subdir);
+    return new Map(
+      fs
+        .readdirSync(full)
+        .map((filename) => [
+          filename,
+          fs.readFileSync(path.join(full, filename)),
+        ])
+    );
+  };
+}
+
 function getAgentProxiedSetupCommand(): string {
   // setgid bit on shared dirs + default POSIX ACLs ensures files created
   // by either agent or agent-proxied are group-owned by `agent` and
@@ -97,10 +128,10 @@ function getAgentProxiedSetupCommand(): string {
   // a perms handoff footgun during the PR1→PR2 rollout window.
   return [
     `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent --shell /bin/bash agent-proxied`,
-    "chgrp agent /home/agent /files/conversation",
-    "chmod g+ws /home/agent /files/conversation",
-    "setfacl -R -d -m g::rwx /home/agent /files/conversation",
-    "setfacl -R -m g::rwx /home/agent /files/conversation",
+    "chgrp agent /home/agent /files/conversation /files/project",
+    "chmod g+ws /home/agent /files/conversation /files/project",
+    "setfacl -R -d -m g::rwx /home/agent /files/conversation /files/project",
+    "setfacl -R -m g::rwx /home/agent /files/conversation /files/project",
   ].join(" && ");
 }
 
@@ -109,11 +140,16 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
 )
   // Create agent user first so e2b creates /home/agent with correct ownership.
   .setUser("agent")
-  // Conversation files bootstrap
-  // Pre-create workspace directory for faster GCS mounts.
-  .runCmd("mkdir -p /files/conversation && chmod 777 /files/conversation", {
-    user: "root",
-  })
+  // Conversation + project files bootstrap.
+  // Pre-create mount directories for faster GCS mounts. `/files/project` is only mounted when the
+  // conversation belongs to a project; the directory always exists in the image so the path is
+  // predictable for the agent prompt.
+  .runCmd(
+    "mkdir -p /files/conversation /files/project && chmod 777 /files/conversation /files/project",
+    {
+      user: "root",
+    }
+  )
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   // Create simple netcat-based token server script.
   .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
@@ -128,7 +164,10 @@ SHELLEOF`,
     { user: "root" }
   )
   .runCmd("chmod 755 /home/agent/.bin/token-server.sh", { user: "root" })
-  // Add sentinel file to indicate when mounts are pending.
+  // Add sentinel file to indicate when the conversation mount is pending. We intentionally do
+  // NOT add an equivalent marker under /files/project: the project mount is conditional (only
+  // happens for project conversations), so a baked marker would be misleading in non-project
+  // conversations where no mount ever lands.
   .runCmd("touch /files/conversation/.mount-pending", { user: "root" })
   // Hidden tools: installed but not in manifest (back profile functions)
   .runCmd("apt-get update && apt-get install -y ripgrep fd-find sd", {
@@ -136,9 +175,11 @@ SHELLEOF`,
   })
   // Create profile directory and copy profile scripts
   // The other tools are installed in bedrock
-  .runCmd("apt-get install -y jq pandoc imagemagick ffmpeg unzip file", {
-    user: "root",
-  })
+  .runCmd(
+    "apt-get update && apt-get install -y jq pandoc imagemagick ffmpeg unzip file " +
+      "libreoffice poppler-utils qpdf",
+    { user: "root" }
+  )
   .registerTool([
     { name: "git", description: "Version control system", runtime: "system" },
     { name: "curl", description: "HTTP client", runtime: "system" },
@@ -161,6 +202,21 @@ SHELLEOF`,
     {
       name: "file",
       description: "Determine file type",
+      runtime: "system",
+    },
+    {
+      name: "libreoffice",
+      description: "Office suite (soffice CLI for pptx/xlsx/docx conversion)",
+      runtime: "system",
+    },
+    {
+      name: "poppler-utils",
+      description: "PDF utilities: pdftoppm, pdftotext, pdfimages",
+      runtime: "system",
+    },
+    {
+      name: "qpdf",
+      description: "PDF transformation (merge, split, encrypt)",
       runtime: "system",
     },
   ])
@@ -244,6 +300,12 @@ SHELLEOF`,
     getLocalContent(PROFILE_LOCAL_DIR, "gemini.sh"),
     `${PROFILE_DIR}/gemini.sh`
   )
+  .copy(
+    getLocalDirContent(PROFILE_LOCAL_DIR, "soffice"),
+    `${PROFILE_DIR}/soffice`,
+    { user: "root" }
+  )
+  .runCmd(`chmod +x ${PROFILE_DIR}/soffice/*.py`, { user: "root" })
   // Telemetry configs for fluent-bit
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.conf"),
@@ -264,6 +326,16 @@ SHELLEOF`,
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.service"),
     "/etc/systemd/system/fluent-bit.service",
+    { user: "root" }
+  )
+  // Seed /etc/dust/ca-bundle.pem with the system roots so the SSL_CERT_FILE /
+  // CURL_CA_BUNDLE env vars (set unconditionally on the sandbox process) point
+  // at a valid file from the moment the sandbox boots. installMitmTrustBundle
+  // overwrites this atomically with (system roots + dsbx CA) once the egress
+  // forwarder is up; in dev-unrestricted mode it stays the system-only copy.
+  .runCmd(
+    "mkdir -p /etc/dust && " +
+      "install -m 644 /etc/ssl/certs/ca-certificates.crt /etc/dust/ca-bundle.pem",
     { user: "root" }
   )
   .copy(
@@ -358,6 +430,39 @@ SHELLEOF`,
     usage: "list_dir [path] [--depth N] [--offset N] [--limit N]",
     returns: "Sorted paths with type suffixes and pagination hint",
     profile: ["openai", "gemini"],
+    runtime: "system",
+  })
+  // --- xlsx_inspect: structural inspection of .xlsx workbooks ---
+  .registerTool({
+    name: "xlsx_inspect",
+    description:
+      "Inspect .xlsx structure: sheets, formulas, cached values, number formats, font and fill color (theme/indexed colors resolved to ARGB). --grep --meta searches by metadata tokens (e.g. 'fill: FFFF...' for yellow highlights, 'numFmt: 0%' for percent-formatted cells)",
+    usage:
+      "xlsx_inspect <file> [--sheet NAME] [--range A1:Z50] [--grep PATTERN [--regex] [--meta]] [--names] [--limit N] [--offset N]",
+    returns:
+      "Workbook overview, or one cell per line: '<address>  <formula or value>  [cached result]  numFmt: <fmt>  [font: <color>]  [fill: <color>]'. Empty cells skipped",
+    runtime: "system",
+  })
+  // --- pptx_inspect: structural inspection of .pptx decks ---
+  .registerTool({
+    name: "pptx_inspect",
+    description:
+      "Inspect .pptx structure: slides, layouts, shapes, text, charts, tables, embedded media. Use before editing a deck to map layouts and shape positions. --render rasterizes slides to JPEG via soffice + pdftoppm for visual QA",
+    usage:
+      "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] [--render] [--max-shapes N] [--offset N]",
+    returns:
+      "Deck overview, or one shape per line in slide view: '<id>  <kind>  <left,top WxH>  [ph=<type>]  <summary>' with paragraphs indented. Layouts/text/media views emit format-specific listings. --render prints one absolute JPEG path per slide",
+    runtime: "system",
+  })
+  // --- docx_inspect: structural inspection of .docx documents ---
+  .registerTool({
+    name: "docx_inspect",
+    description:
+      "Inspect .docx structure: sections, headings outline, paragraph and character styles with resolved typography, run formatting, tables, tracked changes, fields, embedded media. Use before editing a document to map style names so the model can apply Heading1 / Normal / Quote rather than restyling inline",
+    usage:
+      "docx_inspect <file> [--styles] [--paragraphs] [--text] [--tables] [--sections] [--changes] [--fields] [--media] [--render] [--offset N] [--max N] [--page N]",
+    returns:
+      "Document overview with theme + default typography and heading outline, or one paragraph/style/section/table/change/field per line. Render mode emits one absolute jpeg path per page",
     runtime: "system",
   })
   .withCapability("gcsfuse")

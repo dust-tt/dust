@@ -79,6 +79,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "conversation_files": {
     "cat": "never_ask",
     "list": "never_ask",
+    "list_content_nodes_and_tables": "never_ask",
     "semantic_search": "never_ask",
   },
   "data_sources_file_system": {
@@ -111,7 +112,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "files": {
     "cat": "never_ask",
+    "copy": "never_ask",
     "create": "never_ask",
+    "delete": "medium",
     "grep": "never_ask",
     "list": "never_ask",
   },
@@ -500,9 +503,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "project_manager": {
     "add_content_node": "never_ask",
-    "add_file": "never_ask",
     "add_message_to_conversation": "medium",
-    "attach_to_conversation": "never_ask",
     "create_conversation": "medium",
     "create_project": "low",
     "edit_description": "low",
@@ -511,17 +512,14 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_members": "never_ask",
     "list_projects": "never_ask",
     "remove_content_node": "medium",
-    "remove_file": "medium",
     "retrieve_recent_documents": "never_ask",
-    "semantic_search": "never_ask",
-    "update_file": "medium",
   },
-  "project_todos": {
-    "create_todos": "low",
-    "list_todos": "never_ask",
-    "mark_todo_done": "low",
-    "start_todo_agent": "low",
-    "update_todo": "low",
+  "project_tasks": {
+    "create_tasks": "low",
+    "list_tasks": "never_ask",
+    "mark_task_done": "low",
+    "start_task_agent": "low",
+    "update_task": "low",
   },
   "query_tables_v2": {
     "execute_database_query": "never_ask",
@@ -669,7 +667,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_vulnerabilities": "never_ask",
   },
   "wakeups": {
-    "cancel_wakeup": "low",
+    "cancel_wakeup": "never_ask",
     "list_wakeups": "never_ask",
     "schedule_wakeup": "never_ask",
   },

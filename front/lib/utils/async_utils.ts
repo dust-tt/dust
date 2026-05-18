@@ -1,3 +1,7 @@
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+
 /**
  * Executes an array of tasks concurrently with controlled parallelism.
  *
@@ -53,3 +57,45 @@ export async function concurrentExecutor<T, V>(
 
 export const setTimeoutAsync = (ms: number): Promise<"timeout"> =>
   new Promise((resolve) => setTimeout(() => resolve("timeout"), ms));
+
+interface WithRetryOptions {
+  // Total attempts = 1 + maxRetries.
+  maxRetries?: number;
+  // Delay before the first retry. Subsequent retries multiply by `backoffMultiplier`.
+  initialDelayMs?: number;
+  backoffMultiplier?: number;
+  shouldRetry?: (err: unknown, attempt: number) => boolean;
+}
+
+/**
+ * Retries an async operation with exponential backoff. Returns a `Result`:
+ * `Ok` with the operation's value, or `Err` with the last error after retries
+ * are exhausted (or when `shouldRetry` returns false).
+ */
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  {
+    maxRetries = 2,
+    initialDelayMs = 200,
+    backoffMultiplier = 2,
+    shouldRetry = () => true,
+  }: WithRetryOptions = {}
+): Promise<Result<T, Error>> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return new Ok(await operation());
+    } catch (err) {
+      lastErr = err;
+      if (attempt === maxRetries || !shouldRetry(err, attempt)) {
+        break;
+      }
+
+      await setTimeoutAsync(
+        initialDelayMs * Math.pow(backoffMultiplier, attempt)
+      );
+    }
+  }
+
+  return new Err(normalizeError(lastErr));
+}

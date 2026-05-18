@@ -1,5 +1,7 @@
 import config from "@app/lib/api/config";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -11,8 +13,15 @@ import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import type {
   MetronomeBalance,
   MetronomeEvent,
+  MetronomePackageTier,
+  MetronomeSeatBalance,
   MetronomeUsageListResponse,
   MetronomeUsageWithGroupsResponse,
+} from "./types";
+import {
+  classifyMetronomePackageByName,
+  classifyMetronomePackageCurrencyByName,
+  isMetronomeSeatBalance,
 } from "./types";
 
 let cachedClient: Metronome | null = null;
@@ -391,12 +400,17 @@ export async function addStripeMetronomeBillingConfig({
 
 /**
  * Compact summary of a Metronome package, used by Poke to let an operator
- * pick which package to put a customer on.
+ * pick which package to put a customer on. Only classifiable packages are
+ * included — `listMetronomePackages` filters out anything whose name
+ * doesn't match a known tier keyword (with a warning log).
  */
 export interface MetronomePackageSummary {
   id: string;
   name: string;
   aliases: string[];
+  rateCardId?: string;
+  tier: MetronomePackageTier;
+  currency: SupportedCurrency;
 }
 
 // Cache the package list for a few minutes as the catalog rarely changes and
@@ -406,6 +420,32 @@ let packageListCache: {
   expiresAtMs: number;
   packages: MetronomePackageSummary[];
 } | null = null;
+
+const TIER_SORT_ORDER: Record<MetronomePackageTier, number> = {
+  enterprise: 0,
+  business: 1,
+  pro: 2,
+};
+const CURRENCY_SORT_ORDER: Record<SupportedCurrency, number> = {
+  usd: 0,
+  eur: 1,
+};
+
+function comparePackagesForDisplay(
+  a: MetronomePackageSummary,
+  b: MetronomePackageSummary
+): number {
+  const tierDelta = TIER_SORT_ORDER[a.tier] - TIER_SORT_ORDER[b.tier];
+  if (tierDelta !== 0) {
+    return tierDelta;
+  }
+  const currencyDelta =
+    CURRENCY_SORT_ORDER[a.currency] - CURRENCY_SORT_ORDER[b.currency];
+  if (currencyDelta !== 0) {
+    return currencyDelta;
+  }
+  return a.name.localeCompare(b.name);
+}
 
 /**
  * List all Metronome packages on the account. Cached for 5 minutes.
@@ -420,12 +460,26 @@ export async function listMetronomePackages(): Promise<
   try {
     const packages: MetronomePackageSummary[] = [];
     for await (const pkg of getMetronomeClient().v1.packages.list()) {
+      const aliases = pkg.aliases?.map((a) => a.name) ?? [];
+      const name = pkg.name ?? "";
+      const tier = classifyMetronomePackageByName(name);
+      if (tier === null) {
+        logger.warn(
+          { packageId: pkg.id, packageName: name, aliases },
+          "[Metronome] Package name has no recognized tier keyword (pro/business/enterprise); package will be hidden in Poke."
+        );
+        continue;
+      }
       packages.push({
         id: pkg.id,
-        name: pkg.name ?? "",
-        aliases: pkg.aliases?.map((a) => a.name) ?? [],
+        name,
+        aliases,
+        rateCardId: pkg.rate_card_id ?? undefined,
+        tier,
+        currency: classifyMetronomePackageCurrencyByName(name),
       });
     }
+    packages.sort(comparePackagesForDisplay);
     packageListCache = {
       expiresAtMs: Date.now() + PACKAGE_LIST_CACHE_TTL_MS,
       packages,
@@ -475,6 +529,7 @@ export async function createMetronomeContract({
   uniquenessKey,
   startingAt,
   enableStripeBilling,
+  planCode,
 }: {
   metronomeCustomerId: string;
   /** Mutually exclusive with `packageId`. */
@@ -485,6 +540,10 @@ export async function createMetronomeContract({
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
   enableStripeBilling: boolean;
+  // Stamps PLAN_CODE_CUSTOM_FIELD_KEY on the contract so the contract.start
+  // webhook can swap the workspace's subscription onto this plan when the
+  // contract becomes active.
+  planCode: string;
 }): Promise<Result<{ contractId: string }, Error>> {
   if (!packageAlias === !packageId) {
     return new Err(
@@ -496,6 +555,12 @@ export async function createMetronomeContract({
   const startingAtISO = startingAt.toISOString();
   const packageLabel = packageAlias ?? packageId!;
 
+  // Resolve the contract id from either a fresh create or a 409 recovery.
+  // We split this from the post-create steps (Stripe billing config, PLAN_CODE
+  // stamp) so those steps run on retry too — they're idempotent on Metronome's
+  // side, and re-running them is what makes the overall function recoverable.
+  let contractId: string;
+  let recovered = false;
   try {
     const response = await getMetronomeClient().v1.contracts.create({
       customer_id: metronomeCustomerId,
@@ -504,41 +569,73 @@ export async function createMetronomeContract({
       starting_at: startingAtISO,
       ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
     });
-
-    if (enableStripeBilling) {
-      addStripeMetronomeBillingConfig({
-        metronomeCustomerId,
-        metronomeContractId: response.data.id,
-      });
-    }
-
-    logger.info(
-      {
-        metronomeCustomerId,
-        package: packageLabel,
-        metronomeContractId: response.data.id,
-      },
-      "[Metronome] Contract created"
-    );
-    return new Ok({ contractId: response.data.id });
+    contractId = response.data.id;
   } catch (err) {
-    // Conflict-by-uniqueness-key recovery only applies when creating by alias.
-    // When creating by package_id we surface the error.
-    if (err instanceof ConflictError && packageAlias) {
-      const existingContract =
-        await getMetronomeActiveContract(metronomeCustomerId);
-      if (existingContract.isOk() && existingContract.value) {
-        return new Ok({ contractId: existingContract.value.contractId });
+    if (err instanceof ConflictError) {
+      // Prefer uniqueness_key lookup when the caller provided one — this is
+      // the only safe recovery path when creating by package_id (multiple
+      // contracts may coexist on the customer). Falls back to "most recent
+      // active" for legacy alias-only callers without a uniqueness_key.
+      if (uniquenessKey) {
+        const existing = await findMetronomeContractByUniquenessKey({
+          metronomeCustomerId,
+          uniquenessKey,
+        });
+        if (existing.isOk() && existing.value) {
+          contractId = existing.value.contractId;
+          recovered = true;
+        } else {
+          return new Err(normalizeError(err));
+        }
+      } else if (packageAlias) {
+        const existing = await getMetronomeActiveContract(metronomeCustomerId);
+        if (existing.isOk() && existing.value) {
+          contractId = existing.value.contractId;
+          recovered = true;
+        } else {
+          return new Err(normalizeError(err));
+        }
+      } else {
+        return new Err(normalizeError(err));
       }
+    } else {
+      const error = normalizeError(err);
+      logger.error(
+        { error, metronomeCustomerId, package: packageLabel },
+        "[Metronome] Failed to create contract"
+      );
+      return new Err(error);
     }
-
-    const error = normalizeError(err);
-    logger.error(
-      { error, metronomeCustomerId, package: packageLabel },
-      "[Metronome] Failed to create contract"
-    );
-    return new Err(error);
   }
+
+  if (enableStripeBilling) {
+    addStripeMetronomeBillingConfig({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+    });
+  }
+
+  const customFieldsResult = await setMetronomeContractCustomFields({
+    contractId,
+    customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: planCode },
+  });
+  if (customFieldsResult.isErr()) {
+    return new Err(customFieldsResult.error);
+  }
+
+  logger.info(
+    {
+      metronomeCustomerId,
+      package: packageLabel,
+      metronomeContractId: contractId,
+      planCode,
+      recovered,
+    },
+    recovered
+      ? "[Metronome] Contract recovered"
+      : "[Metronome] Contract created"
+  );
+  return new Ok({ contractId });
 }
 
 /**
@@ -621,6 +718,26 @@ export async function listMetronomeContracts(
     );
     return new Err(error);
   }
+}
+
+/**
+ * Find a contract on a Metronome customer by its uniqueness_key. Used to
+ * recover the id after a 409 conflict on creation, regardless of whether
+ * the create call used package_alias or package_id.
+ */
+export async function findMetronomeContractByUniquenessKey({
+  metronomeCustomerId,
+  uniquenessKey,
+}: {
+  metronomeCustomerId: string;
+  uniquenessKey: string;
+}): Promise<Result<{ contractId: string } | null, Error>> {
+  const result = await listMetronomeContracts(metronomeCustomerId);
+  if (result.isErr()) {
+    return result;
+  }
+  const match = result.value.find((c) => c.uniqueness_key === uniquenessKey);
+  return new Ok(match ? { contractId: match.id } : null);
 }
 
 /**
@@ -810,6 +927,128 @@ export async function updateSubscriptionQuantity({
   }
 }
 
+// Response shape for POST /v1/contracts/getSubscriptionSeatsHistory. The
+// Metronome Node SDK (3.5.0, latest) has no typed binding for this endpoint —
+// `retrieveSubscriptionQuantityHistory` is the closest and returns quantity
+// totals, not seat IDs. So we route through the SDK client's generic post(),
+// which still gives us auth + retries + error handling.
+interface SubscriptionSeatsHistoryResponse {
+  data: Array<{
+    starting_at: string;
+    ending_before?: string | null;
+    assigned_seat_ids: string[];
+    unassigned_seats?: number;
+  }>;
+}
+
+/**
+ * Fetch the currently assigned seat IDs on a SEAT_BASED subscription. Returns
+ * the seat IDs in the schedule segment that covers `now` — i.e. the live
+ * state.
+ */
+export async function getMetronomeSubscriptionAssignedSeatIds({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+}): Promise<Result<string[], Error>> {
+  try {
+    const response =
+      await getMetronomeClient().post<SubscriptionSeatsHistoryResponse>(
+        "/v1/contracts/getSubscriptionSeatsHistory",
+        {
+          body: {
+            customer_id: metronomeCustomerId,
+            contract_id: contractId,
+            subscription_id: subscriptionId,
+            covering_date: new Date().toISOString(),
+          },
+        }
+      );
+    return new Ok(response.data[0]?.assigned_seat_ids ?? []);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, subscriptionId },
+      "[Metronome] Failed to fetch subscription seats"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Add and/or remove specific seat IDs on a SEAT_BASED subscription, balancing
+ * unassigned seats so the total subscription quantity stays stable: every
+ * removed assigned seat is replaced by an unassigned seat, and every new
+ * assigned seat consumes an unassigned seat. Both arrays may be empty
+ * (no-op). Pass `startingAt` to anchor the change to a specific hour
+ * boundary; defaults to the current hour.
+ */
+export async function updateSubscriptionSeats({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+  addSeatIds,
+  removeSeatIds,
+  startingAt,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+  addSeatIds: string[];
+  removeSeatIds: string[];
+  startingAt?: string;
+}): Promise<Result<void, Error>> {
+  if (addSeatIds.length === 0 && removeSeatIds.length === 0) {
+    return new Ok(undefined);
+  }
+  const now = startingAt ?? floorToHourISO(new Date());
+
+  try {
+    await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+      update_subscriptions: [
+        {
+          subscription_id: subscriptionId,
+          seat_updates: {
+            ...(addSeatIds.length > 0
+              ? {
+                  add_seat_ids: [{ seat_ids: addSeatIds, starting_at: now }],
+                  remove_unassigned_seats: [
+                    { quantity: addSeatIds.length, starting_at: now },
+                  ],
+                }
+              : {}),
+            ...(removeSeatIds.length > 0
+              ? {
+                  remove_seat_ids: [
+                    { seat_ids: removeSeatIds, starting_at: now },
+                  ],
+                  add_unassigned_seats: [
+                    { quantity: removeSeatIds.length, starting_at: now },
+                  ],
+                }
+              : {}),
+          },
+        },
+      ],
+    });
+
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, subscriptionId },
+      "[Metronome] Failed to update subscription seats"
+    );
+    return new Err(error);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Commits
 // ---------------------------------------------------------------------------
@@ -840,7 +1079,7 @@ export async function createMetronomeCommit({
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(startingAt);
-  const roundedEndingBefore = ceilToHourISO(endingBefore);
+  const roundedEndingBefore = floorToHourISO(endingBefore);
   try {
     logger.info(
       {
@@ -1015,7 +1254,20 @@ export async function listMetronomeDraftInvoices(
 }
 
 export async function listMetronomeBalances(
-  metronomeCustomerId: string
+  metronomeCustomerId: string,
+  {
+    includeArchived = false,
+    coveringDate = new Date(),
+    effectiveBefore,
+  }: {
+    // Pass `null` to drop the `covering_date` filter and return balances of any
+    // date (including expired and, depending on `effectiveBefore`, future ones).
+    coveringDate?: Date | null;
+    // Restrict to balances with any access before this date — used to hide
+    // future-dated balances while still returning expired ones.
+    effectiveBefore?: Date;
+    includeArchived?: boolean;
+  } = {}
 ): Promise<Result<MetronomeBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok([]);
@@ -1029,7 +1281,13 @@ export async function listMetronomeBalances(
       customer_id: metronomeCustomerId,
       include_balance: true,
       include_contract_balances: true,
-      covering_date: new Date().toISOString(),
+      ...(coveringDate !== null
+        ? { covering_date: coveringDate.toISOString() }
+        : {}),
+      ...(effectiveBefore !== undefined
+        ? { effective_before: effectiveBefore.toISOString() }
+        : {}),
+      ...(includeArchived ? { include_archived: true } : {}),
     })) {
       balances.push(entry);
     }
@@ -1225,7 +1483,7 @@ export async function createMetronomeCredit({
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(new Date(startingAt));
-  const roundedEndingBefore = ceilToHourISO(new Date(endingBefore));
+  const roundedEndingBefore = floorToHourISO(new Date(endingBefore));
 
   try {
     const response = await getMetronomeClient().v1.customers.credits.create({
@@ -1513,6 +1771,47 @@ export async function deductMetronomeCreditBalance({
     logger.error(
       { error, metronomeCustomerId, contractId, creditId, segmentId, amount },
       "[Metronome] Failed to apply manual credit deduction"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * List per-seat balances for a SEAT_BASED contract.
+ * Uses a raw fetch because the Metronome SDK does not yet expose this endpoint.
+ * Returns one entry per seat_id (user sId), with balance (remaining) and
+ * starting_balance (full allocation for the period).
+ */
+export async function listMetronomeSeatBalances({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<Result<MetronomeSeatBalance[], Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok([]);
+  }
+
+  try {
+    const response = await getMetronomeClient().post<{ data?: unknown[] }>(
+      "/v1/contracts/seatBalances/list",
+      {
+        body: {
+          customer_id: metronomeCustomerId,
+          contract_id: metronomeContractId,
+          include_credits_and_commits: true,
+          covering_date: new Date().toISOString(),
+        },
+      }
+    );
+    const balances = (response.data ?? []).filter(isMetronomeSeatBalance);
+    return new Ok(balances);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId },
+      "[Metronome] Failed to list seat balances"
     );
     return new Err(error);
   }

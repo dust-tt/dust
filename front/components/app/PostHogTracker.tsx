@@ -271,14 +271,19 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
         }
         event.properties["user_agent"] = navigator.userAgent;
 
-        // Inject blog SEO article flag from page-level meta tag.
+        // Inject blog article classification flags from page-level meta tags.
         if (event.event === "$pageview") {
-          const seoMeta = document.querySelector(
-            'meta[name="dust:is_seo_article"]'
-          );
-          if (seoMeta) {
-            event.properties["is_seo_article"] =
-              seoMeta.getAttribute("content") === "true";
+          const articleFlags = [
+            ["dust:is_seo_article", "is_seo_article"],
+            ["dust:is_geo_article", "is_geo_article"],
+            ["dust:is_thought_leadership", "is_thought_leadership"],
+          ] as const;
+          for (const [metaName, propertyName] of articleFlags) {
+            const meta = document.querySelector(`meta[name="${metaName}"]`);
+            if (meta) {
+              event.properties[propertyName] =
+                meta.getAttribute("content") === "true";
+            }
           }
         }
 

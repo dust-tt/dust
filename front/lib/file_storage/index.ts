@@ -11,7 +11,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
-import type { Bucket } from "@google-cloud/storage";
+import type { Bucket, File } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
@@ -165,6 +165,43 @@ export class FileStorage {
     const [files] = await this.bucket.getFiles({ prefix, maxResults });
 
     return files;
+  }
+
+  /**
+   * Lists all objects under `prefix` by following GCS list pagination.
+   */
+  async getAllFilesByPrefix({
+    prefix,
+    pageSize = 1000,
+  }: {
+    prefix: string;
+    pageSize?: number;
+  }): Promise<{ files: File[]; pageFetchCount: number }> {
+    const allFiles: File[] = [];
+    let pageToken: string | undefined;
+    let pageFetchCount = 0;
+
+    do {
+      const [files, nextQuery] = await this.bucket.getFiles({
+        prefix,
+        maxResults: pageSize,
+        pageToken,
+        autoPaginate: false,
+      });
+      pageFetchCount++;
+      allFiles.push(...files);
+
+      const nextToken =
+        nextQuery &&
+        typeof nextQuery === "object" &&
+        "pageToken" in nextQuery &&
+        nextQuery.pageToken
+          ? String(nextQuery.pageToken)
+          : undefined;
+      pageToken = nextToken || undefined;
+    } while (pageToken);
+
+    return { files: allFiles, pageFetchCount };
   }
 
   async getSortedFileVersions({

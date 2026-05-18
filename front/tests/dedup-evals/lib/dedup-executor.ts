@@ -2,8 +2,9 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   type DeduplicateCandidate,
   runDeduplicationLLMCall,
-} from "@app/lib/project_todo/deduplicate_candidates";
-import type { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
+} from "@app/lib/project_task/deduplicate_candidates";
+import type { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import logger from "@app/logger/logger";
 import { MODEL_ID } from "@app/tests/dedup-evals/lib/config";
 import type {
   DedupExecutionResult,
@@ -13,17 +14,17 @@ import SUPPORTED_MODEL_CONFIGS from "@app/types/assistant/models/models";
 
 /**
  * Build a lightweight mock that satisfies the fields runDeduplicationLLMCall
- * accesses on ProjectTodoResource: `.sId` and `.text`.
+ * accesses on ProjectTaskResource: `.sId` and `.text`.
  */
 function buildMockExistingTodos(
   testCase: DedupTestCase
-): ProjectTodoResource[] {
+): ProjectTaskResource[] {
   return testCase.existingTodos.map(
     (t) =>
       ({
         sId: t.sId,
         text: t.text,
-      }) as unknown as ProjectTodoResource
+      }) as unknown as ProjectTaskResource
   );
 }
 
@@ -53,9 +54,11 @@ export async function executeDedup(
   const candidates = buildCandidates(testCase);
 
   const llmGroups = await runDeduplicationLLMCall(auth, {
+    localLogger: logger,
+    runId: "eval-run",
     model,
     candidates,
-    existingTodos,
+    existingTasks: existingTodos,
   });
 
   // Current eval assertions only cover candidate→existing matches. The LLM

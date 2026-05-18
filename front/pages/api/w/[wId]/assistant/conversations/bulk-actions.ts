@@ -12,7 +12,7 @@ export type BulkActionsResponse = {
   success: boolean;
 };
 
-export const MarkAllAsReadBodySchema = z.object({
+const MarkAllAsReadBodySchema = z.object({
   action: z.enum(["mark_as_read"]),
   conversationIds: z.array(z.string()).min(1),
 });

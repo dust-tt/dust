@@ -5,8 +5,8 @@ import {
   getIndexedColor,
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
-import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import {
@@ -18,6 +18,7 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  cn,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -72,6 +73,8 @@ function getSkillSelectorLabel(selectedSkills: string[]): string {
 interface SkillUsageTooltipProps extends TooltipContentProps<number, string> {
   displayMode: SkillUsageDisplayMode;
   skillsWithData: string[];
+  activeKey?: string;
+  selectedKey?: string;
 }
 
 function SkillUsageTooltip({
@@ -79,6 +82,8 @@ function SkillUsageTooltip({
   skillsWithData,
   active,
   payload,
+  activeKey,
+  selectedKey,
 }: SkillUsageTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -99,6 +104,7 @@ function SkillUsageTooltip({
 
   const values = skillsWithData.map((skill) => point.values[skill] ?? 0);
   const rows = skillsWithData.map((skill, idx) => ({
+    key: skill,
     label: skill,
     value: values[idx].toLocaleString(),
     colorClassName: getIndexedColor(skill, skillsWithData),
@@ -107,13 +113,21 @@ function SkillUsageTooltip({
   if (skillsWithData.length > 1) {
     const total = values.reduce((sum, v) => sum + v, 0);
     rows.push({
+      key: "__total__",
       label: `Total ${label}`,
       value: total.toLocaleString(),
       colorClassName: "",
     });
   }
 
-  return <ChartTooltipCard title={title} rows={rows} />;
+  return (
+    <ChartTooltipCard
+      title={title}
+      rows={rows}
+      activeKey={activeKey}
+      selectedKey={selectedKey}
+    />
+  );
 }
 
 interface WorkspaceSkillUsageChartProps {
@@ -243,11 +257,22 @@ export function WorkspaceSkillUsageChart({
     }
   };
 
-  const legendItems: LegendItem[] = skillsWithData.map((skill) => ({
-    key: skill,
-    label: skill,
-    colorClassName: getIndexedColor(skill, skillsWithData),
-  }));
+  const {
+    selectedKey,
+    activeKey,
+    isDimmed,
+    lineActiveDot,
+    decorate,
+    hoverHandlers,
+  } = useSelectableSeries(skillsWithData);
+
+  const legendItems = decorate(
+    skillsWithData.map((skill) => ({
+      key: skill,
+      label: skill,
+      colorClassName: getIndexedColor(skill, skillsWithData),
+    }))
+  );
 
   const skillSelector = (
     <DropdownMenu modal={false}>
@@ -363,6 +388,8 @@ export function WorkspaceSkillUsageChart({
               {...props}
               displayMode={displayMode}
               skillsWithData={skillsWithData}
+              activeKey={activeKey}
+              selectedKey={selectedKey}
             />
           )}
           cursor={false}
@@ -381,9 +408,16 @@ export function WorkspaceSkillUsageChart({
             strokeWidth={2}
             dataKey={(point: SkillUsageChartPoint) => point.values[skill] ?? 0}
             name={skill}
-            className={getIndexedColor(skill, skillsWithData)}
+            className={cn(
+              getIndexedColor(skill, skillsWithData),
+              "transition-opacity",
+              isDimmed(skill) && "opacity-25"
+            )}
             stroke="currentColor"
             dot={false}
+            activeDot={lineActiveDot(skill)}
+            isAnimationActive={false}
+            {...hoverHandlers(skill)}
           />
         ))}
       </LineChart>

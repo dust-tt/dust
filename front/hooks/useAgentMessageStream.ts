@@ -24,12 +24,11 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import throttle from "lodash/throttle";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 function createUpdateMessageThrottled() {
-  return _.throttle(
+  return throttle(
     ({
       chainOfThought,
       content,
@@ -629,6 +628,10 @@ export function useAgentMessageStream({
 
         case "agent_generation_cancelled": {
           updateMessageThrottled.cancel();
+          const cancelData = eventPayload.data;
+          if (cancelData.type !== "agent_generation_cancelled") {
+            break;
+          }
           methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
@@ -642,7 +645,7 @@ export function useAgentMessageStream({
             });
             return {
               ...m,
-              status: "cancelled",
+              status: cancelData.status,
               ...(contentCleared ? { content: null } : {}),
               streaming: {
                 ...m.streaming,

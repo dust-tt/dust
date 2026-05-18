@@ -10,9 +10,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
 } from "@dust-tt/sparkle";
+import { Fragment } from "react";
 import type { Control, FieldValues, Path } from "react-hook-form";
 
 interface SelectFieldOption {
@@ -20,25 +23,38 @@ interface SelectFieldOption {
   display?: string;
 }
 
+export interface SelectFieldOptionGroup {
+  label: string;
+  options: SelectFieldOption[];
+}
+
+type SelectFieldProps<T extends FieldValues> = {
+  control: Control<T>;
+  name: Path<T>;
+  title?: string;
+  mountPortalContainer?: HTMLElement;
+} & (
+  | { options: SelectFieldOption[]; groups?: never }
+  | { groups: SelectFieldOptionGroup[]; options?: never }
+);
+
 export function SelectField<T extends FieldValues>({
   control,
   name,
   title,
   options,
+  groups,
   mountPortalContainer,
-}: {
-  control: Control<T>;
-  name: Path<T>;
-  title?: string;
-  options: SelectFieldOption[];
-  mountPortalContainer?: HTMLElement;
-}) {
+}: SelectFieldProps<T>) {
+  const flatOptions: SelectFieldOption[] =
+    options ?? groups!.flatMap((g) => g.options);
+
   return (
     <PokeFormField
       control={control}
       name={name}
       render={({ field }) => {
-        const selectedOption = options.find((o) => o.value === field.value);
+        const selectedOption = flatOptions.find((o) => o.value === field.value);
         const displayLabel =
           selectedOption?.display ?? selectedOption?.value ?? title ?? name;
 
@@ -55,13 +71,30 @@ export function SelectField<T extends FieldValues>({
                 <DropdownMenuContent
                   mountPortalContainer={mountPortalContainer}
                 >
-                  {options.map((option) => (
-                    <DropdownMenuItem
-                      key={option.value}
-                      label={option.display ?? option.value}
-                      onClick={() => field.onChange(option.value)}
-                    />
-                  ))}
+                  {options &&
+                    options.map((option) => (
+                      <DropdownMenuItem
+                        key={option.value}
+                        label={option.display ?? option.value}
+                        onClick={() => field.onChange(option.value)}
+                      />
+                    ))}
+                  {groups &&
+                    groups
+                      .filter((g) => g.options.length > 0)
+                      .map((group, groupIdx) => (
+                        <Fragment key={group.label}>
+                          {groupIdx > 0 && <DropdownMenuSeparator />}
+                          <DropdownMenuLabel label={group.label} />
+                          {group.options.map((option) => (
+                            <DropdownMenuItem
+                              key={option.value}
+                              label={option.display ?? option.value}
+                              onClick={() => field.onChange(option.value)}
+                            />
+                          ))}
+                        </Fragment>
+                      ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </PokeFormControl>

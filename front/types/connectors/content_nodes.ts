@@ -1,4 +1,4 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
 // When viewing ContentNodes, we have 4 view types: "tables", "documents", "data_warehouse" and "all".
 // - The "table" view allows picking tables in the Extract and TableQuery tools,
@@ -10,22 +10,22 @@ import * as t from "io-ts";
 // - The "all" view shows all nodes, which is used in the Knowledge tab for displaying content node trees.
 // More precisely, the "table" (resp. "document") view hides leaves that are document (resp. table).
 
-// Define a codec for ContentNodesViewType using io-ts.
-// WARNING: when changing this codec, search and map for comments on ContentNodesViewTypeCodec
+// Define a schema for ContentNodesViewType using zod.
+// WARNING: when changing this schema, search and map for comments on ContentNodesViewTypeCodec
 // because parts of the codebase could not use this type directly (and as such commented)
-export const ContentNodesViewTypeCodec = t.union([
-  t.literal("table"),
-  t.literal("document"),
-  t.literal("data_warehouse"),
-  t.literal("all"),
+export const ContentNodesViewTypeCodec = z.enum([
+  "table",
+  "document",
+  "data_warehouse",
+  "all",
 ]);
 
-export type ContentNodesViewType = t.TypeOf<typeof ContentNodesViewTypeCodec>;
+export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeCodec>;
 
 export function isValidContentNodesViewType(
   value: unknown
 ): value is ContentNodesViewType {
-  return ContentNodesViewTypeCodec.is(value);
+  return ContentNodesViewTypeCodec.safeParse(value).success;
 }
 
 // Check if a Content Node ID is a valid Content Node ID for a sheet within a

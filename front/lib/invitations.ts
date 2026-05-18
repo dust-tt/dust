@@ -150,8 +150,8 @@ export async function sendInvitations({
         type: "success",
         title: "Invites sent",
         description: isNewInvitation
-          ? `${emails.length} new invites sent.`
-          : `Sent ${emails.length} invites again.`,
+          ? `${emails.length} new ${emails.length === 1 ? "invite" : "invites"} sent.`
+          : `Sent ${emails.length} ${emails.length === 1 ? "invite" : "invites"} again.`,
       });
     }
   }

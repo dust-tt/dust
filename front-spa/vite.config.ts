@@ -305,7 +305,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: appDefinition.port,
-      // No proxy - client calls API directly using VITE_DUST_CLIENT_FACING_URL
+      // No proxy - client calls API directly using VITE_DUST_API_URL.
       fs: {
         // Allow serving files from the front directory (for shared code)
         allow: [

@@ -13,7 +13,6 @@ import {
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { isAllSupportedFileContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export async function createHandler(
@@ -24,10 +23,17 @@ export async function createHandler(
   }: { path: string; content: string; content_type: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const mountRes = resolveMountPoint(
-    auth,
-    agentLoopContext?.runContext?.conversation
-  );
+  const conversation = agentLoopContext?.runContext?.conversation;
+  if (!conversation) {
+    return new Err(
+      new MCPError("No conversation context available.", { tracked: false })
+    );
+  }
+
+  const mountRes = await resolveMountPoint(auth, conversation, {
+    access: "write",
+    scopedPath: path,
+  });
   if (mountRes.isErr()) {
     return mountRes;
   }
@@ -41,7 +47,7 @@ export async function createHandler(
   if (!gcsPath) {
     return new Err(
       new MCPError(
-        `Invalid path: \`${path}\` does not belong to the conversation file system.`,
+        `Invalid path: \`${path}\` does not match the resolved mount point.`,
         { tracked: false }
       )
     );
@@ -61,21 +67,20 @@ export async function createHandler(
   const [exists] = await bucket.file(gcsPath).exists();
   const relativeFilePath = gcsPath.slice(prefix.length);
 
-  let entry;
-  try {
-    entry = await createGCSMountFile(auth, scope, {
-      relativeFilePath,
-      content: contentBuffer,
-      contentType: content_type,
-    });
-  } catch (err) {
+  const entryRes = await createGCSMountFile(auth, scope, {
+    relativeFilePath,
+    content: contentBuffer,
+    contentType: content_type,
+  });
+  if (entryRes.isErr()) {
     return new Err(
       new MCPError(
-        `Failed to write file \`${path}\`: ${normalizeError(err).message}`
+        `Failed to write file \`${path}\`: ${entryRes.error.message}`
       )
     );
   }
 
+  const entry = entryRes.value;
   const sizeKb = Math.ceil(entry.sizeBytes / 1024);
   const verb = exists ? "Updated" : "Created";
 

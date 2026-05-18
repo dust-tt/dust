@@ -481,10 +481,12 @@ export interface WorkspaceMetadata {
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
   disableExtensionMcpTools?: boolean;
+  disableAuditLogs?: boolean;
   isBusiness?: boolean;
   phoneCountry?: string;
   sandboxAllowAgentEgressRequests?: boolean;
   reinforcementCapMicroUsd?: number;
+  selfImprovementCapPerSkillMicroUsd?: number;
 }
 
 export async function updateWorkspaceMetadata(

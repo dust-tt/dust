@@ -192,7 +192,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
         <p>
           Are you sure you want to revoke access for{" "}
           <strong>{grant.email}</strong>? They will no longer be able to view
-          this content.
+          this frame.
         </p>
       ),
     });
@@ -215,7 +215,7 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
         <SheetContent size="lg">
           <SheetHeader>
             <div className="flex items-center justify-between pr-10">
-              <SheetTitle>Share this content</SheetTitle>
+              <SheetTitle>Share this frame</SheetTitle>
               <Button
                 variant="ghost"
                 size="sm"

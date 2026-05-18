@@ -9,7 +9,8 @@ import { GoogleAuth } from "google-auth-library";
  * Mint downscoped GCS access tokens for sandbox gcsfuse mounts.
  *
  * Tokens are restricted via Credential Access Boundaries so the sandbox can only list and
- * read/write objects under a specific conversation prefix.
+ * read/write objects under one or more specific prefixes (typically the conversation's prefix,
+ * plus the parent project's prefix when the conversation belongs to a project).
  *
  * Auth discovery (handled automatically by google-auth-library):
  *  - k8s (prod): Workload Identity using pod service account annotation.
@@ -64,11 +65,11 @@ async function getSourceToken(): Promise<Result<string, Error>> {
 
 async function exchangeToken({
   bucket,
-  prefix,
+  prefixes,
   sourceToken,
 }: {
   bucket: string;
-  prefix: string;
+  prefixes: string[];
   sourceToken: string;
 }): Promise<Result<StsTokenResponse, Error>> {
   try {
@@ -82,7 +83,7 @@ async function exchangeToken({
         subject_token: sourceToken,
         options: JSON.stringify({
           accessBoundary: {
-            accessBoundaryRules: buildAccessBoundaryRules(bucket, prefix),
+            accessBoundaryRules: buildAccessBoundaryRules(bucket, prefixes),
           },
         }),
       }),
@@ -103,11 +104,15 @@ async function exchangeToken({
 
 export async function mintDownscopedGcsToken({
   bucket,
-  prefix,
+  prefixes,
 }: {
   bucket: string;
-  prefix: string;
+  prefixes: string[];
 }): Promise<Result<DownscopedGcsToken, Error>> {
+  if (prefixes.length === 0) {
+    return new Err(new Error("mintDownscopedGcsToken requires >= 1 prefix."));
+  }
+
   const sourceTokenResult = await getSourceToken();
   if (sourceTokenResult.isErr()) {
     return sourceTokenResult;
@@ -115,7 +120,7 @@ export async function mintDownscopedGcsToken({
 
   const stsResult = await exchangeToken({
     bucket,
-    prefix,
+    prefixes,
     sourceToken: sourceTokenResult.value,
   });
   if (stsResult.isErr()) {
@@ -139,30 +144,29 @@ function getStorageMountRole(): string {
 }
 
 /**
- * Build Credential Access Boundary rules that restrict a token to a single conversation prefix
- * within a bucket.
+ * Build Credential Access Boundary rules that restrict a token to one or more prefixes within a
+ * bucket.
  *
- * Three rules (evaluated with OR semantics by the STS endpoint):
+ * Rule layout (evaluated with OR semantics by the STS endpoint):
  *
- *  1. Custom role (storage.buckets.get only) — unconditional.
+ *  1. Custom role (storage.buckets.get only) — unconditional, one rule total.
  *     gcsfuse needs bucket metadata at mount time. Using a custom role avoids leaking objects.list
  *     which is bundled in every predefined role that includes buckets.get.
  *
- *  2. legacyBucketReader with objectListPrefix condition — grants objects.list restricted to our
- *     prefix via the objectListPrefix CAB attribute. gcsfuse must be started with
- *     --enable-hns=false to avoid the GetStorageLayout call (which requires unrestricted
- *     objects.list and would bypass this condition).
+ *  2. legacyBucketReader with objectListPrefix condition — one rule per prefix. Grants
+ *     objects.list restricted to that prefix via the objectListPrefix CAB attribute. gcsfuse must
+ *     be started with --enable-hns=false to avoid the GetStorageLayout call (which requires
+ *     unrestricted objects.list and would bypass this condition).
  *
- *  3. objectUser with resource.name condition — read/write scoped to prefix.
+ *  3. objectUser with resource.name condition — one rule per prefix. Read/write scoped to prefix.
+ *
+ * Total rule count is `1 + 2 * prefixes.length`. CAB allows up to 10 rules, so we support up to 4
+ * concurrent prefixes (today we use at most 2: conversation + project).
  */
-function buildAccessBoundaryRules(bucket: string, prefix: string) {
+export function buildAccessBoundaryRules(bucket: string, prefixes: string[]) {
   const bucketResource = `//storage.googleapis.com/projects/_/buckets/${bucket}`;
 
-  return [
-    {
-      availablePermissions: [`inRole:${getStorageMountRole()}`],
-      availableResource: bucketResource,
-    },
+  const perPrefixRules = prefixes.flatMap((prefix) => [
     {
       availablePermissions: ["inRole:roles/storage.legacyBucketReader"],
       availableResource: bucketResource,
@@ -177,5 +181,13 @@ function buildAccessBoundaryRules(bucket: string, prefix: string) {
         expression: `resource.name.startsWith('projects/_/buckets/${bucket}/objects/${prefix}/')`,
       },
     },
+  ]);
+
+  return [
+    {
+      availablePermissions: [`inRole:${getStorageMountRole()}`],
+      availableResource: bucketResource,
+    },
+    ...perPrefixRules,
   ];
 }

@@ -59,8 +59,14 @@ class FileStorageMock {
           return new PassThrough();
         }),
       delete: vi.fn().mockResolvedValue(undefined),
+      download: vi.fn().mockResolvedValue([Buffer.from("", "utf-8")]),
+      exists: vi.fn().mockResolvedValue([true]),
+      getMetadata: vi
+        .fn()
+        .mockResolvedValue([{ contentType: "text/plain", size: "0" }]),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
       publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
+      save: vi.fn().mockResolvedValue(undefined),
     };
   }
 

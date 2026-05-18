@@ -100,3 +100,17 @@ export const isAnthropicWhitelistedModelId = (
     modelId
   );
 };
+
+export const VERTEX_MODEL_ID_MAP: Partial<Record<ModelIdType, string>> = {
+  [CLAUDE_4_5_SONNET_20250929_MODEL_ID]: "claude-sonnet-4-5@20250929",
+  [CLAUDE_SONNET_4_6_MODEL_ID]: "claude-sonnet-4-6@default",
+  [CLAUDE_OPUS_4_6_MODEL_ID]: "claude-opus-4-6@default",
+  [CLAUDE_4_5_OPUS_20251101_MODEL_ID]: "claude-opus-4-5@20251101",
+  [CLAUDE_4_5_HAIKU_20251001_MODEL_ID]: "claude-haiku-4-5@20251001",
+};
+
+export function isVertexWhitelistedModelId(
+  modelId: ModelIdType
+): modelId is keyof typeof VERTEX_MODEL_ID_MAP {
+  return modelId in VERTEX_MODEL_ID_MAP;
+}

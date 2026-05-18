@@ -203,7 +203,7 @@ describe("renderConversationForModel", () => {
     );
     expect(functionOutput).toBeDefined();
     expect((functionOutput as any).content).toContain(
-      "Warning: the content of this function result was pruned"
+      "This tool result is no longer available"
     );
     expect(res.value.prunedContext).toBe(true);
   });
@@ -254,7 +254,7 @@ describe("renderConversationForModel", () => {
     );
     expect(oldTool).toBeDefined();
     expect((oldTool as any).content).toContain(
-      "This function result is no longer available."
+      "This tool result is no longer available"
     );
     expect(newTool).toBeDefined();
     expect((newTool as any).content).toBe("new_function");

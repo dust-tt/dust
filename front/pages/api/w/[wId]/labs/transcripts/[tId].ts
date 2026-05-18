@@ -12,23 +12,22 @@ import {
 } from "@app/temporal/labs/transcripts/client";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
 };
 
-export const PatchLabsTranscriptsConfigurationBodySchema = t.partial({
-  agentConfigurationId: t.string,
+export const PatchLabsTranscriptsConfigurationBodySchema = z.object({
+  agentConfigurationId: z.string().optional(),
   // `isActive` is deprecated in favor of `status`, kept for backward compatibility.
-  isActive: t.boolean,
-  status: t.union([t.literal("active"), t.literal("disabled")]),
-  dataSourceViewId: t.union([t.string, t.null]),
+  isActive: z.boolean().optional(),
+  status: z.enum(["active", "disabled"]).optional(),
+  dataSourceViewId: z.string().nullable().optional(),
 });
-export type PatchTranscriptsConfiguration = t.TypeOf<
+export type PatchTranscriptsConfiguration = z.infer<
   typeof PatchLabsTranscriptsConfigurationBodySchema
 >;
 
@@ -91,12 +90,10 @@ async function handler(
     // Update.
     case "PATCH":
       const patchBodyValidation =
-        PatchLabsTranscriptsConfigurationBodySchema.decode(req.body);
+        PatchLabsTranscriptsConfigurationBodySchema.safeParse(req.body);
 
-      if (isLeft(patchBodyValidation)) {
-        const pathError = reporter.formatValidationErrors(
-          patchBodyValidation.left
-        );
+      if (!patchBodyValidation.success) {
+        const pathError = fromError(patchBodyValidation.error).toString();
 
         return apiError(req, res, {
           status_code: 400,
@@ -114,7 +111,7 @@ async function handler(
         isActive,
         status,
         dataSourceViewId,
-      } = patchBodyValidation.right;
+      } = patchBodyValidation.data;
 
       if (patchAgentId) {
         await transcriptsConfiguration.setAgentConfigurationId({

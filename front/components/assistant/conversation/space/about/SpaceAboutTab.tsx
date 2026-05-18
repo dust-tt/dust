@@ -1,11 +1,10 @@
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
 import { ProjectSettingsOptionLabel } from "@app/components/assistant/conversation/space/about/ProjectSettingsOptionLabel";
-import { SuggestedTodosGenerationTile } from "@app/components/assistant/conversation/space/conversations/project_todos/SuggestedTodosGenerationTile";
+import { SuggestedTasksGenerationTile } from "@app/components/assistant/conversation/space/conversations/project_tasks/SuggestedTasksGenerationTile";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useArchiveProject } from "@app/hooks/useArchiveProject";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCheckProjectName } from "@app/lib/swr/projects";
 import {
   useProjectMetadata,
@@ -56,7 +55,6 @@ export function SpaceAboutTab({
   space,
   onOpenMembersPanel,
 }: SpaceAboutTabProps) {
-  const { hasFeature } = useFeatureFlags();
   const {
     members: projectMembers,
     isEditor: isProjectEditor,
@@ -180,7 +178,7 @@ export function SpaceAboutTab({
     const newIsPublic = !isPublic;
     const title = newIsPublic ? "Switch to public?" : "Switch to restricted?";
     const message = newIsPublic
-      ? "Everyone in the workspace will be able to see and join this project."
+      ? "All workspace members will be able to join and see everything in this project — including existing conversations and files."
       : "Access will be limited to invited members only.";
 
     const confirmed = await confirm({
@@ -370,11 +368,10 @@ export function SpaceAboutTab({
                 )}
               </div>
             </div>
-            {hasFeature("project_todo") && (
-              <div className="border-t border-border py-4">
-                <SuggestedTodosGenerationTile owner={owner} space={space} />
-              </div>
-            )}
+
+            <div className="border-t border-border py-4">
+              <SuggestedTasksGenerationTile owner={owner} space={space} />
+            </div>
           </div>
         </div>
 

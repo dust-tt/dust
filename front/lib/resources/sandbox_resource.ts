@@ -327,8 +327,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
   // Compose the env vars passed to provider.create. Precedence (lowest →
   // highest): workspace env vars → image runEnv → system vars. The image and
-  // system layers always win, so even if a row slips past the DST_ prefix
-  // validation it cannot shadow a system var like CONVERSATION_ID.
+  // system layers always win, so even if a row slips past suffix validation it
+  // cannot shadow a system var like CONVERSATION_ID.
   private static async buildSandboxEnvVars(
     auth: Authenticator,
     conversation: ConversationType,
@@ -339,41 +339,30 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     if (workspaceEnvResult.isErr()) {
       return workspaceEnvResult;
     }
+    const httpsSecretEnvResult =
+      await WorkspaceSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(auth);
+    if (httpsSecretEnvResult.isErr()) {
+      return httpsSecretEnvResult;
+    }
 
-    // Set at the system layer so workspace overrides cannot drop it. Points at
-    // the merged bundle (system roots + dsbx ephemeral CA) installed by
-    // setupEgressForwarder. Safe to inject unconditionally when the experiment
-    // is enabled because tools/index.ts now runs setupEgressForwarder before
-    // any mounts that read SSL_CERT_FILE.
+    // Point curl-family clients at /etc/dust/ca-bundle.pem. The image seeds
+    // this path with the system roots at build time, and installMitmTrustBundle
+    // atomically replaces it with (system roots + dsbx CA) once the forwarder
+    // is up. Safe to set unconditionally: the file always exists, even before
+    // egress setup runs and in dev-unrestricted mode where it never runs.
     //
-    // PHASE0(remove with the experiment): DUST_EXPERIMENT_TOKEN is exposed to
-    // the agent so the smoke curl from inside the sandbox can present the
-    // shared bearer header without out-of-band setup. It is NOT a real secret;
-    // it gates the synthetic /sandbox/egress-experiment endpoint only.
-    //
-    // TODO(phase 1): cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT,
-    // etc.) per design_docs/SECRET_SWAP_DESIGN.md, "Client-language agnosticism" under
-    // "Proposal" (specifically the per-runtime trust env-var matrix).
-    // Both env vars must be set for the experiment to engage. Setting
-    // only the host without the token would inject SSL_CERT_FILE into the
-    // agent env (pointing at a bundle that includes a CA dsbx is actively
-    // intercepting with) while the smoke endpoint stays 404, which is a
-    // half-on state we don't want.
-    const mitmExperimentHost = config.getEgressMitmExperimentHost();
-    const mitmExperimentToken = config.getEgressMitmExperimentToken();
-    const mitmEnv: Record<string, string> =
-      mitmExperimentHost && mitmExperimentToken
-        ? {
-            SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",
-            CURL_CA_BUNDLE: "/etc/dust/ca-bundle.pem",
-            DUST_EXPERIMENT_TOKEN: mitmExperimentToken,
-          }
-        : {};
+    // TODO: cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT, etc.) per
+    // design_docs/SECRET_SWAP_DESIGN.md, "Client-language agnosticism".
+    const trustBundleEnv: Record<string, string> = {
+      SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",
+      CURL_CA_BUNDLE: "/etc/dust/ca-bundle.pem",
+    };
 
     return new Ok({
       ...workspaceEnvResult.value,
+      ...httpsSecretEnvResult.value,
       ...imageEnvVars,
-      ...mitmEnv,
+      ...trustBundleEnv,
       DD_API_KEY: config.getDatadogApiKey() ?? "",
       DD_HOST: "http-intake.logs.datadoghq.eu",
       CONVERSATION_ID: conversation.sId,

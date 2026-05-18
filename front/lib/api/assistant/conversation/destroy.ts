@@ -23,9 +23,9 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
-  ProjectTodoConversationModel,
-  ProjectTodoSourceModel,
-} from "@app/lib/resources/storage/models/project_todo";
+  ProjectTaskConversationModel,
+  ProjectTaskSourceModel,
+} from "@app/lib/resources/storage/models/project_task";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -293,10 +293,10 @@ export async function destroyConversation(
 
   await WakeUpResource.deleteByConversation(auth, conversation.toJSON());
 
-  await ProjectTodoConversationModel.destroy({
+  await ProjectTaskConversationModel.destroy({
     where: { workspaceId: owner.id, conversationId: conversation.id },
   });
-  await ProjectTodoSourceModel.destroy({
+  await ProjectTaskSourceModel.destroy({
     where: { workspaceId: owner.id, sourceId: conversation.sId },
   });
 

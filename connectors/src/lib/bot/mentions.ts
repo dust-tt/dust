@@ -7,8 +7,10 @@ export type MentionMatch = {
   agentName: string;
 };
 
-// Pattern to match @mention, +mention, and ~mention.
-const MENTION_PATTERN = /(?<!\S)[@+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$|)/g;
+const EXACT_MATCH_MENTION_PREFIX = "=";
+
+// Pattern to match @mention, +mention, ~mention, and =mention.
+const MENTION_PATTERN = /(?<!\S)[@+~=]([a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/g;
 
 export function processMentions({
   message,
@@ -32,6 +34,31 @@ export function processMentions({
     });
   }
 
+  const mentionCandidateName = mentionCandidate.slice(1).toLowerCase();
+
+  if (mentionCandidate.startsWith(EXACT_MATCH_MENTION_PREFIX)) {
+    const exactCandidate = activeAgentConfigurations.find(
+      (agentConfiguration) =>
+        agentConfiguration.name.toLowerCase() === mentionCandidateName
+    );
+
+    if (!exactCandidate) {
+      return new Err(
+        new Error(
+          `Agent ${mentionCandidate} is not available to you. Check the name or ask your workspace administrator for access.`
+        )
+      );
+    }
+
+    return new Ok({
+      mention: {
+        agentId: exactCandidate.sId,
+        agentName: exactCandidate.name,
+      },
+      processedMessage: message.replace(mentionCandidate, "").trim(),
+    });
+  }
+
   let bestCandidate: {
     agentId: string;
     agentName: string;
@@ -41,10 +68,7 @@ export function processMentions({
   for (const agentConfiguration of activeAgentConfigurations) {
     const distance =
       1 -
-      jaroWinkler(
-        mentionCandidate.slice(1).toLowerCase(),
-        agentConfiguration.name.toLowerCase()
-      );
+      jaroWinkler(mentionCandidateName, agentConfiguration.name.toLowerCase());
 
     if (bestCandidate === null || bestCandidate.distance > distance) {
       bestCandidate = {

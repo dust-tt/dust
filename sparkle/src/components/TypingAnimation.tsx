@@ -12,8 +12,11 @@ export function TypingAnimation({
   duration = 50,
   onComplete,
 }: TypingAnimationProps) {
-  const [displayedText, setDisplayedText] = useState<string>("");
-  const [i, setI] = useState<number>(0);
+  const [displayedText, setDisplayedText] = useState<string>(
+    text.substring(0, 1)
+  );
+  // Start at one to avoid an empty text as first display as it sometimes shrinks the container.
+  const [i, setI] = useState<number>(Math.min(1, text.length));
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 

@@ -1,3 +1,6 @@
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces.ts
+
 /**
  * @swagger
  * /api/w/{wId}/spaces:
@@ -117,30 +120,29 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ProjectType, SpaceType } from "@app/types/space";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const PostSpaceRequestBodySchema = t.intersection([
-  t.type({
-    isRestricted: t.boolean,
-    name: t.string,
-    spaceKind: t.union([t.literal("regular"), t.literal("project")]),
+const PostSpaceRequestBodySchema = z.intersection(
+  z.object({
+    isRestricted: z.boolean(),
+    name: z.string(),
+    spaceKind: z.enum(["regular", "project"]),
   }),
-  t.union([
-    t.type({
-      memberIds: t.array(t.string),
-      managementMode: t.literal("manual"),
+  z.discriminatedUnion("managementMode", [
+    z.object({
+      memberIds: z.array(z.string()),
+      managementMode: z.literal("manual"),
     }),
-    t.type({
-      groupIds: t.array(t.string),
-      managementMode: t.literal("group"),
+    z.object({
+      groupIds: z.array(z.string()),
+      managementMode: z.literal("group"),
     }),
-  ]),
-]);
+  ])
+);
 
-export type PostSpaceRequestBodyType = t.TypeOf<
+export type PostSpaceRequestBodyType = z.infer<
   typeof PostSpaceRequestBodySchema
 >;
 
@@ -213,10 +215,10 @@ async function handler(
       });
 
     case "POST":
-      const bodyValidation = PostSpaceRequestBodySchema.decode(req.body);
+      const bodyValidation = PostSpaceRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
 
         return apiError(req, res, {
           status_code: 400,
@@ -227,7 +229,7 @@ async function handler(
         });
       }
 
-      const requestBody = bodyValidation.right;
+      const requestBody = bodyValidation.data;
       const owner = auth.getNonNullableWorkspace();
 
       if (

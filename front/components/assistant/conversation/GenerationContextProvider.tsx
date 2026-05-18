@@ -24,6 +24,9 @@ type GenerationContextType = {
   getConversationGeneratingMessages: (
     conversationId: string
   ) => GeneratingMessage[];
+  pendingSteeringByConversation: Record<string, number>;
+  incrementPendingSteeringCount: (conversationId: string) => void;
+  clearPendingSteeringCount: (conversationId: string) => void;
 };
 
 const GenerationContext = createContext<GenerationContextType | undefined>(
@@ -50,6 +53,8 @@ export const GenerationContextProvider = ({
   const [generatingMessages, setGeneratingMessages] = useState<
     GeneratingMessage[]
   >([]);
+  const [pendingSteeringByConversation, setPendingSteeringByConversation] =
+    useState<Record<string, number>>({});
 
   const { getFirstBlockedActionForMessage } = useBlockedActionsContext();
 
@@ -67,6 +72,12 @@ export const GenerationContextProvider = ({
         if (prev.some((m) => m.messageId === messageId)) {
           return prev;
         }
+        if (prev.some((m) => m.conversationId === conversationId)) {
+          setPendingSteeringByConversation(
+            ({ [conversationId]: current = 0, ...rest }) =>
+              current <= 1 ? rest : { ...rest, [conversationId]: current - 1 }
+          );
+        }
         return [...prev, { messageId, conversationId, agentId }];
       });
     },
@@ -76,14 +87,39 @@ export const GenerationContextProvider = ({
   const removeGeneratingMessage = useCallback(
     ({ messageId }: { messageId: string }) => {
       setGeneratingMessages((prev) => {
-        if (!prev.some((m) => m.messageId === messageId)) {
+        const removed = prev.find((m) => m.messageId === messageId);
+        if (!removed) {
           return prev;
         }
-        return prev.filter((m) => m.messageId !== messageId);
+        const next = prev.filter((m) => m.messageId !== messageId);
+        if (!next.some((m) => m.conversationId === removed.conversationId)) {
+          setPendingSteeringByConversation(
+            ({ [removed.conversationId]: _, ...rest }) => rest
+          );
+        }
+        return next;
       });
     },
     []
   );
+
+  const incrementPendingSteeringCount = useCallback(
+    (conversationId: string) => {
+      setPendingSteeringByConversation((counts) => ({
+        ...counts,
+        [conversationId]: (counts[conversationId] ?? 0) + 1,
+      }));
+    },
+    []
+  );
+
+  const clearPendingSteeringCount = useCallback((conversationId: string) => {
+    setPendingSteeringByConversation((counts) => {
+      const updated = { ...counts };
+      delete updated[conversationId];
+      return updated;
+    });
+  }, []);
 
   const getConversationGeneratingMessages = useCallback(
     (conversationId: string) => {
@@ -103,12 +139,18 @@ export const GenerationContextProvider = ({
       addGeneratingMessage,
       removeGeneratingMessage,
       getConversationGeneratingMessages,
+      pendingSteeringByConversation,
+      incrementPendingSteeringCount,
+      clearPendingSteeringCount,
     }),
     [
       generatingMessages,
       addGeneratingMessage,
       removeGeneratingMessage,
       getConversationGeneratingMessages,
+      pendingSteeringByConversation,
+      incrementPendingSteeringCount,
+      clearPendingSteeringCount,
     ]
   );
 

@@ -9,6 +9,7 @@ import type { GetPokeCouponsResponseBody } from "@app/pages/api/poke/coupons/ind
 import type { GetPokeMetronomePackagesResponseBody } from "@app/pages/api/poke/metronome/packages";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
+import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/pages/api/poke/stripe/customers/currency";
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
 import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
@@ -169,6 +170,47 @@ export function usePokeMetronomePackages({
     isPackagesLoading: !error && !data && !disabled,
     isPackagesError: error,
     packagesError: isAPIErrorResponse(error) ? error.error : null,
+  };
+}
+
+export function usePokeStripeCustomerCurrency({
+  stripeCustomerId,
+  disabled,
+}: {
+  stripeCustomerId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcherWithBody } = useFetcher();
+
+  const enabled = !disabled && !!stripeCustomerId;
+  const { data, error } = useSWRWithDefaults<
+    string | null,
+    PostPokeStripeCustomerCurrencyResponseBody
+  >(
+    enabled
+      ? JSON.stringify({
+          url: "/api/poke/stripe/customers/currency",
+          stripeCustomerId,
+        })
+      : null,
+    async () => {
+      if (!stripeCustomerId) {
+        throw new Error("stripeCustomerId is required.");
+      }
+
+      return fetcherWithBody([
+        "/api/poke/stripe/customers/currency",
+        { stripeCustomerId },
+        "POST",
+      ]);
+    },
+    { disabled: !enabled }
+  );
+
+  return {
+    currency: data?.currency ?? null,
+    isCurrencyLoading: enabled && !error && !data,
+    currencyError: isAPIErrorResponse(error) ? error.error : null,
   };
 }
 

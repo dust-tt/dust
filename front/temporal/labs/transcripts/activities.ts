@@ -612,6 +612,7 @@ export async function processTranscriptActivity(
     };
 
     const cfRes = await toFileContentFragment(auth, {
+      conversation: initialConversation,
       contentFragment: {
         title: transcriptTitle,
         content: transcriptContent,

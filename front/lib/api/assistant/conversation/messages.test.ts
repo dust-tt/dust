@@ -29,7 +29,9 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgenticMessageData,
@@ -1067,7 +1069,7 @@ describe("createAgentMessages", () => {
       expect(mentionInDb?.status).toBe("approved");
     });
 
-    it("should reject agent mentions when agent uses restricted spaces other than conversation's space", async () => {
+    it("should reject agent mentions when agent uses restricted spaces other than conversation's space and the conversation space has more than one manual member", async () => {
       // Create a space for the conversation
       const conversationSpace = await SpaceFactory.regular(workspace);
       const user = auth.getNonNullableUser();
@@ -1077,6 +1079,15 @@ describe("createAgentMessages", () => {
       await conversationSpace.addMembers(adminAuth, {
         userIds: [user.sId],
       });
+
+      const secondSpaceMember = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, secondSpaceMember, {
+        role: "user",
+      });
+      const addSecondMemberRes = await conversationSpace.addMembers(adminAuth, {
+        userIds: [secondSpaceMember.sId],
+      });
+      expect(addSecondMemberRes.isOk()).toBe(true);
 
       // Create a fresh authenticator after adding user to space to refresh permissions
       const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -1202,6 +1213,136 @@ describe("createAgentMessages", () => {
       });
       expect(mentionInDb).not.toBeNull();
       expect(mentionInDb?.status).toBe("agent_restricted_by_space_usage");
+    });
+
+    it("should allow agent mentions when agent uses restricted spaces other than conversation's space but the user is the sole manual member of the restricted conversation space", async () => {
+      const conversationSpace = await SpaceFactory.regular(workspace);
+      const user = auth.getNonNullableUser();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await conversationSpace.addMembers(adminAuth, {
+        userIds: [user.sId],
+      });
+
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      const refreshedRestrictedSpace = await SpaceResource.fetchById(
+        adminAuth,
+        restrictedSpace.sId
+      );
+      expect(refreshedRestrictedSpace).not.toBeNull();
+      expect(refreshedRestrictedSpace?.isOpen()).toBe(false);
+
+      const refreshedConversationSpace = await SpaceResource.fetchById(
+        userAuth,
+        conversationSpace.sId
+      );
+      expect(refreshedConversationSpace).not.toBeNull();
+
+      const soleMemberManualUsers =
+        await refreshedConversationSpace!.fetchDistinctActiveManualGroupMembers(
+          userAuth
+        );
+      expect(soleMemberManualUsers).toHaveLength(1);
+      expect(soleMemberManualUsers[0].sId).toBe(user.sId);
+
+      const spaceConversation = await createConversation(userAuth, {
+        title: "Space Conversation",
+        visibility: "unlisted",
+        spaceId: conversationSpace.id,
+      });
+
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Restricted Space Sole Member Agent",
+        }
+      );
+
+      const conversationSpaceModelId = getResourceIdFromSId(
+        conversationSpace.sId
+      );
+      const restrictedSpaceModelId = getResourceIdFromSId(
+        refreshedRestrictedSpace!.sId
+      );
+      expect(conversationSpaceModelId).not.toBeNull();
+      expect(restrictedSpaceModelId).not.toBeNull();
+
+      await AgentConfigurationModel.update(
+        {
+          requestedSpaceIds: [
+            conversationSpaceModelId!,
+            restrictedSpaceModelId!,
+          ],
+        },
+        {
+          where: {
+            workspaceId: workspace.id,
+            sId: agentConfig.sId,
+            version: agentConfig.version,
+          },
+        }
+      );
+
+      const updatedAgentConfig: LightAgentConfigurationType = {
+        ...agentConfig,
+        requestedSpaceIds: [
+          conversationSpace.sId,
+          refreshedRestrictedSpace!.sId,
+        ],
+      };
+
+      const { userMessage } = await ConversationFactory.createUserMessage({
+        auth: userAuth,
+        workspace,
+        conversation: spaceConversation,
+        content: `Hello @${agentConfig.name}`,
+      });
+
+      const mentions: MentionType[] = [
+        {
+          configurationId: agentConfig.sId,
+        } satisfies AgentMention,
+      ];
+
+      const { agentMessages, richMentions } = await createAgentMessages(
+        userAuth,
+        {
+          conversation: spaceConversation,
+          metadata: {
+            type: "create",
+            mentions,
+            agentConfigurations: [updatedAgentConfig],
+            skipToolsValidation: false,
+            nextMessageRank: 1,
+            userMessage,
+          },
+        }
+      );
+
+      expect(agentMessages).toHaveLength(1);
+      expect(agentMessages[0].configuration.sId).toBe(agentConfig.sId);
+
+      expect(richMentions).toHaveLength(1);
+      if (isRichAgentMention(richMentions[0])) {
+        expect(richMentions[0].id).toBe(agentConfig.sId);
+        expect(richMentions[0].status).toBe("approved");
+      }
+
+      const mentionInDb = await MentionModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          messageId: userMessage.id,
+          agentConfigurationId: agentConfig.sId,
+        },
+      });
+      expect(mentionInDb).not.toBeNull();
+      expect(mentionInDb?.status).toBe("approved");
     });
 
     it("should allow agent mentions when agent uses global space other than conversation's space", async () => {

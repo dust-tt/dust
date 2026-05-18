@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/mcp/request_access.ts
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
@@ -8,18 +10,17 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { isLeft } from "fp-ts/lib/Either";
 import { escape } from "html-escaper";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const PostRequestActionsAccessBodySchema = t.type({
-  emailMessage: t.string,
-  mcpServerViewId: t.string,
+export const PostRequestActionsAccessBodySchema = z.object({
+  emailMessage: z.string(),
+  mcpServerViewId: z.string(),
 });
 
-export type PostRequestActionsAccessBody = t.TypeOf<
+export type PostRequestActionsAccessBody = z.infer<
   typeof PostRequestActionsAccessBodySchema
 >;
 
@@ -53,21 +54,19 @@ async function handler(
     });
   }
 
-  const bodyValidation = PostRequestActionsAccessBodySchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+  const bodyValidation = PostRequestActionsAccessBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
+        message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
       },
     });
   }
 
   const emailRequester = user.email;
-  const { emailMessage, mcpServerViewId } = bodyValidation.right;
+  const { emailMessage, mcpServerViewId } = bodyValidation.data;
 
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,

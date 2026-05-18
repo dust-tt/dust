@@ -3,6 +3,8 @@
   "targets": [{ "type": "workspace" }, { "type": "sandbox_env_var" }],
   "metadata": {
     "name": "string",
+    "kind": "string",
+    "allowed_domains": "string",
     "actor_type": "string"
   }
 }

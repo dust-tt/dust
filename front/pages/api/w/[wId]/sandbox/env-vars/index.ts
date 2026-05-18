@@ -2,31 +2,26 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
-  validateEnvVarName,
-  validateEnvVarValue,
+  parseWorkspaceSandboxEnvVarNameForKind,
+  validateEnvVarValueForKind,
 } from "@app/lib/api/sandbox/env_vars";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { WorkspaceSandboxEnvVarType } from "@app/types/sandbox/env_var";
+import {
+  WORKSPACE_SANDBOX_ENV_VAR_KINDS,
+  type WorkspaceSandboxEnvVarType,
+} from "@app/types/sandbox/env_var";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 const PostWorkspaceSandboxEnvVarBodySchema = z.object({
-  name: z.string().superRefine((name, ctx) => {
-    const result = validateEnvVarName(name);
-    if (result.isErr()) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
-    }
-  }),
-  value: z.string().superRefine((value, ctx) => {
-    const result = validateEnvVarValue(value);
-    if (result.isErr()) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
-    }
-  }),
+  name: z.string(),
+  value: z.string(),
+  kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS).optional(),
+  allowedDomains: z.array(z.string()).nullable().optional(),
 });
 
 export type GetWorkspaceSandboxEnvVarsResponseBody = {
@@ -104,9 +99,35 @@ async function handler(
         });
       }
 
-      const result = await WorkspaceSandboxEnvVarResource.upsert(auth, {
+      const kind = parsed.data.kind ?? "config";
+      const parsedName = parseWorkspaceSandboxEnvVarNameForKind({
+        kind,
         name: parsed.data.name,
+      });
+      const parsedValue = validateEnvVarValueForKind({
+        kind,
         value: parsed.data.value,
+      });
+      if (parsedName.isErr() || parsedValue.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: [
+              parsedName.isErr() ? `name: ${parsedName.error}` : null,
+              parsedValue.isErr() ? `value: ${parsedValue.error}` : null,
+            ]
+              .filter((message) => message !== null)
+              .join("; "),
+          },
+        });
+      }
+
+      const result = await WorkspaceSandboxEnvVarResource.upsert(auth, {
+        name: parsedName.value,
+        value: parsed.data.value,
+        kind,
+        allowedDomains: parsed.data.allowedDomains,
         context: getAuditLogContext(auth, req),
       });
       if (result.isErr()) {

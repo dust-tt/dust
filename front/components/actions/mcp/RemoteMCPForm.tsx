@@ -1,5 +1,6 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import { MCPServerMetaFields } from "@app/components/actions/mcp/MCPServerMetaFields";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -41,6 +42,9 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
   const headerFields = useWatch<MCPServerFormValues, "customHeaders">({
     name: "customHeaders",
+  });
+  const metaFields = useWatch<MCPServerFormValues, "metaFields">({
+    name: "metaFields",
   });
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.sId);
 
@@ -166,6 +170,23 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         <CollapsibleContent>
           <div className="space-y-2">
             <MCPServerHeaders />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible>
+        <CollapsibleTrigger>
+          <div className="heading-lg">
+            Meta Fields ({(metaFields ?? []).length})
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500 dark:text-gray-500-night">
+              Key-value pairs sent as <code className="font-mono">_meta</code>{" "}
+              on every tool call to this server.
+            </p>
+            <MCPServerMetaFields />
           </div>
         </CollapsibleContent>
       </Collapsible>

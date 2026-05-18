@@ -11,6 +11,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
 /**
@@ -76,56 +77,60 @@ async function getAgentSidekickContextViewId(
 async function createReinforcedAction(
   auth: Authenticator,
   {
-    toolCall,
     agentMessageModelId,
-    stepContentId,
+    conversation,
     mcpServerViewId,
+    stepContent,
+    toolCall,
   }: {
-    toolCall: ReinforcedSkillsToolCallInfo;
     agentMessageModelId: ModelId;
-    stepContentId: ModelId;
+    conversation: ConversationWithoutContentType;
     mcpServerViewId: string;
+    stepContent: AgentStepContentResource;
+    toolCall: ReinforcedSkillsToolCallInfo;
   }
 ): Promise<AgentMCPActionResource> {
-  return AgentMCPActionResource.makeNew(auth, {
-    agentMessageId: agentMessageModelId,
-    augmentedInputs: toolCall.arguments,
-    citationsAllocated: 0,
-    mcpServerConfigurationId: "agent_sidekick_context",
-    status: "ready_allowed_explicitly",
-    stepContentId,
-    stepContext: {
-      citationsCount: 0,
-      citationsOffset: 0,
-      resumeState: null,
-      retrievalTopK: 0,
-      websearchResultCount: 0,
-    },
-    toolConfiguration: {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_configuration",
-      name: toolCall.name,
-      originalName: toolCall.name,
-      mcpServerName: "agent_sidekick_context",
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId,
-      dustAppConfiguration: null,
-      internalMCPServerId: "agent_sidekick_context",
-      secretName: null,
-      dustProject: null,
-      availability: "auto",
-      permission: "never_ask",
-      toolServerId: "agent_sidekick_context",
-      retryPolicy: "no_retry",
-    },
-    version: 0,
-  });
+  return AgentMCPActionResource.makeNew(
+    auth,
+    { conversation, stepContent },
+    {
+      agentMessageId: agentMessageModelId,
+      augmentedInputs: toolCall.arguments,
+      citationsAllocated: 0,
+      mcpServerConfigurationId: "agent_sidekick_context",
+      status: "ready_allowed_explicitly",
+      stepContext: {
+        citationsCount: 0,
+        citationsOffset: 0,
+        resumeState: null,
+        retrievalTopK: 0,
+        websearchResultCount: 0,
+      },
+      toolConfiguration: {
+        id: -1,
+        sId: generateRandomModelSId(),
+        type: "mcp_configuration",
+        name: toolCall.name,
+        originalName: toolCall.name,
+        mcpServerName: "agent_sidekick_context",
+        dataSources: null,
+        tables: null,
+        childAgentId: null,
+        timeFrame: null,
+        jsonSchema: null,
+        additionalConfiguration: {},
+        mcpServerViewId,
+        dustAppConfiguration: null,
+        internalMCPServerId: "agent_sidekick_context",
+        secretName: null,
+        dustProject: null,
+        availability: "auto",
+        permission: "never_ask",
+        toolServerId: "agent_sidekick_context",
+        retryPolicy: "no_retry",
+      },
+    }
+  );
 }
 
 /**
@@ -135,17 +140,17 @@ async function createReinforcedAction(
 export async function prepareReinforcedToolActions(
   auth: Authenticator,
   {
-    exploratoryToolCalls,
-    agentMessageModelId,
     agentMessageId,
+    agentMessageModelId,
+    conversation,
+    exploratoryToolCalls,
     userMessageId,
-    conversationId,
   }: {
-    exploratoryToolCalls: ExploratoryToolCallInfo[];
-    agentMessageModelId: ModelId;
     agentMessageId: string;
+    agentMessageModelId: ModelId;
+    conversation: ConversationWithoutContentType;
+    exploratoryToolCalls: ExploratoryToolCallInfo[];
     userMessageId: string;
-    conversationId: string;
   }
 ): Promise<ReinforcedToolActionInfo> {
   const [stepContentByCallId, mcpServerViewId] = await Promise.all([
@@ -164,8 +169,9 @@ export async function prepareReinforcedToolActions(
 
     const action = await createReinforcedAction(auth, {
       toolCall: tc,
+      conversation,
       agentMessageModelId,
-      stepContentId: stepContent.id,
+      stepContent,
       mcpServerViewId,
     });
 
@@ -177,7 +183,7 @@ export async function prepareReinforcedToolActions(
     agentLoopArgs: {
       agentMessageId: agentMessageId,
       agentMessageVersion: 0,
-      conversationId,
+      conversationId: conversation.sId,
       conversationTitle: null,
       conversationBranchId: null,
       userMessageId: userMessageId,
@@ -201,10 +207,12 @@ export async function storeTerminalToolCallResults(
     successfulToolCalls,
     failedToolCalls,
     agentMessageModelId,
+    conversation,
   }: {
     successfulToolCalls: TerminalToolCallSuccess[];
     failedToolCalls: TerminalToolCallFailure[];
     agentMessageModelId: ModelId;
+    conversation: ConversationWithoutContentType;
   }
 ): Promise<void> {
   const [stepContentByCallId, mcpServerViewId] = await Promise.all([
@@ -219,9 +227,10 @@ export async function storeTerminalToolCallResults(
     }
 
     const action = await createReinforcedAction(auth, {
+      conversation,
       toolCall,
       agentMessageModelId,
-      stepContentId: stepContent.id,
+      stepContent,
       mcpServerViewId,
     });
 
@@ -238,15 +247,17 @@ export async function storeTerminalToolCallResults(
     }
 
     const action = await createReinforcedAction(auth, {
+      conversation,
       toolCall,
       agentMessageModelId,
-      stepContentId: stepContent.id,
+      stepContent,
       mcpServerViewId,
     });
 
     await action.createOutputItems(auth, [
       { content: { type: "text", text: errorMessage } },
     ]);
+
     await action.markAsErrored({ executionDurationMs: 0 });
   }
 }

@@ -1,13 +1,15 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { describe, expect, it, vi } from "vitest";
@@ -117,26 +119,10 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     expect(res._getStatusCode()).toBe(405);
   });
 
-  it("returns 403 when the sessions branching feature flag is disabled", async () => {
-    const { req, res } = await createPrivateApiMockRequest({
-      method: "POST",
-    });
-
-    req.query.cId = "conv_test";
-    req.body = {};
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData().error.type).toBe("feature_flag_not_found");
-  });
-
   it("creates a fork and returns the child conversation id", async () => {
     const { req, res, auth, globalSpace } = await createPrivateApiMockRequest({
       method: "POST",
     });
-
-    await FeatureFlagFactory.basic(auth, "sessions_branching");
 
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
@@ -184,8 +170,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
       method: "POST",
     });
 
-    await FeatureFlagFactory.basic(auth, "sessions_branching");
-
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
@@ -229,8 +213,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
       method: "POST",
     });
 
-    await FeatureFlagFactory.basic(auth, "sessions_branching");
-
     const parentConversation = await createConversation(auth, {
       title: "Parent conversation",
       visibility: "unlisted",
@@ -250,5 +232,47 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
 
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
+  });
+
+  it("returns 403 when creating a fork in a project where the user is not a member", async () => {
+    const { req, res, auth, workspace, globalGroup } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+      });
+
+    const projectSpace = await SpaceFactory.project(workspace);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await GroupSpaceMemberResource.makeNew(internalAdminAuth, {
+      group: globalGroup,
+      space: projectSpace,
+    });
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: projectSpace.id,
+    });
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "Please continue from here.",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    req.query.cId = parentConversation.sId;
+    req.body = { sourceMessageId: sourceMessage.sId };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error.type).toBe("workspace_auth_error");
   });
 });

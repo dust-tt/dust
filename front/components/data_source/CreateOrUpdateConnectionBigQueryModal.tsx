@@ -38,9 +38,8 @@ import {
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { isRight } from "fp-ts/lib/Either";
-import { formatValidationErrors } from "io-ts-reporters";
 import { useEffect, useMemo, useState } from "react";
+import { fromError } from "zod-validation-error";
 
 type CreateOrUpdateConnectionBigQueryModalProps = {
   owner: WorkspaceType;
@@ -84,8 +83,8 @@ export function CreateOrUpdateConnectionBigQueryModal({
     try {
       const credentialsObject: CheckBigQueryCredentials =
         JSON.parse(credentials);
-      const r = CheckBigQueryCredentialsSchema.decode(credentialsObject);
-      if (isRight(r)) {
+      const r = CheckBigQueryCredentialsSchema.safeParse(credentialsObject);
+      if (r.success) {
         const allFieldsHaveValue = Object.values(credentialsObject).every(
           (v) => v.length > 0
         );
@@ -100,7 +99,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
         return {
           credentials: credentialsObject,
           valid: false,
-          errorMessage: formatValidationErrors(r.left).join(" "),
+          errorMessage: fromError(r.error).toString(),
         };
       }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars

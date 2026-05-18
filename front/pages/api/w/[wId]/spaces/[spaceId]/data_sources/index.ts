@@ -49,47 +49,31 @@ import type { PlanType } from "@app/types/plan";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
 import type { WorkspaceType } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-// Sorcery: Create a union type with at least two elements to satisfy t.union
-function getConnectorProviderCodec(): t.Mixed {
-  const [first, second, ...rest] = CONNECTOR_PROVIDERS;
-  return t.union([
-    t.literal(first),
-    t.literal(second),
-    ...rest.map((value) => t.literal(value)),
-  ]);
-}
-
-export const PostDataSourceWithProviderRequestBodySchema = t.intersection([
-  t.type({
-    provider: getConnectorProviderCodec(),
-    name: t.union([t.string, t.undefined]),
-    configuration: ConnectorConfigurationTypeSchema,
-  }),
-  t.partial({
-    connectionId: t.string, // Required for some providers
-    relatedCredentialId: t.string, // Required for private integrations
-    extraConfig: t.record(t.string, t.string), // Used by slack private integrations
-  }),
-]);
-
-const PostDataSourceWithoutProviderRequestBodySchema = t.type({
-  name: t.string,
-  description: t.union([t.string, t.null]),
+export const PostDataSourceWithProviderRequestBodySchema = z.object({
+  provider: z.enum(CONNECTOR_PROVIDERS),
+  name: z.string().optional(),
+  configuration: ConnectorConfigurationTypeSchema,
+  connectionId: z.string().optional(), // Required for some providers
+  relatedCredentialId: z.string().optional(), // Required for private integrations
+  extraConfig: z.record(z.string(), z.string()).optional(), // Used by slack private integrations
 });
 
-const PostDataSourceRequestBodySchema = t.union([
+const PostDataSourceWithoutProviderRequestBodySchema = z.object({
+  name: z.string(),
+  description: z.string().nullable(),
+});
+
+const PostDataSourceRequestBodySchema = z.union([
   PostDataSourceWithoutProviderRequestBodySchema,
   PostDataSourceWithProviderRequestBodySchema,
 ]);
 
-export type PostDataSourceRequestBody = t.TypeOf<
+export type PostDataSourceRequestBody = z.infer<
   typeof PostDataSourceRequestBodySchema
 >;
 
@@ -144,9 +128,11 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const bodyValidation = PostDataSourceRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostDataSourceRequestBodySchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -156,8 +142,8 @@ async function handler(
         });
       }
 
-      if ("provider" in bodyValidation.right) {
-        const body = bodyValidation.right as t.TypeOf<
+      if ("provider" in bodyValidation.data) {
+        const body = bodyValidation.data as z.infer<
           typeof PostDataSourceWithProviderRequestBodySchema
         >;
         await handleDataSourceWithProvider({
@@ -170,7 +156,7 @@ async function handler(
           res,
         });
       } else {
-        const body = bodyValidation.right as t.TypeOf<
+        const body = bodyValidation.data as z.infer<
           typeof PostDataSourceWithoutProviderRequestBodySchema
         >;
         const r = await createDataSourceWithoutProvider(auth, {
@@ -249,7 +235,7 @@ const handleDataSourceWithProvider = async ({
   plan: PlanType;
   owner: WorkspaceType;
   space: SpaceResource;
-  body: t.TypeOf<typeof PostDataSourceWithProviderRequestBodySchema>;
+  body: z.infer<typeof PostDataSourceWithProviderRequestBodySchema>;
   req: NextApiRequest;
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceDataSourceResponseBody>>;
 }) => {
@@ -349,21 +335,20 @@ const handleDataSourceWithProvider = async ({
   }
 
   if (provider === "webcrawler") {
-    const configurationRes = ioTsParsePayload(
-      configuration,
-      WebCrawlerConfigurationTypeSchema
-    );
-    if (configurationRes.isErr()) {
+    const configurationRes =
+      WebCrawlerConfigurationTypeSchema.safeParse(configuration);
+    if (!configurationRes.success) {
       return apiError(req, res, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
           message:
-            "Invalid configuration: " + configurationRes.error.join(", "),
+            "Invalid configuration: " +
+            fromError(configurationRes.error).toString(),
         },
       });
     }
-    dataSourceDescription = configurationRes.value.url;
+    dataSourceDescription = configurationRes.data.url;
   }
 
   // Creating the datasource

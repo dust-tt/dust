@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/apps.ts
 import { softDeleteApp } from "@app/lib/api/apps";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -9,18 +11,17 @@ import { apiError } from "@app/logger/withlogging";
 import type { AppType } from "@app/types/app";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type GetOrPostAppResponseBody = {
   app: AppType;
 };
 
-const PatchAppBodySchema = t.type({
-  name: t.string,
-  description: t.string,
+const PatchAppBodySchema = z.object({
+  name: z.string(),
+  description: z.string(),
 });
 
 async function handler(
@@ -70,9 +71,9 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchAppBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PatchAppBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
 
         return apiError(req, res, {
           status_code: 400,
@@ -83,7 +84,7 @@ async function handler(
         });
       }
 
-      const { name, description } = bodyValidation.right;
+      const { name, description } = bodyValidation.data;
 
       if (!APP_NAME_REGEXP.test(name)) {
         return apiError(req, res, {

@@ -1,5 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
@@ -35,6 +36,11 @@ export const runAgentLoopWorkflow = async ({
         agentConfiguration,
         "Unreachable: could not find detailed configuration for agent"
       );
+
+      await ConversationResource.setIsRunningAgentLoop(auth, {
+        conversation,
+        isRunningAgentLoop: true,
+      });
 
       void launchAgentLoopWorkflow({
         auth,

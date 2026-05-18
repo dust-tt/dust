@@ -1,13 +1,13 @@
-import type { FileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { clientEventSource } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
-import { useProjectContextAttachments } from "@app/lib/swr/projects";
+import { useProjectFiles } from "@app/lib/swr/projects";
 import { emptyArray } from "@app/lib/swr/swr";
 import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { EventSourcePolyfill } from "event-source-polyfill";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +15,12 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
   dataSourceViews: DataSourceViewType[];
+};
+
+export type ProjectFileSearchResult = {
+  fileId: string;
+  title: string;
+  contentType: string;
 };
 
 interface UnifiedSearchStreamChunk {
@@ -66,21 +72,26 @@ export function useUnifiedSearch({
   const [hasMore, setHasMore] = useState(false);
   const eventSourceRef = useRef<EventSourcePolyfill | null>(null);
 
-  const {
-    attachments: projectContextAttachments,
-    isProjectContextAttachmentsLoading,
-  } = useProjectContextAttachments({
+  const { files: projectFiles, isProjectFilesLoading } = useProjectFiles({
     owner,
     spaceId: projectId ?? "",
-    query,
-    type: "file",
     disabled: disabled || !projectId,
   });
 
-  const projectContextFiles = useMemo((): FileAttachmentType[] => {
-    // Server-side filtering (`type=file`) ensures the endpoint returns only file attachments.
-    return projectContextAttachments as FileAttachmentType[];
-  }, [projectContextAttachments]);
+  const projectContextFiles = useMemo<ProjectFileSearchResult[]>(() => {
+    return removeNulls(
+      projectFiles.map((f) => {
+        if (f.isDirectory || f.fileId == null) {
+          return null;
+        }
+        return {
+          fileId: f.fileId,
+          title: f.fileName,
+          contentType: f.contentType,
+        };
+      })
+    );
+  }, [projectFiles]);
 
   const projectContextFileIds = useMemo(() => {
     return new Set(projectContextFiles.map((f) => f.fileId));
@@ -262,9 +273,8 @@ export function useUnifiedSearch({
     projectContextFiles:
       projectContextFiles.length > 0
         ? projectContextFiles
-        : emptyArray<FileAttachmentType>(),
-    isProjectContextFilesLoading:
-      !!projectId && isProjectContextAttachmentsLoading,
+        : emptyArray<ProjectFileSearchResult>(),
+    isProjectContextFilesLoading: !!projectId && isProjectFilesLoading,
     isSearchLoading,
     isLoadingNextPage,
     isSearchValidating,

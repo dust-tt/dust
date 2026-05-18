@@ -36,6 +36,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import { redisClient } from "@connectors/types/shared/redis_client";
 import type {
   AgentActionPublicType,
+  AgentEvent,
   ConversationPublicType,
   LightAgentConfigurationType,
   Result,
@@ -191,6 +192,45 @@ class SlackAnswerRetryableError extends Error {
   }
 }
 
+type SlackUserActionType = Extract<
+  AgentEvent["type"],
+  | "tool_approve_execution"
+  | "tool_file_auth_required"
+  | "tool_personal_auth_required"
+  | "tool_ask_user_question"
+>;
+
+const SLACK_USER_ACTION_IDLE_TIMEOUT_MS = 4 * 60 * 1000 + 30 * 1000; // 4.5 minutes
+
+function getUserActionFallbackMessage(
+  actionType: SlackUserActionType,
+  conversationUrl: string | null
+): string {
+  let actionLabel: string;
+  switch (actionType) {
+    case "tool_approve_execution":
+      actionLabel = "tool execution approval";
+      break;
+    case "tool_file_auth_required":
+      actionLabel = "file access authorization";
+      break;
+    case "tool_personal_auth_required":
+      actionLabel = "tool authentication";
+      break;
+    case "tool_ask_user_question":
+      actionLabel = "response to a question";
+      break;
+    default:
+      assertNever(actionType);
+  }
+
+  const urlPart = conversationUrl
+    ? ` <${conversationUrl}|Continue on Dust>.`
+    : "";
+
+  return `:hourglass_flowing_sand: _Streaming was interrupted after 5 mins waiting on a ${actionLabel}.${urlPart}_`;
+}
+
 async function streamAgentAnswerToSlack(
   dustAPI: DustAPI,
   conversationData: StreamConversationToSlackParams,
@@ -215,21 +255,31 @@ async function streamAgentAnswerToSlack(
     slackUserId,
   } = slack;
 
+  const abortController = new AbortController();
+
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
     userMessageId: userMessage.sId,
+    signal: abortController.signal,
   });
 
   if (streamRes.isErr()) {
     return new Err(new Error(streamRes.error.message));
   }
 
+  const { eventStream } = streamRes.value;
+
   let answer = "";
+  // Partial :cite[...] marker that may span across tokens.
+  let pendingCitePrefix = "";
   const actions: AgentActionPublicType[] = [];
   let pendingPersonalAuth: {
     redisKey: string;
     serverName: string;
   } | null = null;
+  let pendingUserActionType: SlackUserActionType | null = null;
+  let timedOutUserActionType: SlackUserActionType | null = null;
+  let userActionTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
   const { streamHandler } = conversationData;
 
@@ -240,10 +290,73 @@ async function streamAgentAnswerToSlack(
     },
   };
 
-  for await (const event of streamRes.value.eventStream) {
+  const clearUserActionTimeout = () => {
+    if (userActionTimeoutHandle) {
+      clearTimeout(userActionTimeoutHandle);
+      userActionTimeoutHandle = null;
+    }
+
+    if (!pendingUserActionType) {
+      return;
+    }
+
+    logger.info(
+      {
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        pendingActionType: pendingUserActionType,
+      },
+      "Clearing user-action idle timeout for Slack stream."
+    );
+
+    pendingUserActionType = null;
+  };
+
+  const startUserActionTimeout = (actionType: SlackUserActionType) => {
+    clearUserActionTimeout();
+
+    pendingUserActionType = actionType;
+    timedOutUserActionType = null;
+    userActionTimeoutHandle = setTimeout(() => {
+      timedOutUserActionType = pendingUserActionType;
+
+      logger.info(
+        {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          pendingActionType: pendingUserActionType,
+        },
+        "Slack stream idle timeout: user action not taken, aborting SSE stream."
+      );
+
+      abortController.abort();
+    }, SLACK_USER_ACTION_IDLE_TIMEOUT_MS);
+    userActionTimeoutHandle.unref?.();
+
+    logger.info(
+      {
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        pendingActionType: actionType,
+      },
+      "Starting user-action idle timeout for Slack stream."
+    );
+  };
+
+  async function* eventStreamWithTimeoutCleanup() {
+    try {
+      yield* eventStream;
+    } finally {
+      clearUserActionTimeout();
+    }
+  }
+
+  for await (const event of eventStreamWithTimeoutCleanup()) {
     switch (event.type) {
       case "tool_params":
       case "tool_notification": {
+        clearUserActionTimeout();
+
         const isRunAgent = event.action.internalMCPServerName === "run_agent";
 
         // For run_agent, skip tool_params and early notifications:
@@ -265,6 +378,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "tool_approve_execution": {
+        startUserActionTimeout(event.type);
+
         logger.info(
           {
             connectorId: connector.id,
@@ -310,6 +425,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "tool_personal_auth_required": {
+        startUserActionTimeout(event.type);
+
         const conversationUrl = makeConversationUrl(
           connector.workspaceId,
           conversation.sId
@@ -347,6 +464,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "tool_file_auth_required": {
+        startUserActionTimeout(event.type);
+
         const conversationUrl = makeConversationUrl(
           connector.workspaceId,
           conversation.sId
@@ -375,6 +494,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "user_message_error": {
+        clearUserActionTimeout();
+
         return new Err(
           new Error(
             `User message error: code: ${event.error.code} message: ${event.error.message}`
@@ -383,6 +504,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "tool_error": {
+        clearUserActionTimeout();
+
         return new Err(
           new Error(
             `Tool message error: code: ${event.error.code} message: ${event.error.message}`
@@ -390,6 +513,8 @@ async function streamAgentAnswerToSlack(
         );
       }
       case "agent_error": {
+        clearUserActionTimeout();
+
         planHandler.abortAllChildStreams();
         await planHandler.deletePlanMessage();
         return new Err(
@@ -400,6 +525,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "agent_action_success": {
+        clearUserActionTimeout();
+
         if (pendingPersonalAuth && slackUserId && !slackUserInfo.is_bot) {
           await cleanupAuthEphemeral(
             pendingPersonalAuth,
@@ -423,6 +550,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "generation_tokens": {
+        clearUserActionTimeout();
+
         if (event.classification !== "tokens") {
           continue;
         }
@@ -433,7 +562,24 @@ async function streamAgentAnswerToSlack(
           break;
         }
         if (answer.length <= MAX_SLACK_MESSAGE_LENGTH) {
-          await streamHandler.appendText(event.text);
+          const combined = pendingCitePrefix + event.text;
+          pendingCitePrefix = "";
+
+          // Strip complete :cite[...] markers (resolved to footnotes on final chat.update).
+          let safeText = combined.replace(/ ?:cite\[[a-zA-Z0-9, ]+\]/g, "");
+
+          // Hold back trailing partial markers until the next token.
+          const partialMatch = safeText.match(
+            / ?:c(?:i(?:t(?:e(?:\[[a-zA-Z0-9, ]*)?)?)?)?$/
+          );
+          if (partialMatch) {
+            pendingCitePrefix = partialMatch[0];
+            safeText = safeText.slice(0, -pendingCitePrefix.length);
+          }
+
+          if (safeText) {
+            await streamHandler.appendText(safeText);
+          }
           break;
         }
 
@@ -466,6 +612,14 @@ async function streamAgentAnswerToSlack(
 
       case "agent_message_gracefully_stopped":
       case "agent_message_success": {
+        clearUserActionTimeout();
+
+        // Flush pending text that turned out not to be a citation.
+        if (pendingCitePrefix) {
+          await streamHandler.appendText(pendingCitePrefix);
+          pendingCitePrefix = "";
+        }
+
         planHandler.abortAllChildStreams();
         await planHandler.deletePlanMessage();
 
@@ -608,6 +762,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "agent_generation_cancelled": {
+        clearUserActionTimeout();
+
         planHandler.abortAllChildStreams();
         await planHandler.deletePlanMessage();
         await streamHandler.stop();
@@ -644,6 +800,8 @@ async function streamAgentAnswerToSlack(
       }
 
       case "tool_ask_user_question": {
+        startUserActionTimeout(event.type);
+
         const questionValue = JSON.stringify({
           workspaceId: connector.workspaceId,
           conversationId: event.conversationId,
@@ -670,12 +828,48 @@ async function streamAgentAnswerToSlack(
       case "agent_context_pruned":
       case "agent_message_done":
       case "tool_call_started":
+        clearUserActionTimeout();
+
         // No-op.
         break;
 
       default:
         assertNever(event);
     }
+  }
+
+  if (abortController.signal.aborted && timedOutUserActionType) {
+    planHandler.abortAllChildStreams();
+    await planHandler.deletePlanMessage();
+    await streamHandler.stop();
+
+    const conversationUrl = makeConversationUrl(
+      connector.workspaceId,
+      conversation.sId
+    );
+    const fallbackText = getUserActionFallbackMessage(
+      timedOutUserActionType,
+      conversationUrl
+    );
+
+    await slackClient.chat.postMessage({
+      channel: slackChannelId,
+      text: fallbackText,
+      blocks: makeMarkdownBlock(fallbackText),
+      thread_ts: slackMessageTs,
+      unfurl_links: false,
+    });
+
+    logger.info(
+      {
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        pendingActionType: timedOutUserActionType,
+      },
+      "Posted user-action timeout fallback message to Slack."
+    );
+
+    return new Ok(undefined);
   }
 
   // Clean up if the event stream ended without a terminal event.

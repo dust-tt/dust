@@ -6,7 +6,10 @@ import {
   type PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { ParsedContentItem } from "@app/types/assistant/conversation";
+import type {
+  AgentMessageStatus,
+  ParsedContentItem,
+} from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ContentMessage, Markdown } from "@dust-tt/sparkle";
 
@@ -19,12 +22,7 @@ interface AgentStepProps {
   streamingActions?: AgentMCPActionWithOutputType[];
   streamActionProgress: ActionProgressState;
   owner: LightWorkspaceType;
-  messageStatus:
-    | "created"
-    | "succeeded"
-    | "failed"
-    | "cancelled"
-    | "gracefully_stopped";
+  messageStatus: AgentMessageStatus;
 }
 
 export function PanelAgentStep({

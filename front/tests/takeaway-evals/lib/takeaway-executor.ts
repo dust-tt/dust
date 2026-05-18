@@ -4,13 +4,13 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   buildActionItems,
   buildPromptActionItems,
-} from "@app/lib/project_todo/analyze_document/action_items";
-import { buildPromptForSourceType } from "@app/lib/project_todo/analyze_document/prompts";
+} from "@app/lib/project_task/analyze_document/action_items";
+import { buildPromptForSourceType } from "@app/lib/project_task/analyze_document/prompts";
 import {
   type ExtractionResult,
   ExtractTakeawaysInputSchema,
-} from "@app/lib/project_todo/analyze_document/types";
-import { buildSpec } from "@app/lib/project_todo/analyze_document/utils";
+} from "@app/lib/project_task/analyze_document/types";
+import { buildSpec } from "@app/lib/project_task/analyze_document/utils";
 import type { TakeawaySourceDocument } from "@app/lib/resources/takeaways_resource";
 import logger from "@app/logger/logger";
 import { MODEL_ID } from "@app/tests/takeaway-evals/lib/config";
@@ -86,7 +86,7 @@ async function callLLMForExtraction(
     },
     {
       context: {
-        operationType: "project_todo_analyze_document",
+        operationType: "project_task_analyze_document",
         sourceId: document.id,
         sourceType: document.type,
         workspaceId: "eval-test",

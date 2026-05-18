@@ -274,223 +274,90 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     id: 10002,
     name: "Asana",
     description: "Asana tools for project management and issue tracking.",
-    url: "https://mcp.asana.com/sse",
+    url: "https://mcp.asana.com/v2/mcp",
     icon: "AsanaLogo",
     documentationUrl:
       "https://developers.asana.com/docs/using-asanas-mcp-server",
-    authMethod: "oauth-dynamic",
+    authMethod: "oauth-static",
+    scope: "default",
+    supportedOAuthUseCases: ["platform_actions", "personal_actions"],
     toolStakes: {
-      asana_get_attachment: "never_ask",
-      asana_get_attachments_for_object: "never_ask",
-      asana_get_goals: "never_ask",
-      asana_get_goal: "never_ask",
-      asana_create_goal: "low",
-      asana_get_parent_goals_for_goal: "never_ask",
-      asana_update_goal: "low",
-      asana_get_portfolio: "never_ask",
-      asana_get_portfolios: "never_ask",
-      asana_get_items_for_portfolio: "never_ask",
-      asana_get_project: "never_ask",
-      asana_get_project_sections: "never_ask",
-      asana_get_projects: "never_ask",
-      asana_get_project_status: "never_ask",
-      asana_get_project_statuses: "never_ask",
-      asana_create_project_status: "low",
-      asana_get_project_task_counts: "never_ask",
-      asana_get_projects_for_team: "never_ask",
-      asana_get_projects_for_workspace: "never_ask",
-      asana_create_project: "low",
-      asana_search_tasks: "never_ask",
-      asana_get_task: "never_ask",
-      asana_create_task: "low",
-      asana_update_task: "low",
-      asana_get_stories_for_task: "never_ask",
-      asana_create_task_story: "low",
-      asana_set_task_dependencies: "low",
-      asana_set_task_dependents: "low",
-      asana_set_parent_for_task: "low",
-      asana_get_tasks: "never_ask",
-      asana_delete_task: "low",
-      asana_add_task_followers: "low",
-      asana_remove_task_followers: "low",
-      asana_get_teams_for_workspace: "never_ask",
-      asana_get_teams_for_user: "never_ask",
-      asana_get_time_period: "never_ask",
-      asana_get_time_periods: "never_ask",
-      asana_typeahead_search: "never_ask",
-      asana_get_user: "never_ask",
-      asana_get_team_users: "never_ask",
-      asana_get_workspace_users: "never_ask",
-      asana_list_workspaces: "never_ask",
+      search_objects: "never_ask",
+      search_tasks: "never_ask",
+      get_status_overview: "never_ask",
+      get_task: "never_ask",
+      get_tasks: "never_ask",
+      create_task: "low",
+      update_task: "low",
+      create_project: "low",
+      get_project: "never_ask",
+      get_projects: "never_ask",
+      get_portfolio: "never_ask",
+      get_portfolios: "never_ask",
+      get_items_for_portfolio: "never_ask",
+      get_user: "never_ask",
+      get_workspace_users: "never_ask",
     },
     toolDisplayLabels: {
-      asana_search_tasks: {
+      search_objects: {
+        running: "Searching objects on Asana",
+        done: "Search objects on Asana",
+      },
+      search_tasks: {
         running: "Searching tasks on Asana",
         done: "Search tasks on Asana",
       },
-      asana_get_task: {
+      get_status_overview: {
+        running: "Retrieving status overview on Asana",
+        done: "Retrieve status overview on Asana",
+      },
+      get_task: {
         running: "Retrieving task on Asana",
         done: "Retrieve task on Asana",
       },
-      asana_create_task: {
-        running: "Creating task on Asana",
-        done: "Create task on Asana",
-      },
-      asana_update_task: {
-        running: "Updating task on Asana",
-        done: "Update task on Asana",
-      },
-      asana_delete_task: {
-        running: "Deleting task on Asana",
-        done: "Delete task on Asana",
-      },
-      asana_get_project: {
-        running: "Retrieving project on Asana",
-        done: "Retrieve project on Asana",
-      },
-      asana_get_projects: {
-        running: "Listing projects on Asana",
-        done: "List projects on Asana",
-      },
-      asana_create_project: {
-        running: "Creating project on Asana",
-        done: "Create project on Asana",
-      },
-      asana_get_goals: {
-        running: "Listing goals on Asana",
-        done: "List goals on Asana",
-      },
-      asana_get_goal: {
-        running: "Retrieving goal on Asana",
-        done: "Retrieve goal on Asana",
-      },
-      asana_create_goal: {
-        running: "Creating goal on Asana",
-        done: "Create goal on Asana",
-      },
-      asana_update_goal: {
-        running: "Updating goal on Asana",
-        done: "Update goal on Asana",
-      },
-      asana_get_stories_for_task: {
-        running: "Retrieving task stories on Asana",
-        done: "Retrieve task stories on Asana",
-      },
-      asana_create_task_story: {
-        running: "Creating task story on Asana",
-        done: "Create task story on Asana",
-      },
-      asana_get_attachment: {
-        running: "Retrieving attachment on Asana",
-        done: "Retrieve attachment on Asana",
-      },
-      asana_get_attachments_for_object: {
-        running: "Retrieving attachments on Asana",
-        done: "Retrieve attachments on Asana",
-      },
-      asana_get_parent_goals_for_goal: {
-        running: "Retrieving parent goals on Asana",
-        done: "Retrieve parent goals on Asana",
-      },
-      asana_get_portfolio: {
-        running: "Retrieving portfolio on Asana",
-        done: "Retrieve portfolio on Asana",
-      },
-      asana_get_portfolios: {
-        running: "Listing portfolios on Asana",
-        done: "List portfolios on Asana",
-      },
-      asana_get_items_for_portfolio: {
-        running: "Retrieving portfolio items on Asana",
-        done: "Retrieve portfolio items on Asana",
-      },
-      asana_get_project_sections: {
-        running: "Retrieving project sections on Asana",
-        done: "Retrieve project sections on Asana",
-      },
-      asana_get_project_status: {
-        running: "Retrieving project status on Asana",
-        done: "Retrieve project status on Asana",
-      },
-      asana_get_project_statuses: {
-        running: "Listing project statuses on Asana",
-        done: "List project statuses on Asana",
-      },
-      asana_create_project_status: {
-        running: "Creating project status on Asana",
-        done: "Create project status on Asana",
-      },
-      asana_get_project_task_counts: {
-        running: "Retrieving task counts on Asana",
-        done: "Retrieve task counts on Asana",
-      },
-      asana_get_projects_for_team: {
-        running: "Listing team projects on Asana",
-        done: "List team projects on Asana",
-      },
-      asana_get_projects_for_workspace: {
-        running: "Listing workspace projects on Asana",
-        done: "List workspace projects on Asana",
-      },
-      asana_set_task_dependencies: {
-        running: "Setting task dependencies on Asana",
-        done: "Set task dependencies on Asana",
-      },
-      asana_set_task_dependents: {
-        running: "Setting task dependents on Asana",
-        done: "Set task dependents on Asana",
-      },
-      asana_set_parent_for_task: {
-        running: "Setting task parent on Asana",
-        done: "Set task parent on Asana",
-      },
-      asana_get_tasks: {
+      get_tasks: {
         running: "Listing tasks on Asana",
         done: "List tasks on Asana",
       },
-      asana_add_task_followers: {
-        running: "Adding task followers on Asana",
-        done: "Add task followers on Asana",
+      create_task: {
+        running: "Creating task on Asana",
+        done: "Create task on Asana",
       },
-      asana_remove_task_followers: {
-        running: "Removing task followers on Asana",
-        done: "Remove task followers on Asana",
+      update_task: {
+        running: "Updating task on Asana",
+        done: "Update task on Asana",
       },
-      asana_get_teams_for_workspace: {
-        running: "Listing workspace teams on Asana",
-        done: "List workspace teams on Asana",
+      create_project: {
+        running: "Creating project on Asana",
+        done: "Create project on Asana",
       },
-      asana_get_teams_for_user: {
-        running: "Listing user teams on Asana",
-        done: "List user teams on Asana",
+      get_project: {
+        running: "Retrieving project on Asana",
+        done: "Retrieve project on Asana",
       },
-      asana_get_time_period: {
-        running: "Retrieving time period on Asana",
-        done: "Retrieve time period on Asana",
+      get_projects: {
+        running: "Listing projects on Asana",
+        done: "List projects on Asana",
       },
-      asana_get_time_periods: {
-        running: "Listing time periods on Asana",
-        done: "List time periods on Asana",
+      get_portfolio: {
+        running: "Retrieving portfolio on Asana",
+        done: "Retrieve portfolio on Asana",
       },
-      asana_typeahead_search: {
-        running: "Searching on Asana (typeahead)",
-        done: "Search on Asana (typeahead)",
+      get_portfolios: {
+        running: "Listing portfolios on Asana",
+        done: "List portfolios on Asana",
       },
-      asana_get_user: {
+      get_items_for_portfolio: {
+        running: "Retrieving portfolio items on Asana",
+        done: "Retrieve portfolio items on Asana",
+      },
+      get_user: {
         running: "Retrieving user on Asana",
         done: "Retrieve user on Asana",
       },
-      asana_get_team_users: {
-        running: "Listing team users on Asana",
-        done: "List team users on Asana",
-      },
-      asana_get_workspace_users: {
+      get_workspace_users: {
         running: "Listing workspace users on Asana",
         done: "List workspace users on Asana",
-      },
-      asana_list_workspaces: {
-        running: "Listing workspaces on Asana",
-        done: "List workspaces on Asana",
       },
     },
   },

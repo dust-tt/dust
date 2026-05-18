@@ -44,11 +44,12 @@ import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resou
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
-import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
+import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -68,7 +69,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -183,8 +184,9 @@ export async function scrubSpaceActivity({
   await TakeawaysResource.deleteAllForSpace(auth, { spaceModelId: space.id });
 
   // Delete all project todos for this space, before the conversations as it's linked to convo
-  const projectTodos = await ProjectTodoResource.fetchBySpace(auth, {
+  const projectTodos = await ProjectTaskResource.fetchBySpace(auth, {
     spaceId: space.id,
+    timeScope: "all",
   });
   await concurrentExecutor(
     projectTodos,
@@ -210,7 +212,8 @@ export async function scrubSpaceActivity({
         throw metadataRes.error;
       }
     }
-    const projectTodoStates = await ProjectTodoStateResource.fetchAllBySpace(
+
+    const projectTodoStates = await ProjectTaskStateResource.fetchAllBySpace(
       auth,
       {
         spaceId: space.id,
@@ -227,8 +230,9 @@ export async function scrubSpaceActivity({
       { concurrency: 8 }
     );
 
-    const projectTodos = await ProjectTodoResource.fetchBySpace(auth, {
+    const projectTodos = await ProjectTaskResource.fetchBySpace(auth, {
       spaceId: space.id,
+      timeScope: "all",
     });
     await concurrentExecutor(
       projectTodos,
@@ -241,10 +245,7 @@ export async function scrubSpaceActivity({
       { concurrency: 8 }
     );
 
-    await UserProjectNotificationPreferenceResource.deleteAllBySpace(
-      auth,
-      space.id
-    );
+    await UserProjectPreferencesResource.deleteAllBySpace(auth, space.id);
   }
 
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
@@ -797,6 +798,7 @@ export async function deleteWorkspaceActivity({
   });
   await CreditResource.deleteAllForWorkspace(auth);
   await ProgrammaticUsageConfigurationResource.deleteAllForWorkspace(auth);
+  await SelfImprovingSkillsUsageResource.deleteAllForWorkspace(auth);
   await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");

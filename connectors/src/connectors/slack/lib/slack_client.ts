@@ -115,6 +115,7 @@ export async function withSlackErrorHandling<T>(
     // Rate limit errors.
     if (isWebAPIRateLimitedError(e)) {
       throw new ProviderRateLimitError(
+        "slack",
         `Rate limited: ${e.message} (retry after ${e.retryAfter}s)`,
         e,
         // Slack returns retryAfter in seconds, but Temporal expects milliseconds.

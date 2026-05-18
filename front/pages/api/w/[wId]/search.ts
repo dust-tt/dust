@@ -13,9 +13,8 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -86,9 +85,9 @@ async function handleStreamingSearch(
   };
 
   // Validate using SearchRequestBody
-  const bodyValidation = SearchRequestBody.decode(searchParamsInput);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = SearchRequestBody.safeParse(searchParamsInput);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
 
     return apiError(req, res, {
       status_code: 400,
@@ -99,7 +98,7 @@ async function handleStreamingSearch(
     });
   }
 
-  const searchParams = bodyValidation.right;
+  const searchParams = bodyValidation.data;
 
   try {
     initSSEResponse(res);
@@ -122,7 +121,7 @@ async function handleStreamingSearch(
     );
 
     // First, stream knowledge results
-    const searchResult = await handleSearch(req, auth, searchParams);
+    const searchResult = await handleSearch(req.query, auth, searchParams);
 
     if (searchResult.isErr()) {
       return apiError(req, res, {
@@ -211,9 +210,9 @@ async function handler(
     });
   }
 
-  const bodyValidation = SearchRequestBody.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = SearchRequestBody.safeParse(req.body);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
 
     return apiError(req, res, {
       api_error: {
@@ -224,7 +223,7 @@ async function handler(
     });
   }
 
-  const searchResult = await handleSearch(req, auth, bodyValidation.right);
+  const searchResult = await handleSearch(req.query, auth, bodyValidation.data);
 
   if (searchResult.isErr()) {
     return apiError(req, res, {

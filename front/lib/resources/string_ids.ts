@@ -78,11 +78,10 @@ export const RESOURCES_PREFIX = {
   // Sandboxes.
   sandbox: "sbx",
   sandbox_env_var: "sev",
-  sandbox_tool_execution: "ste",
 
   // Project todos.
-  project_todo_state: "pts",
-  project_todo: "ptd",
+  project_task_state: "pts",
+  project_task: "ptd",
 
   // Wake-ups.
   wake_up: "wak",

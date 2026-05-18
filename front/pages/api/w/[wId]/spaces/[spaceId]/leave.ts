@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/leave.ts
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,

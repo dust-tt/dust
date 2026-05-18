@@ -14,6 +14,7 @@ use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
 use std::env;
+use urlencoding;
 
 lazy_static! {
     static ref OAUTH_GONG_CLIENT_ID: String = env::var("OAUTH_GONG_CLIENT_ID").unwrap();
@@ -21,7 +22,12 @@ lazy_static! {
 }
 
 pub fn create_gong_basic_auth_token() -> String {
-    let credentials = format!("{}:{}", *OAUTH_GONG_CLIENT_ID, *OAUTH_GONG_CLIENT_SECRET);
+    // RFC 6749 §2.3.1 requires URL-encoding client_id and client_secret before base64-encoding.
+    let credentials = format!(
+        "{}:{}",
+        urlencoding::encode(&*OAUTH_GONG_CLIENT_ID),
+        urlencoding::encode(&*OAUTH_GONG_CLIENT_SECRET)
+    );
     format!("Basic {}", general_purpose::STANDARD.encode(credentials))
 }
 

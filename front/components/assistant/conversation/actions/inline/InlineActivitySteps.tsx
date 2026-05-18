@@ -105,7 +105,7 @@ export function InlineActivitySteps({
     agentMessage.status === "failed" ||
     agentMessage.status === "cancelled";
 
-  const [isCollapsed, setIsCollapsed] = useState(isDone && !isLastMessage);
+  const [isCollapsed, setIsCollapsed] = useState(isDone);
 
   const openBreakdownPanel = (actionId?: string) => {
     if (onOpenDetails) {

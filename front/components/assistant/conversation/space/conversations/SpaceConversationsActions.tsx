@@ -1,12 +1,4 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import {
-  BookOpenIcon,
-  Card,
-  CardGrid,
-  ContactsUserIcon,
-  Icon,
-  ListCheckIcon,
-} from "@dust-tt/sparkle";
+import { Card, CardGrid, CheckIcon, Icon } from "@dust-tt/sparkle";
 
 interface SpaceConversationsActionsProps {
   isEditor: boolean;
@@ -17,54 +9,20 @@ export function SpaceConversationsActions({
   isEditor,
   onOpenMembersPanel,
 }: SpaceConversationsActionsProps) {
-  const { hasFeature } = useFeatureFlags();
-  const canShowTodosTab = hasFeature("project_todo");
-
-  const suggestions = canShowTodosTab
-    ? [
-        {
-          id: "onboarding-todos",
-          label: "Get your project off the ground",
-          icon: ListCheckIcon,
-          description:
-            "Add context, connect your knowledge, and bring the right people in. Flying solo? It still keeps everything in one place.",
-          variant: "highlight" as const,
-          isPulsing: true,
-          onClick: () => {
-            window.location.hash = "todos";
-          },
-        },
-      ]
-    : [
-        {
-          id: "add-context",
-          label: "Add knowledge",
-          icon: BookOpenIcon,
-          description:
-            "Add files, links, or data sources relevant to this project.",
-          variant: "primary" as const,
-          isPulsing: false,
-          onClick: () => {
-            window.location.hash = "context";
-          },
-        },
-        ...(isEditor
-          ? [
-              {
-                id: "manage-members",
-                label: "Manage members",
-                icon: ContactsUserIcon,
-                description:
-                  "Invite people to this project as members or editors.",
-                variant: "primary" as const,
-                isPulsing: false,
-                onClick: () => {
-                  onOpenMembersPanel();
-                },
-              },
-            ]
-          : []),
-      ];
+  const suggestions = [
+    {
+      id: "onboarding-tasks",
+      label: "Get your project off the ground",
+      icon: CheckIcon,
+      description:
+        "Add context, connect your knowledge, and bring the right people in. Flying solo? It still keeps everything in one place.",
+      variant: "highlight" as const,
+      isPulsing: true,
+      onClick: () => {
+        window.location.hash = "tasks";
+      },
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-3">

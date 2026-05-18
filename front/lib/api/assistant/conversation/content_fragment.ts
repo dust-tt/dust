@@ -21,6 +21,7 @@ import {
   isContentFragmentInputWithFileId,
   isSupportedContentNodeFragmentContentType,
 } from "@app/types/api/internal/assistant";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   ContentNodeType,
   CoreAPIContentNode,
@@ -59,10 +60,12 @@ interface ContentFragmentBlob {
 export async function toFileContentFragment(
   auth: Authenticator,
   {
+    conversation,
     contentFragment,
     fileName,
     skipDataSourceIndexing,
   }: {
+    conversation: ConversationWithoutContentType;
     contentFragment: ContentFragmentInputWithInlinedContent;
     fileName?: string;
     skipDataSourceIndexing?: boolean;
@@ -80,8 +83,8 @@ export async function toFileContentFragment(
     workspaceId: auth.getNonNullableWorkspace().id,
     useCase: "conversation",
     useCaseMetadata: skipDataSourceIndexing
-      ? { skipDataSourceIndexing: true }
-      : undefined,
+      ? { skipDataSourceIndexing: true, conversationId: conversation.sId }
+      : { conversationId: conversation.sId },
   });
 
   const processRes = await processAndStoreFile(auth, {

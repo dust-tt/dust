@@ -2,16 +2,15 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { seedInitialProjectTodosForProjectCreator } from "@app/lib/project_todo/seed_initial_project_todos";
+import { seedInitialProjectTasksForProjectCreator } from "@app/lib/project_task/seed_initial_project_tasks";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
-import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -28,7 +27,7 @@ import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import {
   launchOrSignalProjectTodoWorkflow,
   stopProjectTodoWorkflow,
-} from "@app/temporal/project_todo/client";
+} from "@app/temporal/project_task/client";
 import type { AgentsUsageType } from "@app/types/data_source";
 import {
   PROJECT_EDITOR_GROUP_PREFIX,
@@ -95,20 +94,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     return new Err(
       new Error(
         `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}. If you'd like to continue set the force query parameter to true.`
-      )
-    );
-  }
-
-  const groupHasKeys = await KeyResource.countActiveForGroups(
-    auth,
-    space.groups.filter(
-      (g) => (!space.isRegular() && !space.isProject()) || !g.isGlobal()
-    )
-  );
-  if (groupHasKeys > 0) {
-    return new Err(
-      new Error(
-        "Cannot delete group with active API Keys. Please revoke all keys before."
       )
     );
   }
@@ -196,14 +181,30 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
       );
 
+      const previousComputedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
+          mcpServerViews: skill.mcpServerViews,
+          attachedKnowledge,
+        });
+      const previousComputedRequestedSpaceIdSet = new Set(
+        previousComputedRequestedSpaceIds
+      );
+      const additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
+        (spaceId) =>
+          spaceId !== space.id &&
+          !previousComputedRequestedSpaceIdSet.has(spaceId)
+      );
+
       // Compute the new requestedSpaceIds from the filtered tools and knowledge.
-      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
-        auth,
-        {
+      const computedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
           mcpServerViews: filteredMCPServerViews,
           attachedKnowledge: filteredAttachedKnowledge,
-        }
-      );
+        });
+      const requestedSpaceIds = uniq([
+        ...computedRequestedSpaceIds,
+        ...additionalRequestedSpaceIds,
+      ]);
 
       // Log an error if the deleted space is still in requestedSpaceIds.
       if (requestedSpaceIds.includes(space.id)) {
@@ -273,14 +274,11 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   });
 
   if (space.isProject()) {
-    const featureFlags = await getFeatureFlags(auth);
-    if (featureFlags.includes("project_todo")) {
-      void stopProjectTodoWorkflow({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        spaceId: space.sId,
-        stopReason: "project deleted",
-      });
-    }
+    void stopProjectTodoWorkflow({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      spaceId: space.sId,
+      stopReason: "project deleted",
+    });
   }
 
   return new Ok(undefined);
@@ -369,14 +367,11 @@ export async function hardDeleteSpace(
   });
 
   if (space.isProject()) {
-    const featureFlags = await getFeatureFlags(auth);
-    if (featureFlags.includes("project_todo")) {
-      void stopProjectTodoWorkflow({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        spaceId: space.sId,
-        stopReason: "project hard deleted",
-      });
-    }
+    void stopProjectTodoWorkflow({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      spaceId: space.sId,
+      stopReason: "project hard deleted",
+    });
   }
 
   return new Ok(undefined);
@@ -394,10 +389,10 @@ export async function createSpaceAndGroup(
   ),
   {
     ignoreWorkspaceLimit = false,
-    seedInitialTodos = true,
+    seedInitialTasks = true,
   }: {
     ignoreWorkspaceLimit?: boolean;
-    seedInitialTodos?: boolean;
+    seedInitialTasks?: boolean;
   } = {}
 ): Promise<
   Result<
@@ -636,16 +631,13 @@ export async function createSpaceAndGroup(
         // The connector can be created later if needed
       }
 
-      const featureFlags = await getFeatureFlags(auth);
-      if (featureFlags.includes("project_todo")) {
-        if (seedInitialTodos) {
-          await seedInitialProjectTodosForProjectCreator(auth, space);
-        }
-        void launchOrSignalProjectTodoWorkflow({
-          workspaceId: owner.sId,
-          spaceId: space.sId,
-        });
+      if (seedInitialTasks) {
+        await seedInitialProjectTasksForProjectCreator(auth, space);
       }
+      void launchOrSignalProjectTodoWorkflow({
+        workspaceId: owner.sId,
+        spaceId: space.sId,
+      });
     }
   }
   return result;

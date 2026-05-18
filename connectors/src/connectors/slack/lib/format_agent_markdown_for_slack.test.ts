@@ -23,11 +23,11 @@ describe("formatAgentMarkdownForSlack", () => {
     vi.clearAllMocks();
   });
 
-  it("replaces project todos, mentions, and quickReply for Slack", () => {
+  it("replaces project tasks, mentions, and quickReply for Slack", () => {
     const input =
-      'Hello :mention[Agent]{sId=a1} — :todo[Ship feature]{sId=todo_1} :quickReply[Go]{message="Do it"}';
+      'Hello :mention[Agent]{sId=a1} — :project_task[Ship feature]{sId=todo_1} :quickReply[Go]{message="Do it"}';
     expect(formatAgentMarkdownForSlack(input)).toBe(
-      "Hello @Agent — *Todo:* Ship feature _Go_ — _Do it_"
+      "Hello @Agent — *Task:* Ship feature _Go_ — _Do it_"
     );
   });
 
@@ -50,9 +50,9 @@ describe("formatAgentMarkdownForSlack", () => {
   });
 
   it("leaves cite markers for annotateCitations", () => {
-    const input = "See :cite[ab] and :todo[X]{sId=t}";
+    const input = "See :cite[ab] and :project_task[X]{sId=t}";
     expect(formatAgentMarkdownForSlack(input)).toBe(
-      "See :cite[ab] and *Todo:* X"
+      "See :cite[ab] and *Task:* X"
     );
   });
 

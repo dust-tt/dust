@@ -5,6 +5,7 @@ import {
   IncludeInputSchema,
   SearchWithNodesInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
+import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -14,44 +15,6 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const PROJECT_MANAGER_SERVER_NAME = "project_manager" as const;
 
 export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
-  add_file: {
-    description:
-      "Add a new file to the project context. The file will be available to all conversations in this project. " +
-      "Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
-    schema: {
-      fileName: z.string().describe("Name of the file to add"),
-      content: z
-        .string()
-        .optional()
-        .describe(
-          "Text content of the file (provide either this or sourceFileId)"
-        ),
-      sourceFileId: z
-        .string()
-        .optional()
-        .describe(
-          "ID of an existing file to copy content from (provide either this or content)"
-        ),
-      contentType: z
-        .string()
-        .optional()
-        .describe(
-          "MIME type (default: inferred from file extension, e.g. text/markdown for .md files, or text/plain if unknown. Inherited from sourceFileId if provided)"
-        ),
-      dustProject: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-      ]
-        .optional()
-        .describe(
-          "Optional project to add the file to, will fallback to the conversation's project."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Adding file to project",
-      done: "Add file to project",
-    },
-  },
   add_content_node: {
     description:
       "Add a content node reference from Company Data to the project context. The node will be available to all conversations in this project.",
@@ -75,60 +38,6 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Adding content node to project",
       done: "Add content node to project",
-    },
-  },
-  update_file: {
-    description:
-      "Update the content of an existing file in the project context. This replaces the entire file content. " +
-      "Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
-    schema: {
-      fileId: z.string().describe("ID of the file to update"),
-      content: z
-        .string()
-        .optional()
-        .describe(
-          "New text content for the file (provide either this or sourceFileId)"
-        ),
-      sourceFileId: z
-        .string()
-        .optional()
-        .describe(
-          "ID of an existing file to copy content from (provide either this or content)"
-        ),
-      dustProject: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-      ]
-        .optional()
-        .describe(
-          "Optional project to update the file in, will fallback to the conversation's project."
-        ),
-    },
-    stake: "medium",
-    displayLabels: {
-      running: "Updating file in project",
-      done: "Update file in project",
-    },
-  },
-  remove_file: {
-    description:
-      "Remove an existing file from the project context. The file will no longer be available to conversations in this project. " +
-      "Deletes the underlying file (cannot be undone). Use file IDs from get_information like other project context files.",
-    schema: {
-      fileId: z
-        .string()
-        .describe("ID of an existing file in the project context to remove"),
-      dustProject: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-      ]
-        .optional()
-        .describe(
-          "Optional project to remove the file from, will fallback to the conversation's project."
-        ),
-    },
-    stake: "medium",
-    displayLabels: {
-      running: "Removing file from project",
-      done: "Remove file from project",
     },
   },
   remove_content_node: {
@@ -156,27 +65,6 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Remove content node from project",
     },
   },
-  attach_to_conversation: {
-    description:
-      "Attach an existing project context file to the current conversation without creating or copying a new file.",
-    schema: {
-      fileId: z
-        .string()
-        .describe("ID of an existing file in the project context to attach"),
-      dustProject: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-      ]
-        .optional()
-        .describe(
-          "Optional project to attach the file to, will fallback to the conversation's project."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Attaching project file to conversation",
-      done: "Attach project file to conversation",
-    },
-  },
   edit_description: {
     description:
       "Edit the project description. Only plain text is accepted (no markdown, HTML, or formatting). Descriptions should be brief and concise.",
@@ -202,7 +90,9 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   get_information: {
     description:
-      "Get comprehensive information about the project context, including project URL, description, file count, and file list.",
+      "Get information about the project: URL, description, and linked content nodes " +
+      "attached to the project context. Does NOT list project files. Project files live under " +
+      `\`project/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {
       dustProject: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
@@ -283,11 +173,11 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional list of user ids to add as project members after project creation."
         ),
-      seedInitialTodos: z
+      seedInitialTasks: z
         .boolean()
         .optional()
         .describe(
-          "Whether to seed the project with a set of starter todos. Defaults to false when creating via the tool."
+          "Whether to seed the project with a set of starter tasks. Defaults to false when creating via the tool."
         ),
     },
     stake: "low",
@@ -313,56 +203,21 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Retrieve recent project documents",
     },
   },
-  semantic_search: {
-    description:
-      "Semantic search over this project using the same retrieval pipeline as company data search. Scope selects the project dust_project data source slice (knowledge vs conversation transcripts vs both) plus searchable context nodes for knowledge/all. Optionally restrict to subtrees using nodeIds (same as company data_sources_file_system search).",
-    schema: {
-      query: z
-        .string()
-        .describe(
-          "Natural-language query; include enough context from the conversation for good retrieval."
-        ),
-      searchScope: z
-        .enum(["knowledge", "conversations", "all"])
-        .optional()
-        .describe(
-          "knowledge: project files, metadata, and linked searchable nodes (excludes conversation transcripts in the project data source); conversations: only those transcripts; all: entire project data source plus linked nodes (default when omitted)."
-        ),
-      relativeTimeFrame: z
-        .string()
-        .regex(/^(all|\d+[hdwmy])$/)
-        .optional()
-        .describe(
-          "Restrict matches by document time (same as company search): `all`, or `{k}h|d|w|m|y`. Omit for all time."
-        ),
-      nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Searching project",
-      done: "Search project",
-    },
-  },
-
   create_conversation: {
     description:
-      "Create a new conversation in the project and post a user message. Default: always pass an agentId to delegate the task to an agent running inside the project. Do NOT do the work yourself — if work needs to be done, delegate it via agentId. Omit agentId only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output.",
+      "Create a new conversation in the project and post a user message. Default: always pass an agentName to delegate the task to an agent running inside the project. Do NOT do the work yourself. If work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output.",
     schema: {
       message: z
         .string()
         .describe(
-          "When agentId is provided: the raw task description and context for the agent to act on. When agentId is omitted: the complete finished output to deposit as-is."
+          "When agentName is provided: the raw task description and context for the agent to act on. When agentName is omitted: the complete finished output to deposit as-is."
         ),
       title: z.string().describe("Title for the conversation"),
-      agentId: z
+      agentName: z
         .string()
         .optional()
         .describe(
-          "The agent to trigger in the new conversation. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result — use this only to deposit a finished artifact you have already fully produced."
+          "The name of the agent to trigger in the new conversation. The tool searches matching agent configurations and uses the best match. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result. Use this only to deposit a finished artifact you have already fully produced."
         ),
       dustProject:
         ConfigurableToolInputSchemas[
@@ -432,7 +287,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   add_message_to_conversation: {
     description:
-      "Post a user message to an existing conversation in this project. Default: always pass an agentId to delegate the task to an agent running inside the conversation. Do NOT do the work yourself — if work needs to be done, delegate it via agentId. Omit agentId only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output." +
+      "Post a user message to an existing conversation in this project. Default: always pass an agentName to delegate the task to an agent running inside the conversation. Do NOT do the work yourself. If work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output." +
       "The conversation must belong to the same project. If conversationId is omitted, the current agent conversation is used (when available).",
     schema: {
       conversationId: z
@@ -444,13 +299,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "When agentId is provided: the raw task description and context for the agent to act on. When agentId is omitted: the complete finished output to deposit as-is."
+          "When agentName is provided: the raw task description and context for the agent to act on. When agentName is omitted: the complete finished output to deposit as-is."
         ),
-      agentId: z
+      agentName: z
         .string()
         .optional()
         .describe(
-          "The agent to trigger in the conversation. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result — use this only to deposit a finished artifact you have already fully produced."
+          "The name of the agent to trigger in the conversation. The tool searches matching agent configurations and uses the best match. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result. Use this only to deposit a finished artifact you have already fully produced."
         ),
       dustProject:
         ConfigurableToolInputSchemas[
@@ -467,15 +322,14 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
 
 const PROJECT_MANAGER_INSTRUCTIONS =
   "Project files and metadata are shared across all conversations in this project. " +
-  "You can add all sorts of files but only text-based files are supported for updating. " +
-  "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
-  "You can remove a file from the project context (remove_file) or remove a content node reference from Company Data (remove_content_node). " +
-  "You can also attach an existing project context file to the current conversation without recreating it. " +
-  "Use list_projects to discover projects you can access and obtain the dustProject uri for other tools. " +
-  "Use semantic_search to find relevant chunks in project knowledge and/or conversations (scope: knowledge, conversations, or all). " +
-  "Use retrieve_recent_documents to load recent content from the project data source and from knowledge nodes in the project context. " +
-  "Requires write permissions on the project space. " +
-  "After adding or updating files, always list the file names you changed in your response so the user knows exactly what was modified.";
+  `Project files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`project/<rel>\` scoped paths ` +
+  "(create, cat, grep, list, delete), not through this server. " +
+  "Use `add_content_node` to reference a Company Data node in the project context, and " +
+  "`remove_content_node` to remove such a reference. " +
+  "Use `list_projects` to discover projects you can access and obtain the dustProject uri for other tools. " +
+  "Use `retrieve_recent_documents` to load recent content from the project data source and from " +
+  "knowledge nodes in the project context. " +
+  "Requires write permissions on the project space for state-changing operations.";
 
 export const PROJECT_MANAGER_SERVER = {
   // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
@@ -483,7 +337,9 @@ export const PROJECT_MANAGER_SERVER = {
     name: "project_manager",
     version: "1.0.0",
     description:
-      "Manage project files and metadata. Add, update, or remove files in the project context and content node references from Company Data, list files, and organize project resources.",
+      "Manage project metadata, members, conversations, and Company Data references. " +
+      `Raw project file operations (create, read, search, write, delete) live in the \`${FILES_SERVER_NAME}\` MCP ` +
+      "server under `project/<rel>` scoped paths.",
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,

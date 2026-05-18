@@ -7,23 +7,22 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import { ActiveRoleSchema } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
 };
 
-export const PostInvitationRequestBodySchema = t.array(
-  t.type({
-    email: t.string,
+export const PostInvitationRequestBodySchema = z.array(
+  z.object({
+    email: z.string(),
     role: ActiveRoleSchema,
   })
 );
 
-export type PostInvitationRequestBody = t.TypeOf<
+export type PostInvitationRequestBody = z.infer<
   typeof PostInvitationRequestBodySchema
 >;
 
@@ -79,9 +78,11 @@ async function handler(
       return;
 
     case "POST":
-      const bodyValidation = PostInvitationRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostInvitationRequestBodySchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -106,7 +107,7 @@ async function handler(
         owner,
         user: user.toJSON(),
         subscription,
-        invitationRequests: bodyValidation.right,
+        invitationRequests: bodyValidation.data,
       });
 
       if (invitationRes.isErr()) {

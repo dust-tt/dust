@@ -5,8 +5,15 @@ export type TodoVersionedActionItem = {
   shortDescription: string;
   assigneeUserId: string | null;
   assigneeName: string | null;
-  status: TodoVersionedActionItemStatus;
-  detectedDoneAt: string | null;
-  detectedDoneRationale: string | null;
   detectedCreationRationale: string | null;
+};
+
+export type TaskVersionedActionItem = {
+  sId: string;
+  shortDescription: string;
+  assigneeUserId: string | null;
+  assigneeName: string | null;
+  detectedCreationRationale: string | null;
+  status?: TodoVersionedActionItemStatus;
+  detectedDoneAt?: string | null;
 };

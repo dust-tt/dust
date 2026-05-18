@@ -141,8 +141,6 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       reminders,
       extendedProperties,
       eventType,
-      focusTimeProperties,
-      outOfOfficeProperties,
     },
     { authInfo, agentLoopContext }
   ) => {
@@ -171,16 +169,26 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
           ...(reminders && { reminders }),
           ...(extendedProperties && { extendedProperties }),
           ...(eventType && { eventType }),
-          ...(focusTimeProperties && { focusTimeProperties }),
-          ...(outOfOfficeProperties && { outOfOfficeProperties }),
-          ...(createConference && {
-            conferenceData: {
-              createRequest: {
-                requestId: `conference-${randomUUID()}`,
-                conferenceSolutionKey: { type: "hangoutsMeet" },
-              },
+          ...(eventType === "focusTime" && {
+            focusTimeProperties: {
+              autoDeclineMode: "declineAllConflictingInvitations",
             },
           }),
+          ...(eventType === "outOfOffice" && {
+            outOfOfficeProperties: {
+              autoDeclineMode: "declineAllConflictingInvitations",
+            },
+          }),
+          ...(createConference &&
+            eventType !== "focusTime" &&
+            eventType !== "outOfOffice" && {
+              conferenceData: {
+                createRequest: {
+                  requestId: `conference-${randomUUID()}`,
+                  conferenceSolutionKey: { type: "hangoutsMeet" },
+                },
+              },
+            }),
         },
       });
 
@@ -224,8 +232,6 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       visibility,
       reminders,
       extendedProperties,
-      focusTimeProperties,
-      outOfOfficeProperties,
     },
     { authInfo, agentLoopContext }
   ) => {
@@ -254,8 +260,6 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
           ...(visibility && { visibility }),
           ...(reminders && { reminders }),
           ...(extendedProperties && { extendedProperties }),
-          ...(focusTimeProperties && { focusTimeProperties }),
-          ...(outOfOfficeProperties && { outOfOfficeProperties }),
           ...(createConference && {
             conferenceData: {
               createRequest: {

@@ -1,4 +1,10 @@
-// Pure path helpers for conversation file mount paths (gcsfuse sandbox mounting).
+// Pure path helpers for sandbox mount paths (gcsfuse mounting).
+//
+// Two scoped mounts are supported:
+//   - "conversation": files scoped to a single conversation, mounted at /files/conversation
+//   - "project":      files scoped to a project (space), mounted at /files/project when the
+//                     conversation belongs to a project. Persistent across conversations within
+//                     the same project.
 
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { AllSupportedFileContentType } from "@app/types/files";
@@ -23,6 +29,8 @@ export function getConversationFilesBasePath({
   return `${getBaseMountPathForWorkspace({ workspaceId })}conversations/${conversationId}/files/`;
 }
 
+export const TOOL_OUTPUTS_FOLDER_NAME = ".tool_outputs";
+
 export function getConversationToolOutputsBasePath({
   workspaceId,
   conversationId,
@@ -30,7 +38,7 @@ export function getConversationToolOutputsBasePath({
   workspaceId: string;
   conversationId: string;
 }): string {
-  return `${getConversationFilesBasePath({ workspaceId, conversationId })}results/`;
+  return `${getConversationFilesBasePath({ workspaceId, conversationId })}${TOOL_OUTPUTS_FOLDER_NAME}/`;
 }
 
 export function getConversationFilePath({
@@ -43,6 +51,16 @@ export function getConversationFilePath({
   fileName: string;
 }): string {
   return `${getConversationFilesBasePath({ workspaceId, conversationId })}${fileName}`;
+}
+
+export function getProjectFilesBasePath({
+  workspaceId,
+  projectId,
+}: {
+  workspaceId: string;
+  projectId: string;
+}): string {
+  return `${getBaseMountPathForWorkspace({ workspaceId })}projects/${projectId}/files/`;
 }
 
 /**
@@ -79,11 +97,53 @@ export function makeProcessedMountFileName({
   return `${dirPart}${basename}.processed${ext}`;
 }
 
-export const scopedFilePathPrefixSchema = z.enum([
-  "conversation",
-  // TODO(20260428 FILE SYSTEM) Add support for project.
-  // "project"
-]);
+/**
+ * Inverse of `makeProcessedMountFileName`: given a file name (no directory prefix), returns the
+ * original source's base name when the input is a processed sibling, or `{ isProcessed: false }`
+ * otherwise.
+ *
+ * Recognized shapes:
+ *   "report.processed.txt"    -> { isProcessed: true, sourceBaseName: "report" }
+ *   "photo.processed.jpg"     -> { isProcessed: true, sourceBaseName: "photo" }
+ *   "Makefile.processed"      -> { isProcessed: true, sourceBaseName: "Makefile" }
+ *
+ * Anything else (including user-named files that merely contain ".processed." somewhere) returns
+ * `{ isProcessed: false }`. The original extension is not recoverable from the processed name alone
+ * (the processed content type may differ). Callers that need the full source path should match by
+ * `sourceBaseName` against the listing.
+ */
+export function parseProcessedFilename(
+  fileName: string
+): { isProcessed: true; sourceBaseName: string } | { isProcessed: false } {
+  const PROCESSED = ".processed";
+
+  // Extension-less original: "<name>.processed".
+  if (fileName.endsWith(PROCESSED)) {
+    const sourceBaseName = fileName.slice(0, -PROCESSED.length);
+    if (sourceBaseName.length === 0) {
+      return { isProcessed: false };
+    }
+
+    return { isProcessed: true, sourceBaseName };
+  }
+
+  // Regular case: "<name>.processed.<ext>".
+  const marker = `${PROCESSED}.`;
+  const idx = fileName.lastIndexOf(marker);
+  if (idx <= 0) {
+    return { isProcessed: false };
+  }
+
+  const after = fileName.slice(idx + marker.length);
+  // The processed extension is always a single segment (no nested dots).
+  if (after.length === 0 || after.includes(".")) {
+    return { isProcessed: false };
+  }
+
+  return { isProcessed: true, sourceBaseName: fileName.slice(0, idx) };
+}
+
+export const scopedFilePathPrefixSchema = z.enum(["conversation", "project"]);
 export type ScopedFilePathPrefix = z.infer<typeof scopedFilePathPrefixSchema>;
 
 export type ScopedFilePath = {

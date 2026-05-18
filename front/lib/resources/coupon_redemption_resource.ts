@@ -72,12 +72,12 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<CouponRedemptionResource> {
     const workspace = auth.getNonNullableWorkspace();
-    const user = auth.getNonNullableUser();
+    const user = auth.user();
     const redemption = await CouponRedemptionModel.create(
       {
         couponId: coupon.id,
         workspaceId: workspace.id,
-        redeemedByUserId: user.id,
+        redeemedByUserId: user ? user.id : null,
         redeemedAt: new Date(),
         status: "pending",
         metronomeCreditIds: [],
@@ -87,7 +87,7 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
     return new this(this.model, redemption.get(), {
       workspaceSId: workspace.sId,
       couponSId: coupon.sId,
-      redeemedByUserSId: user.sId,
+      redeemedByUserSId: user ? user.sId : null,
     });
   }
 

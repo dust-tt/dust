@@ -63,12 +63,17 @@ impl MCPConnectionProvider {
         MCPConnectionProvider {}
     }
 
+    /// RFC 6749 §2.3.1 requires URL-encoding client_id and client_secret before base64-encoding.
     fn build_basic_auth_header(client_id: &str, client_secret: &str) -> String {
         format!(
             "Basic {}",
             base64::Engine::encode(
                 &base64::engine::general_purpose::STANDARD,
-                format!("{}:{}", client_id, client_secret)
+                format!(
+                    "{}:{}",
+                    urlencoding::encode(client_id),
+                    urlencoding::encode(client_secret)
+                )
             )
         )
     }

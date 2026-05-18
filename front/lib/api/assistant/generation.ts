@@ -354,12 +354,20 @@ function constructAttachmentsSection(): string {
   );
 }
 
-function constructAttachmentsSectionNewFileExplorer(): string {
+function constructAttachmentsSectionNewFileExplorer({
+  hasSandboxTools,
+}: {
+  hasSandboxTools: boolean;
+}): string {
+  const tabularFilesLine = hasSandboxTools
+    ? '- Tabular files (CSV, spreadsheets) attached as `<file>` tags are mounted under /files/conversation; analyze them with code via the sandbox. Tabular files attached as `<attachment isQueryable="true">` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n'
+    : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
+
   return (
     "# FILES\n" +
     `Files attached to the conversation are accessible via the \`${FILES_SERVER_NAME}\` server.\n\n` +
     "Some attachments remain visible in the conversation history as metadata tags:\n\n" +
-    "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n" +
+    tabularFilesLine +
     "- Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags; use the available search and retrieval tools to access their full content.\n\n" +
     "Pasted content appears inline in `<pastedContent>` tags and already contains the full text, no tool call needed.\n"
   );
@@ -484,6 +492,7 @@ export function constructPromptMultiActions(
     workspaceContext,
     projectContext,
     isNewFileExplorer = false,
+    hasSandboxTools = false,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -504,6 +513,7 @@ export function constructPromptMultiActions(
     workspaceContext?: string;
     projectContext?: string;
     isNewFileExplorer?: boolean;
+    hasSandboxTools?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -549,7 +559,7 @@ export function constructPromptMultiActions(
         equippedSkills,
       });
   const attachmentsSection = isNewFileExplorer
-    ? constructAttachmentsSectionNewFileExplorer()
+    ? constructAttachmentsSectionNewFileExplorer({ hasSandboxTools })
     : constructAttachmentsSection();
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });

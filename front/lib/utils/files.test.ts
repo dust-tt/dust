@@ -4,7 +4,14 @@ import { copyContent } from "@app/lib/utils/files";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-function makeSourceFile(contentType: AllSupportedFileContentType) {
+function makeSourceFile(
+  contentType: AllSupportedFileContentType,
+  {
+    skipFileProcessing = false,
+  }: {
+    skipFileProcessing?: boolean;
+  } = {}
+) {
   const sourceBuckets = {
     original: {
       copyFile: vi.fn(),
@@ -22,6 +29,7 @@ function makeSourceFile(contentType: AllSupportedFileContentType) {
 
   return {
     contentType,
+    useCaseMetadata: skipFileProcessing ? { skipFileProcessing: true } : null,
     getBucketForVersion: vi.fn(
       (version: FileVersion) => sourceBuckets[version]
     ),
@@ -31,6 +39,7 @@ function makeSourceFile(contentType: AllSupportedFileContentType) {
     sourceBuckets,
   } satisfies {
     contentType: AllSupportedFileContentType;
+    useCaseMetadata: { skipFileProcessing: true } | null;
     getBucketForVersion: ReturnType<typeof vi.fn>;
     getCloudStoragePath: ReturnType<typeof vi.fn>;
     sourceBuckets: Record<
@@ -143,5 +152,24 @@ describe("copyContent", () => {
       "target/processed",
       targetFile.targetBuckets.processed
     );
+  });
+
+  it("does not copy a processed version when upload-time processing was skipped", async () => {
+    const auth = {} as Authenticator;
+    const sourceFile = makeSourceFile(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      { skipFileProcessing: true }
+    );
+    const targetFile = makeTargetFile();
+
+    await copyContent(
+      auth,
+      sourceFile as unknown as Parameters<typeof copyContent>[1],
+      targetFile as unknown as Parameters<typeof copyContent>[2],
+      { includeProcessedVersion: true }
+    );
+
+    expect(sourceFile.sourceBuckets.original.copyFile).toHaveBeenCalledTimes(1);
+    expect(sourceFile.sourceBuckets.processed.copyFile).not.toHaveBeenCalled();
   });
 });

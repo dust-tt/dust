@@ -218,6 +218,7 @@ export function makeServerSideMCPToolConfigurations(
     childAgentId: config.childAgentId,
     timeFrame: config.timeFrame,
     jsonSchema: config.jsonSchema,
+    meta: config.meta,
     additionalConfiguration: config.additionalConfiguration,
     permission: tool.stakeLevel,
     toolServerId: tool.toolServerId,
@@ -453,6 +454,7 @@ export async function* tryCallMCPTool(
             name: toolConfiguration.originalName,
             arguments: inputs,
             _meta: {
+              ...toolConfiguration.meta,
               progressToken,
             },
           },

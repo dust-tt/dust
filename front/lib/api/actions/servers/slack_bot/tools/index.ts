@@ -23,7 +23,10 @@ export function createSlackBotTools(
   agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SLACK_BOT_TOOLS_METADATA> = {
-    post_message: async ({ to, message, threadTs, fileId }, { authInfo }) => {
+    post_message: async (
+      { to, message, threadTs, fileId, unfurlLinks, unfurlMedia },
+      { authInfo }
+    ) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
@@ -39,6 +42,8 @@ export function createSlackBotTools(
           message,
           threadTs,
           fileId,
+          unfurlLinks,
+          unfurlMedia,
           accessToken,
         });
       } catch (error) {

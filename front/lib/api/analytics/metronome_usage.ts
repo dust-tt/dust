@@ -16,16 +16,19 @@ import {
 import {
   getCreditTypeProgrammaticUsdId,
   getMetricLlmProviderCostProgrammaticId,
-  getMetricToolInvocationsProgrammaticId,
 } from "@app/lib/metronome/constants";
 import type { MetronomeBalance } from "@app/lib/metronome/types";
-import { METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
+import {
+  isMetronomeExcessCredit,
+  METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD,
+} from "@app/lib/metronome/types";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
+import { MARKUP_MULTIPLIER } from "../programmatic_usage/common";
 
 const METRONOME_USAGE_GROUP_BY_KEYS = ["api_key", "model", "origin"] as const;
 
@@ -68,12 +71,6 @@ const GROUP_BY_TO_EVENT_PROPERTY: Record<MetronomeUsageGroupByType, string> = {
   api_key: "api_key_name",
   model: "model_id",
   origin: "origin",
-};
-
-const GROUP_BY_TO_METRICS: Record<MetronomeUsageGroupByType, "llm" | "both"> = {
-  api_key: "both",
-  model: "llm",
-  origin: "both",
 };
 
 type MetronomeWindowSize = "HOUR" | "DAY";
@@ -210,7 +207,6 @@ export async function handleMetronomeUsageRequest(
       }
 
       const llmMetricId = getMetricLlmProviderCostProgrammaticId();
-      const toolMetricId = getMetricToolInvocationsProgrammaticId();
 
       const {
         groupBy,
@@ -256,7 +252,7 @@ export async function handleMetronomeUsageRequest(
       if (!groupBy) {
         const result = await listMetronomeUsage({
           customerIds: [metronomeCustomerId],
-          billableMetricIds: [llmMetricId, toolMetricId],
+          billableMetricIds: [llmMetricId],
           startingOn,
           endingBefore,
           windowSize: metronomeApiWindowSize,
@@ -275,7 +271,10 @@ export async function handleMetronomeUsageRequest(
         let totalMap = new Map<number, number>();
         for (const entry of result.value) {
           const ts = new Date(entry.startTimestamp).getTime();
-          totalMap.set(ts, (totalMap.get(ts) ?? 0) + (entry.value ?? 0));
+          totalMap.set(
+            ts,
+            (totalMap.get(ts) ?? 0) + (entry.value ?? 0) * MARKUP_MULTIPLIER
+          );
         }
         if (needsFourHourAggregation) {
           totalMap = aggregateToFourHourBuckets(totalMap);
@@ -287,7 +286,6 @@ export async function handleMetronomeUsageRequest(
           groupLabel: "Total usage",
         });
       } else {
-        const metricTarget = GROUP_BY_TO_METRICS[groupBy];
         const eventProperty = GROUP_BY_TO_EVENT_PROPERTY[groupBy];
 
         const groupedQueryBase = {
@@ -298,62 +296,43 @@ export async function handleMetronomeUsageRequest(
           groupKey: [eventProperty],
         };
 
-        const llmGroupedPromise =
-          metricTarget === "llm" || metricTarget === "both"
-            ? listMetronomeUsageWithGroups({
-                ...groupedQueryBase,
-                billableMetricId: llmMetricId,
-              })
-            : null;
-
-        const toolGroupedPromise =
-          metricTarget === "both"
-            ? listMetronomeUsageWithGroups({
-                ...groupedQueryBase,
-                billableMetricId: toolMetricId,
-              })
-            : null;
-
-        const [llmGroupedResult, toolGroupedResult] = await Promise.all([
-          llmGroupedPromise,
-          toolGroupedPromise,
-        ]);
+        const llmGroupedResult = await listMetronomeUsageWithGroups({
+          ...groupedQueryBase,
+          billableMetricId: llmMetricId,
+        });
 
         const mergedGroupMap = new Map<string, Map<number, number>>();
-        const groupedResults = [llmGroupedResult, toolGroupedResult];
 
-        for (const groupedResult of groupedResults) {
-          if (!groupedResult) {
-            continue;
-          }
-          if (groupedResult.isErr()) {
-            const msg = groupedResult.error.message;
-            const isGroupKeyError =
-              msg.includes("group") || msg.includes("not found");
-            return apiError(req, res, {
-              status_code: isGroupKeyError ? 400 : 500,
-              api_error: {
-                type: isGroupKeyError
-                  ? "invalid_request_error"
-                  : "internal_server_error",
-                message: isGroupKeyError
-                  ? `Grouping by "${groupBy}" is not available. The billable metric ` +
-                    `must have "${eventProperty}" configured as a group key in Metronome.`
-                  : `Failed to retrieve Metronome grouped usage: ${msg}`,
-              },
-            });
-          }
+        if (llmGroupedResult.isErr()) {
+          const msg = llmGroupedResult.error.message;
+          const isGroupKeyError =
+            msg.includes("group") || msg.includes("not found");
+          return apiError(req, res, {
+            status_code: isGroupKeyError ? 400 : 500,
+            api_error: {
+              type: isGroupKeyError
+                ? "invalid_request_error"
+                : "internal_server_error",
+              message: isGroupKeyError
+                ? `Grouping by "${groupBy}" is not available. The billable metric ` +
+                  `must have "${eventProperty}" configured as a group key in Metronome.`
+                : `Failed to retrieve Metronome grouped usage: ${msg}`,
+            },
+          });
+        }
 
-          for (const entry of groupedResult.value) {
-            const key = entry.group?.[eventProperty] ?? "unknown";
-            const ts = new Date(entry.startingOn).getTime();
-            let keyMap = mergedGroupMap.get(key);
-            if (!keyMap) {
-              keyMap = new Map();
-              mergedGroupMap.set(key, keyMap);
-            }
-            keyMap.set(ts, (keyMap.get(ts) ?? 0) + (entry.value ?? 0));
+        for (const entry of llmGroupedResult.value) {
+          const key = entry.group?.[eventProperty] ?? "unknown";
+          const ts = new Date(entry.startingOn).getTime();
+          let keyMap = mergedGroupMap.get(key);
+          if (!keyMap) {
+            keyMap = new Map();
+            mergedGroupMap.set(key, keyMap);
           }
+          keyMap.set(
+            ts,
+            (keyMap.get(ts) ?? 0) + (entry.value ?? 0) * MARKUP_MULTIPLIER
+          );
         }
 
         if (needsFourHourAggregation) {
@@ -407,7 +386,7 @@ export async function handleMetronomeUsageRequest(
         ? balancesResult.value.filter(
             (entry) =>
               entry.access_schedule?.credit_type?.id ===
-              programmaticUsdCreditTypeId
+                programmaticUsdCreditTypeId && !isMetronomeExcessCredit(entry)
           )
         : [];
       const creditTotalsMap = calculateCreditTotalsFromBalances(

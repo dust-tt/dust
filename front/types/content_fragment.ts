@@ -79,6 +79,8 @@ export type ContentNodeContentFragmentType = BaseContentFragmentType & {
 
 export type FileContentFragmentType = BaseContentFragmentType & {
   contentFragmentType: "file";
+  path?: string | null;
+  skipFileProcessing?: boolean;
 } & (
     | {
         expiredReason: null;

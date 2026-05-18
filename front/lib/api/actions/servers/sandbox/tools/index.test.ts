@@ -7,40 +7,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAddSandboxPolicyDomain,
-  mockCheckEgressForwarderHealth,
   mockReadNewDenyLogEntries,
   mockEmitAuditLogEvent,
   mockGenerateExecId,
   mockGenerateSandboxExecToken,
   mockGetSandboxImage,
-  mockMountConversationFiles,
   mockRecordToolDuration,
-  mockRefreshGcsToken,
   mockRevokeExecToken,
-  mockSetupEgressForwarder,
-  mockStartTelemetry,
   mockWrapCommand,
-  mockEnsureActive,
+  mockEnsureSandboxReady,
   mockLoadEnv,
   mockLoggerError,
   mockLoggerInfo,
   mockLoggerWarn,
 } = vi.hoisted(() => ({
   mockAddSandboxPolicyDomain: vi.fn(),
-  mockCheckEgressForwarderHealth: vi.fn(),
   mockReadNewDenyLogEntries: vi.fn(),
   mockEmitAuditLogEvent: vi.fn(),
   mockGenerateExecId: vi.fn(),
   mockGenerateSandboxExecToken: vi.fn(),
   mockGetSandboxImage: vi.fn(),
-  mockMountConversationFiles: vi.fn(),
   mockRecordToolDuration: vi.fn(),
-  mockRefreshGcsToken: vi.fn(),
   mockRevokeExecToken: vi.fn(),
-  mockSetupEgressForwarder: vi.fn(),
-  mockStartTelemetry: vi.fn(),
   mockWrapCommand: vi.fn(),
-  mockEnsureActive: vi.fn(),
+  mockEnsureSandboxReady: vi.fn(),
   mockLoadEnv: vi.fn(),
   mockLoggerError: vi.fn(),
   mockLoggerInfo: vi.fn(),
@@ -49,15 +39,13 @@ const {
 
 vi.mock("@app/lib/api/config", () => ({
   default: {
-    getClientFacingUrl: () => "https://dust.tt",
+    getApiBaseUrl: () => "https://dust.tt",
     getSandboxDevFrontHostName: () => undefined,
   },
 }));
 
 vi.mock("@app/lib/api/sandbox/egress", () => ({
-  checkEgressForwarderHealth: mockCheckEgressForwarderHealth,
   readNewDenyLogEntries: mockReadNewDenyLogEntries,
-  setupEgressForwarder: mockSetupEgressForwarder,
 }));
 
 vi.mock("@app/lib/api/sandbox/egress_policy", async (importOriginal) => {
@@ -88,11 +76,6 @@ vi.mock("@app/lib/api/sandbox/access_tokens", () => ({
   revokeExecToken: mockRevokeExecToken,
 }));
 
-vi.mock("@app/lib/api/sandbox/gcs/mount", () => ({
-  mountConversationFiles: mockMountConversationFiles,
-  refreshGcsToken: mockRefreshGcsToken,
-}));
-
 vi.mock("@app/lib/api/sandbox/image", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@app/lib/api/sandbox/image")>();
@@ -117,14 +100,8 @@ vi.mock("@app/lib/api/sandbox/instrumentation", () => ({
   recordToolDuration: mockRecordToolDuration,
 }));
 
-vi.mock("@app/lib/api/sandbox/telemetry", () => ({
-  startTelemetry: mockStartTelemetry,
-}));
-
-vi.mock("@app/lib/resources/sandbox_resource", () => ({
-  SandboxResource: {
-    ensureActive: mockEnsureActive,
-  },
+vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
+  ensureSandboxReady: mockEnsureSandboxReady,
 }));
 
 vi.mock("@app/lib/resources/workspace_sandbox_env_var_resource", () => ({
@@ -232,13 +209,9 @@ describe("runSandboxBashTool", () => {
     mockGenerateExecId.mockReturnValue("exec-1");
     mockGenerateSandboxExecToken.mockResolvedValue("sandbox-token");
     mockGetSandboxImage.mockReturnValue(new Ok({}));
-    mockMountConversationFiles.mockResolvedValue(new Ok(undefined));
-    mockRefreshGcsToken.mockResolvedValue(new Ok(undefined));
     mockLoadEnv.mockResolvedValue(new Ok({}));
     mockReadNewDenyLogEntries.mockResolvedValue(new Ok([]));
     mockRevokeExecToken.mockResolvedValue(undefined);
-    mockSetupEgressForwarder.mockResolvedValue(new Ok(undefined));
-    mockStartTelemetry.mockResolvedValue(undefined);
     mockWrapCommand.mockImplementation(
       (command: string) => `wrapped:${command}`
     );
@@ -277,15 +250,7 @@ describe("runSandboxBashTool", () => {
         ),
     };
 
-    mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: false,
-      })
-    );
-
-    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
+    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
 
     const result = await runSandboxBashTool(
       { command: "echo hello", description: "Run command" },
@@ -293,7 +258,6 @@ describe("runSandboxBashTool", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(mockSetupEgressForwarder).not.toHaveBeenCalled();
     expect(sandbox.exec).toHaveBeenCalledWith(
       expect.anything(),
       "wrapped:echo hello",
@@ -318,14 +282,7 @@ describe("runSandboxBashTool", () => {
       ),
     };
 
-    mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: false,
-      })
-    );
-    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
+    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
 
     const result = await runSandboxBashTool(
       { command: "echo token", description: "Run command" },
@@ -361,14 +318,7 @@ describe("runSandboxBashTool", () => {
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "ok", stderr: "" })),
     };
 
-    mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: false,
-      })
-    );
-    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
+    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
 
     const result = await runSandboxBashTool(
       { command: "echo ok", description: "Run command" },
@@ -407,14 +357,7 @@ describe("runSandboxBashTool", () => {
       ),
     };
 
-    mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: false,
-      })
-    );
-    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
+    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
 
     const result = await runSandboxBashTool(
       { command: "echo values", description: "Run command" },
@@ -449,14 +392,7 @@ describe("runSandboxBashTool", () => {
         ),
     };
 
-    mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: false,
-      })
-    );
-    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
+    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
 
     const result = await runSandboxBashTool(
       { command: "echo secret", description: "Run command" },
@@ -471,65 +407,14 @@ describe("runSandboxBashTool", () => {
     }
   });
 
-  it("restarts the forwarder when the health check fails", async () => {
-    const sandbox = {
-      providerId: "provider-id",
-      sId: "sandbox-id",
-      exec: vi
-        .fn()
-        .mockResolvedValue(
-          new Ok({ exitCode: 0, stdout: "hello", stderr: "" })
-        ),
-    };
-
-    mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: true,
-      })
-    );
-
-    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(false));
-
-    const result = await runSandboxBashTool(
-      { command: "echo hello", description: "Run command" },
-      makeExtra()
-    );
-
-    expect(result.isOk()).toBe(true);
-    expect(mockSetupEgressForwarder).toHaveBeenCalledTimes(1);
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      expect.anything(),
-      "wrapped:echo hello",
-      expect.objectContaining({
-        user: "agent-proxied",
-      })
-    );
-    expect(mockRecordToolDuration).toHaveBeenCalledWith(
-      "bash",
-      expect.any(Number),
-      { workspaceId: "workspace-id" },
-      "success"
-    );
-  });
-
-  it("returns an MCP error when egress setup fails", async () => {
+  it("returns an MCP error when sandbox lifecycle setup fails", async () => {
     const sandbox = {
       providerId: "provider-id",
       sId: "sandbox-id",
       exec: vi.fn(),
     };
 
-    mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-      })
-    );
-
-    mockSetupEgressForwarder.mockResolvedValue(
+    mockEnsureSandboxReady.mockResolvedValue(
       new Err(new Error("setup failed"))
     );
 
@@ -600,21 +485,16 @@ describe("addEgressDomainTool", () => {
         "Agent-driven egress requests are disabled"
       );
     }
-    expect(mockEnsureActive).not.toHaveBeenCalled();
+    expect(mockEnsureSandboxReady).not.toHaveBeenCalled();
     expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
   });
 
   it("adds the domain to the active sandbox policy and emits an audit event", async () => {
-    mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox: {
-          providerId: "provider-id",
-          sId: "sandbox-id",
-        },
-        wokeFromSleep: false,
-      })
-    );
+    const sandbox = {
+      providerId: "provider-id",
+      sId: "sandbox-id",
+    };
+    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
 
     const result = await addEgressDomainTool(
       {
@@ -625,6 +505,10 @@ describe("addEgressDomainTool", () => {
     );
 
     expect(result.isOk()).toBe(true);
+    expect(mockEnsureSandboxReady).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ sId: "conversation-id" })
+    );
     expect(mockAddSandboxPolicyDomain).toHaveBeenCalledWith(expect.anything(), {
       domain: "example.org",
       sandboxProviderId: "provider-id",
@@ -653,14 +537,10 @@ describe("addEgressDomainTool", () => {
   });
 
   it("reports the domain as already allowed when nothing changed", async () => {
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxReady.mockResolvedValue(
       new Ok({
-        freshlyCreated: false,
-        sandbox: {
-          providerId: "provider-id",
-          sId: "sandbox-id",
-        },
-        wokeFromSleep: false,
+        providerId: "provider-id",
+        sId: "sandbox-id",
       })
     );
     mockAddSandboxPolicyDomain.mockResolvedValue(
@@ -693,14 +573,10 @@ describe("addEgressDomainTool", () => {
   });
 
   it("rejects wildcard domains before writing policy", async () => {
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxReady.mockResolvedValue(
       new Ok({
-        freshlyCreated: false,
-        sandbox: {
-          providerId: "provider-id",
-          sId: "sandbox-id",
-        },
-        wokeFromSleep: false,
+        providerId: "provider-id",
+        sId: "sandbox-id",
       })
     );
 
@@ -736,11 +612,13 @@ describe("addEgressDomainTool", () => {
     );
 
     expect(result.isErr()).toBe(true);
-    expect(mockEnsureActive).not.toHaveBeenCalled();
+    expect(mockEnsureSandboxReady).not.toHaveBeenCalled();
   });
 
   it("returns an error when no active sandbox is available", async () => {
-    mockEnsureActive.mockResolvedValue(new Err(new Error("No active sandbox")));
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Err(new Error("No active sandbox"))
+    );
 
     const result = await addEgressDomainTool(
       {
@@ -755,14 +633,10 @@ describe("addEgressDomainTool", () => {
   });
 
   it("surfaces sandbox policy helper errors", async () => {
-    mockEnsureActive.mockResolvedValue(
+    mockEnsureSandboxReady.mockResolvedValue(
       new Ok({
-        freshlyCreated: false,
-        sandbox: {
-          providerId: "provider-id",
-          sId: "sandbox-id",
-        },
-        wokeFromSleep: false,
+        providerId: "provider-id",
+        sId: "sandbox-id",
       })
     );
     mockAddSandboxPolicyDomain.mockResolvedValue(

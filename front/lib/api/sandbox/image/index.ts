@@ -72,12 +72,19 @@ export function getSandboxImage(
     return imageResult;
   }
 
-  const devHost = config.getSandboxDevFrontHostName();
-  if (!devHost) {
-    return imageResult;
+  const image = imageResult.value;
+
+  // Dev-only: bypass all egress restrictions. Pairs with skipping the dsbx
+  // forwarder + tearing down in-sandbox nftables in tools/index.ts.
+  if (config.getSandboxDevUnrestrictedEgress()) {
+    return new Ok(image.withNetwork({ mode: "allow_all" }));
   }
 
-  const image = imageResult.value;
+  const devHost = config.getSandboxDevFrontHostName();
+  if (!devHost) {
+    return new Ok(image);
+  }
+
   return new Ok(
     image.withNetwork({
       mode: image.network.mode,

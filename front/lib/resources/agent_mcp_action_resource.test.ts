@@ -5,12 +5,17 @@ import type {
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
-import { warmGcsContentCache } from "@app/lib/resources/agent_mcp_action/output_storage";
+import {
+  GCS_CONTENT_CACHE_TTL_MS,
+  gcsContentCacheKey,
+  warmGcsContentCache,
+} from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -142,9 +147,7 @@ describe("listBlockedActionsForConversation", () => {
     const action = await AgentMCPActionModel.create({
       workspaceId: workspace.id,
       agentMessageId,
-      stepContentId: stepContent.id,
       mcpServerConfigurationId: generateRandomModelSId(),
-      version: 0,
       status,
       citationsAllocated: 0,
       augmentedInputs: {},
@@ -156,6 +159,14 @@ describe("listBlockedActionsForConversation", () => {
         retrievalTopK: 10,
         websearchResultCount: 5,
       },
+    });
+
+    await AgentStepContentToolExecutionModel.create({
+      workspaceId: workspace.id,
+      conversationId: conversation.id,
+      agentMessageId,
+      agentMCPActionId: action.id,
+      stepContentId: stepContent.id,
     });
 
     return { action, stepContent };
@@ -471,9 +482,9 @@ describe("Output items with GCS storage", () => {
 
     for (const item of outputItems) {
       expect(setCalls).toContainEqual([
-        `cacheWithRedis-fetchGcsContent-w:${workspace.sId}:mcp_output:${item.id}`,
+        `cacheWithRedis-fetchGcsContent-${gcsContentCacheKey(auth, "", item.id)}`,
         JSON.stringify(item.content),
-        { PX: 15 * 60 * 1000 },
+        { PX: GCS_CONTENT_CACHE_TTL_MS },
       ]);
     }
   });
@@ -672,12 +683,10 @@ describe("Output items with GCS storage", () => {
 });
 
 describe("warmGcsContentCache", () => {
-  let workspace: WorkspaceType;
   let auth: Authenticator;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
-    workspace = setup.workspace;
     auth = setup.authenticator;
 
     const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
@@ -714,9 +723,9 @@ describe("warmGcsContentCache", () => {
 
     for (const item of items) {
       expect(setCalls).toContainEqual([
-        `cacheWithRedis-fetchGcsContent-w:${workspace.sId}:mcp_output:${item.itemId}`,
+        `cacheWithRedis-fetchGcsContent-${gcsContentCacheKey(auth, "", item.itemId)}`,
         JSON.stringify(item.content),
-        { PX: 15 * 60 * 1000 },
+        { PX: GCS_CONTENT_CACHE_TTL_MS },
       ]);
     }
   });

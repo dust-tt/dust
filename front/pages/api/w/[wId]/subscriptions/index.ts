@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   cancelSubscriptionAtPeriodEnd,
@@ -13,10 +13,9 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { CheckoutUrlResult, SubscriptionType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type PostSubscriptionResponseBody = CheckoutUrlResult;
 
@@ -28,16 +27,13 @@ export type GetSubscriptionsResponseBody = {
   subscriptions: SubscriptionType[];
 };
 
-export const PostSubscriptionRequestBody = t.type({
-  billingPeriod: t.union([t.literal("monthly"), t.literal("yearly")]),
+export const PostSubscriptionRequestBody = z.object({
+  billingPeriod: z.enum(["monthly", "yearly"]),
+  couponCode: z.string().optional(),
 });
 
-export const PatchSubscriptionRequestBody = t.type({
-  action: t.union([
-    t.literal("cancel_free_trial"),
-    t.literal("pay_now"),
-    t.literal("upgrade_to_business"),
-  ]),
+export const PatchSubscriptionRequestBody = z.object({
+  action: z.enum(["cancel_free_trial", "pay_now", "upgrade_to_business"]),
 });
 
 async function handler(
@@ -81,9 +77,9 @@ async function handler(
       }
     }
     case "POST": {
-      const bodyValidation = PostSubscriptionRequestBody.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostSubscriptionRequestBody.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -94,10 +90,7 @@ async function handler(
       }
 
       try {
-        const useMetronomeBilling = await hasFeatureFlag(
-          auth,
-          "metronome_billing"
-        );
+        const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
         const owner = auth.getNonNullableWorkspace();
         const user = auth.getNonNullableUser().toJSON();
         const subscription = auth.getNonNullableSubscriptionResource();
@@ -105,8 +98,11 @@ async function handler(
         const checkoutUrlResult = await subscription.getCheckoutUrlForUpgrade(
           owner,
           user,
-          bodyValidation.right.billingPeriod,
-          { useMetronomeBilling }
+          bodyValidation.data.billingPeriod,
+          {
+            useMetronomeBilling,
+            couponCode: bodyValidation.data.couponCode,
+          }
         );
 
         return res.status(200).json(checkoutUrlResult);
@@ -123,9 +119,9 @@ async function handler(
     }
 
     case "PATCH": {
-      const bodyValidation = PatchSubscriptionRequestBody.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PatchSubscriptionRequestBody.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -145,7 +141,7 @@ async function handler(
         });
       }
 
-      const { action } = bodyValidation.right;
+      const { action } = bodyValidation.data;
 
       switch (action) {
         case "cancel_free_trial": {
@@ -160,10 +156,7 @@ async function handler(
           }
 
           const owner = auth.getNonNullableWorkspace();
-          const useMetronomeBilling = await hasFeatureFlag(
-            auth,
-            "metronome_billing"
-          );
+          const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
 
           if (!subscription.stripeSubscriptionId && !useMetronomeBilling) {
             return apiError(req, res, {

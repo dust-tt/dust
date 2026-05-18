@@ -9,11 +9,9 @@ import { apiError } from "@app/logger/withlogging";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import assert from "assert";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import { NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type GetMCPActionsResult = {
   actions: (AgentMCPActionType & {
@@ -24,17 +22,13 @@ export type GetMCPActionsResult = {
   totalCount: number;
 };
 
-const GetMCPActionsQuerySchema = t.type({
-  agentId: t.string,
-  limit: withFallback(
-    t.refinement(
-      NumberFromString,
-      (n): n is number => n >= 1 && n <= 100,
-      `LimitWithRange`
-    ),
-    25
-  ),
-  cursor: t.union([t.string, t.undefined]),
+const GetMCPActionsQuerySchema = z.object({
+  agentId: z.string(),
+  limit: z
+    .number()
+    .refine((n) => n >= 1 && n <= 100, { message: `LimitWithRange` })
+    .default(25),
+  cursor: z.string().optional(),
 });
 
 async function handler(
@@ -44,15 +38,15 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const queryValidation = GetMCPActionsQuerySchema.decode({
+      const queryValidation = GetMCPActionsQuerySchema.safeParse({
         ...req.query,
         limit: req.query.limit
           ? parseInt(req.query.limit as string, 10)
           : undefined,
       });
 
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      if (!queryValidation.success) {
+        const pathError = fromError(queryValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -62,7 +56,7 @@ async function handler(
         });
       }
 
-      const { agentId, limit, cursor } = queryValidation.right;
+      const { agentId, limit, cursor } = queryValidation.data;
 
       let cursorDate: Date | undefined;
       if (cursor) {
@@ -130,7 +124,7 @@ async function handler(
       });
 
       const resultActions = actions.map((a) => {
-        const stepContent = contentById.get(a.stepContentId);
+        const stepContent = contentById.get(a.stepContent.id);
         assert(stepContent, "Step content not found.");
 
         return {
