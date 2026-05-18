@@ -6,11 +6,11 @@ import {
   H4,
   P,
 } from "@app/components/home/ContentComponents";
-import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
 import {
   Button,
@@ -430,7 +430,7 @@ export default function ChromeExtension() {
         <WebAppSidebarSection />
         <ChromeExtensionInActionFor />
         <InstallationSection />
-        <HomeTrustedSection />
+        <TrustedBy logoSet="landing" />
         <JustUseDustSection />
       </div>
     </>

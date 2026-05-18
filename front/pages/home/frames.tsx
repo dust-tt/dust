@@ -1,9 +1,9 @@
 import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
-import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import TrustedBy from "@app/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import { appendUTMParams } from "@app/lib/utils/utm";
@@ -535,7 +535,7 @@ export default function Frames() {
         <AllTheBellsAndWhistlesSection />
         <SharingAndAccessSection />
         <VideoSection />
-        <HomeTrustedSection />
+        <TrustedBy logoSet="landing" />
         <JustUseDustSection />
       </div>
     </>

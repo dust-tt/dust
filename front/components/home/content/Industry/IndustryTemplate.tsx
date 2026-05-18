@@ -1,11 +1,11 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
-import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
 import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import TrustedBy from "@app/components/home/TrustedBy";
 import { useAppRouter } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
@@ -525,7 +525,12 @@ export default function IndustryTemplate({
         ) : null;
 
       case "trustedBy":
-        return config.trustedBy ? <HomeTrustedSection key="trustedBy" /> : null;
+        return config.trustedBy ? (
+          <TrustedBy
+            key="trustedBy"
+            logoSet={config.trustedBy.logoSet as any}
+          />
+        ) : null;
 
       case "painPoints":
         return config.painPoints ? (
@@ -564,7 +569,10 @@ export default function IndustryTemplate({
 
       case "trustedBySecond":
         return config.trustedBySecond ? (
-          <HomeTrustedSection key="trustedBySecond" />
+          <TrustedBy
+            key="trustedBySecond"
+            logoSet={config.trustedBySecond.logoSet as any}
+          />
         ) : null;
 
       case "testimonial":

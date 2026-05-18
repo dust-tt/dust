@@ -3,7 +3,6 @@ import {
   QuoteSection,
 } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
-import { HomeTrustedSection } from "@app/components/home/content/Product/HomeTrustedSection";
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
 import {
   Benefits,
@@ -22,6 +21,7 @@ import { UseCasesSection } from "@app/components/home/content/Solutions/UseCases
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
+import TrustedBy from "@app/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import { Button } from "@dust-tt/sparkle";
@@ -84,7 +84,7 @@ export default function People() {
               stories={Stories}
             />
           </div> */}
-          <HomeTrustedSection />
+          <TrustedBy />
           <div className={GRID_SECTION_CLASSES}>
             {Hero.ctaButtons && (
               <div className="mt-4 flex justify-center gap-4">
