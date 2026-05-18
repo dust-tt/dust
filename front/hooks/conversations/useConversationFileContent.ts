@@ -1,4 +1,3 @@
-import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import { clientFetch } from "@app/lib/egress/client";
 import { useSWRWithDefaults } from "@app/lib/swr/swr";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -16,10 +15,8 @@ export function useConversationFileContent({
   disabled?: boolean;
 }) {
   const isDisabled = disabled || !filePath;
-  const scoped = filePath ? parseScopedFilePath(filePath) : null;
-  const rel = scoped ? scoped.rel : filePath;
-  const url = rel
-    ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${rel}`
+  const url = filePath
+    ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${filePath}`
     : null;
 
   const { data, error } = useSWRWithDefaults<string | null, string>(

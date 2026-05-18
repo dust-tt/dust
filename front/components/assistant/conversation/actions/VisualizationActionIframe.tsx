@@ -285,15 +285,12 @@ export const VisualizationActionIframe = forwardRef<
       let url: string;
 
       if (fileId.startsWith("conversation/")) {
-        const slashIdx = fileId.indexOf("/");
-        const rel = fileId.slice(slashIdx + 1);
-
         if (!conversationId) {
           return null;
         }
 
-        url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/files/${rel}`;
         // TODO(20260428 FILE_SYSTEM): implement space files content endpoint when project-scoped files are added.
+        url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/files/${fileId}`;
       } else {
         url = `/api/w/${workspaceId}/files/${fileId}?action=view`;
       }

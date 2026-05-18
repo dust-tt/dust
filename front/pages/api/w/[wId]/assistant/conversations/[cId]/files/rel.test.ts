@@ -67,14 +67,18 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/[...rel]", () => 
   });
 
   it("should stream a file for a valid path", async () => {
-    const { req, res } = await setupTest(["chart.png"]);
+    const { req, res } = await setupTest(["conversation", "chart.png"]);
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
     expect(res.getHeader("Content-Type")).toBe("image/png");
   });
 
   it("should stream a nested file path", async () => {
-    const { req, res } = await setupTest(["results", "report.csv"]);
+    const { req, res } = await setupTest([
+      "conversation",
+      "results",
+      "report.csv",
+    ]);
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
     expect(mockGetFileContentType).toHaveBeenCalledWith(
@@ -84,7 +88,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/[...rel]", () => 
 
   it("should return 404 when GCS file does not exist", async () => {
     mockGetFileContentType.mockResolvedValue(new Err(new Error("not found")));
-    const { req, res } = await setupTest(["missing.png"]);
+    const { req, res } = await setupTest(["conversation", "missing.png"]);
     await handler(req, res);
     expect(res._getStatusCode()).toBe(404);
     expect(res._getJSONData()).toEqual({
@@ -93,7 +97,13 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/[...rel]", () => 
   });
 
   it("should reject path traversal attempts", async () => {
-    const { req, res } = await setupTest(["..", "..", "etc", "passwd"]);
+    const { req, res } = await setupTest([
+      "conversation",
+      "..",
+      "..",
+      "etc",
+      "passwd",
+    ]);
     await handler(req, res);
     expect(res._getStatusCode()).toBe(403);
     expect(res._getJSONData()).toEqual({
@@ -134,7 +144,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/[...rel]", () => 
   });
 
   it("should use conversation-scoped GCS path", async () => {
-    const { req, res } = await setupTest(["chart.png"]);
+    const { req, res } = await setupTest(["conversation", "chart.png"]);
     await handler(req, res);
     expect(mockGetFileContentType).toHaveBeenCalledWith(
       `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/chart.png`

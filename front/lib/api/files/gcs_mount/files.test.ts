@@ -2,9 +2,11 @@ import {
   copyConversationGCSMount,
   copyMountFile,
   createGCSMountFile,
+  deleteGCSMountFile,
   type GCSMountFileEntry,
   getConversationFileMountSignedUrl,
   listGCSMountFiles,
+  renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -14,7 +16,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import assert from "assert";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/config", () => ({
   default: {
@@ -527,6 +529,126 @@ describe("copyMountFile", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toContain("GCS copy unavailable");
+    }
+  });
+});
+
+describe("renameGCSMountFile", () => {
+  let auth: Authenticator;
+  let workspaceId: string;
+  let copyFileMock: ReturnType<typeof vi.fn>;
+  let deleteMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    copyFileMock = vi.fn().mockResolvedValue(undefined);
+    deleteMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      copyFile: copyFileMock,
+      delete: deleteMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const { authenticator } = await createResourceTest({});
+    auth = authenticator;
+    workspaceId = auth.getNonNullableWorkspace().sId;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("copies to the new path, deletes the old path, and returns the new GCS path", async () => {
+    const result = await renameGCSMountFile(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeFilePath: "report.pdf", newFileName: "final.pdf" }
+    );
+
+    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    expect(result.isOk()).toBe(true);
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${prefix}report.pdf`,
+      `${prefix}final.pdf`
+    );
+    expect(deleteMock).toHaveBeenCalledWith(`${prefix}report.pdf`);
+    if (result.isOk()) {
+      expect(result.value.newGcsPath).toBe(`${prefix}final.pdf`);
+    }
+  });
+
+  it("preserves directory structure when renaming a nested file", async () => {
+    await renameGCSMountFile(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeFilePath: "reports/q1.csv", newFileName: "q1-final.csv" }
+    );
+
+    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${prefix}reports/q1.csv`,
+      `${prefix}reports/q1-final.csv`
+    );
+    expect(deleteMock).toHaveBeenCalledWith(`${prefix}reports/q1.csv`);
+  });
+
+  it("returns Err when the GCS copy fails without deleting", async () => {
+    copyFileMock.mockRejectedValue(new Error("copy failed"));
+
+    const result = await renameGCSMountFile(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeFilePath: "report.pdf", newFileName: "final.pdf" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("copy failed");
+    }
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteGCSMountFile", () => {
+  let auth: Authenticator;
+  let workspaceId: string;
+  let deleteMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    deleteMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      delete: deleteMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const { authenticator } = await createResourceTest({});
+    auth = authenticator;
+    workspaceId = auth.getNonNullableWorkspace().sId;
+  });
+
+  it("calls bucket.delete with the correct GCS path and ignoreNotFound", async () => {
+    const result = await deleteGCSMountFile(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeFilePath: "archive/old.pdf" }
+    );
+
+    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    expect(result.isOk()).toBe(true);
+    expect(deleteMock).toHaveBeenCalledWith(`${prefix}archive/old.pdf`, {
+      ignoreNotFound: true,
+    });
+  });
+
+  it("returns Err when bucket.delete throws", async () => {
+    deleteMock.mockRejectedValue(new Error("delete failed"));
+
+    const result = await deleteGCSMountFile(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeFilePath: "file.pdf" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("delete failed");
     }
   });
 });

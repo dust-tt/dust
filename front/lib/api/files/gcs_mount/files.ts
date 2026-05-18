@@ -25,6 +25,7 @@ const GCS_MOUNT_COPY_MAX_FILES = 5000;
 
 type GCSMountEntryBase = {
   fileName: string;
+  /** Scoped path, e.g. `project/report.pdf` or `conversation/.tool_outputs/chart.png`. */
   path: string;
   sizeBytes: number;
   lastModifiedMs: number;
@@ -301,6 +302,38 @@ export async function listGCSMountFiles(
 }
 
 /**
+ * Rename (move) a file within a GCS mount point — pure GCS primitive.
+ * Does not touch FileResource records; callers are responsible for any DB sync.
+ * Returns the new GCS path on success so callers can update linked records.
+ */
+export async function renameGCSMountFile(
+  auth: Authenticator,
+  scope: GCSMountPoint,
+  {
+    relativeFilePath,
+    newFileName,
+  }: { relativeFilePath: string; newFileName: string }
+): Promise<Result<{ newGcsPath: string }, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const prefix = resolvePrefix(owner, scope);
+
+  const oldGcsPath = `${prefix}${relativeFilePath}`;
+  const lastSlash = relativeFilePath.lastIndexOf("/");
+  const dir = lastSlash >= 0 ? relativeFilePath.slice(0, lastSlash + 1) : "";
+  const newGcsPath = `${prefix}${dir}${newFileName}`;
+
+  const bucket = getPrivateUploadBucket();
+
+  try {
+    await bucket.copyFile(oldGcsPath, newGcsPath);
+    await bucket.delete(oldGcsPath);
+    return new Ok({ newGcsPath });
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
  * Generate a short-lived signed URL for a GCS mount file.
  * Validates that the path belongs to the expected scope before signing.
  */
@@ -367,6 +400,28 @@ export async function createGCSMountFile(
       owner.sId
     )
   );
+}
+
+/**
+ * Delete a file from a GCS mount point — pure GCS primitive.
+ * Does not touch FileResource records; callers are responsible for any DB cleanup.
+ */
+export async function deleteGCSMountFile(
+  auth: Authenticator,
+  scope: GCSMountPoint,
+  { relativeFilePath }: { relativeFilePath: string }
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const prefix = resolvePrefix(owner, scope);
+  const gcsPath = `${prefix}${relativeFilePath}`;
+
+  const bucket = getPrivateUploadBucket();
+  try {
+    await bucket.delete(gcsPath, { ignoreNotFound: true });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 }
 
 /**

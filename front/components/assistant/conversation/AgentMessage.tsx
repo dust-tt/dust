@@ -183,8 +183,7 @@ function buildMountFilePreviewHref({
   filePath: string;
 }): string | undefined {
   if (filePath.startsWith("conversation/")) {
-    const rel = filePath.slice("conversation/".length);
-    return `${apiBaseUrl}/api/w/${ownerId}/assistant/conversations/${conversationId}/files/${rel}`;
+    return `${apiBaseUrl}/api/w/${ownerId}/assistant/conversations/${conversationId}/files/${filePath}`;
   }
 
   if (filePath.startsWith("project/")) {
@@ -192,8 +191,7 @@ function buildMountFilePreviewHref({
       return undefined;
     }
 
-    const rel = filePath.slice("project/".length);
-    return `${apiBaseUrl}/api/w/${ownerId}/spaces/${spaceId}/files/${rel}`;
+    return `${apiBaseUrl}/api/w/${ownerId}/spaces/${spaceId}/files/${filePath}`;
   }
 
   return undefined;
