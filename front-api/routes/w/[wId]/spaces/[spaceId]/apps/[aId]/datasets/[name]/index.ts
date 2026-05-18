@@ -11,7 +11,7 @@ import { CoreAPI } from "@app/types/core/core_api";
 import { spaceResource } from "@front-api/middleware/space_resource";
 import { validate } from "@front-api/middleware/validator";
 
-import { PostDatasetRequestBodySchema } from "..";
+import { PostDatasetRequestBodySchema } from "../schemas";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/datasets/:name.
 const app = new Hono();
