@@ -2,14 +2,12 @@ import {
   FileExplorerEmptyState,
   FileExplorerFileCard,
   FileExplorerFolderCard,
+  fileExplorerCardGridClasses,
   type ViewMode,
 } from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
 import type { SandboxTreeNode } from "@app/components/assistant/conversation/files_panel/types";
 import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import { CardGrid, ScrollArea, Spinner } from "@dust-tt/sparkle";
-
-const cardGridClasses =
-  "grid-cols-2 @xxs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5 @lg:grid-cols-6";
 
 interface FileExplorerContentProps {
   isLoading: boolean;
@@ -82,7 +80,9 @@ export function FileExplorerContent({
         {viewMode === "list" ? (
           <div className="flex flex-col gap-0.5">{items}</div>
         ) : (
-          <CardGrid gridClassName={cardGridClasses}>{items}</CardGrid>
+          <CardGrid gridClassName={fileExplorerCardGridClasses}>
+            {items}
+          </CardGrid>
         )}
       </div>
     </ScrollArea>

@@ -154,7 +154,7 @@ export function NewFileExplorer({
             </div>
           </div>
         </AppLayoutTitle>
-        <div className="flex flex-1 min-h-0 flex-col gap-5 pt-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-5 pt-5">
           <div className="px-4">
             <FileExplorerToolbar
               searchQuery={searchQuery}

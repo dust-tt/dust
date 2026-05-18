@@ -9,6 +9,7 @@ import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/convers
 import {
   ArrowDownOnSquareIcon,
   Button,
+  type ButtonProps,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,29 +17,82 @@ import {
   FolderIcon,
   FolderOpenIcon,
   Icon,
+  ListCheckIcon,
+  ListIcon,
   MoreIcon,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { intlFormatDistance } from "date-fns";
+import type { ComponentType } from "react";
 import { useState } from "react";
 
 export type ViewMode = "grid" | "list";
 
+export const fileExplorerCardGridClasses =
+  "grid-cols-2 @xxs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5 @lg:grid-cols-6";
+
+export interface FileExplorerItemMenuAction {
+  disabled?: boolean;
+  icon?: ButtonProps["icon"];
+  id: string;
+  label: string;
+  loadingLabel?: string;
+  onClick: () => Promise<void> | void;
+}
+
 export type FileExplorerItemProps = {
-  onDownload?: () => Promise<void>;
-  onOpen: () => void;
+  actions?: FileExplorerItemMenuAction[];
+  onDownload?: () => Promise<void> | void;
+  onOpen?: () => void;
   subtitle: string;
+  titleClassName?: string;
   title: string;
   viewMode: ViewMode;
 } & (
-  | { kind: "icon"; visual: React.ComponentType }
+  | { kind: "icon"; visual: ComponentType }
   | { kind: "thumbnail"; thumbnailSrc: string | null }
 );
 
 // TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
+export interface FileExplorerViewToggleProps {
+  value: ViewMode;
+  onValueChange: (v: ViewMode) => void;
+}
+
+export function FileExplorerViewToggle({
+  value,
+  onValueChange,
+}: FileExplorerViewToggleProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          icon={value === "grid" ? ListIcon : ListCheckIcon}
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem label="Grid" onClick={() => onValueChange("grid")} />
+        <DropdownMenuItem label="List" onClick={() => onValueChange("list")} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
 export function FileExplorerItem(props: FileExplorerItemProps) {
-  const { onDownload, onOpen, subtitle, title, viewMode } = props;
+  const {
+    actions,
+    onDownload,
+    onOpen,
+    subtitle,
+    title,
+    titleClassName,
+    viewMode,
+  } = props;
 
   const thumbnailContent =
     props.kind === "icon" ? (
@@ -56,27 +110,42 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
     );
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [activeActionId, setActiveActionId] = useState<string | null>(null);
 
-  const handleDownload = async (e: React.MouseEvent) => {
-    if (!onDownload) {
-      return;
-    }
+  const menuActions: FileExplorerItemMenuAction[] = [
+    ...(onDownload
+      ? [
+          {
+            icon: ArrowDownOnSquareIcon,
+            id: "download",
+            label: "Download",
+            loadingLabel: "Downloading…",
+            onClick: onDownload,
+          },
+        ]
+      : []),
+    ...(actions ?? []),
+  ];
+
+  const handleMenuAction = async (
+    e: React.MouseEvent,
+    action: FileExplorerItemMenuAction
+  ) => {
     e.stopPropagation();
-    setIsDownloading(true);
+    setActiveActionId(action.id);
     try {
-      await onDownload();
+      await action.onClick();
     } finally {
-      setIsDownloading(false);
+      setActiveActionId(null);
       setMenuOpen(false);
     }
   };
 
-  const menu = onDownload && (
+  const menu = menuActions.length > 0 && (
     <DropdownMenu
       open={menuOpen}
       onOpenChange={(open) => {
-        if (!open && isDownloading) {
+        if (!open && activeActionId !== null) {
           return;
         }
         setMenuOpen(open);
@@ -91,12 +160,22 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          label={isDownloading ? "Downloading…" : "Download"}
-          icon={ArrowDownOnSquareIcon}
-          disabled={isDownloading}
-          onClick={handleDownload}
-        />
+        {menuActions.map((action) => {
+          const isActive = activeActionId === action.id;
+          return (
+            <DropdownMenuItem
+              key={action.id}
+              label={
+                isActive && action.loadingLabel
+                  ? action.loadingLabel
+                  : action.label
+              }
+              icon={action.icon}
+              disabled={action.disabled || activeActionId !== null}
+              onClick={(e: React.MouseEvent) => handleMenuAction(e, action)}
+            />
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -110,7 +189,8 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
           <span
             className={cn(
               "text-sm truncate text-foreground dark:text-foreground-night leading-5",
-              "justify-start"
+              "justify-start",
+              titleClassName
             )}
           >
             {title}
@@ -132,8 +212,9 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
     return (
       <div
         className={cn(
-          "flex cursor-pointer items-center gap-4 rounded-xl px-3 py-2",
-          "hover:bg-muted-background dark:hover:bg-muted-background-night"
+          "flex items-center gap-4 rounded-xl px-3 py-2",
+          onOpen &&
+            "cursor-pointer hover:bg-muted-background dark:hover:bg-muted-background-night"
         )}
         onClick={onOpen}
       >
@@ -150,8 +231,8 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
     <div className="flex flex-col gap-1">
       <div
         className={cn(
-          "flex h-24 cursor-pointer items-center justify-center overflow-hidden rounded-xl",
-          "bg-muted-background hover:brightness-95 dark:bg-muted-background-night",
+          "flex h-24 items-center justify-center overflow-hidden rounded-xl bg-muted-background dark:bg-muted-background-night",
+          onOpen && "cursor-pointer hover:brightness-95",
           props.kind === "icon" && "p-4"
         )}
         onClick={onOpen}
