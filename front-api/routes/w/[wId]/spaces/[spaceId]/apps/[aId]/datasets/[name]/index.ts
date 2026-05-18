@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import { Hono } from "hono";
 
 import config from "@app/lib/api/config";
@@ -8,6 +9,8 @@ import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 
+import { isString } from "@app/types/shared/utils/general";
+
 import { spaceResource } from "@front-api/middleware/space_resource";
 import { validate } from "@front-api/middleware/validator";
 
@@ -16,11 +19,33 @@ import { PostDatasetRequestBodySchema } from "../schemas";
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/datasets/:name.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
+// Shared prelude for every method: resolves the workspace, app, and dataset
+// from the path params and enforces read access on the app. Returns either
+// the loaded resources (with the validated `aId` and `name` params) or the
+// `Response` to short-circuit the handler with.
+async function loadAppAndDataset(c: Context): Promise<
+  | {
+      appResource: AppResource;
+      dataset: DatasetModel;
+      aId: string;
+      name: string;
+    }
+  | Response
+> {
   const auth = c.get("auth");
   const space = c.get("space");
-  const aId = c.req.param("aId") ?? "";
-  const name = c.req.param("name") ?? "";
+  const { aId, name } = c.req.param();
+  if (!isString(aId) || !isString(name)) {
+    return c.json(
+      {
+        error: {
+          type: "invalid_request_error",
+          message: "Invalid path parameters.",
+        },
+      },
+      400
+    );
+  }
   const owner = auth.workspace();
   if (!owner) {
     return c.json(
@@ -49,8 +74,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
       {
         error: {
           type: "app_auth_error",
-          message:
-            "Querying a dataset requires read access to the app's space.",
+          message: "Querying a dataset requires read access to the app's space.",
         },
       },
       403
@@ -64,7 +88,6 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
       name,
     },
   });
-
   if (!dataset) {
     return c.json(
       {
@@ -77,6 +100,17 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
       404
     );
   }
+
+  return { appResource, dataset, aId, name };
+}
+
+app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
+  const loaded = await loadAppAndDataset(c);
+  if (loaded instanceof Response) {
+    return loaded;
+  }
+  const { appResource, dataset } = loaded;
+  const auth = c.get("auth");
 
   const showData = c.req.query("data") === "true";
   const datasetHash = showData
@@ -97,65 +131,12 @@ app.post(
   spaceResource({ requireCanRead: true }),
   validate("json", PostDatasetRequestBodySchema),
   async (c) => {
+    const loaded = await loadAppAndDataset(c);
+    if (loaded instanceof Response) {
+      return loaded;
+    }
+    const { appResource, dataset, name } = loaded;
     const auth = c.get("auth");
-    const space = c.get("space");
-    const aId = c.req.param("aId") ?? "";
-    const name = c.req.param("name") ?? "";
-    const owner = auth.workspace();
-    if (!owner) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_not_found",
-            message: "The workspace was not found.",
-          },
-        },
-        404
-      );
-    }
-
-    const appResource = await AppResource.fetchById(auth, aId);
-    if (!appResource || appResource.space.sId !== space.sId) {
-      return c.json(
-        {
-          error: { type: "app_not_found", message: "The app was not found." },
-        },
-        404
-      );
-    }
-
-    if (!appResource.canRead(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "app_auth_error",
-            message:
-              "Querying a dataset requires read access to the app's space.",
-          },
-        },
-        403
-      );
-    }
-
-    const dataset = await DatasetModel.findOne({
-      where: {
-        workspaceId: owner.id,
-        appId: appResource.id,
-        name,
-      },
-    });
-    if (!dataset) {
-      return c.json(
-        {
-          error: {
-            type: "dataset_not_found",
-            message:
-              "The dataset you're trying to view, modify or delete was not found.",
-          },
-        },
-        404
-      );
-    }
 
     if (!appResource.canWrite(auth)) {
       return c.json(
@@ -269,73 +250,20 @@ app.post(
 );
 
 app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
+  const loaded = await loadAppAndDataset(c);
+  if (loaded instanceof Response) {
+    return loaded;
+  }
+  const { appResource, dataset } = loaded;
   const auth = c.get("auth");
-  const space = c.get("space");
-  const aId = c.req.param("aId") ?? "";
-  const name = c.req.param("name") ?? "";
-  const owner = auth.workspace();
-  if (!owner) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_not_found",
-          message: "The workspace was not found.",
-        },
-      },
-      404
-    );
-  }
-
-  const appResource = await AppResource.fetchById(auth, aId);
-  if (!appResource || appResource.space.sId !== space.sId) {
-    return c.json(
-      {
-        error: { type: "app_not_found", message: "The app was not found." },
-      },
-      404
-    );
-  }
-
-  if (!appResource.canRead(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message:
-            "Querying a dataset requires read access to the app's space.",
-        },
-      },
-      403
-    );
-  }
-
-  const dataset = await DatasetModel.findOne({
-    where: {
-      workspaceId: owner.id,
-      appId: appResource.id,
-      name,
-    },
-  });
-  if (!dataset) {
-    return c.json(
-      {
-        error: {
-          type: "dataset_not_found",
-          message:
-            "The dataset you're trying to view, modify or delete was not found.",
-        },
-      },
-      404
-    );
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   if (!appResource.canWrite(auth)) {
     return c.json(
       {
         error: {
           type: "app_auth_error",
-          message:
-            "Deleting a dataset requires write access to the app's space.",
+          message: "Deleting a dataset requires write access to the app's space.",
         },
       },
       403
