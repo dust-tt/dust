@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
-import { AWU_CREDITS_PER_DOLLAR } from "@app/lib/metronome/types";
+import { AWU_PRICE_PER_CREDIT } from "@app/lib/metronome/types";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
@@ -13,7 +13,7 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
-import { SUPPORTED_CURRENCIES } from "@app/types/currency";
+import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from "@app/types/currency";
 import type { BillingPeriod, SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
@@ -1438,7 +1438,8 @@ export async function makeAwuPurchaseInvoiceForCustomer({
   currency: SupportedCurrency;
   amountCredits: number;
 }): Promise<Result<Stripe.Invoice, { error_message: string }>> {
-  const amountDollars = amountCredits / AWU_CREDITS_PER_DOLLAR;
+  const amountInCurrency = amountCredits * AWU_PRICE_PER_CREDIT[currency];
+  const currencySymbol = CURRENCY_SYMBOLS[currency];
 
   return makeInvoice({
     target: { kind: "customer", stripeCustomerId, currency },
@@ -1450,7 +1451,7 @@ export async function makeAwuPurchaseInvoiceForCustomer({
     lineItem: {
       priceId: getCreditPurchasePriceId(),
       quantity: amountCredits,
-      description: `${amountCredits.toLocaleString()} credits for ($${amountDollars.toFixed(2)})`,
+      description: `${amountCredits.toLocaleString()} credits for (${currencySymbol}${amountInCurrency.toFixed(2)})`,
     },
     collectionMethod: "charge_automatically",
     requestThreeDSecure: "challenge",

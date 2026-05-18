@@ -5,7 +5,8 @@ import {
   MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
   MIN_AWU_PURCHASE_CREDITS,
 } from "@app/lib/credits/awu_purchase_constants";
-import { AWU_CREDITS_PER_DOLLAR } from "@app/lib/metronome/types";
+import { AWU_PRICE_PER_CREDIT } from "@app/lib/metronome/types";
+import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ActionCreditCoinsIcon,
@@ -33,7 +34,7 @@ import { useCallback, useMemo, useState } from "react";
 type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
 type TopUpTab = "one-time" | "automatic";
 
-const QUICK_SELECT_AMOUNTS_DOLLARS = [10, 50, 100] as const;
+const QUICK_SELECT_AMOUNTS = [10, 50, 100] as const;
 
 const supportEmail = config.getSupportEmailAddress().email;
 
@@ -105,7 +106,7 @@ export function BuyAwuCreditsDialog({
   isAwuPurchaseInfoLoading,
   currentBalanceCredits,
 }: BuyAwuCreditsDialogProps) {
-  const [amountDollars, setAmountDollars] = useState<string>("");
+  const [amountInput, setAmountInput] = useState<string>("");
   const [selectedTab, setSelectedTab] = useState<TopUpTab>("one-time");
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -113,7 +114,7 @@ export function BuyAwuCreditsDialog({
   const { purchaseAwuCredits } = useAwuPurchase({ workspaceId });
 
   const resetModalStateAndClose = useCallback(() => {
-    setAmountDollars("");
+    setAmountInput("");
     setSelectedTab("one-time");
     setPurchaseState("idle");
     setErrorMessage("");
@@ -121,37 +122,42 @@ export function BuyAwuCreditsDialog({
     onClose();
   }, [onClose]);
 
-  const maxAmountDollars = useMemo(() => {
+  const currency = awuPurchaseInfo?.canPurchase
+    ? awuPurchaseInfo.currency
+    : "usd";
+  const currencySymbol = CURRENCY_SYMBOLS[currency];
+  const pricePerCredit = AWU_PRICE_PER_CREDIT[currency];
+  const creditsPerCurrencyUnit = 1 / pricePerCredit;
+
+  const maxAmountInCurrency = useMemo(() => {
     if (!awuPurchaseInfo?.canPurchase) {
       return null;
     }
-    return Math.floor(
-      awuPurchaseInfo.remainingCycleCredits / AWU_CREDITS_PER_DOLLAR
-    );
-  }, [awuPurchaseInfo]);
+    return Math.floor(awuPurchaseInfo.remainingCycleCredits * pricePerCredit);
+  }, [awuPurchaseInfo, pricePerCredit]);
 
   const maxAmountFormatted = useMemo(() => {
-    if (maxAmountDollars === null) {
+    if (maxAmountInCurrency === null) {
       return null;
     }
-    return `$${maxAmountDollars.toLocaleString()}`;
-  }, [maxAmountDollars]);
+    return `${currencySymbol}${maxAmountInCurrency.toLocaleString()}`;
+  }, [maxAmountInCurrency, currencySymbol]);
 
-  const effectiveMaxDollars =
-    maxAmountDollars ??
-    Math.floor(MAX_AWU_PURCHASE_CREDITS_PER_CYCLE / AWU_CREDITS_PER_DOLLAR);
+  const effectiveMaxAmount =
+    maxAmountInCurrency ??
+    Math.floor(MAX_AWU_PURCHASE_CREDITS_PER_CYCLE * pricePerCredit);
 
   const setAmountWithClamp = useCallback(
-    (dollars: number) => {
-      setAmountDollars(String(Math.min(dollars, effectiveMaxDollars)));
+    (amount: number) => {
+      setAmountInput(String(Math.min(amount, effectiveMaxAmount)));
     },
-    [effectiveMaxDollars]
+    [effectiveMaxAmount]
   );
 
-  const parsedAmount = parseFloat(amountDollars) || 0;
+  const parsedAmount = parseFloat(amountInput) || 0;
   const isValidAmount = parsedAmount > 0;
-  const amountExceedsMax = parsedAmount > effectiveMaxDollars;
-  const addedCredits = parsedAmount * AWU_CREDITS_PER_DOLLAR;
+  const amountExceedsMax = parsedAmount > effectiveMaxAmount;
+  const addedCredits = parsedAmount * creditsPerCurrencyUnit;
 
   const canPurchase = isValidAmount && !amountExceedsMax;
 
@@ -275,23 +281,23 @@ export function BuyAwuCreditsDialog({
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                          $
+                          {currencySymbol}
                         </span>
                         <Input
                           id="amount"
                           type="number"
                           placeholder="0"
-                          value={amountDollars}
+                          value={amountInput}
                           onChange={(e) => {
                             const val = parseFloat(e.target.value);
                             if (!isNaN(val)) {
                               setAmountWithClamp(val);
                             } else {
-                              setAmountDollars(e.target.value);
+                              setAmountInput(e.target.value);
                             }
                           }}
                           min="0"
-                          max={effectiveMaxDollars}
+                          max={effectiveMaxAmount}
                           step="1"
                           className="w-32 pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
@@ -303,10 +309,10 @@ export function BuyAwuCreditsDialog({
                         </span>
                       )}
                       <div className="ml-auto flex gap-2">
-                        {QUICK_SELECT_AMOUNTS_DOLLARS.map((amount) => (
+                        {QUICK_SELECT_AMOUNTS.map((amount) => (
                           <Button
                             key={amount}
-                            label={`$${amount}`}
+                            label={`${currencySymbol}${amount}`}
                             variant="outline"
                             size="sm"
                             onClick={() => setAmountWithClamp(amount)}
@@ -348,7 +354,7 @@ export function BuyAwuCreditsDialog({
                       )}
                       <SummaryRow
                         label="Cost"
-                        value={`$${formatCost(parsedAmount)}`}
+                        value={`${currencySymbol}${formatCost(parsedAmount)}`}
                       />
                     </div>
                   )}
@@ -479,8 +485,16 @@ export function BuyAwuCreditsDialog({
     );
   }
 
+  // Once a purchase is in flight (processing / redirect / success / error),
+  // drive the dialog from local state and ignore the refreshed
+  // awuPurchaseInfo — the just-created invoice would otherwise flip it to
+  // `pending_purchase` and bump the user off the "Payment confirmation
+  // required" screen before they can click through.
+  const isPurchaseInFlight = purchaseState !== "idle";
+
   // Cannot purchase: legacy plan.
   if (
+    !isPurchaseInFlight &&
     awuPurchaseInfo &&
     !awuPurchaseInfo.canPurchase &&
     awuPurchaseInfo.reason === "legacy_plan"
@@ -520,6 +534,7 @@ export function BuyAwuCreditsDialog({
 
   // Cannot purchase: no Stripe customer.
   if (
+    !isPurchaseInFlight &&
     awuPurchaseInfo &&
     !awuPurchaseInfo.canPurchase &&
     awuPurchaseInfo.reason === "no_stripe_customer"
@@ -559,6 +574,7 @@ export function BuyAwuCreditsDialog({
 
   // Cannot purchase: pending payment.
   if (
+    !isPurchaseInFlight &&
     awuPurchaseInfo &&
     !awuPurchaseInfo.canPurchase &&
     awuPurchaseInfo.reason === "pending_purchase"
@@ -606,6 +622,7 @@ export function BuyAwuCreditsDialog({
 
   // Limit exhausted for this billing cycle.
   if (
+    !isPurchaseInFlight &&
     awuPurchaseInfo?.canPurchase &&
     awuPurchaseInfo.remainingCycleCredits < MIN_AWU_PURCHASE_CREDITS
   ) {

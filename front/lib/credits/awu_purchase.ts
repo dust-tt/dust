@@ -9,9 +9,8 @@ import {
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
-import { resolveCurrencyForExistingMetronomeCustomer } from "@app/lib/metronome/contracts";
-import { isLegacyPlan } from "@app/lib/metronome/plan_type";
-import { AWU_CREDITS_PER_DOLLAR } from "@app/lib/metronome/types";
+import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
+import { getActiveContract, isLegacyPlan } from "@app/lib/metronome/plan_type";
 import {
   finalizeInvoice,
   getStripeClient,
@@ -19,6 +18,7 @@ import {
   payInvoice,
 } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
@@ -36,7 +36,11 @@ export type AwuPurchaseInfo =
         | "no_stripe_customer"
         | "pending_purchase";
     }
-  | { canPurchase: true; remainingCycleCredits: number };
+  | {
+      canPurchase: true;
+      remainingCycleCredits: number;
+      currency: SupportedCurrency;
+    };
 
 export type AwuPurchaseResult = {
   invoiceId: string;
@@ -63,6 +67,28 @@ type AwuEligibilityOk = {
   stripeCustomerId: string;
   stripe: Stripe;
 };
+
+/**
+ * Resolves the billing currency from the active Metronome contract's rate
+ * card — the source of truth for Metronome-billed workspaces. The Stripe
+ * customer's `currency` field is unreliable (only set after the first paid
+ * invoice) and its `address.country` may not be populated, so deriving
+ * currency from the contract guarantees the invoice matches what Metronome
+ * is configured to bill.
+ */
+async function resolveAwuPurchaseCurrency(
+  workspaceId: string
+): Promise<Result<SupportedCurrency, Error>> {
+  const contract = await getActiveContract(workspaceId);
+  if (!contract) {
+    return new Err(new Error("No active Metronome contract found"));
+  }
+  const creditTypeResult = await getCreditTypeFromContract(contract);
+  if (creditTypeResult.isErr()) {
+    return new Err(creditTypeResult.error);
+  }
+  return new Ok(creditTypeResult.value.currency);
+}
 
 async function checkAwuPurchaseEligibility(
   auth: Authenticator
@@ -112,13 +138,25 @@ export async function getAwuPurchaseInfo(
   }
 
   const { stripeCustomerId, stripe } = eligibility.value;
+  const workspace = auth.getNonNullableWorkspace();
   const subscription = auth.subscription()!;
+
+  const currencyResult = await resolveAwuPurchaseCurrency(workspace.sId);
+  if (currencyResult.isErr()) {
+    logger.error(
+      { workspaceId: workspace.sId, error: currencyResult.error.message },
+      "[AWU Purchase] Failed to resolve currency"
+    );
+    return { canPurchase: false, reason: "no_stripe_customer" };
+  }
+  const currency = currencyResult.value;
 
   const billingCycle = getBillingCycle(subscription.startDate);
   if (!billingCycle) {
     return {
       canPurchase: true,
       remainingCycleCredits: MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
+      currency,
     };
   }
 
@@ -140,6 +178,7 @@ export async function getAwuPurchaseInfo(
       0,
       MAX_AWU_PURCHASE_CREDITS_PER_CYCLE - alreadyPurchasedThisCycleCredits
     ),
+    currency,
   };
 }
 
@@ -152,14 +191,14 @@ export async function purchaseAwuCredits(
     return new Err({ code: eligibility.error.code });
   }
 
-  const { metronomeCustomerId, stripeCustomerId, stripe } = eligibility.value;
+  const { stripeCustomerId, stripe } = eligibility.value;
   const workspace = auth.getNonNullableWorkspace();
   const subscription = auth.subscription()!;
 
   if (amountCredits < MIN_AWU_PURCHASE_CREDITS) {
     return new Err({
       code: "invalid_amount",
-      message: `Minimum purchase is ${MIN_AWU_PURCHASE_CREDITS.toLocaleString()} credits ($${MIN_AWU_PURCHASE_CREDITS / AWU_CREDITS_PER_DOLLAR})`,
+      message: `Minimum purchase is ${MIN_AWU_PURCHASE_CREDITS.toLocaleString()} credits.`,
     });
   }
 
@@ -191,10 +230,7 @@ export async function purchaseAwuCredits(
     });
   }
 
-  const currencyResult = await resolveCurrencyForExistingMetronomeCustomer({
-    metronomeCustomerId,
-    stripeSubscriptionId: null,
-  });
+  const currencyResult = await resolveAwuPurchaseCurrency(workspace.sId);
   if (currencyResult.isErr()) {
     logger.error(
       { workspaceId: workspace.sId, error: currencyResult.error.message },
