@@ -63,16 +63,10 @@ function renderEnabledSkillMessagesForAction(
   action: AgentMCPActionWithOutputType,
   {
     enabledSkillById,
-    renderSkillsAsUserMessages,
   }: {
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
-    renderSkillsAsUserMessages: boolean;
   }
 ): UserMessageTypeModel[] {
-  if (!renderSkillsAsUserMessages) {
-    return [];
-  }
-
   const enabledSkillMessages: UserMessageTypeModel[] = [];
 
   for (const outputBlock of action.output ?? []) {
@@ -204,7 +198,6 @@ export async function getSteps(
     conversationId,
     onMissingAction,
     enabledSkillById,
-    renderSkillsAsUserMessages = false,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
@@ -212,7 +205,6 @@ export async function getSteps(
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
-    renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
@@ -240,7 +232,6 @@ export async function getSteps(
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
-        renderSkillsAsUserMessages,
       }),
     }),
     { concurrency: RENDER_ACTIONS_CONCURRENCY }

@@ -390,7 +390,6 @@ export async function runModel(
     systemSkills,
     enabledSkills,
     equippedSkills,
-    renderSkillsAsUserMessages: true,
     memoriesContext,
     toolsetsContext,
     userContext,
@@ -399,9 +398,9 @@ export async function runModel(
     isNewFileExplorer,
     hasSandboxTools,
   });
-  const leadingMessages = [
-    ...removeNulls([renderEquippedSkillsUserMessage(equippedSkills)]),
-  ];
+  const leadingMessages = removeNulls([
+    renderEquippedSkillsUserMessage(equippedSkills),
+  ]);
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
@@ -433,7 +432,6 @@ export async function runModel(
           agentConfiguration,
           leadingMessages,
           enabledSkills,
-          renderSkillsAsUserMessages: true,
         })
       )
   );

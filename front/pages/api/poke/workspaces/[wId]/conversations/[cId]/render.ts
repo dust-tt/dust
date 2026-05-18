@@ -274,7 +274,6 @@ async function handler(
         enabledSkills,
         systemSkills,
         equippedSkills,
-        renderSkillsAsUserMessages: true,
         projectContext,
         isNewFileExplorer,
       });
@@ -317,7 +316,6 @@ async function handler(
         agentConfiguration,
         leadingMessages,
         enabledSkills,
-        renderSkillsAsUserMessages: true,
       });
 
       if (convoRes.isErr()) {

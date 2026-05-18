@@ -338,7 +338,6 @@ export async function sendBatchCallToLlm(
       leadingMessages,
       enabledSkills: enabledSkills ?? [],
       prompt: promptText,
-      renderSkillsAsUserMessages: true,
       tools,
       allowedTokenCount:
         modelConfig.contextSize - modelConfig.generationTokensCount,

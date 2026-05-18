@@ -144,7 +144,6 @@ export async function renderAllMessages(
     onMissingAction,
     agentConfiguration,
     enabledSkills,
-    renderSkillsAsUserMessages = false,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -153,7 +152,6 @@ export async function renderAllMessages(
     onMissingAction: "inject-placeholder" | "skip";
     agentConfiguration?: AgentConfigurationType;
     enabledSkills: EnabledSkill[];
-    renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
@@ -193,7 +191,6 @@ export async function renderAllMessages(
             conversationId: conversation.sId,
             onMissingAction,
             enabledSkillById,
-            renderSkillsAsUserMessages,
           });
 
           const agentMessages = renderAgentSteps(

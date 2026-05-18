@@ -196,7 +196,6 @@ makeScript(
       enabledSkills,
       systemSkills,
       equippedSkills,
-      renderSkillsAsUserMessages: true,
       projectContext,
       isNewFileExplorer,
     });
@@ -229,7 +228,6 @@ makeScript(
       agentConfiguration,
       leadingMessages,
       enabledSkills,
-      renderSkillsAsUserMessages: true,
     });
 
     if (convoRes.isErr()) {
