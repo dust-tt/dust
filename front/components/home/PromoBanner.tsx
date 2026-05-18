@@ -58,18 +58,10 @@ export function PromoBanner() {
     return null;
   }
 
-  const { image, link, title, time, host, linkLabel, id } = CURRENT_PROMO;
+  const { link, title, time, host, linkLabel, id } = CURRENT_PROMO;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-40 max-w-[280px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:right-auto sm:max-w-[320px]">
-      <a
-        href={link}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="hidden sm:block"
-      >
-        <img src={image} alt={title} className="w-full cursor-pointer" />
-      </a>
+    <div className="fixed bottom-4 left-4 z-40 max-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:max-w-[210px]">
       <Button
         variant="outline"
         icon={XMarkIcon}
@@ -84,13 +76,13 @@ export function PromoBanner() {
         href={link}
         target="_blank"
         rel="noopener noreferrer"
-        className="block px-3 py-2.5 pr-8 sm:px-4 sm:py-3 sm:pr-4"
+        className="block px-2.5 py-2 pr-7 sm:px-3 sm:py-2.5 sm:pr-3"
       >
-        <div className="mb-1.5 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700">
+        <div className="mb-1 inline-block rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-blue-700">
           Webinar
         </div>
-        <div className="text-sm font-semibold text-slate-900">{title}</div>
-        <div className="mt-1.5 space-y-1 text-xs text-slate-600">
+        <div className="text-xs font-semibold text-slate-900">{title}</div>
+        <div className="mt-1 space-y-0.5 text-[11px] text-slate-600">
           <div className="flex items-center gap-1.5">
             <ClockIcon className="h-3 w-3 shrink-0 text-slate-400" />
             <span>{time}</span>
@@ -102,7 +94,7 @@ export function PromoBanner() {
             </div>
           )}
         </div>
-        <div className="mt-2 text-xs font-medium text-blue-600 hover:underline">
+        <div className="mt-1.5 text-[11px] font-medium text-blue-600 hover:underline">
           {linkLabel} →
         </div>
       </a>
