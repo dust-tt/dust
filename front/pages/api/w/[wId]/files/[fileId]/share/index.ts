@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -102,6 +107,23 @@ async function handler(
       const { shareScope } = parseResult.data;
 
       await file.setShareScope(auth, shareScope);
+
+      void emitAuditLogEvent({
+        auth,
+        action: "frame.share_scope_updated",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("frame", {
+            sId: file.sId,
+            name: file.fileName ?? file.sId,
+          }),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          frame_name: file.fileName ?? file.sId,
+          share_scope: shareScope,
+        },
+      });
 
       const shareInfo = await file.getShareInfo();
       if (!shareInfo) {

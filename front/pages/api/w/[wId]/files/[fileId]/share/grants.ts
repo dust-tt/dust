@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -170,6 +175,23 @@ async function handler(
         emails: parseResult.data.emails,
       });
 
+      void emitAuditLogEvent({
+        auth,
+        action: "frame.email_grant_added",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("frame", {
+            sId: file.sId,
+            name: file.fileName ?? file.sId,
+          }),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          frame_name: file.fileName ?? file.sId,
+          emails: parseResult.data.emails.join(","),
+        },
+      });
+
       return res.status(200).json({ grants });
     }
 
@@ -198,6 +220,23 @@ async function handler(
           },
         });
       }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "frame.email_grant_revoked",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("frame", {
+            sId: file.sId,
+            name: file.fileName ?? file.sId,
+          }),
+        ],
+        context: getAuditLogContext(auth, req),
+        metadata: {
+          frame_name: file.fileName ?? file.sId,
+          grant_id: String(parseResult.data.grantId),
+        },
+      });
 
       res.status(204).end();
       return;

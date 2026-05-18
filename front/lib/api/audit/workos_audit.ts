@@ -116,6 +116,10 @@ type AuditAction =
   // Audit Logs.
   | "audit_log.viewed"
   | "audit_log.export_configured"
+  // Frames.
+  | "frame.share_scope_updated"
+  | "frame.email_grant_added"
+  | "frame.email_grant_revoked"
   // Coupons.
   | "coupon.redeemed"
   | "coupon.revoked";
@@ -333,7 +337,8 @@ type AuditTargetType =
   | "group"
   | "credential"
   | "mcp_connection"
-  | "sandbox_env_var";
+  | "sandbox_env_var"
+  | "frame";
 
 /**
  * Resource shape required for each audit target type.
