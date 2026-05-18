@@ -1,6 +1,8 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type { SeatTypeInfo } from "@app/lib/api/credits/seat_plan";
 import { useUpdateMemberSeatType } from "@app/lib/swr/memberships";
+import type { SupportedCurrency } from "@app/types/currency";
+import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -24,8 +26,10 @@ type VisibleSeatType = keyof typeof SEAT_DISPLAY_CONFIG;
 
 const VISIBLE_SEAT_ORDER: VisibleSeatType[] = ["pro", "max"];
 
-function formatPriceCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2).replace(/\.00$/, "")}/mo`;
+function formatPriceCents(cents: number, currency: SupportedCurrency): string {
+  const symbol = CURRENCY_SYMBOLS[currency];
+  const amount = (cents / 100).toFixed(2).replace(/\.00$/, "");
+  return currency === "usd" ? `${symbol}${amount}/mo` : `${amount}${symbol}/mo`;
 }
 
 function formatAwuCredits(awuCredits: number): string {
@@ -151,7 +155,7 @@ export function ChangeSeatModal({
     }
     return (
       <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-        {formatPriceCents(info.priceCents)}
+        {formatPriceCents(info.priceCents, info.currency)}
       </span>
     );
   }

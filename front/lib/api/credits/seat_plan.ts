@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { amountCents } from "@app/lib/metronome/amounts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
   MAX_SEAT_CREDIT_NAME,
@@ -6,9 +7,11 @@ import {
   PRO_SEAT_CREDIT_NAME,
   PRO_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/constants";
+import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -16,6 +19,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 export interface SeatTypeInfo {
   awuCredits: number;
   priceCents: number;
+  currency: SupportedCurrency;
 }
 
 type PriceKey = "pro" | "max";
@@ -50,6 +54,26 @@ export async function handleSeatPlanRequest(
       },
     });
   }
+
+  const creditTypeResult = await getCreditTypeFromContract(contract);
+  if (creditTypeResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        rateCardId: contract.rate_card_id,
+        err: creditTypeResult.error,
+      },
+      "[Metronome] Failed to resolve contract currency for seat plan"
+    );
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to resolve currency for seat plan.",
+      },
+    });
+  }
+  const { currency } = creditTypeResult.value;
 
   // Extract per-seat AWU credit amounts from recurring credits on the contract.
   const awuCreditsMap = new Map<PriceKey, number>();
@@ -87,8 +111,10 @@ export async function handleSeatPlanRequest(
         if (!key) {
           continue;
         }
+        // Metronome quotes prices in its per-currency native unit (USD in
+        // cents, others in whole units); normalize to actual cents here.
         // TODO (https://github.com/dust-tt/tasks/issues/8072): Add annual pricing
-        monthlyPriceCentsMap.set(key, entry.rate.price);
+        monthlyPriceCentsMap.set(key, amountCents(entry.rate.price, currency));
       }
 
       nextPage = rateSchedule.next_page;
@@ -119,6 +145,7 @@ export async function handleSeatPlanRequest(
     return {
       awuCredits: awuCreditsMap.get(key) ?? 0,
       priceCents: monthlyPriceCents,
+      currency,
     };
   };
 
