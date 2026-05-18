@@ -11,7 +11,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -101,11 +101,6 @@ makeScript(
       conversation,
       attachments,
     });
-
-    const renderSkillsAsUserMessages = await hasFeatureFlag(
-      auth,
-      "skills_as_user_messages"
-    );
 
     const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, {
@@ -201,14 +196,14 @@ makeScript(
       enabledSkills,
       systemSkills,
       equippedSkills,
-      renderSkillsAsUserMessages,
+      renderSkillsAsUserMessages: true,
       projectContext,
       isNewFileExplorer,
     });
     const prompt = systemPromptToText(promptSections);
-    const leadingMessages = renderSkillsAsUserMessages
-      ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
-      : [];
+    const leadingMessages = removeNulls([
+      renderEquippedSkillsUserMessage(equippedSkills),
+    ]);
 
     const specifications = availableActions.map((t) =>
       buildToolSpecification(t)
@@ -234,7 +229,7 @@ makeScript(
       agentConfiguration,
       leadingMessages,
       enabledSkills,
-      renderSkillsAsUserMessages,
+      renderSkillsAsUserMessages: true,
     });
 
     if (convoRes.isErr()) {
