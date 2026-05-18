@@ -1,4 +1,4 @@
-import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
+import { PublicWebsiteLogo } from "@app/components/home/PublicWebsiteLogo";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
