@@ -172,7 +172,7 @@ export function useBlockedSkillSpaceRemovalConfirm({
               <Chip
                 key={`knowledge-${knowledge.nodeId}`}
                 size="xs"
-                color="info"
+                color="primary"
                 icon={DocumentIcon}
                 label={knowledge.title}
               />
@@ -181,7 +181,7 @@ export function useBlockedSkillSpaceRemovalConfirm({
               <Chip
                 key={`action-${action.id}`}
                 size="xs"
-                color="warning"
+                color="primary"
                 icon={ToolsIcon}
                 label={getActionDisplayName(action, mcpServerViews)}
               />
