@@ -174,7 +174,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   const p4Open = !!p4?.props.isOpen;
 
   // ── Internal geometry state ─────────────────────────────────────────────
-  const [navW, setNavW] = useState(260);
+  const [navW, setNavW] = useState(312);
   const [p2W, setP2W] = useState<number | null>(null);
   const [p3W, setP3W] = useState<number | null>(null);
 
