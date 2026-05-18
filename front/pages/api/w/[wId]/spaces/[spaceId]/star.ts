@@ -35,7 +35,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "You can only star Pods."
+        message: "You can only star Pods.",
       },
     });
   }

@@ -39,7 +39,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Pod metadata is only available for pod spaces.",
+        message: "Pod metadata is only available for Pod spaces.",
       },
     });
   }
