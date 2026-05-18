@@ -21,6 +21,7 @@ const DEV_PRODUCT_TOOL_USAGE = "e2028c42-ce77-4712-b08e-12f50d3e90f2";
 const DEV_PRODUCT_WORKSPACE_SEAT = "e1532e1d-4964-4656-b6db-070fafafc44c";
 const DEV_PRODUCT_PRO_SEAT = "db03586f-9e8d-4978-9a62-f51193182be3";
 const DEV_PRODUCT_MAX_SEAT = "51b4ea2f-c4ed-4903-aba6-486d0bf61ac0";
+const DEV_PRODUCT_FREE_SEAT = "e3302b51-66af-40ad-ac0e-544fc38ccfa9";
 const DEV_PRODUCT_MAU = "43db7690-939d-4a70-b4a4-b8ade43431f9";
 const DEV_PRODUCT_MAU_TIER_1 = "efe2988a-4f84-4857-a716-0185c28f3e92";
 const DEV_PRODUCT_MAU_TIER_2 = "a3ca48b5-8187-43ec-a692-eb45bb3f932e";
@@ -52,6 +53,7 @@ const PROD_PRODUCT_TOOL_USAGE = "079aeeba-becc-4013-ae1a-25cd56228f6e";
 const PROD_PRODUCT_WORKSPACE_SEAT = "5c2e2986-1305-4406-96a2-2296e66b5a25";
 const PROD_PRODUCT_PRO_SEAT = "19934ee2-fcf4-40a2-a57a-24f75b0c2b22";
 const PROD_PRODUCT_MAX_SEAT = "8a92cf6a-8e0b-416c-9b46-9c715eff0c89";
+const PROD_PRODUCT_FREE_SEAT = "198511a4-2b27-44b3-b1d1-9839ae6c2b23";
 const PROD_PRODUCT_MAU = "7715e34d-3ec3-475e-b0eb-3d04578a958b";
 const PROD_PRODUCT_MAU_TIER_1 = "d35bf462-98a8-4d3b-8e01-876c7bf6fc57";
 const PROD_PRODUCT_MAU_TIER_2 = "829f5d32-d2ae-4a3a-bb64-0e2630857abc";
@@ -77,8 +79,11 @@ export const PLAN_CODE_CUSTOM_FIELD_KEY = "DUST_PLAN_CODE";
 
 export const PRO_SEAT_CREDIT_NAME = "Pro Seat Credits";
 export const MAX_SEAT_CREDIT_NAME = "Max Seat Credits";
+export const FREE_SEAT_CREDIT_NAME = "Free Seat Credits";
+export const WORKSPACE_SEAT_PRODUCT_NAME = "Workspace Seat";
 export const PRO_SEAT_PRODUCT_NAME = "Pro Seat";
 export const MAX_SEAT_PRODUCT_NAME = "Max Seat";
+export const FREE_SEAT_PRODUCT_NAME = "Free Seat";
 
 // AWU (Agentic Work Units) differs per environment.
 export const DEV_CREDIT_TYPE_AWU_ID = "eb003cc7-4935-467d-a41c-c1738c1c9dc2";
@@ -135,6 +140,8 @@ export const getProductProSeatId = () =>
   devOrProd(DEV_PRODUCT_PRO_SEAT, PROD_PRODUCT_PRO_SEAT);
 export const getProductMaxSeatId = () =>
   devOrProd(DEV_PRODUCT_MAX_SEAT, PROD_PRODUCT_MAX_SEAT);
+export const getProductFreeSeatId = () =>
+  devOrProd(DEV_PRODUCT_FREE_SEAT, PROD_PRODUCT_FREE_SEAT);
 export const getProductMauId = () =>
   devOrProd(DEV_PRODUCT_MAU, PROD_PRODUCT_MAU);
 export const getProductMauCommitId = () =>
@@ -155,6 +162,10 @@ export const getProductSeatSubscriptionCreditsId = () =>
 
 export const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
 export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
+// One-shot per-seat AWU grant carried by the Free Seat subscription. Modeled
+// as a long-duration recurring credit (see metronome_setup.ts) so it behaves
+// like a lifetime grant for each free user.
+export const FREE_SEAT_LIFETIME_AWU_CREDITS = 300;
 
 // AWU commit priorities — lower number is consumed first.
 // Seat allocations are consumed before purchased top-ups.
@@ -172,8 +183,9 @@ export function getAwuAllocationForSeatType(
       return MAX_SEAT_MONTHLY_AWU_CREDITS;
     case "pro":
       return PRO_SEAT_MONTHLY_AWU_CREDITS;
-    case "workspace":
     case "free":
+      return FREE_SEAT_LIFETIME_AWU_CREDITS;
+    case "workspace":
       return 0;
     default:
       return assertNever(seatType);
@@ -186,6 +198,7 @@ export const getSeatProductIds = (): Set<string> =>
     getProductWorkspaceSeatId(),
     getProductProSeatId(),
     getProductMaxSeatId(),
+    getProductFreeSeatId(),
   ]);
 
 // tier product accessors — ordered array for indexed access.
@@ -202,14 +215,11 @@ export const getProductMauTierIds = (): string[] => [
 
 /**
  * Map a membership seat type to the Metronome product that bills it.
- * Returns `undefined` for seat types that are not billed (e.g. "free").
  */
-export function getProductIdForSeatType(
-  seatType: MembershipSeatType
-): string | undefined {
+export function getProductIdForSeatType(seatType: MembershipSeatType): string {
   switch (seatType) {
     case "free":
-      return undefined;
+      return getProductFreeSeatId();
     case "workspace":
       return getProductWorkspaceSeatId();
     case "pro":
@@ -230,14 +240,17 @@ export function getSeatTypeForProductId(
   product: Subscription.SubscriptionRate.Product
 ): MembershipSeatType | undefined {
   // Compare on product name as it's more stable than the id, changing across products redeplpyments.
-  if (product.name === "Workspace Seat") {
+  if (product.name === WORKSPACE_SEAT_PRODUCT_NAME) {
     return "workspace";
   }
-  if (product.name === "Pro Seat") {
+  if (product.name === PRO_SEAT_PRODUCT_NAME) {
     return "pro";
   }
-  if (product.name === "Max Seat") {
+  if (product.name === MAX_SEAT_PRODUCT_NAME) {
     return "max";
+  }
+  if (product.name === FREE_SEAT_PRODUCT_NAME) {
+    return "free";
   }
   return undefined;
 }

@@ -19,6 +19,9 @@ import {
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
   DEV_CREDIT_TYPE_PROG_USD_ID,
+  FREE_SEAT_CREDIT_NAME,
+  FREE_SEAT_LIFETIME_AWU_CREDITS,
+  FREE_SEAT_PRODUCT_NAME,
   MAX_SEAT_CREDIT_NAME,
   MAX_SEAT_PRODUCT_NAME,
   PLAN_CODE_CUSTOM_FIELD_KEY,
@@ -26,6 +29,7 @@ import {
   PRO_SEAT_PRODUCT_NAME,
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
+  WORKSPACE_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/constants";
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import {
@@ -344,7 +348,7 @@ const PRODUCTS: ProductDef[] = [
   // and new (MONTHLY) per-seat plans. Seats synced from membership create/revoke
   // hooks; price/frequency differs between rate cards.
   {
-    name: "Workspace Seat",
+    name: WORKSPACE_SEAT_PRODUCT_NAME,
     type: "SUBSCRIPTION",
   },
   // Pro Seat / Max Seat — SUBSCRIPTION products for the new Business / Enterprise
@@ -356,6 +360,13 @@ const PRODUCTS: ProductDef[] = [
   },
   {
     name: MAX_SEAT_PRODUCT_NAME,
+    type: "SUBSCRIPTION",
+  },
+  // Free Seat — SUBSCRIPTION product priced at $0/seat. Carries a one-shot
+  // lifetime AWU credit (300 AWU per seat) so free users have a small drawdown
+  // pool without being billed.
+  {
+    name: FREE_SEAT_PRODUCT_NAME,
     type: "SUBSCRIPTION",
   },
   // MAU product — single subscription for simple (non-tiered) enterprise contracts.
@@ -526,7 +537,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Workspace Seat",
+          product_name: WORKSPACE_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -557,7 +568,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Workspace Seat",
+          product_name: WORKSPACE_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -588,7 +599,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Workspace Seat",
+          product_name: WORKSPACE_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -663,7 +674,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Workspace Seat",
+          product_name: WORKSPACE_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -695,7 +706,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Workspace Seat",
+          product_name: WORKSPACE_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -727,7 +738,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Workspace Seat",
+          product_name: WORKSPACE_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -800,7 +811,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Workspace Seat",
+          product_name: WORKSPACE_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -830,7 +841,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Workspace Seat",
+          product_name: WORKSPACE_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -875,6 +886,14 @@ function getRateCards(): RateCardDef[] {
           price: 14900,
           billing_frequency: "MONTHLY",
         },
+        {
+          product_name: FREE_SEAT_PRODUCT_NAME,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          price: 0,
+          billing_frequency: "MONTHLY",
+        },
         ...buildAwuAiUsageRates(),
         ...buildAwuToolUsageRates(),
       ],
@@ -909,6 +928,15 @@ function getRateCards(): RateCardDef[] {
           entitled: true,
           rate_type: "FLAT",
           price: 149,
+          billing_frequency: "MONTHLY",
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
+          product_name: FREE_SEAT_PRODUCT_NAME,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          price: 0,
           billing_frequency: "MONTHLY",
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
@@ -979,7 +1007,7 @@ function getFreeExcessRecurringCredits(): RecurringCreditDef {
 // Seat subscription definition shared by all legacy packages.
 const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
   temporary_id: "legacy-seat-sub",
-  product_name: "Workspace Seat",
+  product_name: WORKSPACE_SEAT_PRODUCT_NAME,
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
@@ -993,7 +1021,7 @@ const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
 // Seat subscription definition shared by all legacy packages.
 const LEGACY_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
   temporary_id: "legacy-seat-annual-sub",
-  product_name: "Workspace Seat",
+  product_name: WORKSPACE_SEAT_PRODUCT_NAME,
   billing_frequency: "ANNUAL",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
@@ -1009,7 +1037,7 @@ const LEGACY_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
 // Workspace Seat product so legacy and new plans share a single seat product.
 const WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION: PackageSubscription = {
   temporary_id: "workspace-seat-monthly-sub",
-  product_name: "Workspace Seat",
+  product_name: WORKSPACE_SEAT_PRODUCT_NAME,
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
@@ -1048,6 +1076,25 @@ const MAX_SEAT_SUBSCRIPTION: PackageSubscription = {
   quantity_management_mode: "SEAT_BASED",
   seat_config: { seat_group_key: "user_id" },
   proration: {
+    is_prorated: true,
+    invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
+  },
+};
+
+// Free Seat SEAT_BASED subscription — priced at $0, used to track free users
+// in Metronome so each free seat carries its own lifetime AWU credit pool.
+const FREE_SEAT_SUBSCRIPTION_TEMPORARY_ID = "free-seat-sub";
+
+const FREE_SEAT_SUBSCRIPTION: PackageSubscription = {
+  temporary_id: FREE_SEAT_SUBSCRIPTION_TEMPORARY_ID,
+  product_name: FREE_SEAT_PRODUCT_NAME,
+  billing_frequency: "MONTHLY",
+  collection_schedule: "ADVANCE",
+  quantity_management_mode: "SEAT_BASED",
+  seat_config: { seat_group_key: "user_id" },
+  proration: {
+    // Free seats cost $0 so proration is moot, but keep is_prorated: true to
+    // match the other SEAT_BASED subscriptions.
     is_prorated: true,
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
   },
@@ -1095,6 +1142,34 @@ function getPerSeatIndividualAwuCredits({
 // Per-seat credit amounts (AWU/month) per the new pricing design.
 const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
 const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
+
+// Per-seat INDIVIDUAL AWU credit attached to the Free Seat SEAT_BASED
+// subscription. The credit recurs annually with a very long `commit_duration`
+// so each commit effectively never expires within the contract's lifetime —
+// the closest expression of a "lifetime" per-seat grant in Metronome's
+// recurring-credit model. Not prorated on seat increase: a new free seat
+// always gets the full 300 AWU grant regardless of when in the period it was
+// added.
+function getFreeSeatLifetimeAwuCredits(): RecurringCreditDef {
+  return {
+    product_name: "Seat Individual Credits",
+    access_amount: {
+      credit_type_id: getCreditTypeAwuId(),
+      unit_price: FREE_SEAT_LIFETIME_AWU_CREDITS,
+    },
+    commit_duration: { value: 1200, unit: "PERIODS" },
+    priority: 200,
+    starting_at_offset: { unit: "DAYS", value: 0 },
+    applicable_product_tags: [USAGE_TAG],
+    recurrence_frequency: "ANNUAL",
+    name: FREE_SEAT_CREDIT_NAME,
+    subscription_config: {
+      subscription_temporary_id: FREE_SEAT_SUBSCRIPTION_TEMPORARY_ID,
+      allocation: "INDIVIDUAL",
+      apply_seat_increase_config: { is_prorated: false },
+    },
+  };
+}
 
 // Billing cycle config shared by all packages — anchored to contract start date.
 const BILLING_CYCLE_CONFIG = {
@@ -1233,7 +1308,11 @@ function getPackages(): PackageDef[] {
       name: "Business USD",
       aliases: [{ name: "business-usd" }],
       rate_card_name: "Business USD",
-      subscriptions: [PRO_SEAT_SUBSCRIPTION, MAX_SEAT_SUBSCRIPTION],
+      subscriptions: [
+        PRO_SEAT_SUBSCRIPTION,
+        MAX_SEAT_SUBSCRIPTION,
+        FREE_SEAT_SUBSCRIPTION,
+      ],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
         getPerSeatIndividualAwuCredits({
@@ -1246,6 +1325,7 @@ function getPackages(): PackageDef[] {
           quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
           name: MAX_SEAT_CREDIT_NAME,
         }),
+        getFreeSeatLifetimeAwuCredits(),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1253,7 +1333,11 @@ function getPackages(): PackageDef[] {
       name: "Business EUR",
       aliases: [{ name: "business-eur" }],
       rate_card_name: "Business EUR",
-      subscriptions: [PRO_SEAT_SUBSCRIPTION, MAX_SEAT_SUBSCRIPTION],
+      subscriptions: [
+        PRO_SEAT_SUBSCRIPTION,
+        MAX_SEAT_SUBSCRIPTION,
+        FREE_SEAT_SUBSCRIPTION,
+      ],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
         getPerSeatIndividualAwuCredits({
@@ -1266,6 +1350,7 @@ function getPackages(): PackageDef[] {
           quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
           name: MAX_SEAT_CREDIT_NAME,
         }),
+        getFreeSeatLifetimeAwuCredits(),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
