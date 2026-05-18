@@ -291,9 +291,28 @@ Signs that logic belongs in the business layer rather than the handler:
 Trivial transformations directly tied to the HTTP shape (assembling a response body from a
 single resource fetch, flattening a serialized result) may stay in the handler.
 
+**Extraction must not drag HTTP concerns into `lib/api/*`.** Per [BACK18], the business layer
+returns domain results — `Result<T, DomainError>`, plain values, or thrown domain errors. It
+must not return `APIErrorWithStatusCode`, hard-code HTTP status numbers, call `apiError(...)`,
+throw HTTP-shaped errors, or otherwise encode response semantics. The handler is the only
+place that maps domain outcomes to status codes and error envelopes.
+
+If a handler is long but the length comes from HTTP error mapping interleaved with the work
+(many `if (...) return apiError(req, res, { status_code: 4xx, ... })` branches whose conditions
+are inseparable from each step), **leave it in the handler**. Extracting it would either leak
+HTTP into the business layer or invent a synthetic domain enum just to deduplicate — both
+worse than a long-but-honest handler. A 100-line handler that reads top-to-bottom is fine. A
+50-line `lib/api/*` function that returns `Result<T, { status_code: number; ... }>` is not.
+
+The right extractions are ones where the domain operation has a meaningful identity on its
+own (would be called from a Temporal activity, a script, or a second handler). The wrong ones
+are "reduce handler line count" extractions that end up modeling HTTP shapes in the lib.
+
 Reviewer: If you detect a handler with non-trivial business logic, request the author to extract
 it into a `lib/api/*` function (creating one if needed). The handler should ideally read as:
-authorize → validate → call business function → respond.
+authorize → validate → call business function → respond. But if the extraction would force
+HTTP status codes or `APIErrorWithStatusCode` into the lib, push back and keep the logic in
+the handler instead.
 
 ### [BACK17] Keep migrated Next and Hono handlers in sync during migration
 
