@@ -235,7 +235,7 @@ export function SkillBuilderFilesSection() {
         visual={FileIcon}
         viewMode={viewMode}
         title={field.fileName}
-        titleClassName={isAdded ? "text-success dark:text-success-night" : ""}
+        isAdded={isAdded}
         subtitle={getSingularFileCategoryLabelForContentType(field.contentType)}
         onOpen={canPreviewFiles ? () => openPreviewDialog(field) : undefined}
         onDownload={() => downloadFile(field)}

@@ -43,11 +43,11 @@ interface FileExplorerItemMenuAction {
 }
 
 export type FileExplorerItemProps = {
+  isAdded?: boolean;
   onDownload?: () => Promise<void>;
   onOpen?: () => void;
   onRemove?: () => Promise<void>;
   subtitle: string;
-  titleClassName?: string;
   title: string;
   viewMode: ViewMode;
 } & (
@@ -85,15 +85,8 @@ export function FileExplorerViewToggle({
 
 // TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
 export function FileExplorerItem(props: FileExplorerItemProps) {
-  const {
-    onDownload,
-    onOpen,
-    onRemove,
-    subtitle,
-    title,
-    titleClassName,
-    viewMode,
-  } = props;
+  const { onDownload, onOpen, onRemove, isAdded, subtitle, title, viewMode } =
+    props;
 
   const thumbnailContent =
     props.kind === "icon" ? (
@@ -201,7 +194,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
             className={cn(
               "text-sm truncate text-foreground dark:text-foreground-night leading-5",
               "justify-start",
-              titleClassName
+              isAdded && "text-success dark:text-success-night"
             )}
           >
             {title}
