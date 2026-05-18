@@ -196,7 +196,13 @@ const NavigationListItem = React.forwardRef<
               </span>
             )}
             {suffix && (
-              <div className="s-flex s-grow s-flex-shrink-0 s-items-center">
+              <div
+                className={cn(
+                  "s-flex s-grow s-flex-shrink-0 s-items-center",
+                  moreMenu &&
+                    "group-focus-within/menu-item:s-hidden group-hover/menu-item:s-hidden"
+                )}
+              >
                 {suffix}
               </div>
             )}
