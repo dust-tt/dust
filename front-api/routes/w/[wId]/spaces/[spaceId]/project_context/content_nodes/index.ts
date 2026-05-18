@@ -1,14 +1,18 @@
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { removeContentNodeFromProject } from "@app/lib/api/projects/context";
+import { removeContentNodesFromProject } from "@app/lib/api/projects/context";
 
 import { spaceResource } from "@front-api/middleware/space_resource";
 import { validate } from "@front-api/middleware/validator";
 
-const DeleteContentNodeBodySchema = z.object({
+const ContentNodeItemSchema = z.object({
   nodeId: z.string().min(1, "nodeId is required"),
   nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
+});
+
+const DeleteContentNodeBodySchema = z.object({
+  items: z.array(ContentNodeItemSchema),
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_context/content_nodes.
@@ -24,7 +28,7 @@ app.delete(
   async (c) => {
     const auth = c.get("auth");
     const space = c.get("space");
-    const { nodeId, nodeDataSourceViewId } = c.req.valid("json");
+    const { items } = c.req.valid("json");
 
     if (!space.isProject()) {
       return c.json(
@@ -50,10 +54,9 @@ app.delete(
       );
     }
 
-    const r = await removeContentNodeFromProject(auth, {
+    const r = await removeContentNodesFromProject(auth, {
       space,
-      nodeId,
-      nodeDataSourceViewId,
+      nodes: items,
     });
     if (r.isErr()) {
       return c.json(
