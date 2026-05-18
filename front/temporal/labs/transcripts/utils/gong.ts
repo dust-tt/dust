@@ -293,12 +293,14 @@ export async function retrieveGongTranscriptContent(
   });
 
   if (!call.ok) {
+    const errorText = await call.text();
+
     localLogger.error(
       {
         fileId,
-        error: call.statusText,
         status: call.status,
-        body: await call.text(),
+        statusText: call.statusText,
+        errorText,
       },
       "[retrieveGongTranscripts] Error fetching call from Gong. Skipping."
     );
