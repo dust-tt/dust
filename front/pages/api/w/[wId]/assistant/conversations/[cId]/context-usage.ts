@@ -89,12 +89,25 @@ async function handler(
           return res.status(200).json(PENDING_CONTEXT_USAGE_RESPONSE);
         }
 
-        const usages = await lastAgentRun.run.listRunUsages(auth);
+        let usages = await lastAgentRun.run.listRunUsages(auth);
+
+        if (usages.length === 0) {
+          // The latest run has no usage rows yet (still processing). Fall back to the previous
+          // completed run so the indicator stays stable instead of dropping to 0%.
+          const previousAgentRun = await conversation.getLatestAgentMessageRun(
+            auth,
+            { maxRank: lastAgentRun.rank - 1 }
+          );
+          if (previousAgentRun) {
+            usages = await previousAgentRun.run.listRunUsages(auth);
+          }
+        }
+
         if (usages.length === 0) {
           return res.status(200).json(PENDING_CONTEXT_USAGE_RESPONSE);
         }
 
-        // Take the max promptTokens across usages of the latest run — this represents the peak
+        // Take the max promptTokens across usages of the run — this represents the peak
         // context usage as seen by the model.
         const maxUsage = usages.reduce((max, u) =>
           u.promptTokens > max.promptTokens ? u : max
