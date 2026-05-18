@@ -8,6 +8,7 @@ import logger from "@app/logger/logger";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 
 export type WorkspaceCreditContext = {
@@ -28,32 +29,36 @@ export type WorkspaceCreditEvent =
    */
   | { type: "credits_added" };
 
-type SideEffect = (
-  ctx: WorkspaceCreditContext,
-  transaction: Transaction | undefined
-) => void;
-
 type WorkspaceCreditTransition = {
   from: WorkspacePoolCreditState | WorkspacePoolCreditState[];
   event: WorkspaceCreditEvent["type"];
   guard?: (ctx: WorkspaceCreditContext) => boolean;
   to: WorkspacePoolCreditState;
-  onTransition: SideEffect;
 };
 
-const noOp: SideEffect = () => {};
+function syncWorkspacePoolCacheForState(
+  state: WorkspacePoolCreditState,
+  ctx: WorkspaceCreditContext,
+  transaction: Transaction | undefined
+): void {
+  switch (state) {
+    case "active":
+    case "overage":
+      invalidateCacheAfterCommit(transaction, () =>
+        clearWorkspacePoolDepleted(ctx.workspaceId)
+      );
+      return;
 
-const setDepleted: SideEffect = (ctx, tx) => {
-  invalidateCacheAfterCommit(tx, () =>
-    setWorkspacePoolDepleted(ctx.workspaceId)
-  );
-};
+    case "depleted":
+      invalidateCacheAfterCommit(transaction, () =>
+        setWorkspacePoolDepleted(ctx.workspaceId)
+      );
+      return;
 
-const clearDepleted: SideEffect = (ctx, tx) => {
-  invalidateCacheAfterCommit(tx, () =>
-    clearWorkspacePoolDepleted(ctx.workspaceId)
-  );
-};
+    default:
+      assertNever(state);
+  }
+}
 
 const TRANSITIONS: WorkspaceCreditTransition[] = [
   // active -> ...
@@ -62,22 +67,30 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
     event: "pool_exhausted",
     guard: (ctx) => ctx.paygEnabled,
     to: "overage",
-    onTransition: noOp,
   },
   {
     from: "active",
     event: "pool_exhausted",
     guard: (ctx) => !ctx.paygEnabled,
     to: "depleted",
-    onTransition: setDepleted,
+  },
+  {
+    from: "active",
+    event: "credits_added",
+    to: "active",
   },
 
   // overage -> ...
   {
     from: "overage",
+    event: "pool_exhausted",
+    guard: (ctx) => ctx.paygEnabled,
+    to: "overage",
+  },
+  {
+    from: "overage",
     event: "payg_cap_reached",
     to: "depleted",
-    onTransition: setDepleted,
   },
   // A new commit segment starting (admin top-up or billing-cycle renewal of
   // the recurring pool commit) while in PAYG mode brings the pool back online
@@ -86,15 +99,24 @@ const TRANSITIONS: WorkspaceCreditTransition[] = [
     from: "overage",
     event: "credits_added",
     to: "active",
-    onTransition: noOp,
   },
 
   // depleted -> ...
   {
     from: "depleted",
+    event: "pool_exhausted",
+    guard: (ctx) => !ctx.paygEnabled,
+    to: "depleted",
+  },
+  {
+    from: "depleted",
+    event: "payg_cap_reached",
+    to: "depleted",
+  },
+  {
+    from: "depleted",
     event: "credits_added",
     to: "active",
-    onTransition: clearDepleted,
   },
 ];
 
@@ -136,14 +158,17 @@ export async function transitionWorkspaceCreditState(
     );
   }
 
-  await workspace.updatePoolCreditState(match.to, transaction);
-  match.onTransition(ctx, transaction);
+  if (currentState !== match.to) {
+    await workspace.updatePoolCreditState(match.to, transaction);
+  }
+  syncWorkspacePoolCacheForState(match.to, ctx, transaction);
   logger.info(
     {
       workspaceId: ctx.workspaceId,
       fromState: currentState,
       toState: match.to,
       eventType: event.type,
+      wasStateChanged: currentState !== match.to,
     },
     "[WorkspaceCreditStateMachine] Transition applied"
   );

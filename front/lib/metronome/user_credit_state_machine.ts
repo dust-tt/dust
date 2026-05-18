@@ -8,6 +8,7 @@ import logger from "@app/logger/logger";
 import type { UserCreditState } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 
 export type UserCreditContext = {
@@ -30,48 +31,65 @@ export type UserCreditEvent =
    */
   | { type: "admin_raised_user_cap" };
 
-type SideEffect = (
-  ctx: UserCreditContext,
-  transaction: Transaction | undefined
-) => void;
-
 type UserCreditTransition = {
   from: UserCreditState;
   event: UserCreditEvent["type"];
   to: UserCreditState;
-  onTransition: SideEffect;
 };
 
-const setBlocked: SideEffect = (ctx, tx) => {
-  invalidateCacheAfterCommit(tx, () =>
-    setUserCapBlocked(ctx.workspaceId, ctx.userId)
-  );
-};
+function syncUserCapCacheForState(
+  state: UserCreditState,
+  ctx: UserCreditContext,
+  transaction: Transaction | undefined
+): void {
+  switch (state) {
+    case "normal":
+      invalidateCacheAfterCommit(transaction, () =>
+        clearUserCapBlocked(ctx.workspaceId, ctx.userId)
+      );
+      return;
 
-const clearBlocked: SideEffect = (ctx, tx) => {
-  invalidateCacheAfterCommit(tx, () =>
-    clearUserCapBlocked(ctx.workspaceId, ctx.userId)
-  );
-};
+    case "capped":
+      invalidateCacheAfterCommit(transaction, () =>
+        setUserCapBlocked(ctx.workspaceId, ctx.userId)
+      );
+      return;
+
+    default:
+      assertNever(state);
+  }
+}
 
 const TRANSITIONS: UserCreditTransition[] = [
   {
     from: "normal",
     event: "per_user_cap_reached",
     to: "capped",
-    onTransition: setBlocked,
+  },
+  {
+    from: "capped",
+    event: "per_user_cap_reached",
+    to: "capped",
   },
   {
     from: "capped",
     event: "admin_raised_user_cap",
     to: "normal",
-    onTransition: clearBlocked,
+  },
+  {
+    from: "normal",
+    event: "admin_raised_user_cap",
+    to: "normal",
   },
   {
     from: "capped",
     event: "per_user_cap_resolved",
     to: "normal",
-    onTransition: clearBlocked,
+  },
+  {
+    from: "normal",
+    event: "per_user_cap_resolved",
+    to: "normal",
   },
 ];
 
@@ -108,8 +126,10 @@ export async function transitionUserCreditState(
     );
   }
 
-  await membership.updateCreditState(match.to, transaction);
-  match.onTransition(ctx, transaction);
+  if (currentState !== match.to) {
+    await membership.updateCreditState(match.to, transaction);
+  }
+  syncUserCapCacheForState(match.to, ctx, transaction);
   logger.info(
     {
       workspaceId: ctx.workspaceId,
@@ -117,6 +137,7 @@ export async function transitionUserCreditState(
       fromState: currentState,
       toState: match.to,
       eventType: event.type,
+      wasStateChanged: currentState !== match.to,
     },
     "[UserCreditStateMachine] Transition applied"
   );

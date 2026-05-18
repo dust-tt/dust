@@ -76,7 +76,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("WorkspaceCreditStateMachine — transitions", () => {
-  it("active + pool_exhausted (paygEnabled) → overage (no Redis side-effect)", async () => {
+  it("active + pool_exhausted (paygEnabled) → overage (clears depleted cache)", async () => {
     const workspace = makeWorkspace("active");
     const result = await transitionWorkspaceCreditState(
       workspace,
@@ -91,9 +91,8 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
       "overage",
       undefined
     );
-    expect(mockInvalidateCacheAfterCommit).not.toHaveBeenCalled();
+    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
     expect(mockSetWorkspacePoolDepleted).not.toHaveBeenCalled();
-    expect(mockClearWorkspacePoolDepleted).not.toHaveBeenCalled();
   });
 
   it("active + pool_exhausted (no PAYG) → depleted (marks pool depleted)", async () => {
@@ -128,7 +127,7 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
-  it("overage + credits_added → active (no Redis side-effect — wasn't depleted)", async () => {
+  it("overage + credits_added → active (clears depleted cache)", async () => {
     const workspace = makeWorkspace("overage");
     const result = await transitionWorkspaceCreditState(
       workspace,
@@ -139,7 +138,7 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     if (result.isOk()) {
       expect(result.value).toBe("active");
     }
-    expect(mockInvalidateCacheAfterCommit).not.toHaveBeenCalled();
+    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 
   it("depleted + credits_added → active (clears depleted flag)", async () => {
@@ -154,6 +153,37 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
       expect(result.value).toBe("active");
     }
     expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
+  });
+
+  it("overage + pool_exhausted is idempotent and keeps the depleted cache cleared", async () => {
+    const workspace = makeWorkspace("overage");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "pool_exhausted" },
+      baseCtxPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("overage");
+    }
+    expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
+    expect(mockSetWorkspacePoolDepleted).not.toHaveBeenCalled();
+  });
+
+  it("depleted + payg_cap_reached is idempotent and re-applies the depleted cache", async () => {
+    const workspace = makeWorkspace("depleted");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "payg_cap_reached" },
+      baseCtxPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("depleted");
+    }
+    expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+    expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
 });
 
@@ -175,27 +205,15 @@ describe("WorkspaceCreditStateMachine — illegal transitions", () => {
       ctx: baseCtxPayg,
     },
     {
-      label: "active + credits_added",
-      from: "active",
-      event: { type: "credits_added" },
-      ctx: baseCtxNoPayg,
-    },
-    {
-      label: "overage + pool_exhausted",
+      label: "overage + pool_exhausted without PAYG",
       from: "overage",
       event: { type: "pool_exhausted" },
-      ctx: baseCtxPayg,
-    },
-    {
-      label: "depleted + pool_exhausted",
-      from: "depleted",
-      event: { type: "pool_exhausted" },
       ctx: baseCtxNoPayg,
     },
     {
-      label: "depleted + payg_cap_reached",
+      label: "depleted + pool_exhausted with PAYG",
       from: "depleted",
-      event: { type: "payg_cap_reached" },
+      event: { type: "pool_exhausted" },
       ctx: baseCtxPayg,
     },
   ];

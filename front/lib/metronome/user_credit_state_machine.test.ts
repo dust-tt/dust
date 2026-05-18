@@ -1,7 +1,4 @@
-import type {
-  UserCreditContext,
-  UserCreditEvent,
-} from "@app/lib/metronome/user_credit_state_machine";
+import type { UserCreditContext } from "@app/lib/metronome/user_credit_state_machine";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import type { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserCreditState } from "@app/types/memberships";
@@ -126,46 +123,37 @@ describe("UserCreditStateMachine — transitions", () => {
     expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
   });
-});
 
-// ---------------------------------------------------------------------------
-// Illegal transitions
-// ---------------------------------------------------------------------------
-
-describe("UserCreditStateMachine — illegal transitions", () => {
-  const cases: Array<{
-    label: string;
-    from: UserCreditState;
-    event: UserCreditEvent;
-  }> = [
-    {
-      label: "normal + admin_raised_user_cap",
-      from: "normal",
-      event: { type: "admin_raised_user_cap" },
-    },
-    {
-      label: "normal + per_user_cap_resolved",
-      from: "normal",
-      event: { type: "per_user_cap_resolved" },
-    },
-    {
-      label: "capped + per_user_cap_reached",
-      from: "capped",
-      event: { type: "per_user_cap_reached" },
-    },
-  ];
-
-  it.each(cases)("$label returns Err and applies no side effects", async ({
-    from,
-    event,
-  }) => {
-    const membership = makeMembership(from);
-    const result = await transitionUserCreditState(membership, event, baseCtx);
-    expect(result.isErr()).toBe(true);
+  it("capped + per_user_cap_reached is idempotent and re-applies the block cache", async () => {
+    const membership = makeMembership("capped");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "per_user_cap_reached" },
+      baseCtx
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("capped");
+    }
     expect(membership.updateCreditState).not.toHaveBeenCalled();
-    expect(mockInvalidateCacheAfterCommit).not.toHaveBeenCalled();
-    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
+    expect(mockSetUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
     expect(mockClearUserCapBlocked).not.toHaveBeenCalled();
+  });
+
+  it("normal + per_user_cap_resolved is idempotent and re-applies the unblock cache", async () => {
+    const membership = makeMembership("normal");
+    const result = await transitionUserCreditState(
+      membership,
+      { type: "per_user_cap_resolved" },
+      baseCtx
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("normal");
+    }
+    expect(membership.updateCreditState).not.toHaveBeenCalled();
+    expect(mockClearUserCapBlocked).toHaveBeenCalledWith("ws_test", "u_test");
+    expect(mockSetUserCapBlocked).not.toHaveBeenCalled();
   });
 });
 
