@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { importSkillsFromGitHub } from "@app/lib/api/skills/detection/github/import_skills";
 import type { Authenticator } from "@app/lib/auth";

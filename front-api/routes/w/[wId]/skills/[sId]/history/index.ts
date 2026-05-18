@@ -1,0 +1,90 @@
+import { Hono } from "hono";
+import { fromError } from "zod-validation-error";
+
+import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
+import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
+import { isString } from "@app/types/shared/utils/general";
+
+export type GetSkillHistoryResponseBody = {
+  history: SkillWithVersionType[];
+};
+
+// Mounted at /api/w/:wId/skills/:sId/history.
+const app = new Hono();
+
+app.get("/", async (c) => {
+  const auth = c.get("auth");
+  const sId = c.req.param("sId");
+
+  if (!isString(sId)) {
+    return c.json(
+      {
+        error: {
+          type: "invalid_request_error",
+          message: "Invalid skill ID provided.",
+        },
+      },
+      400
+    );
+  }
+
+  // Check that user has access to this skill.
+  const skill = await SkillResource.fetchById(auth, sId);
+
+  if (!skill || !skill.canWrite(auth)) {
+    return c.json(
+      {
+        error: {
+          type: "skill_not_found",
+          message: "The skill you're trying to access was not found.",
+        },
+      },
+      404
+    );
+  }
+
+  const rawLimit = c.req.query("limit");
+  const queryValidation = GetSkillHistoryQuerySchema.safeParse({
+    limit: typeof rawLimit === "string" ? parseInt(rawLimit, 10) : undefined,
+  });
+  if (!queryValidation.success) {
+    const pathError = fromError(queryValidation.error).toString();
+    return c.json(
+      {
+        error: {
+          type: "invalid_request_error",
+          message: `Invalid query parameters: ${pathError}`,
+        },
+      },
+      400
+    );
+  }
+
+  const { limit } = queryValidation.data;
+
+  let skillVersionResources = await skill.listVersions(auth);
+
+  if (limit) {
+    skillVersionResources = skillVersionResources.slice(0, limit);
+  }
+
+  const skillVersions = skillVersionResources.map((resource) => {
+    const serializedSkill = resource.toJSON(auth);
+
+    return {
+      ...serializedSkill,
+      instructionsHtml:
+        serializedSkill.instructionsHtml ??
+        (serializedSkill.instructions
+          ? convertMarkdownToBlockHtml(serializedSkill.instructions)
+          : null),
+      version: resource.version,
+    };
+  });
+
+  return c.json({ history: skillVersions });
+});
+
+export default app;
