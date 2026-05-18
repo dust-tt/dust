@@ -1,8 +1,5 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import {
-  AnnouncementBanner,
-  BANNER_VISIBLE_AFTER_MS,
-} from "@app/components/home/AnnouncementBanner";
+import { AnnouncementBanner } from "@app/components/home/AnnouncementBanner";
 import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
@@ -29,7 +26,7 @@ import { Button, cn, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
-import { useRouter } from "next/router";
+
 import Script from "next/script";
 import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
@@ -56,17 +53,7 @@ export default function LandingLayout({
     fullWidth,
   } = pageProps;
 
-  const router = useRouter();
-  // Initialize from the timestamp so there's no layout shift on first render.
-  // ?preview_banner in the URL forces it on for pre-launch testing.
-  const [showBanner, setShowBanner] = useState(
-    () => Date.now() >= BANNER_VISIBLE_AFTER_MS
-  );
-  useEffect(() => {
-    if ("preview_banner" in router.query) {
-      setShowBanner(true);
-    }
-  }, [router.query]);
+  const showBanner = true;
 
   useStripUtmParams();
 
