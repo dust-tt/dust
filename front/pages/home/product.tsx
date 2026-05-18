@@ -1,7 +1,7 @@
 import { H2 } from "@app/components/home/ContentComponents";
 import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
+import { HomeAIOperatorsCTASection } from "@app/components/home/content/Product/HomeAIOperatorsCTASection";
 import { InteractiveFeaturesSection } from "@app/components/home/content/Product/InteractiveFeaturesSection";
-import { JustUseDustSection } from "@app/components/home/content/Product/JustUseDustSection";
 import { ProductIntroSection } from "@app/components/home/content/Product/ProductIntroSection";
 import { SecurityFeaturesSection } from "@app/components/home/content/Product/SecurityFeaturesSection";
 import { TestimonialSection } from "@app/components/home/content/Product/TestimonialSection";
@@ -64,8 +64,8 @@ export function Landing() {
       <div className="mt-16">
         <FunctionsSection />
       </div>
-      <div className="mt-16">
-        <JustUseDustSection />
+      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-16 w-screen">
+        <HomeAIOperatorsCTASection />
       </div>
     </>
   );
