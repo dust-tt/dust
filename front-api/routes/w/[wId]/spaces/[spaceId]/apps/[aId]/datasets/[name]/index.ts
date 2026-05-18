@@ -74,7 +74,8 @@ async function loadAppAndDataset(c: Context): Promise<
       {
         error: {
           type: "app_auth_error",
-          message: "Querying a dataset requires read access to the app's space.",
+          message:
+            "Querying a dataset requires read access to the app's space.",
         },
       },
       403
@@ -263,7 +264,8 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
       {
         error: {
           type: "app_auth_error",
-          message: "Deleting a dataset requires write access to the app's space.",
+          message:
+            "Deleting a dataset requires write access to the app's space.",
         },
       },
       403
