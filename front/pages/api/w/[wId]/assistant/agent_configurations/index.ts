@@ -142,7 +142,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
@@ -594,13 +593,12 @@ export async function createOrUpgradeAgentConfiguration({
     actionConfigs.push(res.value);
   }
 
-  // Create skill associations
+  // Create skill associations.
   const owner = auth.getNonNullableWorkspace();
-  await concurrentExecutor(
-    assistant.skills ?? [],
-    async (skill) => {
-      // Validate the skill exists and belongs to this workspace
-      const skillResource = await SkillResource.fetchById(auth, skill.sId);
+  const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
+  const skillsToAdd = removeNulls(
+    (assistant.skills ?? []).map((skill) => {
+      const skillResource = skillById.get(skill.sId);
       if (!skillResource) {
         logger.warn(
           {
@@ -610,13 +608,16 @@ export async function createOrUpgradeAgentConfiguration({
           },
           "Skill not found when creating agent configuration, skipping"
         );
-        return;
+        return null;
       }
 
-      await skillResource.addToAgent(auth, agentConfigurationRes.value);
-    },
-    { concurrency: 10 }
+      return skillResource;
+    })
   );
+  await SkillResource.addManyToAgent(auth, {
+    agentConfiguration: agentConfigurationRes.value,
+    skills: skillsToAdd,
+  });
 
   const agentConfiguration: AgentConfigurationType = {
     ...agentConfigurationRes.value,
