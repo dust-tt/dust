@@ -520,7 +520,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn invalidates_long_database_id_from_request_body() {
+    async fn invalidates_long_database_id_from_request_body() -> Result<()> {
         let database_id = make_long_database_id();
         let state = Arc::new(WorkerState::new(Box::new(
             GoogleCloudStorageDatabasesStore::new(),
@@ -537,7 +537,7 @@ mod tests {
             );
         }
 
-        let server = TestServer::new(make_router(state.clone())).unwrap();
+        let server = TestServer::new(make_router(state.clone()))?;
         let response = server
             .post("/databases/invalidate")
             .json(&json!({
@@ -547,5 +547,7 @@ mod tests {
 
         response.assert_status_ok();
         assert!(state.registry.lock().await.is_empty());
+
+        Ok(())
     }
 }
