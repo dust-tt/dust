@@ -164,6 +164,17 @@ export class CreditResource extends BaseResource<CreditModel> {
     });
   }
 
+  /**
+   * Return the total remaining balance across all active credits (in microUSD).
+   */
+  static async getRemainingMicroUsd(auth: Authenticator): Promise<number> {
+    const activeCredits = await this.listActive(auth);
+    return activeCredits.reduce(
+      (sum, c) => sum + (c.initialAmountMicroUsd - c.consumedAmountMicroUsd),
+      0
+    );
+  }
+
   static async fetchByIds(auth: Authenticator, ids: string[]) {
     return this.baseFetch(auth, {
       where: {

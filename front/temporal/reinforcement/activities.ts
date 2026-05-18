@@ -582,13 +582,10 @@ export async function getReinforcementSettingsActivity({
     await checkProgrammaticUsageLimits(auth)
   ).isErr();
 
-  // Compute remaining programmatic credits: sum of remaining across all active
-  // credits, capped by the daily usage allowance.
-  const activeCredits = await CreditResource.listActive(auth);
-  const remainingCreditsMicroUsd = activeCredits.reduce(
-    (sum, c) => sum + (c.initialAmountMicroUsd - c.consumedAmountMicroUsd),
-    0
-  );
+  // Compute remaining programmatic budget: total remaining credits capped by
+  // the daily usage allowance.
+  const remainingCreditsMicroUsd =
+    await CreditResource.getRemainingMicroUsd(auth);
   const remainingDailyCapMicroUsd = await getRemainingDailyCapMicroUsd(auth);
   const remainingProgrammaticCreditsMicroUsd = Math.min(
     remainingCreditsMicroUsd,
