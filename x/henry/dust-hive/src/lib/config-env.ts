@@ -55,6 +55,9 @@ export async function getConfigVar(key: string): Promise<string | null> {
 }
 
 export async function setConfigVar(key: string, value: string): Promise<void> {
+  if (value.includes("\n")) {
+    throw new Error("Value must not contain newlines");
+  }
   const content = await readContent();
   const newLine = `export ${key}=${quoteValue(value)}`;
   const lines = content.split("\n");
