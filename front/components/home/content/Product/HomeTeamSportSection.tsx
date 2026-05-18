@@ -5,11 +5,9 @@ import { HomeQuoteMark } from "@app/components/home/content/Product/HomeQuoteMar
 import { HomeReveal } from "@app/components/home/content/Product/HomeReveal";
 import Image from "next/image";
 
-const SERIF_STACK = 'ui-serif, Georgia, Cambria, "Times New Roman", serif';
-
 export function HomeTeamSportSection() {
   return (
-    <section className="w-full bg-background py-24">
+    <section className="w-full bg-background py-14 lg:py-24">
       <div className="mx-auto flex w-full max-w-[1180px] flex-col px-6">
         {/* Two-column layout: copy + Ryan Wang pull-quote on the left,
             collaboration illustration on the right. Mirrors the
@@ -39,10 +37,7 @@ export function HomeTeamSportSection() {
             <HomeReveal as="figure" delay={240} className="m-0 mt-4 w-full">
               <div className="flex w-full max-w-[520px] flex-col gap-4 border-l-2 border-foreground/15 pl-5 text-left">
                 <HomeQuoteMark />
-                <blockquote
-                  className="m-0 text-balance text-base italic leading-[1.4] tracking-[-0.005em] text-foreground md:text-lg"
-                  style={{ fontFamily: SERIF_STACK }}
-                >
+                <blockquote className="m-0 text-balance text-base font-normal leading-[1.4] tracking-[-0.005em] text-foreground md:text-lg">
                   &ldquo;We made a bet on Dust because we knew the team was
                   exceptional. What we didn&apos;t expect was how quickly it
                   would transform how we work. Dust became the connective tissue

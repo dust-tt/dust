@@ -476,7 +476,7 @@ export function HomeTeamUsageSection() {
     : null;
 
   return (
-    <section className="w-full bg-background py-24">
+    <section className="w-full bg-background py-14 lg:py-24">
       <style dangerouslySetInnerHTML={{ __html: TEAM_PANEL_CSS }} />
       <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-12 px-6">
         <div className="flex flex-col items-center gap-6 text-center">

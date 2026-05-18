@@ -107,7 +107,7 @@ export function HomeQuotesSection({ quotes }: HomeQuotesSectionProps) {
   const outgoingQuote = outgoing ? quotes[outgoing.idx] : null;
 
   return (
-    <section className="w-full bg-background py-24">
+    <section className="w-full bg-background py-14 lg:py-24">
       <style dangerouslySetInnerHTML={{ __html: SLIDE_CSS }} />
       <div className="mx-auto w-full max-w-[1180px] px-6">
         <HomeReveal className="flex flex-col items-stretch gap-4 lg:flex-row">
@@ -201,7 +201,7 @@ export function HomeQuotesSection({ quotes }: HomeQuotesSectionProps) {
               )}
             </div>
           </div>
-          <div className="relative aspect-[5/6] w-full overflow-hidden rounded-2xl bg-slate-200 lg:aspect-auto lg:w-[429px] lg:flex-shrink-0 lg:self-stretch">
+          <div className="relative hidden aspect-[5/6] w-full overflow-hidden rounded-2xl bg-slate-200 lg:flex lg:aspect-auto lg:w-[429px] lg:flex-shrink-0 lg:self-stretch">
             {outgoingQuote && outgoingAnim && (
               <div
                 key={`out-photo-${outgoing?.idx}`}

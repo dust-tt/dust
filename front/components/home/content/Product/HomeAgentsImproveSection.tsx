@@ -204,7 +204,7 @@ function HoverImageCard({ card, index }: HoverImageCardProps) {
 
 export function HomeAgentsImproveSection() {
   return (
-    <section className="w-full bg-background py-24">
+    <section className="w-full bg-background py-14 lg:py-24">
       <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-16 px-6">
         <div className="flex flex-col items-center gap-6 text-center">
           <HomeReveal>

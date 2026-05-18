@@ -6,7 +6,7 @@ import Image from "next/image";
 
 export function HomeCoordinatedSection() {
   return (
-    <section className="w-full bg-background py-24">
+    <section className="w-full bg-background py-14 lg:py-24">
       <div className="mx-auto flex w-full max-w-[1180px] flex-col items-center gap-12 px-6 lg:flex-row-reverse lg:items-center lg:gap-20">
         <div className="flex w-full flex-col gap-6 lg:w-1/2">
           <HomeReveal>
@@ -16,9 +16,7 @@ export function HomeCoordinatedSection() {
             <H2 className="text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
               Your company's knowledge,
               <br />
-              <span className="text-blue-500">
-                deeply understood and actioned on
-              </span>
+              deeply understood and actioned on
             </H2>
           </HomeReveal>
           <HomeReveal delay={160}>

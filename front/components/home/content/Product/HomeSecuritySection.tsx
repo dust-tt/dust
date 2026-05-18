@@ -141,7 +141,7 @@ const TOTAL_CONTROLS = COLUMNS.reduce((sum, c) => sum + c.items.length, 0);
 
 export function HomeSecuritySection() {
   return (
-    <section className="w-full bg-background py-24">
+    <section className="w-full bg-background py-14 lg:py-24">
       <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-12 px-6">
         <div className="flex flex-col gap-6">
           <HomeReveal>

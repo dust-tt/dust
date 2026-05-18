@@ -24,7 +24,7 @@ const SEE_ALL_PRESS_HREF = "/home/about";
 export function HomeNewsSection({ news }: HomeNewsSectionProps = {}) {
   const items = news && news.length > 0 ? news : FALLBACK_NEWS;
   return (
-    <section className="w-full bg-background py-24">
+    <section className="w-full bg-background py-14 lg:py-24">
       <div className="mx-auto w-full max-w-[1180px] px-6">
         <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-16">
           <div className="flex flex-col gap-4 lg:w-[380px] lg:flex-shrink-0">
