@@ -9,8 +9,8 @@
     }
   ],
   "metadata": {
-    "groupName": "string",
-    "directoryId": "string",
+    "group_name": "string",
+    "directory_id": "string",
     "actor_type": "string"
   }
 }

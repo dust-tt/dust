@@ -3,6 +3,10 @@ import {
   syncConversation,
 } from "@connectors/connectors/dust_project/lib/sync_conversation";
 import { syncProjectMetadata } from "@connectors/connectors/dust_project/lib/sync_metadata";
+import {
+  deleteProjectMountFile,
+  syncProjectMountFile,
+} from "@connectors/connectors/dust_project/lib/sync_project_mount_files";
 import { launchDustProjectIncrementalSyncWorkflow } from "@connectors/connectors/dust_project/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getDustAPI } from "@connectors/lib/api/dust_api";
@@ -15,8 +19,13 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { DustProjectConfigurationResource } from "@connectors/resources/dust_project_configuration_resource";
 import { DustProjectConversationResource } from "@connectors/resources/dust_project_conversation_resource";
+import { DustProjectMountFileResource } from "@connectors/resources/dust_project_mount_file_resource";
 import type { ModelId } from "@connectors/types";
 import { concurrentExecutor } from "@connectors/types";
+import type {
+  ProjectMountFileEntryType,
+  ProjectMountListEntryType,
+} from "@dust-tt/client";
 
 /**
  * Full sync activity: Syncs all conversations for a project.
@@ -353,6 +362,241 @@ async function dustProjectConversationsGarbageCollectActivity({
   }
 }
 
+function isMountFileEntry(
+  e: ProjectMountListEntryType
+): e is ProjectMountFileEntryType {
+  return !e.isDirectory;
+}
+
+/**
+ * Full sync: list all project mount files, remove tracking rows (and Core) for deleted paths, sync each file.
+ */
+export async function dustProjectMountFilesFullSyncActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<void> {
+  const localLogger = logger.child({ connectorId });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const configuration =
+    await DustProjectConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`Configuration not found for connector ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  localLogger.info(
+    { projectId: configuration.projectId },
+    "Starting full sync for dust_project mount files"
+  );
+
+  const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: false });
+  const listRes = await dustAPI.getSpaceProjectFiles({
+    spaceId: configuration.projectId,
+  });
+
+  if (listRes.isErr()) {
+    throw new Error(
+      `Failed to fetch project mount files: ${listRes.error.message}`
+    );
+  }
+
+  const fileEntries = listRes.value.files.filter(isMountFileEntry);
+  const fetchedPaths = new Set(fileEntries.map((e) => e.path));
+
+  const syncedRows =
+    await DustProjectMountFileResource.fetchByConnectorId(connectorId);
+  const toRemove = syncedRows.filter((r) => !fetchedPaths.has(r.scopedPath));
+
+  if (toRemove.length > 0) {
+    await concurrentExecutor(
+      toRemove,
+      async (row) => {
+        await deleteProjectMountFile({
+          connectorId,
+          dataSourceConfig,
+          projectId: configuration.projectId,
+          mountRow: row,
+        });
+      },
+      { concurrency: 5 }
+    );
+  }
+
+  await concurrentExecutor(
+    fileEntries,
+    async (entry) => {
+      await syncProjectMountFile({
+        connectorId,
+        dataSourceConfig,
+        projectId: configuration.projectId,
+        workspaceId: dataSourceConfig.workspaceId,
+        entry,
+        syncType: "batch",
+      });
+    },
+    { concurrency: 3 }
+  );
+
+  localLogger.info(
+    { projectId: configuration.projectId, count: fileEntries.length },
+    "Completed full sync for dust_project mount files"
+  );
+}
+
+/**
+ * Incremental sync: fetch mount files updated since last synced watermark, then GC removed files.
+ */
+export async function dustProjectMountFilesIncrementalSyncActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<void> {
+  const localLogger = logger.child({ connectorId });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const configuration =
+    await DustProjectConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`Configuration not found for connector ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  const maxSourceUpdatedAt =
+    await DustProjectMountFileResource.getMaxSourceUpdatedAt(connectorId);
+
+  const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: false });
+  const listRes = await dustAPI.getSpaceProjectFiles({
+    spaceId: configuration.projectId,
+    updatedSince:
+      maxSourceUpdatedAt != null ? maxSourceUpdatedAt.getTime() + 1 : undefined,
+  });
+
+  if (listRes.isErr()) {
+    throw new Error(
+      `Failed to fetch project mount files: ${listRes.error.message}`
+    );
+  }
+
+  const fileEntries = listRes.value.files.filter(isMountFileEntry);
+
+  localLogger.info(
+    {
+      projectId: configuration.projectId,
+      count: fileEntries.length,
+      lastSourceUpdatedAt: maxSourceUpdatedAt,
+    },
+    "Fetched project mount files for incremental sync"
+  );
+
+  await concurrentExecutor(
+    fileEntries,
+    async (entry) => {
+      await syncProjectMountFile({
+        connectorId,
+        dataSourceConfig,
+        projectId: configuration.projectId,
+        workspaceId: dataSourceConfig.workspaceId,
+        entry,
+        syncType: "incremental",
+      });
+    },
+    { concurrency: 3 }
+  );
+
+  await dustProjectMountFilesGarbageCollectActivity({ connectorId });
+}
+
+/**
+ * Remove Core + DB rows for mount files that no longer exist under the project prefix in GCS.
+ */
+export async function dustProjectMountFilesGarbageCollectActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<void> {
+  const localLogger = logger.child({ connectorId });
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const configuration =
+    await DustProjectConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`Configuration not found for connector ${connectorId}`);
+  }
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  try {
+    const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: false });
+    const listRes = await dustAPI.getSpaceProjectFiles({
+      spaceId: configuration.projectId,
+    });
+
+    if (listRes.isErr()) {
+      throw new Error(
+        `Failed to list project mount files for GC: ${listRes.error.message}`
+      );
+    }
+
+    const existingPaths = new Set(
+      listRes.value.files.filter(isMountFileEntry).map((e) => e.path)
+    );
+
+    const syncedRows =
+      await DustProjectMountFileResource.fetchByConnectorId(connectorId);
+    const toDelete = syncedRows.filter((r) => !existingPaths.has(r.scopedPath));
+
+    if (toDelete.length === 0) {
+      localLogger.info(
+        { projectId: configuration.projectId },
+        "No orphaned mount files to garbage-collect"
+      );
+      return;
+    }
+
+    await concurrentExecutor(
+      toDelete,
+      async (row) => {
+        await deleteProjectMountFile({
+          connectorId,
+          dataSourceConfig,
+          projectId: configuration.projectId,
+          mountRow: row,
+        });
+      },
+      { concurrency: 5 }
+    );
+
+    localLogger.info(
+      {
+        projectId: configuration.projectId,
+        deletedCount: toDelete.length,
+      },
+      "Garbage collection completed for project mount files"
+    );
+  } catch (error) {
+    localLogger.error(
+      { error, projectId: configuration.projectId },
+      "Garbage collection failed for project mount files"
+    );
+  }
+}
+
 /**
  * Sync metadata activity: Fetches and syncs project metadata (description).
  * On fetch/upsert failure, throws so the Temporal workflow fails.
@@ -437,7 +681,7 @@ export async function dustProjectSyncMetadataActivity({
 }
 
 /**
- * Marks a successful dust_project sync run (conversations + metadata activities).
+ * Marks a successful dust_project sync run (conversations, mount files, metadata).
  * Updates connector sync status via `syncSucceeded` and sets `lastSyncedAt` on the dust project configuration.
  */
 export async function dustProjectMarkSyncedActivity({

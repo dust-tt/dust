@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { Op } from "sequelize";
@@ -19,7 +20,7 @@ export const checkDataSourcesConsistency: CheckFunction = async (
     const actionLinks: ActionLink[] = managedDataSourcesWithoutConnector.map(
       (ds) => ({
         label: `Data Source: ${ds.name}`,
-        url: `/poke/${ds.workspaceId}/data_sources/${ds.name}`,
+        url: `${config.getPokeAppUrl()}/${ds.workspaceId}/data_sources/${ds.name}`,
       })
     );
     reportFailure(

@@ -1,85 +1,79 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
 import type { CoreAPIDataSourceDocumentSection } from "../../core/data_source";
 
-export const UpsertContextSchema = t.type({
-  sync_type: t.union([
-    t.literal("batch"),
-    t.literal("incremental"),
-    t.undefined,
-  ]),
+export const UpsertContextSchema = z.object({
+  sync_type: z.enum(["batch", "incremental"]).optional(),
 });
 
-export type UpsertContext = t.TypeOf<typeof UpsertContextSchema>;
+export type UpsertContext = z.infer<typeof UpsertContextSchema>;
 
-export const FrontDataSourceDocumentSection: t.RecursiveType<
-  t.Type<CoreAPIDataSourceDocumentSection>,
-  CoreAPIDataSourceDocumentSection
-> = t.recursion("Section", () =>
-  t.type({
-    prefix: t.union([t.string, t.null]),
-    content: t.union([t.string, t.null]),
-    sections: t.array(FrontDataSourceDocumentSection),
-  })
-);
+export const FrontDataSourceDocumentSection: z.ZodType<CoreAPIDataSourceDocumentSection> =
+  z.lazy(() =>
+    z.object({
+      prefix: z.string().nullable(),
+      content: z.string().nullable(),
+      sections: z.array(FrontDataSourceDocumentSection),
+    })
+  );
 
-export type FrontDataSourceDocumentSectionType = t.TypeOf<
+export type FrontDataSourceDocumentSectionType = z.infer<
   typeof FrontDataSourceDocumentSection
 >;
 
-export const PostDataSourceDocumentRequestBodySchema = t.type({
-  timestamp: t.union([t.Int, t.undefined, t.null]),
-  tags: t.union([t.array(t.string), t.undefined, t.null]),
-  parent_id: t.union([t.string, t.undefined, t.null]),
-  parents: t.union([t.array(t.string), t.undefined, t.null]),
-  source_url: t.union([t.string, t.undefined, t.null]),
-  upsert_context: t.union([UpsertContextSchema, t.undefined, t.null]),
-  text: t.union([t.string, t.undefined, t.null]),
-  section: t.union([FrontDataSourceDocumentSection, t.undefined, t.null]),
-  light_document_output: t.union([t.boolean, t.undefined]),
-  async: t.union([t.boolean, t.undefined, t.null]),
-  title: t.string,
-  mime_type: t.string,
+export const PostDataSourceDocumentRequestBodySchema = z.object({
+  timestamp: z.number().int().nullish(),
+  tags: z.array(z.string()).nullish(),
+  parent_id: z.string().nullish(),
+  parents: z.array(z.string()).nullish(),
+  source_url: z.string().nullish(),
+  upsert_context: UpsertContextSchema.nullish(),
+  text: z.string().nullish(),
+  section: FrontDataSourceDocumentSection.nullish(),
+  light_document_output: z.boolean().optional(),
+  async: z.boolean().nullish(),
+  title: z.string(),
+  mime_type: z.string(),
   // Optional document_id for LLM-friendly node IDs (e.g., slugified).
   // Falls back to title if not provided.
-  document_id: t.union([t.string, t.undefined]),
+  document_id: z.string().optional(),
 });
 
-export type PostDataSourceDocumentRequestBody = t.TypeOf<
+export type PostDataSourceDocumentRequestBody = z.infer<
   typeof PostDataSourceDocumentRequestBodySchema
 >;
 
 // Post and Patch require the same request body
-export type PatchDataSourceDocumentRequestBody = t.TypeOf<
+export type PatchDataSourceDocumentRequestBody = z.infer<
   typeof PostDataSourceDocumentRequestBodySchema
 >;
-export const PatchDataSourceTableRequestBodySchema = t.intersection([
-  t.type({
-    name: t.string,
-    description: t.string,
-    timestamp: t.union([t.number, t.undefined, t.null]),
-    tags: t.union([t.array(t.string), t.undefined, t.null]),
-    parentId: t.union([t.string, t.undefined, t.null]),
-    parents: t.union([t.array(t.string), t.undefined, t.null]),
-    async: t.union([t.boolean, t.undefined]),
-    title: t.string,
-    mimeType: t.string,
-    sourceUrl: t.union([t.string, t.undefined, t.null]),
+export const PatchDataSourceTableRequestBodySchema = z.intersection(
+  z.object({
+    name: z.string(),
+    description: z.string(),
+    timestamp: z.number().nullish(),
+    tags: z.array(z.string()).nullish(),
+    parentId: z.string().nullish(),
+    parents: z.array(z.string()).nullish(),
+    async: z.boolean().optional(),
+    title: z.string(),
+    mimeType: z.string(),
+    sourceUrl: z.string().nullish(),
   }),
-  t.union([
+  z.union([
     // When a file is uploaded, we need to truncate the table and add the file id.
-    t.type({
-      truncate: t.literal(true),
-      fileId: t.string,
+    z.object({
+      truncate: z.literal(true),
+      fileId: z.string(),
     }),
     // Otherwise, the fileId must not be provided and truncate must be false, we'll just update the metadata.
-    t.type({
-      truncate: t.literal(false),
-      fileId: t.undefined,
+    z.object({
+      truncate: z.literal(false),
+      fileId: z.undefined(),
     }),
-  ]),
-]);
+  ])
+);
 
-export type PatchDataSourceTableRequestBody = t.TypeOf<
+export type PatchDataSourceTableRequestBody = z.infer<
   typeof PatchDataSourceTableRequestBodySchema
 >;

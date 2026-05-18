@@ -97,6 +97,8 @@ jobs:
         run: npm -w front run lint:test-filenames
       - name: Lint swagger annotations
         run: npm -w front run lint:swagger-annotations
+      - name: Lint audit log schemas
+        run: npm -w front run lint:audit-log-schemas
       - name: Check swagger.json is up to date
         working-directory: front
         run: |

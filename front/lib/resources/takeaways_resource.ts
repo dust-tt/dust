@@ -1,6 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { ProjectTodoTakeawaySourcesModel } from "@app/lib/resources/storage/models/project_todo_takeaway_sources";
 import {
   TakeawaySourcesModel,
   TakeawaysModel,
@@ -11,16 +10,12 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
-  ProjectTodoSourceInfo,
-  ProjectTodoSourceType,
-} from "@app/types/project_todo";
+  ProjectTaskSourceInfo,
+  ProjectTaskSourceType,
+} from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
-import type {
-  TodoVersionedActionItem,
-  TodoVersionedKeyDecision,
-  TodoVersionedNotableFact,
-} from "@app/types/takeaways";
+import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type {
   Attributes,
   CreationAttributes,
@@ -34,13 +29,13 @@ export type TakeawaySourceDocument = {
   title: string;
   text: string;
   id: string;
-  type: ProjectTodoSourceType;
+  type: ProjectTaskSourceType;
   uri: string;
 };
 
 export type TakeawaysWithSource = {
   takeaway: TakeawaysResource;
-  source: ProjectTodoSourceInfo;
+  source: ProjectTaskSourceInfo;
 };
 
 type TakeawaysVersionCreationAttributes = CreationAttributes<TakeawaysModel> & {
@@ -87,10 +82,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<
-      CreationAttributes<TakeawaysModel>,
-      "workspaceId" | "notableFacts" | "keyDecisions"
-    >,
+    blob: Omit<CreationAttributes<TakeawaysModel>, "workspaceId">,
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
     return withTransaction(async (t) => {
@@ -98,8 +90,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
         {
           ...blob,
           workspaceId: auth.getNonNullableWorkspace().id,
-          notableFacts: [],
-          keyDecisions: [],
         },
         { transaction: t }
       );
@@ -146,8 +136,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       version: existingCount + 1,
       spaceId: this.spaceId,
       actionItems: this.actionItems,
-      notableFacts: this.notableFacts,
-      keyDecisions: this.keyDecisions,
     };
     await TakeawaysVersionModel.create(versionData, { transaction });
   }
@@ -173,8 +161,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
 
   // Deletes all takeaway rows for a specific space, along with their source
   // entries, version snapshots, and the join-table rows that reference those
-  // sources. Must be called before deleting project todos for the same space
-  // because ProjectTodoTakeawaySourcesModel holds RESTRICT FKs on both sides.
+  // sources.
   static async deleteAllForSpace(
     auth: Authenticator,
     { spaceModelId }: { spaceModelId: ModelId }
@@ -190,22 +177,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     ).map((r) => r.id);
 
     if (takeawayIds.length > 0) {
-      const takeawaySourceIds = (
-        await TakeawaySourcesModel.findAll({
-          attributes: ["id"],
-          where: { workspaceId, takeawaysId: { [Op.in]: takeawayIds } },
-        })
-      ).map((r) => r.id);
-
-      if (takeawaySourceIds.length > 0) {
-        await ProjectTodoTakeawaySourcesModel.destroy({
-          where: {
-            workspaceId,
-            takeawaySourceId: { [Op.in]: takeawaySourceIds },
-          },
-        });
-      }
-
       await TakeawaySourcesModel.destroy({
         where: { workspaceId, takeawaysId: { [Op.in]: takeawayIds } },
       });
@@ -225,20 +196,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Delete join-table rows first to avoid RESTRICT FK violations.
-    const takeawaySourceIds = (
-      await TakeawaySourcesModel.findAll({
-        attributes: ["id"],
-        where: { workspaceId },
-      })
-    ).map((r) => r.id);
-
-    if (takeawaySourceIds.length > 0) {
-      await ProjectTodoTakeawaySourcesModel.destroy({
-        where: { workspaceId, takeawaySourceId: takeawaySourceIds },
-      });
-    }
-
     await TakeawaySourcesModel.destroy({ where: { workspaceId } });
     await TakeawaysVersionModel.destroy({ where: { workspaceId } });
     await TakeawaysModel.destroy({ where: { workspaceId } });
@@ -249,24 +206,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const takeawaySourceIds = (
-      await TakeawaySourcesModel.findAll({
-        attributes: ["id"],
-        where: { workspaceId, takeawaysId: this.id },
-        transaction,
-      })
-    ).map((r) => r.id);
-
-    if (takeawaySourceIds.length > 0) {
-      await ProjectTodoTakeawaySourcesModel.destroy({
-        where: {
-          workspaceId,
-          takeawaySourceId: { [Op.in]: takeawaySourceIds },
-        },
-        transaction,
-      });
-    }
 
     await TakeawaySourcesModel.destroy({
       where: { workspaceId, takeawaysId: this.id },
@@ -316,7 +255,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     });
 
     // One source per takeaway (a takeaway is produced by one source).
-    const sourceByTakeawaysId = new Map<ModelId, ProjectTodoSourceInfo>(
+    const sourceByTakeawaysId = new Map<ModelId, ProjectTaskSourceInfo>(
       sources.map((s) => [
         s.takeawaysId,
         {
@@ -350,7 +289,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     {
       sourceId,
       sourceType,
-    }: { sourceId: string; sourceType: ProjectTodoSourceType },
+    }: { sourceId: string; sourceType: ProjectTaskSourceType },
     transaction?: Transaction
   ): Promise<TakeawaysResource | null> {
     const source = await TakeawaySourcesModel.findOne({
@@ -394,11 +333,11 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       spaceId: string;
       document: {
         id: string;
-        type: ProjectTodoSourceType;
+        type: ProjectTaskSourceType;
         title: string | null;
         uri: string | null;
       };
-      actionItems: TodoVersionedActionItem[];
+      actionItems: TaskVersionedActionItem[];
     },
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
@@ -464,14 +403,10 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       conversationId,
       spaceId,
       actionItems,
-      notableFacts,
-      keyDecisions,
     }: {
       conversationId: string;
       spaceId: string;
-      actionItems: TodoVersionedActionItem[];
-      notableFacts: TodoVersionedNotableFact[];
-      keyDecisions: TodoVersionedKeyDecision[];
+      actionItems: TaskVersionedActionItem[];
     },
     transaction?: Transaction
   ): Promise<TakeawaysResource> {

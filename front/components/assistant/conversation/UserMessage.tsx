@@ -478,7 +478,7 @@ export function UserMessage({
 }
 
 function getChipDateFormat(date: Date) {
-  return date.toLocaleDateString("en-EN", {
+  return date.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -523,33 +523,30 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
 
 // When the conversation container is narrow, the action menu sits below the message bubble.
 // When the conversation container is wider, it floats to the left (current user) or right (other user).
-const actionMenuContainerVariants = cva(
-  "flex items-center gap-1 absolute left-0 bottom-0",
-  {
-    variants: {
-      mode: {
-        side: "",
-        bottom: "translate-y-[calc(100%+4px)]",
-      },
-      isCurrentUser: {
-        true: "",
-        false: "",
-      },
+const actionMenuContainerVariants = cva("flex items-center gap-1", {
+  variants: {
+    mode: {
+      side: "absolute left-0 bottom-0",
+      bottom: "",
     },
-    compoundVariants: [
-      {
-        mode: "side",
-        isCurrentUser: true,
-        className: "-translate-x-full pr-2",
-      },
-      {
-        mode: "side",
-        isCurrentUser: false,
-        className: "left-auto right-0 translate-x-full pl-2",
-      },
-    ],
-  }
-);
+    isCurrentUser: {
+      true: "",
+      false: "",
+    },
+  },
+  compoundVariants: [
+    {
+      mode: "side",
+      isCurrentUser: true,
+      className: "-translate-x-full pr-2",
+    },
+    {
+      mode: "side",
+      isCurrentUser: false,
+      className: "left-auto right-0 translate-x-full pl-2",
+    },
+  ],
+});
 
 interface ActionMenuProps {
   mode: "side" | "bottom";

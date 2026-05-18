@@ -6,6 +6,7 @@ import {
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { processToolResults } from "@app/lib/actions/mcp_execution";
 import type { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -175,6 +176,31 @@ describe("processToolResults", () => {
     }
   });
 
+  it("should keep large sandbox text content as-is", async () => {
+    const { auth, conversation, action, toolConfiguration } = await setupTest();
+
+    const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
+
+    const { outputItems } = await processToolResults(auth, {
+      action,
+      conversation,
+      localLogger: logger.child({ test: true }),
+      toolCallResultContent: [{ type: "text", text: largeText }],
+      toolConfiguration: {
+        ...toolConfiguration,
+        mcpServerName: "sandbox",
+      },
+    });
+
+    expect(outputItems).toHaveLength(1);
+    const stored = outputItems[0].content;
+
+    expect(stored.type).toBe("text");
+    if (stored.type === "text") {
+      expect(stored.text).toBe(largeText);
+    }
+  });
+
   it("should keep small resource text as-is", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
 
@@ -202,7 +228,7 @@ describe("processToolResults", () => {
     }
   });
 
-  it("should persist DATA_SOURCE_NODE_CONTENT block to tool_outputs/", async () => {
+  it(`should persist DATA_SOURCE_NODE_CONTENT block to ${TOOL_OUTPUTS_FOLDER_NAME}/`, async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
@@ -247,18 +273,18 @@ describe("processToolResults", () => {
       );
 
     const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes("tool_outputs/")
+      call[0].filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
     );
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /tool_outputs\/\d+_my_notion_page\.md$/
+      new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_my_notion_page\\.md$`)
     );
     expect(toolOutputWrite?.[0].content).toBe(
       "# My Notion Page\n\nSome content here."
     );
   });
 
-  it("should persist large plain text block to tool_outputs/ as .txt", async () => {
+  it(`should persist large plain text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .txt`, async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
@@ -283,15 +309,16 @@ describe("processToolResults", () => {
       );
 
     const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes("tool_outputs/")
+      call[0].filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
     );
+
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /tool_outputs\/\d+_test_server\.txt$/
+      new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_test_tool\\.txt$`)
     );
   });
 
-  it("should persist large JSON text block to tool_outputs/ as .json", async () => {
+  it(`should persist large JSON text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .json`, async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
@@ -318,11 +345,11 @@ describe("processToolResults", () => {
       );
 
     const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes("tool_outputs/")
+      call[0].filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
     );
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /tool_outputs\/\d+_test_server\.json$/
+      new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_test_tool\\.json$`)
     );
   });
 });

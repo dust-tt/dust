@@ -1,14 +1,13 @@
+import {
+  ConsumptionProgressBar,
+  ConsumptionProgressBarWithNumbers,
+} from "@app/components/pages/workspace/developers/ConsumptionProgressBar";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
-import { MetronomeUsageChart } from "@app/components/workspace/MetronomeUsageChart";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
 import config from "@app/lib/api/config";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   getBillingCycle,
   getPriceAsString,
@@ -20,7 +19,6 @@ import {
   Button,
   CardIcon,
   ContentMessage,
-  cn,
   ExclamationCircleIcon,
   Hoverable,
   Page,
@@ -35,29 +33,6 @@ function isActive(credit: CreditDisplayData): boolean {
   const isExpired =
     credit.expirationDate !== null && credit.expirationDate <= now;
   return isStarted && !isExpired;
-}
-
-interface ProgressBarProps {
-  consumed: number;
-  total: number;
-}
-
-function ProgressBar({ consumed, total }: ProgressBarProps) {
-  const percentage = total > 0 ? Math.min((consumed / total) * 100, 100) : 0;
-
-  return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
-      <div
-        className={cn(
-          "h-full rounded-full transition-all",
-          percentage > 80
-            ? "bg-warning-700"
-            : "bg-primary dark:bg-primary-night"
-        )}
-        style={{ width: `${percentage}%` }}
-      />
-    </div>
-  );
 }
 
 interface CreditCategoryBarProps {
@@ -101,7 +76,7 @@ function CreditCategoryBar({
           {isCap ? " cap" : ""}
         </span>
       </div>
-      <ProgressBar consumed={consumed} total={total} />
+      <ConsumptionProgressBar consumed={consumed} total={total} />
       {renewalDate && <Page.P variant="secondary">{renewalDate}</Page.P>}
     </Page.Vertical>
   );
@@ -195,16 +170,12 @@ function UsageSection({
       </div>
 
       {/* Total Consumed */}
-      <Page.Vertical>
-        <Page.P variant="secondary">Total consumed</Page.P>
-        <div className="flex items-baseline gap-2">
-          <span className="text-5xl font-bold">{totalConsumedFormatted}</span>
-          <span className="text-2xl text-muted-foreground dark:text-muted-foreground-night">
-            /{totalCreditsFormatted}
-          </span>
-        </div>
-        <ProgressBar consumed={totalConsumed} total={totalCredits} />
-      </Page.Vertical>
+      <ConsumptionProgressBarWithNumbers
+        consumed={totalConsumed}
+        total={totalCredits}
+        consumedFormatted={totalConsumedFormatted}
+        totalFormatted={totalCreditsFormatted}
+      />
 
       {/* Credit Categories */}
       <div className="grid grid-cols-3 gap-8 border-t border-border pt-6 dark:border-border-night">
@@ -251,12 +222,9 @@ function UsageSection({
 export function CreditsUsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
-  const { hasFeature } = useFeatureFlags();
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
-  const isMetronome = hasFeature("metronome_billing");
   const { credits, pendingCredits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
-    metronomeCustomerId: isMetronome ? owner.metronomeCustomerId : null,
   });
   const {
     isEnterprise,
@@ -361,15 +329,14 @@ export function CreditsUsagePage() {
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title={isMetronome ? "Usage" : "Programmatic Usage"}
+          title={"Programmatic Usage"}
           icon={CardIcon}
           description={
             <div>
               <p>
-                {isMetronome
-                  ? "Monitor all usage and credits across your workspace."
-                  : "Monitor usage and credits for programmatic usage (API keys, automated workflows, etc.)."}{" "}
-                Usage cost is based on token consumption, according to our{" "}
+                Monitor usage and credits for programmatic usage (API keys,
+                automated workflows, etc.). Usage cost is based on token
+                consumption, according to our{" "}
                 <Hoverable
                   href={`${config.getStaticWebsiteUrl()}/home/api-pricing`}
                   target="_blank"
@@ -429,8 +396,7 @@ export function CreditsUsagePage() {
             </ContentMessage>
           )}
 
-        {!isMetronome &&
-          pendingCredits.length > 0 &&
+        {pendingCredits.length > 0 &&
           (() => {
             const totalPendingMicroUsd = pendingCredits.reduce(
               (sum, c) => sum + c.initialAmountMicroUsd,
@@ -499,11 +465,6 @@ export function CreditsUsagePage() {
         {/* Usage Graph */}
         {isCreditPurchaseInfoLoading ? (
           <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
-        ) : isMetronome ? (
-          <MetronomeUsageChart
-            workspaceId={owner.sId}
-            billingCycleStartDay={billingCycleStartDay ?? 1}
-          />
         ) : (
           <ProgrammaticCostChart
             workspaceId={owner.sId}

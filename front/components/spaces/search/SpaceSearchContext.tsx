@@ -1,4 +1,5 @@
 import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { ReactNode } from "react";
 import { createContext } from "react";
 
 // Temporary context to share the search term between the SpaceLayout and the
@@ -12,6 +13,15 @@ export interface SpaceSearchContextType {
   // Data source view targeting for search
   targetDataSourceViews?: DataSourceViewType[];
   setTargetDataSourceViews: (value: DataSourceViewType[]) => void;
+
+  setActionButtons?: (buttons: ReactNode | null) => void;
+  actionButtons?: ReactNode | null;
+
+  /**
+   * Immediate search string for frontend-only space lists (actions, triggers, apps).
+   * URL `q` can lag behind shallow routing; lists should prefer this when set.
+   */
+  frontendListFilterQuery?: string;
 }
 
 export const SpaceSearchContext = createContext<SpaceSearchContextType>({
@@ -20,4 +30,6 @@ export const SpaceSearchContext = createContext<SpaceSearchContextType>({
 
   targetDataSourceViews: [],
   setTargetDataSourceViews: () => {},
+
+  frontendListFilterQuery: undefined,
 });

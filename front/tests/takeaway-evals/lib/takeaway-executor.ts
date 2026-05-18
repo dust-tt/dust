@@ -4,14 +4,15 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   buildActionItems,
   buildPromptActionItems,
-} from "@app/lib/project_todo/analyze_document/action_items";
-import { buildPromptForSourceType } from "@app/lib/project_todo/analyze_document/prompts";
+} from "@app/lib/project_task/analyze_document/action_items";
+import { buildPromptForSourceType } from "@app/lib/project_task/analyze_document/prompts";
 import {
   type ExtractionResult,
   ExtractTakeawaysInputSchema,
-} from "@app/lib/project_todo/analyze_document/types";
-import { buildSpec } from "@app/lib/project_todo/analyze_document/utils";
+} from "@app/lib/project_task/analyze_document/types";
+import { buildSpec } from "@app/lib/project_task/analyze_document/utils";
 import type { TakeawaySourceDocument } from "@app/lib/resources/takeaways_resource";
+import logger from "@app/logger/logger";
 import { MODEL_ID } from "@app/tests/takeaway-evals/lib/config";
 import type {
   MockProjectMember,
@@ -85,7 +86,7 @@ async function callLLMForExtraction(
     },
     {
       context: {
-        operationType: "project_todo_analyze_document",
+        operationType: "project_task_analyze_document",
         sourceId: document.id,
         sourceType: document.type,
         workspaceId: "eval-test",
@@ -131,7 +132,7 @@ export async function executeTakeawayExtraction(
     buildMockMembersPrompt(testCase.members),
     buildPromptForSourceType(testCase.document.type),
     buildPromptActionItems(previousActionItems),
-    "You MUST call the tool. Always call it, even if there are no action items, notable facts, or key decisions (use empty arrays).",
+    "You MUST call the tool. Always call it, even if there are no action items (use empty arrays).",
   ].join("\n\n");
 
   const specification = buildSpec();
@@ -155,9 +156,13 @@ export async function executeTakeawayExtraction(
   // set of valid user IDs.
   const validUserIds = new Set(testCase.members.map((m) => m.sId));
   const actionItems = buildActionItems(
-    extraction.action_items,
+    {
+      newItems: extraction.new_action_items,
+      updatedItems: extraction.updated_action_items,
+    },
     previousActionItems,
-    validUserIds
+    validUserIds,
+    logger
   );
 
   return { extraction, actionItems };

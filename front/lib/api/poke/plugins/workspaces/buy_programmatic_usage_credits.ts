@@ -1,11 +1,17 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { createPlugin } from "@app/lib/api/poke/types";
+import type { CreditPurchaseBillingTarget } from "@app/lib/credits/committed";
 import { createEnterpriseCreditPurchase } from "@app/lib/credits/committed";
-import { createMetronomeCredit } from "@app/lib/metronome/client";
+import {
+  createMetronomeCredit,
+  getMetronomeCustomerStripeCustomerId,
+} from "@app/lib/metronome/client";
 import {
   getCreditTypeProgrammaticUsdId,
-  getProductFreeMonthlyCreditId,
+  getProductFreeCreditId,
 } from "@app/lib/metronome/constants";
+import { resolveCurrencyForExistingMetronomeCustomer } from "@app/lib/metronome/contracts";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
@@ -176,7 +182,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
 
     // Handle free credit creation (no Stripe invoice).
     if (validatedArgs.isFreeCredit) {
-      const idempotencyKey = `createCredit-${workspace.sId}-${startDate.getTime()}-${expirationDate.getTime()}`;
+      const idempotencyKey = `free-poke-${workspace.sId}-${Date.now()}`;
 
       const credit = await CreditResource.makeNew(auth, {
         type: "free",
@@ -201,13 +207,15 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         const amount = Math.ceil(amountMicroUsd / 1_000_000);
         const metronomeResult = await createMetronomeCredit({
           metronomeCustomerId,
-          productId: getProductFreeMonthlyCreditId(),
+          productId: getProductFreeCreditId(),
           creditTypeId: getCreditTypeProgrammaticUsdId(),
           amount,
           startingAt: startResult.value.startDate.toISOString(),
           endingBefore: startResult.value.expirationDate.toISOString(),
           name: `Free poke credit ($${originalAmount.toFixed(2)})`,
-          idempotencyKey,
+          idempotencyKey: `free-poke-${workspace.sId}-${startDate.getTime()}-${expirationDate.getTime()}`,
+          priority: 1,
+          applicableProductTags: ["usage"],
         });
 
         if (metronomeResult.isErr()) {
@@ -237,24 +245,35 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     }
 
     // Handle committed credit creation (with Stripe invoice).
-    const subscription = auth.subscription();
+    const subscription = auth.subscriptionResource();
 
-    if (!subscription?.stripeSubscriptionId) {
+    if (
+      !subscription?.stripeSubscriptionId &&
+      !subscription?.isMetronomeOnlyBilled
+    ) {
       return new Err(
         new Error(
-          `Workspace "${workspace.name}" does not have a Stripe subscription.`
+          `Workspace "${workspace.name}" does not have an active subscription.`
         )
       );
     }
 
-    const stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId
-    );
-    if (!stripeSubscription) {
-      return new Err(new Error("Failed to retrieve Stripe subscription."));
+    // Determine enterprise + Pro-override gate, identical for both billing
+    // paths. For Stripe-billed we read it off the Stripe subscription; for
+    // Metronome-only we read it off the plan code.
+    let isEnterprise: boolean;
+    if (subscription.stripeSubscriptionId) {
+      const stripeSubscription = await getStripeSubscription(
+        subscription.stripeSubscriptionId
+      );
+      if (!stripeSubscription) {
+        return new Err(new Error("Failed to retrieve Stripe subscription."));
+      }
+      isEnterprise = isEnterpriseSubscription(stripeSubscription);
+    } else {
+      isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
     }
 
-    const isEnterprise = isEnterpriseSubscription(stripeSubscription);
     if (!isEnterprise && !validatedArgs.confirmProOverride) {
       return new Err(
         new Error(
@@ -276,18 +295,63 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       discountPercent = defaultDiscount > 0 ? defaultDiscount : undefined;
     }
 
+    const customerFacingInfo = validatedArgs.purchaseOrderId
+      ? { purchaseOrderId: validatedArgs.purchaseOrderId }
+      : undefined;
+
+    let billingTarget: CreditPurchaseBillingTarget;
+
+    if (subscription.isMetronomeOnlyBilled) {
+      // Metronome-only: issue the invoice on the linked Stripe customer.
+      if (!workspace.metronomeCustomerId) {
+        return new Err(
+          new Error(
+            `Workspace "${workspace.name}" is not provisioned in Metronome.`
+          )
+        );
+      }
+      const stripeCustomerIdResult = await getMetronomeCustomerStripeCustomerId(
+        workspace.metronomeCustomerId
+      );
+      if (stripeCustomerIdResult.isErr() || !stripeCustomerIdResult.value) {
+        return new Err(
+          new Error(
+            `No Stripe billing configuration found for workspace "${workspace.name}".`
+          )
+        );
+      }
+      const currencyResult = await resolveCurrencyForExistingMetronomeCustomer({
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        stripeSubscriptionId: null,
+      });
+      if (currencyResult.isErr()) {
+        return new Err(
+          new Error(
+            `Failed to resolve billing currency: ${currencyResult.error.message}`
+          )
+        );
+      }
+      billingTarget = {
+        type: "metronome",
+        stripeCustomerId: stripeCustomerIdResult.value,
+        currency: currencyResult.value,
+      };
+    } else {
+      billingTarget = {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscription.stripeSubscriptionId!,
+      };
+    }
+
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscription.stripeSubscriptionId,
+      billingTarget,
       amountMicroUsd,
       discountPercent,
       startDate,
       expirationDate,
-      customerFacingInfo: validatedArgs.purchaseOrderId
-        ? { purchaseOrderId: validatedArgs.purchaseOrderId }
-        : undefined,
+      customerFacingInfo,
     });
-
     if (result.isErr()) {
       return result;
     }

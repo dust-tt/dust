@@ -58,6 +58,7 @@ import { FILE_ID_PATTERN } from "@app/lib/files";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
+import { getNextWakeUpFireAt } from "@app/lib/utils/wakeup_description";
 import type { FetchConversationMessageResponseLight } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import {
   canShowAgentConversationActions,
@@ -120,6 +121,9 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
+// TODO(sessions-branching): Re-enable once branching from a source message is fixed.
+const SHOW_BRANCH_FROM_HERE_ACTION = false;
+
 function PrunedContextChip() {
   return (
     <Tooltip
@@ -165,8 +169,39 @@ function PrunedContextChip() {
   );
 }
 
+function buildMountFilePreviewHref({
+  apiBaseUrl,
+  ownerId,
+  conversationId,
+  spaceId,
+  filePath,
+}: {
+  apiBaseUrl: string;
+  ownerId: string;
+  conversationId: string;
+  spaceId: string | null;
+  filePath: string;
+}): string | undefined {
+  if (filePath.startsWith("conversation/")) {
+    const rel = filePath.slice("conversation/".length);
+    return `${apiBaseUrl}/api/w/${ownerId}/assistant/conversations/${conversationId}/files/${rel}`;
+  }
+
+  if (filePath.startsWith("project/")) {
+    if (!spaceId) {
+      return undefined;
+    }
+
+    const rel = filePath.slice("project/".length);
+    return `${apiBaseUrl}/api/w/${ownerId}/spaces/${spaceId}/files/${rel}`;
+  }
+
+  return undefined;
+}
+
 interface AgentMessageProps {
   conversationId: string;
+  spaceId: string | null;
   hideHeader: boolean;
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
@@ -175,7 +210,6 @@ interface AgentMessageProps {
   user: UserType;
   triggeringUser: UserType | null;
   isOnboardingConversation: boolean;
-  onConversationBranched?: () => Promise<void> | void;
   onCompletionStatusClick?: (messageId: string, actionId?: string) => void;
   handleSubmit: (
     input: string,
@@ -189,6 +223,7 @@ interface AgentMessageProps {
 
 export function AgentMessage({
   conversationId,
+  spaceId,
   hideHeader,
   isLastMessage,
   agentMessage,
@@ -197,7 +232,6 @@ export function AgentMessage({
   user,
   triggeringUser,
   isOnboardingConversation,
-  onConversationBranched,
   onCompletionStatusClick,
   handleSubmit,
   additionalMarkdownComponents,
@@ -384,10 +418,9 @@ export function AgentMessage({
               void mutateWakeUps().then((updated) => {
                 const activeWakeUp =
                   updated?.wakeUps.find(isActiveWakeUp) ?? null;
-                const nextWakeupAt =
-                  activeWakeUp?.scheduleConfig.type === "one_shot"
-                    ? activeWakeUp.scheduleConfig.fireAt
-                    : null;
+                const nextWakeupAt = activeWakeUp
+                  ? getNextWakeUpFireAt(activeWakeUp)
+                  : null;
                 void mutateConversations(
                   (currentData: ConversationListItemType[] | undefined) =>
                     currentData?.map((c) =>
@@ -435,17 +468,17 @@ export function AgentMessage({
     () =>
       Object.entries(agentMessage.citations ?? {}).reduce<
         Record<string, MCPReferenceCitation>
-      >((acc, [key, citation]) => {
+      >((acc, [ref, citation]) => {
         if (citation) {
           return {
             ...acc,
-            [key]: {
+            [ref]: {
               provider: citation.provider,
               href: citation.href,
               title: citation.title,
               description: citation.description,
               contentType: citation.contentType,
-              fileId: key,
+              ref,
             },
           };
         }
@@ -679,8 +712,7 @@ export function AgentMessage({
     !isAgentMessageHandingOver &&
     !isProjectArchived;
 
-  const canBranchConversation =
-    hasFeature("sessions_branching") && shouldShowCopy;
+  const canBranchConversation = SHOW_BRANCH_FROM_HERE_ACTION && shouldShowCopy;
 
   const shouldShowFeedback =
     !isDeleted &&
@@ -696,7 +728,6 @@ export function AgentMessage({
   const { branchConversation, isBranching } = useBranchConversation({
     owner,
     conversationId,
-    onConversationBranched,
   });
 
   const retryHandler = useCallback(
@@ -794,7 +825,7 @@ export function AgentMessage({
 
     if (canBranchConversation) {
       dropdownItems.push({
-        label: "Branch conversation",
+        label: "Branch from here",
         icon: ActionGitBranchIcon,
         onSelect: () => {
           void branchConversation(agentMessage.sId);
@@ -987,6 +1018,7 @@ export function AgentMessage({
           onQuickReplySend={handleQuickReply}
           owner={owner}
           conversationId={conversationId}
+          spaceId={spaceId}
           retryHandler={retryHandler}
           reloadMessage={reloadMessage}
           isRetryHandlerProcessing={isRetryHandlerProcessing}
@@ -1083,6 +1115,7 @@ function AgentMessageContent({
   streamError,
   owner,
   conversationId,
+  spaceId,
   activeReferences,
   setActiveReferences,
   retryHandler,
@@ -1098,6 +1131,7 @@ function AgentMessageContent({
   isLastMessage: boolean;
   owner: LightWorkspaceType;
   conversationId: string;
+  spaceId: string | null;
   retryHandler: (params: {
     conversationId: string;
     messageId: string;
@@ -1300,21 +1334,22 @@ function AgentMessageContent({
   const filesFromMessage = agentMessage.generatedFiles.filter((f) => !f.hidden);
 
   // Combine both sources, preferring actions (more up-to-date during streaming).
-  // Dedupe by fileId.
-  const seenFileIds = new Set<string>();
+  // Dedupe by fileId (file resource) or filePath (file path).
+  const seenFileKeys = new Set<string>();
   const allGeneratedFiles = [...filesFromActions, ...filesFromMessage].filter(
     (file) => {
-      if (seenFileIds.has(file.fileId)) {
+      const key = file.fileId ?? file.filePath;
+      if (!key || seenFileKeys.has(key)) {
         return false;
       }
-      seenFileIds.add(file.fileId);
+      seenFileKeys.add(key);
       return true;
     }
   );
 
   const completedImages = allGeneratedFiles
     .filter((file) => isSupportedImageContentType(file.contentType))
-    .filter((file) => !referencedFileIds.has(file.fileId));
+    .filter((file) => file.fileId && !referencedFileIds.has(file.fileId));
 
   const generatedFiles = filesFromMessage.filter(
     (file) =>
@@ -1373,24 +1408,40 @@ function AgentMessageContent({
         {generatedFiles.length > 0 && (
           <div className="mt-2 grid grid-cols-5 gap-1">
             {getCitations({
-              activeReferences: generatedFiles.map((file) => ({
-                index: -1,
-                document: {
-                  fileId: file.fileId,
-                  contentType: file.contentType,
-                  href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
-                  title: file.title,
-                },
-              })),
+              activeReferences: generatedFiles.map((file) => {
+                const href = file.fileId
+                  ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`
+                  : file.filePath
+                    ? buildMountFilePreviewHref({
+                        apiBaseUrl: config.getApiBaseUrl(),
+                        ownerId: owner.sId,
+                        conversationId,
+                        spaceId,
+                        filePath: file.filePath,
+                      })
+                    : undefined;
+                return {
+                  index: -1,
+                  document: {
+                    fileId: file.fileId ?? undefined,
+                    contentType: file.contentType,
+                    href,
+                    title: file.title,
+                  },
+                };
+              }),
               owner,
               conversationId,
             })}
           </div>
         )}
-        {agentMessage.status === "cancelled" && (
+        {(agentMessage.status === "cancelled" ||
+          agentMessage.status === "interrupted") && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint dark:text-faint-night">
-              Message generation stopped by user
+              {agentMessage.status === "interrupted"
+                ? "Skipped. Running your next message."
+                : "Generation stopped."}
             </div>
             <div>
               <ButtonGroupDropdown

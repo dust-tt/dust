@@ -56,11 +56,11 @@ export const VIZ_STYLING_GUIDELINES = `
 `;
 
 export const VIZ_FILE_HANDLING_GUIDELINES = `
-- Using any file from the \`conversation_files__list_files\` action when available:
-  - Files from the conversation as returned by \`conversation_files__list_files\` can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
+- Using any file from the conversation when available:
+  - Files attached to the conversation can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Like any React hook, \`useFile\` must be called inside a React component at the top level (not in event handlers, loops, or conditions).
-  - File IDs must always start with "fil_" prefix.
+  - \`useFile()\` accepts either a file ID (e.g. \`"fil_abc123"\`, as found in \`<attachment id="fil_..." ...>\` tags) or a scoped file path (e.g. \`"conversation/report.csv"\`). Pass whichever you already have.
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
   - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
   - Always use \`papaparse\` to parse CSV files.
@@ -77,7 +77,13 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - Always load images via \`useFile()\` to obtain a \`File\` object — never reference images directly by URL/path or by copying the \`<attachment/>\` tag contents.
   - Create a local object URL from the \`File\` when rendering (e.g. \`const src = URL.createObjectURL(file)\`).
   - Use the resulting object URL for \`<img src={src} alt="..." />\` or as a background image; do not attempt to fetch remote images (no internet access).
-  - When creating custom components that render files, always use \`fileId\` as the prop name for file identifiers (e.g., \`<EventPhoto fileId="fil_abc123" caption="..." />\`). This naming convention ensures proper file prefetching during server-side rendering.
+  - When creating custom components that render files, always use \`fileId\` as the prop name for file identifiers (e.g., \`<EventPhoto fileId="fil_abc123" caption="..." />\` or \`<EventPhoto fileId="conversation/photo.jpg" caption="..." />\`). This naming convention ensures proper file prefetching during server-side rendering. The prop accepts either a file ID or a scoped file path.
+- Importing other frames as React components:
+  - Another frame can be imported directly as a React component using a standard ES import, with either its file ID (\`import MyComponent from "fil_abc123"\`) or its scoped file path (\`import MyComponent from "conversation/MyFrame.tsx"\`).
+  - The default export of the imported frame is available as a fully functional React component that can be rendered like any other component.
+  - This enables frame composition: a parent frame can assemble multiple child frames into a single layout without duplicating code.
+  - Transitive imports are supported — an imported frame may itself import other frames.
+  - The same \`@dust/react-hooks\` utilities (\`useFile\`, \`triggerUserFileDownload\`, \`captureScreenshot\`) and all standard libraries (recharts, shadcn, lucide-react, etc.) are available inside imported frames.
 `;
 
 export const VIZ_LIBRARY_USAGE = `
@@ -132,7 +138,10 @@ import { useFile } from "@dust/react-hooks";
 import Papa from "papaparse";
 
 function DataChartComponent() {
-  const file = useFile("fil_abc123");
+  // Either form works:
+  //   const file = useFile("fil_abc123");
+  //   const file = useFile("conversation/data.csv");
+  const file = useFile("conversation/data.csv");
   const [data, setData] = useState([]);
   const [fileContent, setFileContent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -166,7 +175,7 @@ function DataChartComponent() {
 export default DataChartComponent;
 \`\`\`
 
-\`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`conversation_files__list_files\` action.
+The argument to \`useFile\` is either a file ID (from \`<attachment id="\${FILE_ID}" ...>\` tags) or a scoped file path (e.g. \`conversation/data.csv\`).
 
 Example using the \`triggerUserFileDownload\` hook:
 
@@ -180,6 +189,26 @@ import { triggerUserFileDownload } from "@dust/react-hooks";
 })}>
   Download Data
 </button>
+\`\`\`
+`;
+
+export const VIZ_FRAME_IMPORT_EXAMPLE = `
+Example importing another frame as a React component:
+
+\`\`\`
+// Parent frame that composes two child frames side by side.
+import React from "react";
+import SalesChart from "fil_abc123";              // by file ID
+import RegionMap from "conversation/RegionMap.tsx"; // by scoped file path
+
+export default function Dashboard() {
+  return (
+    <div className="flex flex-col gap-6 p-4">
+      <SalesChart />
+      <RegionMap />
+    </div>
+  );
+}
 \`\`\`
 `;
 

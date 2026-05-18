@@ -12,6 +12,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-synthesis: none;
+    interpolate-size: allow-keywords;
   }
 
   @supports (font-synthesis-weight: none) {

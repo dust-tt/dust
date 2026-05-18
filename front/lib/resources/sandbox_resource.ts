@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
+import { deleteSandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordLifecycleOperation,
@@ -24,6 +25,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -47,6 +49,21 @@ export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
+
+  private static deleteEgressPolicyAfterDestroy(
+    sandbox: SandboxResource
+  ): void {
+    void deleteSandboxPolicy(sandbox.providerId).catch((err) =>
+      logger.warn(
+        {
+          err,
+          sandboxId: sandbox.sId,
+          sandboxProviderId: sandbox.providerId,
+        },
+        "Failed to delete sandbox egress policy"
+      )
+    );
+  }
 
   constructor(
     _model: ModelStatic<SandboxModel>,
@@ -274,6 +291,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON(), error: result.error.message },
             "Failed to destroy sandbox at provider — proceeding with DB cleanup."
           );
+        } else {
+          SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
         }
       }
 
@@ -306,6 +325,51 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
   }
 
+  // Compose the env vars passed to provider.create. Precedence (lowest →
+  // highest): workspace env vars → image runEnv → system vars. The image and
+  // system layers always win, so even if a row slips past suffix validation it
+  // cannot shadow a system var like CONVERSATION_ID.
+  private static async buildSandboxEnvVars(
+    auth: Authenticator,
+    conversation: ConversationType,
+    imageEnvVars: Record<string, string> | undefined
+  ): Promise<Result<Record<string, string>, Error>> {
+    const workspaceEnvResult =
+      await WorkspaceSandboxEnvVarResource.loadEnv(auth);
+    if (workspaceEnvResult.isErr()) {
+      return workspaceEnvResult;
+    }
+    const httpsSecretEnvResult =
+      await WorkspaceSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(auth);
+    if (httpsSecretEnvResult.isErr()) {
+      return httpsSecretEnvResult;
+    }
+
+    // Point curl-family clients at /etc/dust/ca-bundle.pem. The image seeds
+    // this path with the system roots at build time, and installMitmTrustBundle
+    // atomically replaces it with (system roots + dsbx CA) once the forwarder
+    // is up. Safe to set unconditionally: the file always exists, even before
+    // egress setup runs and in dev-unrestricted mode where it never runs.
+    //
+    // TODO: cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT, etc.) per
+    // design_docs/SECRET_SWAP_DESIGN.md, "Client-language agnosticism".
+    const trustBundleEnv: Record<string, string> = {
+      SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",
+      CURL_CA_BUNDLE: "/etc/dust/ca-bundle.pem",
+    };
+
+    return new Ok({
+      ...workspaceEnvResult.value,
+      ...httpsSecretEnvResult.value,
+      ...imageEnvVars,
+      ...trustBundleEnv,
+      DD_API_KEY: config.getDatadogApiKey() ?? "",
+      DD_HOST: "http-intake.logs.datadoghq.eu",
+      CONVERSATION_ID: conversation.sId,
+      WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
+    });
+  }
+
   /**
    * Ensure a running sandbox exists for the given conversation.
    *
@@ -335,17 +399,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         const createConfig = imageResult.value.toCreateConfig();
+        const envVarsResult = await this.buildSandboxEnvVars(
+          auth,
+          conversation,
+          createConfig.envVars
+        );
+        if (envVarsResult.isErr()) {
+          return new Err(envVarsResult.error);
+        }
 
         const createResult = await provider.create(
           {
             ...createConfig,
-            envVars: {
-              ...createConfig.envVars,
-              DD_API_KEY: config.getDatadogApiKey() ?? "",
-              DD_HOST: "http-intake.logs.datadoghq.eu",
-              CONVERSATION_ID: conversation.sId,
-              WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
-            },
+            envVars: envVarsResult.value,
           },
           tracingOpts
         );
@@ -438,17 +504,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           }
 
           const createConfig = imageResult.value.toCreateConfig();
+          const envVarsResult = await this.buildSandboxEnvVars(
+            auth,
+            conversation,
+            createConfig.envVars
+          );
+          if (envVarsResult.isErr()) {
+            return new Err(envVarsResult.error);
+          }
 
           const createResult = await provider.create(
             {
               ...createConfig,
-              envVars: {
-                ...createConfig.envVars,
-                DD_API_KEY: config.getDatadogApiKey() ?? "",
-                DD_HOST: "http-intake.logs.datadoghq.eu",
-                CONVERSATION_ID: conversation.sId,
-                WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
-              },
+              envVars: envVarsResult.value,
             },
             tracingOpts
           );
@@ -631,12 +699,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             "Sandbox not found at provider during destroy — marking deleted."
           );
           await sandbox.updateStatus("deleted", { ctx });
+          SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
           return new Ok(undefined);
         }
         return result;
       }
 
       await sandbox.updateStatus("deleted", { ctx });
+      SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
       recordLifecycleOperation("destroy", ctx);
 
       void revokeAllExecTokensForSandbox(sandbox.sId).catch((err) =>

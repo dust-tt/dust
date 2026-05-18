@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/data_source_views.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import {
@@ -13,18 +15,17 @@ import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const GetContentNodesOrChildrenRequestBody = t.type({
-  internalIds: t.union([t.array(t.union([t.string, t.null])), t.undefined]),
-  parentId: t.union([t.string, t.undefined]),
+const GetContentNodesOrChildrenRequestBody = z.object({
+  internalIds: z.array(z.string().nullable()).optional(),
+  parentId: z.string().optional(),
   viewType: ContentNodesViewTypeCodec,
-  sorting: t.union([SortingParamsCodec, t.undefined]),
+  sorting: SortingParamsCodec.optional(),
 });
-export type GetContentNodesOrChildrenRequestBodyType = t.TypeOf<
+export type GetContentNodesOrChildrenRequestBodyType = z.infer<
   typeof GetContentNodesOrChildrenRequestBody
 >;
 
@@ -65,20 +66,20 @@ async function handler(
     });
   }
 
-  const bodyValidation = GetContentNodesOrChildrenRequestBody.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+  const bodyValidation = GetContentNodesOrChildrenRequestBody.safeParse(
+    req.body
+  );
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
+        message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
       },
       status_code: 400,
     });
   }
 
-  const { internalIds, parentId, viewType, sorting } = bodyValidation.right;
+  const { internalIds, parentId, viewType, sorting } = bodyValidation.data;
 
   if (parentId && internalIds) {
     return apiError(req, res, {
@@ -90,7 +91,7 @@ async function handler(
     });
   }
 
-  const paginationRes = getCursorPaginationParams(req);
+  const paginationRes = getCursorPaginationParams(req.query);
   if (paginationRes.isErr()) {
     return apiError(req, res, {
       status_code: 400,

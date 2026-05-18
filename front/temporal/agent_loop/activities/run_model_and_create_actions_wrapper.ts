@@ -3,8 +3,8 @@ import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DurationRecorder } from "@app/lib/duration_recorder";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -20,7 +20,6 @@ import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_t
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModel } from "@app/temporal/agent_loop/lib/run_model";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
-import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
@@ -32,7 +31,6 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context } from "@temporalio/activity";
-import assert from "assert";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -100,6 +98,7 @@ async function _runModelAndCreateActionsActivity({
   step: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
+  const durationRecorder = DurationRecorder.create([]);
 
   const runAgentDataRes = await startActiveObservation(
     "get-agent-loop-data",
@@ -121,7 +120,6 @@ async function _runModelAndCreateActionsActivity({
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
-  const durationRecorder = DurationRecorder.create([]);
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
   // This can miss thresholds crossed on the final step.
@@ -351,49 +349,40 @@ async function getExistingActionsAndBlobs(
   // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent step content.
   const { agentMessage } = runAgentArgs;
 
-  // Find function_call step contents for this step.
-  const stepContents = await AgentStepContentModel.findAll({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      agentMessageId: agentMessage.agentMessageId,
-      step,
-      type: "function_call",
-    },
-    include: [
-      {
-        model: AgentMCPActionModel,
-        as: "agentMCPActions",
-        required: true,
+  const agentStepContentToolExecutions =
+    await AgentStepContentToolExecutionModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: agentMessage.agentMessageId,
       },
-    ],
-  });
+      include: [
+        {
+          model: AgentMCPActionModel,
+          as: "agentMCPAction",
+          required: true,
+        },
+      ],
+    });
 
-  if (stepContents.length === 0) {
+  if (agentStepContentToolExecutions.length === 0) {
     return null; // No existing actions.
   }
 
   const actionBlobs: ActionBlob[] = [];
 
-  for (const stepContent of stepContents) {
-    if (stepContent.agentMCPActions && stepContent.agentMCPActions.length > 0) {
-      const [mcpAction] = stepContent.agentMCPActions;
+  for (const toolExecution of agentStepContentToolExecutions) {
+    const { agentMCPAction: mcpAction } = toolExecution;
 
-      assert(
-        isAgentFunctionCallContent(stepContent.value),
-        "Unexpected: step content is not a function call"
-      );
-
-      // If the tool is not already in a final state we must add it to the list of actions to run.
-      if (!isToolExecutionStatusFinal(mcpAction.status)) {
-        actionBlobs.push({
-          actionId: mcpAction.id,
-          actionStatus: mcpAction.status,
-          needsApproval: mcpAction.status === "blocked_validation_required",
-          retryPolicy: getRetryPolicyFromToolConfiguration(
-            mcpAction.toolConfiguration
-          ),
-        });
-      }
+    // If the tool is not already in a final state we must add it to the list of actions to run.
+    if (!isToolExecutionStatusFinal(mcpAction.status)) {
+      actionBlobs.push({
+        actionId: mcpAction.id,
+        actionStatus: mcpAction.status,
+        needsApproval: mcpAction.status === "blocked_validation_required",
+        retryPolicy: getRetryPolicyFromToolConfiguration(
+          mcpAction.toolConfiguration
+        ),
+      });
     }
   }
 

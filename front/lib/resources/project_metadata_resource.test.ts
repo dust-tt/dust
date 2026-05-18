@@ -113,6 +113,8 @@ describe("ProjectMetadataResource", () => {
       expect(json.spaceId).toBe(projectSpace.sId);
       expect(json.description).toBe("JSON test");
       expect(typeof json.createdAt).toBe("number");
+      expect(json.todoGenerationEnabled).toBe(false);
+      expect(json.lastTodoAnalysisAt).toBeNull();
     });
   });
 });

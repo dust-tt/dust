@@ -1,10 +1,4 @@
-import {
-  BookOpenIcon,
-  Card,
-  CardGrid,
-  ContactsUserIcon,
-  Icon,
-} from "@dust-tt/sparkle";
+import { Card, CardGrid, CheckIcon, Icon } from "@dust-tt/sparkle";
 
 interface SpaceConversationsActionsProps {
   isEditor: boolean;
@@ -17,28 +11,17 @@ export function SpaceConversationsActions({
 }: SpaceConversationsActionsProps) {
   const suggestions = [
     {
-      id: "add-context",
-      label: "Add knowledge",
-      icon: BookOpenIcon,
+      id: "onboarding-tasks",
+      label: "Get your project off the ground",
+      icon: CheckIcon,
       description:
-        "Add files, links, or data sources relevant to this project.",
+        "Add context, connect your knowledge, and bring the right people in. Flying solo? It still keeps everything in one place.",
+      variant: "highlight" as const,
+      isPulsing: true,
       onClick: () => {
-        window.location.hash = "context";
+        window.location.hash = "tasks";
       },
     },
-    ...(isEditor
-      ? [
-          {
-            id: "manage-members",
-            label: "Manage members",
-            icon: ContactsUserIcon,
-            description: "Invite people to this project as members or editors.",
-            onClick: () => {
-              onOpenMembersPanel();
-            },
-          },
-        ]
-      : []),
   ];
 
   return (
@@ -50,8 +33,9 @@ export function SpaceConversationsActions({
         {suggestions.map((suggestion) => (
           <Card
             key={suggestion.id}
-            variant="primary"
+            variant={suggestion.variant}
             size="lg"
+            isPulsing={suggestion.isPulsing}
             onClick={suggestion.onClick}
             className="cursor-pointer"
           >
@@ -60,11 +44,9 @@ export function SpaceConversationsActions({
                 <Icon visual={suggestion.icon} size="sm" />
                 <div className="w-full">{suggestion.label}</div>
               </div>
-              {suggestion.description && (
-                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {suggestion.description}
-                </div>
-              )}
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {suggestion.description}
+              </div>
             </div>
           </Card>
         ))}

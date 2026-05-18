@@ -18,3 +18,9 @@ Depends on agents from `basics/` seed. The script will create them if they don't
 ```bash
 npx tsx scripts/seed/triggers/seed.ts --execute
 ```
+
+To target a different workspace:
+
+```bash
+DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/triggers/seed.ts --execute
+```

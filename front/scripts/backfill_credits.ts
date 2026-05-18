@@ -1,5 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { grantFreeCreditsFromSubscriptionStateChange } from "@app/lib/credits/free";
 import { startOrResumeEnterprisePAYG } from "@app/lib/credits/payg";
 import {
   getStripeSubscription,
@@ -80,45 +79,6 @@ async function reconcilePAYGConfig(
   }
 }
 
-async function backfillFreeCredits(
-  auth: Authenticator,
-  workspaceId: string,
-  stripeSubscription: Stripe.Subscription | null,
-  execute: boolean,
-  logger: Logger
-): Promise<void> {
-  if (!stripeSubscription) {
-    return;
-  }
-
-  logger.info(
-    {
-      workspaceId,
-      execute,
-    },
-    execute
-      ? "[Backfill credits] Granting free credits"
-      : "[Backfill credits] [DRY RUN] Would grant free credits"
-  );
-
-  if (execute) {
-    const result = await grantFreeCreditsFromSubscriptionStateChange({
-      auth,
-      stripeSubscription,
-    });
-
-    if (result.isErr()) {
-      logger.error(
-        {
-          workspaceId,
-          error: result.error.message,
-        },
-        "[Backfill credits] Free credits grant result"
-      );
-    }
-  }
-}
-
 async function reconcileWorkspaceCredits(
   workspaceId: string,
   execute: boolean,
@@ -138,13 +98,6 @@ async function reconcileWorkspaceCredits(
     : null;
 
   await reconcilePAYGConfig(
-    auth,
-    workspaceId,
-    stripeSubscription,
-    execute,
-    logger
-  );
-  await backfillFreeCredits(
     auth,
     workspaceId,
     stripeSubscription,

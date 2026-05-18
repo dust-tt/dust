@@ -10,15 +10,12 @@ import type { WindowSize } from "@app/lib/api/analytics/time_utils";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListCreditsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
-import type {
-  CreditDisplayData,
-  GetCreditsResponseBody,
-} from "@app/types/credits";
 import type { Fetcher } from "swr";
 
 export type PokeCreditsData = {
-  credits: PokeListCreditsResponseBody["credits"];
+  rows: PokeListCreditsResponseBody["rows"];
   excessCreditsLast30DaysMicroUsd: number;
+  hasMetronome: boolean;
 };
 
 export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
@@ -32,8 +29,9 @@ export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
   );
 
   const creditsData: PokeCreditsData = {
-    credits: data?.credits ?? emptyArray(),
+    rows: data?.rows ?? emptyArray(),
     excessCreditsLast30DaysMicroUsd: data?.excessCreditsLast30DaysMicroUsd ?? 0,
+    hasMetronome: data?.hasMetronome ?? false,
   };
 
   return {
@@ -137,34 +135,5 @@ export function usePokeMetronomeUsage({
     isMetronomeUsageLoading: !error && !data && !disabled,
     isMetronomeUsageError: error,
     isMetronomeUsageValidating: isValidating,
-  };
-}
-
-export type PokeMetronomeBalancesData = {
-  credits: CreditDisplayData[];
-};
-
-export function usePokeMetronomeBalances({
-  disabled,
-  owner,
-}: PokeConditionalFetchProps) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetCreditsResponseBody> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/metronome-balances`,
-    fetcherFn,
-    { disabled }
-  );
-
-  const balancesData: PokeMetronomeBalancesData = {
-    credits: data?.credits ?? emptyArray(),
-  };
-
-  return {
-    data: balancesData,
-    isLoading: !error && !data && !disabled,
-    isError: error,
-    mutate,
   };
 }

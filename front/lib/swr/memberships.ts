@@ -1,3 +1,4 @@
+import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
@@ -182,5 +183,34 @@ export function useMembersLookup({
     members: data?.users ?? emptyArray(),
     isMembersLookupLoading: !error && !data && !!query && !disabled,
     isMembersLookupError: !!error,
+  };
+}
+
+export function useMembersUsage({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const defaultUrl = `/api/w/${workspaceId}/credits/members-usage`;
+  const [url, setUrl] = useState(defaultUrl);
+
+  const membersUsageFetcher: Fetcher<GetMembersUsageResponseBody> = fetcher;
+  const { data, error } = useSWRWithDefaults(url, membersUsageFetcher, {
+    disabled,
+  });
+
+  return {
+    membersUsage: data?.members ?? emptyArray(),
+    isMembersUsageLoading: !error && !data && !disabled,
+    isMembersUsageError: !!error,
+    totalMembersUsage: data?.total ?? 0,
+    hasNextPage: !!data?.nextPageUrl,
+    loadNextPage: useCallback(
+      () => data?.nextPageUrl && setUrl(data.nextPageUrl),
+      [data?.nextPageUrl]
+    ),
   };
 }

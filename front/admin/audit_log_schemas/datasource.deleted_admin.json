@@ -9,9 +9,9 @@
     }
   ],
   "metadata": {
-    "dataSourceName": "string",
+    "data_source_name": "string",
     "provider": "string",
-    "deletedBy": "string",
+    "deleted_by": "string",
     "actor_type": "string"
   }
 }

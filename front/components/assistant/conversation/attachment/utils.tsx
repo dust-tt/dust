@@ -275,8 +275,8 @@ export function markdownCitationToAttachmentCitation(
   citation: MCPReferenceCitation
 ): MCPAttachmentCitation {
   return {
-    id: citation.fileId,
-    fileId: citation.fileId,
+    id: citation.fileId ?? citation.ref ?? citation.title,
+    fileId: citation.fileId ?? null,
     attachmentCitationType: "mcp",
     contentType: citation.contentType,
     sourceUrl: citation.href ?? null,

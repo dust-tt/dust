@@ -34,8 +34,8 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import sortBy from "lodash/sortBy";
+import uniqBy from "lodash/uniqBy";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -107,10 +107,10 @@ export function AssistantSkillsToolsSection({
         .filter((action) => (isDustAgent ? !isHiddenDustAction(action) : true))
         .map((action) => renderOtherAction(action, mcpServers))
     );
-    return _.sortBy(_.uniqBy(actions, "title"), ["order", "title"]);
+    return sortBy(uniqBy(actions, "title"), ["order", "title"]);
   }, [agentConfiguration.actions, mcpServers, isDustAgent]);
 
-  const sortedSkills = useMemo(() => _.sortBy(skills, "name"), [skills]);
+  const sortedSkills = useMemo(() => sortBy(skills, "name"), [skills]);
 
   const allTools = useMemo(
     () => [...sortedActions, ...availableToolsets],

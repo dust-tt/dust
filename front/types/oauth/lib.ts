@@ -2,11 +2,11 @@ import type { ByokModelProviderIdType } from "@app/types/assistant/models/types"
 import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
-import * as t from "io-ts";
+import { z } from "zod";
 
 // Extra config type for OAuth setup - generic key-value pairs for provider-specific config
-export const ExtraConfigTypeSchema = t.record(t.string, t.string);
-export type ExtraConfigType = t.TypeOf<typeof ExtraConfigTypeSchema>;
+export const ExtraConfigTypeSchema = z.record(z.string(), z.string());
+export type ExtraConfigType = z.infer<typeof ExtraConfigTypeSchema>;
 
 export const OAUTH_USE_CASES = [
   "connection",
@@ -110,6 +110,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "snowflake_role",
   "snowflake_warehouse",
   "ukg_ready_company_id",
+  "jira_cloud_url",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -306,6 +307,22 @@ export function getProviderRequiredOAuthCredentialInputs({
         return result;
       }
       return null;
+    case "jira":
+      if (useCase === "platform_actions" || useCase === "personal_actions") {
+        const result: OAuthCredentialInputs = {
+          jira_cloud_url: {
+            label: "Jira Cloud URL",
+            value: undefined,
+            helpMessage:
+              "Your Atlassian Cloud URL (e.g. https://company.atlassian.net). " +
+              "Optional — leave blank to use the first accessible instance.",
+            validator: isValidJiraCloudUrlOrEmpty,
+            overridableAtPersonalAuth: false,
+          },
+        };
+        return result;
+      }
+      return null;
     case "hubspot":
     case "slack":
     case "slack_tools":
@@ -319,7 +336,6 @@ export function getProviderRequiredOAuthCredentialInputs({
     case "github":
     case "google_drive":
     case "intercom":
-    case "jira":
     case "linear":
     case "mcp":
     case "discord":
@@ -477,6 +493,33 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
   return (
     typeof s === "string" && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(s)
   );
+}
+
+const ATLASSIAN_CLOUD_URL_REGEX =
+  /^https:\/\/[a-z0-9][a-z0-9-]*\.atlassian\.net$/i;
+
+export function normalizeJiraCloudUrl(raw: string): string {
+  let url = raw.trim();
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = "https://" + url;
+  }
+  return url.replace(/\/+$/, "");
+}
+
+export function isValidJiraCloudUrl(cloudUrl: string | undefined): boolean {
+  if (!cloudUrl) {
+    return false;
+  }
+  return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeJiraCloudUrl(cloudUrl));
+}
+
+export function isValidJiraCloudUrlOrEmpty(
+  cloudUrl: string | undefined
+): boolean {
+  if (!cloudUrl || cloudUrl.trim() === "") {
+    return true;
+  }
+  return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeJiraCloudUrl(cloudUrl));
 }
 
 export function isValidSalesforceDomain(s: unknown): s is string {
@@ -655,114 +698,104 @@ export function isProviderWithDefaultWorkspaceConfiguration(
 
 // Credentials
 
-const SnowflakeAccountSchema = t.refinement(
-  t.string,
-  isValidSnowflakeAccount,
-  "SnowflakeAccount"
-);
+const SnowflakeAccountSchema = z
+  .string()
+  .refine(isValidSnowflakeAccount, { message: "SnowflakeAccount" });
 
-// Base schema with common fields
-const SnowflakeBaseCredentialsSchema = t.type({
-  username: t.string,
+// Base schema fields with common properties
+const SNOWFLAKE_BASE_CREDENTIALS_FIELDS = {
+  username: z.string(),
   account: SnowflakeAccountSchema,
-  role: t.string,
-  warehouse: t.string,
-});
+  role: z.string(),
+  warehouse: z.string(),
+};
 
 // Legacy schema for backward compatibility
-export const SnowflakeLegacyCredentialsSchema = t.intersection([
-  SnowflakeBaseCredentialsSchema,
-  t.type({
-    password: t.string,
-  }),
-]);
+export const SnowflakeLegacyCredentialsSchema = z.object({
+  ...SNOWFLAKE_BASE_CREDENTIALS_FIELDS,
+  password: z.string(),
+});
 
-export const SnowflakePasswordCredentialsSchema = t.intersection([
-  SnowflakeBaseCredentialsSchema,
-  t.type({
-    auth_type: t.literal("password"),
-    password: t.string,
-  }),
-]);
+export const SnowflakePasswordCredentialsSchema = z.object({
+  ...SNOWFLAKE_BASE_CREDENTIALS_FIELDS,
+  auth_type: z.literal("password"),
+  password: z.string(),
+});
 
-export const SnowflakeKeyPairCredentialsSchema = t.intersection([
-  SnowflakeBaseCredentialsSchema,
-  t.type({
-    auth_type: t.literal("keypair"),
-    private_key: t.string,
-    private_key_passphrase: t.union([t.string, t.undefined]),
-  }),
-]);
+export const SnowflakeKeyPairCredentialsSchema = z.object({
+  ...SNOWFLAKE_BASE_CREDENTIALS_FIELDS,
+  auth_type: z.literal("keypair"),
+  private_key: z.string(),
+  private_key_passphrase: z.string().optional(),
+});
 
-export const SnowflakeCredentialsSchema = t.union([
+export const SnowflakeCredentialsSchema = z.union([
   SnowflakeLegacyCredentialsSchema,
   SnowflakePasswordCredentialsSchema,
   SnowflakeKeyPairCredentialsSchema,
 ]);
 
-export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
+export type SnowflakeCredentials = z.infer<typeof SnowflakeCredentialsSchema>;
 
-export const CheckBigQueryCredentialsSchema = t.type({
-  type: t.string,
-  project_id: t.string,
-  private_key_id: t.string,
-  private_key: t.string,
-  client_email: t.string,
-  client_id: t.string,
-  auth_uri: t.string,
-  token_uri: t.string,
-  auth_provider_x509_cert_url: t.string,
-  client_x509_cert_url: t.string,
-  universe_domain: t.string,
+export const CheckBigQueryCredentialsSchema = z.object({
+  type: z.string(),
+  project_id: z.string(),
+  private_key_id: z.string(),
+  private_key: z.string(),
+  client_email: z.string(),
+  client_id: z.string(),
+  auth_uri: z.string(),
+  token_uri: z.string(),
+  auth_provider_x509_cert_url: z.string(),
+  client_x509_cert_url: z.string(),
+  universe_domain: z.string(),
 });
 
-export type CheckBigQueryCredentials = t.TypeOf<
+export type CheckBigQueryCredentials = z.infer<
   typeof CheckBigQueryCredentialsSchema
 >;
 
-export const BigQueryCredentialsWithLocationSchema = t.type({
-  type: t.string,
-  project_id: t.string,
-  private_key_id: t.string,
-  private_key: t.string,
-  client_email: t.string,
-  client_id: t.string,
-  auth_uri: t.string,
-  token_uri: t.string,
-  auth_provider_x509_cert_url: t.string,
-  client_x509_cert_url: t.string,
-  universe_domain: t.string,
-  location: t.string,
+export const BigQueryCredentialsWithLocationSchema = z.object({
+  type: z.string(),
+  project_id: z.string(),
+  private_key_id: z.string(),
+  private_key: z.string(),
+  client_email: z.string(),
+  client_id: z.string(),
+  auth_uri: z.string(),
+  token_uri: z.string(),
+  auth_provider_x509_cert_url: z.string(),
+  client_x509_cert_url: z.string(),
+  universe_domain: z.string(),
+  location: z.string(),
 });
 
-export type BigQueryCredentialsWithLocation = t.TypeOf<
+export type BigQueryCredentialsWithLocation = z.infer<
   typeof BigQueryCredentialsWithLocationSchema
 >;
 
-export const ApiKeyCredentialsSchema = t.type({
-  api_key: t.string,
+export const ApiKeyCredentialsSchema = z.object({
+  api_key: z.string(),
 });
-export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
-export type LinearCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
+export type ModjoCredentials = z.infer<typeof ApiKeyCredentialsSchema>;
+export type LinearCredentials = z.infer<typeof ApiKeyCredentialsSchema>;
 
-export const HubspotCredentialsSchema = t.type({
-  accessToken: t.string,
-  portalId: t.string,
+export const HubspotCredentialsSchema = z.object({
+  accessToken: z.string(),
+  portalId: z.string(),
 });
-export type HubspotCredentials = t.TypeOf<typeof HubspotCredentialsSchema>;
+export type HubspotCredentials = z.infer<typeof HubspotCredentialsSchema>;
 
-export const SalesforceCredentialsSchema = t.type({
-  client_id: t.string,
-  client_secret: t.string,
+export const SalesforceCredentialsSchema = z.object({
+  client_id: z.string(),
+  client_secret: z.string(),
 });
-export type SalesforceCredentials = t.TypeOf<
-  typeof SalesforceCredentialsSchema
->;
+export type SalesforceCredentials = z.infer<typeof SalesforceCredentialsSchema>;
 
-export const NotionCredentialsSchema = t.type({
-  integration_token: t.string,
+export const NotionCredentialsSchema = z.object({
+  integration_token: z.string(),
 });
-export type NotionCredentials = t.TypeOf<typeof NotionCredentialsSchema>;
+export type NotionCredentials = z.infer<typeof NotionCredentialsSchema>;
 
 export type ConnectionCredentials =
   | SnowflakeCredentials

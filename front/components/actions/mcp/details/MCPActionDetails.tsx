@@ -1,4 +1,7 @@
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import {
+  ActionDetailsWrapper,
+  ActionExecutionProvider,
+} from "@app/components/actions/ActionDetailsWrapper";
 import {
   makeQueryTextForDataSourceSearch,
   makeQueryTextForFind,
@@ -20,13 +23,13 @@ import {
   FilesystemPathDetails,
 } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
-import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPImageGenerationActionDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSandboxActionDetails } from "@app/components/actions/mcp/details/MCPSandboxActionDetails";
+import { MCPSandboxAddEgressDomainDetails } from "@app/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails";
 import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import {
@@ -93,6 +96,7 @@ import {
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -110,12 +114,7 @@ export interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
-  messageStatus?:
-    | "created"
-    | "succeeded"
-    | "failed"
-    | "cancelled"
-    | "gracefully_stopped";
+  messageStatus?: AgentMessageStatus;
   displayContext: ActionDetailsDisplayContext;
 }
 
@@ -140,7 +139,19 @@ function getActionLabel({
   );
 }
 
-export function MCPActionDetails({
+export function MCPActionDetails(props: MCPActionDetailsProps) {
+  return (
+    <ActionExecutionProvider
+      executionDurationMs={props.action.executionDurationMs}
+      isExecuting={props.action.status === "running"}
+      startedAtMs={props.action.createdAt}
+    >
+      <MCPActionDetailsInner {...props} />
+    </ActionExecutionProvider>
+  );
+}
+
+function MCPActionDetailsInner({
   action,
   displayContext,
   owner,
@@ -312,11 +323,6 @@ export function MCPActionDetails({
     return <MCPRunAgentActionDetails {...toolOutputDetailsProps} />;
   }
 
-  // TODO(2026-02-03 aubin): remove the component entirely on Feb, 17. See comment in PR.
-  if (internalMCPServerName?.toString() === "deep_dive") {
-    return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
-  }
-
   if (internalMCPServerName === "agent_memory") {
     switch (toolName) {
       case AGENT_MEMORY_RETRIEVE_TOOL_NAME:
@@ -382,6 +388,9 @@ export function MCPActionDetails({
   }
 
   if (internalMCPServerName === "sandbox") {
+    if (toolName === "add_egress_domain") {
+      return <MCPSandboxAddEgressDomainDetails {...toolOutputDetailsProps} />;
+    }
     return <MCPSandboxActionDetails {...toolOutputDetailsProps} />;
   }
 

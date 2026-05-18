@@ -14,6 +14,9 @@ export const SUPPORTED_MIMETYPES = [
   "text/plain",
   "text/markdown",
   "text/csv",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
 export const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
@@ -124,7 +127,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
   },
   get_file_content: {
-    description: `Get the content of a Google Drive file as plain text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. For structured content with element indices/object IDs needed for updates, use ${GET_DOCUMENT_STRUCTURE_TOOL} (Docs) or ${GET_PRESENTATION_STRUCTURE_TOOL} (Slides) instead.`,
+    description: `Get the content of a Google Drive file (Docs, Slides, Sheets, text, PDF, PowerPoint, Word) as text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}. For structured content with element indices/object IDs needed for updates, use ${GET_DOCUMENT_STRUCTURE_TOOL} (Docs) or ${GET_PRESENTATION_STRUCTURE_TOOL} (Slides) instead.`,
     schema: {
       fileId: z
         .string()
@@ -344,7 +347,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
   copy_file: {
     description:
       "Copy an existing Google Drive file (Doc, Sheet, or Presentation). " +
-      "Creates a duplicate of the file with a new name in the same folder or a different location.",
+      "Creates a duplicate of the file with a new name in the same folder or a different location. " +
+      "Prefer this over creating a new document when you want to preserve the formatting or structure of an existing template.",
     schema: {
       fileId: z.string().describe("The ID of the file to copy."),
       name: z
@@ -411,8 +415,13 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       requests: GoogleDocsRequestsArraySchema.describe(
         "An array of batch update requests to apply to the document. Include multiple operations in a single call to minimize requests. " +
           "Each request is an object with optional properties for each request type (only one should be set per request). " +
-          "See https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/batchUpdate for request types. " +
-          "Common requests include replaceAllText (preserves formatting), insertText, deleteContentRange, insertTable, insertTableRow, updateTableCellStyle, updateTextStyle, etc."
+          "See https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/batchUpdate for all request types. " +
+          "Required fields for common requests: " +
+          "insertText: {text, location: {index}}; " +
+          "deleteContentRange: {range: {startIndex, endIndex}}; " +
+          "replaceAllText: {containsText: {text}, replaceText}; " +
+          "insertTable: {rows, columns, location: {index}}; " +
+          "updateTextStyle: {range: {startIndex, endIndex}, textStyle, fields}."
       ),
     },
     stake: "medium",

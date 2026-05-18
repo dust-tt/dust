@@ -18,18 +18,24 @@ permissions:
   contents: read
   id-token: write
 
-env:
-  E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
-  E2B_DOMAIN: e2b-juliett.dev
-
 jobs:
-  check:
+  check-and-build:
     runs-on: ubuntu-latest
-    outputs:
-      missing: ${{ steps.check.outputs.missing }}
-      build-matrix: ${{ steps.check.outputs.matrix }}
-      has-missing: ${{ steps.check.outputs.has-missing }}
+    strategy:
+      fail-fast: false
+      matrix:
+        region: [ eu, us ]
     steps:
+      - name: Configure E2B for ${{ matrix.region }}
+        run: |
+          if [ "${{ matrix.region }}" = "eu" ]; then
+            echo "E2B_API_KEY=${{ secrets.E2B_API_KEY }}" >> "$GITHUB_ENV"
+            echo "E2B_DOMAIN=e2b-juliett.dev" >> "$GITHUB_ENV"
+          else
+            echo "E2B_API_KEY=${{ secrets.E2B_US_API_KEY }}" >> "$GITHUB_ENV"
+            echo "E2B_DOMAIN=e2b.dev" >> "$GITHUB_ENV"
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -45,100 +51,127 @@ jobs:
         run: |
           set -eo pipefail
           REBUILD="${{ inputs.rebuild || 'false' }}"
-          echo "Running sandbox image check... (rebuild=$REBUILD)"
+          echo "Running sandbox image check (${{ matrix.region }})... (rebuild=$REBUILD)"
           if ! RESULT=$(npx tsx scripts/sandbox_image_check.ts --json 2>&1); then
-            echo "::error::Sandbox image check failed"
+            echo "::error::Sandbox image check failed (${{ matrix.region }})"
             echo "$RESULT"
             exit 1
           fi
-          echo "Check result:"
+          echo "Check result (${{ matrix.region }}):"
           echo "$RESULT"
 
           if [ "$REBUILD" == "true" ]; then
             MISSING=$(echo "$RESULT" | jq -c '.result.required')
-            MATRIX=$(echo "$RESULT" | jq -c '{include: .result.allBuildMatrix}')
             HAS_MISSING=$(echo "$RESULT" | jq -r 'if (.result.required | length) > 0 then "true" else "false" end')
             echo "Force rebuild: treating all images as needing build"
+            BUILD_MATRIX=$(echo "$RESULT" | jq -c '.result.allBuildMatrix')
           else
             MISSING=$(echo "$RESULT" | jq -c '.result.missing')
-            MATRIX=$(echo "$RESULT" | jq -c '{include: .result.buildMatrix}')
             HAS_MISSING=$(echo "$RESULT" | jq -r 'if (.result.missing | length) > 0 then "true" else "false" end')
+            BUILD_MATRIX=$(echo "$RESULT" | jq -c '.result.buildMatrix')
           fi
 
-          echo "missing=$MISSING" >> $GITHUB_OUTPUT
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-          echo "has-missing=$HAS_MISSING" >> $GITHUB_OUTPUT
+          echo "has-missing=$HAS_MISSING" >> "$GITHUB_OUTPUT"
 
-  build-templates:
-    needs: [check]
-    if: needs.check.outputs.has-missing == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.check.outputs.build-matrix) }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+          HAS_JSON=$( [ "$HAS_MISSING" == "true" ] && echo true || echo false )
+          jq -nc --argjson missing "$MISSING" --argjson buildMatrix "$BUILD_MATRIX" \
+            --arg r "${{ matrix.region }}" --argjson hasMissing "$HAS_JSON" \
+            '{region: $r, missing: $missing, buildMatrix: $buildMatrix, hasMissing: $hasMissing}' \
+            > "$GITHUB_WORKSPACE/check-result.json"
 
-      - name: Setup Node Dependencies
-        uses: ./.github/actions/setup-node-deps
+          echo "$BUILD_MATRIX" > "$GITHUB_WORKSPACE/build-matrix.json"
+
+      - name: Upload check result
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          node-version: "22.22.0"
-          build-sdks: "true"
+          name: sandbox-img-check-${{ matrix.region }}
+          path: check-result.json
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: steps.check.outputs.has-missing == 'true'
 
       - name: Write service account JSON
+        if: steps.check.outputs.has-missing == 'true'
         run: |
           echo '${{ secrets.SBX_GCP_ARTIFACT_RO_SERVICE_ACCOUNT_JSON }}' > /tmp/service-account.json
 
-      - name: Build sandbox image
+      - name: Build missing sandbox images
+        if: steps.check.outputs.has-missing == 'true'
         working-directory: front
         env:
           SBX_GCP_ARTIFACT_SERVICE_ACCOUNT: /tmp/service-account.json
         run: |
+          set -eo pipefail
+          REBUILD="${{ inputs.rebuild || 'false' }}"
           REBUILD_FLAG=""
-          if [ "${{ inputs.rebuild || 'false' }}" == "true" ]; then
+          if [ "$REBUILD" == "true" ]; then
             REBUILD_FLAG="--rebuild"
           fi
-          npx tsx scripts/sandbox_image_build.ts \
-            --image ${{ matrix.image }} \
-            --tag ${{ matrix.tag }} \
-            --docker-registry us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx \
-            --confirm \
-            $REBUILD_FLAG
+          while IFS= read -r row; do
+            image=$(echo "$row" | jq -r '.image')
+            tag=$(echo "$row" | jq -r '.tag')
+            echo "Building ${image}:${tag} (${{ matrix.region }})"
+            npx tsx scripts/sandbox_image_build.ts \
+              --image "$image" \
+              --tag "$tag" \
+              --docker-registry us-central1-docker.pkg.dev/or1g1n-186209/dust-sbx \
+              --confirm \
+              $REBUILD_FLAG
+          done < <(jq -c '.[]' "$GITHUB_WORKSPACE/build-matrix.json")
 
       - name: Cleanup service account JSON
-        if: always()
+        if: always() && steps.check.outputs.has-missing == 'true'
         run: rm -f /tmp/service-account.json
 
   summary:
-    needs: [check, build-templates]
-    if: always() && needs.check.result == 'success'
+    needs: [ check-and-build ]
+    if: always() && needs['check-and-build'].result == 'success'
     runs-on: ubuntu-latest
     outputs:
       built-count: ${{ steps.count.outputs.built }}
     steps:
-      - name: Calculate built count
+      - name: Download check results (eu)
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: sandbox-img-check-eu
+          path: check-eu
+
+      - name: Download check results (us)
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: sandbox-img-check-us
+          path: check-us
+
+      - name: Aggregate summary
         id: count
         run: |
-          if [ "${{ needs.check.outputs.has-missing }}" == "true" ]; then
-            MISSING='${{ needs.check.outputs.missing }}'
-            COUNT=$(echo "$MISSING" | jq 'length')
-            echo "built=$COUNT" >> $GITHUB_OUTPUT
+          set -eo pipefail
+          EU=$(cat check-eu/check-result.json)
+          US=$(cat check-us/check-result.json)
+          HAS=$(echo "$EU" "$US" | jq -s 'map(.hasMissing) | any')
+          SUMMARY=$(echo "$EU" "$US" | jq -s -c 'map({(.region): .missing}) | add')
+          COUNT=$(echo "$EU" "$US" | jq -s '[.[].buildMatrix | length] | add')
+          echo "has-missing=$HAS" >> "$GITHUB_OUTPUT"
+          echo "missing-summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+          echo "planned-builds=$COUNT" >> "$GITHUB_OUTPUT"
+          if [ "$HAS" == "true" ]; then
+            echo "built=$COUNT" >> "$GITHUB_OUTPUT"
           else
-            echo "built=0" >> $GITHUB_OUTPUT
+            echo "built=0" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Summary
         run: |
-          echo "## Sandbox Image Check Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.check.outputs.has-missing }}" == "true" ]; then
-            echo "Built **${{ steps.count.outputs.built }}** missing images" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Missing images:" >> $GITHUB_STEP_SUMMARY
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            echo '${{ needs.check.outputs.missing }}' >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "## Sandbox Image Check Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.count.outputs.has-missing }}" == "true" ]; then
+            echo "Built **${{ steps.count.outputs.planned-builds }}** image(s) across EU and US E2B (sequential per region)." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "### Missing by region (before build):" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            echo '${{ steps.count.outputs.missing-summary }}' >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "All required sandbox images already exist" >> $GITHUB_STEP_SUMMARY
+            echo "All required sandbox images already exist in both regions" >> "$GITHUB_STEP_SUMMARY"
           fi

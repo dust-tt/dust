@@ -5,13 +5,12 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const PostStripePortalRequestBody = t.type({
-  workspaceId: t.string,
+const PostStripePortalRequestBody = z.object({
+  workspaceId: z.string(),
 });
 type PostStripePortalResponseBody = {
   portalUrl: string;
@@ -21,9 +20,9 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostStripePortalResponseBody>>,
   session: SessionWithUser
 ): Promise<void> {
-  const bodyValidation = PostStripePortalRequestBody.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = PostStripePortalRequestBody.safeParse(req.body);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -33,7 +32,7 @@ async function handler(
     });
   }
 
-  const workspaceId = bodyValidation.right.workspaceId;
+  const workspaceId = bodyValidation.data.workspaceId;
   const auth = await Authenticator.fromSession(session, workspaceId);
 
   const owner = auth.workspace();

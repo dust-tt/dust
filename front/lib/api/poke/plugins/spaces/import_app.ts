@@ -3,9 +3,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApp } from "@app/lib/utils/apps";
 import { ImportAppBody } from "@app/pages/api/poke/workspaces/[wId]/apps/import";
 import { Err, Ok } from "@app/types/shared/result";
-import { isLeft } from "fp-ts/lib/Either";
 import { readFileSync } from "fs";
-import * as reporter from "io-ts-reporters";
+import { fromError } from "zod-validation-error";
 
 export const importAppPlugin = createPlugin({
   manifest: {
@@ -21,6 +20,7 @@ export const importAppPlugin = createPlugin({
       },
     },
   },
+  isApplicableTo: (_auth, space) => !space?.isProject(),
   execute: async (auth, space, args) => {
     if (!space) {
       return new Err(new Error("Space not found"));
@@ -33,14 +33,16 @@ export const importAppPlugin = createPlugin({
     const { file } = args;
     const fileContent = readFileSync(file.filepath, "utf-8");
     const appData = JSON.parse(fileContent);
-    const contentValidation = ImportAppBody.decode(appData);
+    const contentValidation = ImportAppBody.safeParse(appData);
 
-    if (isLeft(contentValidation)) {
-      const pathError = reporter.formatValidationErrors(contentValidation.left);
-
-      return new Err(new Error(`Invalid content: ${pathError}`));
+    if (!contentValidation.success) {
+      return new Err(
+        new Error(
+          `Invalid content: ${fromError(contentValidation.error).toString()}`
+        )
+      );
     }
-    const { app } = contentValidation.right;
+    const { app } = contentValidation.data;
 
     const result = await importApp(auth, spaceResource, app);
     if (result.isErr()) {

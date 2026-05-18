@@ -8,10 +8,17 @@ Each folder contains a `seed.ts` file. Run with:
 npx tsx scripts/seed/<folder>/seed.ts --execute
 ```
 
+By default, seeds target the `DevWkSpace` workspace created by dust-hive. To target a different workspace, set `DEV_WORKSPACE_SID`:
+
+```bash
+DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/<folder>/seed.ts --execute
+```
+
 ## Folders
 
 - `basics/` - Creates a custom agent with skills and sample conversations
-- `reinforced-agents/` - Creates agents with conversations, feedbacks, Dust conversations with JIT skills for testing reinforcement
+- `byok/` - Setup workspace to test Bring your own key
+- `reinforcement/` - Creates skills with conversations, feedbacks, Dust conversations with JIT skills for testing reinforcement
 - `sidekick/` - Creates agents and conversations for testing the agent builder sidekick feature
 - `triggers/` - Creates schedule triggers for basics agents
 

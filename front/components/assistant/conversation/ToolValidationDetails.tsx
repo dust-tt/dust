@@ -55,11 +55,13 @@ interface DisplayableInput {
 interface ToolValidationDetailsProps {
   blockedAction: BlockedToolExecution;
   user: UserType;
+  defaultExpanded?: boolean;
 }
 
 export function ToolValidationDetails({
   blockedAction,
   user,
+  defaultExpanded = false,
 }: ToolValidationDetailsProps) {
   const displayableInputs: DisplayableInput[] = useMemo(() => {
     if (!blockedAction.inputs) {
@@ -101,7 +103,7 @@ export function ToolValidationDetails({
   }
 
   return (
-    <Collapsible>
+    <Collapsible defaultOpen={defaultExpanded}>
       <CollapsibleTrigger>
         <span className="my-2 font-medium">Details</span>
       </CollapsibleTrigger>

@@ -9,8 +9,8 @@
     }
   ],
   "metadata": {
-    "allowedDomainCount": "string",
-    "allowedDomains": "string",
+    "allowed_domain_count": "string",
+    "allowed_domains": "string",
     "actor_type": "string"
   }
 }

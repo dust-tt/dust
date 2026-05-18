@@ -1,0 +1,4 @@
+ALTER TABLE "public"."project_todo_states"
+ADD COLUMN IF NOT EXISTS "lastCleanedAt" TIMESTAMP
+WITH
+  TIME ZONE DEFAULT NULL;

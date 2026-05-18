@@ -78,7 +78,7 @@ export const GONG_SERVER = {
       supported_use_cases: ["personal_actions", "platform_actions"] as const,
     },
     icon: "GongLogo",
-    documentationUrl: null,
+    documentationUrl: "https://docs.dust.tt/update/docs/gong-mcp",
     instructions: null,
   },
   tools: Object.values(GONG_TOOLS_METADATA).map((t) => ({

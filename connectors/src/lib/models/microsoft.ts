@@ -19,6 +19,7 @@ export class MicrosoftConfigurationModel extends ConnectorBaseModel<MicrosoftCon
   declare largeFilesEnabled: boolean;
   declare tenantId: string | null;
   declare selectedSites: SelectedSiteMetadata[] | null;
+  declare allowedSensitivityLabels: string[] | null;
 }
 MicrosoftConfigurationModel.init(
   {
@@ -52,6 +53,11 @@ MicrosoftConfigurationModel.init(
       allowNull: true,
     },
     selectedSites: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
+    allowedSensitivityLabels: {
       type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: null,

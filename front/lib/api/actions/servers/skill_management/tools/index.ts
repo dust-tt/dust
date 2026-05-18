@@ -3,8 +3,9 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
+import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
+import { ensureSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { getFeatureFlags } from "@app/lib/auth";
-import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -48,27 +49,25 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       ]);
     }
 
-    // Load skill file attachments to the sandbox (behind feature flag).
     const featureFlags = await getFeatureFlags(auth);
-
+    // Load skill file attachments to the sandbox (behind feature flag).
     if (
       !featureFlags.includes("sandbox_tools") ||
       skill.getFileAttachments().length === 0
     ) {
+      const text = `Skill "${skill.name}" has been enabled.`;
+
       return new Ok([
-        {
-          type: "text" as const,
-          text: `Skill "${skill.name}" has been enabled.`,
-        },
+        makeEnableSkillResultOutput({ skillId: skill.sId, text }),
       ]);
     }
 
-    const ensureResult = await SandboxResource.ensureActive(auth, conversation);
+    const ensureResult = await ensureSandboxReady(auth, conversation);
     if (ensureResult.isErr()) {
       return new Err(new MCPError(ensureResult.error.message));
     }
 
-    const { sandbox } = ensureResult.value;
+    const sandbox = ensureResult.value;
 
     let fileMessage: string | null = null;
     const fileLoadResult = await sandbox.loadSkillFiles(auth, skill);
@@ -82,14 +81,11 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       fileMessage = `Failed to load skill files: ${fileLoadResult.error.message}`;
     }
 
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Skill "${skill.name}" has been enabled.` +
-          (fileMessage ? `\n\n${fileMessage}` : ""),
-      },
-    ]);
+    const text =
+      `Skill "${skill.name}" has been enabled.` +
+      (fileMessage ? `\n\n${fileMessage}` : "");
+
+    return new Ok([makeEnableSkillResultOutput({ skillId: skill.sId, text })]);
   },
 };
 

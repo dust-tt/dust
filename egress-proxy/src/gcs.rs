@@ -64,6 +64,10 @@ impl GcsPolicyProvider {
         })
     }
 
+    pub async fn invalidate(&self, cache_key: &str) {
+        self.cache.invalidate(cache_key).await;
+    }
+
     pub async fn get_workspace_policy(&self, w_id: &str) -> Result<Option<Policy>> {
         self.get_policy(&format!("w:{w_id}"), &format!("workspaces/{w_id}.json"))
             .await

@@ -1,3 +1,4 @@
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -129,6 +130,74 @@ describe("MCPServerConnectionResource", () => {
       if (originalUserResult.isOk()) {
         expect(originalUserResult.value.sId).toBe(connection1.sId);
       }
+    });
+  });
+
+  describe("listWorkspaceConnectionsByMCPServerIds", () => {
+    it("returns workspace connection resources for requested MCP servers only", async () => {
+      const { workspace, auth } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
+      const connectedRemoteServer =
+        await RemoteMCPServerFactory.create(workspace);
+      const personalOnlyRemoteServer =
+        await RemoteMCPServerFactory.create(workspace);
+      const unrequestedRemoteServer =
+        await RemoteMCPServerFactory.create(workspace);
+      const connectedInternalMCPServerId = internalMCPServerNameToSId({
+        name: "agent_memory",
+        workspaceId: workspace.id,
+        prefix: 1,
+      });
+      const unrequestedInternalMCPServerId = internalMCPServerNameToSId({
+        name: "agent_memory",
+        workspaceId: workspace.id,
+        prefix: 2,
+      });
+
+      await MCPServerConnectionFactory.remote(
+        auth,
+        connectedRemoteServer,
+        "workspace"
+      );
+      await MCPServerConnectionFactory.remote(
+        auth,
+        personalOnlyRemoteServer,
+        "personal"
+      );
+      await MCPServerConnectionFactory.remote(
+        auth,
+        unrequestedRemoteServer,
+        "workspace"
+      );
+      await MCPServerConnectionFactory.internal(
+        auth,
+        connectedInternalMCPServerId,
+        "workspace"
+      );
+      await MCPServerConnectionFactory.internal(
+        auth,
+        unrequestedInternalMCPServerId,
+        "workspace"
+      );
+
+      const connections =
+        await MCPServerConnectionResource.listWorkspaceConnectionsByMCPServerIds(
+          auth,
+          {
+            mcpServerIds: [
+              connectedRemoteServer.sId,
+              personalOnlyRemoteServer.sId,
+              connectedInternalMCPServerId,
+            ],
+          }
+        );
+
+      expect(connections).toHaveLength(2);
+      expect(connections.map((c) => c.mcpServerId).sort()).toEqual(
+        [connectedInternalMCPServerId, connectedRemoteServer.sId].sort()
+      );
     });
   });
 });

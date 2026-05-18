@@ -134,7 +134,9 @@ export function ManageSkillsPage() {
 
     return {
       active: sortedActiveSkills,
-      editable_by_me: sortedActiveSkills.filter((s) => s.canWrite),
+      editable_by_me: sortedActiveSkills.filter((s) =>
+        s.relations.editors?.some((e) => e.sId === user?.sId)
+      ),
       default: sortedActiveSkills
         .filter((s) => s.isDefault || s.relations.editors === null)
         .sort((a, b) => {
@@ -160,7 +162,7 @@ export function ManageSkillsPage() {
           )
         ),
     };
-  }, [activeSkills, archivedSkills, skillSearch]);
+  }, [activeSkills, archivedSkills, skillSearch, user]);
 
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 

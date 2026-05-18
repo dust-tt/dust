@@ -10,6 +10,7 @@ import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuild
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   postProcessMarkdown,
   preprocessMarkdownForEditor,
@@ -86,12 +87,14 @@ export function SkillBuilderInstructionsEditor({
     name: INSTRUCTIONS_HTML_FIELD_NAME,
   });
 
-  const { fieldState: attachedKnowledgeFieldState } = useController<
-    SkillBuilderFormData,
-    typeof ATTACHED_KNOWLEDGE_FIELD_NAME
-  >({
-    name: ATTACHED_KNOWLEDGE_FIELD_NAME,
-  });
+  const {
+    field: attachedKnowledgeField,
+    fieldState: attachedKnowledgeFieldState,
+  } = useController<SkillBuilderFormData, typeof ATTACHED_KNOWLEDGE_FIELD_NAME>(
+    {
+      name: ATTACHED_KNOWLEDGE_FIELD_NAME,
+    }
+  );
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
@@ -148,11 +151,14 @@ export function SkillBuilderInstructionsEditor({
 
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
     useSkillBuilderContext();
+  const { hasFeature } = useFeatureFlags();
+  const hasReinforcementFeature =
+    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
     skillId,
     states: ["pending"],
     workspaceId: owner.sId,
-    disabled: !skillId,
+    disabled: !skillId || !hasReinforcementFeature,
   });
 
   const hasSuggestions = suggestions.length > 0;
@@ -165,6 +171,21 @@ export function SkillBuilderInstructionsEditor({
     onBlur: handleBlur,
     onDelete: handleDelete,
   });
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+
+    // This allows RHF to focus this custom editor when validation fails.
+    instructionsField.ref(editor.view.dom);
+    attachedKnowledgeField.ref(editor.view.dom);
+
+    return () => {
+      instructionsField.ref(null);
+      attachedKnowledgeField.ref(null);
+    };
+  }, [attachedKnowledgeField.ref, editor, instructionsField.ref]);
 
   const handleAddKnowledge = useCallback(() => {
     if (!editor) {
@@ -272,6 +293,16 @@ export function SkillBuilderInstructionsEditor({
     // may be null if no suggestion is selected
     editor.commands.setHighlightedSuggestion(selectedSuggestionId);
 
+    // Scroll the editor to the first edit of the selected suggestion.
+    if (selectedSuggestionId) {
+      requestAnimationFrame(() => {
+        const firstEdit = editor.view.dom.querySelector(
+          `[data-suggestion-id^="${selectedSuggestionId}:"]`
+        );
+        firstEdit?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+
     // Make the editor read-only while suggestion diffs are displayed.
     if (!isDiffMode) {
       editor.setEditable(!hasSuggestions);
@@ -316,7 +347,7 @@ export function SkillBuilderInstructionsEditor({
 
   // Sync external changes to the editor content
   useEffect(() => {
-    if (!editor || !instructionsHtmlField.value) {
+    if (!editor || isDiffMode || !instructionsHtmlField.value) {
       return;
     }
 
@@ -335,37 +366,66 @@ export function SkillBuilderInstructionsEditor({
     if (currentHtml !== incomingHtml) {
       editor.commands.setContent(incomingHtml, { emitUpdate: false });
     }
-  }, [editor, instructionsHtmlField.value]);
+  }, [editor, isDiffMode, instructionsHtmlField.value]);
 
   useEffect(() => {
-    if (!editor) {
+    if (!editor || editor.isDestroyed) {
       return;
     }
 
-    if (compareVersion) {
-      if (editor.storage.agentInstructionDiff?.isDiffMode) {
-        editor.commands.exitDiff();
+    const frameId = requestAnimationFrame(() => {
+      if (!editor || editor.isDestroyed) {
+        return;
       }
 
-      const compareText = compareVersion.instructions ?? "";
-      const currentText = instructionsField.value ?? "";
+      if (compareVersion) {
+        if (editor.storage.agentInstructionDiff?.isDiffMode) {
+          editor.commands.exitDiff();
+        }
 
-      editor.commands.setContent(preprocessMarkdownForEditor(currentText), {
-        emitUpdate: false,
-        contentType: "markdown",
-      });
-      editor.commands.applyDiff(
-        preprocessMarkdownForEditor(compareText),
-        preprocessMarkdownForEditor(currentText)
-      );
-      editor.setEditable(false);
-    } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
-      editor.commands.exitDiff();
-      editor.setEditable(true);
-    }
+        const compareText = compareVersion.instructions ?? "";
+        const currentText = instructionsField.value ?? "";
+
+        editor.commands.setContent(preprocessMarkdownForEditor(currentText), {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
+        editor.commands.applyDiff(
+          preprocessMarkdownForEditor(compareText),
+          preprocessMarkdownForEditor(currentText)
+        );
+        editor.setEditable(false);
+      } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
+        editor.commands.exitDiff();
+        editor.setEditable(true);
+
+        if (instructionsHtmlField.value) {
+          editor.commands.setContent(instructionsHtmlField.value, {
+            emitUpdate: false,
+          });
+        } else {
+          editor.commands.setContent(
+            preprocessMarkdownForEditor(instructionsField.value ?? ""),
+            {
+              emitUpdate: false,
+              contentType: "markdown",
+            }
+          );
+        }
+      }
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
     // Re-run when instructionsField.value changes so that restoring a single
     // field updates the diff overlay.
-  }, [compareVersion, editor, instructionsField.value]);
+  }, [
+    compareVersion,
+    editor,
+    instructionsField.value,
+    instructionsHtmlField.value,
+  ]);
 
   return (
     <div className="space-y-1 p-px">

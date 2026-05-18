@@ -1,5 +1,5 @@
 import { getMetronomeClient } from "@app/lib/metronome/client";
-import { getProductAiUsageUserId } from "@app/lib/metronome/constants";
+import { getProductProgrammaticUsageId } from "@app/lib/metronome/constants";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
@@ -85,20 +85,52 @@ export async function getActiveContract(
 }
 
 /**
+ * Returns true if the contract's rate card prices the `Programmatic Usage`
+ * product. Legacy plans bill programmatic usage in programmatic-USD credits;
+ * new plans price all usage in AWU and never reference this product.
+ *
+ * Cached by rate card ID — rate cards rarely change.
+ */
+async function fetchHasProgrammaticUsageRate(
+  rateCardId: string
+): Promise<boolean> {
+  try {
+    const client = getMetronomeClient();
+    const response = await client.v1.contracts.rateCards.retrieveRateSchedule({
+      rate_card_id: rateCardId,
+      starting_at: new Date().toISOString(),
+      selectors: [{ product_id: getProductProgrammaticUsageId() }],
+      limit: 1,
+    });
+    return (response.data ?? []).some((rate) => rate.entitled);
+  } catch (err) {
+    logger.warn(
+      { rateCardId, err },
+      "[Metronome Contract] Failed to fetch rate schedule — treating as legacy (fail-open)"
+    );
+    return true;
+  }
+}
+
+const getCachedHasProgrammaticUsageRate = cacheWithRedis(
+  fetchHasProgrammaticUsageRate,
+  (rateCardId) => `metronome:has-programmatic-usage-rate:${rateCardId}`,
+  { ttlMs: 6 * 60 * 60 * 1000 }
+);
+
+/**
  * Returns true if the workspace is on a legacy Metronome plan.
- * Legacy plans are billed by seat and do not enforce AWU credit limits.
- * Fails open (returns true) when the plan cannot be determined.
+ *
+ * Legacy plans price the `Programmatic Usage` product (programmatic-USD credit
+ * type); new plans bill all usage in AWU. Fails open (returns true) when the
+ * plan cannot be determined.
  */
 export async function isLegacyPlan(workspaceId: string): Promise<boolean> {
   const contract = await getActiveContract(workspaceId);
-  if (!contract) {
+  if (!contract?.rate_card_id) {
     return true;
   }
-  const subscriptions = contract.subscriptions ?? [];
-  const aiUsageUserId = getProductAiUsageUserId();
-  return !subscriptions.some(
-    (s) => s.subscription_rate.product.id === aiUsageUserId
-  );
+  return await getCachedHasProgrammaticUsageRate(contract.rate_card_id);
 }
 
 /**

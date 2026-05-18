@@ -187,8 +187,7 @@ fire via `cleanupTemporalAfterFire(...)`.
 ## Agent Skill Interface
 
 The wake-up capability is exposed through the `wakeups` internal MCP server (server id
-1031, `availability: "auto"`, gated behind the `enable_wakeups` feature flag while in
-preview). It registers three tools:
+1031, `availability: "auto"`). It registers three tools:
 
 ```
 schedule_wakeup({

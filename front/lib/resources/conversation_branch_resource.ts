@@ -116,6 +116,24 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
     });
   }
 
+  async getPreviousUserMessageOrigin(
+    auth: Authenticator
+  ): Promise<string | null> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const previous = await MessageModel.findOne({
+      where: {
+        id: this.previousMessageId,
+        workspaceId: owner.id,
+      },
+      include: [
+        { model: UserMessageModel, as: "userMessage", required: false },
+      ],
+    });
+
+    return previous?.userMessage?.userContextOrigin ?? null;
+  }
+
   /**
    * Lists all branches for a given conversation within the authenticated workspace.
    */
@@ -135,6 +153,33 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
     return branches.map(
       (b) => new this(ConversationBranchResource.model, b.get())
     );
+  }
+
+  /**
+   * Returns the most recent open branch owned by the authenticated user for
+   * a given conversation. There should only ever be one in practice, but we
+   * don't strictly enforce it at the DB level — fall back to the latest.
+   */
+  static async findMostRecentOpenBranchForUser(
+    auth: Authenticator,
+    conversationModelId: number
+  ): Promise<ConversationBranchResource | null> {
+    const workspace = auth.getNonNullableWorkspace();
+    const userModelId = auth.getNonNullableUser().id;
+
+    const branch = await this.model.findOne({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversationModelId,
+        state: "open",
+        userId: userModelId,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return branch
+      ? new this(ConversationBranchResource.model, branch.get())
+      : null;
   }
 
   static async fetchById(

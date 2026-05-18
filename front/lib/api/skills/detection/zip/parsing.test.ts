@@ -56,6 +56,19 @@ describe("stripCommonZipPrefix", () => {
     expect(result.map((e) => e.path)).toEqual(["SKILL.md", "README.md"]);
   });
 
+  test("does not strip when common top-level directory is a skill", () => {
+    const entries = [
+      makeEntry("my-skill/SKILL.md"),
+      makeEntry("my-skill/helper.py"),
+    ];
+
+    const result = stripCommonZipPrefix(entries);
+    expect(result.map((e) => e.path)).toEqual([
+      "my-skill/SKILL.md",
+      "my-skill/helper.py",
+    ]);
+  });
+
   test("returns entries unchanged when all are directories", () => {
     const entries = [
       makeEntry("repo-main", { isDirectory: true }),

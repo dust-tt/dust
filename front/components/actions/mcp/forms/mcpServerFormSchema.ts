@@ -15,7 +15,7 @@ import {
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { HeaderRow } from "@app/types/shared/utils/http_headers";
+import type { HeaderRow, MetaRow } from "@app/types/shared/utils/http_headers";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
 import { z } from "zod";
 
@@ -25,6 +25,38 @@ export type ToolSettings = {
   permission: MCPToolStakeLevelType;
 };
 
+export function encodeMCPToolNameForForm(toolName: string): string {
+  // `encodeURIComponent` leaves dots untouched, but RHF treats dots as nested
+  // field separators, so we escape them explicitly as well.
+  return encodeURIComponent(toolName).replaceAll(".", "%2E");
+}
+
+export function decodeMCPToolNameFromForm(encodedToolName: string): string {
+  return decodeURIComponent(encodedToolName);
+}
+
+function encodeToolSettingsForForm(
+  toolSettings: Record<string, ToolSettings>
+): Record<string, ToolSettings> {
+  return Object.fromEntries(
+    Object.entries(toolSettings).map(([toolName, settings]) => [
+      encodeMCPToolNameForForm(toolName),
+      settings,
+    ])
+  );
+}
+
+function decodeToolSettingsFromForm(
+  toolSettings: Record<string, ToolSettings>
+): Record<string, ToolSettings> {
+  return Object.fromEntries(
+    Object.entries(toolSettings).map(([encodedToolName, settings]) => [
+      decodeMCPToolNameFromForm(encodedToolName),
+      settings,
+    ])
+  );
+}
+
 // Server settings fields (Info tab).
 export type ServerSettings = {
   name: string;
@@ -32,11 +64,12 @@ export type ServerSettings = {
   icon?: string;
   sharedSecret?: string;
   customHeaders?: HeaderRow[] | null;
+  metaFields?: MetaRow[] | null;
 };
 
 // Complete form values including all tabs.
 export type MCPServerFormValues = ServerSettings & {
-  // Tools tab - map of toolName to settings
+  // Tools tab - map of RHF-safe encoded tool names to settings.
   toolSettings: Record<string, ToolSettings>;
 
   // Sharing tab - map of spaceId to enabled/disabled
@@ -136,7 +169,7 @@ export function getMCPServerFormDefaults(
   const defaults: MCPServerFormValues = {
     name: view.name ?? view.server.name,
     description: getMcpServerViewDescription(view),
-    toolSettings,
+    toolSettings: encodeToolSettingsForForm(toolSettings),
     sharingSettings,
   };
 
@@ -152,6 +185,9 @@ export function getMCPServerFormDefaults(
 
   if (isRemoteMCPServerType(view.server)) {
     defaults.icon = view.server.icon;
+    defaults.metaFields = Object.entries(view.server.meta ?? {}).map(
+      ([key, value]) => ({ key, value })
+    );
   }
 
   return defaults;
@@ -193,6 +229,10 @@ export function getMCPServerFormSchema(
   if (isRemoteMCPServerType(view.server)) {
     schema = schema.extend({
       icon: z.string().optional(),
+      metaFields: z
+        .array(z.object({ key: z.string(), value: z.string() }))
+        .nullable()
+        .optional(),
     });
   }
 
@@ -219,6 +259,7 @@ type FormDiffType = {
   icon?: string;
   authSharedSecret?: string;
   authCustomHeaders?: HeaderRow[] | null;
+  authMeta?: Record<string, string> | null;
   toolChanges?: Array<{
     toolName: string;
     enabled: boolean;
@@ -259,6 +300,15 @@ export function diffMCPServerForm(
     if (current.icon && current.icon !== initial.icon) {
       out.icon = current.icon;
     }
+
+    const iMeta = sanitizeHeadersArray(initial.metaFields ?? []);
+    const cMeta = sanitizeHeadersArray(current.metaFields ?? []);
+    if (JSON.stringify(iMeta) !== JSON.stringify(cMeta)) {
+      out.authMeta =
+        cMeta.length > 0
+          ? Object.fromEntries(cMeta.map(({ key, value }) => [key, value]))
+          : null;
+    }
   }
 
   if (requiresBearerToken) {
@@ -278,11 +328,13 @@ export function diffMCPServerForm(
   }
 
   // Check tool changes.
+  const initialToolSettings = decodeToolSettingsFromForm(initial.toolSettings);
+  const currentToolSettings = decodeToolSettingsFromForm(current.toolSettings);
   const toolChanges: typeof out.toolChanges = [];
   for (const [toolName, currentSettings] of Object.entries(
-    current.toolSettings
+    currentToolSettings
   )) {
-    const initialSettings = initial.toolSettings[toolName];
+    const initialSettings = initialToolSettings[toolName];
     if (
       initialSettings &&
       (initialSettings.enabled !== currentSettings.enabled ||
@@ -291,7 +343,7 @@ export function diffMCPServerForm(
       toolChanges.push({
         toolName,
         enabled: currentSettings.enabled,
-        permission: currentSettings.permission as MCPToolStakeLevelType,
+        permission: currentSettings.permission,
       });
     }
   }

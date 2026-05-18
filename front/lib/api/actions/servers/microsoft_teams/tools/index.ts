@@ -609,7 +609,18 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       }
 
       // Get the content of the most recent transcript in text format.
-      const transcriptId = transcripts[transcripts.length - 1].id;
+      // Transcripts are not returned in a guaranteed order, so sort by
+      // createdDateTime descending and pick the first.
+      const latestTranscript = [...transcripts].sort((a, b) => {
+        const aMs = a.createdDateTime
+          ? new Date(a.createdDateTime).getTime() || 0
+          : 0;
+        const bMs = b.createdDateTime
+          ? new Date(b.createdDateTime).getTime() || 0
+          : 0;
+        return bMs - aMs;
+      })[0];
+      const transcriptId = latestTranscript.id;
       const contentResponse = await client
         .api(
           `/me/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content`

@@ -12,6 +12,7 @@ use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::env;
+use urlencoding;
 
 lazy_static! {
     static ref OAUTH_FRESHWORKS_CLIENT_ID: String = env::var("OAUTH_FRESHWORKS_CLIENT_ID").unwrap();
@@ -58,11 +59,13 @@ impl Provider for FreshserviceConnectionProvider {
             ("redirect_uri", redirect_uri),
         ];
 
+        // RFC 6749 §2.3.1 requires URL-encoding client_id and client_secret before base64-encoding.
         let auth_header = format!(
             "Basic {}",
             general_purpose::STANDARD.encode(format!(
                 "{}:{}",
-                *OAUTH_FRESHWORKS_CLIENT_ID, *OAUTH_FRESHWORKS_CLIENT_SECRET
+                urlencoding::encode(&*OAUTH_FRESHWORKS_CLIENT_ID),
+                urlencoding::encode(&*OAUTH_FRESHWORKS_CLIENT_SECRET)
             ))
         );
 
@@ -124,11 +127,13 @@ impl Provider for FreshserviceConnectionProvider {
             ("refresh_token", &refresh_token),
         ];
 
+        // RFC 6749 §2.3.1 requires URL-encoding client_id and client_secret before base64-encoding.
         let auth_header = format!(
             "Basic {}",
             general_purpose::STANDARD.encode(format!(
                 "{}:{}",
-                *OAUTH_FRESHWORKS_CLIENT_ID, *OAUTH_FRESHWORKS_CLIENT_SECRET
+                urlencoding::encode(&*OAUTH_FRESHWORKS_CLIENT_ID),
+                urlencoding::encode(&*OAUTH_FRESHWORKS_CLIENT_SECRET)
             ))
         );
 

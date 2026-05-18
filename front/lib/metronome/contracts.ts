@@ -1,11 +1,15 @@
+import type { BillingCycle } from "@app/lib/client/subscription";
 import {
   ceilToHourISO,
   createMetronomeContract,
   createMetronomeCustomer,
-  epochSecondsToFloorHourISO,
+  ensureMetronomeStripeBillingConfig,
   findMetronomeCustomerByAlias,
+  floorToHourISO,
   getMetronomeClient,
   getMetronomeContractById,
+  getMetronomeCustomerStripeCustomerId,
+  listMetronomeContracts,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import {
@@ -22,102 +26,63 @@ import {
   syncMauCount,
 } from "@app/lib/metronome/mau_sync";
 import {
-  getSeatSubscriptionIdFromContract,
+  hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { LEGACY_ENTERPRISE_PACKAGE_ALIAS } from "@app/lib/metronome/types";
-import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
-import { getStripeClient } from "@app/lib/plans/stripe";
+import {
+  resolveCurrencyFromStripe,
+  resolvePackageAliasForCurrency,
+} from "@app/lib/plans/billing_currency";
+import {
+  getStripeClient,
+  getStripeCustomer,
+  getStripeSubscription,
+} from "@app/lib/plans/stripe";
 import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import {
   isEnterpriseReportUsage,
   type SupportedEnterpriseReportUsage,
 } from "@app/lib/plans/usage/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
+import type { SupportedCurrency } from "@app/types/currency";
 import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
+import { metronomeAmount } from "./amounts";
 
 /**
- * Switch a Metronome contract to a different package (end old + create new).
- * Customer must already exist.
+ * Idempotently ensure a Metronome customer exists for a workspace and that
+ * its id is persisted on the workspace row.
+ *
+ * - If `workspace.metronomeCustomerId` is already set, returns it.
+ * - Otherwise looks the customer up on Metronome by ingest alias (workspace
+ *   sId), creating it if missing, then writes the id back to the workspace.
+ *
+ * `stripeCustomerId` is optional — when omitted the Metronome customer is
+ * created without a Stripe billing-provider configuration. This is the path
+ * used for free-plan workspaces that may later receive credits via Poke
+ * before they ever subscribe to a paid plan.
  */
-export async function switchMetronomeContractPackage({
-  metronomeCustomerId,
-  oldContractId,
-  workspace,
-  packageAlias,
-}: {
-  metronomeCustomerId: string;
-  oldContractId: string;
-  workspace: LightWorkspaceType;
-  packageAlias: string;
-}): Promise<Result<{ metronomeContractId: string }, Error>> {
-  // Pre-round to the next hour boundary so both functions (which apply ceil
-  // and floor respectively) resolve to the same timestamp, ensuring the new
-  // contract starts exactly when the old one ends.
-  const switchAt = new Date(ceilToHourISO(new Date()));
-
-  const endResult = await scheduleMetronomeContractEnd({
-    metronomeCustomerId,
-    contractId: oldContractId,
-    endingBefore: switchAt,
-  });
-  if (endResult.isErr()) {
-    return new Err(endResult.error);
-  }
-
-  const contractResult = await createMetronomeContract({
-    metronomeCustomerId,
-    packageAlias,
-    startingAt: switchAt,
-  });
-  if (contractResult.isErr()) {
-    return new Err(contractResult.error);
-  }
-
-  const { contractId: metronomeContractId, startingAt } = contractResult.value;
-  const syncResult = await syncContractQuantities(
-    metronomeCustomerId,
-    metronomeContractId,
-    workspace,
-    startingAt
-  );
-  if (syncResult.isErr()) {
-    return new Err(syncResult.error);
-  }
-
-  return new Ok({ metronomeContractId });
-}
-
-/**
- * Ensure a Metronome customer and contract exist for a workspace.
- * Creates the customer if missing, then creates a contract via the package alias.
- * Used from both Stripe webhook (checkout) and Poke (admin upgrade).
- */
-export async function provisionMetronomeCustomerAndContract({
+export async function ensureMetronomeCustomerForWorkspace({
   workspace,
   stripeCustomerId,
-  packageAlias,
-  uniquenessKey,
 }: {
   workspace: LightWorkspaceType;
-  stripeCustomerId: string;
-  packageAlias: string;
-  uniquenessKey: string;
-}): Promise<
-  Result<{ metronomeCustomerId: string; metronomeContractId: string }, Error>
-> {
-  // Find or create customer.
-  let metronomeCustomerId: string | null = null;
+  stripeCustomerId?: string;
+}): Promise<Result<{ metronomeCustomerId: string }, Error>> {
+  let metronomeCustomerId: string | null = workspace.metronomeCustomerId;
 
-  const findResult = await findMetronomeCustomerByAlias(workspace.sId);
-  if (findResult.isOk()) {
-    metronomeCustomerId = findResult.value;
+  if (!metronomeCustomerId) {
+    const findResult = await findMetronomeCustomerByAlias(workspace.sId);
+    if (findResult.isOk()) {
+      metronomeCustomerId = findResult.value;
+    }
   }
 
   if (!metronomeCustomerId) {
@@ -132,30 +97,219 @@ export async function provisionMetronomeCustomerAndContract({
     metronomeCustomerId = createResult.value.metronomeCustomerId;
   }
 
+  if (workspace.metronomeCustomerId !== metronomeCustomerId) {
+    const updateResult = await WorkspaceResource.updateMetronomeCustomerId(
+      workspace.id,
+      metronomeCustomerId
+    );
+    if (updateResult.isErr()) {
+      return new Err(updateResult.error);
+    }
+    await WorkspaceResource.invalidateCache(workspace.sId);
+  }
+
+  // If a Stripe customer is provided, make sure the Metronome customer has a
+  // Stripe billing configuration. This covers the upgrade case where the
+  // workspace was provisioned in Metronome without a Stripe link (free plan)
+  // and later acquired a Stripe customer.
+  if (stripeCustomerId) {
+    const billingResult = await ensureMetronomeStripeBillingConfig({
+      metronomeCustomerId,
+      stripeCustomerId,
+    });
+    if (billingResult.isErr()) {
+      return new Err(billingResult.error);
+    }
+  }
+
+  return new Ok({ metronomeCustomerId });
+}
+
+/**
+ * Resolve the billing currency for a workspace whose Metronome customer
+ * already exists. Tries the Stripe subscription first (when the workspace
+ * is Stripe-billed); falls back to the Stripe customer that's wired into
+ * the Metronome billing configuration (Metronome-only billing path).
+ *
+ * Returns an error when neither path yields a usable signal — existing
+ * customers are expected to have either a Stripe subscription or a linked
+ * Stripe billing config on the Metronome customer.
+ */
+export async function resolveCurrencyForExistingMetronomeCustomer({
+  metronomeCustomerId,
+  stripeSubscriptionId,
+}: {
+  metronomeCustomerId: string;
+  stripeSubscriptionId: string | null;
+}): Promise<Result<SupportedCurrency, Error>> {
+  const stripeSubscription = stripeSubscriptionId
+    ? await getStripeSubscription(stripeSubscriptionId)
+    : null;
+  if (stripeSubscription) {
+    return new Ok(resolveCurrencyFromStripe({ stripeSubscription }));
+  }
+
+  // Metronome-only billing path: no Stripe sub. Read the Stripe customer
+  // through the Metronome billing config, then derive currency from its
+  // currency / address.country.
+  const stripeCustomerIdResult =
+    await getMetronomeCustomerStripeCustomerId(metronomeCustomerId);
+  if (stripeCustomerIdResult.isErr()) {
+    return new Err(
+      new Error(
+        "Failed to resolve billing currency for Metronome customer " +
+          `${metronomeCustomerId}: could not read Stripe billing config: ` +
+          stripeCustomerIdResult.error.message
+      )
+    );
+  }
+
+  const stripeCustomerId = stripeCustomerIdResult.value;
+  if (!stripeCustomerId) {
+    return new Err(
+      new Error(
+        "Failed to resolve billing currency for Metronome customer " +
+          `${metronomeCustomerId}: no Stripe billing config found.`
+      )
+    );
+  }
+
+  const stripeCustomer = await getStripeCustomer(stripeCustomerId);
+  if (!stripeCustomer) {
+    return new Err(
+      new Error(
+        "Failed to resolve billing currency for Metronome customer " +
+          `${metronomeCustomerId}: Stripe customer ${stripeCustomerId} could ` +
+          "not be retrieved."
+      )
+    );
+  }
+
+  return new Ok(resolveCurrencyFromStripe({ stripeCustomer }));
+}
+
+/**
+ * Provision a Metronome contract on an already-existing Metronome customer.
+ * Snaps `startingAt` to an hour boundary, ends any non-archived existing
+ * contracts that would overlap the new start (a customer must never have two
+ * overlapping active contracts), creates the contract from the given package
+ * alias, then syncs seat / MAU subscription quantities seeded by the package.
+ *
+ * `swapAt` controls how `startingAt` is snapped:
+ *  - `"current-hour"` (default): floor — for seat-based plans where the
+ *    current partial hour has no usage to attribute. New contract is active
+ *    immediately.
+ *  - `"next-hour"`: ceil — preserves the current partial hour on whatever
+ *    contract was running; required when usage attribution matters.
+ *
+ * The Metronome customer must already exist (call
+ * `ensureMetronomeCustomerForWorkspace` first).
+ */
+export async function provisionMetronomeContract({
+  metronomeCustomerId,
+  workspace,
+  packageAlias,
+  uniquenessKey,
+  startingAt,
+  swapAt = "current-hour",
+  enableStripeBilling = true,
+  planCode,
+}: {
+  metronomeCustomerId: string;
+  workspace: LightWorkspaceType;
+  packageAlias: string;
+  uniquenessKey?: string;
+  startingAt: Date;
+  swapAt?: "current-hour" | "next-hour";
+  enableStripeBilling?: boolean;
+  planCode: string;
+}): Promise<Result<{ metronomeContractId: string }, Error>> {
+  const alignedStart = new Date(
+    swapAt === "current-hour"
+      ? floorToHourISO(startingAt)
+      : ceilToHourISO(startingAt)
+  );
+
+  logger.info(
+    {
+      metronomeCustomerId,
+      workspaceId: workspace.sId,
+      packageAlias,
+      enableStripeBilling,
+      startingAt: alignedStart.toISOString(),
+      swapAt,
+    },
+    "[Metronome] Provisioning contract"
+  );
+
   const contractResult = await createMetronomeContract({
     metronomeCustomerId,
     packageAlias,
     uniquenessKey,
+    startingAt: alignedStart,
+    enableStripeBilling,
+    planCode,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
   }
+  const { contractId: metronomeContractId } = contractResult.value;
 
-  const { contractId: metronomeContractId, startingAt } = contractResult.value;
+  const contractsResult = await listMetronomeContracts(metronomeCustomerId);
+  if (contractsResult.isErr()) {
+    return new Err(
+      new Error(
+        `Created new contract ${metronomeContractId} but failed to list ` +
+          `existing contracts to sunset: ${contractsResult.error.message}. ` +
+          "Manual cleanup may be required."
+      )
+    );
+  }
+  const newStartMs = alignedStart.getTime();
+  for (const existing of contractsResult.value) {
+    if (existing.id === metronomeContractId) {
+      continue;
+    }
+    if (existing.archived_at) {
+      continue;
+    }
+    const existingStartMs = new Date(existing.starting_at).getTime();
+    if (existingStartMs > newStartMs) {
+      continue;
+    }
+    const existingEndsBeforeMs = existing.ending_before
+      ? new Date(existing.ending_before).getTime()
+      : null;
+    if (existingEndsBeforeMs !== null && existingEndsBeforeMs <= newStartMs) {
+      continue;
+    }
+    const sunsetResult = await scheduleMetronomeContractEnd({
+      metronomeCustomerId,
+      contractId: existing.id,
+      endingBefore: alignedStart,
+    });
+    if (sunsetResult.isErr()) {
+      return new Err(
+        new Error(
+          `Created new contract ${metronomeContractId} but failed to ` +
+            `sunset existing contract ${existing.id}: ` +
+            `${sunsetResult.error.message}. Manual cleanup may be required.`
+        )
+      );
+    }
+  }
+
   const syncResult = await syncContractQuantities(
     metronomeCustomerId,
     metronomeContractId,
     workspace,
-    startingAt
+    alignedStart.toISOString()
   );
   if (syncResult.isErr()) {
     return new Err(syncResult.error);
   }
 
-  return new Ok({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
+  return new Ok({ metronomeContractId });
 }
 
 // ---------------------------------------------------------------------------
@@ -180,7 +334,7 @@ export interface StripeTierCents {
  */
 export interface EnterprisePricingCents {
   /** Currency of the Stripe price (e.g. "usd", "eur"). */
-  currency: string;
+  currency: SupportedCurrency;
   /** Billing mode: MAU_1/5/10 for MAU-based, FIXED for flat price. */
   billingMode: SupportedEnterpriseReportUsage;
   /** All pricing tiers from Stripe (empty for FIXED). */
@@ -205,8 +359,7 @@ export async function syncContractQuantities(
 
   const contract = contractResult.value;
 
-  const seatSubscriptionId = getSeatSubscriptionIdFromContract(contract);
-  const shouldSyncSeats = seatSubscriptionId !== undefined;
+  const shouldSyncSeats = hasContractSeatSubscription(contract);
   const shouldSyncMau = hasMauSubscriptionInContract(contract);
 
   const syncFns = [
@@ -273,7 +426,7 @@ export async function countMauForWorkspace(
     since: thirtyDaysAgo,
     workspace,
   });
-  return Math.max(count, 1);
+  return count;
 }
 
 /**
@@ -300,6 +453,14 @@ export async function extractEnterprisePricing(
     }
 
     // FIXED pricing: flat monthly fee, no MAU.
+    if (!isSupportedCurrency(item.price.currency)) {
+      pricingLogger.warn(
+        { priceId: item.price.id, currency: item.price.currency },
+        "Unsupported enterprise price currency"
+      );
+      return undefined;
+    }
+
     if (reportUsage === "FIXED") {
       return {
         currency: item.price.currency,
@@ -314,6 +475,14 @@ export async function extractEnterprisePricing(
     const price = await stripe.prices.retrieve(item.price.id, {
       expand: ["tiers"],
     });
+
+    if (!isSupportedCurrency(price.currency)) {
+      pricingLogger.warn(
+        { priceId: price.id, currency: price.currency },
+        "Unsupported enterprise price currency"
+      );
+      return undefined;
+    }
 
     if (!price.tiers || price.tiers.length === 0) {
       pricingLogger.warn(
@@ -452,18 +621,6 @@ function buildMauTiersField(tiers: StripeTierCents[]): string {
 }
 
 /**
- * Convert Stripe cents to Metronome pricing units.
- * USD: Metronome uses cents (same as Stripe) → no conversion.
- * EUR: Metronome uses whole euros → divide by 100.
- */
-function stripeCentsToMetronomePrice(cents: number, currency: string): number {
-  if (currency === "eur") {
-    return Math.round(cents / 100);
-  }
-  return cents;
-}
-
-/**
  * Derive per-tier prices from Stripe tiers for Metronome FLAT rate overrides.
  *
  * Returns one price per tier in Metronome pricing units (cents for USD, euros for EUR).
@@ -475,7 +632,7 @@ function stripeCentsToMetronomePrice(cents: number, currency: string): number {
  */
 function deriveTierPrices(
   tiers: StripeTierCents[],
-  currency: string
+  currency: SupportedCurrency
 ): number[] {
   let previousUpTo = 0;
   return tiers.map((tier, index) => {
@@ -485,13 +642,10 @@ function deriveTierPrices(
     // First tier with floor: derive price from flat_amount / size.
     if (index === 0 && tier.flatAmountCents > 0 && tierSize) {
       // Convert floor to Metronome units first, then divide by tier size.
-      const floorMetronome = stripeCentsToMetronomePrice(
-        tier.flatAmountCents,
-        currency
-      );
+      const floorMetronome = metronomeAmount(tier.flatAmountCents, currency);
       return Math.round(floorMetronome / tierSize);
     }
-    return stripeCentsToMetronomePrice(tier.unitAmountCents, currency);
+    return metronomeAmount(tier.unitAmountCents, currency);
   });
 }
 
@@ -585,7 +739,7 @@ export function buildEnterpriseOverrides({
       ...tierProductIds.map(disableOverride),
     ];
 
-    const floorMetronome = stripeCentsToMetronomePrice(
+    const floorMetronome = metronomeAmount(
       pricing.floorCents,
       pricing.currency
     );
@@ -672,10 +826,7 @@ export function buildEnterpriseOverrides({
 
   // Recurring commit for the floor (flat_amount on first tier).
   // Applicable to MAU Tier 1 so the commit draws down at tier 1's rate.
-  const floorMetronome = stripeCentsToMetronomePrice(
-    pricing.floorCents,
-    pricing.currency
-  );
+  const floorMetronome = metronomeAmount(pricing.floorCents, pricing.currency);
   const recurringCommits =
     pricing.floorCents > 0
       ? [
@@ -840,14 +991,19 @@ export async function applyEnterpriseOverrides({
  * Provision a Metronome customer + contract for an enterprise workspace,
  * extract MAU pricing from the Stripe subscription, and apply overrides.
  *
- * Seats and MAU are synced by provisionMetronomeCustomerAndContract.
+ * The enterprise package alias is intentionally a near-empty shell —
+ * subscriptions (seats / MAU / tier products) are added by
+ * `applyEnterpriseOverrides` below using the live MAU count as
+ * `initial_quantity`.
  */
-export async function provisionEnterpriseMetronomeContract({
+export async function provisionShadowEnterpriseMetronomeContract({
   workspace,
   stripeSubscription,
+  planCode,
 }: {
   workspace: LightWorkspaceType;
   stripeSubscription: Stripe.Subscription;
+  planCode: string;
 }): Promise<
   Result<{ metronomeCustomerId: string; metronomeContractId: string }, Error>
 > {
@@ -876,28 +1032,45 @@ export async function provisionEnterpriseMetronomeContract({
   // Resolve the package alias based on the subscription currency.
   const packageAlias = resolvePackageAliasForCurrency(
     LEGACY_ENTERPRISE_PACKAGE_ALIAS,
-    isSupportedCurrency(enterprisePricing.currency)
-      ? enterprisePricing.currency
-      : "usd"
+    enterprisePricing.currency
   );
 
-  // Provision Metronome customer and contract (also syncs seats + MAU).
-  const provisionResult = await provisionMetronomeCustomerAndContract({
+  // Anchor the Metronome contract to the Stripe billing period start so the
+  // recurring commit (which uses the same date) cannot start before the
+  // contract — Metronome rejects that as a 400.
+  const startDate = floorToHourISO(
+    new Date(stripeSubscription.current_period_start * 1000)
+  );
+
+  // Ensure the customer exists (creating it if needed) and is linked to
+  // Stripe.
+  const customerResult = await ensureMetronomeCustomerForWorkspace({
     workspace,
     stripeCustomerId,
+  });
+  if (customerResult.isErr()) {
+    return new Err(customerResult.error);
+  }
+  const { metronomeCustomerId } = customerResult.value;
+
+  // Create the (initially empty) contract — overrides below will add the
+  // MAU subscriptions with the right initial quantities. The shared provision
+  // helper also sunsets any overlapping contracts on the customer; the inner
+  // quantity sync is a no-op here because no seat/MAU subscriptions exist
+  // until `applyEnterpriseOverrides` runs.
+  const contractResult = await provisionMetronomeContract({
+    metronomeCustomerId,
+    workspace,
     packageAlias,
     uniquenessKey: stripeSubscription.id,
+    startingAt: new Date(startDate),
+    enableStripeBilling: false,
+    planCode,
   });
-  if (provisionResult.isErr()) {
-    return new Err(provisionResult.error);
+  if (contractResult.isErr()) {
+    return new Err(contractResult.error);
   }
-
-  const { metronomeCustomerId, metronomeContractId } = provisionResult.value;
-
-  // Use current billing period start, rounded to hour boundary.
-  const startDate = epochSecondsToFloorHourISO(
-    stripeSubscription.current_period_start
-  );
+  const { metronomeContractId } = contractResult.value;
 
   // Count MAUs for initial subscription quantities on the first invoice.
   const initialMauCount = await countMauForWorkspace(
@@ -917,4 +1090,54 @@ export async function provisionEnterpriseMetronomeContract({
   });
 
   return new Ok({ metronomeCustomerId, metronomeContractId });
+}
+
+/**
+ * Retrieve the current billing period from the Metronome contract.
+ *
+ * Returns:
+ * - Ok(BillingCycle) when the period is found on the contract.
+ * - Ok(null) when Metronome is not set up for this workspace (missing IDs).
+ * - Err when the Metronome API call fails or no subscription has a billing period.
+ */
+export async function getMetronomeCurrentBillingPeriod({
+  metronomeContractId,
+  metronomeCustomerId,
+}: {
+  metronomeContractId: string | null;
+  metronomeCustomerId: string | null;
+}): Promise<Result<BillingCycle | null, Error>> {
+  if (!metronomeContractId || !metronomeCustomerId) {
+    if (metronomeContractId !== null || metronomeCustomerId !== null) {
+      logger.warn(
+        { metronomeContractId, metronomeCustomerId },
+        "[Metronome] Partial Metronome configuration: one of metronomeContractId or metronomeCustomerId is missing"
+      );
+    }
+    return new Ok(null);
+  }
+
+  const contractResult = await getMetronomeContractById({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+
+  if (contractResult.isErr()) {
+    return new Err(contractResult.error);
+  }
+
+  const currentPeriod = contractResult.value.subscriptions
+    ?.map((s) => s.billing_periods?.current)
+    .find((bp) => bp !== undefined);
+
+  if (!currentPeriod) {
+    return new Err(
+      new Error("No current billing period found on Metronome contract")
+    );
+  }
+
+  return new Ok({
+    cycleStart: new Date(currentPeriod.starting_at),
+    cycleEnd: new Date(currentPeriod.ending_before),
+  });
 }

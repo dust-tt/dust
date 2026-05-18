@@ -1,3 +1,8 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -233,6 +238,26 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     if (temporalResult.isErr()) {
       return temporalResult;
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "wake_up.created",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("wake_up", {
+          sId: wakeUp.sId,
+          name: wakeUp.reason,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        schedule_type: wakeUp.scheduleType,
+        agent_id: wakeUp.agentConfigurationId,
+        conversation_id: conversation.sId,
+        initiating_user_id: auth.user()?.sId ?? "",
+        initiating_user_name: auth.user()?.name ?? "",
+      },
+    });
 
     return new Ok(wakeUp);
   }
@@ -486,6 +511,22 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     );
 
     await this.triggerConversationESIndexing(auth);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "wake_up.cancelled",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("wake_up", { sId: this.sId, name: this.reason }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        schedule_type: this.scheduleType,
+        agent_id: this.agentConfigurationId,
+        initiating_user_id: auth.user()?.sId ?? "",
+        initiating_user_name: auth.user()?.name ?? "",
+      },
+    });
   }
 
   async markExpired(
@@ -504,6 +545,25 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     );
 
     await this.triggerConversationESIndexing(auth);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "wake_up.expired",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("wake_up", {
+          sId: this.sId,
+          name: this.reason,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        schedule_type: this.scheduleType,
+        agent_id: this.agentConfigurationId,
+        initiating_user_id: auth.user()?.sId ?? "",
+        initiating_user_name: auth.user()?.name ?? "",
+      },
+    });
   }
 
   maxFires(): number {
@@ -566,6 +626,25 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     );
 
     await this.triggerConversationESIndexing(auth);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "wake_up.fired",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("wake_up", {
+          sId: this.sId,
+          name: this.reason,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        schedule_type: this.scheduleType,
+        agent_id: this.agentConfigurationId,
+        initiating_user_id: auth.user()?.sId ?? "",
+        initiating_user_name: auth.user()?.name ?? "",
+      },
+    });
   }
 
   async cleanupTemporalIfCronExpired(

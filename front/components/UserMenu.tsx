@@ -10,6 +10,7 @@ import {
   sendOnboardingConversation,
   showDebugTools,
 } from "@app/lib/development";
+import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
@@ -94,6 +95,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
     () => async () => {
       const result = await sendOnboardingConversation(owner, featureFlags);
       if (result.isOk) {
+        window.dispatchEvent(new ConversationsUpdatedEvent());
         sendNotification({
           title: "Success !",
           description: "Onboarding conversation created (redirecting...)",

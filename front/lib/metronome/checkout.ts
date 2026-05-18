@@ -1,17 +1,25 @@
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
+import { floorToHourISO } from "@app/lib/metronome/client";
+import {
+  ensureMetronomeCustomerForWorkspace,
+  provisionMetronomeContract,
+} from "@app/lib/metronome/contracts";
+import { redeemCoupon } from "@app/lib/metronome/coupons";
 import { PlanModel } from "@app/lib/models/plan";
 import {
-  getBillingCurrencyForCountry,
+  resolveCurrencyFromStripe,
   resolvePackageAliasForCurrency,
 } from "@app/lib/plans/billing_currency";
+import { getStripeClient, getStripeCustomer } from "@app/lib/plans/stripe";
+import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -25,8 +33,10 @@ const StripeSetupSessionSchema = z.object({
     planCode: z.string(),
     userId: z.string().optional(),
     metronomePackageAlias: z.string(),
+    couponCode: z.string().optional(),
   }),
   customer: z.string(),
+  setup_intent: z.string().nullable().optional(),
   customer_details: z
     .object({
       address: z
@@ -39,6 +49,28 @@ const StripeSetupSessionSchema = z.object({
     .nullable()
     .optional(),
 });
+
+async function getSetupIntentDetails({
+  setupIntentId,
+}: {
+  setupIntentId: string;
+}): Promise<{ paymentMethodId: string | null; country: string | null }> {
+  const stripe = getStripeClient();
+  const setupIntent = await stripe.setupIntents.retrieve(setupIntentId, {
+    expand: ["payment_method"],
+  });
+  const pm = setupIntent.payment_method;
+  if (pm && typeof pm !== "string") {
+    return {
+      paymentMethodId: pm.id,
+      country: pm.billing_details.address?.country ?? null,
+    };
+  }
+  if (typeof pm === "string") {
+    return { paymentMethodId: pm, country: null };
+  }
+  return { paymentMethodId: null, country: null };
+}
 
 export async function handleMetronomeSetupCheckout({
   session,
@@ -60,21 +92,11 @@ export async function handleMetronomeSetupCheckout({
   const {
     id: sessionId,
     client_reference_id: workspaceId,
-    metadata: { planCode, userId, metronomePackageAlias },
+    metadata: { planCode, userId, metronomePackageAlias, couponCode },
     customer: stripeCustomerId,
     customer_details: customerDetails,
+    setup_intent: setupIntentId,
   } = parsed.data;
-
-  // Resolve the package alias based on the customer's billing country.
-  // Stripe populates customer_details.address.country from billing_address_collection.
-  const customerCountry = customerDetails?.address?.country;
-  const billingCurrency = customerCountry
-    ? getBillingCurrencyForCountry(customerCountry, true)
-    : "usd";
-  const resolvedPackageAlias = resolvePackageAliasForCurrency(
-    metronomePackageAlias,
-    billingCurrency
-  );
 
   const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
@@ -86,6 +108,55 @@ export async function handleMetronomeSetupCheckout({
     );
   }
 
+  logger.info(
+    {
+      sessionId,
+      workspaceId,
+      planCode,
+      userId,
+      metronomePackageAlias,
+      stripeCustomerId,
+    },
+    "[Metronome] Handle metronome checkout"
+  );
+
+  // Stripe setup mode attaches the saved PaymentMethod to the customer but
+  // does NOT set it as the default for invoicing. Without setting it here,
+  // Metronome-generated invoices stay "Incomplete: customer hasn't attempted
+  // to pay yet" because Stripe has no default PM to charge off-session.
+  // We also reuse the SetupIntent's billing country as a fallback when
+  // billing_address_collection: "auto" leaves customer_details.address empty.
+  const setupIntentDetails = setupIntentId
+    ? await getSetupIntentDetails({ setupIntentId })
+    : { paymentMethodId: null, country: null };
+
+  if (setupIntentDetails.paymentMethodId) {
+    const stripe = getStripeClient();
+    await stripe.customers.update(stripeCustomerId, {
+      invoice_settings: {
+        default_payment_method: setupIntentDetails.paymentMethodId,
+      },
+    });
+  } else {
+    logger.warn(
+      { sessionId, workspaceId, stripeCustomerId, setupIntentId },
+      "[Metronome] No payment method on setup intent; default payment method not set. Future invoices may fail to auto-charge."
+    );
+  }
+
+  const customerCountry =
+    customerDetails?.address?.country ?? setupIntentDetails.country;
+
+  const stripeCustomer = await getStripeCustomer(stripeCustomerId);
+  const billingCurrency = resolveCurrencyFromStripe({
+    stripeCustomer,
+    countryFallback: customerCountry,
+  });
+  const resolvedPackageAlias = resolvePackageAliasForCurrency(
+    metronomePackageAlias,
+    billingCurrency
+  );
+
   const plan = await PlanModel.findOne({ where: { code: planCode } });
   if (!plan) {
     return new Err(
@@ -93,27 +164,65 @@ export async function handleMetronomeSetupCheckout({
     );
   }
 
-  const provisionResult = await provisionMetronomeCustomerAndContract({
-    workspace: renderLightWorkspaceType({ workspace }),
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+
+  const customerResult = await ensureMetronomeCustomerForWorkspace({
+    workspace: lightWorkspace,
     stripeCustomerId,
-    packageAlias: resolvedPackageAlias,
-    uniquenessKey: sessionId,
   });
-  if (provisionResult.isErr()) {
+  if (customerResult.isErr()) {
     return new Err(
-      new DustError("metronome_error", provisionResult.error.message)
+      new DustError("metronome_error", customerResult.error.message)
     );
   }
+  const { metronomeCustomerId } = customerResult.value;
 
-  const { metronomeCustomerId, metronomeContractId } = provisionResult.value;
-
-  const updateResult = await WorkspaceResource.updateMetronomeCustomerId(
-    workspace.id,
-    metronomeCustomerId
+  const authAdmin = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
   );
-  if (updateResult.isErr()) {
-    return new Err(new DustError("internal_error", updateResult.error.message));
+  const authUser = userId
+    ? await Authenticator.fromUserIdAndWorkspaceId(userId, workspace.sId)
+    : null;
+
+  if (couponCode) {
+    const coupon = await CouponResource.findByCode(couponCode);
+    if (!coupon) {
+      return new Err(
+        new DustError(
+          "coupon_redemption_error",
+          `Coupon ${couponCode} not found.`
+        )
+      );
+    } else {
+      const redeemResult = await redeemCoupon(authUser ?? authAdmin, {
+        coupon,
+        metronomePackageAlias: resolvedPackageAlias,
+      });
+      if (redeemResult.isErr()) {
+        return new Err(
+          new DustError(
+            "coupon_redemption_error",
+            `Could not apply coupon ${couponCode}.`
+          )
+        );
+      }
+    }
   }
+
+  const contractResult = await provisionMetronomeContract({
+    metronomeCustomerId,
+    workspace: lightWorkspace,
+    packageAlias: resolvedPackageAlias,
+    uniquenessKey: sessionId,
+    startingAt: new Date(floorToHourISO(now)),
+    planCode,
+  });
+  if (contractResult.isErr()) {
+    return new Err(
+      new DustError("metronome_error", contractResult.error.message)
+    );
+  }
+  const { metronomeContractId } = contractResult.value;
 
   const subscriptionResult =
     await SubscriptionResource.createSubscriptionFromCheckout({
@@ -126,24 +235,24 @@ export async function handleMetronomeSetupCheckout({
     return subscriptionResult;
   }
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const workspaceSeats = await MembershipResource.countActiveSeatsInWorkspace(
+    workspace.sId
+  );
+  await ServerSideTracking.trackSubscriptionCreated({
+    workspace: lightWorkspace,
+    planCode,
+    workspaceSeats,
+    subscriptionStartAt: now,
+  });
 
-  if (userId) {
-    const workspaceSeats = await MembershipResource.countActiveSeatsInWorkspace(
-      workspace.sId
-    );
-    await ServerSideTracking.trackSubscriptionCreated({
-      userId,
-      workspace: renderLightWorkspaceType({ workspace }),
-      planCode,
-      workspaceSeats,
-      subscriptionStartAt: now,
-    });
-  }
-
-  await restoreWorkspaceAfterSubscription(auth);
+  await restoreWorkspaceAfterSubscription(authAdmin);
 
   await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({ workspaceId });
+
+  logger.info(
+    { workspaceId, metronomeContractId },
+    "[Metronome] Checkout completed"
+  );
 
   return new Ok(undefined);
 }

@@ -6,18 +6,19 @@ import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
 import { isAPIErrorResponse } from "@app/types/error";
 import type {
-  FileFormatCategory,
   FileUseCase,
   FileUseCaseMetadata,
   SupportedFileContentType,
 } from "@app/types/files";
 import {
+  contentTypeFromFileName,
   DEFAULT_FILE_CONTENT_TYPE,
   ensureFileSizeByFormatCategory,
+  fileSizeToHumanReadable,
   getFileFormatCategory,
   isSupportedFileContentType,
-  MAX_FILE_SIZES,
   resolveFileContentType,
+  resolveMaxFileSizes,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -49,10 +50,12 @@ class FileBlobUploadError extends Error {
 }
 
 export function useFileUploaderService({
+  hasSandboxTools,
   owner,
   useCase,
   useCaseMetadata,
 }: {
+  hasSandboxTools: boolean;
   owner: LightWorkspaceType;
   useCase: FileUseCase;
   useCaseMetadata?: FileUseCaseMetadata;
@@ -63,6 +66,31 @@ export function useFileUploaderService({
   const isProcessingFiles = numFilesProcessing > 0;
 
   const sendNotification = useSendNotification();
+
+  const sizeResolverOpts = useMemo(
+    () => ({
+      hasSandboxTools,
+      useCase,
+    }),
+    [hasSandboxTools, useCase]
+  );
+
+  const maxFileSizes = useMemo(
+    () => resolveMaxFileSizes(sizeResolverOpts),
+    [sizeResolverOpts]
+  );
+
+  const resolveSelectedFileContentType = useCallback((file: File): string => {
+    const resolvedContentType = resolveFileContentType(file.type, file.name);
+    if (isSupportedFileContentType(resolvedContentType)) {
+      return resolvedContentType;
+    }
+
+    return (
+      contentTypeFromFileName(file.name) ??
+      (resolvedContentType || DEFAULT_FILE_CONTENT_TYPE)
+    );
+  }, []);
 
   const findAvailableTitle = useCallback(
     (baseTitle: string, ext: string, existingTitles: string[]) => {
@@ -95,9 +123,7 @@ export function useFileUploaderService({
 
       return selectedFiles.reduce<Result<FileBlob, FileBlobUploadError>[]>(
         (acc, file) => {
-          const fileType =
-            resolveFileContentType(file.type, file.name) ||
-            DEFAULT_FILE_CONTENT_TYPE;
+          const fileType = resolveSelectedFileContentType(file);
 
           // File objects are immutable - we can't modify their properties directly.
           // When we need to change the name or type, we must create a new File object.
@@ -121,7 +147,7 @@ export function useFileUploaderService({
         []
       );
     },
-    [fileBlobs, findAvailableTitle]
+    [fileBlobs, findAvailableTitle, resolveSelectedFileContentType]
   );
 
   const uploadFiles = useCallback(
@@ -284,36 +310,33 @@ export function useFileUploaderService({
     async (files: File[]) => {
       setNumFilesProcessing((prev) => prev + files.length);
 
-      const categoryToSize: Map<FileFormatCategory, number> = new Map();
+      const oversizedFiles = files
+        .map((file) => {
+          const contentType = resolveSelectedFileContentType(file);
+          const category = getFileFormatCategory(contentType) ?? "data";
+          return { category, file };
+        })
+        .filter(({ category, file }) => {
+          return !ensureFileSizeByFormatCategory(
+            category,
+            file.size,
+            sizeResolverOpts
+          );
+        });
 
-      for (const f of [...fileBlobs, ...files]) {
-        const contentType = f instanceof File ? f.type : f.contentType;
-
-        const category = getFileFormatCategory(contentType) ?? "data";
-        // The fallback should never happen, but let's avoid a crash.
-
-        categoryToSize.set(
-          category,
-          (categoryToSize.get(category) ?? 0) + f.size
-        );
-      }
-
-      const oversizedCategories = [...categoryToSize].filter(([cat, size]) => {
-        return !ensureFileSizeByFormatCategory(cat, size);
-      });
-
-      for (const cat of oversizedCategories) {
+      for (const { category, file } of oversizedFiles) {
         sendNotification({
           type: "error",
-          title: "Files too large.",
-          description: `Combined ${cat[0]} file sizes exceed the limit of ${MAX_FILE_SIZES[cat[0]] / 1024 / 1024}MB. Please upload smaller files.`,
+          title: "File too large.",
+          description: `File "${file.name}" (${fileSizeToHumanReadable(file.size)}) exceeds the ${category} limit of ${fileSizeToHumanReadable(maxFileSizes[category])}. Please upload a smaller file.`,
         });
       }
 
-      if (oversizedCategories.length > 0) {
+      if (oversizedFiles.length > 0) {
         setNumFilesProcessing((prev) => prev - files.length);
         return;
       }
+
       const previewResults = processSelectedFiles(files);
       const newFileBlobs = processResults(previewResults, true);
 
@@ -325,10 +348,12 @@ export function useFileUploaderService({
       return finalFileBlobs;
     },
     [
-      fileBlobs,
+      maxFileSizes,
       processResults,
       processSelectedFiles,
+      resolveSelectedFileContentType,
       sendNotification,
+      sizeResolverOpts,
       uploadFiles,
     ]
   );

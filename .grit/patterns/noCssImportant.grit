@@ -1,0 +1,28 @@
+engine biome(1.0)
+language js
+
+// Disallows `!important` in CSS produced from JS/TS (CSS-in-JS, template
+// literals, inline style strings) and Tailwind v3's `!` important-prefix
+// utilities (e.g. `focus:!ring-0`, `!mt-0`). See CODING_RULES.md [GEN12].
+// Narrow exceptions for third-party library overrides and dev tooling are
+// scoped via biome.json overrides.
+//
+// One regex per quote style; each covers all three flagged forms:
+//   - `!important` keyword (CSS-in-JS, template literals, inline styles)
+//   - Tailwind modifier-prefixed important: `:!<utility>` (e.g. `focus:!ring-0`)
+//   - Tailwind leading important: `"!<utility>"` (e.g. `!mt-0`)
+pattern css_important_string() {
+    or {
+        r"\"(?:![a-z]|[^\"]*(?:!important|:![a-z]))[^\"]*\"",
+        r"'(?:![a-z]|[^']*(?:!important|:![a-z]))[^']*'",
+        r"`(?:![a-z]|[^`]*(?:!important|:![a-z]))[^`]*`"
+    }
+}
+
+css_important_string() as $val where {
+    register_diagnostic(
+        span = $val,
+        message = "Avoid `!important` in CSS (CODING_RULES.md [GEN12]). Fix the specificity issue instead. Narrow exceptions (third-party overrides, dev tooling) require a justifying comment and a biome.json scoping override.",
+        severity = "error"
+    )
+}

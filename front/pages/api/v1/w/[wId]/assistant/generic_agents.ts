@@ -11,20 +11,19 @@ import { apiError } from "@app/logger/withlogging";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { CreateGenericAgentConfigurationResponseType } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const CreateGenericAgentRequestSchema = t.type({
-  name: t.string,
-  description: t.string,
-  instructions: t.string,
-  emoji: t.union([t.string, t.undefined]),
-  subAgentName: t.union([t.string, t.undefined]),
-  subAgentDescription: t.union([t.string, t.undefined]),
-  subAgentInstructions: t.union([t.string, t.undefined]),
-  subAgentEmoji: t.union([t.string, t.undefined]),
+export const CreateGenericAgentRequestSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  instructions: z.string(),
+  emoji: z.string().optional(),
+  subAgentName: z.string().optional(),
+  subAgentDescription: z.string().optional(),
+  subAgentInstructions: z.string().optional(),
+  subAgentEmoji: z.string().optional(),
 });
 
 function assistantHandleIsValid(handle: string) {
@@ -99,14 +98,15 @@ async function handler(
         });
       }
 
-      const bodyValidation = CreateGenericAgentRequestSchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = CreateGenericAgentRequestSchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
@@ -120,7 +120,7 @@ async function handler(
         subAgentDescription,
         subAgentInstructions,
         subAgentEmoji,
-      } = bodyValidation.right;
+      } = bodyValidation.data;
 
       if (subAgentInstructions) {
         if (!subAgentName || subAgentName.trim() === "") {

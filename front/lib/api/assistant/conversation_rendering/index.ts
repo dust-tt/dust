@@ -1,5 +1,6 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,7 +33,7 @@ import {
 // When previous interactions pruning is enabled, we'll attempt to fully preserve this number of
 // interactions. This value was originally at 1 and bumped at 3 with the introduction of
 // gracefully_stopped agent message and user message steering to don't prune tool outputs too
-// agressively.
+// aggressively.
 export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 3;
 
 // Fixed number of tokens assumed for image contents
@@ -43,6 +44,7 @@ export const TOKENS_MARGIN = 1024;
 export async function renderConversationForModel(
   auth: Authenticator,
   {
+    leadingMessages = [],
     conversation,
     model,
     prompt,
@@ -52,7 +54,10 @@ export async function renderConversationForModel(
     excludeImages,
     onMissingAction = "inject-placeholder",
     agentConfiguration,
+    enabledSkills,
+    renderSkillsAsUserMessages = false,
   }: {
+    leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
     conversation: ConversationType;
     model: ModelConfigurationType;
     prompt: string;
@@ -63,6 +68,8 @@ export async function renderConversationForModel(
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentConfigurationType;
+    enabledSkills: EnabledSkill[];
+    renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<
   Result<
@@ -77,14 +84,17 @@ export async function renderConversationForModel(
   const now = Date.now();
   let stepStart = now;
 
-  const messages = await renderAllMessages(auth, {
+  const renderedMessages = await renderAllMessages(auth, {
     conversation,
     model,
     excludeActions,
     excludeImages,
     onMissingAction,
     agentConfiguration,
+    enabledSkills,
+    renderSkillsAsUserMessages,
   });
+  const messages = [...leadingMessages, ...renderedMessages];
   const renderAllMessagesMs = Date.now() - stepStart;
   stepStart = Date.now();
 
@@ -142,6 +152,27 @@ export async function renderConversationForModel(
 
   let availableTokens = allowedTokenCount - baseTokens;
 
+  const logDetails = {
+    workspaceId: conversation.owner.sId,
+    conversationId: conversation.sId,
+    agentConfigurationId: agentConfiguration?.sId,
+    allowedTokenCount,
+    model: {
+      providerId: model.providerId,
+      modelId: model.modelId,
+      contextSize: model.contextSize,
+      generationTokensCount: model.generationTokensCount,
+      tokenCountAdjustment: model.tokenCountAdjustment,
+      tokenizer: model.tokenizer,
+    },
+    baseTokens,
+    promptCount,
+    toolDefinitionsCount,
+    tokensMargin: TOKENS_MARGIN,
+    messageCount: messages.length,
+    interactionCount: interactions.length,
+  };
+
   if (currentInteractionTokens > availableTokens) {
     // The last interaction does not fit within the token budget.
     // We apply progressive pruning to that interaction until it fits within the token budget.
@@ -152,8 +183,7 @@ export async function renderConversationForModel(
     if (currentInteraction.prunedContext) {
       logger.warn(
         {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
+          ...logDetails,
           currentInteractionTokens,
           availableTokens,
         },
@@ -164,8 +194,10 @@ export async function renderConversationForModel(
     if (currentInteractionTokens > availableTokens) {
       logger.error(
         {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
+          ...logDetails,
+          failureStage: "interaction_exceeds_after_pruning",
+          currentInteractionTokens,
+          availableTokens,
         },
         "Render Conversation V2: No interactions fit in context window."
       );
@@ -235,8 +267,11 @@ export async function renderConversationForModel(
   if (selected.length === 0) {
     logger.error(
       {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
+        ...logDetails,
+        failureStage: "no_interactions_selected",
+        tokensUsed,
+        availableTokens,
+        selectedMessageCount: selected.length,
       },
       "Render Conversation V2: No interactions fit in context window."
     );

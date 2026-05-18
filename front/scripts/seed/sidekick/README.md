@@ -15,3 +15,9 @@ Run:
 ```bash
 npx tsx scripts/seed/sidekick/seed.ts --execute
 ```
+
+To target a different workspace:
+
+```bash
+DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/sidekick/seed.ts --execute
+```

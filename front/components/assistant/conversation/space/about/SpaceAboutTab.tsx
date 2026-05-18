@@ -1,5 +1,7 @@
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
+import { ProjectSettingsOptionLabel } from "@app/components/assistant/conversation/space/about/ProjectSettingsOptionLabel";
+import { SuggestedTasksGenerationTile } from "@app/components/assistant/conversation/space/conversations/project_tasks/SuggestedTasksGenerationTile";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useArchiveProject } from "@app/hooks/useArchiveProject";
@@ -25,6 +27,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  GlobeAltIcon,
   Input,
   MoreIcon,
   ScrollArea,
@@ -154,16 +157,6 @@ export function SpaceAboutTab({
   };
 
   const onSaveDescription = async () => {
-    const confirmed = await confirm({
-      title: "Update project description?",
-      message: "The project description will be updated.",
-      validateVariant: "warning",
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
     await doUpdateMetadata({ description: projectDescription });
     setIsEditingDescription(false);
   };
@@ -185,7 +178,7 @@ export function SpaceAboutTab({
     const newIsPublic = !isPublic;
     const title = newIsPublic ? "Switch to public?" : "Switch to restricted?";
     const message = newIsPublic
-      ? "Everyone in the workspace will be able to see and join this project."
+      ? "All workspace members will be able to join and see everything in this project — including existing conversations and files."
       : "Access will be limited to invited members only.";
 
     const confirmed = await confirm({
@@ -343,38 +336,42 @@ export function SpaceAboutTab({
         </div>
 
         <div className="flex w-full flex-col gap-2">
-          <h3 className="heading-lg">Visibility</h3>
-          <div className="flex items-center justify-between gap-4 border-y border-border py-4">
-            <div className="flex flex-col">
-              <div className="heading-sm text-foreground dark:text-foreground-night">
-                Open to everyone
-              </div>
-              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Anyone in the workspace can find and join the project.
+          <div className="flex flex-col border-y border-border">
+            <div className="flex items-center justify-between gap-4 py-4">
+              <ProjectSettingsOptionLabel
+                icon={GlobeAltIcon}
+                title="Open to everyone"
+                description="Anyone in the workspace can find and join the project."
+              />
+              <div className="flex shrink-0 items-center gap-2">
+                {isVisibilityToggleDisabled ? (
+                  <Tooltip
+                    label={OPEN_PROJECTS_DISABLED_TOOLTIP}
+                    trigger={
+                      <div>
+                        <SliderToggle
+                          size="xs"
+                          selected={isPublic}
+                          onClick={handleVisibilityToggle}
+                          disabled
+                        />
+                      </div>
+                    }
+                  />
+                ) : (
+                  <SliderToggle
+                    size="xs"
+                    selected={isPublic}
+                    onClick={handleVisibilityToggle}
+                    disabled={isVisibilityToggleDisabled}
+                  />
+                )}
               </div>
             </div>
-            {isVisibilityToggleDisabled ? (
-              <Tooltip
-                label={OPEN_PROJECTS_DISABLED_TOOLTIP}
-                trigger={
-                  <div>
-                    <SliderToggle
-                      size="xs"
-                      selected={isPublic}
-                      onClick={handleVisibilityToggle}
-                      disabled
-                    />
-                  </div>
-                }
-              />
-            ) : (
-              <SliderToggle
-                size="xs"
-                selected={isPublic}
-                onClick={handleVisibilityToggle}
-                disabled={isVisibilityToggleDisabled}
-              />
-            )}
+
+            <div className="border-t border-border py-4">
+              <SuggestedTasksGenerationTile owner={owner} space={space} />
+            </div>
           </div>
         </div>
 

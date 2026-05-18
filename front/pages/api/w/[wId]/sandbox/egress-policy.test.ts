@@ -53,6 +53,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/egress-policy", () => {
       role: "admin",
     });
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "sandbox_workspace_admin");
 
     await handler(req, res);
 
@@ -69,6 +70,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/egress-policy", () => {
       role: "admin",
     });
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "sandbox_workspace_admin");
     req.body = {
       allowedDomains: ["API.GitHub.COM", "*.GitHub.COM"],
     };
@@ -94,8 +96,8 @@ describe("GET/PUT /api/w/[wId]/sandbox/egress-policy", () => {
           location: expect.any(String),
         }),
         metadata: {
-          allowedDomainCount: "2",
-          allowedDomains: "api.github.com,*.github.com",
+          allowed_domain_count: "2",
+          allowed_domains: "api.github.com,*.github.com",
         },
         targets: [
           expect.objectContaining({
@@ -118,6 +120,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/egress-policy", () => {
       role: "admin",
     });
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "sandbox_workspace_admin");
     req.body = {
       allowedDomains: ["127.0.0.1"],
     };
@@ -151,6 +154,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/egress-policy", () => {
       role: "user",
     });
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "sandbox_workspace_admin");
 
     await handler(req, res);
 
@@ -168,6 +172,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/egress-policy", () => {
       role: "admin",
     });
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "sandbox_workspace_admin");
     mockReadWorkspacePolicy.mockResolvedValue(new Err(new Error("GCS failed")));
 
     await handler(req, res);

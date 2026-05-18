@@ -24,6 +24,7 @@ import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metad
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
+import { FILES_SERVER } from "@app/lib/api/actions/servers/files/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
@@ -54,7 +55,7 @@ import { POKE_SERVER } from "@app/lib/api/actions/servers/poke/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import { PROJECT_MANAGER_SERVER } from "@app/lib/api/actions/servers/project_manager/metadata";
-import { PROJECT_TODOS_SERVER } from "@app/lib/api/actions/servers/project_todos/metadata";
+import { PROJECT_TASKS_SERVER } from "@app/lib/api/actions/servers/project_tasks/metadata";
 import {
   QUERY_TABLES_V2_SERVER,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -149,6 +150,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "clari_copilot",
   "confluence",
   "conversation_files",
+  "files",
   "databricks",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
@@ -207,7 +209,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "skill_management",
   "schedules_management",
   "project_manager",
-  "project_todos",
+  "project_tasks",
   "poke",
   "sandbox",
   "ask_user_question",
@@ -328,7 +330,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "manual",
     allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) =>
-      featureFlags.includes("official_notion_mcp"),
+      !featureFlags.includes("allow_old_notion_mcp"),
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -832,9 +834,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 52,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("gong_tool");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1021,7 +1021,7 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: PROJECT_MANAGER_SERVER,
   },
-  project_todos: {
+  project_tasks: {
     id: 1029,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
@@ -1032,7 +1032,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: PROJECT_TODOS_SERVER,
+    metadata: PROJECT_TASKS_SERVER,
   },
   agent_sidekick_context: {
     id: 1022,
@@ -1107,8 +1107,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("enable_wakeups"),
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1137,6 +1136,17 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: PLAN_MODE_SERVER,
+  },
+  files: {
+    id: 1033,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: FILES_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
@@ -1327,9 +1337,26 @@ export function getInternalMCPServerNameFromSId(
 export function getInternalMCPServerIconByName(
   name: InternalMCPServerNameType
 ): InternalAllowedIconType {
-  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  const server: InternalMCPServerEntry | undefined = INTERNAL_MCP_SERVERS[name];
+  if (!server) {
+    return "ActionRobotIcon";
+  }
 
   return server.metadata.serverInfo.icon;
+}
+
+export function getInternalMCPServerDisplayedAs(
+  toolServerId: string
+): "agent" | "server" | undefined {
+  const name = getInternalMCPServerNameFromSId(toolServerId);
+  if (!name) {
+    return undefined;
+  }
+  const server: InternalMCPServerEntry | undefined = INTERNAL_MCP_SERVERS[name];
+  if (!server) {
+    return undefined;
+  }
+  return server.metadata.serverInfo.displayedAs;
 }
 
 export function getInternalMCPServerToolStakes(

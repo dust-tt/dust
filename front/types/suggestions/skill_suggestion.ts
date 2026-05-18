@@ -61,6 +61,19 @@ export const SkillToolEditItemSchema = z.object({
 
 export type SkillToolEditItemType = z.infer<typeof SkillToolEditItemSchema>;
 
+export const SkillAgentFacingDescriptionEditSchema = z.object({
+  content: z
+    .string()
+    .min(1)
+    .describe(
+      "The full new agent-facing description that will replace the current one."
+    ),
+});
+
+export type SkillAgentFacingDescriptionEditType = z.infer<
+  typeof SkillAgentFacingDescriptionEditSchema
+>;
+
 export const SkillEditSuggestionSchema = z
   .object({
     instructionEdits: z
@@ -71,12 +84,17 @@ export const SkillEditSuggestionSchema = z
       .array(SkillToolEditItemSchema)
       .optional()
       .describe("Tools to add or remove from the skill."),
+    agentFacingDescriptionEdit:
+      SkillAgentFacingDescriptionEditSchema.optional().describe(
+        "Replacement for the skill's agent-facing description."
+      ),
   })
   .refine(
     (d) =>
       (d.instructionEdits && d.instructionEdits.length > 0) ||
-      (d.toolEdits && d.toolEdits.length > 0),
-    "At least one of instructionEdits or toolEdits must be provided."
+      (d.toolEdits && d.toolEdits.length > 0) ||
+      d.agentFacingDescriptionEdit !== undefined,
+    "At least one of instructionEdits, toolEdits, or agentFacingDescriptionEdit must be provided."
   );
 
 export type SkillEditSuggestionType = z.infer<typeof SkillEditSuggestionSchema>;

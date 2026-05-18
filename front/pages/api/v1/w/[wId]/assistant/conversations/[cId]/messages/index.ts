@@ -10,10 +10,6 @@ import {
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import {
-  checkProgrammaticUsageLimits,
-  isProgrammaticUsage,
-} from "@app/lib/api/programmatic_usage/tracking";
 import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -67,6 +63,8 @@ import { fromError } from "zod-validation-error";
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
+ *       403:
+ *         description: Forbidden. Workspace or usage limits exceeded, or access denied.
  *       429:
  *         description: Rate limit exceeded.
  *       500:
@@ -138,19 +136,6 @@ async function handler(
 
       const origin = context.origin ?? "api";
 
-      if (isProgrammaticUsage(auth, { userMessageOrigin: origin })) {
-        const limitsResult = await checkProgrammaticUsageLimits(auth);
-        if (limitsResult.isErr()) {
-          return apiError(req, res, {
-            status_code: 429,
-            api_error: {
-              type: "rate_limit_error",
-              message: limitsResult.error.message,
-            },
-          });
-        }
-      }
-
       if (isEmptyString(context.username)) {
         return apiError(req, res, {
           status_code: 400,
@@ -219,7 +204,7 @@ async function handler(
 
       const validateUserMessageContextRes = isUserMessageContextValid(
         auth,
-        req,
+        req.headers,
         ctx
       );
       if (!validateUserMessageContextRes) {

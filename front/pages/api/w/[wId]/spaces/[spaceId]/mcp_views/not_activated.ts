@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/mcp_views.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -8,8 +10,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import differenceWith from "lodash/differenceWith";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetMCPServerViewsNotActivatedResponseBody = {
@@ -48,7 +49,7 @@ async function handler(
         (s) => s.space.kind === "global"
       );
 
-      const activablemcpServerViews = _.differenceWith(
+      const activablemcpServerViews = differenceWith(
         systemMcpServerViews,
         spaceMcpServerViews.concat(globalMcpServerViews),
         (a, b) => {

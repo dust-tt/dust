@@ -163,6 +163,28 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   };
 }
 
+export function warmCacheWithRedis<T, Args extends unknown[]>(
+  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  resolver: KeyResolver<Args>,
+  { ttlMs }: { ttlMs?: number } = {}
+): (value: JsonSerializable<T>, ...args: Args) => Promise<void> {
+  if (ttlMs !== undefined && ttlMs > 60 * 60 * 24 * 1000) {
+    throw new Error("ttlMs should be less than 24 hours");
+  }
+  return async function (
+    value: JsonSerializable<T>,
+    ...args: Args
+  ): Promise<void> {
+    const key = getCacheKey(fn, resolver, args);
+    const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+    if (ttlMs !== undefined) {
+      await redisCli.set(key, JSON.stringify(value), { PX: ttlMs });
+    } else {
+      await redisCli.set(key, JSON.stringify(value));
+    }
+  };
+}
+
 export function invalidateCacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,

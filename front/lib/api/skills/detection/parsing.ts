@@ -83,11 +83,14 @@ function extractFrontmatter(
 
 /**
  * Scans file entries for directories containing a SKILL.md (case-insensitive).
- * Skips root-level skill.md files and deduplicates by directory.
+ * Prefers nested skill directories, and falls back to a root-level SKILL.md
+ * only when no nested skills were found. This avoids treating a whole
+ * multi-skill repository as attachments for a root skill.
  */
 export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
   const skillDirs: SkillDirectory[] = [];
   const seenDirs = new Set<string>();
+  let rootSkillDir: SkillDirectory | null = null;
 
   for (const entry of entries) {
     if (path.basename(entry.path).toLowerCase() !== SKILL_MD_FILENAME) {
@@ -95,8 +98,8 @@ export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
     }
 
     const dirPath = path.dirname(entry.path);
-    // A skill must live in a directory, not at the root.
     if (dirPath === ".") {
+      rootSkillDir ??= { dirPath, skillMdPath: entry.path };
       continue;
     }
 
@@ -107,6 +110,10 @@ export function findSkillDirectories(entries: FileEntry[]): SkillDirectory[] {
     seenDirs.add(dirPath);
 
     skillDirs.push({ dirPath, skillMdPath: entry.path });
+  }
+
+  if (skillDirs.length === 0 && rootSkillDir) {
+    return [rootSkillDir];
   }
 
   return skillDirs;

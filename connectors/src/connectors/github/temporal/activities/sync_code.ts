@@ -104,10 +104,7 @@ export async function githubExtractToGcsActivity({
     });
   };
 
-  // Get GitHub client.
-  const octokit = await getOctokit(connector);
-
-  const repoInfoRes = await getRepoInfo(octokit, {
+  const repoInfoRes = await getRepoInfo(connector, {
     repoLogin,
     repoName,
   });
@@ -131,6 +128,8 @@ export async function githubExtractToGcsActivity({
   const tarballStreamProvider: TarballStreamProvider = {
     getStream: async () => {
       logger.info("Fetching GitHub repository tarball");
+
+      const octokit = await getOctokit(connector);
 
       try {
         const response = await octokit.request(

@@ -80,14 +80,14 @@ export default function SkillBuilder({
     limit: 30,
   });
 
-  const hasReinforcedAgents =
+  const hasSelfImprovingSkills =
     hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
 
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,
     states: ["pending"],
     workspaceId: owner.sId,
-    disabled: !skill || !hasReinforcedAgents,
+    disabled: !skill || !hasSelfImprovingSkills,
   });
 
   const hasPendingSuggestions = suggestions.length > 0;
@@ -180,7 +180,7 @@ export default function SkillBuilder({
   };
 
   const showSuggestionsPanel =
-    skill && !isMobile && hasReinforcedAgents && hasPendingSuggestions;
+    skill && !isMobile && hasSelfImprovingSkills && hasPendingSuggestions;
 
   const leftPanel = (
     <div className="flex h-full w-full flex-col">
@@ -235,7 +235,7 @@ export default function SkillBuilder({
           <SkillBuilderToolsSection extendedSkill={extendedSkill} />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
-            hasReinforcedAgents={hasReinforcedAgents}
+            hasSelfImprovingSkills={hasSelfImprovingSkills}
           />
         </div>
       </ScrollArea>
@@ -306,10 +306,10 @@ export default function SkillBuilder({
 
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
-  hasReinforcedAgents,
+  hasSelfImprovingSkills,
 }: {
   skill?: SkillType;
-  hasReinforcedAgents: boolean;
+  hasSelfImprovingSkills: boolean;
 }) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
@@ -320,7 +320,7 @@ function SkillBuilderSettingsOrComparisonFooter({
   return (
     <SkillBuilderSettingsSection
       skill={skill}
-      hasReinforcedAgents={hasReinforcedAgents}
+      hasSelfImprovingSkills={hasSelfImprovingSkills}
     />
   );
 }

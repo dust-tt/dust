@@ -119,7 +119,9 @@ export function withLogging<T>(
 
     // Try bearer token first, then fall back to cookie-based session.
     const sessionResult = await tracer.trace("auth.getSession", async () => {
-      const bearerTokenRes = await getSessionFromBearerToken(req);
+      const bearerTokenRes = await getSessionFromBearerToken(
+        req.headers.authorization
+      );
       if (bearerTokenRes.isErr() || bearerTokenRes.value) {
         return bearerTokenRes;
       }
@@ -176,9 +178,36 @@ export function withLogging<T>(
     const cliVersion =
       req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
+    // Key the browser cache by X-Commit-Hash
+    res.setHeader("Vary", "X-Commit-Hash");
+
     if (typeof commitHash === "string" && commitHash.length > 0) {
       if (await shouldForceClientReload(commitHash)) {
+        logger.info(
+          {
+            clientIp,
+            cliVersion,
+            commitHash,
+            method: req.method,
+            route,
+            sessionId,
+            url: req.url,
+            workspaceId,
+            ...req.logContext,
+          },
+          "Force client reload"
+        );
         res.setHeader("X-Reload-Required", "true");
+        // Flagged-commit responses must never be cached: the flag can be
+        // cleared in Redis at any time, but a cached "true" response would
+        // keep the tab in a reload loop until it expires.
+        res.setHeader("Cache-Control", "no-store");
+      } else {
+        // Always emit an explicit "false" so 304 revalidations can heal
+        // poisoned cache entries: per HTTP spec, the browser merges 304
+        // response headers into the stored entry. If we leave the header
+        // off, a cached "true" persists forever across revalidations.
+        res.setHeader("X-Reload-Required", "false");
       }
     }
 

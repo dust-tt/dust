@@ -40,7 +40,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
   get_issue_read_fields: async (_params, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const result = await listFieldSummaries(baseUrl, accessToken);
         if (result.isErr()) {
           return new Err(
@@ -61,9 +61,10 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   get_issue: async ({ issueKey, fields }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, resourceInfo, accessToken) => {
         const issue = await getIssue({
           baseUrl,
+          resourceInfo,
           accessToken,
           issueKey,
           fields,
@@ -104,7 +105,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   get_projects: async (_params, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const result = await getProjects(baseUrl, accessToken);
         if (result.isErr()) {
           return new Err(
@@ -125,7 +126,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   get_project: async ({ projectKey }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const result = await getProject(baseUrl, accessToken, projectKey);
         if (result.isErr()) {
           return new Err(
@@ -153,7 +154,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   get_project_versions: async ({ projectKey }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const result = await getProjectVersions(
           baseUrl,
           accessToken,
@@ -181,7 +182,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   get_transitions: async ({ issueKey }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const result = await getTransitions(baseUrl, accessToken, issueKey);
         if (result.isErr()) {
           return new Err(
@@ -202,11 +203,17 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   get_issues: async ({ filters, sortBy, nextPageToken }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
-        const result = await searchIssues(baseUrl, accessToken, filters, {
-          nextPageToken,
-          sortBy,
-        });
+      action: async (baseUrl, resourceInfo, accessToken) => {
+        const result = await searchIssues(
+          baseUrl,
+          resourceInfo,
+          accessToken,
+          filters,
+          {
+            nextPageToken,
+            sortBy,
+          }
+        );
         if (result.isErr()) {
           return new Err(
             new MCPError(`Error searching issues: ${result.error}`)
@@ -246,9 +253,10 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     { authInfo }
   ) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, resourceInfo, accessToken) => {
         const result = await searchJiraIssuesUsingJql(
           baseUrl,
+          resourceInfo,
           accessToken,
           jql,
           {
@@ -293,7 +301,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   get_issue_types: async ({ projectKey }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, resourceInfo, accessToken) => {
         try {
           const result = await getIssueTypes(baseUrl, accessToken, projectKey);
           if (result.isErr()) {
@@ -328,7 +336,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     { authInfo }
   ) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, resourceInfo, accessToken) => {
         try {
           const result = await getIssueFields(
             baseUrl,
@@ -364,35 +372,39 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
   },
 
   get_connection_info: async (_params, { authInfo }) => {
-    const accessToken = authInfo?.token;
-    if (!accessToken) {
-      return new Err(new MCPError("No access token found"));
-    }
+    return withAuth({
+      action: async (baseUrl, resourceInfo, accessToken) => {
+        const connectionInfo = await getConnectionInfo(
+          baseUrl,
+          resourceInfo,
+          accessToken
+        );
+        if (connectionInfo.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to retrieve connection information: ${connectionInfo.error}`
+            )
+          );
+        }
 
-    const connectionInfo = await getConnectionInfo(accessToken);
-    if (connectionInfo.isErr()) {
-      return new Err(
-        new MCPError(
-          `Failed to retrieve connection information: ${connectionInfo.error}`
-        )
-      );
-    }
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: "Connection information retrieved successfully",
+        return new Ok([
+          {
+            type: "text" as const,
+            text: "Connection information retrieved successfully",
+          },
+          {
+            type: "text" as const,
+            text: JSON.stringify(connectionInfo, null, 2),
+          },
+        ]);
       },
-      {
-        type: "text" as const,
-        text: JSON.stringify(connectionInfo, null, 2),
-      },
-    ]);
+      authInfo,
+    });
   },
 
   get_issue_link_types: async (_params, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const result = await getIssueLinkTypes(baseUrl, accessToken);
         if (result.isErr()) {
           return new Err(
@@ -419,7 +431,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     { authInfo }
   ) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         if (emailAddress) {
           const result = await searchUsersByEmailExact(
             baseUrl,
@@ -493,7 +505,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   get_attachments: async ({ issueKey }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const attachmentsResult = await getIssueAttachments({
           baseUrl,
           accessToken,
@@ -545,7 +557,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   read_attachment: async ({ issueKey, attachmentId }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         try {
           const attachmentsResult = await getIssueAttachments({
             baseUrl,
@@ -614,7 +626,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     { authInfo }
   ) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const visibility =
           visibilityType && visibilityValue
             ? { type: visibilityType, value: visibilityValue }
@@ -665,7 +677,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   transition_issue: async ({ issueKey, transitionId }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const result = await transitionIssue(
           baseUrl,
           accessToken,
@@ -721,8 +733,13 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   create_issue: async ({ issueData }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
-        const result = await createIssue(baseUrl, accessToken, issueData);
+      action: async (baseUrl, resourceInfo, accessToken) => {
+        const result = await createIssue(
+          baseUrl,
+          resourceInfo,
+          accessToken,
+          issueData
+        );
         if (result.isErr()) {
           let errorMessage = `Error creating issue: ${result.error}`;
           if (
@@ -747,9 +764,10 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   update_issue: async ({ issueKey, updateData }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, resourceInfo, accessToken) => {
         const result = await updateIssue(
           baseUrl,
+          resourceInfo,
           accessToken,
           issueKey,
           updateData
@@ -790,7 +808,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   create_issue_link: async ({ linkData }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const result = await createIssueLink(baseUrl, accessToken, linkData);
         if (result.isErr()) {
           return new Err(
@@ -820,7 +838,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
 
   delete_issue_link: async ({ linkId }, { authInfo }) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         const result = await deleteIssueLink(baseUrl, accessToken, linkId);
         if (result.isErr()) {
           return new Err(
@@ -847,7 +865,7 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
     { auth, authInfo, agentLoopContext }
   ) => {
     return withAuth({
-      action: async (baseUrl, accessToken) => {
+      action: async (baseUrl, _resourceInfo, accessToken) => {
         let fileToUpload: {
           buffer: Buffer;
           filename: string;

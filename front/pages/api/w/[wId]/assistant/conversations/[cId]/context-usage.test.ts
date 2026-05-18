@@ -39,6 +39,7 @@ function makeRunWithUsages(usages: RunUsageType[]) {
 function makeConversationResource({
   latestAgentMessageRun,
   latestCompactionMessageRun,
+  previousAgentMessageRun = null,
 }: {
   latestAgentMessageRun: {
     rank: number;
@@ -48,9 +49,16 @@ function makeConversationResource({
     rank: number;
     run: ReturnType<typeof makeRunWithUsages>;
   } | null;
+  previousAgentMessageRun?: {
+    rank: number;
+    run: ReturnType<typeof makeRunWithUsages>;
+  } | null;
 }) {
   return {
-    getLatestAgentMessageRun: vi.fn().mockResolvedValue(latestAgentMessageRun),
+    getLatestAgentMessageRun: vi
+      .fn()
+      .mockResolvedValueOnce(latestAgentMessageRun)
+      .mockResolvedValueOnce(previousAgentMessageRun),
     getLatestCompactionMessageRun: vi
       .fn()
       .mockResolvedValue(latestCompactionMessageRun),
@@ -146,5 +154,121 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/context-usage", () => {
     });
     expect(compactionRun.listRunUsages).not.toHaveBeenCalled();
     expect(agentRun.listRunUsages).toHaveBeenCalledOnce();
+  });
+
+  it("returns pending usage when the latest compaction run has no usage rows yet", async () => {
+    const { req, res } = await setupTest();
+
+    const agentRun = makeRunWithUsages([
+      makeRunUsage({ promptTokens: 111, completionTokens: 11 }),
+    ]);
+    const compactionRun = makeRunWithUsages([]);
+    const conversation = makeConversationResource({
+      latestAgentMessageRun: {
+        rank: 10,
+        run: agentRun,
+      },
+      latestCompactionMessageRun: {
+        rank: 20,
+        run: compactionRun,
+      },
+    });
+
+    vi.spyOn(ConversationResource, "fetchById").mockResolvedValue(
+      conversation as unknown as ConversationResource
+    );
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      model: null,
+      contextUsage: null,
+      contextSize: null,
+    });
+    expect(agentRun.listRunUsages).not.toHaveBeenCalled();
+    expect(compactionRun.listRunUsages).toHaveBeenCalledOnce();
+  });
+
+  it("falls back to the previous agent run when the latest has no usage rows yet", async () => {
+    const { req, res } = await setupTest();
+
+    const latestRun = makeRunWithUsages([]);
+    const previousRun = makeRunWithUsages([
+      makeRunUsage({ promptTokens: 555, completionTokens: 55 }),
+    ]);
+    const conversation = makeConversationResource({
+      latestAgentMessageRun: { rank: 20, run: latestRun },
+      latestCompactionMessageRun: null,
+      previousAgentMessageRun: { rank: 18, run: previousRun },
+    });
+
+    vi.spyOn(ConversationResource, "fetchById").mockResolvedValue(
+      conversation as unknown as ConversationResource
+    );
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toMatchObject({
+      model: MODEL,
+      contextUsage: 555,
+    });
+    expect(latestRun.listRunUsages).toHaveBeenCalledOnce();
+    expect(previousRun.listRunUsages).toHaveBeenCalledOnce();
+    expect(conversation.getLatestAgentMessageRun).toHaveBeenCalledTimes(2);
+    expect(conversation.getLatestAgentMessageRun).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      { maxRank: 19 }
+    );
+  });
+
+  it("returns pending usage when the latest agent run has no usage rows and there is no previous run", async () => {
+    const { req, res } = await setupTest();
+
+    const agentRun = makeRunWithUsages([]);
+    const conversation = makeConversationResource({
+      latestAgentMessageRun: { rank: 20, run: agentRun },
+      latestCompactionMessageRun: null,
+      // previousAgentMessageRun defaults to null — first message in the conversation
+    });
+
+    vi.spyOn(ConversationResource, "fetchById").mockResolvedValue(
+      conversation as unknown as ConversationResource
+    );
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      model: null,
+      contextUsage: null,
+      contextSize: null,
+    });
+    expect(agentRun.listRunUsages).toHaveBeenCalledOnce();
+    expect(conversation.getLatestAgentMessageRun).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns pending usage when the conversation has no run data yet", async () => {
+    const { req, res } = await setupTest();
+
+    const conversation = makeConversationResource({
+      latestAgentMessageRun: null,
+      latestCompactionMessageRun: null,
+    });
+
+    vi.spyOn(ConversationResource, "fetchById").mockResolvedValue(
+      conversation as unknown as ConversationResource
+    );
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      model: null,
+      contextUsage: null,
+      contextSize: null,
+    });
   });
 });

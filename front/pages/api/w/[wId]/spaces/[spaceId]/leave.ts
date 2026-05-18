@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/leave.ts
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -95,7 +97,7 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          spaceName: space.name,
+          space_name: space.name,
         },
       });
 

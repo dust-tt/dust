@@ -11,10 +11,9 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type WorkspaceLookupResponse = {
   workspace: {
@@ -34,9 +33,9 @@ export type ShareTokenLookupResponse = {
   exists: boolean;
 };
 
-const ExternalUserCodec = t.type({
-  email: t.string,
-  email_verified: t.boolean,
+const ExternalUserCodec = z.object({
+  email: z.string(),
+  email_verified: z.boolean(),
 });
 
 type LookupResponseBody =
@@ -45,41 +44,41 @@ type LookupResponseBody =
   | InvitationsLookupResponse
   | ShareTokenLookupResponse;
 
-const UserLookupSchema = t.type({
+const UserLookupSchema = z.object({
   user: ExternalUserCodec,
 });
 
-const WorkspaceLookupSchema = t.type({
-  workspace: t.string,
+const WorkspaceLookupSchema = z.object({
+  workspace: z.string(),
 });
 
-const InvitationsLookupSchema = t.type({
-  email: t.string,
+const InvitationsLookupSchema = z.object({
+  email: z.string(),
 });
 
-const ShareTokenLookupSchema = t.type({
-  token: t.string,
+const ShareTokenLookupSchema = z.object({
+  token: z.string(),
 });
 
-export type UserLookupRequestBodyType = t.TypeOf<typeof UserLookupSchema>;
+export type UserLookupRequestBodyType = z.infer<typeof UserLookupSchema>;
 
-export type WorkspaceLookupRequestBodyType = t.TypeOf<
+export type WorkspaceLookupRequestBodyType = z.infer<
   typeof WorkspaceLookupSchema
 >;
 
-export type InvitationsLookupRequestBodyType = t.TypeOf<
+export type InvitationsLookupRequestBodyType = z.infer<
   typeof InvitationsLookupSchema
 >;
 
-export type ShareTokenLookupRequestBodyType = t.TypeOf<
+export type ShareTokenLookupRequestBodyType = z.infer<
   typeof ShareTokenLookupSchema
 >;
 
-const ResourceType = t.union([
-  t.literal("user"),
-  t.literal("workspace"),
-  t.literal("invitations"),
-  t.literal("share-token"),
+const ResourceType = z.enum([
+  "user",
+  "workspace",
+  "invitations",
+  "share-token",
 ]);
 
 async function handler(
@@ -108,7 +107,7 @@ async function handler(
     });
   }
 
-  const bearerTokenRes = await getBearerToken(req);
+  const bearerTokenRes = await getBearerToken(req.headers.authorization);
   if (bearerTokenRes.isErr()) {
     return apiError(req, res, {
       status_code: 401,
@@ -129,8 +128,8 @@ async function handler(
     });
   }
 
-  const resourceValidation = ResourceType.decode(resource);
-  if (isLeft(resourceValidation)) {
+  const resourceValidation = ResourceType.safeParse(resource);
+  if (!resourceValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -141,15 +140,14 @@ async function handler(
     });
   }
 
+  const validatedResource = resourceValidation.data;
   let response: LookupResponseBody | null = null;
-  switch (resourceValidation.right) {
+  switch (validatedResource) {
     case "user":
       {
-        const bodyValidation = UserLookupSchema.decode(req.body);
-        if (isLeft(bodyValidation)) {
-          const pathError = reporter.formatValidationErrors(
-            bodyValidation.left
-          );
+        const bodyValidation = UserLookupSchema.safeParse(req.body);
+        if (!bodyValidation.success) {
+          const pathError = fromError(bodyValidation.error).toString();
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -159,18 +157,16 @@ async function handler(
           });
         }
         response = {
-          exists: await hasEmailLocalRegionAffinity(bodyValidation.right.user),
+          exists: await hasEmailLocalRegionAffinity(bodyValidation.data.user),
         };
       }
       break;
 
     case "workspace":
       {
-        const bodyValidation = WorkspaceLookupSchema.decode(req.body);
-        if (isLeft(bodyValidation)) {
-          const pathError = reporter.formatValidationErrors(
-            bodyValidation.left
-          );
+        const bodyValidation = WorkspaceLookupSchema.safeParse(req.body);
+        if (!bodyValidation.success) {
+          const pathError = fromError(bodyValidation.error).toString();
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -179,17 +175,15 @@ async function handler(
             },
           });
         }
-        response = await handleLookupWorkspace(bodyValidation.right);
+        response = await handleLookupWorkspace(bodyValidation.data);
       }
       break;
 
     case "invitations":
       {
-        const bodyValidation = InvitationsLookupSchema.decode(req.body);
-        if (isLeft(bodyValidation)) {
-          const pathError = reporter.formatValidationErrors(
-            bodyValidation.left
-          );
+        const bodyValidation = InvitationsLookupSchema.safeParse(req.body);
+        if (!bodyValidation.success) {
+          const pathError = fromError(bodyValidation.error).toString();
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -198,17 +192,15 @@ async function handler(
             },
           });
         }
-        response = await handleLookupInvitations(bodyValidation.right.email);
+        response = await handleLookupInvitations(bodyValidation.data.email);
       }
       break;
 
     case "share-token":
       {
-        const bodyValidation = ShareTokenLookupSchema.decode(req.body);
-        if (isLeft(bodyValidation)) {
-          const pathError = reporter.formatValidationErrors(
-            bodyValidation.left
-          );
+        const bodyValidation = ShareTokenLookupSchema.safeParse(req.body);
+        if (!bodyValidation.success) {
+          const pathError = fromError(bodyValidation.error).toString();
           return apiError(req, res, {
             status_code: 400,
             api_error: {
@@ -218,14 +210,14 @@ async function handler(
           });
         }
         const result = await FileResource.fetchByShareToken(
-          bodyValidation.right.token
+          bodyValidation.data.token
         );
         response = { exists: result.isOk() };
       }
       break;
 
     default:
-      assertNever(resourceValidation.right);
+      assertNever(validatedResource);
   }
 
   res.status(200).json(response);

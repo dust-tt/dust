@@ -3,9 +3,7 @@ import { getGongClient } from "@connectors/connectors/gong/lib/utils";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GongUserBlob } from "@connectors/resources/gong_resources";
 import { GongUserResource } from "@connectors/resources/gong_resources";
-import { concurrentExecutor } from "@connectors/types";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import { difference } from "lodash";
+import { removeNulls } from "@connectors/types/shared/utils/general";
 
 export function getUserBlobFromGongAPI(user: GongAPIUser): GongUserBlob | null {
   if (!user.emailAddress || !user.id) {
@@ -30,34 +28,37 @@ export async function getGongUsers(
   });
 
   // Find requested users that are missing from our local database.
-  const missingUsers = difference(
-    gongUserIds,
-    users.map((user) => user.gongId)
+  const existingUserIds = new Set(users.map((user) => user.gongId));
+  const missingUserIds = gongUserIds.filter(
+    (gongUserId) => !existingUserIds.has(gongUserId)
   );
 
-  if (missingUsers.length === 0) {
+  if (missingUserIds.length === 0) {
     return users;
   }
 
   const gongClient = await getGongClient(connector);
 
-  await concurrentExecutor(
-    missingUsers,
-    async (gongUserId) => {
-      // If the user does not exist yet, fetch it from the API and save it.
-      const user = await gongClient.getUser({ userId: gongUserId });
-      if (!user) {
-        return null;
-      }
+  const gongApiUsers: GongAPIUser[] = [];
+  let pageCursor: string | null = null;
 
-      const userBlob = getUserBlobFromGongAPI(user);
-      if (userBlob) {
-        const newUser = await GongUserResource.makeNew(connector, userBlob);
-        users.push(newUser);
-      }
-    },
-    { concurrency: 10 }
-  );
+  do {
+    const { users: fetchedUsers, nextPageCursor } =
+      await gongClient.getUsersByIds({
+        userIds: missingUserIds,
+        pageCursor,
+      });
 
-  return users;
+    gongApiUsers.push(...fetchedUsers);
+    pageCursor = nextPageCursor;
+  } while (pageCursor);
+
+  const userBlobs = removeNulls(gongApiUsers.map(getUserBlobFromGongAPI));
+  if (userBlobs.length === 0) {
+    return users;
+  }
+
+  const newUsers = await GongUserResource.batchCreate(connector, userBlobs);
+
+  return [...users, ...newUsers];
 }

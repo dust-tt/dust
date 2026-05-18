@@ -22,7 +22,7 @@ export const imageGenerationToolInputSchema = z.object({
     .max(14)
     .optional()
     .describe(
-      "Optional file IDs of reference images from conversation attachments. Up to 14 reference images."
+      "Optional reference images from the conversation. Accepts scoped file paths (e.g. 'conversation/photo.png') or legacy file sIds. Up to 14 reference images."
     ),
   aspectRatio: z
     .enum([

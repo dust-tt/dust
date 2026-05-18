@@ -2,42 +2,46 @@ import { describe, expect, it } from "vitest";
 
 import { PROFILE_DIR, wrapCommand } from "../../profile";
 
+function expectedWrappedCommand(
+  cmd: string,
+  profile: string,
+  timeoutSec = 60
+): string {
+  return [
+    `DUST_PROFILE=${profile} source ${PROFILE_DIR}/common.sh && shell "$(cat <<'DUST_CMD_EOF'`,
+    cmd,
+    "DUST_CMD_EOF",
+    `)" ${timeoutSec}`,
+  ].join("\n");
+}
+
 describe("wrapCommand", () => {
-  it("wraps command with shell function for anthropic provider", () => {
-    const result = wrapCommand("ls -la", "anthropic");
-    expect(result).toBe(`source ${PROFILE_DIR}/common.sh && shell "ls -la" 60`);
-  });
-
-  it("wraps command with shell function for openai provider", () => {
-    const result = wrapCommand("pwd", "openai");
-    expect(result).toBe(`source ${PROFILE_DIR}/common.sh && shell "pwd" 60`);
-  });
-
-  it("wraps command with shell function for google_ai_studio provider", () => {
-    const result = wrapCommand("echo hello", "google_ai_studio");
-    expect(result).toBe(
-      `source ${PROFILE_DIR}/common.sh && shell "echo hello" 60`
+  it("maps providers to the correct profile wrapper", () => {
+    expect(wrapCommand("ls -la", "anthropic")).toBe(
+      expectedWrappedCommand("ls -la", "anthropic")
+    );
+    expect(wrapCommand("pwd", "openai")).toBe(
+      expectedWrappedCommand("pwd", "openai")
+    );
+    expect(wrapCommand("echo hello", "google_ai_studio")).toBe(
+      expectedWrappedCommand("echo hello", "gemini")
     );
   });
 
-  it("passes timeoutSec to shell wrapper", () => {
-    const result = wrapCommand("long-cmd", "anthropic", { timeoutSec: 120 });
+  it("preserves the command verbatim and applies custom timeouts", () => {
+    const result = wrapCommand('echo "hello" && echo \\n', "anthropic", {
+      timeoutSec: 120,
+    });
     expect(result).toBe(
-      `source ${PROFILE_DIR}/common.sh && shell "long-cmd" 120`
+      expectedWrappedCommand('echo "hello" && echo \\n', "anthropic", 120)
     );
   });
 
-  it("escapes double quotes in command", () => {
-    const result = wrapCommand('echo "hello world"', "anthropic");
-    expect(result).toBe(
-      `source ${PROFILE_DIR}/common.sh && shell "echo \\"hello world\\"" 60`
-    );
-  });
-
-  it("escapes backslashes in command", () => {
-    const result = wrapCommand("echo \\n", "anthropic");
-    expect(result).toBe(
-      `source ${PROFILE_DIR}/common.sh && shell "echo \\\\n" 60`
+  it("throws when the command contains the reserved heredoc delimiter", () => {
+    expect(() =>
+      wrapCommand("echo before\nDUST_CMD_EOF\necho after", "anthropic")
+    ).toThrow(
+      "Command contains the reserved heredoc delimiter 'DUST_CMD_EOF'."
     );
   });
 });

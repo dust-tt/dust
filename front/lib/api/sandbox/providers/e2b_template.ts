@@ -59,23 +59,32 @@ class ContentMaterializer {
   private tempDir: string | null = null;
   private fileCount = 0;
 
-  materializeToPath(
+  // Writes the generator's content into a temp subdir under __dirname (E2B
+  // resolves paths from there). For single-file content, dest is treated as
+  // the file path. For multi-file content (Map), dest is treated as the
+  // destination directory.
+  materialize(
     getContent: ContentGenerator,
-    destFileName: string
-  ): string {
+    dest: string
+  ): { tempDir: string; destDir: string } {
     if (!this.tempDir) {
-      // Create temp dir relative to this module (E2B resolves paths from __dirname).
       const uniqueId = `sandbox-build-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       this.tempDir = path.join(__dirname, uniqueId);
       fs.mkdirSync(this.tempDir, { recursive: true });
     }
-    // Use a subdirectory per file so E2B's directory-based copy works correctly.
     const contentDir = path.join(this.tempDir, `content-${this.fileCount++}`);
     fs.mkdirSync(contentDir, { recursive: true });
-    const fileName = path.basename(destFileName);
-    const tempFile = path.join(contentDir, fileName);
-    fs.writeFileSync(tempFile, getContent());
-    return path.relative(__dirname, contentDir);
+
+    const result = getContent();
+    const tempDir = path.relative(__dirname, contentDir);
+    if (result instanceof Map) {
+      for (const [filename, content] of result) {
+        fs.writeFileSync(path.join(contentDir, filename), content);
+      }
+      return { tempDir, destDir: dest };
+    }
+    fs.writeFileSync(path.join(contentDir, path.basename(dest)), result);
+    return { tempDir, destDir: path.dirname(dest) };
   }
 
   cleanup(): void {
@@ -130,13 +139,10 @@ class E2BTemplateBuilder {
             user: op.user,
           });
         } else {
-          // E2B copy works with directories, so we create a temp dir containing
-          // a file with the destination's filename, then copy to dest's parent.
-          const tempDir = this.materializer.materializeToPath(
+          const { tempDir, destDir } = this.materializer.materialize(
             op.src.getContent,
             op.dest
           );
-          const destDir = path.dirname(op.dest);
           this.builder = this.builder.copy(tempDir, destDir, { user: op.user });
         }
         break;

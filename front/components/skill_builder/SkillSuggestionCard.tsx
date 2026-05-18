@@ -3,13 +3,16 @@ import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import type {
+  SkillAgentFacingDescriptionEditType,
   SkillInstructionEditItemType,
   SkillSuggestionType,
   SkillToolEditItemType,
 } from "@app/types/suggestions/skill_suggestion";
-import { Button, Card, Chip, DiffBlock } from "@dust-tt/sparkle";
+import { Button, Card, Chip, DiffBlock, Hoverable } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useMemo } from "react";
+
+const MAX_VISIBLE_CONVERSATIONS = 3;
 
 function useToolDisplayNames(
   toolEdits: SkillToolEditItemType[]
@@ -79,6 +82,36 @@ function ToolEditsSection({ toolEdits }: ToolEditsSectionProps) {
   );
 }
 
+interface AgentFacingDescriptionEditSectionProps {
+  edit: SkillAgentFacingDescriptionEditType;
+  currentAgentFacingDescription: string;
+}
+
+function AgentFacingDescriptionEditSection({
+  edit,
+  currentAgentFacingDescription,
+}: AgentFacingDescriptionEditSectionProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+        Description change
+      </span>
+      <DiffBlock>
+        <div className="flex flex-col gap-1 p-3 text-sm">
+          {currentAgentFacingDescription && (
+            <p className="text-muted-foreground line-through dark:text-muted-foreground-night">
+              {currentAgentFacingDescription}
+            </p>
+          )}
+          <p className="text-foreground dark:text-foreground-night">
+            {edit.content}
+          </p>
+        </div>
+      </DiffBlock>
+    </div>
+  );
+}
+
 interface InstructionEditDiffBlockProps {
   edit: SkillInstructionEditItemType;
   getSkillInstructionsHtml: () => string;
@@ -122,13 +155,81 @@ function InstructionEditDiffBlock({
   return <DiffBlock>{editor && <EditorContent editor={editor} />}</DiffBlock>;
 }
 
+interface ConversationFooterProps {
+  visibleSourceConversationIds: string[];
+  sourceConversationsCount: number;
+  workspaceId: string;
+}
+
+function ConversationFooter({
+  visibleSourceConversationIds,
+  sourceConversationsCount,
+  workspaceId,
+}: ConversationFooterProps) {
+  if (sourceConversationsCount === 0) {
+    return null;
+  }
+
+  const shownIds = visibleSourceConversationIds.slice(
+    0,
+    MAX_VISIBLE_CONVERSATIONS
+  );
+  const remainingCount = sourceConversationsCount - shownIds.length;
+
+  if (shownIds.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+        Based on {sourceConversationsCount} conversation
+        {sourceConversationsCount > 1 ? "s" : ""}
+      </p>
+    );
+  }
+
+  const indexedLinks = shownIds.map((id, i) => (
+    <Hoverable
+      key={id}
+      variant="primary"
+      href={`/w/${workspaceId}/conversation/${id}`}
+      target="_blank"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {i + 1}
+    </Hoverable>
+  ));
+
+  return (
+    <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+      Based on conversation
+      {shownIds.length > 1 || remainingCount > 0 ? "s" : ""}{" "}
+      {indexedLinks.map((link, i) => (
+        <span key={shownIds[i]}>
+          {i > 0 &&
+            (remainingCount === 0 && i === indexedLinks.length - 1
+              ? " and "
+              : ", ")}
+          {link}
+        </span>
+      ))}
+      {remainingCount > 0 && (
+        <>
+          {" "}
+          and {remainingCount} other
+          {remainingCount > 1 ? "s" : ""}
+        </>
+      )}
+    </p>
+  );
+}
+
 interface SkillSuggestionCardProps {
   suggestion: SkillSuggestionType;
   onAccept?: (suggestion: SkillSuggestionType) => void;
   onDecline?: (suggestion: SkillSuggestionType) => void;
   getSkillInstructionsHtml: () => string;
+  getCurrentAgentFacingDescription: () => string;
   isSelected?: boolean;
   onSelect?: () => void;
+  workspaceId: string;
 }
 
 export function SkillSuggestionCard({
@@ -136,10 +237,13 @@ export function SkillSuggestionCard({
   onAccept,
   onDecline,
   getSkillInstructionsHtml,
+  getCurrentAgentFacingDescription,
   isSelected = false,
   onSelect,
+  workspaceId,
 }: SkillSuggestionCardProps) {
-  const { instructionEdits, toolEdits } = suggestion.suggestion;
+  const { instructionEdits, toolEdits, agentFacingDescriptionEdit } =
+    suggestion.suggestion;
   const isClickable = !!onSelect;
   const hasActions = !!onAccept && !!onDecline;
 
@@ -177,6 +281,13 @@ export function SkillSuggestionCard({
           </p>
         )}
 
+        {agentFacingDescriptionEdit && (
+          <AgentFacingDescriptionEditSection
+            edit={agentFacingDescriptionEdit}
+            currentAgentFacingDescription={getCurrentAgentFacingDescription()}
+          />
+        )}
+
         {toolEdits && toolEdits.length > 0 && (
           <ToolEditsSection toolEdits={toolEdits} />
         )}
@@ -195,6 +306,12 @@ export function SkillSuggestionCard({
             ))}
           </div>
         )}
+
+        <ConversationFooter
+          visibleSourceConversationIds={suggestion.visibleSourceConversationIds}
+          sourceConversationsCount={suggestion.sourceConversationsCount}
+          workspaceId={workspaceId}
+        />
       </Card>
     </div>
   );

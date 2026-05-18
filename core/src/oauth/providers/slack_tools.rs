@@ -10,6 +10,7 @@ use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
 use std::env;
+use urlencoding;
 
 lazy_static! {
     static ref OAUTH_SLACK_TOOLS_CLIENT_ID: String =
@@ -35,10 +36,11 @@ impl SlackToolsConnectionProvider {
     }
 
     fn basic_auth(&self) -> String {
+        // RFC 6749 §2.3.1 requires URL-encoding client_id and client_secret before base64-encoding.
         general_purpose::STANDARD.encode(&format!(
             "{}:{}",
-            OAUTH_SLACK_TOOLS_CLIENT_ID.clone(),
-            OAUTH_SLACK_TOOLS_CLIENT_SECRET.clone()
+            urlencoding::encode(&*OAUTH_SLACK_TOOLS_CLIENT_ID),
+            urlencoding::encode(&*OAUTH_SLACK_TOOLS_CLIENT_SECRET)
         ))
     }
 }

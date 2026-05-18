@@ -10,6 +10,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 export type CloseConversationBranchResponse = {
   closedBranchId: string;
+  conversationDeleted: boolean;
 };
 
 async function handler(
@@ -102,7 +103,10 @@ async function handler(
     }
   }
 
-  res.status(200).json({ closedBranchId: bId });
+  res.status(200).json({
+    closedBranchId: bId,
+    conversationDeleted: closeRes.value.conversationDeleted,
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

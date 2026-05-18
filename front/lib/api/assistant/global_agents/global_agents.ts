@@ -21,6 +21,7 @@ import {
   _getDustAntHighOmittedGlobalAgent,
   _getDustAntMediumGlobalAgent,
   _getDustAntMediumOmittedGlobalAgent,
+  _getDustDeepseekGlobalAgent,
   _getDustEdgeGlobalAgent,
   _getDustGlmGlobalAgent,
   _getDustGlmHighGlobalAgent,
@@ -272,6 +273,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_DEEPSEEK]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -916,6 +923,14 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_DEEPSEEK:
+      agentConfiguration = _getDustDeepseekGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_QUICK:
       agentConfiguration = _getDustQuickGlobalAgent(auth, {
         settings,
@@ -1172,6 +1187,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_MINIMAX,
     GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH,
+    GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
     GLOBAL_AGENTS_SID.DUST_QUICK,
     GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_OAI,

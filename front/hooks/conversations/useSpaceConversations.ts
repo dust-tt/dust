@@ -37,15 +37,19 @@ export function useSpaceConversationsSummary({
 
 const DEFAULT_CONVERSATIONS_PAGE_SIZE = 12;
 
+export type SpaceConversationListFilter = "all" | "group" | "with_me";
+
 export function useSpaceConversations({
   workspaceId,
   spaceId,
   limit = DEFAULT_CONVERSATIONS_PAGE_SIZE,
+  filter = "all",
   options,
 }: {
   workspaceId: string;
   spaceId: string | null;
   limit?: number;
+  filter?: SpaceConversationListFilter;
   options?: { disabled?: boolean };
 }) {
   const { fetcher } = useFetcher();
@@ -62,15 +66,24 @@ export function useSpaceConversations({
           return null;
         }
 
+        const searchParams = new URLSearchParams({
+          filter,
+        });
+
         if (previousPageData === null) {
-          return `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}`;
+          return `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}?${searchParams.toString()}`;
         }
 
         if (!previousPageData.hasMore) {
           return null;
         }
 
-        return `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}?lastValue=${previousPageData.lastValue}&limit=${limit}`;
+        if (previousPageData.lastValue) {
+          searchParams.set("lastValue", previousPageData.lastValue);
+        }
+        searchParams.set("limit", limit.toString());
+
+        return `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}?${searchParams.toString()}`;
       },
       conversationsFetcher,
       {
@@ -88,6 +101,7 @@ export function useSpaceConversations({
   }, [data]);
 
   const hasMore = data ? (data[data.length - 1]?.hasMore ?? false) : false;
+  const isEmpty = data ? (data[0]?.isEmpty ?? false) : false;
 
   const loadMore = useCallback(() => {
     if (hasMore && !isValidating) {
@@ -102,6 +116,7 @@ export function useSpaceConversations({
     isLoadingMore: isValidating && size > 1,
     isValidating,
     hasMore,
+    isEmpty,
     loadMore,
     mutateConversations: mutate,
   };

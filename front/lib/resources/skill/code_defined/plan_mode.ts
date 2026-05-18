@@ -38,7 +38,13 @@ Your next step MUST be to call \`${ASK_USER_QUESTION_TOOL_NAME}\` to ask the use
 - If they say to proceed anyway, continue execution without re-requesting approval (keep updating plan.md via \`${EDIT_PLAN_TOOL_NAME}\` for transparency).
 - If they ask to drop the plan, call \`${CLOSE_PLAN_TOOL_NAME}\`.
 
-**Closing the plan (\`${CLOSE_PLAN_TOOL_NAME}\`)**: only if the user explicitly asks to drop it (e.g. "never mind", "forget about it"). Do NOT close to handle revisions; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate instead.
+**Closing the plan (\`${CLOSE_PLAN_TOOL_NAME}\`)** in two cases:
+1. The user explicitly asks to drop it (e.g. "never mind", "forget about it").
+2. **All tasks are done (\`- [x]\`) AND the user's new turn moves past the plan's scope** — they thank you, wrap up, or pivot to a different topic that isn't extending the plan. Close it before continuing so the completed plan doesn't linger in the UI.
+
+**Bias toward keeping the plan alive** when the new user turn is ambiguous or could plausibly extend the current plan. If they say "also do Y" or "one more thing", that's an extension — call \`${EDIT_PLAN_TOOL_NAME}\` to add tasks, do NOT close. Premature close mid-thread is worse UX than a plan card lingering for one extra turn.
+
+Do NOT close to handle revisions; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate instead.
 `;
 
 export const planModeSkill = {

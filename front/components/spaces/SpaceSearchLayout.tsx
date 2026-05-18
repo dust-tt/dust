@@ -506,16 +506,36 @@ function FrontendSearch({
   parentId,
 }: FullFrontendSearchProps) {
   const { q: searchParam } = useQueryParams(["q"]);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const searchTerm = searchParam.value || "";
+  // Keep input value in local debounce state so it does not lag behind shallow
+  // router updates (useQueryParams syncs from router.query after each push).
+  const { inputValue: searchTerm, setValue: setSearchValue } = useDebounce(
+    searchParam.value || "",
+    {
+      delay: 300,
+      minLength: 0,
+    }
+  );
+
+  const handleSearchChange = (value: string) => {
+    searchParam.setParam(value || undefined);
+    setSearchValue(value);
+  };
+
+  const providerValue = useMemo(
+    () => ({
+      ...searchContextValue,
+      frontendListFilterQuery: searchTerm,
+    }),
+    [searchContextValue, searchTerm]
+  );
 
   return (
-    <SpaceSearchContext.Provider value={searchContextValue}>
+    <SpaceSearchContext.Provider value={providerValue}>
       <SearchInput
         name="search"
         placeholder={getSearchInputPlaceholder(space, category, dataSourceView)}
         value={searchTerm}
-        onChange={searchParam.setParam}
+        onChange={handleSearchChange}
         disabled={isSearchDisabled}
       />
       <div className="flex w-full justify-between gap-2">

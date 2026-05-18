@@ -7,7 +7,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
-  getSeatSubscriptionIdFromContract,
+  hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -23,8 +23,9 @@ import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   MembershipOriginType,
   MembershipRoleType,
+  MembershipSeatType,
 } from "@app/types/memberships";
-import { Ok, type Result } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import type {
   ActiveRoleType,
   LightWorkspaceType,
@@ -52,7 +53,7 @@ async function syncSeatCountForWorkspace(
 
   // Gate on seat subscription presence — contracts without a seat product (e.g. enterprise)
   // should not trigger a seat sync.
-  if (!getSeatSubscriptionIdFromContract(contract)) {
+  if (!hasContractSeatSubscription(contract)) {
     return new Ok(undefined);
   }
 
@@ -195,7 +196,7 @@ export async function revokeAndTrackMembership(
       ],
       context: getAuditLogContext(auth),
       metadata: {
-        previousRole: revokeResult.value.role,
+        previous_role: revokeResult.value.role,
       },
     });
 
@@ -293,4 +294,62 @@ export async function updateMembershipRoleAndTrack({
   }
 
   return updateRes;
+}
+
+/**
+ * Update a membership's seat type and re-sync Metronome seat counts.
+ * Seat-based Metronome subscriptions (Pro / Max) bucket users by seat type,
+ * so any change must trigger a seat-count sync.
+ */
+export async function updateMembershipSeatAndTrack({
+  user,
+  workspace,
+  newSeatType,
+  author,
+}: {
+  user: UserResource;
+  workspace: LightWorkspaceType;
+  newSeatType: MembershipSeatType;
+  author: UserType | "no-author";
+}): Promise<
+  Result<
+    {
+      previousSeatType: MembershipSeatType;
+      newSeatType: MembershipSeatType;
+    },
+    { type: "not_found" | "membership_revoked" }
+  >
+> {
+  const membership =
+    await MembershipResource.getLatestMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership) {
+    return new Err({ type: "not_found" });
+  }
+  if (membership.isRevoked()) {
+    return new Err({ type: "membership_revoked" });
+  }
+
+  const updateRes = await membership.updateMembershipSeat({
+    user,
+    workspace,
+    newSeatType,
+    author,
+  });
+
+  const syncResult = await syncSeatCountForWorkspace(workspace);
+  if (syncResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        error: syncResult.error,
+      },
+      "[Metronome] Failed to sync seats after seat type update"
+    );
+  }
+
+  return new Ok(updateRes);
 }

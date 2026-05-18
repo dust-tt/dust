@@ -4,13 +4,12 @@ import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization"
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
-  getMetronomeContractPackageAliases,
-  scheduleMetronomeContractEnd,
-} from "@app/lib/metronome/client";
-import {
-  provisionEnterpriseMetronomeContract,
-  switchMetronomeContractPackage,
+  ensureMetronomeCustomerForWorkspace,
+  provisionMetronomeContract,
+  provisionShadowEnterpriseMetronomeContract,
+  resolveCurrencyForExistingMetronomeCustomer,
   syncContractQuantities,
 } from "@app/lib/metronome/contracts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
@@ -18,17 +17,18 @@ import {
   LEGACY_BUSINESS_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
   LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
-  PRO_OR_BUSINESS_PACKAGE_ALIASES,
 } from "@app/lib/metronome/types";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
+import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
   isEntreprisePlanPrefix,
   isFreePlan,
+  isProOrBusinessPlanCode,
   isProPlanPrefix,
   isUpgraded,
   isWhitelistedBusinessPlan,
@@ -38,7 +38,7 @@ import {
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
-  createMetronomeSetupCheckoutSession,
+  createEmbeddedMetronomeSetupCheckoutSession,
   createStripeBusinessSubscription,
   createStripeSubscriptionCheckoutSession,
   getBusinessProPlanProductId,
@@ -68,14 +68,15 @@ import {
   renderLightWorkspaceType,
 } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type {
-  BillingPeriod,
-  CheckoutUrlResult,
-  EnterpriseUpgradeFormType,
-  PlanType,
-  SubscriptionPerSeatPricing,
-  SubscriptionStatusType,
-  SubscriptionType,
+import {
+  type BillingPeriod,
+  type CheckoutUrlResult,
+  type EnterpriseUpgradeFormType,
+  isSubscriptionMetronomeBilled,
+  type PlanType,
+  type SubscriptionPerSeatPricing,
+  type SubscriptionStatusType,
+  type SubscriptionType,
 } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -86,8 +87,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import keyBy from "lodash/keyBy";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import type Stripe from "stripe";
@@ -136,9 +136,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       return false;
     }
 
-    return (
-      this.stripeSubscriptionId !== null || this.metronomeContractId !== null
-    );
+    return !!this.stripeSubscriptionId || !!this.metronomeContractId;
   }
 
   /**
@@ -146,9 +144,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
    * Both stripeSubscriptionId and metronomeContractId are set.
    */
   get isMetronomeShadowBilled(): boolean {
-    return (
-      this.stripeSubscriptionId !== null && this.metronomeContractId !== null
-    );
+    return !!this.stripeSubscriptionId && !!this.metronomeContractId;
+  }
+
+  get isMetronomeOnlyBilled(): boolean {
+    return !!this.metronomeContractId && !this.stripeSubscriptionId;
   }
 
   static async makeNew(
@@ -421,7 +421,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     workspaceModelIds: ModelId[],
     transaction?: Transaction
   ): Promise<Record<ModelId, SubscriptionResource>> {
-    const activeSubscriptionByWorkspaceModelId = _.keyBy(
+    const activeSubscriptionByWorkspaceModelId = keyBy(
       await this.model.findAll({
         attributes: [
           "endDate",
@@ -543,6 +543,81 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       res.get(),
       renderPlanFromModel({ plan: res.plan })
     );
+  }
+
+  static async fetchPendingByWorkspaceModelId(
+    workspaceModelId: ModelId
+  ): Promise<SubscriptionResource | null> {
+    const res = await this.model.findOne({
+      where: {
+        workspaceId: workspaceModelId,
+        status: "created_backend_only",
+      },
+      include: [PlanModel],
+      order: [["createdAt", "DESC"]],
+    });
+    if (!res) {
+      return null;
+    }
+    return new this(
+      SubscriptionModel,
+      res.get(),
+      renderPlanFromModel({ plan: res.plan })
+    );
+  }
+
+  /**
+   * Persist a pending (created_backend_only) subscription for a workspace that
+   * is provisioning a new Metronome contract via a future-effective swap. If a
+   * prior pending sub exists it is ended (status: "ended") within the same
+   * transaction — the prior contract is sunset on Metronome's side by the
+   * overlap-sunset pass in `provisionMetronomeContract`.
+   *
+   * The row flips to "active" when the matching `contract.start` webhook
+   * fires (`activatePending`).
+   */
+  static async createPendingMetronomeContract({
+    workspaceModelId,
+    planCode,
+    metronomeContractId,
+    startDate,
+  }: {
+    workspaceModelId: ModelId;
+    planCode: string;
+    metronomeContractId: string;
+    startDate: Date;
+  }): Promise<SubscriptionResource> {
+    const plan = await this.findPlanOrThrow(planCode);
+    return withTransaction(async (t) => {
+      const existing = await this.model.findOne({
+        where: {
+          workspaceId: workspaceModelId,
+          status: "created_backend_only",
+        },
+        transaction: t,
+      });
+      if (existing) {
+        await existing.update(
+          { status: "ended", endDate: new Date() },
+          { transaction: t }
+        );
+      }
+      return this.makeNew(
+        {
+          sId: generateRandomModelSId(),
+          workspaceId: workspaceModelId,
+          planId: plan.id,
+          status: "created_backend_only",
+          trialing: false,
+          startDate,
+          endDate: null,
+          stripeSubscriptionId: null,
+          metronomeContractId,
+        },
+        renderPlanFromModel({ plan }),
+        t
+      );
+    });
   }
 
   static async isStripeIdAlreadyUsed(
@@ -755,6 +830,20 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       }
     }
 
+    // Ensure a Metronome customer exists for the workspace.
+    const ensureCustomerResult = await ensureMetronomeCustomerForWorkspace({
+      workspace,
+    });
+    if (ensureCustomerResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          error: ensureCustomerResult.error.message,
+        },
+        "[Subscription] Failed to ensure Metronome customer on free-plan subscription"
+      );
+    }
+
     await SubscriptionResource.invalidateSubscriptionCache(workspace.id);
 
     return newSubscription;
@@ -824,9 +913,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         );
       }
     } else if (stripeSubscription) {
-      const metronomeResult = await provisionEnterpriseMetronomeContract({
+      const metronomeResult = await provisionShadowEnterpriseMetronomeContract({
         workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
         stripeSubscription,
+        planCode: plan.code,
       });
 
       if (metronomeResult.isErr()) {
@@ -986,11 +1076,31 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     // Switch Metronome contract to Business package.
     let newMetronomeContractId: string | null = null;
     if (this.metronomeContractId && owner.metronomeCustomerId) {
-      const result = await switchMetronomeContractPackage({
+      const billingCurrencyResult =
+        await resolveCurrencyForExistingMetronomeCustomer({
+          metronomeCustomerId: owner.metronomeCustomerId,
+          stripeSubscriptionId: newStripeSubscriptionId,
+        });
+      if (billingCurrencyResult.isErr()) {
+        return new Err(billingCurrencyResult.error);
+      }
+
+      const packageAlias = resolvePackageAliasForCurrency(
+        LEGACY_BUSINESS_PACKAGE_ALIAS,
+        billingCurrencyResult.value
+      );
+      const result = await provisionMetronomeContract({
         metronomeCustomerId: owner.metronomeCustomerId,
-        oldContractId: this.metronomeContractId,
         workspace: owner,
-        packageAlias: LEGACY_BUSINESS_PACKAGE_ALIAS,
+        packageAlias,
+        uniquenessKey: `switch:${this.metronomeContractId}`,
+        startingAt: new Date(),
+        // Business is seat-based — swap at the current hour boundary so the
+        // new contract is active immediately and the sync DB flip below is
+        // consistent with Metronome.
+        swapAt: "current-hour",
+        enableStripeBilling: isSubscriptionMetronomeBilled(this.toJSON()),
+        planCode: PRO_PLAN_SEAT_39_CODE,
       });
       if (result.isErr() && !this.isMetronomeShadowBilled) {
         return new Err(result.error);
@@ -1095,7 +1205,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     owner: WorkspaceType,
     user: UserType,
     billingPeriod: BillingPeriod,
-    { useMetronomeBilling }: { useMetronomeBilling: boolean }
+    {
+      useMetronomeBilling,
+      couponCode,
+    }: {
+      useMetronomeBilling: boolean;
+      couponCode?: string;
+    }
   ): Promise<CheckoutUrlResult> {
     const isBusiness = !!owner.metadata?.isBusiness;
     const { planCode, allowedPaymentMethods, metronomePackageAlias } =
@@ -1127,25 +1243,32 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       `Cannot subscribe to plan ${planCode}: already subscribed to a Pro plan.`
     );
 
-    let checkoutUrl: string | null;
     if (useMetronomeBilling) {
-      checkoutUrl = await createMetronomeSetupCheckoutSession({
-        owner,
-        user,
-        planCode,
-        metronomePackageAlias,
-        allowedPaymentMethods,
-      });
-    } else {
-      checkoutUrl = await createStripeSubscriptionCheckoutSession({
-        owner,
-        user,
-        billingPeriod,
-        planCode,
-        metronomePackageAlias,
-        allowedPaymentMethods,
-      });
+      const { clientSecret, sessionId } =
+        await createEmbeddedMetronomeSetupCheckoutSession({
+          owner,
+          user,
+          planCode,
+          metronomePackageAlias,
+          allowedPaymentMethods,
+          couponCode,
+        });
+      return {
+        mode: "embedded",
+        clientSecret,
+        sessionId,
+        plan: renderPlanFromModel({ plan: proPlan }),
+      };
     }
+
+    const checkoutUrl = await createStripeSubscriptionCheckoutSession({
+      owner,
+      user,
+      billingPeriod,
+      planCode,
+      metronomePackageAlias,
+      allowedPaymentMethods,
+    });
 
     assert(
       checkoutUrl,
@@ -1153,6 +1276,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
 
     return {
+      mode: "hosted",
       checkoutUrl,
       plan: renderPlanFromModel({ plan: proPlan }),
     };
@@ -1192,6 +1316,81 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       subscription.workspaceId
     );
     await invalidateContractCache(subscription.workspace.sId);
+  }
+
+  /**
+   * End the current subscription and create a new active subscription on a
+   * different Metronome contract and plan code. Used by the contract.start
+   * webhook when an admin-scheduled upgrade activates — preserves the
+   * plan-change history rather than mutating the existing subscription in
+   * place. A billed current sub is ended as `ended_backend_only` so the
+   * contract.end webhook does not scrub the workspace; a non-billed (free)
+   * current sub is ended as `ended` since no external webhook will close it.
+   */
+  async swapMetronomeContract({
+    metronomeContractId,
+    planCode,
+  }: {
+    metronomeContractId: string;
+    planCode: string;
+  }): Promise<void> {
+    const newPlan = await SubscriptionResource.findPlanOrThrow(planCode);
+    const endedStatus = this.isBilled ? "ended_backend_only" : "ended";
+
+    await withTransaction(async (t) => {
+      await this.markAsEnded(endedStatus, t);
+
+      await SubscriptionResource.makeNew(
+        {
+          sId: generateRandomModelSId(),
+          workspaceId: this.workspaceId,
+          planId: newPlan.id,
+          status: "active",
+          trialing: false,
+          startDate: new Date(),
+          endDate: null,
+          stripeSubscriptionId: this.stripeSubscriptionId,
+          metronomeContractId,
+        },
+        renderPlanFromModel({ plan: newPlan }),
+        t
+      );
+    });
+  }
+
+  /**
+   * Flip this pending (created_backend_only) subscription to active, while
+   * ending whatever active subscription currently holds the workspace's seat.
+   * Mirrors `swapMetronomeContract` but for the pre-provisioned pending-row
+   * model — used by the `contract.start` webhook when the new contract was
+   * created up-front (e.g. by the poke switch_contract flow).
+   *
+   * `this` must be in `created_backend_only` state.
+   */
+  async activatePending(): Promise<void> {
+    if (this.status !== "created_backend_only") {
+      throw new Error(
+        `Cannot activate subscription ${this.sId}: status is ${this.status}, expected created_backend_only.`
+      );
+    }
+    await withTransaction(async (t) => {
+      const currentActive =
+        await SubscriptionResource.fetchActiveByWorkspaceModelId(
+          this.workspaceId,
+          t
+        );
+      if (currentActive && !currentActive.isLegacyFreeNoPlan()) {
+        const endedStatus = currentActive.isBilled
+          ? "ended_backend_only"
+          : "ended";
+        await currentActive.markAsEnded(endedStatus, t);
+      }
+      await this.update({ status: "active" }, t);
+      const workspaceId = this.workspaceId;
+      invalidateCacheAfterCommit(t, () =>
+        SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+      );
+    });
   }
 
   async getPerSeatPricing(): Promise<SubscriptionPerSeatPricing | null> {
@@ -1503,19 +1702,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       );
     }
 
-    // Check Metronome-billed subscription.
-    if (this.metronomeContractId && owner.metronomeCustomerId) {
-      const aliasesResult = await getMetronomeContractPackageAliases({
-        metronomeCustomerId: owner.metronomeCustomerId,
-        metronomeContractId: this.metronomeContractId,
-      });
-      if (aliasesResult.isErr()) {
-        throw aliasesResult.error;
-      }
-
-      return aliasesResult.value.some((alias) =>
-        PRO_OR_BUSINESS_PACKAGE_ALIASES.has(alias)
-      );
+    // Metronome-billed subscription: trust the DB plan code, which we own and
+    // keep in sync with Metronome contract changes.
+    if (this.metronomeContractId) {
+      return isProOrBusinessPlanCode(this.plan);
     }
 
     return false;

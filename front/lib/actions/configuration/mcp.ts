@@ -157,6 +157,7 @@ export async function fetchMCPServerActionConfigurations(
       | InternalAllowedIconType
       | CustomResourceIconType
       | undefined = undefined;
+    let serverMeta: Record<string, string> | undefined = undefined;
 
     if (!mcpServerView) {
       logger.warn(
@@ -165,11 +166,12 @@ export async function fetchMCPServerActionConfigurations(
       serverName = "Missing";
       serverDescription = "Missing";
     } else {
-      const { name, description, icon } = mcpServerView.toJSON().server;
+      const { name, description, icon, meta } = mcpServerView.toJSON().server;
 
       serverName = name;
       serverDescription = description;
       serverIcon = icon;
+      serverMeta = meta ?? undefined;
     }
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
       actionsByConfigurationId.set(agentConfigurationId, []);
@@ -212,6 +214,7 @@ export async function fetchMCPServerActionConfigurations(
           childAgentConfigurations.length > 0
             ? childAgentConfigurations[0].agentConfigurationId
             : null,
+        meta: serverMeta,
         additionalConfiguration: config.additionalConfiguration,
         timeFrame: config.timeFrame,
         jsonSchema: config.jsonSchema,

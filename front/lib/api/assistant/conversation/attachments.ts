@@ -22,6 +22,7 @@ import {
 import type { ContentNodeType } from "@app/types/core/content_node";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import { isSupportedDelimitedTextContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
@@ -48,6 +49,7 @@ export type BaseConversationAttachmentType = {
 
 export type FileAttachmentType = BaseConversationAttachmentType & {
   fileId: string;
+  path: string | null;
   source: "agent" | "user" | null;
   createdAt?: number;
   updatedAt?: number;
@@ -63,7 +65,6 @@ export type ContentNodeAttachmentType = BaseConversationAttachmentType & {
 };
 
 export type LargePasteType = {
-  fileId: string;
   title: string;
 };
 
@@ -174,6 +175,22 @@ export function getAttachmentFromContentNodeContentFragment(
   };
 }
 
+function shouldSuppressTabularAttachmentHints({
+  contentType,
+  isInProjectContext,
+  skipFileProcessing,
+}: {
+  contentType: SupportedContentFragmentType;
+  isInProjectContext: boolean | null;
+  skipFileProcessing: boolean;
+}): boolean {
+  return (
+    isInProjectContext !== true &&
+    skipFileProcessing &&
+    isSupportedDelimitedTextContentType(contentType)
+  );
+}
+
 export function getAttachmentFromFileContentFragment(
   cf: FileContentFragmentType
 ): FileAttachmentType | null {
@@ -193,8 +210,19 @@ export function getAttachmentFromFileContentFragment(
   // actions, and differentiate them from the newer file attachments that do have a snippet.
   // Former ones cannot be used in JIT.
   const canDoJIT = cf.snippet !== null;
-  const isQueryable = canDoJIT && isQueryableContentType(cf.contentType);
-  const isIncludable = isConversationIncludableFileContentType(cf.contentType);
+  const isInProjectContext = cf.isInProjectContext === true;
+  const shouldSuppressTabularHints = shouldSuppressTabularAttachmentHints({
+    contentType: cf.contentType,
+    isInProjectContext,
+    skipFileProcessing: cf.skipFileProcessing === true,
+  });
+  const isQueryable =
+    !shouldSuppressTabularHints &&
+    canDoJIT &&
+    isQueryableContentType(cf.contentType);
+  const isIncludable =
+    !shouldSuppressTabularHints &&
+    isConversationIncludableFileContentType(cf.contentType);
   const isSearchable = canDoJIT && isSearchableContentType(cf.contentType);
   const creator: AttachmentCreator | null = cf.context.fullName
     ? {
@@ -220,7 +248,7 @@ export function getAttachmentFromFileContentFragment(
     isIncludable,
     isQueryable,
     isSearchable,
-    isInProjectContext: cf.isInProjectContext,
+    isInProjectContext,
     hidden: cf.hidden,
     creator,
   };
@@ -228,6 +256,7 @@ export function getAttachmentFromFileContentFragment(
   return {
     ...baseAttachment,
     fileId,
+    path: cf.path ?? null,
     source: "user",
     createdAt: cf.created,
   };
@@ -244,6 +273,7 @@ export function makeFileAttachment({
   isInProjectContext,
   hideFromUser,
   skipDataSourceIndexing = false,
+  path = null,
   creator = null,
 }: {
   fileId: string;
@@ -256,6 +286,7 @@ export function makeFileAttachment({
   isInProjectContext: boolean;
   hideFromUser: boolean;
   skipDataSourceIndexing?: boolean;
+  path?: string | null;
   creator?: AttachmentCreator | null;
 }): FileAttachmentType {
   const canDoJIT = snippet !== null;
@@ -268,6 +299,7 @@ export function makeFileAttachment({
 
   return {
     fileId,
+    path,
     source,
     createdAt,
     updatedAt,

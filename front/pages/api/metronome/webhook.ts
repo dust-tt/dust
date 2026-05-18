@@ -1,18 +1,29 @@
 /** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
+import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
+import { Authenticator } from "@app/lib/auth";
 import {
   calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
+  grantFreeCreditFromMetronomeSegment,
+  YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
 import {
   getMetronomeClient,
+  getMetronomeContractById,
+  listMetronomeContracts,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
-import {
-  getCreditTypeProgrammaticUsdId,
-  getProductFreeMonthlyCreditId,
-} from "@app/lib/metronome/constants";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
+import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
+import { setUserBlocked } from "@app/lib/metronome/user_block";
+import {
+  getCustomerIdFromEvent,
+  MetronomeWebhookEventSchema,
+} from "@app/lib/metronome/webhook_events";
+import { PlanModel } from "@app/lib/models/plan";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -30,21 +41,6 @@ type ResponseBody = {
   success: boolean;
   message?: string;
 };
-
-const ContractEndEventSchema = z.object({
-  type: z.literal("contract.end"),
-  contract_id: z.string(),
-  customer_id: z.string(),
-});
-
-const CreditSegmentStartEventSchema = z.object({
-  type: z.literal("credit.segment.start"),
-  customer_id: z.string(),
-  contract_id: z.string(),
-  credit_id: z.string(),
-  segment_id: z.string(),
-  product: z.object({ id: z.string() }),
-});
 
 // Disable Next.js body parsing so we can read the raw body for signature verification.
 export const config = {
@@ -89,14 +85,14 @@ async function handler(
         });
       }
 
-      let event: { type: string; [key: string]: unknown };
+      let rawEvent: unknown;
       try {
         const client = getMetronomeClient();
-        event = client.webhooks.unwrap(
+        rawEvent = client.webhooks.unwrap(
           bodyString,
           req.headers,
           webhookSecret
-        ) as { type: string; [key: string]: unknown };
+        );
       } catch (err) {
         logger.error(
           { error: normalizeError(err) },
@@ -111,70 +107,202 @@ async function handler(
         });
       }
 
+      const parsedEvent = MetronomeWebhookEventSchema.safeParse(rawEvent);
+      if (!parsedEvent.success) {
+        // Metronome may add new event types or backward-compatible fields
+        // without notice. Log and ack so we don't retry-storm.
+        const rawType = z.object({ type: z.string() }).safeParse(rawEvent);
+        logger.warn(
+          {
+            eventType: rawType.success ? rawType.data.type : "unknown",
+            rawEvent,
+            error: parsedEvent.error.message,
+          },
+          "[Metronome Webhook] Unknown or malformed event"
+        );
+        return res.status(200).json({ success: true });
+      }
+
+      const event = parsedEvent.data;
+
+      logger.info({ event, rawEvent }, "[Metronome Webhook] Event received");
+
+      // Resolve the workspace once for any event that carries a customer_id
+      // (every type except `integration.issue`). If the customer can't be
+      // mapped to a workspace, ack and stop — Metronome would otherwise
+      // retry-storm a payload we have nothing to do with.
+      const customerId = getCustomerIdFromEvent(event);
+      const workspace = customerId
+        ? await WorkspaceResource.fetchByMetronomeCustomerId(customerId)
+        : null;
+
+      if (!workspace) {
+        logger.info(
+          { customerId, eventType: event.type },
+          "[Metronome Webhook] Workspace not found for customer, skipping"
+        );
+        return res.status(200).json({ success: true });
+      }
+
       switch (event.type) {
-        case "alerts.low_remaining_credit_balance_reached":
-          logger.info({ event }, "[Metronome Webhook] Credits exhausted alert");
-          break;
-
-        case "alerts.low_remaining_seat_balance_reached":
-          logger.info(
-            { event },
-            "[Metronome Webhook] Per-seat credits exhausted alert"
-          );
-          break;
-
-        case "alerts.spend_threshold_reached":
-          logger.info({ event }, "[Metronome Webhook] Approaching spend limit");
-          break;
-
-        case "commit.segment.start":
-          logger.info(
-            { event },
-            "[Metronome Webhook] New commit segment started (credits available)"
-          );
-          break;
-
-        case "credit.segment.start": {
-          const parsed = CreditSegmentStartEventSchema.safeParse(event);
-          if (!parsed.success) {
-            logger.error(
-              { event, error: parsed.error.message },
-              "[Metronome Webhook] Invalid credit.segment.start event"
+        case "alerts.spend_threshold_reached": {
+          // Block the user that triggered the threshold. Metronome attaches
+          // the presentation group values that scoped the alert under
+          // `group_values` — extract `user_id` from there.
+          const userId = event.properties.group_values?.find(
+            (g) => g.key === "user_id"
+          )?.value;
+          if (!userId) {
+            logger.warn(
+              { eventId: event.id, workspaceId: workspace.sId },
+              "[Metronome Webhook] spend_threshold_reached: no user_id in group_values, skipping"
             );
             break;
           }
 
+          const currentSpend = event.properties.current_spend;
+
+          // TODO: Check user seat and spend limit and block if needed, don't block on every spend threshold reached.
+          await setUserBlocked(workspace.sId, userId);
+          logger.info(
+            {
+              eventId: event.id,
+              workspaceId: workspace.sId,
+              userId,
+              currentSpend,
+            },
+            "[Metronome Webhook] spend_threshold_reached: user blocked"
+          );
+          break;
+        }
+
+        case "alerts.invoice_total_reached":
+        case "alerts.low_remaining_commit_balance_reached":
+        case "alerts.low_remaining_contract_credit_balance_reached":
+        case "alerts.low_remaining_credit_balance_reached":
+        case "alerts.low_remaining_seat_balance_reached":
+        case "alerts.usage_threshold_reached":
+        case "commit.archive":
+        case "commit.create":
+        case "commit.edit":
+        case "commit.segment.end":
+        case "commit.segment.start":
+        case "contract.archive":
+        case "contract.create":
+        case "contract.edit":
+        case "credit.archive":
+        case "credit.create":
+        case "credit.edit":
+        case "credit.segment.end":
+        case "invoice.billing_provider_error":
+        case "invoice.finalized":
+          break;
+
+        case "credit.segment.start": {
           const {
             customer_id: customerId,
             contract_id: contractId,
             credit_id: creditId,
             segment_id: segmentId,
-            product,
-          } = parsed.data;
+          } = event;
 
-          if (
-            product.id !== getProductFreeMonthlyCreditId() ||
-            creditId !== getCreditTypeProgrammaticUsdId()
-          ) {
+          // Customer-level credits with no parent contract can't be the
+          // managed free monthly credit (which is provisioned on a contract).
+          if (!contractId) {
             logger.info(
-              { customerId, creditId, productId: product.id },
+              { customerId, creditId, workspaceId: workspace.sId },
+              "[Metronome Webhook] credit.segment.start: no contract_id on credit, ignoring"
+            );
+            break;
+          }
+
+          // The webhook payload does not include the credit's product or
+          // credit type, so fetch the contract to identify whether this
+          // segment belongs to the free monthly credit we manage.
+          const contractResult = await getMetronomeContractById({
+            metronomeCustomerId: customerId,
+            metronomeContractId: contractId,
+          });
+          if (contractResult.isErr()) {
+            logger.error(
+              {
+                customerId,
+                contractId,
+                creditId,
+                error: contractResult.error,
+              },
+              "[Metronome Webhook] credit.segment.start: failed to fetch contract"
+            );
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Error fetching contract: ${contractResult.error.message}`,
+              },
+            });
+          }
+
+          const credit = contractResult.value.credits?.find(
+            (c) => c.id === creditId
+          );
+          if (!credit) {
+            logger.info(
+              { customerId, contractId, creditId },
+              "[Metronome Webhook] credit.segment.start: credit not found on contract, ignoring"
+            );
+            break;
+          }
+
+          if (!isMetronomeFreeCredit(credit)) {
+            logger.info(
+              {
+                customerId,
+                creditId,
+                productId: credit.product.id,
+                creditTypeId: credit.access_schedule?.credit_type?.id,
+              },
               "[Metronome Webhook] credit.segment.start: ignoring non-free-credit segment"
             );
             break;
           }
 
-          const workspace =
-            await WorkspaceResource.fetchByMetronomeCustomerId(customerId);
-          if (!workspace) {
-            logger.warn(
-              { customerId },
-              "[Metronome Webhook] credit.segment.start: workspace not found"
-            );
-            break;
-          }
+          // Detect whether this credit comes from an annual recurring credit
+          // (annual contracts) so we grant a yearly amount instead of monthly.
+          const recurringCredit = credit.recurring_credit_id
+            ? contractResult.value.recurring_credits?.find(
+                (rc) => rc.id === credit.recurring_credit_id
+              )
+            : undefined;
+          const isAnnual = recurringCredit?.recurrence_frequency === "ANNUAL";
 
-          const userCount = await countEligibleUsersForFreeCredits(workspace);
-          const amountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
+          // ProgrammaticUsageConfiguration.freeCreditMicroUsd, if set,
+          // overrides the brackets-based calculation. Same convention as
+          // grantFreeCreditsFromSubscriptionStateChange{,Yearly}: the
+          // configured amount is the full-period amount (monthly or yearly
+          // matching the recurring credit cadence) and is used as-is.
+          const auth = await Authenticator.internalAdminForWorkspace(
+            workspace.sId
+          );
+          const programmaticConfig =
+            await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(
+              auth
+            );
+
+          let amountMicroUsd: number;
+          let userCount: number | undefined;
+          if (
+            programmaticConfig &&
+            programmaticConfig.freeCreditMicroUsd !== null
+          ) {
+            amountMicroUsd = programmaticConfig.freeCreditMicroUsd;
+          } else {
+            userCount = await countEligibleUsersForFreeCredits(workspace);
+            const monthlyAmountMicroUsd =
+              calculateFreeCreditAmountMicroUsd(userCount);
+            amountMicroUsd = isAnnual
+              ? monthlyAmountMicroUsd * YEARLY_MULTIPLIER
+              : monthlyAmountMicroUsd;
+          }
           const amount = amountMicroUsd / 1_000_000;
 
           const updateResult = await updateMetronomeCreditSegmentAmount({
@@ -206,6 +334,57 @@ async function handler(
             });
           }
 
+          // Metronome is the source of truth for the recurring free credit:
+          // create + start the matching DB credit linked by metronomeCreditId.
+          // The Stripe webhook will dedup against this when it fires.
+          const segment = credit.access_schedule?.schedule_items.find(
+            (s) => s.id === segmentId
+          );
+          if (!segment) {
+            logger.warn(
+              {
+                customerId,
+                contractId,
+                creditId,
+                segmentId,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] credit.segment.start: segment not found in access_schedule, skipping DB credit creation"
+            );
+            break;
+          }
+          const periodStart = new Date(segment.starting_at);
+          const periodEnd = new Date(segment.ending_before);
+
+          const grantResult = await grantFreeCreditFromMetronomeSegment({
+            auth,
+            metronomeCreditId: creditId,
+            contractId,
+            segmentId,
+            isAnnual,
+            amountMicroUsd,
+            periodStart,
+            periodEnd,
+          });
+
+          if (grantResult.isErr()) {
+            // The grant helper has already logged the failure with `panic`;
+            // ack the webhook so Metronome doesn't retry-storm — operators
+            // will reconcile from logs / the sync script.
+            logger.error(
+              {
+                customerId,
+                contractId,
+                creditId,
+                segmentId,
+                error: grantResult.error,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] credit.segment.start: failed to ensure DB credit"
+            );
+            break;
+          }
+
           logger.info(
             {
               customerId,
@@ -214,44 +393,177 @@ async function handler(
               segmentId,
               amountMicroUsd,
               userCount,
+              isAnnual,
+              usedProgrammaticOverride:
+                programmaticConfig?.freeCreditMicroUsd != null,
+              dbCreditId: grantResult.value.credit.id,
+              dbCreditCreated: grantResult.value.created,
+              dbCreditAlreadyExisted: grantResult.value.alreadyExisted,
+              periodStart,
+              periodEnd,
               workspaceId: workspace.sId,
             },
-            "[Metronome Webhook] credit.segment.start: free credit amount updated"
+            "[Metronome Webhook] credit.segment.start: free credit amount updated and DB credit ensured"
           );
           break;
         }
 
-        case "credit.create":
-          logger.info(
-            { event },
-            "[Metronome Webhook] Credit created (credits available)"
-          );
-          break;
+        case "contract.start": {
+          const { contract_id: contractId, customer_id: customerId } = event;
 
-        case "contract.start":
-          logger.info({ event }, "[Metronome Webhook] Contract started");
-          break;
-
-        case "contract.end": {
-          const parsed = ContractEndEventSchema.safeParse(event);
-          if (!parsed.success) {
+          // Read the PLAN_CODE custom field to know which plan to swap the
+          // workspace subscription onto. The actual swap is gated below on
+          // `isMetronomeOnlyBilled` — other billing paths (shadow, pure
+          // Stripe) handle their own state transitions, and contracts whose
+          // start aligns with a synchronous DB flip get caught by the
+          // idempotency check.
+          const contractResult = await getMetronomeContractById({
+            metronomeCustomerId: customerId,
+            metronomeContractId: contractId,
+          });
+          if (contractResult.isErr()) {
             logger.error(
-              { event, error: parsed.error.message },
-              "[Metronome Webhook] Invalid contract.end event"
+              {
+                contractId,
+                customerId,
+                error: contractResult.error,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] contract.start: failed to fetch contract"
+            );
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Error fetching contract: ${contractResult.error.message}`,
+              },
+            });
+          }
+
+          const targetPlanCode =
+            contractResult.value.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];
+          if (!targetPlanCode) {
+            logger.info(
+              { contractId, workspaceId: workspace.sId },
+              `[Metronome Webhook] contract.start: no ${PLAN_CODE_CUSTOM_FIELD_KEY} custom field, leaving subscription alone`
             );
             break;
           }
 
-          const { contract_id: contractId, customer_id: customerId } =
-            parsed.data;
-
-          const workspace =
-            await WorkspaceResource.fetchByMetronomeCustomerId(customerId);
-          if (!workspace) {
-            logger.warn(
-              { contractId, customerId },
-              "[Metronome Webhook] contract.end: workspace not found"
+          const targetPlan = await PlanModel.findOne({
+            where: { code: targetPlanCode },
+          });
+          if (!targetPlan) {
+            logger.info(
+              { contractId, targetPlanCode, workspaceId: workspace.sId },
+              `[Metronome Webhook] contract.start: ${PLAN_CODE_CUSTOM_FIELD_KEY} not found, leaving subscription alone`
             );
+            break;
+          }
+
+          const activeSubscription =
+            await SubscriptionResource.fetchActiveByWorkspaceModelId(
+              workspace.id
+            );
+          if (!activeSubscription) {
+            logger.warn(
+              { contractId, customerId, workspaceId: workspace.sId },
+              "[Metronome Webhook] contract.start: no active subscription"
+            );
+            break;
+          }
+
+          // Idempotency: re-deliveries land here with the active subscription
+          // already pointing at the new contract.
+          if (activeSubscription.metronomeContractId === contractId) {
+            logger.info(
+              { contractId, workspaceId: workspace.sId },
+              "[Metronome Webhook] contract.start: subscription already swapped, skipping"
+            );
+            break;
+          }
+
+          // Preferred path: a pending (created_backend_only) subscription was
+          // staged when the contract was provisioned. Flip it to active and
+          // end whatever active sub the workspace currently holds.
+          const pendingSubscription =
+            await SubscriptionResource.fetchByMetronomeContractId(
+              workspace,
+              contractId
+            );
+          if (
+            pendingSubscription &&
+            pendingSubscription.status === "created_backend_only"
+          ) {
+            await pendingSubscription.activatePending();
+            await invalidateContractCache(workspace.sId);
+            const auth = await Authenticator.internalAdminForWorkspace(
+              workspace.sId
+            );
+            await restoreWorkspaceAfterSubscription(auth);
+            logger.info(
+              {
+                contractId,
+                planCode: targetPlan.code,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] contract.start: pending subscription activated"
+            );
+            break;
+          }
+
+          // Legacy fallback: no pending row was staged. Only swap when the
+          // workspace is Metronome-only billed, or not billed at all. Shadow
+          // billed subscriptions (Stripe + Metronome) follow Stripe's signal,
+          // and pure Stripe subs have no Metronome contract at all.
+          if (
+            !activeSubscription.isMetronomeOnlyBilled &&
+            activeSubscription.isBilled
+          ) {
+            logger.info(
+              {
+                contractId,
+                targetPlanCode,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] contract.start: subscription is not Metronome-only billed, leaving subscription alone"
+            );
+            break;
+          }
+
+          // End the current subscription as `ended_backend_only` and create
+          // a new active subscription on the target plan + new contract.
+          await activeSubscription.swapMetronomeContract({
+            metronomeContractId: contractId,
+            planCode: targetPlan.code,
+          });
+
+          await invalidateContractCache(workspace.sId);
+
+          // Cancel any scheduled scrub workflow, unpause connectors, re-enable
+          // triggers. Idempotent — safe to call regardless of prior state.
+          const auth = await Authenticator.internalAdminForWorkspace(
+            workspace.sId
+          );
+          await restoreWorkspaceAfterSubscription(auth);
+
+          logger.info(
+            {
+              contractId,
+              planCode: targetPlan.code,
+              workspaceId: workspace.sId,
+            },
+            "[Metronome Webhook] contract.start: subscription upgraded"
+          );
+          break;
+        }
+
+        case "contract.end": {
+          const { contract_id: contractId, customer_id: customerId } = event;
+
+          // Workspace is guaranteed by the pre-switch check (customerId is
+          // present for contract.* events).
+          if (!workspace) {
             break;
           }
 
@@ -294,7 +606,56 @@ async function handler(
               await subscription.markAsEnded("ended");
               break;
 
-            case "active":
+            case "created_backend_only":
+              // Pending sub whose contract ended before activating (e.g.
+              // sunset by an overlapping new contract). No active billing —
+              // just close out the pending row.
+              logger.info(
+                { contractId, workspaceId: workspace.sId },
+                "[Metronome Webhook] contract.end: pending subscription never activated, marking as ended"
+              );
+              await subscription.markAsEnded("ended");
+              break;
+
+            case "active": {
+              // Race-safety: an Enterprise upgrade scheduled this end as part
+              // of a transition. If a successor contract is already running
+              // on this customer, contract.start (whether already processed
+              // or arriving shortly) will swap the subscription — leave the
+              // subscription alone here and skip the scrub.
+              const successorsResult = await listMetronomeContracts(
+                customerId,
+                { coveringDate: new Date() }
+              );
+              if (successorsResult.isErr()) {
+                logger.error(
+                  {
+                    contractId,
+                    error: successorsResult.error,
+                    workspaceId: workspace.sId,
+                  },
+                  "[Metronome Webhook] contract.end: failed to list contracts for successor check"
+                );
+                return apiError(req, res, {
+                  status_code: 500,
+                  api_error: {
+                    type: "internal_server_error",
+                    message: "Error listing contracts for successor check.",
+                  },
+                });
+              }
+
+              const hasActiveSuccessor = successorsResult.value.some(
+                (c) => c.id !== contractId
+              );
+              if (hasActiveSuccessor) {
+                logger.info(
+                  { contractId, workspaceId: workspace.sId },
+                  "[Metronome Webhook] contract.end: successor contract active, skipping scrub (contract.start will swap subscription)"
+                );
+                break;
+              }
+
               await subscription.markAsEnded("ended");
               logger.info(
                 { contractId, workspaceId: workspace.sId },
@@ -321,23 +682,13 @@ async function handler(
                 });
               }
               break;
+            }
 
             default:
               assertNever(subscription.status);
           }
           break;
         }
-
-        case "invoice.finalized":
-          logger.info({ event }, "[Metronome Webhook] Invoice finalized");
-          break;
-
-        case "invoice.billing_provider_error":
-          logger.error(
-            { event },
-            "[Metronome Webhook] Billing provider error on invoice"
-          );
-          break;
 
         default:
           logger.info(

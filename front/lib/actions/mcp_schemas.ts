@@ -24,6 +24,7 @@ export const BaseMCPServerConfigurationSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   icon: ResourceIconSchema.optional(),
+  meta: z.record(z.string(), z.string()).optional(),
 });
 
 export const ServerSideMCPServerConfigurationSchema =

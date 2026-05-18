@@ -4,6 +4,7 @@ import {
   getInternalMCPServerNameFromSId,
   type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isToolGeneratedFilePath } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
@@ -25,6 +26,7 @@ import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -38,6 +40,7 @@ import {
   batchFetchContentsFromGcs,
   batchWriteContentsToGcs,
   deleteContentsFromGcs,
+  warmGcsContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -59,6 +62,7 @@ import type {
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -66,8 +70,9 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import chunk from "lodash/chunk";
+import groupBy from "lodash/groupBy";
+import keyBy from "lodash/keyBy";
 import type {
   Attributes,
   CreationAttributes,
@@ -75,6 +80,7 @@ import type {
   Transaction,
 } from "sequelize";
 import { Op } from "sequelize";
+import { AgentStepContentModel } from "../models/agent/agent_step_content";
 
 // Batch size for fetching output items to avoid loading too many large rows at once.
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
@@ -126,15 +132,41 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       transaction,
     });
 
-    const stepContents = await AgentStepContentResource.fetchByModelIds(
-      auth,
-      actions.map((a) => a.stepContentId)
-    );
+    if (actions.length === 0) {
+      return [];
+    }
 
-    const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
+    const agentStepContentToolExecutions =
+      await AgentStepContentToolExecutionModel.findAll({
+        where: {
+          workspaceId,
+          agentMCPActionId: { [Op.in]: actions.map((a) => a.id) },
+        },
+        include: [
+          {
+            model: AgentStepContentModel,
+            as: "stepContent",
+            required: true,
+          },
+        ],
+        transaction,
+      });
+
+    const stepContentByActionId = new Map<ModelId, AgentStepContentResource>();
+    for (const toolExecution of agentStepContentToolExecutions) {
+      const stepContentModel = toolExecution.stepContent;
+
+      stepContentByActionId.set(
+        toolExecution.agentMCPActionId,
+        new AgentStepContentResource(
+          AgentStepContentResource.model,
+          stepContentModel.get()
+        )
+      );
+    }
 
     return actions.map((a) => {
-      const stepContent = stepContentsMap.get(a.stepContentId);
+      const stepContent = stepContentByActionId.get(a.id);
 
       // Each action must have a function call step content.
       assert(stepContent, "Step content not found.");
@@ -156,6 +188,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async makeNew(
     auth: Authenticator,
+    {
+      conversation,
+      stepContent,
+    }: {
+      conversation: ConversationWithoutContentType;
+      stepContent: AgentStepContentResource;
+    },
     blob: Omit<CreationAttributes<AgentMCPActionModel>, "workspaceId">,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMCPActionResource> {
@@ -172,15 +211,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { transaction }
     );
 
-    const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
-      auth,
-      action.stepContentId
-    );
-    assert(stepContent, "Step content not found.");
     assert(
       stepContent.isFunctionCallContent(),
       "Step content is not a function call."
     );
+
+    await AgentStepContentToolExecutionModel.create({
+      workspaceId: workspace.id,
+      agentMessageId: blob.agentMessageId,
+      conversationId: conversation.id,
+      agentMCPActionId: action.id,
+      stepContentId: stepContent.id,
+    });
 
     return new this(this.model, action.get(), stepContent, {
       internalMCPServerName,
@@ -310,7 +352,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ],
     });
 
-    const parentUserMessageById = _.keyBy(parentUserMessages, "id");
+    const parentUserMessageById = keyBy(parentUserMessages, "id");
 
     const blockedActionsList: BlockedToolExecution[] = [];
 
@@ -569,10 +611,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     auth: Authenticator,
     {
       stepContents,
-      latestVersionsOnly = false,
     }: {
       stepContents: AgentStepContentResource[];
-      latestVersionsOnly?: boolean;
     }
   ): Promise<AgentMCPActionResource[]> {
     if (stepContents.length === 0) {
@@ -581,31 +621,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Not using the baseFetch because we already have the step contents.
-    let actions = await AgentMCPActionModel.findAll({
-      where: {
-        workspaceId,
-        stepContentId: {
-          [Op.in]: stepContents.map((content) => content.id),
+    let agentStepContentToolExecutions =
+      await AgentStepContentToolExecutionModel.findAll({
+        where: {
+          workspaceId,
+          stepContentId: { [Op.in]: stepContents.map((content) => content.id) },
         },
-      },
-    });
-
-    if (latestVersionsOnly) {
-      const actionsByStepContentId = _.groupBy(actions, (action) =>
-        action.stepContentId.toString()
-      );
-      actions = removeNulls(
-        Object.values(actionsByStepContentId).map(
-          (actionsForContent) => _.maxBy(actionsForContent, "version") ?? null
-        )
-      );
-    }
+        include: [
+          {
+            model: AgentMCPActionModel,
+            as: "agentMCPAction",
+            required: true,
+          },
+        ],
+      });
 
     const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
 
-    return actions.map((a) => {
-      const stepContent = stepContentsMap.get(a.stepContentId);
+    return agentStepContentToolExecutions.map((row) => {
+      const a = row.agentMCPAction;
+      const stepContent = stepContentsMap.get(row.stepContentId);
 
       // Each action must have a function call step content.
       assert(stepContent, "Step content not found.");
@@ -693,11 +728,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       }))
     );
 
-    // On GCS failure during migration period, items remain as legacy rows (content read from DB).
-    // Once content column is dropped, this must become a hard error.
+    // GCS write is retried internally. If it still fails we surface the error rather than leaving
+    // rows with no `contentGcsPath`. There is no acceptable degraded state.
     if (gcsResult.isErr()) {
-      return outputItems;
+      // TODO(2026-05-08 FLAV) Return a result and refactor all call sites.
+      throw gcsResult.error;
     }
+
+    await warmGcsContentCache(
+      auth,
+      removeNulls(
+        outputItems.map((item) => {
+          const gcsPath = gcsResult.value.get(item.id);
+          return gcsPath
+            ? { itemId: item.id, gcsPath, content: item.content }
+            : null;
+        })
+      )
+    );
 
     // Update DB rows with their GCS paths.
     // TODO(2026-02-25 PERF): Optimize by writing items only once.
@@ -740,7 +788,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       });
     } else {
       // Batch queries to avoid loading too many large (potentially TOASTed) rows at once.
-      const batches = _.chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
+      const batches = chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
       const batchResults = await concurrentExecutor(
         batches,
         async (batchActionIds) => {
@@ -895,6 +943,20 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  static async destroyStepContentToolExecutionByActionIds(
+    auth: Authenticator,
+    actionIds: ModelId[]
+  ) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    await AgentStepContentToolExecutionModel.destroy({
+      where: {
+        workspaceId,
+        agentMCPActionId: { [Op.in]: actionIds },
+      },
+    });
+  }
+
   static async enrichActionsWithOutputItems(
     auth: Authenticator,
     {
@@ -913,7 +975,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
         const workspaceId = auth.getNonNullableWorkspace().id;
 
-        const outputItemsByActionId = _.groupBy(
+        const outputItemsByActionId = groupBy(
           Array.from(
             (
               await this.fetchOutputItemsByActionIds(auth, {
@@ -931,7 +993,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           )
         );
 
-        const fileById = _.keyBy(
+        const fileById = keyBy(
           // Using the model instead of the resource since we're mutating outputItems.
           // Not super clean but everything happens in this one function and faster to write.
           await FileModel.findAll({
@@ -973,25 +1035,36 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               outputItems.map((o) => {
                 const file = o.file;
 
-                if (!file) {
-                  return null;
+                if (file) {
+                  return {
+                    fileId: FileResource.modelIdToSId({
+                      id: file.id,
+                      workspaceId: file.workspaceId,
+                    }),
+                    contentType: file.contentType,
+                    title: file.fileName,
+                    snippet: file.snippet,
+                    createdAt: file.createdAt.getTime(),
+                    updatedAt: file.updatedAt.getTime(),
+                    isInProjectContext: file.useCase === "project_context",
+                    hidden: file.useCaseMetadata?.hideFromUser ?? false,
+                    skipDataSourceIndexing:
+                      file.useCaseMetadata?.skipDataSourceIndexing ?? false,
+                  };
                 }
 
-                return {
-                  fileId: FileResource.modelIdToSId({
-                    id: file.id,
-                    workspaceId: file.workspaceId,
-                  }),
-                  contentType: file.contentType,
-                  title: file.fileName,
-                  snippet: file.snippet,
-                  createdAt: file.createdAt.getTime(),
-                  updatedAt: file.updatedAt.getTime(),
-                  isInProjectContext: file.useCase === "project_context",
-                  hidden: file.useCaseMetadata?.hideFromUser ?? false,
-                  skipDataSourceIndexing:
-                    file.useCaseMetadata?.skipDataSourceIndexing ?? false,
-                };
+                if (isToolGeneratedFilePath(o.content)) {
+                  return {
+                    fileId: null,
+                    filePath: o.content.resource.path,
+                    title: o.content.resource.title,
+                    contentType: o.content.resource.contentType,
+                    snippet: null,
+                    hidden: false,
+                  };
+                }
+
+                return null;
               })
             ),
           };
@@ -1036,7 +1109,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       step: this.stepContent.step,
       executionDurationMs: this.executionDurationMs,
       displayLabels,
-      sandboxOrigin: this.stepContext.sandboxOrigin,
     };
   }
 
@@ -1108,6 +1180,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<Result<undefined, Error>> {
     try {
       const workspaceId = auth.getNonNullableWorkspace().id;
+
+      await AgentStepContentToolExecutionModel.destroy({
+        where: {
+          agentMessageId: { [Op.in]: params.agentMessageIds },
+          workspaceId,
+        },
+        transaction: params.transaction,
+      });
+
       await AgentMCPActionModel.destroy({
         where: {
           agentMessageId: { [Op.in]: params.agentMessageIds },
@@ -1126,6 +1207,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
+      await AgentStepContentToolExecutionModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          agentMCPActionId: this.id,
+        },
+        transaction,
+      });
+
       await AgentMCPActionModel.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,

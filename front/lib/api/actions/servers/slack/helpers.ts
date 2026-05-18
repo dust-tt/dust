@@ -1,8 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -752,12 +752,16 @@ export async function executePostMessage(
     message,
     threadTs,
     fileId,
+    unfurlLinks,
+    unfurlMedia,
   }: {
     accessToken: string;
     to: string | string[];
     message: string;
     threadTs: string | undefined;
     fileId: string | undefined;
+    unfurlLinks: boolean | undefined;
+    unfurlMedia: boolean | undefined;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
@@ -794,14 +798,21 @@ export async function executePostMessage(
 
   // If a file is provided, upload it as attachment of the original message.
   if (fileId) {
-    const file = await FileResource.fetchById(auth, fileId);
-    if (!file) {
+    const fileResult = await getFileFromConversationAttachment(
+      auth,
+      fileId,
+      agentLoopContext
+    );
+    if (fileResult.isErr()) {
       return new Err(
-        new MCPError("File not found", {
-          tracked: false,
-        })
+        new MCPError(`File not found: ${fileId}`, { tracked: false })
       );
     }
+    const {
+      buffer: fileBuffer,
+      filename,
+      contentType: filetype,
+    } = fileResult.value;
 
     // Resolve channel id using the shared helper function.
     const channelId = await resolveChannelId({
@@ -819,24 +830,11 @@ export async function executePostMessage(
       );
     }
 
-    const signedUrl = await file.getSignedUrlForDownload(auth, "original");
-    // eslint-disable-next-line no-restricted-globals
-    const fileResp = await fetch(signedUrl);
-    if (!fileResp.ok) {
-      return new Err(
-        new MCPError(`Failed to fetch file (HTTP ${fileResp.status})`)
-      );
-    }
-    const arrayBuf = await fileResp.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuf);
-
-    const filename = file.fileName ?? `upload_${file.sId}`;
-
     const baseArgs = {
       channel_id: channelId,
       file: fileBuffer,
       filename,
-      filetype: file.contentType,
+      filetype,
       initial_comment: message,
     };
     const uploadResp = threadTs
@@ -865,6 +863,8 @@ export async function executePostMessage(
     text: message,
     mrkdwn: true,
     thread_ts: threadTs,
+    unfurl_links: unfurlLinks,
+    unfurl_media: unfurlMedia,
   });
 
   if (!response.ok) {
@@ -877,6 +877,38 @@ export async function executePostMessage(
   ]);
 }
 
+export async function executeUpdateMessage({
+  accessToken,
+  channel,
+  timestamp,
+  message,
+}: {
+  accessToken: string;
+  channel: string;
+  timestamp: string;
+  message: string;
+}) {
+  const slackClient = await getSlackClient(accessToken);
+  const slackFormattedMessage = slackifyMarkdown(message);
+
+  const response = await slackClient.chat.update({
+    channel,
+    ts: timestamp,
+    text: slackFormattedMessage,
+  });
+
+  if (!response.ok) {
+    return new Err(new MCPError("Failed to update message"));
+  }
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Message ${timestamp} updated in ${channel}`,
+    },
+  ]);
+}
+
 export async function executeScheduleMessage(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType,
@@ -886,12 +918,16 @@ export async function executeScheduleMessage(
     message,
     post_at,
     threadTs,
+    unfurlLinks,
+    unfurlMedia,
   }: {
     accessToken: string;
     to: string;
     message: string;
     post_at: number | string;
     threadTs: string | undefined;
+    unfurlLinks: boolean | undefined;
+    unfurlMedia: boolean | undefined;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
@@ -950,6 +986,8 @@ export async function executeScheduleMessage(
     text: message,
     post_at: timestampSeconds.toString(),
     thread_ts: threadTs,
+    unfurl_links: unfurlLinks,
+    unfurl_media: unfurlMedia,
   });
 
   if (!response.ok) {

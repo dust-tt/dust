@@ -5,6 +5,7 @@ import {
   getMCPServerFormSchema,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { MCPServerDetailsSheet } from "@app/components/actions/mcp/MCPServerDetailsSheet";
+import { useSensitivityLabelsController } from "@app/components/shared/labels/useSensitivityLabelsController";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -12,7 +13,9 @@ import {
   isRemoteMCPServerType,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
+import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   useMCPServer,
@@ -26,6 +29,18 @@ import { isAdmin } from "@app/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
+
+async function patchServer(serverUrl: string, body: object) {
+  const response = await clientFetch(serverUrl, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const res = await response.json();
+    throw new Error(res.error?.message ?? "Failed to update server");
+  }
+}
 
 interface MCPServerDetailsProps {
   owner: WorkspaceType;
@@ -51,6 +66,22 @@ export function MCPServerDetails({
     owner,
     serverId: mcpServerView?.server.sId ?? "",
     disabled: !isOpen || !mcpServerView,
+  });
+
+  const { featureFlags } = useFeatureFlags();
+  const hasSensitivityLabels = featureFlags.includes("sensitivity_labels");
+  const sensitivityLabelProvider = getSensitivityLabelProviderForServerId(
+    mcpServerView?.server.sId ?? ""
+  );
+
+  const sensitivityLabelsController = useSensitivityLabelsController({
+    owner,
+    source: { internalMCPServerId: mcpServerView?.server.sId ?? "" },
+    disabled:
+      !isOpen ||
+      !mcpServerView ||
+      sensitivityLabelProvider === null ||
+      !hasSensitivityLabels,
   });
 
   const { mcpServers } = useMCPServers({
@@ -187,13 +218,15 @@ export function MCPServerDetails({
     icon?: string;
     authSharedSecret?: string;
     authCustomHeaders?: any;
+    authMeta?: Record<string, string> | null;
   }) => {
     const hasServerViewChanges = diff.serverView !== undefined;
     const hasIconChanges = diff.icon !== undefined;
     const hasSecretChanges = diff.authSharedSecret !== undefined;
     const hasHeaderChanges = diff.authCustomHeaders !== undefined;
+    const hasMetaChanges = diff.authMeta !== undefined;
     const hasRemoteChanges =
-      hasIconChanges || hasSecretChanges || hasHeaderChanges;
+      hasIconChanges || hasSecretChanges || hasHeaderChanges || hasMetaChanges;
 
     if (!hasServerViewChanges && !hasRemoteChanges) {
       return;
@@ -215,31 +248,22 @@ export function MCPServerDetails({
       }
     }
 
-    // Patch remote server settings if needed.
-    if (hasRemoteChanges) {
-      const patchBody: any = {};
-      if (diff.icon) {
-        patchBody.icon = diff.icon;
-      }
-      if (diff.authSharedSecret) {
-        patchBody.sharedSecret = diff.authSharedSecret;
-      }
-      if (diff.authCustomHeaders !== undefined) {
-        patchBody.customHeaders = diff.authCustomHeaders;
-      }
+    // Patch remote server settings if needed. icon and meta use separate
+    // requests because they are distinct discriminants in the API schema.
+    // sharedSecret and customHeaders can be combined in one request.
+    const serverUrl = `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}`;
 
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patchBody),
-        }
-      );
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.error?.message ?? "Failed to update server");
-      }
+    if (hasIconChanges) {
+      await patchServer(serverUrl, { icon: diff.icon });
+    }
+    if (hasSecretChanges || hasHeaderChanges) {
+      await patchServer(serverUrl, {
+        ...(hasSecretChanges && { sharedSecret: diff.authSharedSecret }),
+        ...(hasHeaderChanges && { customHeaders: diff.authCustomHeaders }),
+      });
+    }
+    if (hasMetaChanges) {
+      await patchServer(serverUrl, { meta: diff.authMeta });
     }
   };
 
@@ -272,6 +296,9 @@ export function MCPServerDetails({
 
           // Apply info changes if any.
           await applyInfoChanges(diff);
+
+          // Save sensitivity labels if dirty (manages its own error notification).
+          await sensitivityLabelsController.save();
 
           // Revalidate caches.
           await mutateMCPServersViewsForAdmin();
@@ -346,6 +373,7 @@ export function MCPServerDetails({
 
   const onCancel = () => {
     form.reset(defaults);
+    sensitivityLabelsController.reset();
   };
 
   return (
@@ -359,6 +387,7 @@ export function MCPServerDetails({
         onCancel={onCancel}
         spaces={spaces}
         readOnly={readOnly}
+        sensitivityLabelsController={sensitivityLabelsController}
       />
     </FormProvider>
   );

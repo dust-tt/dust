@@ -18,6 +18,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isCompactionMessageType,
+  isHiddenMessageOrigin,
   isLightAgentMessageType,
   isLightAgentMessageWithActionsType,
   isUserMessageTypeWithContentFragments,
@@ -111,7 +112,6 @@ export type VirtuosoMessageListContext = {
   owner: LightWorkspaceType;
   user: UserType;
   isOnboardingConversation: boolean;
-  onConversationBranched?: () => Promise<void> | void;
   handleSubmit: (
     input: string,
     mentions: RichMention[],
@@ -159,19 +159,12 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
   );
 };
 
-export const isWakeUpOrigin = (origin?: UserMessageOrigin | null) => {
-  return origin === "wakeup";
-};
-
 // Central helper to control which user message should be hidden in the UI.
 // Extend this list as we introduce more bootstrap/system user messages.
 export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   return (
     (isUserMessage(message) &&
-      (message.context.origin === "onboarding_conversation" ||
-        message.context.origin === "project_kickoff" ||
-        message.context.origin === "reinforced_skill_notification" ||
-        isWakeUpOrigin(message.context.origin) ||
+      (isHiddenMessageOrigin(message.context.origin) ||
         isSidekickBootstrapMessage(message))) ||
     isHandoverUserMessage(message)
   );

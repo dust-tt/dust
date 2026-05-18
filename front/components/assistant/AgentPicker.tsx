@@ -1,7 +1,8 @@
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { useClientType } from "@app/lib/context/clientType";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -17,7 +18,7 @@ import {
 import { useState } from "react";
 
 interface AgentPickerProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   agents: LightAgentConfigurationType[];
   onItemClick: (agent: LightAgentConfigurationType) => void;
   onAgentDetailsClick?: (agentId: string) => void;
@@ -44,6 +45,7 @@ export function AgentPicker({
   isLoading = false,
   disabled = false,
 }: AgentPickerProps) {
+  const clientType = useClientType();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
@@ -112,7 +114,7 @@ export function AgentPicker({
               truncateText
               className="group py-1"
               endComponent={
-                onAgentDetailsClick ? (
+                onAgentDetailsClick && clientType !== "extension" ? (
                   <Button
                     icon={MoreIcon}
                     variant="outline"

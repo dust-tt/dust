@@ -1,10 +1,8 @@
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
@@ -22,11 +20,11 @@ import React, { useEffect } from "react";
 export function SubscribePage() {
   const { workspace, isAdmin } = useAuth();
   const router = useAppRouter();
-  const sendNotification = useSendNotification();
   const { user } = useUser();
 
   const { subscriptions } = useWorkspaceSubscriptions({
     owner: workspace,
+    disabled: !isAdmin,
   });
 
   const [billingPeriod, setBillingPeriod] =
@@ -34,35 +32,9 @@ export function SubscribePage() {
 
   const { submit: handleSubscribePlan } = useSubmitFunction(
     async (billingPeriod) => {
-      const res = await clientFetch(`/api/w/${workspace.sId}/subscriptions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          billingPeriod,
-        }),
-      });
-
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Subscription failed",
-          description: "Failed to subscribe to a new plan.",
-        });
-      } else {
-        const content = await res.json();
-        if (content.checkoutUrl) {
-          await router.push(content.checkoutUrl);
-        } else if (content.success) {
-          sendNotification({
-            type: "error",
-            title: "Subscription failed",
-            description:
-              "Failed to subscribe to a new plan. Please try again in a few minutes.",
-          });
-        }
-      }
+      await router.push(
+        `/w/${workspace.sId}/subscription/checkout?billingPeriod=${billingPeriod}`
+      );
     }
   );
 
@@ -87,9 +59,9 @@ export function SubscribePage() {
 
   // We treat user as being in free trial if they don't have any non free subs,
   // regardless of whether they're active or not.
-  const isInFreePhoneTrial = !subscriptions.some(
-    (sub) => !isFreeTrialPhonePlan(sub.plan.code)
-  );
+  const isInFreePhoneTrial =
+    subscriptions.length > 0 &&
+    !subscriptions.some((sub) => !isFreeTrialPhonePlan(sub.plan.code));
 
   // If you had another subscription before, you will not get the free trial again: we use this to show the correct message.
   // Current plan is either FREE_NO_PLAN or FREE_TEST_PLAN if you're on this paywall.
@@ -138,7 +110,7 @@ export function SubscribePage() {
                     isInFreePhoneTrial
                       ? "Subscribe to a paid plan"
                       : noPreviousSubscription
-                        ? "Start your free trial"
+                        ? "Start your subscription"
                         : "Resume your subscription"
                   }
                 />
@@ -174,12 +146,11 @@ export function SubscribePage() {
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        Try the Pro plan for free for two weeks.
+                        Subscribe to the Pro plan.
                       </span>
                     </Page.P>
                     <Page.P>
-                      You will be charged after your trial ends. You can cancel
-                      at any time during your trial.
+                      You'll be charged immediately. You can cancel at any time.
                     </Page.P>
                   </>
                 )}
@@ -218,7 +189,7 @@ export function SubscribePage() {
                       ? isInFreePhoneTrial
                         ? `Subscribe with ${billingPeriod} billing`
                         : `Resume with ${billingPeriod} billing`
-                      : `Start your trial with ${billingPeriod} billing`
+                      : `Start your subscription with ${billingPeriod} billing`
                   }
                   icon={CreditCardIcon}
                   size="sm"

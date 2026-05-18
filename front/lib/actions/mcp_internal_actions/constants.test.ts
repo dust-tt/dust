@@ -61,7 +61,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "schedules_management", id: 1020 },
       { name: "project_manager", id: 1021 },
       {
-        name: "project_todos",
+        name: "project_tasks",
         id: 1029,
       },
       { name: "agent_sidekick_context", id: 1022 },
@@ -71,6 +71,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "ask_user_question", id: 1028 },
       { name: "wakeups", id: 1031 },
       { name: "plan_mode", id: 1032 },
+      { name: "files", id: 1033 },
     ];
     expect(
       autoInternalTools,

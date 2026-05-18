@@ -14,6 +14,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -28,14 +29,14 @@ import {
 
 import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
 
-const MAX_SLASH_SUGGESTIONS = 10;
+// Rare case where we need a Tailwind arbitrary value: after the fixed search bar, the scrollable list should fit
+// exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
+const LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
 
 function matchesCapabilityQuery({
-  description,
   label,
   query,
 }: {
-  description?: string;
   label: string;
   query: string;
 }) {
@@ -43,22 +44,17 @@ function matchesCapabilityQuery({
     return true;
   }
 
-  return (
-    label.toLowerCase().includes(query) ||
-    description?.toLowerCase().includes(query) === true
-  );
+  return subFilter(query, label.toLowerCase());
 }
 
 export function filterInputBarSlashSuggestions({
   query,
   selectedMCPServerViewIds,
-  selectedSkillIds,
   serverViews,
   skills,
 }: {
   query: string;
   selectedMCPServerViewIds: Set<string>;
-  selectedSkillIds: Set<string>;
   serverViews: MCPServerViewType[];
   skills: SkillWithoutInstructionsAndToolsType[];
 }): InputBarSlashSuggestionCapability[] {
@@ -68,11 +64,9 @@ export function filterInputBarSlashSuggestions({
     sortName: string;
   })[] = [
     ...skills
-      .filter((skill) => !selectedSkillIds.has(skill.sId))
       .filter((skill) =>
         matchesCapabilityQuery({
           label: skill.name,
-          description: skill.userFacingDescription,
           query: normalizedQuery,
         })
       )
@@ -87,7 +81,6 @@ export function filterInputBarSlashSuggestions({
       .filter((serverView) =>
         matchesCapabilityQuery({
           label: getMcpServerViewDisplayName(serverView),
-          description: getMcpServerViewDescription(serverView),
           query: normalizedQuery,
         })
       )
@@ -99,9 +92,17 @@ export function filterInputBarSlashSuggestions({
   ];
 
   return capabilities
-    .toSorted((a, b) => a.sortName.localeCompare(b.sortName))
-    .map(({ sortName: _sortName, ...capability }) => capability)
-    .slice(0, MAX_SLASH_SUGGESTIONS);
+    .toSorted((a, b) => {
+      if (normalizedQuery.length > 0) {
+        return (
+          compareForFuzzySort(normalizedQuery, a.sortName, b.sortName) ||
+          a.sortName.localeCompare(b.sortName)
+        );
+      }
+
+      return a.sortName.localeCompare(b.sortName);
+    })
+    .map(({ sortName: _sortName, ...capability }) => capability);
 }
 
 export const InputBarSlashSuggestionDropdown = forwardRef<
@@ -113,19 +114,10 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     onClose: () => void;
     owner: LightWorkspaceType;
     selectedMCPServerViewIdsRef: RefObject<Set<string>>;
-    selectedSkillIdsRef: RefObject<Set<string>>;
   }
 >(
   (
-    {
-      clientRect,
-      command,
-      query,
-      onClose,
-      owner,
-      selectedMCPServerViewIdsRef,
-      selectedSkillIdsRef,
-    },
+    { clientRect, command, query, onClose, owner, selectedMCPServerViewIdsRef },
     ref
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
@@ -151,17 +143,10 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           query,
           selectedMCPServerViewIds:
             selectedMCPServerViewIdsRef.current ?? new Set<string>(),
-          selectedSkillIds: selectedSkillIdsRef.current ?? new Set<string>(),
           serverViews,
           skills,
         }),
-      [
-        query,
-        selectedMCPServerViewIdsRef,
-        selectedSkillIdsRef,
-        serverViews,
-        skills,
-      ]
+      [query, selectedMCPServerViewIdsRef, serverViews, skills]
     );
 
     const capabilityItems = useMemo<SlashCommand[]>(
@@ -234,6 +219,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
     return (
       <SlashCommandDropdown
+        key={
+          isSkillsLoading && isSpacesLoading && isServerViewsLoading
+            ? "loading"
+            : "loaded"
+        }
         ref={dropdownRef}
         items={capabilityItems}
         command={(item) => {
@@ -254,7 +244,9 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
             : "No capabilities found"
         }
         header="Capabilities"
+        listMaxHeightClassName={LIST_MAX_HEIGHT_CLASS_NAME}
         onClose={onClose}
+        showScrollFade
         size="wide"
       />
     );

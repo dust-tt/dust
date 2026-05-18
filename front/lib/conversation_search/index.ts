@@ -6,8 +6,23 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { ConversationSearchDocument } from "@app/types/conversation_search/conversation_search";
 import type { Result } from "@app/types/shared/result";
+
+function getConversationSearchTitle(
+  conversation: ConversationResource
+): string | null {
+  if (!conversation.forkingData?.forkedFrom || conversation.title) {
+    return conversation.title;
+  }
+
+  return getConversationDisplayTitle({
+    created: conversation.createdAt.getTime(),
+    forkingData: conversation.forkingData,
+    title: conversation.title,
+  });
+}
 
 export function buildConversationSearchDocument(
   auth: Authenticator,
@@ -28,13 +43,14 @@ export function buildConversationSearchDocument(
       user_id: userId,
     })),
     requested_space_ids: conversation.getRequestedSpaceIdsFromModel(),
-    title: conversation.title,
+    title: getConversationSearchTitle(conversation),
     trigger_id: conversation.triggerSId,
     updated_at: conversation.updatedAt.toISOString(),
     visibility: conversation.visibility,
     workspace_id: auth.getNonNullableWorkspace().sId,
     ...(conversation.space?.sId && { space_id: conversation.space.sId }),
     next_wakeup_at: activeWakeUp?.nextFireAt()?.toISOString() ?? null,
+    is_running_agent_loop: conversation.isRunningAgentLoop,
   };
 }
 

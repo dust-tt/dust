@@ -72,7 +72,6 @@ function makeStreamAction(
     generatedFiles: overrides.generatedFiles ?? [],
     output: overrides.output ?? null,
     citations: overrides.citations ?? null,
-    sandboxOrigin: overrides.sandboxOrigin,
   };
 }
 
@@ -246,6 +245,7 @@ describe("appendThinkingStep", () => {
         id: "action-1",
         actionId: "act_1",
         internalMCPServerName: null,
+        toolName: null,
       },
     ];
 
@@ -467,6 +467,7 @@ describe("useAgentMessageStream", () => {
         id: `action-${action.id}`,
         actionId: action.sId,
         internalMCPServerName: action.internalMCPServerName,
+        toolName: action.toolName ?? null,
       },
     ]);
     expect(currentMessage.chainOfThought).toBe("");

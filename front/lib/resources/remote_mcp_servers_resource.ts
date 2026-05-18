@@ -319,6 +319,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       icon,
       sharedSecret,
       customHeaders,
+      meta,
       cachedName,
       cachedDescription,
       cachedTools,
@@ -328,6 +329,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       icon?: CustomResourceIconType | InternalAllowedIconType;
       sharedSecret?: string;
       customHeaders?: Record<string, string>;
+      meta?: Record<string, string> | null;
       cachedName?: string;
       cachedDescription?: string;
       cachedTools?: MCPToolType[];
@@ -361,6 +363,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       icon,
       sharedSecret,
       customHeaders,
+      meta,
       cachedName,
       cachedDescription,
       cachedTools,
@@ -565,6 +568,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     lastError: string | null;
     sharedSecret: string | null;
     customHeaders: Record<string, string> | null;
+    meta: Record<string, string> | null;
   } {
     const currentTime = new Date();
     const createdAt = new Date(this.createdAt);
@@ -612,6 +616,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastError: this.lastError,
       sharedSecret: secret,
       customHeaders: headers,
+      meta: this.meta,
       documentationUrl: null,
     };
   }

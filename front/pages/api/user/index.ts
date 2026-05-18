@@ -83,23 +83,22 @@ import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type PostUserMetadataResponseBody = {
   success: boolean;
 };
 
-const PatchUserBodySchema = t.type({
-  firstName: t.string,
-  lastName: t.string,
-  jobType: t.union([t.string, t.undefined]),
-  imageUrl: t.union([t.string, t.null, t.undefined]),
-  favoritePlatforms: t.union([t.array(t.string), t.undefined]),
-  emailProvider: t.union([t.string, t.undefined]),
-  workspaceId: t.union([t.string, t.undefined]),
+const PatchUserBodySchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  jobType: z.string().optional(),
+  imageUrl: z.string().nullish(),
+  favoritePlatforms: z.array(z.string()).optional(),
+  emailProvider: z.string().optional(),
+  workspaceId: z.string().optional(),
 });
 
 export type GetUserResponseBody = {
@@ -149,9 +148,9 @@ async function handler(
       return res.status(200).json({ user: { ...user, subscriberHash } });
 
     case "PATCH":
-      const bodyValidation = PatchUserBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PatchUserBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -189,13 +188,13 @@ async function handler(
         });
       }
 
-      const firstName = bodyValidation.right.firstName.trim();
-      const lastName = bodyValidation.right.lastName.trim();
-      const jobType = bodyValidation.right.jobType?.trim();
-      const imageUrl = bodyValidation.right.imageUrl;
-      const favoritePlatforms = bodyValidation.right.favoritePlatforms;
-      const emailProvider = bodyValidation.right.emailProvider;
-      const workspaceId = bodyValidation.right.workspaceId;
+      const firstName = bodyValidation.data.firstName.trim();
+      const lastName = bodyValidation.data.lastName.trim();
+      const jobType = bodyValidation.data.jobType?.trim();
+      const imageUrl = bodyValidation.data.imageUrl;
+      const favoritePlatforms = bodyValidation.data.favoritePlatforms;
+      const emailProvider = bodyValidation.data.emailProvider;
+      const workspaceId = bodyValidation.data.workspaceId;
 
       // Update user's name
       if (firstName.length === 0 || lastName.length === 0) {

@@ -81,6 +81,7 @@ type KnownModelLLMId =
   | "deepseek-reasoner" // deepseek api
   | "accounts/fireworks/models/deepseek-r1-0528" // fireworks
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
+  | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
@@ -229,6 +230,8 @@ export const supportedAudioFileFormats = {
   "audio/wav": [".wav"],
   "audio/x-wav": [".wav"],
   "audio/webm": [".webm"],
+  // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
+  "video/webm": [".webm"],
 } as const;
 
 // Webhook trigger endpoint (skeleton) response type
@@ -347,6 +350,7 @@ const USER_MESSAGE_ORIGINS = [
   "project_kickoff",
   "reinforced_skill_notification",
   "reinforcement",
+  "branch_anchor",
 ] as const;
 
 const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);
@@ -687,7 +691,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "confluence_tool"
   | "sessions_branching"
-  | "project_todo"
   | "projects"
   | "databricks_tool"
   | "deepseek_feature"
@@ -704,12 +707,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "fireworks_new_model_feature"
   | "gemini_3_1_pro_feature"
   | "clari_copilot_mcp"
-  | "gong_tool"
   | "google_sheets_tool"
   | "gpt_image_2_feature"
   | "hootl_subscriptions"
   | "http_client_tool"
-  | "input_bar_slash_suggestions"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
@@ -719,15 +720,15 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "netsuite_mcp"
   | "noop_model_feature"
   | "notion_private_integration"
-  | "official_notion_mcp"
+  | "allow_old_notion_mcp"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
   | "power_bi_mcp"
   | "reinforced_agents"
-  | "reinforcement_on_openai"
   | "reinforcement_ui"
+  | "self_improving_skills_report_usage"
   | "metronome_billing"
   | "plan_mode"
   | "poke_mcp"
@@ -735,7 +736,9 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "restrict_agents_publishing_to_admins"
   | "salesforce_synced_queries"
   | "salesforce_tool"
+  | "sandbox_dsbx_tools"
   | "sandbox_tools"
+  | "sandbox_workspace_admin"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
   | "slack_bot_mcp"
@@ -743,6 +746,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "snowflake_tool"
+  | "skills_as_user_messages"
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "xai_feature"
@@ -750,12 +754,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_reasoning_token_count"
   | "collapsible_messages"
   | "use_dust_keys"
-  | "enable_compaction"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
   | "conversation_search_indexing"
   | "conversation_search_read"
-  | "enable_wakeups"
+  | "new_file_explorer"
+  | "use_vertex_for_anthropic_models"
+  | "metronome_billing_usage_page"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2064,6 +2069,14 @@ export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
 >;
 
+export const DeleteAgentConfigurationResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type DeleteAgentConfigurationResponseType = z.infer<
+  typeof DeleteAgentConfigurationResponseSchema
+>;
+
 export const GetAgentConfigurationYAMLExportResponseSchema = z.string();
 
 export type GetAgentConfigurationYAMLExportResponseType = z.infer<
@@ -2631,6 +2644,9 @@ export const ProjectMetadataSchema = z.object({
   updatedAt: z.number(),
   spaceId: z.string(),
   description: z.string().nullable(),
+  archivedAt: z.number().nullable().optional(),
+  todoGenerationEnabled: z.boolean().optional(),
+  lastTodoAnalysisAt: z.number().nullable().optional(),
   members: z.array(z.string()),
 });
 export type ProjectMetadataType = z.infer<typeof ProjectMetadataSchema>;
@@ -2640,6 +2656,47 @@ export const GetSpaceMetadataResponseSchema = z.object({
 });
 export type GetSpaceMetadataResponseType = z.infer<
   typeof GetSpaceMetadataResponseSchema
+>;
+
+export const ProjectMountFileEntrySchema = z.object({
+  isDirectory: z.literal(false),
+  fileName: z.string(),
+  path: z.string(),
+  sizeBytes: z.number(),
+  lastModifiedMs: z.number(),
+  contentType: z.string(),
+  fileId: z.string().nullable(),
+  thumbnailUrl: z.string().nullable(),
+  signedDownloadUrl: z.string().nullable(),
+});
+export type ProjectMountFileEntryType = z.infer<
+  typeof ProjectMountFileEntrySchema
+>;
+
+export const ProjectMountDirectoryEntrySchema = z.object({
+  isDirectory: z.literal(true),
+  fileName: z.string(),
+  path: z.string(),
+  sizeBytes: z.number(),
+  lastModifiedMs: z.number(),
+});
+export type ProjectMountDirectoryEntryType = z.infer<
+  typeof ProjectMountDirectoryEntrySchema
+>;
+
+export const ProjectMountListEntrySchema = z.discriminatedUnion("isDirectory", [
+  ProjectMountDirectoryEntrySchema,
+  ProjectMountFileEntrySchema,
+]);
+export type ProjectMountListEntryType = z.infer<
+  typeof ProjectMountListEntrySchema
+>;
+
+export const GetProjectFilesResponseSchema = z.object({
+  files: z.array(ProjectMountListEntrySchema),
+});
+export type GetProjectFilesResponseType = z.infer<
+  typeof GetProjectFilesResponseSchema
 >;
 
 const GetDocumentsResponseSchema = z.object({

@@ -26,6 +26,32 @@ const IMPORTANT_DATE_FIELDS: Record<string, string[]> = {
   deals: ["closedate", "createdate", "lastmodifieddate"],
 };
 
+// hs_* fields that carry actual engagement content and must not be stripped.
+const HS_CONTENT_FIELDS = new Set([
+  "hs_note_body",
+  "hs_meeting_title",
+  "hs_meeting_body",
+  "hs_meeting_outcome",
+  "hs_meeting_start_time",
+  "hs_meeting_end_time",
+  "hs_meeting_location",
+  "hs_meeting_external_url",
+  "hs_call_body",
+  "hs_call_title",
+  "hs_call_duration",
+  "hs_call_direction",
+  "hs_call_status",
+  "hs_email_subject",
+  "hs_email_text",
+  "hs_email_html",
+  "hs_task_subject",
+  "hs_task_body",
+  "hs_task_status",
+  "hs_task_priority",
+  "hs_timestamp",
+  "hs_engagement_type",
+]);
+
 export function formatHubSpotObject(
   object: SimplePublicObject,
   objectType: string,
@@ -74,8 +100,10 @@ export function formatHubSpotObject(
         value !== null &&
         value !== undefined &&
         value !== "" &&
-        !key.startsWith("hs_") &&
-        ((!key.includes("_date") && !key.includes("_timestamp")) ||
+        (HS_CONTENT_FIELDS.has(key) ||
+          (!key.startsWith("hs_") &&
+            !key.includes("_date") &&
+            !key.includes("_timestamp")) ||
           allowlist.includes(key))
     )
     .reduce(

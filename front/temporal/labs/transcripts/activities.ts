@@ -253,7 +253,7 @@ export async function processTranscriptActivity(
     );
 
   if (!transcriptsConfiguration) {
-    throw new Error(
+    throw new TranscriptNonRetryableError(
       `Could not find transcript configuration for id ${transcriptsConfigurationId}.`
     );
   }
@@ -612,6 +612,7 @@ export async function processTranscriptActivity(
     };
 
     const cfRes = await toFileContentFragment(auth, {
+      conversation: initialConversation,
       contentFragment: {
         title: transcriptTitle,
         content: transcriptContent,

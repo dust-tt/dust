@@ -21,9 +21,9 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type * as t from "io-ts";
 import React from "react";
 import { useSWRConfig } from "swr";
+import type { z } from "zod";
 
 export function PlansPage() {
   useDocumentTitle("Poke - Plans");
@@ -88,7 +88,7 @@ export function PlansPage() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(
-        requestBody satisfies t.TypeOf<typeof PlanTypeSchema>
+        requestBody satisfies z.infer<typeof PlanTypeSchema>
       ),
     });
     if (!r.ok) {

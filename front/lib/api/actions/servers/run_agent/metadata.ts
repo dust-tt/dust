@@ -76,7 +76,23 @@ export const RUN_AGENT_TOOL_SCHEMA = {
   fileOrContentFragmentIds: z
     .array(z.string().regex(new RegExp(`^[_\\w]+$`)))
     .describe(
-      "The filesId of the files to pass to the agent conversation. If the file is a content node, use the contentFragmentId instead."
+      "File or content-fragment IDs (e.g. `file_xyz`, `cf_abc`) to forward as content " +
+        "fragments to the sub-conversation. Use when you already have an ID returned by a " +
+        "previous tool (uploaded file, content node). Prefer `filePaths` when you have a " +
+        "scoped path."
+    )
+    .optional()
+    .nullable(),
+  filePaths: z
+    .array(z.string())
+    .describe(
+      "Scoped file paths (e.g. `conversation/foo.md`, `project/spec.md`) to forward to the " +
+        "sub-agent. Use when you have a scoped path from a file-listing tool or that you " +
+        "produced yourself in this conversation. `conversation/...` paths are copied into " +
+        "the sub-conversation; `project/...` paths are passed through (the project file " +
+        "system is shared across the project's conversations). " +
+        "For binary sources (PDFs, images, audio), also include their `*.processed.<ext>` " +
+        "sibling so the sub-agent can read the model-friendly representation."
     )
     .optional()
     .nullable(),

@@ -46,7 +46,7 @@ export function useCompactConversation({
           sendNotification({
             type: "error",
             title: "Failed to compact conversation",
-            description: body?.api_error?.message ?? "Unknown error.",
+            description: body?.error?.message ?? "Unknown error.",
           });
           setIsCompacting(false);
         }

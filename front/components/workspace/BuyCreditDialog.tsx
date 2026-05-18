@@ -31,7 +31,7 @@ type PurchaseState = "idle" | "processing" | "success" | "redirect" | "error";
 const SUPPORT_EMAIL = "support@dust.tt";
 
 // Minimum purchase amount in microUsd ($1).
-const MIN_PURCHASE_MICRO_USD = 1_000_000;
+const LIMIT_EXHAUSTED_THRESHOLD_MICRO_USD = 1_000_000;
 
 interface PaygUsage {
   consumed: number;
@@ -637,7 +637,7 @@ export function BuyCreditDialog({
   if (
     creditPurchaseLimits &&
     creditPurchaseLimits.canPurchase &&
-    creditPurchaseLimits.maxAmountMicroUsd < MIN_PURCHASE_MICRO_USD
+    creditPurchaseLimits.maxAmountMicroUsd < LIMIT_EXHAUSTED_THRESHOLD_MICRO_USD
   ) {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

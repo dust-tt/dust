@@ -204,6 +204,11 @@ export type ToolCallAssertion =
       toolId: string;
       sourceSuggestionIds?: string[];
     }
+  | {
+      type: "editSkillWithAgentFacingDescription";
+      skillId: string;
+      sourceSuggestionIds?: string[];
+    }
   | { type: "editSkill"; skillId: string; sourceSuggestionIds?: string[] }
   | { type: "editSkillCallCount"; count: number }
   | { type: "editSkillCallsWithSources"; sourceSuggestionIdGroups: string[][] }
@@ -229,6 +234,18 @@ export function editSkillWithTool(
   sourceSuggestionIds?: string[]
 ): ToolCallAssertion {
   return { type: "editSkillWithTool", skillId, toolId, sourceSuggestionIds };
+}
+
+/** Expects an edit_skill call with an agentFacingDescriptionEdit for the given skill. */
+export function editSkillWithAgentFacingDescription(
+  skillId: string,
+  sourceSuggestionIds?: string[]
+): ToolCallAssertion {
+  return {
+    type: "editSkillWithAgentFacingDescription",
+    skillId,
+    sourceSuggestionIds,
+  };
 }
 
 /** Expects an edit_skill call for the given skill (any edit type). */

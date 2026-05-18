@@ -129,7 +129,7 @@ async function handler(
         targets: [buildAuditLogTarget("workspace", workspace)],
         context: getAuditLogContext(auth, req),
         metadata: {
-          directoryType: activeDirectory.type,
+          directory_type: activeDirectory.type,
         },
       });
 

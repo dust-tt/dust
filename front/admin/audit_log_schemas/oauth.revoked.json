@@ -10,8 +10,8 @@
   ],
   "metadata": {
     "provider": "string",
-    "connectionId": "string",
-    "connectionType": "string",
+    "connection_id": "string",
+    "connection_type": "string",
     "actor_type": "string"
   }
 }

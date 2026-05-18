@@ -1,0 +1,8 @@
+PUT /front.conversation_search/_mapping
+{
+  "properties": {
+    "is_running_agent_loop": {
+      "type": "boolean"
+    }
+  }
+}

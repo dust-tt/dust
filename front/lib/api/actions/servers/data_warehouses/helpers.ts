@@ -16,8 +16,7 @@ import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import keyBy from "lodash/keyBy";
 
 export async function getAvailableWarehouses(
   auth: Authenticator,
@@ -51,7 +50,7 @@ export async function getAvailableWarehouses(
     return new Err(new MCPError(searchResult.error.message));
   }
 
-  const dataSourceById = _.keyBy(
+  const dataSourceById = keyBy(
     await DataSourceResource.fetchByDustAPIDataSourceIds(
       auth,
       searchResult.value.nodes.map((node) => node.data_source_id)
@@ -133,7 +132,7 @@ export async function getWarehouseNodes(
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!dataSourceById) {
-    dataSourceById = _.keyBy(
+    dataSourceById = keyBy(
       await DataSourceResource.fetchByDustAPIDataSourceIds(
         auth,
         configsToUse.map((ds) => ds.dataSource.dustAPIDataSourceId)

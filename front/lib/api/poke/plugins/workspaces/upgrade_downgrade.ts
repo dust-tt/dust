@@ -106,3 +106,47 @@ export const downgradeNoPlan = createPlugin({
     return new Err(new Error("NO_OP"));
   },
 });
+
+export const switchContract = createPlugin({
+  manifest: {
+    id: "switch-contract",
+    name: "Switch Metronome Contract",
+    description:
+      "Switch a Metronome-billed workspace to a new contract package + plan",
+    resourceTypes: ["workspaces"],
+    isHidden: true,
+    args: {
+      planCode: {
+        type: "text",
+        label: "Plan Code",
+        description: "The plan code to switch to",
+        placeholder: "e.g., PRO_PLAN_SEAT_39 or ENT_*",
+        required: true,
+      },
+      metronomePackageId: {
+        type: "text",
+        label: "Metronome Package ID",
+        description: "The Metronome package to put the customer on",
+        required: true,
+      },
+      startingAt: {
+        type: "text",
+        label: "Starting At",
+        description:
+          "Required for enterprise packages (≥1h future). Omitted for Pro/Business.",
+        placeholder: "ISO timestamp",
+        required: false,
+      },
+      stripeCustomerId: {
+        type: "text",
+        label: "Stripe Customer ID",
+        description: "Stripe customer linked to the Metronome customer",
+        placeholder: "cus_...",
+        required: true,
+      },
+    },
+  },
+  execute: async () => {
+    return new Err(new Error("NO_OP"));
+  },
+});

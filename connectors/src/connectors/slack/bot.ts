@@ -8,7 +8,7 @@ import { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stre
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
   getBotUserIdResponse,
-  getUserName,
+  getUserInfo,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
   isSlackWebAPIPlatformError,
@@ -100,8 +100,8 @@ function getMaxFileSizeToUpload(contentType: SupportedFileContentType): number {
   return MAX_OTHER_FILE_SIZE_TO_UPLOAD;
 }
 
-// Pattern to match +mention or ~mention at the beginning of the string (whitespaces allowed).
-const SLACK_MENTION_PATTERN = /^\s*([+~][a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/;
+// Pattern to match +mention, ~mention, or =mention at the beginning of the string.
+const SLACK_MENTION_PATTERN = /^\s*([+~=][a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/;
 
 type BotAnswerParams = {
   responseUrl?: string;
@@ -970,8 +970,13 @@ async function answerMessage(
         }
         message = message.replace(m, "");
       } else {
-        const userName = await getUserName(userId, connector.id, slackClient);
-        message = message.replace(m, `@${userName}`);
+        const { name: userName, email } = await getUserInfo(
+          userId,
+          connector.id,
+          slackClient
+        );
+        const replaceValue = email ? `@${userName} (${email})` : `@${userName}`;
+        message = message.replace(m, replaceValue);
       }
     }
   }
@@ -1180,6 +1185,13 @@ async function answerMessage(
   };
 
   const origin = slackBotId ? "slack_workflow" : "slack";
+
+  // Mention-only messages (e.g. Zapier sending `<@bot> +AgentName`) end up empty after stripping
+  // the bot mention and extracting the agent mention. The public API rejects empty content via
+  // Zod (`z.string().min(1)`), so substitute a minimal placeholder.
+  if (message.trim() === "") {
+    message = " ";
+  }
 
   const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,

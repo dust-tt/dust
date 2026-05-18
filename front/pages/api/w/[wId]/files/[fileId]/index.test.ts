@@ -574,4 +574,43 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(processAndUpsertToDataSource).toHaveBeenCalled();
   });
+
+  it("should not upsert raw sandbox delimited conversation files", async () => {
+    const { processAndUpsertToDataSource } = await import(
+      "@app/lib/api/files/upsert"
+    );
+
+    const { req, res, user, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/csv",
+      fileName: "large.csv",
+      fileSize: 1024,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+        skipDataSourceIndexing: true,
+        skipFileProcessing: true,
+      },
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(processAndUpsertToDataSource).not.toHaveBeenCalled();
+  });
 });

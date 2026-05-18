@@ -5,6 +5,7 @@ import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
+  PLAN_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
@@ -25,12 +26,18 @@ type OpenPanelParams =
     }
   | {
       type: "files";
+    }
+  | {
+      type: "plan";
     };
 
 const isSupportedPanelType = (
   type: string | undefined
 ): type is ConversationSidePanelType =>
-  type === "actions" || type === "interactive_content" || type === "files";
+  type === "actions" ||
+  type === "interactive_content" ||
+  type === "files" ||
+  type === "plan";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -150,6 +157,15 @@ export function ConversationSidePanelProvider({
             return;
           }
           setData("files");
+          break;
+
+        case PLAN_SIDE_PANEL_TYPE:
+          // Toggle: if already open, close it.
+          if (currentPanel === PLAN_SIDE_PANEL_TYPE) {
+            closePanel();
+            return;
+          }
+          setData("plan");
           break;
 
         default:

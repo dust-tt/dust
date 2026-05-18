@@ -739,6 +739,84 @@ describe("FileResource", () => {
         `w/${workspace.sId}/conversations/conv-retro/files/attachment.pdf`
       );
     });
+
+    it("should resolve mount path via markAsReady for project_context file", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/markdown",
+        fileName: "spec.md",
+        fileSize: 200,
+        status: "created",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: "spc-1" },
+      });
+
+      await file.markAsReady(auth);
+
+      const row = await FileModel.findOne({
+        where: { id: file.id, workspaceId: workspace.id },
+      });
+      expect(row?.mountFilePath).toBe(
+        `w/${workspace.sId}/projects/spc-1/files/spec.md`
+      );
+    });
+
+    it("should no-op for project_context when spaceId is missing", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "text/markdown",
+        fileName: "spec.md",
+        fileSize: 200,
+        status: "created",
+        useCase: "project_context",
+      });
+
+      await file.markAsReady(auth);
+
+      const row = await FileModel.findOne({
+        where: { id: file.id, workspaceId: workspace.id },
+      });
+      expect(row?.mountFilePath).toBeNull();
+    });
+
+    it("should disambiguate project_context files with the same name in a space", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file1 = await FileFactory.create(auth, null, {
+        contentType: "text/markdown",
+        fileName: "notes.md",
+        fileSize: 100,
+        status: "created",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: "spc-1" },
+      });
+      await file1.markAsReady(auth);
+
+      const file2 = await FileFactory.create(auth, null, {
+        contentType: "text/markdown",
+        fileName: "notes.md",
+        fileSize: 200,
+        status: "created",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: "spc-1" },
+      });
+      await file2.markAsReady(auth);
+
+      const row2 = await FileModel.findOne({
+        where: { id: file2.id, workspaceId: workspace.id },
+      });
+      expect(row2?.mountFilePath).toBe(
+        `w/${workspace.sId}/projects/spc-1/files/notes_${file2.sId}.md`
+      );
+    });
   });
 
   describe("getContentBucketAndPath", () => {
@@ -831,6 +909,28 @@ describe("FileResource", () => {
 
       const { path } = file.getContentBucketAndPath(auth);
       expect(path).toContain("/processed");
+    });
+
+    it("should resolve to 'original' version for spreadsheets when file processing is skipped", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        fileName: "large.xlsx",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: "conv-1",
+          skipFileProcessing: true,
+        },
+      });
+
+      const { path } = file.getContentBucketAndPath(auth);
+      expect(path).toContain("/original");
     });
 
     it("should resolve to 'processed' version for images in conversation", async () => {

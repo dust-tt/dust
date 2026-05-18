@@ -1,0 +1,37 @@
+[
+  {
+    "sId": "RABookConv01",
+    "title": "Recommend a Python book",
+    "agentName": "Dust",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "RABKUMsg01",
+          "content": ":mention[Dust]{sId=dust} Can you recommend a good Python book? I've been learning the basics and want to go deeper."
+        },
+        "agent": {
+          "sId": "RABKAMsg01",
+          "content": "I'd recommend **Fluent Python** by Luciano Ramalho. It's an excellent intermediate-to-advanced book that covers Python's data model, iterators, generators, concurrency, and metaprogramming. It's currently in stock on shelf B-12.\n\nAnother great option is **Python Cookbook** by David Beazley, available on shelf C-03. It's more recipe-based and great for learning practical patterns."
+        }
+      }
+    ]
+  },
+  {
+    "sId": "RABookConv02",
+    "title": "Looking for a book on distributed systems",
+    "agentName": "Dust",
+    "userId": "otherUser",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "RABKUMsg02",
+          "content": ":mention[Dust]{sId=dust} Do we have any books on distributed systems? I already read Designing Data-Intensive Applications last year."
+        },
+        "agent": {
+          "sId": "RABKAMsg02",
+          "content": "Yes! We have **Distributed Systems** by Maarten van Steen in the catalog. It's on shelf A-07 and currently available.\n\nSince you've already read Designing Data-Intensive Applications, you might also enjoy **Site Reliability Engineering** by Betsy Beyer which covers distributed systems from an operational perspective. It's on shelf A-09."
+        }
+      }
+    ]
+  }
+]

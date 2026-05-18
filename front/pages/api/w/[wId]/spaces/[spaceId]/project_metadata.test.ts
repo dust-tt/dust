@@ -5,14 +5,20 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockLaunchOrSignalProjectTodoWorkflow, mockStopProjectTodoWorkflow } =
-  vi.hoisted(() => ({
-    mockLaunchOrSignalProjectTodoWorkflow: vi.fn(),
-    mockStopProjectTodoWorkflow: vi.fn(),
-  }));
+const {
+  mockLaunchOrSignalProjectTodoWorkflow,
+  mockStartImmediateProjectTodoWorkflowOnce,
+  mockStopProjectTodoWorkflow,
+} = vi.hoisted(() => ({
+  mockLaunchOrSignalProjectTodoWorkflow: vi.fn(),
+  mockStartImmediateProjectTodoWorkflowOnce: vi.fn(),
+  mockStopProjectTodoWorkflow: vi.fn(),
+}));
 
-vi.mock("@app/temporal/project_todo/client", () => ({
+vi.mock("@app/temporal/project_task/client", () => ({
   launchOrSignalProjectTodoWorkflow: mockLaunchOrSignalProjectTodoWorkflow,
+  startImmediateProjectTodoWorkflowOnce:
+    mockStartImmediateProjectTodoWorkflowOnce,
   stopProjectTodoWorkflow: mockStopProjectTodoWorkflow,
 }));
 
@@ -103,13 +109,13 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(res._getStatusCode()).toBe(403);
   });
 
-  it("stops project todo workflow when archiving a project", async () => {
+  it("stops project tasks workflow when archiving a project", async () => {
     const { req, res, workspace, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
     });
 
-    await FeatureFlagFactory.basic(auth, "project_todo");
+    await FeatureFlagFactory.basic(auth, "projects");
 
     const projectSpace = await SpaceFactory.project(workspace);
     await ProjectMetadataResource.makeNew(auth, projectSpace, {
@@ -132,13 +138,40 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(mockLaunchOrSignalProjectTodoWorkflow).not.toHaveBeenCalled();
   });
 
-  it("restarts project todo workflow when unarchiving a project", async () => {
+  it("updates tasks generation opt-in", async () => {
     const { req, res, workspace, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
     });
 
-    await FeatureFlagFactory.basic(auth, "project_todo");
+    await FeatureFlagFactory.basic(auth, "projects");
+
+    const projectSpace = await SpaceFactory.project(workspace);
+    await ProjectMetadataResource.makeNew(auth, projectSpace, {
+      description: "Test",
+    });
+
+    req.query.spaceId = projectSpace.sId;
+    req.body = {
+      todoGenerationEnabled: true,
+      initialTodoAnalysisLookback: "last_24h",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().projectMetadata.todoGenerationEnabled).toBe(true);
+    expect(mockLaunchOrSignalProjectTodoWorkflow).toHaveBeenCalledTimes(1);
+    expect(mockStartImmediateProjectTodoWorkflowOnce).toHaveBeenCalledTimes(1);
+  });
+
+  it("restarts project tasks workflow when unarchiving a project", async () => {
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+
+    await FeatureFlagFactory.basic(auth, "projects");
 
     const projectSpace = await SpaceFactory.project(workspace);
     await ProjectMetadataResource.makeNew(auth, projectSpace, {

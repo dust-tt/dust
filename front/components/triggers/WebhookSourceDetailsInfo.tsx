@@ -141,7 +141,7 @@ export function WebhookSourceDetailsInfo({
                   />
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-fit py-0"
+                  className="w-fit p-0"
                   onInteractOutside={() => setIsPopoverOpen(false)}
                   onEscapeKeyDown={() => setIsPopoverOpen(false)}
                 >

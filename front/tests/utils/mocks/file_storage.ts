@@ -59,8 +59,14 @@ class FileStorageMock {
           return new PassThrough();
         }),
       delete: vi.fn().mockResolvedValue(undefined),
+      download: vi.fn().mockResolvedValue([Buffer.from("", "utf-8")]),
+      exists: vi.fn().mockResolvedValue([true]),
+      getMetadata: vi
+        .fn()
+        .mockResolvedValue([{ contentType: "text/plain", size: "0" }]),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
       publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
+      save: vi.fn().mockResolvedValue(undefined),
     };
   }
 
@@ -68,6 +74,9 @@ class FileStorageMock {
     return {
       file: vi.fn((path: string) => this.createMockGCSFile(path)),
       name: "mock-bucket",
+      getFileContentType: vi
+        .fn()
+        .mockResolvedValue({ isOk: () => false, isErr: () => true }),
       getSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
       uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
       uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),

@@ -1,15 +1,15 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
 import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export type GetSkillHistoryResponseBody = {
   history: SkillWithVersionType[];
@@ -49,15 +49,15 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = GetSkillHistoryQuerySchema.decode({
+      const queryValidation = GetSkillHistoryQuerySchema.safeParse({
         ...req.query,
         limit:
           typeof req.query.limit === "string"
             ? parseInt(req.query.limit, 10)
             : undefined,
       });
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      if (!queryValidation.success) {
+        const pathError = fromError(queryValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -67,7 +67,7 @@ async function handler(
         });
       }
 
-      const { limit } = queryValidation.right;
+      const { limit } = queryValidation.data;
 
       let skillVersionResources = await skill.listVersions(auth);
 
@@ -75,10 +75,19 @@ async function handler(
         skillVersionResources = skillVersionResources.slice(0, limit);
       }
 
-      const skillVersions = skillVersionResources.map((resource) => ({
-        ...resource.toJSON(auth),
-        version: resource.version,
-      }));
+      const skillVersions = skillVersionResources.map((resource) => {
+        const serializedSkill = resource.toJSON(auth);
+
+        return {
+          ...serializedSkill,
+          instructionsHtml:
+            serializedSkill.instructionsHtml ??
+            (serializedSkill.instructions
+              ? convertMarkdownToBlockHtml(serializedSkill.instructions)
+              : null),
+          version: resource.version,
+        };
+      });
 
       return res.status(200).json({ history: skillVersions });
     default:

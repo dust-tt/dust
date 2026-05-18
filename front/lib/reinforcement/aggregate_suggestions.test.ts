@@ -20,6 +20,8 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
     source: null,
     sourceMetadata: null,
     reinforcement: "auto",
+    selfImprovementLock: false,
+    selfImprovementCostsCapMicroUsd: null,
     requestedSpaceIds: [],
     tools: [],
     fileAttachments: [],
@@ -74,6 +76,29 @@ function makeToolSuggestion(
     kind: "edit",
     suggestion: {
       toolEdits: [{ action: "add", toolId: "tool-search" }],
+    },
+    ...overrides,
+  } as SkillSuggestionType;
+}
+
+function makeAgentFacingDescriptionSuggestion(
+  overrides: Partial<SkillSuggestionType> = {}
+): SkillSuggestionType {
+  return {
+    sId: "sug-3",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    skillConfigurationId: "skl_abc123",
+    analysis: "Description is misleading the agent on routing",
+    title: null,
+    state: "pending",
+    source: "synthetic",
+    sourceConversationsCount: 0,
+    kind: "edit",
+    suggestion: {
+      agentFacingDescriptionEdit: {
+        content: "Use this skill when answering pricing questions.",
+      },
     },
     ...overrides,
   } as SkillSuggestionType;
@@ -200,6 +225,36 @@ describe("buildSkillAggregationPrompt", () => {
     );
 
     expect(systemPrompt).toContain("edit_skill");
+  });
+
+  it("formats agent-facing description edits with the new content", () => {
+    const suggestion = makeAgentFacingDescriptionSuggestion({
+      suggestion: {
+        agentFacingDescriptionEdit: {
+          content: "Use for pricing questions only.",
+        },
+      },
+    });
+
+    const { userMessage } = buildSkillAggregationPrompt(
+      makeSkill(),
+      [suggestion],
+      { pending: [], rejected: [] }
+    );
+
+    expect(userMessage).toContain("<agentFacingDescriptionEdit>");
+    expect(userMessage).toContain("Use for pricing questions only.");
+    expect(userMessage).toContain("</agentFacingDescriptionEdit>");
+  });
+
+  it("does not emit an empty agentFacingDescriptionEdit element for instruction-only suggestions", () => {
+    const { userMessage } = buildSkillAggregationPrompt(
+      makeSkill(),
+      [makeInstructionSuggestion()],
+      { pending: [], rejected: [] }
+    );
+
+    expect(userMessage).not.toContain("agentFacingDescriptionEdit");
   });
 
   it("system prompt requires the aggregator to author a title per suggestion", () => {

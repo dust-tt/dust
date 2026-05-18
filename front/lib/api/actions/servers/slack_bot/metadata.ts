@@ -29,13 +29,47 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "Optional file id (sId) of a file in Dust to attach to the Slack message."
+          "Optional file to attach to the Slack message. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
+        ),
+      unfurlLinks: z
+        .boolean()
+        .optional()
+        .describe(
+          "If false, disable link previews (unfurling) for URLs in the message. Useful when posting newsletters or curated lists where previews add clutter. Defaults to Slack's behavior."
+        ),
+      unfurlMedia: z
+        .boolean()
+        .optional()
+        .describe(
+          "If false, disable media previews (unfurling) for image/video URLs in the message. Defaults to Slack's behavior."
         ),
     },
     stake: "low",
     displayLabels: {
       running: "Posting Slack message",
       done: "Post Slack message",
+    },
+  },
+  edit_message: {
+    description:
+      "Edit a message previously posted in a Slack channel by providing its timestamp and channel.",
+    schema: {
+      channel: z
+        .string()
+        .describe("The channel where the message to edit is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp (ts) of the message to edit"),
+      message: z
+        .string()
+        .describe(
+          "The new message content, using standard Markdown formatting. Do NOT use Slack-specific markup."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Editing Slack message",
+      done: "Edit Slack message",
     },
   },
   search_user: {
@@ -197,7 +231,7 @@ export const SLACK_BOT_SERVER = {
     instructions:
       "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
       "Direct messages and search operations are not supported. " +
-      "When posting a message on Slack, you MUST use standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). " +
+      "When posting or editing a message on Slack, you MUST use standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*). " +
       "Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
       "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
       "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",

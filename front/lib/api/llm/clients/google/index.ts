@@ -203,6 +203,12 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
     return GoogleLLM.encodeBatchId(batch.name, customIds);
   }
 
+  override async deleteBatch(batchId: string): Promise<boolean> {
+    const { batchName } = GoogleLLM.decodeBatchId(batchId);
+    await this.client.batches.delete({ name: batchName });
+    return true;
+  }
+
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {
     const { batchName } = GoogleLLM.decodeBatchId(batchId);
     const batch = await this.client.batches.get({ name: batchName });

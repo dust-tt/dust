@@ -6,13 +6,12 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const WorkspaceTypeSchema = t.type({
-  segmentation: t.union([t.literal("interesting"), t.null]),
+export const WorkspaceTypeSchema = z.object({
+  segmentation: z.literal("interesting").nullable(),
 });
 
 export type SegmentWorkspaceResponseBody = {
@@ -51,18 +50,17 @@ async function handler(
 
   switch (req.method) {
     case "PATCH":
-      const bodyValidation = WorkspaceTypeSchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = WorkspaceTypeSchema.safeParse(req.body);
+      if (bodyValidation.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `The request body is invalid: ${pathError}`,
+            message: `The request body is invalid: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
-      const body = bodyValidation.right;
+      const body = bodyValidation.data;
 
       const workspace = await setInternalWorkspaceSegmentation(
         auth,

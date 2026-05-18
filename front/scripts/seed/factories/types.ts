@@ -47,6 +47,7 @@ export interface SkillSuggestionAsset {
   analysis: string | null;
   state: "pending" | "approved" | "rejected" | "outdated";
   source: "reinforcement" | "synthetic";
+  sourceConversationIds?: string[];
   suggestion: {
     instructionEdits?: {
       targetBlockId: string;

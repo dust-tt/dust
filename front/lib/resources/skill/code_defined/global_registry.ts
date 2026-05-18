@@ -2,12 +2,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/code_defined/go_deep";
 import { mentionUsersSkill } from "@app/lib/resources/skill/code_defined/mention_users";
+import { pptxSkill } from "@app/lib/resources/skill/code_defined/pptx";
 import { projectsSkill } from "@app/lib/resources/skill/code_defined/projects";
 import {
   ensureUniqueSIds,
   filterSkillDefinitions,
   type GlobalSkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
+import { xlsxSkill } from "@app/lib/resources/skill/code_defined/xlsx";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 
 // Registry is a simple array.
@@ -15,7 +17,9 @@ const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   framesSkill,
   goDeepSkill,
   mentionUsersSkill,
+  pptxSkill,
   projectsSkill,
+  xlsxSkill,
 ] as const);
 
 // Build lookup map for direct access by sId.

@@ -18,7 +18,9 @@ export const SANDBOX_TOKEN_PREFIX = "sbt-";
 const SandboxExecTokenPayloadSchema = z.object({
   wId: z.string(),
   cId: z.string(),
-  uId: z.string(),
+  // Optional: omitted when the conversation is driven by a non-human actor
+  // (e.g. a Slack bot user with no associated Dust user).
+  uId: z.string().optional(),
   aId: z.string(),
   mId: z.string(),
   sbId: z.string(),
@@ -111,7 +113,7 @@ export async function generateSandboxExecToken(
   const payload: SandboxExecTokenPayload = {
     wId: auth.getNonNullableWorkspace().sId,
     cId: conversation.sId,
-    uId: auth.getNonNullableUser().sId,
+    uId: auth.user()?.sId,
     aId: agentConfiguration.sId,
     mId: agentMessage.sId,
     sbId: sandbox.sId,

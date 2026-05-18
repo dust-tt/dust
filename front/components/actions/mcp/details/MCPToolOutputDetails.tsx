@@ -90,10 +90,12 @@ export function ToolGeneratedFileDetails({
   owner,
 }: ToolGeneratedFileDetailsProps) {
   const citation: MCPReferenceCitation = {
-    fileId: resource.fileId,
+    fileId: resource.fileId ?? undefined,
     title: resource.title,
     contentType: resource.contentType,
-    href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`,
+    href: resource.fileId
+      ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`
+      : undefined,
     description:
       "text" in resource ? resource.text : (resource.snippet ?? undefined),
   };

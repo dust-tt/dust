@@ -1,5 +1,6 @@
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
@@ -81,9 +82,9 @@ export const SpaceAppsList = ({
   const router = useAppRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
+  const { frontendListFilterQuery } = React.useContext(SpaceSearchContext);
   const { q: searchParam } = useQueryParams(["q"]);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const searchTerm = searchParam.value || "";
+  const searchTerm = frontendListFilterQuery ?? searchParam.value ?? "";
 
   const { apps, isAppsLoading } = useApps({ owner, space });
 

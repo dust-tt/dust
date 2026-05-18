@@ -1,0 +1,714 @@
+import { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { ProjectTaskModel } from "@app/lib/resources/storage/models/project_task";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import type { UserResource } from "@app/lib/resources/user_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import type { LightWorkspaceType } from "@app/types/user";
+import type { CreationAttributes } from "sequelize";
+import { beforeEach, describe, expect, it } from "vitest";
+
+// Minimal creation blob — all nullable fields set explicitly so TypeScript is
+// happy without the factory abstraction.
+function makeTodoBlob(
+  spaceId: number,
+  userId: number,
+  overrides: { text?: string } = {}
+): Omit<CreationAttributes<ProjectTaskModel>, "workspaceId"> {
+  return {
+    spaceId,
+    userId,
+    createdByType: "user",
+    createdByUserId: userId,
+    createdByAgentConfigurationId: null,
+    markedAsDoneByType: null,
+    markedAsDoneByUserId: null,
+    markedAsDoneByAgentConfigurationId: null,
+    category: "to_do",
+    text: overrides.text ?? "Test todo",
+    status: "todo",
+    doneAt: null,
+    actorRationale: null,
+    agentInstructions: null,
+    agentSuggestionStatus: null,
+    agentSuggestionReviewedAt: null,
+    agentSuggestionReviewedByUserId: null,
+  };
+}
+
+describe("ProjectTaskResource", () => {
+  let workspace: LightWorkspaceType;
+  let user: UserResource;
+  let auth: Authenticator;
+  let space: SpaceResource;
+  let otherSpace: SpaceResource;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({ role: "user" });
+    workspace = setup.workspace;
+    user = setup.user;
+    auth = setup.authenticator;
+    space = setup.globalSpace;
+    otherSpace = setup.systemSpace;
+  });
+
+  describe("makeNew", () => {
+    it("should create a todo with a stable sId starting with 'ptd_'", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "My todo" })
+      );
+
+      expect(todo.sId).toMatch(/^ptd_/);
+      expect(todo.workspaceId).toBe(workspace.id);
+      expect(todo.userId).toBe(user.id);
+      expect(todo.text).toBe("My todo");
+      expect(todo.status).toBe("todo");
+    });
+
+    it("should compute the same sId as modelIdToSId", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      const computed = ProjectTaskResource.modelIdToSId({
+        id: todo.id,
+        workspaceId: todo.workspaceId,
+      });
+
+      expect(todo.sId).toBe(computed);
+    });
+
+    // Regression: the merge workflow creates agent-owned todos. The Sequelize
+    // createdByXor validator compares `this.createdByUserId !== null`, so the
+    // field must be explicitly null — omitting it leaves it undefined and
+    // trips the validator.
+    it("should create an agent-owned todo when createdByUserId is explicitly null", async () => {
+      const todo = await ProjectTaskResource.makeNew(auth, {
+        spaceId: space.id,
+        userId: user.id,
+        createdByType: "agent",
+        createdByUserId: null,
+        createdByAgentConfigurationId: "butler",
+        markedAsDoneByType: null,
+        markedAsDoneByUserId: null,
+        markedAsDoneByAgentConfigurationId: null,
+        text: "Agent-created todo",
+        status: "todo",
+        doneAt: null,
+        actorRationale: null,
+      });
+
+      expect(todo.createdByType).toBe("agent");
+      expect(todo.createdByUserId).toBeNull();
+      expect(todo.createdByAgentConfigurationId).toBe("butler");
+    });
+
+    it("should reject an agent-owned todo when createdByUserId is omitted", async () => {
+      await expect(
+        ProjectTaskResource.makeNew(auth, {
+          spaceId: space.id,
+          userId: user.id,
+          createdByType: "agent",
+          createdByAgentConfigurationId: "butler",
+          markedAsDoneByType: null,
+          markedAsDoneByUserId: null,
+          markedAsDoneByAgentConfigurationId: null,
+          category: "to_do",
+          text: "Agent-created todo",
+          status: "todo",
+          doneAt: null,
+          actorRationale: null,
+        } as unknown as CreationAttributes<ProjectTaskModel>)
+      ).rejects.toThrow(
+        "createdByType is agent: createdByAgentConfigurationId must be set and createdByUserId must be null."
+      );
+    });
+  });
+
+  describe("fetchBySId", () => {
+    it("should fetch a todo by its stable sId", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Fetchable todo" })
+      );
+
+      const fetched = await ProjectTaskResource.fetchBySId(auth, todo.sId);
+
+      expect(fetched).not.toBeNull();
+      expect(fetched?.sId).toBe(todo.sId);
+      expect(fetched?.text).toBe("Fetchable todo");
+    });
+
+    it("should return null for a non-existent sId", async () => {
+      const fetched = await ProjectTaskResource.fetchBySId(
+        auth,
+        "ptd_doesnotexist"
+      );
+      expect(fetched).toBeNull();
+    });
+
+    it("should not fetch a todo that belongs to a different workspace", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      const otherSetup = await createResourceTest({ role: "user" });
+      const fetched = await ProjectTaskResource.fetchBySId(
+        otherSetup.authenticator,
+        todo.sId
+      );
+
+      expect(fetched).toBeNull();
+    });
+  });
+
+  describe("updateWithVersion", () => {
+    it("should update the main row and preserve the sId", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Original" })
+      );
+      const originalId = todo.sId;
+
+      const updated = await todo.updateWithVersion(auth, { text: "Updated" });
+
+      expect(updated.sId).toBe(originalId);
+      expect(updated.text).toBe("Updated");
+    });
+
+    it("should persist the update so a subsequent fetch returns the new value", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Before" })
+      );
+
+      await todo.updateWithVersion(auth, { text: "After" });
+
+      const fetched = await ProjectTaskResource.fetchBySId(auth, todo.sId);
+      expect(fetched?.text).toBe("After");
+    });
+
+    it("should allow multiple successive updates", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      const v1 = await todo.updateWithVersion(auth, { text: "Version 1" });
+      const v2 = await v1.updateWithVersion(auth, { text: "Version 2" });
+
+      expect(v2.text).toBe("Version 2");
+      expect(v2.sId).toBe(todo.sId);
+    });
+
+    it("should throw when called with a different workspace's auth", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Original" })
+      );
+
+      const otherSetup = await createResourceTest({ role: "user" });
+
+      await expect(
+        todo.updateWithVersion(otherSetup.authenticator, {
+          text: "Cross-tenant",
+        })
+      ).rejects.toThrow("Workspace mismatch");
+
+      // Confirm the database row is unchanged.
+      const fetched = await ProjectTaskResource.fetchBySId(auth, todo.sId);
+      expect(fetched?.text).toBe("Original");
+    });
+
+    it("should support marking a todo as done", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      const updated = await todo.updateWithVersion(auth, {
+        status: "done",
+        markedAsDoneByType: "user",
+        markedAsDoneByUserId: user.id,
+        markedAsDoneByAgentConfigurationId: null,
+      });
+
+      expect(updated.status).toBe("done");
+      expect(updated.markedAsDoneByType).toBe("user");
+      expect(updated.markedAsDoneByUserId).toBe(user.id);
+    });
+  });
+
+  describe("fetchLatestBySpace", () => {
+    it("should return todos belonging to the authenticated user in the space", async () => {
+      await ProjectTaskResource.makeNew(auth, makeTodoBlob(space.id, user.id));
+      await ProjectTaskResource.makeNew(auth, makeTodoBlob(space.id, user.id));
+
+      const todos = await ProjectTaskResource.fetchLatestBySpace(auth, {
+        spaceId: space.id,
+      });
+
+      expect(todos.length).toBeGreaterThanOrEqual(2);
+      for (const t of todos) {
+        expect(t.workspaceId).toBe(workspace.id);
+        expect(t.userId).toBe(user.id);
+      }
+    });
+
+    it("should not return todos from a different user in the same space", async () => {
+      // Create a second user in the same workspace.
+      const otherSetup = await createResourceTest({ role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherSetup.user.sId,
+        workspace.sId
+      );
+
+      // Create one todo for user and one for otherUser in the same space.
+      await ProjectTaskResource.makeNew(auth, makeTodoBlob(space.id, user.id));
+      await ProjectTaskResource.makeNew(
+        otherAuth,
+        makeTodoBlob(space.id, otherSetup.user.id)
+      );
+
+      // fetchLatestBySpace is scoped to the current user.
+      const todosForUser = await ProjectTaskResource.fetchLatestBySpace(auth, {
+        spaceId: space.id,
+      });
+
+      for (const t of todosForUser) {
+        expect(t.userId).toBe(user.id);
+      }
+    });
+  });
+
+  describe("upsertSource", () => {
+    it("should not create a new source when called twice with the same itemId", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      await todo.upsertSource(auth, {
+        itemId: "item-1",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-msg-1",
+          sourceTitle: "First title",
+          sourceUrl: "https://slack/1",
+        },
+      });
+
+      await todo.upsertSource(auth, {
+        itemId: "item-1",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-msg-1",
+          sourceTitle: "Updated title",
+          sourceUrl: "https://slack/1-updated",
+        },
+      });
+
+      const byTodoId = await ProjectTaskResource.fetchSourcesForTaskIds(auth, {
+        sIds: [todo.sId],
+      });
+      const sources = byTodoId.get(todo.sId) ?? [];
+
+      expect(sources).toHaveLength(1);
+      expect(sources[0]).toMatchObject({
+        sourceType: "slack",
+        sourceId: "slack-msg-1",
+        sourceTitle: "Updated title",
+        sourceUrl: "https://slack/1-updated",
+      });
+    });
+
+    it("should create separate sources for different sourceIds", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      await todo.upsertSource(auth, {
+        itemId: "item-1",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-msg-1",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      await todo.upsertSource(auth, {
+        itemId: "item-2",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-msg-2",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const byTodoId = await ProjectTaskResource.fetchSourcesForTaskIds(auth, {
+        sIds: [todo.sId],
+      });
+      const sources = byTodoId.get(todo.sId) ?? [];
+
+      expect(sources).toHaveLength(2);
+      expect(sources.map((s) => s.sourceId).sort()).toEqual([
+        "slack-msg-1",
+        "slack-msg-2",
+      ]);
+    });
+
+    it("should create separate sources for different sourceTypes with the same sourceId", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      await todo.upsertSource(auth, {
+        itemId: "item-1",
+        source: {
+          sourceType: "slack",
+          sourceId: "shared-id",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      await todo.upsertSource(auth, {
+        itemId: "item-2",
+        source: {
+          sourceType: "notion",
+          sourceId: "shared-id",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const byTodoId = await ProjectTaskResource.fetchSourcesForTaskIds(auth, {
+        sIds: [todo.sId],
+      });
+      const sources = byTodoId.get(todo.sId) ?? [];
+
+      expect(sources).toHaveLength(2);
+      expect(sources.map((s) => s.sourceType).sort()).toEqual([
+        "notion",
+        "slack",
+      ]);
+    });
+
+    it("should create separate sources for different itemIds even with the same (sourceType, sourceId)", async () => {
+      const otherSetup = await createResourceTest({ role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherSetup.user.sId,
+        workspace.sId
+      );
+
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+      const otherTodo = await ProjectTaskResource.makeNew(
+        otherAuth,
+        makeTodoBlob(space.id, otherSetup.user.id)
+      );
+
+      const source = {
+        sourceType: "slack" as const,
+        sourceId: "slack-msg-shared",
+        sourceTitle: null,
+        sourceUrl: null,
+      };
+
+      await todo.upsertSource(auth, { itemId: "item-1", source });
+      await otherTodo.upsertSource(otherAuth, { itemId: "item-2", source });
+
+      const ownerSources = await ProjectTaskResource.fetchSourcesForTaskIds(
+        auth,
+        { sIds: [todo.sId] }
+      );
+      const otherSources = await ProjectTaskResource.fetchSourcesForTaskIds(
+        otherAuth,
+        { sIds: [otherTodo.sId] }
+      );
+
+      expect(ownerSources.get(todo.sId) ?? []).toHaveLength(1);
+      expect(otherSources.get(otherTodo.sId) ?? []).toHaveLength(1);
+    });
+  });
+
+  describe("fetchBySpace", () => {
+    it("should hide done todos in the active scope", async () => {
+      const done = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Done todo" })
+      );
+      await done.updateWithVersion(auth, {
+        status: "done",
+        doneAt: new Date(),
+        markedAsDoneByType: "user",
+        markedAsDoneByUserId: user.id,
+        markedAsDoneByAgentConfigurationId: null,
+      });
+
+      const visible = await ProjectTaskResource.fetchBySpace(auth, {
+        spaceId: space.id,
+        timeScope: "active",
+      });
+
+      expect(visible.map((t) => t.sId)).not.toContain(done.sId);
+    });
+
+    it("should still return todos with pending agentSuggestionStatus", async () => {
+      const pending = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Pending suggestion" })
+      );
+      await pending.updateWithVersion(auth, {
+        agentSuggestionStatus: "pending",
+      });
+
+      const visible = await ProjectTaskResource.fetchBySpace(auth, {
+        spaceId: space.id,
+        timeScope: "active",
+      });
+
+      expect(visible.map((t) => t.sId)).toContain(pending.sId);
+    });
+  });
+
+  describe("fetchByItemIds", () => {
+    it("returns an empty map when no itemIds are provided", async () => {
+      const result = await ProjectTaskResource.fetchByItemIds(auth, {
+        itemIds: [],
+      });
+      expect(result.size).toBe(0);
+    });
+
+    it("returns an empty map when none of the itemIds are linked", async () => {
+      const result = await ProjectTaskResource.fetchByItemIds(auth, {
+        itemIds: ["ghost-item-1", "ghost-item-2"],
+      });
+      expect(result.size).toBe(0);
+    });
+
+    it("returns a single-element array when one todo is linked to an itemId", async () => {
+      const todo = await ProjectTaskResource.makeNewWithSource(auth, {
+        blob: makeTodoBlob(space.id, user.id),
+        itemId: "item-single",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-A",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const result = await ProjectTaskResource.fetchByItemIds(auth, {
+        itemIds: ["item-single"],
+      });
+
+      const todos = result.get("item-single")?.get(user.id);
+      expect(todos).toHaveLength(1);
+      expect(todos?.[0].sId).toBe(todo.sId);
+    });
+
+    it("wraps the linked todo in a single-element array", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+      await todo.upsertSource(auth, {
+        itemId: "item-array-check",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-Z",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const result = await ProjectTaskResource.fetchByItemIds(auth, {
+        itemIds: ["item-array-check"],
+      });
+
+      const todos = result.get("item-array-check")?.get(user.id);
+      expect(Array.isArray(todos)).toBe(true);
+      expect(todos).toHaveLength(1);
+      expect(todos?.[0].sId).toBe(todo.sId);
+    });
+
+    it("returns an array with multiple todos when several todos are linked to the same itemId and userId", async () => {
+      const todo1 = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "First" })
+      );
+      await todo1.upsertSource(auth, {
+        itemId: "item-multi",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-A",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const todo2 = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Second" })
+      );
+      await todo2.upsertSource(auth, {
+        itemId: "item-multi",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-B",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const result = await ProjectTaskResource.fetchByItemIds(auth, {
+        itemIds: ["item-multi"],
+      });
+
+      const todos = result.get("item-multi")?.get(user.id) ?? [];
+      expect(todos).toHaveLength(2);
+      const sIds = todos.map((t) => t.sId).sort();
+      expect(sIds).toContain(todo1.sId);
+      expect(sIds).toContain(todo2.sId);
+    });
+
+    it("keeps todos from different users under separate keys in the inner map", async () => {
+      const otherSetup = await createResourceTest({ role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherSetup.user.sId,
+        workspace.sId
+      );
+
+      await ProjectTaskResource.makeNewWithSource(auth, {
+        blob: makeTodoBlob(space.id, user.id),
+        itemId: "item-two-users",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-user1",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+      await ProjectTaskResource.makeNewWithSource(otherAuth, {
+        blob: makeTodoBlob(space.id, otherSetup.user.id),
+        itemId: "item-two-users",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-user2",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const result = await ProjectTaskResource.fetchByItemIds(auth, {
+        itemIds: ["item-two-users"],
+      });
+
+      const byUser = result.get("item-two-users");
+      expect(byUser?.get(user.id)).toHaveLength(1);
+      expect(byUser?.get(otherSetup.user.id)).toHaveLength(1);
+    });
+  });
+
+  describe("delete", () => {
+    it("should delete the todo so fetchBySId returns null afterwards", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+      const sId = todo.sId;
+
+      const result = await todo.delete(auth, {});
+      expect(result.isOk()).toBe(true);
+
+      const fetched = await ProjectTaskResource.fetchBySId(auth, sId);
+      expect(fetched).toBeNull();
+    });
+
+    it("should also delete version snapshots created by updateWithVersion", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+      const updated = await todo.updateWithVersion(auth, { text: "v1" });
+      const sId = updated.sId;
+
+      await updated.delete(auth, {});
+
+      // The main row is gone — no observable version leakage through the public API.
+      const fetched = await ProjectTaskResource.fetchBySId(auth, sId);
+      expect(fetched).toBeNull();
+    });
+  });
+
+  describe("deleteAllBySpace", () => {
+    it("should delete soft-deleted todos and their child rows", async () => {
+      const todo = await ProjectTaskResource.makeNewWithSource(auth, {
+        blob: makeTodoBlob(space.id, user.id),
+        itemId: "item-delete-space",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-delete-space",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+      const conversation = await ConversationResource.makeNew(
+        auth,
+        {
+          sId: generateRandomModelSId(),
+          title: "Project task cleanup",
+          visibility: "test",
+          spaceId: space.id,
+          requestedSpaceIds: [space.id],
+          metadata: {},
+        },
+        space
+      );
+      await todo.addConversation(auth, {
+        conversationModelId: conversation.id,
+      });
+      await todo.softDelete(auth);
+
+      const otherTodo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(otherSpace.id, user.id)
+      );
+
+      await ProjectTaskResource.deleteAllBySpace(auth, {
+        spaceModelId: space.id,
+      });
+
+      await expect(
+        ProjectTaskResource.fetchByModelIdWithDeleted(auth, todo.id)
+      ).resolves.toBeNull();
+
+      const sources = await ProjectTaskResource.fetchSourcesForTaskIds(auth, {
+        sIds: [todo.sId],
+      });
+      expect(sources.get(todo.sId) ?? []).toHaveLength(0);
+
+      const conversations =
+        await ProjectTaskResource.fetchConversationIdsForTaskIds(auth, {
+          sIds: [todo.sId],
+        });
+      expect(conversations.has(todo.sId)).toBe(false);
+
+      await expect(
+        ProjectTaskResource.fetchByModelIdWithDeleted(auth, otherTodo.id)
+      ).resolves.not.toBeNull();
+    });
+  });
+});

@@ -39,7 +39,7 @@ Test scenarios are plain TypeScript objects defining existing TODOs (sId + text)
 **Layer 2 — Execution** (`lib/dedup-executor.ts`)
 
 Calls the real `runDeduplicationLLMCall` from `@app/lib/project_todo/deduplicate_candidates`,
-passing lightweight mock objects for `ProjectTodoResource`. This tests the full pipeline: prompt
+passing lightweight mock objects for `ProjectTaskResource`. This tests the full pipeline: prompt
 building, LLM call, and response parsing.
 
 **Layer 3 — Scoring** (`lib/assertions.ts` + `lib/judge.ts`)
@@ -58,7 +58,7 @@ Fails if either scoring mechanism doesn't meet the threshold.
 ### Mock strategy
 
 `runDeduplicationLLMCall` only accesses `.sId` and `.text` on existing TODO objects (for prompt
-building). The executor casts minimal `{ sId, text }` objects as `ProjectTodoResource` to avoid
+building). The executor casts minimal `{ sId, text }` objects as `ProjectTaskResource` to avoid
 any database dependency — matching the reinforcement-evals pattern of keeping evals DB-free.
 
 ### Scenario types

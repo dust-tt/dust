@@ -11,17 +11,16 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import { ActiveRoleSchema } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type PostMemberInvitationsResponseBody = {
   invitation: MembershipInvitationType;
 };
 
-export const PostMemberInvitationBodySchema = t.type({
-  status: t.union([t.literal("revoked"), t.literal("pending")]),
+export const PostMemberInvitationBodySchema = z.object({
+  status: z.enum(["revoked", "pending"]),
   initialRole: ActiveRoleSchema,
 });
 
@@ -68,9 +67,9 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostMemberInvitationBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostMemberInvitationBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -79,7 +78,7 @@ async function handler(
           },
         });
       }
-      const body = bodyValidation.right;
+      const body = bodyValidation.data;
 
       const previousStatus = invitation.status;
       const previousRole = invitation.initialRole;
@@ -100,7 +99,7 @@ async function handler(
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
-            invitedEmail: invitation.inviteEmail,
+            invited_email: invitation.inviteEmail,
           },
         });
       }
@@ -118,9 +117,9 @@ async function handler(
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
-            invitedEmail: invitation.inviteEmail,
-            previousRole: String(previousRole),
-            newRole: String(body.initialRole),
+            invited_email: invitation.inviteEmail,
+            previous_role: String(previousRole),
+            new_role: String(body.initialRole),
           },
         });
       }

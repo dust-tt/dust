@@ -9,9 +9,9 @@
     }
   ],
   "metadata": {
-    "dataSourceName": "string",
+    "data_source_name": "string",
     "provider": "string",
-    "newConnectionId": "string",
+    "new_connection_id": "string",
     "actor_type": "string"
   }
 }

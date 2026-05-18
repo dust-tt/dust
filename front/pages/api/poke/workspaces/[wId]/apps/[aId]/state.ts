@@ -7,7 +7,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { PostStateResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/state";
 import { PostStateRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/state";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
@@ -64,8 +63,8 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const body = PostStateRequestBodySchema.decode(req.body);
-      if (isLeft(body)) {
+      const body = PostStateRequestBodySchema.safeParse(req.body);
+      if (!body.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -81,11 +80,11 @@ async function handler(
         savedConfig: string;
         savedRun?: string;
       } = {
-        savedSpecification: body.right.specification,
-        savedConfig: body.right.config,
+        savedSpecification: body.data.specification,
+        savedConfig: body.data.config,
       };
 
-      if (body.right.run) {
+      if (body.data.run) {
         updateParams.savedRun = req.body.run;
       }
 

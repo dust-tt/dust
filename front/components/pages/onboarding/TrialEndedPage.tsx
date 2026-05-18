@@ -1,9 +1,7 @@
 import { DontLoseSection } from "@app/components/paywall/DontLoseSection";
 import { TrialPricingCard } from "@app/components/paywall/TrialPricingCard";
-import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import type { BillingPeriod } from "@app/types/plan";
 import { Card, ContentMessage, DustLogo } from "@dust-tt/sparkle";
@@ -13,40 +11,13 @@ import React, { useState } from "react";
 export function TrialEndedPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
-  const sendNotification = useSendNotification();
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
 
   const { submit: handleSubscribePlan, isSubmitting } = useSubmitFunction(
     async (period: BillingPeriod) => {
-      const res = await clientFetch(`/api/w/${workspace.sId}/subscriptions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          billingPeriod: period,
-        }),
-      });
-
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Subscription failed",
-          description: "Failed to subscribe to a new plan.",
-        });
-      } else {
-        const content = await res.json();
-        if (content.checkoutUrl) {
-          await router.push(content.checkoutUrl);
-        } else {
-          sendNotification({
-            type: "error",
-            title: "Subscription failed",
-            description:
-              "Failed to subscribe to a new plan. Please try again in a few minutes.",
-          });
-        }
-      }
+      await router.push(
+        `/w/${workspace.sId}/subscription/checkout?billingPeriod=${period}`
+      );
     }
   );
 

@@ -32,6 +32,10 @@ export function SkillBuilderSuggestionsPanel() {
     () => getValues("instructionsHtml") ?? "",
     [getValues]
   );
+  const getCurrentAgentFacingDescription = useCallback(
+    () => getValues("agentFacingDescription") ?? "",
+    [getValues]
+  );
   const { mcpServerViews } = useMCPServerViewsContext();
 
   const { suggestions, isSuggestionsLoading, mutateSuggestions } =
@@ -79,12 +83,27 @@ export function SkillBuilderSuggestionsPanel() {
     [getValues, setValue, mcpServerViews]
   );
 
+  const applyAgentFacingDescriptionEdit = useCallback(
+    (suggestion: SkillSuggestionType) => {
+      const { agentFacingDescriptionEdit } = suggestion.suggestion;
+      if (!agentFacingDescriptionEdit) {
+        return;
+      }
+      setValue("agentFacingDescription", agentFacingDescriptionEdit.content, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    },
+    [setValue]
+  );
+
   const handleAccept = useCallback(
     async (suggestion: SkillSuggestionType) => {
       const result = await patchSuggestions([suggestion.sId], "approved");
       if (result) {
         acceptInstructionEdits?.(suggestion.sId);
         applyToolEdits(suggestion);
+        applyAgentFacingDescriptionEdit(suggestion);
         setSelectedSuggestionId(null);
         await mutateSuggestions();
       }
@@ -94,6 +113,7 @@ export function SkillBuilderSuggestionsPanel() {
       mutateSuggestions,
       acceptInstructionEdits,
       applyToolEdits,
+      applyAgentFacingDescriptionEdit,
       setSelectedSuggestionId,
     ]
   );
@@ -158,8 +178,12 @@ export function SkillBuilderSuggestionsPanel() {
                 onAccept={handleAccept}
                 onDecline={handleDecline}
                 getSkillInstructionsHtml={getSkillInstructionsHtml}
+                getCurrentAgentFacingDescription={
+                  getCurrentAgentFacingDescription
+                }
                 isSelected={selectedSuggestionId === suggestion.sId}
                 onSelect={() => handleSelect(suggestion.sId)}
+                workspaceId={owner.sId}
               />
             ))
           )}

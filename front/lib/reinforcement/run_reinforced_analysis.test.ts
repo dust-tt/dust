@@ -74,3 +74,71 @@ describe("TOOL_SCHEMAS.edit_skill title validation", () => {
     expect(parsed.success).toBe(true);
   });
 });
+
+describe("TOOL_SCHEMAS.edit_skill agentFacingDescriptionEdit", () => {
+  it("accepts a description-only edit (no instruction or tool edits)", () => {
+    const parsed = TOOL_SCHEMAS.edit_skill.safeParse({
+      skillId: "skl_abc",
+      agentFacingDescriptionEdit: {
+        content: "Use this skill when answering pricing questions.",
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("accepts a description edit alongside instruction/tool edits", () => {
+    const parsed = TOOL_SCHEMAS.edit_skill.safeParse({
+      skillId: "skl_abc",
+      instructionEdits: [
+        {
+          targetBlockId: "abc12345",
+          content: "<p>Updated.</p>",
+          type: "replace",
+        },
+      ],
+      toolEdits: [{ action: "add" as const, toolId: "tool_x" }],
+      agentFacingDescriptionEdit: { content: "New description." },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects an empty description content", () => {
+    const parsed = TOOL_SCHEMAS.edit_skill.safeParse({
+      skillId: "skl_abc",
+      agentFacingDescriptionEdit: { content: "" },
+    });
+    expect(parsed.success).toBe(false);
+  });
+});
+
+describe("buildReinforcedSkillsLLMParams edit_skill spec", () => {
+  it("exposes agentFacingDescriptionEdit on the analyze edit_skill input schema", () => {
+    const params = buildReinforcedSkillsLLMParams(
+      { systemPrompt: "System.", userMessage: "User." },
+      "reinforcement_analyze_conversation"
+    );
+    const editSkillSpec = params.specifications?.find(
+      (s) => s.name === "edit_skill"
+    );
+    expect(editSkillSpec).toBeDefined();
+    // The JSON schema goes to the LLM verbatim — make sure the new field is
+    // discoverable by name.
+    expect(JSON.stringify(editSkillSpec?.inputSchema)).toContain(
+      "agentFacingDescriptionEdit"
+    );
+  });
+
+  it("exposes agentFacingDescriptionEdit on the aggregate edit_skill input schema", () => {
+    const params = buildReinforcedSkillsLLMParams(
+      { systemPrompt: "System.", userMessage: "User." },
+      "reinforcement_aggregate_suggestions"
+    );
+    const editSkillSpec = params.specifications?.find(
+      (s) => s.name === "edit_skill"
+    );
+    expect(editSkillSpec).toBeDefined();
+    expect(JSON.stringify(editSkillSpec?.inputSchema)).toContain(
+      "agentFacingDescriptionEdit"
+    );
+  });
+});

@@ -1,10 +1,17 @@
 import { lookup } from "node:dns/promises";
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
+import {
+  EGRESS_SECRETS_PATH,
+  writeEgressSecretsFile,
+} from "@app/lib/api/sandbox/egress_secrets";
+import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 
 const EGRESS_FORWARDER_LISTEN_ADDR = "127.0.0.1:9990";
@@ -16,6 +23,18 @@ const EGRESS_SETUP_WAIT_RETRIES = 6;
 const EGRESS_SETUP_WAIT_MS = 500;
 const EGRESS_JWT_TTL_SECONDS = 24 * 60 * 60;
 const MAX_DENY_LOG_LINES_PER_EXEC = 20;
+
+// dsbx owns /run/dust/egress-ca.pem and reuses the file across restarts when
+// it's present; load_or_generate handles a missing file by minting a new CA.
+const MITM_CA_PATH = "/run/dust/egress-ca.pem";
+const MITM_CA_BUNDLE_PATH = "/etc/dust/ca-bundle.pem";
+// Sentinel written atomically alongside the merged bundle so the health probe
+// can distinguish "installMitmTrustBundle ran successfully" from "image-seeded
+// system-only placeholder". Without it, [ -s ca-bundle.pem ] is true the
+// moment the sandbox boots and the bundle self-heal never fires.
+const MITM_CA_BUNDLE_MARKER_PATH = "/etc/dust/.ca-bundle.merged";
+const MITM_SYSTEM_CA_DEST = "/usr/local/share/ca-certificates/dust-egress.crt";
+const MITM_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
 
 const REGION_PROXY_PREFIX = {
   "europe-west1": "eu",
@@ -33,10 +52,6 @@ function getProxyHost(): string {
 
 function getProxyTlsName(): string {
   return config.getEgressProxyTlsName() ?? getProxyHost();
-}
-
-function shellEscape(value: string): string {
-  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 async function sleep(delayMs: number): Promise<void> {
@@ -87,29 +102,176 @@ export function mintEgressJwt(providerId: string, workspaceId: string): string {
   );
 }
 
+const INVALIDATION_JWT_TTL_SECONDS = 60;
+
+export function mintEgressInvalidationJwt({
+  workspaceId,
+  sandboxId,
+}: {
+  workspaceId?: string;
+  sandboxId?: string;
+}): string {
+  return jwt.sign(
+    {
+      iss: "dust-front",
+      aud: "dust-egress-proxy",
+      action: "invalidate-policy",
+      ...(workspaceId ? { wId: workspaceId } : {}),
+      ...(sandboxId ? { sbId: sandboxId } : {}),
+    },
+    config.getEgressProxyJwtSecret(),
+    {
+      algorithm: "HS256",
+      expiresIn: INVALIDATION_JWT_TTL_SECONDS,
+    }
+  );
+}
+
+type EgressHealthState = {
+  portOk: boolean;
+  bundleOk: boolean;
+};
+
 export async function checkEgressForwarderHealth(
   auth: Authenticator,
   sandbox: SandboxResource
-): Promise<Result<boolean, Error>> {
-  // Use ss to check if the port is bound locally rather than nc -z which opens
-  // a real TCP connection through the forwarder, triggering a proxy round-trip
-  // and noisy <unknown> deny log entries on every health check.
-  const healthResult = await sandbox.exec(
+): Promise<Result<EgressHealthState, Error>> {
+  // Probe both signals in one exec. ss avoids opening a real TCP connection
+  // through the forwarder (nc -z would trigger a proxy round-trip and a noisy
+  // <unknown> deny log entry on every check). The bundle check looks for the
+  // merge sentinel rather than just the bundle file, because the image seeds
+  // a system-only ca-bundle.pem at build time so SSL_CERT_FILE always points
+  // at a valid file; bare `-s` would be true even before installMitmTrustBundle
+  // ever ran. The two signals are reported separately so callers can remediate
+  // them independently (a missing bundle does not require a dsbx restart).
+  const result = await sandbox.exec(
     auth,
-    "ss -tln sport = :9990 | grep -q LISTEN",
+    `p=0; b=0; ` +
+      `ss -tln sport = :9990 | grep -q LISTEN && p=1; ` +
+      `[ -s ${shellEscape(MITM_CA_BUNDLE_PATH)} ] && ` +
+      `[ -f ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)} ] && b=1; ` +
+      `echo "$p $b"`,
     { timeoutMs: 1_000 }
   );
 
+  if (result.isErr()) {
+    return result;
+  }
+
+  const [portRaw, bundleRaw] = result.value.stdout.trim().split(/\s+/);
+  return new Ok({
+    portOk: portRaw === "1",
+    bundleOk: bundleRaw === "1",
+  });
+}
+
+// Egress prep that runs before GCS mounts: in prod, starts the forwarder; in
+// dev-unrestricted mode, tears down the in-sandbox nftables redirect so
+// traffic flows direct out of the (now permissive) E2B network. Pairs with
+// the network policy chosen in getSandboxImage().
+export async function prepareSandboxEgressBeforeMount(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<void, Error>> {
+  if (config.getSandboxDevUnrestrictedEgress()) {
+    return teardownInSandboxEgressRedirect(auth, sandbox);
+  }
+  return setupEgressForwarder(auth, sandbox);
+}
+
+// Egress check that runs after GCS mounts on every exec: in prod, verifies
+// the forwarder is still healthy and restarts it if not. In dev-unrestricted
+// mode, re-runs the teardown when resuming from sleep (where systemd may have
+// re-enabled the unit on the next boot); otherwise no-op.
+export async function ensureSandboxEgressOnExec(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  { wokeFromSleep }: { wokeFromSleep: boolean }
+): Promise<Result<void, Error>> {
+  if (config.getSandboxDevUnrestrictedEgress()) {
+    if (wokeFromSleep) {
+      return teardownInSandboxEgressRedirect(auth, sandbox);
+    }
+    return new Ok(undefined);
+  }
+
+  if (wokeFromSleep) {
+    logger.info(
+      {
+        event: "egress.restart_after_wake",
+        providerId: sandbox.providerId,
+        sandboxId: sandbox.sId,
+      },
+      "Sandbox woke from sleep, re-running full egress setup"
+    );
+    return setupEgressForwarder(auth, sandbox, { restartExisting: true });
+  }
+
+  const healthResult = await checkEgressForwarderHealth(auth, sandbox);
   if (healthResult.isErr()) {
     return healthResult;
   }
 
-  return new Ok(healthResult.value.exitCode === 0);
+  const { portOk, bundleOk } = healthResult.value;
+  const baseLogContext = {
+    providerId: sandbox.providerId,
+    sandboxId: sandbox.sId,
+  };
+
+  if (!portOk) {
+    logger.warn(
+      { ...baseLogContext, event: "egress.health_fail" },
+      "Sandbox egress forwarder port not listening, restarting"
+    );
+    return setupEgressForwarder(auth, sandbox, { restartExisting: true });
+  }
+
+  if (!bundleOk) {
+    // dsbx is fine but the trust bundle was never installed (or was lost).
+    // Reinstall idempotently without disrupting the running forwarder.
+    logger.warn(
+      { ...baseLogContext, event: "egress.bundle_missing" },
+      "Sandbox egress trust bundle missing, reinstalling"
+    );
+    return installMitmTrustBundle(auth, sandbox);
+  }
+
+  logger.info(
+    { ...baseLogContext, event: "egress.health_ok" },
+    "Sandbox egress forwarder health check succeeded"
+  );
+  return new Ok(undefined);
+}
+
+// Dev-only: tear down the in-sandbox nftables redirect baked into the image
+// (see egress-nftables.sh in the image registry) so agent-proxied traffic
+// flows direct out of the (now permissive) E2B network, instead of being
+// redirected to the local forwarder port that has no listener in this mode.
+// Idempotent: safe to call on every fresh sandbox.
+export async function teardownInSandboxEgressRedirect(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<void, Error>> {
+  if (!isDevelopment()) {
+    return new Err(
+      new Error(
+        "teardownInSandboxEgressRedirect is dev-only and must not be called in production"
+      )
+    );
+  }
+
+  const command =
+    "systemctl disable --now dust-egress-nftables.service >/dev/null 2>&1 || true; " +
+    "nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
+    "nft delete table ip6 dust-egress >/dev/null 2>&1 || true";
+
+  return runSuccessfulSandboxCommand(auth, sandbox, command, "root");
 }
 
 export async function setupEgressForwarder(
   auth: Authenticator,
-  sandbox: SandboxResource
+  sandbox: SandboxResource,
+  { restartExisting = false }: { restartExisting?: boolean } = {}
 ): Promise<Result<void, Error>> {
   const logContext = {
     event: "egress.setup",
@@ -121,7 +283,7 @@ export async function setupEgressForwarder(
   try {
     proxyAddr = await resolveProxyAddr();
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 
   const token = mintEgressJwt(
@@ -147,13 +309,40 @@ export async function setupEgressForwarder(
     return prepareTokenResult;
   }
 
+  // Write the secrets file before killing the old dsbx so a write failure
+  // leaves the existing forwarder running instead of taking it down with
+  // nothing to replace it.
+  const secretsWriteResult = await writeEgressSecretsFile(auth, sandbox);
+  if (secretsWriteResult.isErr()) {
+    return secretsWriteResult;
+  }
+
+  if (restartExisting) {
+    const killResult = await killEgressForwarder(auth, sandbox);
+    if (killResult.isErr()) {
+      return killResult;
+    }
+  }
+
+  // Strip every trust-bundle env var we (or any agent runtime) might set on
+  // the sandbox process from dsbx's own environment. dsbx talks to the
+  // central proxy with a vendored TLS root and must NOT be reconfigured to
+  // trust the merged ca-bundle.pem (which contains its own CA, opening a
+  // forge-and-tunnel loop). The list intentionally overshoots
+  // buildSandboxEnvVars (-u on an unset var is a harmless no-op) so this
+  // stays correct if a future env var gets added there.
   const startForwarderCommand =
-    "nohup /opt/bin/dsbx forward " +
+    "nohup env " +
+    "-u SSL_CERT_FILE -u SSL_CERT_DIR -u CURL_CA_BUNDLE " +
+    "-u REQUESTS_CA_BUNDLE -u AWS_CA_BUNDLE -u GIT_SSL_CAINFO " +
+    "-u NODE_EXTRA_CA_CERTS -u DENO_CERT -u DENO_TLS_CA_STORE " +
+    "/opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
     `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +
     `--proxy-tls-name ${shellEscape(getProxyTlsName())} ` +
     `--listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
     `--deny-log ${shellEscape(EGRESS_DENY_LOG_PATH)} ` +
+    `--secrets-file ${shellEscape(EGRESS_SECRETS_PATH)} ` +
     `>${shellEscape(EGRESS_FORWARDER_LOG_PATH)} 2>&1 &`;
 
   const startResult = await runSuccessfulSandboxCommand(
@@ -171,9 +360,11 @@ export async function setupEgressForwarder(
     if (healthResult.isErr()) {
       return healthResult;
     }
-    if (healthResult.value) {
+    // Setup only waits on the port; the bundle gets installed below and is
+    // checked on subsequent execs by ensureSandboxEgressOnExec.
+    if (healthResult.value.portOk) {
       logger.info(logContext, "Sandbox egress forwarder is healthy");
-      return new Ok(undefined);
+      return installMitmTrustBundle(auth, sandbox);
     }
 
     await sleep(EGRESS_SETUP_WAIT_MS);
@@ -182,6 +373,46 @@ export async function setupEgressForwarder(
   return new Err(
     new Error("Sandbox egress forwarder did not become healthy in time")
   );
+}
+
+async function killEgressForwarder(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<void, Error>> {
+  // Restarts only happen when no client is using dsbx (after wake, before the
+  // agent loop runs; or after a failed health check, when the listener isn't
+  // serving anyway). SIGKILL is fine, no graceful shutdown needed.
+  return runSuccessfulSandboxCommand(
+    auth,
+    sandbox,
+    "pkill -KILL dsbx >/dev/null 2>&1 || true",
+    "root"
+  );
+}
+
+// Produces a merged bundle (system roots + dsbx persistent CA) so replace-style
+// trust env vars can point at one file without breaking public HTTPS. Callers
+// must only invoke this once dsbx is up; if the CA file is missing we fail
+// rather than silently leaving the sandbox with system-roots-only trust.
+// The system-store install is allowed to fail on images without
+// update-ca-certificates. The marker file is written last so the bundle and
+// its "merged" status flip atomically from the health-probe's point of view.
+async function installMitmTrustBundle(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<void, Error>> {
+  const command =
+    `[ -s ${shellEscape(MITM_CA_PATH)} ] || ` +
+    `{ echo "dsbx CA file ${MITM_CA_PATH} missing or empty" >&2; exit 1; }; ` +
+    `mkdir -p ${shellEscape("/etc/dust")} ${shellEscape("/usr/local/share/ca-certificates")} && ` +
+    `((cp ${shellEscape(MITM_CA_PATH)} ${shellEscape(MITM_SYSTEM_CA_DEST)} && update-ca-certificates >/dev/null 2>&1) || true) && ` +
+    `_bundle_tmp=${shellEscape("/etc/dust/.ca-bundle.pem.tmp")} && ` +
+    `cat ${shellEscape(MITM_SYSTEM_CA_BUNDLE)} ${shellEscape(MITM_CA_PATH)} > "$_bundle_tmp" && ` +
+    `chmod 644 "$_bundle_tmp" && ` +
+    `mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)} && ` +
+    `: > ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)}`;
+
+  return runSuccessfulSandboxCommand(auth, sandbox, command, "root");
 }
 
 // Best-effort, sandbox-global deny log surfacing. The offset tracks lines

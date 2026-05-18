@@ -9,6 +9,10 @@ import {
   preprocessInstructionBlocks,
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
+import {
+  getTaskDirectiveBlock,
+  taskDirective,
+} from "@app/components/markdown/TaskDirectiveBlock";
 import { toolDirective } from "@app/components/markdown/tool/tool";
 import { visualizationDirective } from "@app/components/markdown/VisualizationBlock";
 import {
@@ -59,6 +63,7 @@ export const AgentMessageMarkdown = ({
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
       mention_user: getUserMentionPlugin(owner),
+      project_task: getTaskDirectiveBlock(owner),
       dustimg: getImgPlugin(owner),
       instruction_block: InstructionBlock,
       ...additionalMarkdownComponents,
@@ -70,6 +75,7 @@ export const AgentMessageMarkdown = ({
     const baseDirectives = [
       agentMentionDirective,
       userMentionDirective,
+      taskDirective,
       getCiteDirective(),
       visualizationDirective,
       imgDirective,

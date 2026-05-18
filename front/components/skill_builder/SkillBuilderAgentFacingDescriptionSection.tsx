@@ -110,6 +110,19 @@ export function SkillBuilderAgentFacingDescriptionSection() {
   });
 
   useEffect(() => {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+
+    // This allows RHF to focus this custom editor when validation fails.
+    descriptionField.ref(editor.view.dom);
+
+    return () => {
+      descriptionField.ref(null);
+    };
+  }, [descriptionField.ref, editor]);
+
+  useEffect(() => {
     if (!editor) {
       return;
     }

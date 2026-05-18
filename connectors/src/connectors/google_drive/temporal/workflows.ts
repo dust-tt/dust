@@ -14,8 +14,7 @@ import {
   startChild,
   workflowInfo,
 } from "@temporalio/workflow";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import { uniq } from "lodash";
+import uniq from "lodash/uniq";
 
 import { concurrentExecutor } from "../../../lib/async_utils";
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";

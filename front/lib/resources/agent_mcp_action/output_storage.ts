@@ -1,8 +1,9 @@
+import { REDIS_CACHE_CONCURRENCY } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedis } from "@app/lib/utils/cache";
+import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
+import { cacheWithRedis, warmCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -10,29 +11,26 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-const GCS_PREFIX = "mcp_output_items";
+const MCP_OUTPUT_ITEMS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 4;
-const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
+
+export const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
 
 type OutputContent = CallToolResult["content"][number];
 
+// Writes live under the workspace prefix `w/<wsId>/...` so they are included by the
+// workspace-relocation file transfer.
 function getGcsPath(
   auth: Authenticator,
   action: AgentMCPActionResource,
   itemId: ModelId
 ): string {
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const actionId = action.sId;
-
-  return `${GCS_PREFIX}/w/${workspaceId}/${actionId}/${itemId}.json`;
+  return `w/${auth.getNonNullableWorkspace().sId}/${MCP_OUTPUT_ITEMS_PREFIX}/${action.sId}/${itemId}.json`;
 }
 
 /**
  * Writes multiple output items to GCS concurrently.
- * Returns Ok with a map of itemId → gcsPath, or Err on failure.
- *
- * TODO(2026-03-15): Add retry with exponential backoff to handle transient
- * GCS failures.
+ * Returns Ok with a map of itemId -> gcsPath, or Err on failure.
  */
 export async function batchWriteContentsToGcs(
   auth: Authenticator,
@@ -44,59 +42,108 @@ export async function batchWriteContentsToGcs(
 ): Promise<Result<Map<ModelId, string>, Error>> {
   const results = new Map<ModelId, string>();
 
-  try {
-    await concurrentExecutor(
-      items,
-      async ({ itemId, content }) => {
-        const gcsPath = getGcsPath(auth, action, itemId);
-        const bucket = getPrivateUploadBucket();
-        const file = bucket.file(gcsPath);
-        const json = JSON.stringify(content);
-        await file.save(Buffer.from(json, "utf-8"), {
+  let firstError: Error | null = null;
+
+  await concurrentExecutor(
+    items,
+    async ({ itemId, content }) => {
+      const gcsPath = getGcsPath(auth, action, itemId);
+      const bucket = getPrivateUploadBucket();
+      const file = bucket.file(gcsPath);
+      const json = JSON.stringify(content);
+
+      const writeResult = await withRetry(() =>
+        file.save(Buffer.from(json, "utf-8"), {
           contentType: "application/json",
-        });
-        results.set(itemId, gcsPath);
-      },
-      { concurrency: GCS_CONCURRENCY }
-    );
-  } catch (err) {
+        })
+      );
+
+      if (writeResult.isErr()) {
+        if (!firstError) {
+          firstError = writeResult.error;
+        }
+        return;
+      }
+      results.set(itemId, gcsPath);
+    },
+    { concurrency: GCS_CONCURRENCY }
+  );
+
+  if (firstError) {
     logger.error(
       {
-        err: normalizeError(err),
+        err: firstError,
         itemCount: items.length,
         successCount: results.size,
       },
       "Failed to write MCP output items to GCS"
     );
-    return new Err(normalizeError(err));
+
+    return new Err(firstError);
   }
 
   return new Ok(results);
 }
 
 /**
- * Fetches raw JSON content from GCS. Throws on failure (cacheWithRedis propagates the error).
+ * Fetches content from GCS. Throws on failure (cacheWithRedis propagates the error).
  */
 // itemId is unused in the fetch logic but passed to populate the cache key.
 async function fetchGcsContent(
   auth: Authenticator,
   gcsPath: string,
   _itemId: ModelId
-): Promise<string> {
+): Promise<OutputContent> {
   const bucket = getPrivateUploadBucket();
   const file = bucket.file(gcsPath);
 
   const [buffer] = await file.download();
 
-  return buffer.toString("utf-8");
+  return JSON.parse(buffer.toString("utf-8"));
 }
+
+// Bump the `:v1` suffix any time the cached value shape changes, so stale entries from previous
+// formats are orphaned instead of mis-parsed.
+export const gcsContentCacheKey = (
+  auth: Authenticator,
+  _gcsPath: string,
+  itemId: ModelId
+) => `w:${auth.getNonNullableWorkspace().sId}:mcp_output:${itemId}:v1`;
 
 const fetchGcsContentCached = cacheWithRedis(
   fetchGcsContent,
-  (auth, _gcsPath, itemId) =>
-    `w:${auth.getNonNullableWorkspace().sId}:mcp_output:${itemId}`,
-  { cacheNullValues: false, ttlMs: GCS_CONTENT_CACHE_TTL_MS }
+  gcsContentCacheKey,
+  {
+    cacheNullValues: false,
+    ttlMs: GCS_CONTENT_CACHE_TTL_MS,
+  }
 );
+
+const warmOneGcsContent = warmCacheWithRedis(
+  fetchGcsContent,
+  gcsContentCacheKey,
+  { ttlMs: GCS_CONTENT_CACHE_TTL_MS }
+);
+
+export async function warmGcsContentCache(
+  auth: Authenticator,
+  items: Array<{
+    itemId: ModelId;
+    gcsPath: string;
+    content: OutputContent;
+  }>
+): Promise<void> {
+  if (items.length === 0) {
+    return;
+  }
+  await concurrentExecutor(
+    items,
+    async ({ itemId, gcsPath, content }) => {
+      await warmOneGcsContent(content, auth, gcsPath, itemId);
+    },
+    { concurrency: REDIS_CACHE_CONCURRENCY }
+  );
+}
 
 /**
  * Fetches content for a single item from cache (LRU) or GCS.
@@ -109,8 +156,8 @@ async function fetchContentFromGcs(
   itemId: ModelId
 ): Promise<Result<OutputContent, Error>> {
   try {
-    const raw = await fetchGcsContentCached(auth, gcsPath, itemId);
-    return new Ok(JSON.parse(raw) as OutputContent);
+    const content = await fetchGcsContentCached(auth, gcsPath, itemId);
+    return new Ok(content);
   } catch (err) {
     logger.error(
       { err: normalizeError(err), gcsPath },

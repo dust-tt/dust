@@ -4,6 +4,7 @@ import {
 } from "@connectors/connectors/google_drive/lib";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
+  deleteFile,
   deleteOneFile,
   getSyncPageToken,
   objectIsInFolderSelection,
@@ -20,6 +21,7 @@ import {
   isSharedDriveNotFoundError,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   GoogleDriveConfigModel,
   GoogleDriveFilesModel,
@@ -33,12 +35,22 @@ import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH, WithRetriesError } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import { uuid4 } from "@temporalio/workflow";
+import tracer from "dd-trace";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import type { RedisClientType } from "redis";
 
 const PAGE_SIZE = 500;
+const UPDATE_PARENTS_BATCH_SIZE = 1_000;
+const UPDATE_PARENTS_CONCURRENCY = 8;
+
+type ParentsUpdate = {
+  file: GoogleDriveFilesModel;
+  parentIds: string[];
+};
+
+type EnqueueParentsUpdate = (update: ParentsUpdate) => Promise<void>;
 
 export async function incrementalSync(
   connectorId: ModelId,
@@ -136,7 +148,24 @@ export async function incrementalSync(
     for (const change of changesRes.data.changes) {
       await heartbeat();
 
-      if (change.changeType !== "file" || !change.file) {
+      if (change.changeType !== "file") {
+        continue;
+      }
+
+      if (change.removed && change.fileId) {
+        const localFile = await GoogleDriveFilesModel.findOne({
+          where: {
+            connectorId: connectorId,
+            driveFileId: change.fileId,
+          },
+        });
+        if (localFile) {
+          await deleteFile(localFile);
+        }
+        continue;
+      }
+
+      if (!change.file) {
         continue;
       }
       if (
@@ -365,6 +394,59 @@ async function recurseUpdateParents(
   parentIds: string[],
   logger: Logger
 ) {
+  return tracer.trace(
+    "gdrive",
+    {
+      resource: "recurseUpdateParents",
+    },
+    async (span) => {
+      span?.setTag("connectorId", connector.id);
+      span?.setTag("workspaceId", connector.workspaceId);
+      span?.setTag("fileId", file.driveFileId);
+
+      let updateBatch: ParentsUpdate[] = [];
+      const flushUpdateBatch = async () => {
+        await updateParentsFieldForBatch(connector, updateBatch, logger);
+        updateBatch = [];
+      };
+      const enqueueUpdate = async (update: ParentsUpdate) => {
+        if (updateBatch.length >= UPDATE_PARENTS_BATCH_SIZE) {
+          await flushUpdateBatch();
+        }
+        updateBatch.push(update);
+      };
+
+      await recurseUpdateParentsInner(
+        connector,
+        file,
+        parentIds,
+        logger,
+        enqueueUpdate
+      );
+      const initialFolderUpdate = updateBatch.pop();
+      await flushUpdateBatch();
+
+      if (!initialFolderUpdate) {
+        return;
+      }
+
+      await updateParentsField(
+        connector,
+        initialFolderUpdate.file,
+        initialFolderUpdate.parentIds,
+        logger
+      );
+    }
+  );
+}
+
+async function recurseUpdateParentsInner(
+  connector: ConnectorResource,
+  file: GoogleDriveFilesModel,
+  parentIds: string[],
+  logger: Logger,
+  enqueueUpdate: EnqueueParentsUpdate
+) {
   await heartbeat();
   const children = await GoogleDriveFilesModel.findAll({
     where: {
@@ -400,15 +482,30 @@ async function recurseUpdateParents(
   }
 
   for (const child of children) {
-    await recurseUpdateParents(
+    await recurseUpdateParentsInner(
       connector,
       child,
       [child.dustFileId, ...parentIds],
-      logger
+      logger,
+      enqueueUpdate
     );
   }
 
-  await updateParentsField(connector, file, parentIds, logger);
+  await enqueueUpdate({ file, parentIds });
+}
+
+async function updateParentsFieldForBatch(
+  connector: ConnectorResource,
+  updateBatch: ParentsUpdate[],
+  logger: Logger
+) {
+  await concurrentExecutor(
+    updateBatch,
+    async ({ file, parentIds }) => {
+      await updateParentsField(connector, file, parentIds, logger);
+    },
+    { concurrency: UPDATE_PARENTS_CONCURRENCY, onBatchComplete: heartbeat }
+  );
 }
 
 async function alreadySeenAndIgnored({

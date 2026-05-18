@@ -1,18 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
   "root": true,
-  "plugins": [
-    "./.grit/patterns/noRawSql.grit",
-    "./.grit/patterns/noBulkLodash.grit",
-    "./.grit/patterns/noDirectSparkleNotification.grit",
-    "./.grit/patterns/noUnverifiedWorkspaceBypass.grit",
-    "./.grit/patterns/noMcpServerInstructions.grit",
-    "./.grit/patterns/enforceClientTypesInPublicApi.grit",
-    "./.grit/patterns/nextjsPageComponentNaming.grit",
-    "./.grit/patterns/nextjsNoDataFetchingInGetssp.grit",
-    "./.grit/patterns/tooLongIndexName.grit",
-    "./.grit/patterns/noClientDeepImports.grit"
-  ],
+  "plugins": [],
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -82,12 +71,88 @@
   },
   "overrides": [
     {
-      "includes": ["**", "!front/pages/**", "!front/lib/api/sse.ts"],
+      "includes": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "connectors/src/**/*.{js,jsx,ts,tsx}",
+        "cli/dust-cli/**/*.{js,jsx,ts,tsx}",
+        "extension/**/*.{js,jsx,ts,tsx}"
+      ],
+      "plugins": [
+        "./.grit/patterns/noBulkLodash.grit",
+        "./.grit/patterns/noDirectSparkleNotification.grit"
+      ]
+    },
+    {
+      "includes": ["front/**/*.{js,jsx,ts,tsx}"],
+      "plugins": [
+        "./.grit/patterns/enforceClientTypesInPublicApi.grit",
+        "./.grit/patterns/noClientDeepImports.grit"
+      ]
+    },
+    {
+      "includes": [
+        "front/components/**/*.{js,jsx,ts,tsx}",
+        "front/lib/**/*.tsx",
+        "front/pages/**/*.{jsx,tsx}",
+        "front-spa/**/*.{js,jsx,ts,tsx}",
+        "sparkle/src/**/*.{js,jsx,ts,tsx}",
+        "viz/**/*.{js,jsx,ts,tsx}",
+        "!**/*.stories.{js,jsx,ts,tsx}",
+        "!sparkle/src/lottie/**",
+        "!sparkle/playground/**"
+      ],
+      "plugins": ["./.grit/patterns/noCssImportant.grit"]
+    },
+    {
+      "includes": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "connectors/src/**/*.{js,jsx,ts,tsx}"
+      ],
+      "plugins": [
+        "./.grit/patterns/noRawSql.grit",
+        "./.grit/patterns/noUnverifiedWorkspaceBypass.grit"
+      ]
+    },
+    {
+      "includes": [
+        "extension/**/*.{js,jsx,ts,tsx}",
+        "front-spa/**/*.{js,jsx,ts,tsx}",
+        "front/**/*.{js,jsx,ts,tsx}",
+        "sparkle/**/*.{js,jsx,ts,tsx}",
+        "!front/pages/**",
+        "!front/lib/api/sse.ts",
+        "!sparkle/.storybook/**",
+        "!sparkle/playground/**"
+      ],
       "plugins": ["./.grit/patterns/noNextImports.grit"]
     },
     {
       "includes": ["front/**/*.tsx", "front-spa/**/*.tsx"],
       "plugins": ["./.grit/patterns/noSparkleClassInFront.grit"]
+    },
+    {
+      "includes": ["**/pages/**/*.{js,jsx,ts,tsx}"],
+      "plugins": [
+        "./.grit/patterns/nextjsPageComponentNaming.grit",
+        "./.grit/patterns/nextjsNoDataFetchingInGetssp.grit"
+      ]
+    },
+    {
+      "includes": [
+        "front/lib/actions/mcp_internal_actions/**/*.{js,jsx,ts,tsx}",
+        "front/lib/api/actions/servers/**/*.{js,jsx,ts,tsx}"
+      ],
+      "plugins": ["./.grit/patterns/noMcpServerInstructions.grit"]
+    },
+    {
+      "includes": [
+        "connectors/src/lib/models/**/*.ts",
+        "connectors/src/resources/storage/models/**/*.ts",
+        "front/lib/models/**/*.ts",
+        "front/lib/resources/storage/models/**/*.ts",
+        "front/lib/resources/storage/wrappers/**/*.ts"
+      ],
+      "plugins": ["./.grit/patterns/tooLongIndexName.grit"]
     },
     {
       "includes": ["cli/dust-cli/**", "sparkle/**"],

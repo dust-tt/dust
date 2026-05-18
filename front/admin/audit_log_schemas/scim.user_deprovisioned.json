@@ -10,8 +10,8 @@
   ],
   "metadata": {
     "email": "string",
-    "directoryId": "string",
-    "triggersDeleted": "string",
+    "directory_id": "string",
+    "triggers_deleted": "string",
     "actor_type": "string"
   }
 }

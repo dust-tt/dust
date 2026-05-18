@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/mcp/register.ts
 import {
   MCPServerInstanceLimitError,
   registerMCPServer,
@@ -7,26 +9,26 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const MIN_SERVER_NAME_LENGTH = 5;
 const MAX_SERVER_NAME_LENGTH = 30;
-export const ClientSideMCPServerNameCodec = t.refinement(
-  t.string,
-  (s) =>
-    s.trim().length >= MIN_SERVER_NAME_LENGTH &&
-    s.trim().length <= MAX_SERVER_NAME_LENGTH
-);
+export const ClientSideMCPServerNameSchema = z
+  .string()
+  .refine(
+    (s) =>
+      s.trim().length >= MIN_SERVER_NAME_LENGTH &&
+      s.trim().length <= MAX_SERVER_NAME_LENGTH
+  );
 
-const PostMCPRegisterRequestBodyCodec = t.type({
-  serverName: ClientSideMCPServerNameCodec,
+const PostMCPRegisterRequestBodySchema = z.object({
+  serverName: ClientSideMCPServerNameSchema,
 });
 
-export type PostMCPRegisterRequestBody = t.TypeOf<
-  typeof PostMCPRegisterRequestBodyCodec
+export type PostMCPRegisterRequestBody = z.infer<
+  typeof PostMCPRegisterRequestBodySchema
 >;
 
 type RegisterMCPResponseType = {
@@ -49,19 +51,18 @@ async function handler(
     });
   }
 
-  const bodyValidation = PostMCPRegisterRequestBodyCodec.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = PostMCPRegisterRequestBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid server name: ${pathError}`,
+        message: `Invalid server name: ${fromError(bodyValidation.error).toString()}`,
       },
     });
   }
 
-  const { serverName } = bodyValidation.right;
+  const { serverName } = bodyValidation.data;
 
   // Register the server.
   const registration = await registerMCPServer(auth, {

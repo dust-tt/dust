@@ -1,5 +1,6 @@
-import { createMetronomeCustomer } from "@app/lib/metronome/client";
-import { SubscriptionModel } from "@app/lib/models/plan";
+import { ensureMetronomeCustomerForWorkspace } from "@app/lib/metronome/contracts";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -14,13 +15,31 @@ async function provisionCustomer(
   execute: boolean,
   logger: Logger
 ) {
-  // Get Stripe customer ID from the active subscription.
-  // Skip workspaces without a Stripe customer — only paying workspaces get a Metronome customer.
-  let stripeCustomerId = "";
+  if (workspace.metronomeCustomerId) {
+    return;
+  }
+
+  // Only provision workspaces with an active subscription. Workspaces on
+  // FREE_NO_PLAN (no subscription row) are skipped — going forward they
+  // receive a Metronome customer when they subscribe (via
+  // `internalSubscribeWorkspaceToFreePlan` or the paid path).
+  // FREE_TRIAL_PHONE_PLAN workspaces are also skipped — phone trials have
+  // hard-coded usage limits and never interact with Metronome.
   const subscription = await SubscriptionModel.findOne({
     where: { workspaceId: workspace.id, status: "active" },
+    include: [PlanModel],
   });
-  if (subscription?.stripeSubscriptionId) {
+  if (!subscription) {
+    return;
+  }
+  if (subscription.plan?.code === FREE_TRIAL_PHONE_PLAN_CODE) {
+    return;
+  }
+
+  // Optionally link to a Stripe customer if the active subscription is paid.
+  // Free-plan subscriptions get a Metronome customer with no Stripe link.
+  let stripeCustomerId: string | undefined;
+  if (subscription.stripeSubscriptionId) {
     const stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
     );
@@ -32,19 +51,11 @@ async function provisionCustomer(
     }
   }
 
-  if (!stripeCustomerId) {
-    logger.info(
-      { workspaceId: workspace.sId },
-      "Skipping — no Stripe customer"
-    );
-    return;
-  }
-
   logger.info(
     {
       workspaceId: workspace.sId,
       workspaceName: workspace.name,
-      stripeCustomerId,
+      stripeCustomerId: stripeCustomerId ?? null,
     },
     `${execute ? "" : "[DRYRUN] "}Provisioning Metronome customer`
   );
@@ -53,45 +64,26 @@ async function provisionCustomer(
     return;
   }
 
-  const result = await createMetronomeCustomer({
-    workspaceId: workspace.sId,
-    workspaceName: workspace.name,
+  const result = await ensureMetronomeCustomerForWorkspace({
+    workspace,
     stripeCustomerId,
   });
 
-  if (result.isOk()) {
-    const { metronomeCustomerId } = result.value;
-
-    const updateResult = await WorkspaceResource.updateMetronomeCustomerId(
-      workspace.id,
-      metronomeCustomerId
-    );
-    if (updateResult.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          metronomeCustomerId,
-          error: updateResult.error.message,
-        },
-        "Failed to persist metronomeCustomerId on workspace"
-      );
-      return;
-    }
-
-    // Explicitly await cache invalidation — the fire-and-forget invalidation
-    // in update() may not complete before the script calls process.exit().
-    await WorkspaceResource.invalidateCache(workspace.sId);
-
-    logger.info(
-      { workspaceId: workspace.sId, metronomeCustomerId },
-      "Metronome customer provisioned and workspace updated"
-    );
-  } else {
+  if (result.isErr()) {
     logger.error(
       { workspaceId: workspace.sId, error: result.error.message },
       "Failed to provision Metronome customer"
     );
+    return;
   }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId: result.value.metronomeCustomerId,
+    },
+    "Metronome customer provisioned and workspace updated"
+  );
 }
 
 makeScript(

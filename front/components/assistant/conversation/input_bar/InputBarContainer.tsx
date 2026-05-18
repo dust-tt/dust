@@ -1,14 +1,12 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
-import { InputBarSkillChip } from "@app/components/assistant/conversation/input_bar/InputBarSkillChip";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
-import type { MentionsStrippedPayload } from "@app/components/editor/extensions/MentionExtension";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -19,7 +17,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
@@ -34,6 +32,7 @@ import type {
 } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
+  isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
@@ -61,6 +60,10 @@ import {
   PlusIcon,
   TextIcon,
   Toolbar,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -77,36 +80,6 @@ import React, {
 import { InputBarContext } from "./InputBarContext";
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
-const FADE_OUT_TRANSITION = "50ms ease-out";
-const FADE_IN_TRANSITION = "150ms ease-out";
-
-function getButtonsTransitionStyle(hideButtons: boolean): React.CSSProperties {
-  const opacityTransition = hideButtons
-    ? FADE_OUT_TRANSITION
-    : FADE_IN_TRANSITION;
-  return {
-    maxWidth: hideButtons ? 0 : 500,
-    opacity: hideButtons ? 0 : 1,
-    overflow: "hidden",
-    transition: `max-width ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}`,
-  };
-}
-
-function getToolbarRowTransitionStyle(
-  hideButtons: boolean
-): React.CSSProperties {
-  const opacityTransition = hideButtons
-    ? FADE_OUT_TRANSITION
-    : FADE_IN_TRANSITION;
-  return {
-    maxHeight: hideButtons ? 0 : 100,
-    opacity: hideButtons ? 0 : 1,
-    overflow: "hidden",
-    paddingTop: hideButtons ? 0 : undefined,
-    paddingBottom: hideButtons ? 0 : undefined,
-    transition: `max-height ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}, padding ${COLLAPSE_TRANSITION}`,
-  };
-}
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
@@ -128,10 +101,11 @@ export interface InputBarContainerProps {
   // When true, the editor is made non-editable and every picker (agent,
   // tools, attachment, voice) is disabled. Reserved for states where the user
   // cannot interact at all (e.g. non-owner viewing a conversation with an
-  // active wake-up, or compaction in progress). `submitBlockMessage` on its
-  // own only mutes the send button.
+  // active wake-up). `submitBlockMessage` on its own only mutes the send
+  // button.
   disableInput: boolean;
   submitBlockMessage: string | null;
+  placeholder?: string;
   onShake: () => void;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
@@ -149,15 +123,12 @@ export interface InputBarContainerProps {
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  onResetSelections: () => void;
-  onSkillDeselect: (skill: SkillWithoutInstructionsAndToolsType) => void;
-  onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
+  onResetMCPServerViews: () => void;
   owner: WorkspaceType;
   saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
   pendingInputText: string | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
-  selectedSkills: SkillWithoutInstructionsAndToolsType[];
   stickyMentions?: RichMention[];
   user: UserType | null;
 }
@@ -184,30 +155,34 @@ const InputBarContainer = ({
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
-  onResetSelections,
-  onSkillSelect,
-  onSkillDeselect,
-  selectedSkills,
+  onResetMCPServerViews,
   saveDraft,
   user,
   disableAgentSelector,
   disableInput,
   submitBlockMessage,
+  placeholder,
   onShake,
 }: InputBarContainerProps) => {
   const isSubmitBlocked = submitBlockMessage !== null;
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
-  const { hasFeature } = useFeatureFlags();
-  const isCompactionEnabled = hasFeature("enable_compaction");
-  const isInputBarSlashSuggestionsEnabled = hasFeature(
-    "input_bar_slash_suggestions"
-  );
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
 
-  const [hasUserMention, setHasUserMention] = useState(false);
+  const [startsWithUserMention, setStartsWithUserMention] = useState(false);
   const canSubmitEmpty = !!selectedSingleAgent;
+  const [isBlockTooltipOpen, setIsBlockTooltipOpen] = useState(false);
+  const blockTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  useEffect(() => {
+    return () => {
+      if (blockTooltipTimerRef.current) {
+        clearTimeout(blockTooltipTimerRef.current);
+      }
+    };
+  }, []);
 
   const agentsById = useMemo(
     () => new Map(allAgents.map((a) => [a.sId, a])),
@@ -227,22 +202,16 @@ const InputBarContainer = ({
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
-  // A ref so the mention suggestion plugin (which lives outside React) can read it synchronously.
-  const shouldSuggestAgentRef = useRef(true);
   // The editor plugin captures its options once at initialization. Passing a ref lets the plugin
   // always invoke the latest closure without needing to reinitialize the editor.
   const onFirstAgentMentionPasteRef = useRef<
     ((agentId: string) => void) | undefined
   >(undefined);
-  const onAgentMentionsStrippedRef = useRef<
-    ((payload: MentionsStrippedPayload) => void) | undefined
-  >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
-  const shouldEnableSlashSuggestion =
-    actions.includes("capabilities") && isInputBarSlashSuggestionsEnabled;
+  const shouldEnableSlashSuggestion = actions.includes("capabilities");
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -250,24 +219,16 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
-
-  const selectedSkillIds = useMemo(
-    () => new Set(selectedSkills.map((skill) => skill.sId)),
-    [selectedSkills]
-  );
   const selectedMCPServerViewIds = useMemo(
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
   );
   const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
-  const selectedSkillIdsRef = useRef(selectedSkillIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
   const onSelectRef = useRef<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
-
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
-  selectedSkillIdsRef.current = selectedSkillIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -427,6 +388,14 @@ const InputBarContainer = ({
     (isEmpty, markdownAndMentions, resetEditorText, setLoading) => {
       if (isSubmitBlocked) {
         onShake();
+        if (blockTooltipTimerRef.current) {
+          clearTimeout(blockTooltipTimerRef.current);
+        }
+        setIsBlockTooltipOpen(true);
+        blockTooltipTimerRef.current = setTimeout(
+          () => setIsBlockTooltipOpen(false),
+          2000
+        );
         return;
       }
       onEnterKeyDown(
@@ -446,53 +415,36 @@ const InputBarContainer = ({
     }
   };
 
-  onAgentMentionsStrippedRef.current = (payload: MentionsStrippedPayload) => {
-    let title: string;
-    let description: string;
-    switch (payload.reason) {
-      case "extra-agents":
-        title = "Agent mentions removed";
-        description = `${payload.count} ${payload.count === 1 ? "agent mention was" : "agent mentions were"} removed. Only one agent can be used at a time.`;
-        break;
-      case "users-stripped-for-agent":
-        title = "User mentions removed";
-        description =
-          "You can’t mention both users and agents in the same message.";
-        break;
-      case "user-conflict":
-      case "mixed-conflict":
-        title = "Agent mentions removed";
-        description =
-          "You can’t mention both users and agents in the same message.";
-        break;
-      default:
-        assertNever(payload);
-    }
-    sendNotification({
-      type: "info",
-      title,
-      description,
-    });
+  const handleSkillSelect = ({
+    sId: skillId,
+    name: skillName,
+    icon: skillIcon,
+  }: SkillWithoutInstructionsAndToolsType) => {
+    editorRef.current
+      ?.chain()
+      .focus()
+      .insertSkillNode({
+        skillId,
+        skillName,
+        skillIcon,
+      })
+      .run();
   };
 
-  const handleSlashSuggestionSelection = useCallback(
-    (capability: InputBarSlashSuggestionCapability) => {
-      switch (capability.kind) {
-        case "skill":
-          onSkillSelect(capability.skill);
-          break;
-        case "tool":
-          onMCPServerViewSelect(capability.serverView);
-          break;
-        default:
-          assertNeverAndIgnore(capability);
-      }
+  onSelectRef.current = (capability: InputBarSlashSuggestionCapability) => {
+    switch (capability.kind) {
+      case "skill":
+        handleSkillSelect(capability.skill);
+        break;
+      case "tool":
+        onMCPServerViewSelect(capability.serverView);
+        break;
+      default:
+        assertNeverAndIgnore(capability);
+    }
 
-      queueMicrotask(() => editorRef.current?.commands.focus());
-    },
-    [onMCPServerViewSelect, onSkillSelect]
-  );
-  onSelectRef.current = handleSlashSuggestionSelection;
+    queueMicrotask(() => editorRef.current?.commands.focus());
+  };
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
@@ -507,16 +459,13 @@ const InputBarContainer = ({
     conversationId: conversation?.sId,
     spaceId,
     onInlineText: handleInlineText,
-    shouldSuggestAgentRef,
     onFirstAgentMentionPasteRef,
-    onAgentMentionsStrippedRef,
     slashSuggestion: {
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
       selectedMCPServerViewIdsRef,
-      selectedSkillIdsRef,
     },
-    placeholderOverride: disableInput ? submitBlockMessage : null,
+    placeholderOverride: disableInput ? submitBlockMessage : placeholder,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -631,59 +580,55 @@ const InputBarContainer = ({
   selectedSingleAgentRef.current = selectedSingleAgent;
 
   // When a user mention is *newly added* in single-agent mode, deselect the agent
-  // and clear capabilities. Only triggers on the transition from no-user-mention to
+  // and clear side-channel capabilities. Only triggers on the transition from no-user-mention to
   // user-mention so that re-selecting an agent (via card click or URL param) isn't
   // immediately clobbered by the existing @user mention on the next editor update.
   // Uses a ref so the editor listener (registered once in the useEffect below) always
   // calls the latest closure without re-registering the listener on every render.
   const prevUserMentionedRef = useRef(false);
-  const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
+  const onEditorMentionsChangedRef = useRef(
+    (_userMentioned: boolean, _startsWithUserMention: boolean) => {}
+  );
 
-  onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
-    shouldSuggestAgentRef.current = !userMentioned;
+  onEditorMentionsChangedRef.current = (
+    userMentioned: boolean,
+    startsWithUserMention: boolean
+  ) => {
     const wasUserMentioned = prevUserMentionedRef.current;
     prevUserMentionedRef.current = userMentioned;
-    if (userMentioned && !wasUserMentioned) {
+    if (startsWithUserMention && !wasUserMentioned) {
       setSelectedSingleAgent(null);
-      onResetSelections();
-      fileUploaderService.resetUpload();
+      onResetMCPServerViews();
     }
   };
-
-  // When the selected agent changes, remove any @user mentions (which are
-  // incompatible with single-agent mode), notify the user, and persist the draft.
-  useEffect(() => {
-    if (selectedSingleAgent) {
-      const hadUserMentions = editorService.removeUserMentions();
-      if (hadUserMentions) {
-        sendNotification({
-          type: "info",
-          title: "User mentions removed",
-          description:
-            "You can’t mention both users and agents in the same message.",
-        });
-      }
-      editorService.focusEnd();
-      const { markdown } = editorService.getMarkdownAndMentions();
-      saveDraft(markdown, selectedSingleAgent);
-    }
-  }, [selectedSingleAgent, editorService, saveDraft, sendNotification]);
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
     const handleUpdate = () => {
-      setIsEmpty(editorService.isEmpty());
+      const editorIsEmpty = editorService.isEmpty();
+      setIsEmpty(editorIsEmpty);
 
       // Auto-save draft when content changes and track user mentions.
       // Include the selected single agent so the debounced save doesn't
       // overwrite the agent mention saved by the single-agent effect.
-      const { markdown, mentions } = editorService.getMarkdownAndMentions();
-      if (!editorService.isEmpty()) {
-        saveDraft(markdown, selectedSingleAgentRef.current);
+      const { markdown, mentions: editorMentions } =
+        editorService.getMarkdownAndMentions();
+      saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
+      const userMentioned = editorMentions.some((m) => m.type === "user");
+
+      // Check if the very first content node in the editor is a user mention.
+      let editorStartsWithUserMention = false;
+      if (userMentioned && editor) {
+        const firstChild = editor.state.doc.firstChild;
+        const firstNode = firstChild?.firstChild;
+        editorStartsWithUserMention =
+          firstNode?.type.name === "mention" && firstNode.attrs.type === "user";
       }
-      const userMentioned = mentions.some((m) => m.type === "user");
-      setHasUserMention(userMentioned);
-      onEditorMentionsChangedRef.current(userMentioned);
+      setStartsWithUserMention(editorStartsWithUserMention);
+      onEditorMentionsChangedRef.current(
+        userMentioned,
+        editorStartsWithUserMention
+      );
     };
 
     if (editorRef.current) {
@@ -789,11 +734,6 @@ const InputBarContainer = ({
       }
     }
 
-    sendNotification({
-      title: "No match for URL",
-      description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
-      type: "info",
-    });
     setNodeOrUrlCandidate(null);
   }, [
     searchResultNodes,
@@ -802,7 +742,6 @@ const InputBarContainer = ({
     editorService,
     spacesMap,
     nodeOrUrlCandidate,
-    sendNotification,
     isSpacesLoading,
   ]);
 
@@ -832,7 +771,7 @@ const InputBarContainer = ({
 
   useEffect(() => {
     // captureActions is defined only in the extension, so the shortcuts won't work in the web app
-    if (!captureActions) {
+    if (!captureActions || disableInput) {
       return;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -853,7 +792,7 @@ const InputBarContainer = ({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [captureActions, fileUploaderService.isProcessingFiles]);
+  }, [captureActions, disableInput, fileUploaderService.isProcessingFiles]);
 
   useEffect(() => {
     if (animate) {
@@ -901,26 +840,25 @@ const InputBarContainer = ({
       return;
     }
 
-    const draft = getDraft();
-    const editorContainsOnlyStickyMentions =
-      !editorService.isEmpty() &&
-      editorService.getTrimmedText() === stickyMentionsTextContent.current;
-    // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
-    if (
-      draft &&
-      (editorService.isEmpty() || editorContainsOnlyStickyMentions)
-    ) {
-      // Strip agent mentions from the draft text since the agent is handled
-      // by the picker button, not inline in the editor. This handles drafts
-      // saved before single-agent mode was enabled.
-      const draftText = draft.text
-        .replace(/:mention\[[^\]]*\]\{sId=[^}]*\}\s*/g, "")
-        .trim();
+    // Only restore draft if editor is empty to avoid overwriting existing content.
+    if (!editorService.isEmpty()) {
+      return;
+    }
 
+    const draft = getDraft();
+
+    if (draft) {
       // Schedule content restoration to avoid flushing during render lifecycle.
       queueMicrotask(() =>
-        editorService.setContent(draftText, { focus: !disableAutoFocus })
+        editorService.setContent(draft.text, { focus: !disableAutoFocus })
       );
+      return;
+    }
+
+    // No draft — insert sticky user mentions into the editor
+    const stickyUserMentions = stickyMentions?.filter(isRichUserMention) ?? [];
+    if (stickyUserMentions.length > 0) {
+      editorService.resetWithMentions(stickyUserMentions, disableAutoFocus);
     }
   }, [
     conversation,
@@ -929,9 +867,11 @@ const InputBarContainer = ({
     editor?.isEditable,
     editorService,
     getDraft,
+    stickyMentions,
+    disableAutoFocus,
   ]);
 
-  const { stickyMentionsTextContent } = useHandleMentions({
+  useHandleMentions({
     allAgents,
     conversation,
     disableAutoFocus,
@@ -956,20 +896,16 @@ const InputBarContainer = ({
     voiceTranscriberService.status !== "idle";
 
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
-  const hideButtons = hasUserMention;
+  const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
     "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "px-3 sm:pl-4 pt-3",
-    !hideButtons && "sm:pt-3.5"
+    "px-3 sm:pl-4 pt-3 sm:pt-3.5"
   );
 
   const isRecording = voiceTranscriberService.status === "recording";
-
-  const buttonsTransitionStyle = getButtonsTransitionStyle(hideButtons);
-  const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(hideButtons);
 
   return (
     <div
@@ -990,9 +926,7 @@ const InputBarContainer = ({
               contentEditableClasses,
               "scrollbar-hide",
               "overflow-y-auto",
-              hideButtons
-                ? "max-h-[40vh] pr-20"
-                : "max-h-[40vh] min-h-14 sm:min-h-16"
+              "max-h-[40vh] min-h-14 sm:min-h-16"
             )}
           />
         </div>
@@ -1007,39 +941,12 @@ const InputBarContainer = ({
           )}
         </BubbleMenu>
         <div
-          className={cn(
-            "flex w-full flex-col",
-            !hideButtons && "py-1.5 sm:pb-2"
-          )}
+          className={cn("flex w-full flex-col", "py-1.5 sm:pb-2")}
           style={{
             transition: `padding ${COLLAPSE_TRANSITION}`,
           }}
         >
-          <div
-            className="mb-1 flex flex-wrap items-center px-2"
-            style={toolbarRowTransitionStyle}
-          >
-            {selectedSkills.map((skill) => (
-              <React.Fragment key={skill.sId}>
-                <InputBarSkillChip
-                  owner={owner}
-                  skill={skill}
-                  className="m-0.5 hidden xs:flex"
-                  onRemove={() => {
-                    onSkillDeselect(skill);
-                  }}
-                />
-                <InputBarSkillChip
-                  owner={owner}
-                  skill={skill}
-                  compact
-                  className="m-0.5 flex xs:hidden"
-                  onRemove={() => {
-                    onSkillDeselect(skill);
-                  }}
-                />
-              </React.Fragment>
-            ))}
+          <div className="mb-1 flex flex-wrap items-center px-2">
             {selectedMCPServerViews.map((msv) => (
               <React.Fragment key={msv.sId}>
                 {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
@@ -1063,10 +970,7 @@ const InputBarContainer = ({
               </React.Fragment>
             ))}
           </div>
-          <div
-            className="relative flex w-full items-center justify-between"
-            style={toolbarRowTransitionStyle}
-          >
+          <div className="relative flex w-full items-center justify-between">
             {!isRecording && editor && (
               <Toolbar
                 variant="overlay"
@@ -1091,10 +995,7 @@ const InputBarContainer = ({
               )}
             >
               {!isRecording && (
-                <div
-                  className="flex items-center"
-                  style={buttonsTransitionStyle}
-                >
+                <div className="flex items-center">
                   <Button
                     variant="ghost-secondary"
                     icon={TextIcon}
@@ -1114,25 +1015,23 @@ const InputBarContainer = ({
                     fileInputRef={fileInputRef}
                     fileUploaderService={fileUploaderService}
                     handleSingleAgentSelect={handleSingleAgentSelect}
+                    hideCapabilities={hideCapabilities}
                     isInputDisabled={disableInput}
+                    onAgentRemove={() => setSelectedSingleAgent(null)}
                     onMCPServerViewSelect={onMCPServerViewSelect}
                     onNodeSelect={onNodeSelect}
                     onNodeUnselect={onNodeUnselect}
-                    onSkillSelect={onSkillSelect}
+                    onSkillSelect={handleSkillSelect}
                     owner={owner}
                     selectedAgent={selectedSingleAgent}
                     selectedMCPServerViews={selectedMCPServerViews}
-                    selectedSkills={selectedSkills}
                     space={space}
                     user={user}
                   />
                 </div>
               )}
               <div className="grow" />
-              <div
-                className="flex items-center gap-2 md:gap-1"
-                style={buttonsTransitionStyle}
-              />
+              <div className="flex items-center gap-2 md:gap-1" />
             </div>
           </div>
         </div>
@@ -1151,6 +1050,7 @@ const InputBarContainer = ({
                       variant="ghost-secondary"
                       icon={PlusIcon}
                       size={buttonSize}
+                      disabled={disableInput}
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -1170,6 +1070,7 @@ const InputBarContainer = ({
                           icon={GlobeAltIcon}
                           label="Attach page content"
                           disabled={
+                            disableInput ||
                             captureActions.isCapturing ||
                             fileUploaderService.isProcessingFiles
                           }
@@ -1185,6 +1086,7 @@ const InputBarContainer = ({
                           icon={CameraIcon}
                           label="Take screenshot"
                           disabled={
+                            disableInput ||
                             captureActions.isCapturing ||
                             fileUploaderService.isProcessingFiles
                           }
@@ -1228,7 +1130,7 @@ const InputBarContainer = ({
             </>
           )}
           <div className="flex items-center">
-            {isCompactionEnabled && conversation && (
+            {conversation && (
               <ContextUsageIndicator
                 buttonSize={buttonSize}
                 owner={owner}
@@ -1250,41 +1152,64 @@ const InputBarContainer = ({
                 />
               )}
           </div>
-          <Button
-            size={buttonSize}
-            isLoading={
-              isSubmitting && voiceTranscriberService.status !== "transcribing"
-            }
-            icon={ArrowUpIcon}
-            variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
-            disabled={isSubmitDisabled}
-            tooltip={submitBlockMessage ?? undefined}
-            className={cn(
-              isSubmitBlocked &&
-                "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"
-            )}
-            onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (disableAutoFocus) {
-                editorService.blur();
-                // wait a bit for the keyboard to be closed on mobile
-                if (isMobile) {
-                  editorService.setLoading(true);
-                  await new Promise((resolve) => setTimeout(resolve, 500));
-                  editorService.setLoading(false);
-                }
-              }
-              onEnterKeyDown(
-                editorService.isEmpty() && !canSubmitEmpty,
-                editorService.getMarkdownAndMentions(),
-                () => {
-                  editorService.clearEditor();
-                },
-                editorService.setLoading
-              );
-            }}
-          />
+          <TooltipProvider>
+            <TooltipRoot
+              open={isBlockTooltipOpen && submitBlockMessage !== null}
+            >
+              <TooltipTrigger
+                asChild
+                onPointerEnter={() => {
+                  if (submitBlockMessage) {
+                    setIsBlockTooltipOpen(true);
+                  }
+                }}
+                onPointerLeave={() => {
+                  if (blockTooltipTimerRef.current) {
+                    clearTimeout(blockTooltipTimerRef.current);
+                    blockTooltipTimerRef.current = null;
+                  }
+                  setIsBlockTooltipOpen(false);
+                }}
+              >
+                <Button
+                  size={buttonSize}
+                  isLoading={
+                    isSubmitting &&
+                    voiceTranscriberService.status !== "transcribing"
+                  }
+                  icon={ArrowUpIcon}
+                  variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
+                  disabled={isSubmitDisabled}
+                  onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (disableAutoFocus) {
+                      editorService.blur();
+                      // wait a bit for the keyboard to be closed on mobile
+                      if (isMobile) {
+                        editorService.setLoading(true);
+                        await new Promise((resolve) =>
+                          setTimeout(resolve, 500)
+                        );
+                        editorService.setLoading(false);
+                      }
+                    }
+                    onEnterKeyDownWithShake(
+                      editorService.isEmpty() && !canSubmitEmpty,
+                      editorService.getMarkdownAndMentions(),
+                      () => {
+                        editorService.clearEditor();
+                      },
+                      editorService.setLoading
+                    );
+                  }}
+                />
+              </TooltipTrigger>
+              {submitBlockMessage && (
+                <TooltipContent>{submitBlockMessage}</TooltipContent>
+              )}
+            </TooltipRoot>
+          </TooltipProvider>
         </div>
       </div>
     </div>

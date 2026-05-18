@@ -1,10 +1,6 @@
-import type { ExtractionResult } from "@app/lib/project_todo/analyze_document/types";
-import type { ProjectTodoSourceType } from "@app/types/project_todo";
-import type {
-  TodoVersionedActionItem,
-  TodoVersionedKeyDecision,
-  TodoVersionedNotableFact,
-} from "@app/types/takeaways";
+import type { ExtractionResult } from "@app/lib/project_task/analyze_document/types";
+import type { ProjectTaskSourceType } from "@app/types/project_task";
+import type { TaskVersionedActionItem } from "@app/types/takeaways";
 
 // ── Mock data types ─────────────────────────────────────────────────────────
 
@@ -17,15 +13,13 @@ export interface MockProjectMember {
 export interface MockDocument {
   id: string;
   title: string;
-  type: ProjectTodoSourceType;
+  type: ProjectTaskSourceType;
   text: string;
   uri: string;
 }
 
 export interface MockPreviousVersion {
-  actionItems: TodoVersionedActionItem[];
-  notableFacts: TodoVersionedNotableFact[];
-  keyDecisions: TodoVersionedKeyDecision[];
+  actionItems: TaskVersionedActionItem[];
 }
 
 // ── Assertions ──────────────────────────────────────────────────────────────
@@ -35,7 +29,6 @@ export type TakeawayAssertion =
       type: "shouldExtractActionItem";
       descriptionContains: string;
       assigneeUserId?: string;
-      status?: "open" | "done";
     }
   | { type: "shouldNotExtractActionItem"; descriptionContains: string }
   | { type: "minActionItems"; count: number }
@@ -51,7 +44,7 @@ export type TakeawayAssertion =
 
 export function shouldExtractActionItem(
   descriptionContains: string,
-  opts?: { assigneeUserId?: string; status?: "open" | "done" }
+  opts?: { assigneeUserId?: string }
 ): TakeawayAssertion {
   return {
     type: "shouldExtractActionItem",
@@ -112,7 +105,7 @@ export interface TakeawayTestSuite {
 /** Result of one takeaway extraction LLM call. */
 export interface TakeawayExecutionResult {
   extraction: ExtractionResult | null;
-  actionItems: TodoVersionedActionItem[];
+  actionItems: TaskVersionedActionItem[];
 }
 
 // ── Display helpers ─────────────────────────────────────────────────────────
@@ -150,7 +143,7 @@ export function formatExtractionResult(
     const items = result.actionItems
       .map(
         (a) =>
-          `  - [${a.status}] ${a.shortDescription}${a.assigneeUserId ? ` (assignee: ${a.assigneeUserId})` : ""}`
+          `  - ${a.shortDescription}${a.assigneeUserId ? ` (assignee: ${a.assigneeUserId})` : ""}`
       )
       .join("\n");
     parts.push(`Action items:\n${items}`);

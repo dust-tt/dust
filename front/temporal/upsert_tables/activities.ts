@@ -8,8 +8,7 @@ import mainLogger from "@app/logger/logger";
 
 import config from "@app/temporal/config";
 import { Storage } from "@google-cloud/storage";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import { fromError } from "zod-validation-error";
 
 export async function upsertTableActivity(
   upsertQueueId: string,
@@ -21,16 +20,15 @@ export async function upsertTableActivity(
 
   const upsertDocument = JSON.parse(content.toString());
 
-  const tableItemValidation = EnqueueUpsertTable.decode(upsertDocument);
+  const tableItemValidation = EnqueueUpsertTable.safeParse(upsertDocument);
 
-  if (isLeft(tableItemValidation)) {
-    const pathErrorTable = reporter.formatValidationErrors(
-      tableItemValidation.left
+  if (!tableItemValidation.success) {
+    throw new Error(
+      `Invalid upsertQueue table: ${fromError(tableItemValidation.error).toString()}`
     );
-    throw new Error(`Invalid upsertQueue table: ${pathErrorTable}`);
   }
 
-  const upsertQueueItem = tableItemValidation.right;
+  const upsertQueueItem = tableItemValidation.data;
   const logger = mainLogger.child({
     upsertQueueId,
     workspaceId: upsertQueueItem.workspaceId,

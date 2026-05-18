@@ -1,3 +1,6 @@
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/members/search.ts
+
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { searchMembers } from "@app/lib/api/workspace";
@@ -5,37 +8,24 @@ import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { GroupKind } from "@app/types/groups";
-import { GroupKindCodec } from "@app/types/groups";
+import { GROUP_KINDS } from "@app/types/groups";
 import type { UserTypeWithWorkspace } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import { formatValidationErrors } from "io-ts-reporters";
-import { BooleanFromString, NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const DEFAULT_PAGE_LIMIT = 25;
 
-const GroupKindWithoutSystemCodec = t.refinement(
-  GroupKindCodec,
-  (kind): kind is Exclude<GroupKind, "system"> => kind !== "system",
-  "GroupKindWithoutSystem"
-);
-
-const SearchMembersQueryCodec = t.type({
-  offset: withFallback(NumberFromString, 0),
-  limit: withFallback(
-    t.refinement(
-      NumberFromString,
-      (n): n is number => n >= 0 && n <= 150,
-      `LimitWithRange`
-    ),
-    DEFAULT_PAGE_LIMIT
-  ),
-  searchTerm: t.union([t.string, t.undefined]),
-  searchEmails: t.union([t.string, t.undefined]),
-  groupKind: t.union([GroupKindWithoutSystemCodec, t.undefined]),
-  buildersOnly: t.union([BooleanFromString, t.undefined]),
+const SearchMembersQuerySchema = z.object({
+  offset: z.coerce.number().int().min(0).catch(0),
+  limit: z.coerce.number().int().min(0).max(150).catch(DEFAULT_PAGE_LIMIT),
+  searchTerm: z.string().optional(),
+  searchEmails: z.string().optional(),
+  groupKind: z.enum(GROUP_KINDS).exclude(["system"]).optional(),
+  buildersOnly: z
+    .string()
+    .transform((v) => v === "true")
+    .optional(),
 });
 
 export type SearchMembersResponseBody = {
@@ -50,21 +40,19 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const queryRes = SearchMembersQueryCodec.decode(req.query);
+      const queryRes = SearchMembersQuerySchema.safeParse(req.query);
 
-      if (isLeft(queryRes)) {
+      if (!queryRes.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "Invalid query parameters: " +
-              formatValidationErrors(queryRes.left).join(", "),
+            message: `Invalid query parameters: ${fromError(queryRes.error).toString()}`,
           },
         });
       }
 
-      const query = queryRes.right;
+      const query = queryRes.data;
       const emails = query.searchEmails?.split(",");
       if (emails?.length && emails.length > MAX_SEARCH_EMAILS) {
         return apiError(req, res, {

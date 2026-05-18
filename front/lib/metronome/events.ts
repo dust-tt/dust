@@ -43,15 +43,18 @@ function truncatePropertyValue(value: string): string {
 // Tool category mapping
 // ---------------------------------------------------------------------------
 
-type ToolCategory =
-  | "retrieval"
-  | "deep_research"
-  | "reasoning"
-  | "connectors"
-  | "generation"
-  | "agents"
-  | "actions"
-  | "platform";
+export const TOOL_CATEGORIES = [
+  "retrieval",
+  "deep_research",
+  "reasoning",
+  "connectors",
+  "generation",
+  "agents",
+  "actions",
+  "platform",
+] as const;
+
+type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
 // Exhaustive map — TypeScript will error if a new internal MCP server is added
 // without being categorized here.
@@ -63,6 +66,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   data_sources_file_system: "retrieval",
   include_data: "retrieval",
   conversation_files: "retrieval",
+  files: "retrieval",
 
   // Deep research — web search, browsing, HTTP.
   "web_search_&_browse": "deep_research",
@@ -134,7 +138,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   skill_management: "platform",
   schedules_management: "platform",
   project_manager: "platform",
-  project_todos: "platform",
+  project_tasks: "platform",
   poke: "platform",
   sandbox: "platform",
   ask_user_question: "platform",
@@ -168,6 +172,7 @@ export function getToolCategory(
  */
 export function buildLlmUsageEvents({
   workspaceId,
+  isByok,
   conversationId,
   userId,
   agentMessageId,
@@ -184,6 +189,7 @@ export function buildLlmUsageEvents({
   timestamp,
 }: {
   workspaceId: string;
+  isByok: boolean;
   conversationId: string;
   userId: string | null;
   agentMessageId: string;
@@ -216,6 +222,7 @@ export function buildLlmUsageEvents({
   for (const usage of runUsages) {
     const key = `${usage.providerId}|${usage.modelId}`;
     const existing = groups.get(key);
+
     if (existing) {
       existing.promptTokens += usage.promptTokens;
       existing.completionTokens += usage.completionTokens;
@@ -243,6 +250,7 @@ export function buildLlmUsageEvents({
     properties: {
       workspace_id: workspaceId,
       user_id: userId ?? "unknown",
+      is_byok: isByok ? "true" : "false",
       agent_message_id: agentMessageId,
       conversation_id: conversationId,
       agent_id: agentId ?? "unknown",
@@ -253,9 +261,14 @@ export function buildLlmUsageEvents({
       completion_tokens: group.completionTokens,
       cached_tokens: group.cachedTokens,
       cache_creation_tokens: group.cacheCreationTokens,
-      // Provider cost without markup — markup is applied in Metronome rate card.
+      // Provider cost without markup — markup is applied in Metronome rate card. Only used for legacy rates.
       cost_micro_usd: group.costMicroUsd,
+      // TODO: This is a temporary conversion factor. Includes markup. Actual cost TBD.
+      cost_awu: Math.ceil((group.costMicroUsd * 1.3) / 10_000),
+      // TODO: Remove is_programmatic_usage & is_free_usage, this is replaced by single property "usage type"
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
+      is_free_usage: "false",
+      usage_type: isProgrammaticUsage ? "programmatic" : "user",
       auth_method: authMethod ?? "unknown",
       api_key_name: apiKeyName ?? "unknown",
       message_status: messageStatus,
@@ -366,7 +379,9 @@ export function buildToolUseEvents({
       status: action.status,
       count,
       total_execution_duration_ms: totalDurationMs,
+      // TODO: Remove is_programmatic_usage, this is replaced by single property "usage type"
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
+      usage_type: isProgrammaticUsage ? "programmatic" : "user",
       message_status: messageStatus,
       is_sub_agent_message: isSubAgentMessage ? "true" : "false",
       origin,

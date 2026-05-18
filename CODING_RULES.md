@@ -262,6 +262,115 @@ const apiUrl = config.getApiUrl();
 const isProduction = config.getNodeEnv() === "production";
 ```
 
+### [GEN12] Avoid `!important` in CSS
+
+Do not use `!important` in stylesheets, CSS modules, Tailwind `@apply` blocks, CSS-in-JS, or
+template literals that produce CSS. This also covers Tailwind's `!` important-prefix utilities
+(e.g. `focus:!ring-0`, `!mt-0`) — they compile to `!important` and have the same downsides.
+`!important` breaks the cascade, makes specificity issues harder to debug, and tends to spread
+once introduced — every override forces the next one.
+
+Fix the underlying specificity issue instead: increase selector specificity, reorder rules, scope
+via a parent class, drop conflicting utilities, or restructure the component.
+
+Narrow exceptions are acceptable when:
+
+- Overriding styles from a third-party library that we do not control.
+- Dev-only tooling that injects inspection/debug styles at runtime.
+
+In those cases, add a brief comment on the same line or directly above explaining why
+`!important` is required.
+
+Reviewer: If you detect `!important` (including Tailwind's `!` prefix) without a justifying
+comment, ask the author to remove it and address the underlying specificity issue.
+
+Example:
+
+```
+/* BAD */
+.button {
+  color: red !important;
+}
+
+/* GOOD */
+.toolbar .button {
+  color: red;
+}
+
+/* GOOD — third-party library override */
+.allotment-pane {
+  /* allotment computes inline styles; only !important wins. */
+  cursor: default !important;
+}
+```
+
+```tsx
+// BAD — Tailwind important prefix
+<div className="focus:!ring-0 !mt-0" />
+
+// GOOD — drop the conflicting utility, or scope via a parent
+<div className="focus:ring-transparent mt-0" />
+```
+
+### [GEN13] Use zod for runtime validation, not io-ts
+
+We are migrating off `io-ts` in favor of `zod`. All new schemas (request bodies, query
+parameters, form validation, runtime parsing of external data) must be written with `zod`. Do
+not introduce new `io-ts` codecs, and do not import `io-ts`, `io-ts-types`, `io-ts-reporters`,
+or `fp-ts/lib/Either` in new code.
+
+Existing `io-ts` codecs may remain — they will be migrated incrementally. When modifying a file
+that already uses `io-ts`, prefer migrating its codecs to `zod` if the change is local; if the
+codec is shared across many consumers, leave the migration to a dedicated PR.
+
+For error formatting, use `fromError` from `zod-validation-error` to produce a readable message
+from a `ZodError`.
+
+Example:
+
+```
+// BAD — new code using io-ts
+import * as t from "io-ts";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+
+const BodySchema = t.type({
+  name: t.string,
+  count: t.number,
+});
+
+const validation = BodySchema.decode(req.body);
+if (isLeft(validation)) {
+  const message = reporter.formatValidationErrors(validation.left);
+  return apiError(req, res, { status_code: 400, api_error: { type: "invalid_request_error", message } });
+}
+const { name, count } = validation.right;
+
+// GOOD — new code using zod
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
+
+const BodySchema = z.object({
+  name: z.string(),
+  count: z.number(),
+});
+
+const validation = BodySchema.safeParse(req.body);
+if (!validation.success) {
+  return apiError(req, res, {
+    status_code: 400,
+    api_error: {
+      type: "invalid_request_error",
+      message: fromError(validation.error).toString(),
+    },
+  });
+}
+const { name, count } = validation.data;
+```
+
+Reviewer: If you see new `io-ts` imports or codecs introduced by a PR, require the author to
+rewrite them in `zod`.
+
 ## SECURITY
 
 ### [SEC1] No sensitive data outside of HTTP bodies or headers

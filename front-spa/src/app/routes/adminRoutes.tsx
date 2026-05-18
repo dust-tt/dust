@@ -34,12 +34,17 @@ const SecretsPage = withSuspense(
     import("@dust-tt/front/components/pages/workspace/developers/SecretsPage"),
   "SecretsPage"
 );
-const EgressPolicyPage = withSuspense(
+const SandboxPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/workspace/developers/SandboxPage"),
+  "SandboxPage"
+);
+const SelfImprovingSkillsPage = withSuspense(
   () =>
     import(
-      "@dust-tt/front/components/pages/workspace/developers/EgressPolicyPage"
+      "@dust-tt/front/components/pages/workspace/developers/SelfImprovingSkillsPage"
     ),
-  "EgressPolicyPage"
+  "SelfImprovingSkillsPage"
 );
 const MembersPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/MembersPage"),
@@ -51,13 +56,6 @@ const ManageSubscriptionPage = withSuspense(
       "@dust-tt/front/components/pages/workspace/subscription/ManageSubscriptionPage"
     ),
   "ManageSubscriptionPage"
-);
-const PaymentProcessingPage = withSuspense(
-  () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/subscription/PaymentProcessingPage"
-    ),
-  "PaymentProcessingPage"
 );
 const SubscriptionPage = withSuspense(
   () =>
@@ -78,6 +76,10 @@ const ModelProvidersPage = withSuspense(
     ),
   "ModelProvidersPage"
 );
+const UsagePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/workspace/UsagePage"),
+  "UsagePage"
+);
 
 export const adminRoutes: RouteObject[] = [
   { path: "me", element: <ProfilePage /> },
@@ -88,14 +90,11 @@ export const adminRoutes: RouteObject[] = [
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
+      { path: "usage", element: <UsagePage /> },
       { path: "subscription", element: <SubscriptionPage /> },
       {
         path: "subscription/manage",
         element: <ManageSubscriptionPage />,
-      },
-      {
-        path: "subscription/payment_processing",
-        element: <PaymentProcessingPage />,
       },
       { path: "developers/api-keys", element: <APIKeysPage /> },
       {
@@ -111,8 +110,12 @@ export const adminRoutes: RouteObject[] = [
         element: <SecretsPage />,
       },
       {
-        path: "developers/egress-policy",
-        element: <EgressPolicyPage />,
+        path: "developers/sandbox",
+        element: <SandboxPage />,
+      },
+      {
+        path: "developers/self-improving-skills",
+        element: <SelfImprovingSkillsPage />,
       },
     ],
   },

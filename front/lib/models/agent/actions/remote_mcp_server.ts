@@ -28,6 +28,7 @@ export class RemoteMCPServerModel extends WorkspaceAwareModel<RemoteMCPServerMod
   declare sharedSecret: string | null;
   declare authorization: AuthorizationInfo | null;
   declare customHeaders: Record<string, string> | null;
+  declare meta: Record<string, string> | null;
 }
 
 RemoteMCPServerModel.init(
@@ -91,10 +92,18 @@ RemoteMCPServerModel.init(
       allowNull: true,
       defaultValue: null,
     },
+    meta: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     sequelize: frontSequelize,
     modelName: "remote_mcp_server",
-    indexes: [{ fields: ["workspaceId"], concurrently: true }],
+    indexes: [
+      { fields: ["workspaceId"], concurrently: true },
+      { fields: ["workspaceId", "id"], concurrently: true },
+    ],
   }
 );

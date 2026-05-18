@@ -14,6 +14,16 @@ export function formatSandboxImageId(id: SandboxImageId): string {
 }
 
 // ---------------------------------------------------------------------------
+// Tool Names
+// ---------------------------------------------------------------------------
+
+// TODO(dsbx-tools): Hacky temporary — exported so the `dsbx` entry can be
+// filtered out of the sandbox tool manifest by name when the
+// `sandbox_dsbx_tools` flag is off. Remove once `dsbx tools` ships to all
+// sandbox-enabled workspaces and the flag goes away.
+export const DSBX_TOOL_NAME = "dsbx";
+
+// ---------------------------------------------------------------------------
 // Tool Runtime & Profile
 // ---------------------------------------------------------------------------
 
@@ -34,7 +44,7 @@ export interface ToolEntry {
   readonly usage?: string;
   readonly returns?: string;
   readonly runtime: ToolRuntime;
-  readonly profile?: ToolProfile;
+  readonly profile?: ToolProfile | readonly ToolProfile[];
 }
 
 // ---------------------------------------------------------------------------
@@ -43,7 +53,10 @@ export interface ToolEntry {
 
 export type ManifestFormat = "json" | "yaml";
 
-export type ContentGenerator = () => Buffer | string;
+export type ContentGenerator = () =>
+  | Buffer
+  | string
+  | Map<string, Buffer | string>;
 
 export type CopySource =
   | { readonly type: "path"; readonly path: string }

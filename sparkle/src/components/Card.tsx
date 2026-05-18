@@ -164,6 +164,8 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       className
     );
 
+    const cardStyle = isPulsing ? { animationDuration: "3s", ...style } : style;
+
     if (href) {
       const linkContent = (
         <Link
@@ -182,7 +184,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       );
       if (isPulsing) {
         return (
-          <div className={cardButtonClassNames} style={style}>
+          <div className={cardButtonClassNames} style={cardStyle}>
             {linkContent}
           </div>
         );
@@ -194,7 +196,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       <div
         ref={ref}
         className={cardButtonClassNames}
-        style={style}
+        style={cardStyle}
         onClick={onClick}
         role={isInteractive ? "button" : undefined}
         aria-pressed={
@@ -304,16 +306,21 @@ const adaptiveGridClasses = cn(
 
 interface CardGridProps extends React.HTMLAttributes<HTMLDivElement> {
   adaptColumns?: boolean;
+  gridClassName?: string;
 }
 
 export const CardGrid = React.forwardRef<HTMLDivElement, CardGridProps>(
-  ({ children, className, adaptColumns = false, ...props }, ref) => {
+  (
+    { children, className, gridClassName, adaptColumns = false, ...props },
+    ref
+  ) => {
     return (
       <div ref={ref} className={cn("s-@container", className)} {...props}>
         <div
           className={cn(
             "s-grid s-grid-cols-1 s-gap-2",
-            adaptColumns ? adaptiveGridClasses : uncappedGridClasses
+            gridClassName ??
+              (adaptColumns ? adaptiveGridClasses : uncappedGridClasses)
           )}
         >
           {children}

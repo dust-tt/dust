@@ -6,18 +6,17 @@ import type { Authenticator } from "@app/lib/auth";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { isLeft } from "fp-ts/Either";
 import { escape } from "html-escaper";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const PostRequestFeatureAccessBodySchema = t.type({
-  emailMessage: t.string,
-  featureName: t.string,
+export const PostRequestFeatureAccessBodySchema = z.object({
+  emailMessage: z.string(),
+  featureName: z.string(),
 });
 
-export type PostRequestFeatureAccessBody = t.TypeOf<
+export type PostRequestFeatureAccessBody = z.infer<
   typeof PostRequestFeatureAccessBodySchema
 >;
 
@@ -52,9 +51,9 @@ async function handler(
     });
   }
 
-  const bodyValidation = PostRequestFeatureAccessBodySchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = PostRequestFeatureAccessBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
 
     return apiError(req, res, {
       status_code: 400,
@@ -66,7 +65,7 @@ async function handler(
   }
 
   const emailRequester = user.email;
-  const { emailMessage, featureName } = bodyValidation.right;
+  const { emailMessage, featureName } = bodyValidation.data;
 
   const rateLimitKey = `labs_access_requests:${auth.getNonNullableWorkspace().sId}`;
   const remaining = await rateLimiter({

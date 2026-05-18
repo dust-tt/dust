@@ -18,6 +18,7 @@ import {
 import type { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
 import {
   FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
+  FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
   FIREWORKS_GLM_5_MODEL_ID,
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   FIREWORKS_KIMI_K2P5_MODEL_ID,
@@ -151,6 +152,10 @@ export const MODELS: Record<
   [O4_MINI_MODEL_ID]: { runTest: false, providerId: "openai" },
   // Fireworks models
   [FIREWORKS_DEEPSEEK_V3P2_MODEL_ID]: {
+    runTest: false,
+    providerId: "fireworks",
+  },
+  [FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID]: {
     runTest: false,
     providerId: "fireworks",
   },

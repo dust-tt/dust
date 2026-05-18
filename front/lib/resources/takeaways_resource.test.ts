@@ -47,9 +47,7 @@ describe("TakeawaysResource", () => {
         shortDescription: "Follow up with customer",
         assigneeUserId: null,
         assigneeName: null,
-        status: "open" as const,
-        detectedDoneAt: null,
-        detectedDoneRationale: null,
+        detectedCreationRationale: null,
       };
       const updated = await takeaway.updateWithVersion(auth, {
         actionItems: [actionItem],
@@ -74,9 +72,7 @@ describe("TakeawaysResource", () => {
               shortDescription: "Cross-tenant action item",
               assigneeUserId: null,
               assigneeName: null,
-              status: "open",
-              detectedDoneAt: null,
-              detectedDoneRationale: null,
+              detectedCreationRationale: null,
             },
           ],
         })
@@ -91,18 +87,14 @@ describe("TakeawaysResource", () => {
         shortDescription: "First action item",
         assigneeUserId: null,
         assigneeName: null,
-        status: "open" as const,
-        detectedDoneAt: null,
-        detectedDoneRationale: null,
+        detectedCreationRationale: null,
       };
       const actionItem2 = {
         sId: "ai_002",
         shortDescription: "Second action item",
         assigneeUserId: null,
         assigneeName: null,
-        status: "done" as const,
-        detectedDoneAt: "2026-04-24T00:00:00.000Z",
-        detectedDoneRationale: "Mentioned as completed in summary",
+        detectedCreationRationale: null,
       };
 
       const v1 = await takeaway.updateWithVersion(auth, {
@@ -125,8 +117,6 @@ describe("TakeawaysResource", () => {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       expect(takeaway.sId).toMatch(/^tka_/);
@@ -140,25 +130,19 @@ describe("TakeawaysResource", () => {
         shortDescription: "Updated action item",
         assigneeUserId: null,
         assigneeName: null,
-        status: "open" as const,
-        detectedDoneAt: null,
-        detectedDoneRationale: null,
+        detectedCreationRationale: null,
       };
 
       const first = await TakeawaysResource.makeNewForConversation(auth, {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       const second = await TakeawaysResource.makeNewForConversation(auth, {
         conversationId,
         spaceId: space.sId,
         actionItems: [actionItem],
-        keyDecisions: [],
-        notableFacts: [],
       });
 
       // Same stable identity — the main row was updated in place.
@@ -177,8 +161,6 @@ describe("TakeawaysResource", () => {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       const fetched = await TakeawaysResource.fetchLatestByConversationId(
@@ -205,8 +187,6 @@ describe("TakeawaysResource", () => {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       const otherSetup = await createResourceTest({ role: "user" });
@@ -227,8 +207,6 @@ describe("TakeawaysResource", () => {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       expect(takeaway).not.toBeNull();
@@ -251,17 +229,13 @@ describe("TakeawaysResource", () => {
         shortDescription: "A versioned action item",
         assigneeUserId: null,
         assigneeName: null,
-        status: "open" as const,
-        detectedDoneAt: null,
-        detectedDoneRationale: null,
+        detectedCreationRationale: null,
       };
 
       const takeaway = await TakeawaysResource.makeNewForConversation(auth, {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       // Create a version snapshot.

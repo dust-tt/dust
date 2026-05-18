@@ -378,7 +378,7 @@ function EnterprisePriceTable({
       title="Enterprise"
       price="Custom"
       size={size}
-      priceLabel=" pay-per-use, 100+ users"
+      priceLabel=" based on active users"
       magnified={false}
     >
       <PriceTable.ActionContainer position="top">

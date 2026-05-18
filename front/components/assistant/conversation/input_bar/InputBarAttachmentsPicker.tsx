@@ -668,6 +668,7 @@ export const InputBarAttachmentsPicker = ({
                 <LoadingBlock
                   // LoadingBlock defaults to dark:bg-muted-background-night, same as the menu
                   // surface, so skeletons read as invisible; match menu row hover contrast.
+                  // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
                   className="h-7 w-20 bg-muted-background dark:!bg-muted-night p-2 mt-2"
                 />
               )}
@@ -682,6 +683,7 @@ export const InputBarAttachmentsPicker = ({
                       key={i}
                       // LoadingBlock defaults to dark:bg-muted-background-night, same as the menu
                       // surface, so skeletons read as invisible; match menu row hover contrast.
+                      // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
                       className="h-11 w-full bg-muted-background dark:border-border-night dark:!bg-muted-night"
                     />
                   )

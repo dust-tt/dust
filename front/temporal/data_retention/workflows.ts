@@ -1,8 +1,6 @@
 import type * as activities from "@app/temporal/data_retention/activities";
 import { proxyActivities, setHandler } from "@temporalio/workflow";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
-
+import chunk from "lodash/chunk";
 import { runSignal } from "./signals";
 
 const {
@@ -27,7 +25,7 @@ export async function dataRetentionWorkflow(): Promise<void> {
 
   // First the Workspace level data retention.
   const workspaceIds = await getWorkspacesWithConversationsRetentionActivity();
-  const workspaceChunks = _.chunk(workspaceIds, 4);
+  const workspaceChunks = chunk(workspaceIds, 4);
 
   for (const workspaceChunk of workspaceChunks) {
     await purgeConversationsBatchActivity({

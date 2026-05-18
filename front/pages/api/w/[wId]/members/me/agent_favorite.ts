@@ -5,22 +5,21 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type PostAgentUserFavoriteResponseBody = {
   agentId: string;
   userFavorite: boolean;
 };
 
-export const PostAgentUserFavoriteRequestBodySchema = t.type({
-  agentId: t.string,
-  userFavorite: t.boolean,
+export const PostAgentUserFavoriteRequestBodySchema = z.object({
+  agentId: z.string(),
+  userFavorite: z.boolean(),
 });
 
-export type PostAgentUserFavoriteRequestBody = t.TypeOf<
+export type PostAgentUserFavoriteRequestBody = z.infer<
   typeof PostAgentUserFavoriteRequestBodySchema
 >;
 
@@ -31,22 +30,20 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostAgentUserFavoriteRequestBodySchema.decode(
+      const bodyValidation = PostAgentUserFavoriteRequestBodySchema.safeParse(
         req.body
       );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
 
-      const { agentId, userFavorite } = bodyValidation.right;
+      const { agentId, userFavorite } = bodyValidation.data;
 
       const agentConfiguration = await getAgentConfiguration(auth, {
         agentId,

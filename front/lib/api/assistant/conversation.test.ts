@@ -1,6 +1,5 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
-  compactConversation,
   editUserMessage,
   isConversationEventAllowedForAuth,
   postNewContentFragment,
@@ -9,6 +8,7 @@ import {
   softDeleteAgentMessage,
   softDeleteUserMessageAndReplies,
 } from "@app/lib/api/assistant/conversation";
+import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   getConversation,
@@ -84,15 +84,50 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
   getContentFragmentBlob: vi.fn(),
 }));
 
+import { runOnRedis } from "@app/lib/api/redis";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 // Mock rateLimiter from the utils module
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+
+const TEST_PROGRAMMATIC_CREDIT_AMOUNT_MICRO_USD = 100_000_000;
+const TEST_CREDIT_START_DELAY_MS = 1000;
+const TEST_CREDIT_EXPIRATION_DAYS = 365;
+const TEST_CREDIT_EXPIRATION_DELAY_MS =
+  TEST_CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+const TEST_DAILY_USAGE_TTL_SECONDS = 60 * 60;
+
+async function createActiveProgrammaticCredit(
+  auth: Authenticator
+): Promise<void> {
+  const credit = await CreditResource.makeNew(auth, {
+    type: "free",
+    initialAmountMicroUsd: TEST_PROGRAMMATIC_CREDIT_AMOUNT_MICRO_USD,
+    consumedAmountMicroUsd: 0,
+  });
+
+  const result = await credit.start(auth, {
+    startDate: new Date(Date.now() - TEST_CREDIT_START_DELAY_MS),
+    expirationDate: new Date(Date.now() + TEST_CREDIT_EXPIRATION_DELAY_MS),
+  });
+
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  await runOnRedis({ origin: "daily_usage_tracking" }, async (redis) => {
+    await redis.set(`workspace-daily-usage:${workspace.sId}`, "0", {
+      EX: TEST_DAILY_USAGE_TTL_SECONDS,
+    });
+  });
+}
 
 describe("retryAgentMessage", () => {
   let auth: Authenticator;
@@ -551,6 +586,7 @@ describe("retryAgentMessage", () => {
     const systemKey = await KeyFactory.system(globalGroup);
     const mixedAuth = auth.exchangeKey(systemKey.toAuthJSON());
     const userId = auth.getNonNullableUser().id;
+    await createActiveProgrammaticCredit(mixedAuth);
 
     const rateLimiterSpy = vi
       .spyOn(rateLimiterModule, "rateLimiter")
@@ -632,6 +668,20 @@ describe("retryAgentMessage", () => {
             `Failed to add user to project space group: ${addRes.error.message}`
           );
         }
+
+        const secondProjectMember = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, secondProjectMember, {
+          role: "user",
+        });
+        const addSecondRes = await projectSpaceGroup.dangerouslyAddMember(
+          internalAdminAuth,
+          { user: secondProjectMember.toJSON() }
+        );
+        if (addSecondRes.isErr()) {
+          throw new Error(
+            `Failed to add second user to project space group: ${addSecondRes.error.message}`
+          );
+        }
       }
 
       if (anotherProjectSpaceGroup) {
@@ -709,7 +759,7 @@ describe("retryAgentMessage", () => {
       vi.clearAllMocks();
     });
 
-    it("should return error when agent is restricted by space usage in project conversation", async () => {
+    it("should return error when agent is restricted by space usage in project conversation with more than one manual member on that project", async () => {
       const result = await retryAgentMessage(auth, {
         conversation: projectConversation,
         message: projectAgentMessage,
@@ -1415,6 +1465,7 @@ describe("postUserMessage", () => {
       name: "Test Agent 1",
       description: "First test agent",
     });
+    await createActiveProgrammaticCredit(auth);
 
     const conversationWithoutContent = await ConversationFactory.create(auth, {
       agentConfigurationId: agentConfig1.sId,
@@ -1432,6 +1483,71 @@ describe("postUserMessage", () => {
     conversation = fetchedConversationResult.value;
 
     vi.clearAllMocks();
+  });
+
+  it("should reject programmatic messages when programmatic credits are exhausted", async () => {
+    const setup = await createResourceTest({});
+    const noCreditAuth = setup.authenticator;
+    const noCreditAgent = await AgentConfigurationFactory.createTestAgent(
+      noCreditAuth,
+      {
+        name: "No Credit Test Agent",
+        description: "No Credit Test Agent Description",
+      }
+    );
+    const conversationWithoutContent = await ConversationFactory.create(
+      noCreditAuth,
+      {
+        agentConfigurationId: noCreditAgent.sId,
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+      }
+    );
+    const fetchedConversationResult = await getConversation(
+      noCreditAuth,
+      conversationWithoutContent.sId
+    );
+    if (fetchedConversationResult.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+
+    const noCreditWorkspace = noCreditAuth.getNonNullableWorkspace();
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(100);
+    const noCreditUser = noCreditAuth.getNonNullableUser();
+    const noCreditUserJson = noCreditUser.toJSON();
+
+    const result = await postUserMessage(noCreditAuth, {
+      conversation: fetchedConversationResult.value,
+      content: "Programmatic message",
+      mentions: [],
+      context: {
+        username: noCreditUserJson.username,
+        timezone: "UTC",
+        fullName: noCreditUserJson.fullName,
+        email: noCreditUserJson.email,
+        profilePictureUrl: noCreditUserJson.image,
+        origin: "triggered_programmatic",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(403);
+      expect(result.error.api_error.type).toBe("credits_exhausted");
+      expect(result.error.api_error.message).toContain(
+        "programmatic usage credits"
+      );
+    }
+    expect(rateLimiterSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `workspace:${noCreditWorkspace.sId}:programmatic_usage_rate_limit`,
+      })
+    );
+
+    rateLimiterSpy.mockRestore();
   });
 
   it("should preserve agent mentions in the returned userMessage", async () => {
@@ -2456,7 +2572,11 @@ describe("postUserMessage", () => {
     let projectConversation: ConversationType;
     let agentWithDifferentSpace: LightAgentConfigurationType;
 
-    async function setupProjectWithRestrictedAgent() {
+    async function setupProjectWithRestrictedAgent({
+      messagesCreatedAt = [new Date()],
+    }: {
+      messagesCreatedAt?: Date[];
+    } = {}) {
       projectSpace = await SpaceFactory.project(workspace);
       anotherProjectSpace = await SpaceFactory.project(workspace);
 
@@ -2480,6 +2600,20 @@ describe("postUserMessage", () => {
         if (addRes.isErr()) {
           throw new Error(
             `Failed to add user to project space: ${addRes.error.message}`
+          );
+        }
+
+        const secondProjectMember = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, secondProjectMember, {
+          role: "user",
+        });
+        const addSecondRes = await projectSpaceGroup.dangerouslyAddMember(
+          internalAdminAuth,
+          { user: secondProjectMember.toJSON() }
+        );
+        if (addSecondRes.isErr()) {
+          throw new Error(
+            `Failed to add second user to project space: ${addSecondRes.error.message}`
           );
         }
       }
@@ -2524,7 +2658,7 @@ describe("postUserMessage", () => {
         auth,
         {
           agentConfigurationId: agentWithDifferentSpace.sId,
-          messagesCreatedAt: [new Date()],
+          messagesCreatedAt,
           spaceId: projectSpace.id,
         }
       );
@@ -2696,6 +2830,110 @@ describe("postUserMessage", () => {
         );
         expect(branchRow).not.toBeNull();
         expect(secondUserMessageRow!.branchId).toBe(branchRow!.id);
+
+        rateLimiterSpy.mockRestore();
+      });
+    });
+
+    describe("with empty conversation and projects feature flag enabled", () => {
+      beforeEach(async () => {
+        await setupProjectWithRestrictedAgent({ messagesCreatedAt: [] });
+        await FeatureFlagFactory.basic(auth, "projects");
+      });
+
+      it("should create a branch with an anchor message when first message mentions a restricted agent", async () => {
+        const user = auth.getNonNullableUser();
+        const userJson = user.toJSON();
+
+        const rateLimiterSpy = vi
+          .spyOn(rateLimiterModule, "rateLimiter")
+          .mockResolvedValue(100);
+
+        expect(projectConversation.content.length).toBe(0);
+
+        const result = await postUserMessage(auth, {
+          conversation: projectConversation,
+          content: `Hello @${agentWithDifferentSpace.name}`,
+          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+          skipToolsValidation: false,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (!result.isOk()) {
+          return;
+        }
+
+        const branchesAfter =
+          await ConversationBranchResource.listForConversation(
+            auth,
+            projectConversation.id
+          );
+        expect(branchesAfter.length).toBe(1);
+        const branch = branchesAfter[0];
+        expect(projectConversation.branchId).toBe(branch.sId);
+
+        // Anchor message: rank 0, empty content, origin "branch_anchor".
+        const anchorMessageRow = await MessageModel.findOne({
+          where: {
+            conversationId: projectConversation.id,
+            workspaceId: workspace.id,
+            rank: 0,
+            branchId: null,
+          },
+          include: [
+            {
+              model: UserMessageModel,
+              as: "userMessage",
+              required: true,
+            },
+          ],
+        });
+        expect(anchorMessageRow).not.toBeNull();
+        expect(anchorMessageRow!.userMessage!.content).toBe("");
+        expect(anchorMessageRow!.userMessage!.userContextOrigin).toBe(
+          "branch_anchor"
+        );
+
+        // The actual user message lives on the branch at rank 1.
+        const newUserMessageRow = await MessageModel.findOne({
+          where: {
+            id: result.value.userMessage.id,
+            workspaceId: workspace.id,
+          },
+        });
+        expect(newUserMessageRow).not.toBeNull();
+        expect(newUserMessageRow!.branchId).toBe(branch.id);
+        expect(newUserMessageRow!.rank).toBe(1);
+
+        // Agent message also lives on the branch.
+        expect(result.value.agentMessages.length).toBe(1);
+        const agentMessageRow = await MessageModel.findOne({
+          where: {
+            id: result.value.agentMessages[0].id,
+            workspaceId: workspace.id,
+          },
+        });
+        expect(agentMessageRow).not.toBeNull();
+        expect(agentMessageRow!.branchId).toBe(branch.id);
+
+        // Mention is approved (not restricted) because it lives on a branch.
+        const mentionRow = await MentionModel.findOne({
+          where: {
+            messageId: result.value.userMessage.id,
+            workspaceId: workspace.id,
+            agentConfigurationId: agentWithDifferentSpace.sId,
+          },
+        });
+        expect(mentionRow).not.toBeNull();
+        expect(mentionRow!.status).toBe("approved");
 
         rateLimiterSpy.mockRestore();
       });
@@ -3653,14 +3891,17 @@ describe("postNewContentFragment", () => {
       });
       expect(messageCountAfterFirst).toBe(1);
 
-      fetchedConversationResult = await getConversation(
-        auth,
-        conversationWithoutContent.sId
-      );
-      if (fetchedConversationResult.isErr()) {
-        throw new Error("Failed to fetch conversation");
+      const conversationWithoutContentResult =
+        await ConversationResource.fetchConversationWithoutContent(
+          auth,
+          conversationWithoutContent.sId
+        );
+      expect(conversationWithoutContentResult.isOk()).toBe(true);
+      if (conversationWithoutContentResult.isErr()) {
+        throw new Error("Failed to fetch conversation metadata");
       }
-      const conversationAfterFirst = fetchedConversationResult.value;
+
+      const conversationAfterFirst = conversationWithoutContentResult.value;
 
       const second = await postNewContentFragment(
         auth,
@@ -3677,6 +3918,179 @@ describe("postNewContentFragment", () => {
         },
       });
       expect(messageCountAfterSecond).toBe(1);
+    });
+
+    it("allows superseding a content fragment with conversation metadata only", async () => {
+      const user = auth.getNonNullableUser();
+      const blob = new Ok({
+        contentType: "text/plain" as const,
+        fileId: null,
+        nodeId: "test-node-id",
+        nodeDataSourceViewId: dsViewInGlobalSpace.id,
+        nodeType: "document" as const,
+        sourceUrl: null,
+        textBytes: null,
+        title: "Superseded fragment",
+      });
+      vi.mocked(getContentFragmentBlob)
+        .mockResolvedValueOnce(blob)
+        .mockResolvedValueOnce(blob);
+
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      const fullConversation = fetchedConversationResult.value;
+
+      const input: ContentFragmentInputWithContentNode = {
+        title: "Superseded fragment",
+        nodeId: "test-node-id",
+        nodeDataSourceViewId: dsViewInGlobalSpace.sId,
+      };
+      const context = {
+        username: user.username,
+        fullName: user.fullName(),
+        email: user.email,
+        profilePictureUrl: null,
+      };
+
+      const first = await postNewContentFragment(
+        auth,
+        fullConversation,
+        input,
+        context
+      );
+      expect(first.isOk()).toBe(true);
+
+      const conversationMetadataResult =
+        await ConversationResource.fetchConversationWithoutContent(
+          auth,
+          conversationWithoutContent.sId
+        );
+      expect(conversationMetadataResult.isOk()).toBe(true);
+      if (conversationMetadataResult.isErr()) {
+        throw new Error("Failed to fetch conversation metadata");
+      }
+
+      const second = await postNewContentFragment(
+        auth,
+        conversationMetadataResult.value,
+        {
+          ...input,
+          supersededContentFragmentId: first.isOk()
+            ? first.value.contentFragmentId
+            : generateRandomModelSId("cf"),
+        },
+        context
+      );
+      expect(second.isOk()).toBe(true);
+      if (first.isOk() && second.isOk()) {
+        expect(second.value.contentFragmentId).toBe(
+          first.value.contentFragmentId
+        );
+      }
+    });
+
+    it("allows superseding a trunk content fragment from a branch conversation", async () => {
+      const user = auth.getNonNullableUser();
+      const blob = new Ok({
+        contentType: "text/plain" as const,
+        fileId: null,
+        nodeId: "branch-node-id",
+        nodeDataSourceViewId: dsViewInGlobalSpace.id,
+        nodeType: "document" as const,
+        sourceUrl: null,
+        textBytes: null,
+        title: "Branch superseded fragment",
+      });
+      vi.mocked(getContentFragmentBlob)
+        .mockResolvedValueOnce(blob)
+        .mockResolvedValueOnce(blob);
+
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+        }
+      );
+
+      const conversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      expect(conversationResult.isOk()).toBe(true);
+      if (conversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+
+      const input: ContentFragmentInputWithContentNode = {
+        title: "Branch superseded fragment",
+        nodeId: "branch-node-id",
+        nodeDataSourceViewId: dsViewInGlobalSpace.sId,
+      };
+      const context = {
+        username: user.username,
+        fullName: user.fullName(),
+        email: user.email,
+        profilePictureUrl: null,
+      };
+
+      const first = await postNewContentFragment(
+        auth,
+        conversationResult.value,
+        input,
+        context
+      );
+      expect(first.isOk()).toBe(true);
+      if (first.isErr()) {
+        throw new Error("Failed to create the trunk content fragment");
+      }
+
+      const branch = await ConversationBranchResource.makeNew(auth, {
+        state: "open",
+        previousMessageId: first.value.id,
+        conversationId: conversationResult.value.id,
+        userId: user.id,
+      });
+
+      const branchConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId,
+        false,
+        branch.sId
+      );
+      expect(branchConversationResult.isOk()).toBe(true);
+      if (branchConversationResult.isErr()) {
+        throw new Error("Failed to fetch branch conversation");
+      }
+
+      const second = await postNewContentFragment(
+        auth,
+        branchConversationResult.value,
+        {
+          ...input,
+          supersededContentFragmentId: first.value.contentFragmentId,
+        },
+        context
+      );
+      expect(second.isOk()).toBe(true);
+      if (second.isOk()) {
+        expect(second.value.contentFragmentId).toBe(
+          first.value.contentFragmentId
+        );
+      }
     });
   });
 });
@@ -3973,6 +4387,11 @@ describe("conversation fetch forkingData", () => {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [new Date("2026-01-05T00:00:00.000Z")],
     });
+    const parentConversationTitle = "Parent fork source";
+    await ConversationModel.update(
+      { title: parentConversationTitle },
+      { where: { id: parentConversation.id, workspaceId: workspace.id } }
+    );
     const firstChildConversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [],
@@ -3987,7 +4406,7 @@ describe("conversation fetch forkingData", () => {
       { where: { id: firstChildConversation.id, workspaceId: workspace.id } }
     );
     await ConversationModel.update(
-      { title: "Earlier fork" },
+      { title: null },
       { where: { id: secondChildConversation.id, workspaceId: workspace.id } }
     );
 
@@ -4045,7 +4464,7 @@ describe("conversation fetch forkingData", () => {
     const expectedForkedChildren = [
       {
         childConversationId: secondChildConversation.sId,
-        childConversationTitle: "Earlier fork",
+        childConversationTitle: `Branched from '${parentConversationTitle}'`,
         sourceMessageId: sourceMessage.sId,
         branchedAt: earlierBranchedAt.getTime(),
         user: auth.getNonNullableUser().toJSON(),

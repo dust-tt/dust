@@ -8,6 +8,7 @@ import moment from "moment";
 import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
+import { assertNeverAndIgnore } from "../shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
@@ -117,7 +118,10 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
-  | "reinforcement";
+  | "reinforcement"
+  // Internal anchor user message inserted at the start of an empty conversation so
+  // a branch can be created before any user-visible message exists.
+  | "branch_anchor";
 
 /**
  * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
@@ -204,6 +208,29 @@ export function isUserMessageTypeWithContentFragments(
   return arg.type === "user_message" && "contentFragments" in arg;
 }
 
+export function isHiddenMessageOrigin(origin: UserMessageOrigin): boolean {
+  return (
+    origin === "onboarding_conversation" ||
+    origin === "project_kickoff" ||
+    origin === "reinforced_skill_notification" ||
+    origin === "branch_anchor" ||
+    origin === "wakeup"
+  );
+}
+
+export function isVisibleMessage(m: LightMessageType): boolean {
+  return (
+    m.visibility !== "deleted" &&
+    !(
+      isUserMessageTypeWithContentFragments(m) &&
+      isHiddenMessageOrigin(m.context.origin)
+    ) &&
+    // Compaction message will possibly be first messages of a conversation (forking) but they are
+    // not "visible" per se. `firstVisibleMessage` should null until a first user message is posted.
+    !isCompactionMessageType(m)
+  );
+}
+
 /**
  * Agent messages
  */
@@ -212,13 +239,35 @@ export type AgentMessageStatus =
   | "succeeded"
   | "failed"
   | "cancelled"
+  | "interrupted"
   | "gracefully_stopped";
 
 export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
+  // Message can be in "created" status when we stop the loop to ask for user permission for instance.
+  "created",
   "succeeded",
   "cancelled",
+  "interrupted",
   "gracefully_stopped",
 ];
+
+export function isTerminalAgentMessageStatus(
+  status: AgentMessageStatus
+): boolean {
+  switch (status) {
+    case "succeeded":
+    case "failed":
+    case "cancelled":
+    case "interrupted":
+    case "gracefully_stopped":
+      return true;
+    case "created":
+      return false;
+    default:
+      assertNeverAndIgnore(status);
+      return false;
+  }
+}
 
 export interface CitationType {
   description?: string;
@@ -265,6 +314,7 @@ export type InlineActivityStep =
       id: string;
       actionId: string;
       internalMCPServerName: InternalMCPServerNameType | null;
+      toolName: string | null;
     };
 
 export type ParsedContentItem =
@@ -400,6 +450,8 @@ export const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
 
 export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
+  projectTaskId?: string;
+  useFileSystem?: boolean;
 };
 
 export function isConversationUrlAccessMode(
@@ -469,6 +521,7 @@ export type ConversationListItemType = {
   triggerId: string | null;
   unread: boolean;
   updated: number;
+  isRunningAgentLoop: boolean;
 };
 
 /**

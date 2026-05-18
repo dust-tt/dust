@@ -312,8 +312,8 @@ async function handler(
       ],
       context: { location: ip ?? "internal" },
       metadata: {
-        isSSO: String(session.isSSO),
-        authenticationMethod: session.authenticationMethod ?? "unknown",
+        is_sso: String(session.isSSO),
+        authentication_method: session.authenticationMethod ?? "unknown",
       },
     });
   }

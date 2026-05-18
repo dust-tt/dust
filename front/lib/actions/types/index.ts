@@ -81,24 +81,37 @@ export type StepContext = {
   fileAuthorizationInfo?: FileAuthorizationInfo;
   resumeState: Record<string, unknown> | null;
   retrievalTopK: number;
-  sandboxOrigin?: boolean;
-  sandboxPaused?: boolean;
   websearchResultCount: number;
 };
 
-export type ActionGeneratedFileType = {
-  fileId: string;
+type ActionGeneratedFileBase = {
   title: string;
   contentType: AllSupportedFileContentType;
   snippet: string | null;
+  hidden?: boolean;
   createdAt?: number;
   updatedAt?: number;
   isInProjectContext?: boolean;
-  hidden?: boolean;
   // True for files created by offloading oversized tool output to disk. These are never indexed in
   // Qdrant and should not be flagged as searchable in the conversation render.
   skipDataSourceIndexing?: boolean;
 };
+
+// File backed by a Dust FileResource.
+export type ActionGeneratedDBFileType = ActionGeneratedFileBase & {
+  fileId: string;
+  filePath?: never;
+};
+
+// File path only, no FileResource in DB.
+export type ActionGeneratedFilePathType = ActionGeneratedFileBase & {
+  fileId: null;
+  filePath: string;
+};
+
+export type ActionGeneratedFileType =
+  | ActionGeneratedDBFileType
+  | ActionGeneratedFilePathType;
 
 export type AgentLoopRunContextType = {
   agentConfiguration: AgentConfigurationType;

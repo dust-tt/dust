@@ -29,6 +29,34 @@ export class KeyFactory {
     );
   }
 
+  static async readOnly(groupOrGroups: GroupResource | GroupResource[]) {
+    const groups = normalizeGroups(groupOrGroups);
+    return KeyResource.makeNew(
+      {
+        name: "key-" + faker.string.alphanumeric(8),
+        workspaceId: groups[0].workspaceId,
+        isSystem: false,
+        status: "active",
+        role: "user",
+      },
+      groups
+    );
+  }
+
+  static async admin(groupOrGroups: GroupResource | GroupResource[]) {
+    const groups = normalizeGroups(groupOrGroups);
+    return KeyResource.makeNew(
+      {
+        name: "key-" + faker.string.alphanumeric(8),
+        workspaceId: groups[0].workspaceId,
+        isSystem: false,
+        status: "active",
+        role: "admin",
+      },
+      groups
+    );
+  }
+
   static async disabled(groupOrGroups: GroupResource | GroupResource[]) {
     const groups = normalizeGroups(groupOrGroups);
     return KeyResource.makeNew(

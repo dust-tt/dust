@@ -9,7 +9,7 @@
     }
   ],
   "metadata": {
-    "conversationId": "string",
+    "conversation_id": "string",
     "actor_type": "string"
   }
 }

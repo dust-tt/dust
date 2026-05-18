@@ -14,8 +14,7 @@ import { SnowflakeKeyPairCredentialsSchema } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import { fromError } from "zod-validation-error";
 
 const CONNECTION_ERROR = new MCPError(
   "Snowflake connection not configured. Please connect your Snowflake account."
@@ -98,15 +97,18 @@ async function getClientFromAuthInfo(
     return new Err(CONNECTION_ERROR);
   }
 
-  const contentValidation = SnowflakeKeyPairCredentialsSchema.decode(
+  const contentValidation = SnowflakeKeyPairCredentialsSchema.safeParse(
     credentialRes.value.credential.content
   );
-  if (isLeft(contentValidation)) {
-    const pathError = reporter.formatValidationErrors(contentValidation.left);
-    return new Err(new MCPError(`Invalid Snowflake credentials: ${pathError}`));
+  if (!contentValidation.success) {
+    return new Err(
+      new MCPError(
+        `Invalid Snowflake credentials: ${fromError(contentValidation.error).toString()}`
+      )
+    );
   }
 
-  const credentials = contentValidation.right;
+  const credentials = contentValidation.data;
 
   return new Ok(
     new SnowflakeClient(

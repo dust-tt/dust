@@ -1,5 +1,10 @@
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
+import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import logger from "@app/logger/logger";
 import {
   isTextExtractionSupportedContentType,
@@ -7,7 +12,10 @@ import {
 } from "@app/types/shared/text_extraction";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Client } from "@microsoft/microsoft-graph-client";
-import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
+import {
+  Client as GraphClient,
+  ResponseType,
+} from "@microsoft/microsoft-graph-client";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import AdmZip from "adm-zip";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
@@ -120,6 +128,33 @@ export interface TeamsUser {
   displayName: string;
   mail: string;
   userPrincipalName: string;
+}
+
+export async function getAllowedLabelsForMCPServer(
+  auth: Authenticator,
+  agentLoopContext: AgentLoopContextType | undefined
+): Promise<string[]> {
+  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
+  const internalMCPServerId =
+    toolConfig && isLightServerSideMCPToolConfiguration(toolConfig)
+      ? toolConfig.internalMCPServerId
+      : null;
+
+  if (!internalMCPServerId) {
+    return [];
+  }
+
+  const featureFlags = await getFeatureFlags(auth);
+  if (!featureFlags.includes("sensitivity_labels")) {
+    return [];
+  }
+
+  const labelConfig =
+    await WorkspaceSensitivityLabelConfigResource.fetchBySource(auth, {
+      sourceType: "mcp_connection",
+      sourceId: internalMCPServerId,
+    });
+  return labelConfig?.allowedLabels || [];
 }
 
 export async function getGraphClient(
@@ -384,19 +419,29 @@ export async function searchMicrosoftDriveItems({
   client,
   query,
   pageSize = 25,
+  allowedLabels = [],
 }: {
   client: Client;
   query: string;
   pageSize?: number;
+  allowedLabels?: string[];
 }): Promise<any> {
   const endpoint = `/search/query`;
+
+  let queryString = query;
+  if (allowedLabels.length > 0) {
+    const labelKql = allowedLabels
+      .map((label) => `InformationProtectionLabelId:${label}`)
+      .join(" OR ");
+    queryString = query ? `(${query}) AND (${labelKql})` : labelKql;
+  }
 
   const requestBody = {
     requests: [
       {
         entityTypes: ["driveItem"],
         query: {
-          queryString: query,
+          queryString,
         },
         size: pageSize,
       },
@@ -408,10 +453,43 @@ export async function searchMicrosoftDriveItems({
 }
 
 /**
+ * Downloads a DriveItem as a buffer, falling back to an authenticated Graph API download
+ * when the pre-signed @microsoft.graph.downloadUrl is not available (e.g. OneDrive for
+ * Business files stored in SharePoint personal sites).
+ */
+export async function downloadDriveItemAsBuffer(
+  client: Client,
+  endpoint: string,
+  downloadUrl?: string
+): Promise<Buffer> {
+  if (downloadUrl) {
+    const response = await untrustedFetch(downloadUrl);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download file: ${response.status} ${response.statusText}`
+      );
+    }
+    return Buffer.from(await response.arrayBuffer());
+  }
+  // Authenticated fallback: download via Graph API when pre-signed URL is unavailable.
+  const arrayBuffer: ArrayBuffer = await client
+    .api(`${endpoint}/content`)
+    .responseType(ResponseType.ARRAYBUFFER)
+    .get();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
  * Downloads and processes a Microsoft file to extract its text content.
  * Shared utility used by both the get_file_content MCP tool and universal search.
  *
+ * When client + endpoint are provided, uses downloadDriveItemAsBuffer which falls back
+ * to an authenticated Graph API download if @microsoft.graph.downloadUrl is absent.
+ * When only downloadUrl is provided (e.g. from search), downloads directly.
+ *
  * @param downloadUrl - The @microsoft.graph.downloadUrl from file metadata
+ * @param client - Authenticated Graph client (required when downloadUrl may be absent)
+ * @param endpoint - Graph API endpoint for the DriveItem (required with client)
  * @param mimeType - The file's MIME type
  * @param fileName - The file name (for error messages)
  * @param extractAsXml - For Word documents, extract raw document.xml instead of text (optional, defaults to false)
@@ -419,24 +497,35 @@ export async function searchMicrosoftDriveItems({
  */
 export async function downloadAndProcessMicrosoftFile({
   downloadUrl,
+  client,
+  endpoint,
   mimeType,
   fileName,
   extractAsXml = false,
 }: {
-  downloadUrl: string;
+  downloadUrl?: string;
+  client?: Client;
+  endpoint?: string;
   mimeType: string;
   fileName: string;
   extractAsXml?: boolean;
 }): Promise<string> {
-  // Download the file
-  const docResponse = await untrustedFetch(downloadUrl);
-  if (!docResponse.ok) {
+  let buffer: Buffer;
+  if (client && endpoint) {
+    buffer = await downloadDriveItemAsBuffer(client, endpoint, downloadUrl);
+  } else if (downloadUrl) {
+    const docResponse = await untrustedFetch(downloadUrl);
+    if (!docResponse.ok) {
+      throw new Error(
+        `Failed to download file: ${docResponse.status} ${docResponse.statusText}`
+      );
+    }
+    buffer = Buffer.from(await docResponse.arrayBuffer());
+  } else {
     throw new Error(
-      `Failed to download file: ${docResponse.status} ${docResponse.statusText}`
+      "Either (client + endpoint) or downloadUrl must be provided"
     );
   }
-
-  const buffer = Buffer.from(await docResponse.arrayBuffer());
 
   let content: string;
 

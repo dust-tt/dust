@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::connection::{handle_connection, ConnectionState};
 use crate::gcs::GcsPolicyProvider;
 use crate::health;
+use crate::jwt::JwtValidator;
 use crate::tls::load_tls_acceptor;
 use anyhow::{anyhow, Result};
 use std::sync::Arc;
@@ -29,11 +30,17 @@ pub async fn run(config: Config) -> Result<()> {
         config.policy_base_url.clone(),
     )
     .await?;
-    let state = Arc::new(ConnectionState::new(&config, policy_provider));
+    let jwt_validator = JwtValidator::new(&config.jwt_secret);
+    let state = Arc::new(ConnectionState::new(&config, policy_provider.clone()));
 
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
-    let mut health_handle = tokio::spawn(health::serve(health_listener, shutdown_rx.clone()));
+    let mut health_handle = tokio::spawn(health::serve(
+        health_listener,
+        shutdown_rx.clone(),
+        policy_provider,
+        jwt_validator,
+    ));
     let mut proxy_handle = tokio::spawn(run_proxy_listener(
         listener,
         tls_acceptor,

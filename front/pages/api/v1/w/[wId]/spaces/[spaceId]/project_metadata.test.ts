@@ -191,8 +191,10 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       archivedAt: null,
       createdAt: expect.anything(),
       description: "Test project description",
+      lastTodoAnalysisAt: null,
       sId: expect.anything(),
       spaceId: space.sId,
+      todoGenerationEnabled: false,
       updatedAt: expect.anything(),
       members: [],
     });
@@ -245,8 +247,10 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       archivedAt: null,
       createdAt: expect.anything(),
       description: "Test project with members",
+      lastTodoAnalysisAt: null,
       sId: expect.anything(),
       spaceId: space.sId,
+      todoGenerationEnabled: false,
       updatedAt: expect.anything(),
       members: expect.arrayContaining([
         expect.stringContaining(member1.sId),

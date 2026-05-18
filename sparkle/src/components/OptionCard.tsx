@@ -9,6 +9,7 @@ export interface OptionCardProps {
   counterValue?: number;
   selected?: boolean;
   disabled?: boolean;
+  disableHover?: boolean;
   className?: string;
   onClick?: () => void;
   onFocusCapture?: React.FocusEventHandler<HTMLDivElement>;
@@ -21,6 +22,7 @@ export function OptionCard({
   counterValue,
   selected = false,
   disabled = false,
+  disableHover = false,
   className,
   onClick,
   onFocusCapture,
@@ -44,6 +46,7 @@ export function OptionCard({
         !disabled && "s-cursor-pointer",
         disabled && "s-pointer-events-none s-opacity-60",
         !selected &&
+          !disableHover &&
           "hover:s-bg-muted-background/60 dark:hover:s-bg-muted-background-night/60",
         className
       )}

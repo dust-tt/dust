@@ -6,52 +6,39 @@ import { importApp } from "@app/lib/utils/apps";
 import { apiError } from "@app/logger/withlogging";
 import type { AppType } from "@app/types/app";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export const AppTypeSchema = t.type({
-  sId: t.string,
-  name: t.string,
-  description: t.union([t.string, t.null]),
-  savedSpecification: t.union([t.string, t.null]),
-  savedConfig: t.union([t.string, t.null]),
-  savedRun: t.union([t.string, t.null]),
-  dustAPIProjectId: t.string,
-  datasets: t.union([
-    t.array(
-      t.type({
-        name: t.string,
-        description: t.union([t.string, t.null]),
-        schema: t.union([
-          t.array(
-            t.type({
-              type: t.union([
-                t.literal("string"),
-                t.literal("number"),
-                t.literal("boolean"),
-                t.literal("json"),
-              ]),
-              description: t.union([t.string, t.null]),
-              key: t.string,
+export const AppTypeSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  savedSpecification: z.string().nullable(),
+  savedConfig: z.string().nullable(),
+  savedRun: z.string().nullable(),
+  dustAPIProjectId: z.string(),
+  datasets: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().nullable(),
+        schema: z
+          .array(
+            z.object({
+              type: z.enum(["string", "number", "boolean", "json"]),
+              description: z.string().nullable(),
+              key: z.string(),
             })
-          ),
-          t.null,
-          t.undefined,
-        ]),
-        data: t.union([
-          t.array(t.record(t.string, t.any)),
-          t.null,
-          t.undefined,
-        ]),
+          )
+          .nullish(),
+        data: z.array(z.record(z.string(), z.any())).nullish(),
       })
-    ),
-    t.undefined,
-  ]),
-  coreSpecifications: t.union([t.record(t.string, t.string), t.undefined]),
+    )
+    .optional(),
+  coreSpecifications: z.record(z.string(), z.string()).optional(),
 });
 
-export const ImportAppBody = t.type({
+export const ImportAppBody = z.object({
   app: AppTypeSchema,
 });
 
@@ -104,8 +91,8 @@ async function handler(
     });
   }
 
-  const bodyValidation = ImportAppBody.decode(body);
-  if (isLeft(bodyValidation)) {
+  const bodyValidation = ImportAppBody.safeParse(body);
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -115,7 +102,7 @@ async function handler(
     });
   }
 
-  const result = await importApp(auth, space, bodyValidation.right.app);
+  const result = await importApp(auth, space, bodyValidation.data.app);
 
   if (result.isErr()) {
     return apiError(req, res, {

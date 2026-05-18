@@ -1,39 +1,23 @@
-import { useDataClassificationLabels } from "@app/lib/swr/data_classification_labels";
 import type { LightWorkspaceType } from "@app/types/user";
 import { MicrosoftLabelsSelector } from "./MicrosoftLabelsSelector";
-import type { SensitivityLabelSource } from "./types";
+import type { SensitivityLabelsController } from "./types";
 
 interface SensitivityLabelsConfigProps {
   owner: LightWorkspaceType;
-  source: SensitivityLabelSource;
+  controller: SensitivityLabelsController;
   readOnly?: boolean;
 }
 
 export function SensitivityLabelsConfig({
   owner,
-  source,
+  controller,
   readOnly = false,
 }: SensitivityLabelsConfigProps) {
-  const {
-    dataClassificationLabels,
-    isDataClassificationLabelsLoading,
-    isDataClassificationLabelsError,
-    mutateDataClassificationLabels,
-  } = useDataClassificationLabels({ owner, source });
-
-  if (isDataClassificationLabelsLoading) {
-    return null;
-  }
-
   return (
     <MicrosoftLabelsSelector
       owner={owner}
-      source={source}
-      labels={dataClassificationLabels?.labels ?? []}
-      savedAllowedLabels={dataClassificationLabels?.allowedLabels ?? []}
-      onSaved={mutateDataClassificationLabels}
+      controller={controller}
       readOnly={readOnly}
-      hasError={!!isDataClassificationLabelsError}
     />
   );
 }

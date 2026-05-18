@@ -10,45 +10,45 @@ import {
 } from "@app/types/api/public/data_sources";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
+import { z } from "zod";
 
-export const EnqueueUpsertDocument = t.type({
-  workspaceId: t.string,
-  dataSourceId: t.string,
-  documentId: t.string,
-  tags: t.union([t.array(t.string), t.null]),
-  parentId: t.union([t.string, t.null, t.undefined]),
-  parents: t.union([t.array(t.string), t.null]),
-  sourceUrl: t.union([t.string, t.null]),
-  timestamp: t.union([t.number, t.null]),
+export const EnqueueUpsertDocument = z.object({
+  workspaceId: z.string(),
+  dataSourceId: z.string(),
+  documentId: z.string(),
+  tags: z.array(z.string()).nullable(),
+  parentId: z.string().nullish(),
+  parents: z.array(z.string()).nullable(),
+  sourceUrl: z.string().nullable(),
+  timestamp: z.number().nullable(),
   section: FrontDataSourceDocumentSection,
-  upsertContext: t.union([UpsertContextSchema, t.null]),
-  title: t.string,
-  mimeType: t.string,
+  upsertContext: UpsertContextSchema.nullable(),
+  title: z.string(),
+  mimeType: z.string(),
 });
 
-export const EnqueueUpsertTable = t.type({
-  workspaceId: t.string,
-  dataSourceId: t.string,
-  tableId: t.string,
-  tableName: t.string,
-  tableDescription: t.string,
-  tableTimestamp: t.union([t.number, t.undefined, t.null]),
-  tableTags: t.union([t.array(t.string), t.undefined, t.null]),
-  tableParentId: t.union([t.string, t.undefined, t.null]),
-  tableParents: t.union([t.array(t.string), t.undefined, t.null]),
-  csv: t.union([t.string, t.null]),
-  fileId: t.union([t.string, t.null]),
-  truncate: t.boolean,
-  title: t.string,
-  mimeType: t.string,
-  sourceUrl: t.union([t.string, t.undefined, t.null]),
+export const EnqueueUpsertTable = z.object({
+  workspaceId: z.string(),
+  dataSourceId: z.string(),
+  tableId: z.string(),
+  tableName: z.string(),
+  tableDescription: z.string(),
+  tableTimestamp: z.number().nullish(),
+  tableTags: z.array(z.string()).nullish(),
+  tableParentId: z.string().nullish(),
+  tableParents: z.array(z.string()).nullish(),
+  csv: z.string().nullable(),
+  fileId: z.string().nullable(),
+  truncate: z.boolean(),
+  title: z.string(),
+  mimeType: z.string(),
+  sourceUrl: z.string().nullish(),
 });
 
-type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;
+type EnqueueUpsertDocumentType = z.infer<typeof EnqueueUpsertDocument>;
 
-type EnqueueUpsertTableType = t.TypeOf<typeof EnqueueUpsertTable>;
+type EnqueueUpsertTableType = z.infer<typeof EnqueueUpsertTable>;
 
 export async function enqueueUpsertDocument({
   upsertDocument,

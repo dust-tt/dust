@@ -9,6 +9,8 @@ import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
 import { useCopyReinforcementTestCase } from "@app/poke/swr/reinforcement_test_case";
 import type {
+  AgentMessageStatus,
+  CompactionMessageStatus,
   CompactionMessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
@@ -47,15 +49,28 @@ const USER_VISIBILITY: Record<string, { label: string; classes: string }> = {
   deleted: { label: "deleted", classes: "bg-red-100 text-red-800" },
 };
 
-const AGENT_STATUS: Record<string, { label: string; classes: string }> = {
+const AGENT_STATUS: Record<
+  AgentMessageStatus,
+  { label: string; classes: string }
+> = {
   created: { label: "generating", classes: "bg-amber-100 text-amber-800" },
   succeeded: { label: "succeeded", classes: "bg-green-100 text-green-800" },
   failed: { label: "failed", classes: "bg-red-100 text-red-800" },
   cancelled: { label: "cancelled", classes: "bg-gray-100 text-gray-700" },
+  interrupted: { label: "cancelled", classes: "bg-gray-100 text-gray-700" },
   gracefully_stopped: {
     label: "stopped",
     classes: "bg-gray-100 text-gray-700",
   },
+};
+
+const COMPACTION_STATUS: Record<
+  CompactionMessageStatus,
+  { label: string; classes: string }
+> = {
+  created: { label: "generating", classes: "bg-amber-100 text-amber-800" },
+  succeeded: { label: "succeeded", classes: "bg-green-100 text-green-800" },
+  failed: { label: "failed", classes: "bg-red-100 text-red-800" },
 };
 
 interface UserMessageViewProps {
@@ -353,10 +368,19 @@ const CompactionMessageView = ({ message }: CompactionMessageViewProps) => {
     <div className="w-full text-sm">
       <div className="font-bold">[compaction]</div>
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <span
+          className={classNames(
+            "mr-1 rounded-sm px-1 py-0.5 text-xs",
+            COMPACTION_STATUS[message.status]?.classes ??
+              "bg-gray-100 text-gray-700"
+          )}
+        >
+          {COMPACTION_STATUS[message.status]?.label ?? message.status}
+        </span>
         date : {new Date(message.created).toLocaleString()} {" • "}
         version :{message.version}
       </div>
-      <Markdown content={message.content || ""} />
+      {message.content && <Markdown content={message.content || ""} />}
     </div>
   );
 };
@@ -580,7 +604,7 @@ export function ConversationPage() {
               disabled={isRendering}
             />
             <Button
-              label="Reinforcement test"
+              label="Self-improving skills test"
               variant="primary"
               size="xs"
               onClick={() => void copyTestCase()}

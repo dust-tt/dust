@@ -74,6 +74,7 @@ makeScript(
       model,
       // Ignore tool and prompt contributions for this profiling.
       prompt: "",
+      enabledSkills: [],
       tools: "",
     });
 

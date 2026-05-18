@@ -328,6 +328,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return SystemSkillsRegistry.isSystemSkill(this.sId);
   }
 
+  get inheritsAgentConfigurationDataSources(): boolean {
+    if (!this.globalSId) {
+      return false;
+    }
+
+    return (
+      GlobalSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
+        this.globalSId
+      ) ||
+      SystemSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
+        this.globalSId
+      )
+    );
+  }
+
   get isExtendable(): boolean {
     // System skills are baseline capabilities: they are not meant to be extended.
     return this.globalSId !== null && !this.isSystemSkill;
@@ -1258,6 +1273,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     params:
       | AgentLoopExecutionData
       | Pick<AgentLoopExecutionData, "agentConfiguration" | "conversation">
+      | {
+          agentConfiguration: AgentConfigurationType;
+          conversation: ConversationWithoutContentType;
+        }
   ): Promise<{
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     systemSkills: SkillResource[];
@@ -1315,18 +1334,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       enabledSkills
     );
 
-    // Compute the equipped skills: agent skills not already enabled +
-    // discoverable skills not already enabled or equipped.
-    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
-    const agentEquippedSkills = allAgentSkills.filter(
-      (s) => !s.isSystemSkill && !enabledSkillIds.has(s.sId)
-    );
+    // Compute the equipped skills: all non-system agent skills plus
+    // discoverable skills that are not already equipped. Keep this list stable
+    // even after a skill is enabled.
+    const agentEquippedSkills = allAgentSkills.filter((s) => !s.isSystemSkill);
 
     const agentEquippedSkillIds = new Set(
       agentEquippedSkills.map((s) => s.sId)
     );
     const discoveredSkills = discoverableSkills.filter(
-      (s) => !enabledSkillIds.has(s.sId) && !agentEquippedSkillIds.has(s.sId)
+      (s) => !agentEquippedSkillIds.has(s.sId)
     );
 
     const equippedSkills = removeNulls([
@@ -1446,6 +1463,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
+  static async clearAllEnabledByConversation(
+    auth: Authenticator,
+    {
+      conversation,
+    }: {
+      conversation: ConversationWithoutContentType;
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    await ConversationSkillModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+      },
+      transaction,
+    });
+  }
+
   private static async fromGlobalSkill(
     auth: Authenticator,
     def: SkillDefinition,
@@ -1514,6 +1551,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
+        selfImprovementCostsCapMicroUsd: null,
+        selfImprovementLock: false,
       },
       {
         // Global skills do not have data source configurations.
@@ -1773,6 +1812,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           isDefault: versionModel.isDefault,
           reinforcement: "auto",
           lastReinforcementAnalysisAt: null,
+          selfImprovementCostsCapMicroUsd:
+            versionModel.selfImprovementCostsCapMicroUsd,
+          selfImprovementLock: versionModel.selfImprovementLock,
         },
         {
           // We ignore data source configurations for historical versions.
@@ -1829,32 +1871,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     return shouldReturnEditedByUser ? editedByUser : null;
-  }
-
-  async listInheritedDataSourceViews(
-    auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType
-  ): Promise<DataSourceViewResource[] | null> {
-    if (!this.globalSId) {
-      return null;
-    }
-
-    if (
-      !GlobalSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
-        this.globalSId
-      ) &&
-      !SystemSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
-        this.globalSId
-      )
-    ) {
-      return null;
-    }
-
-    return DataSourceViewResource.listBySpaceIds(
-      auth,
-      agentConfiguration.requestedSpaceIds,
-      { includeGlobalSpace: true }
-    );
   }
 
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
@@ -2008,6 +2024,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     reinforcement: SkillReinforcementMode
   ): Promise<void> {
     await this.update({ reinforcement });
+  }
+
+  async updateSelfImprovementLock(selfImprovementLock: boolean): Promise<void> {
+    await this.update({ selfImprovementLock });
+  }
+
+  async updateSelfImprovementCostsCap(
+    selfImprovementCostsCapMicroUsd: number | null
+  ): Promise<void> {
+    await this.update({ selfImprovementCostsCapMicroUsd });
   }
 
   async recordReinforcementAnalysisCompletion(): Promise<void> {
@@ -2513,6 +2539,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skill: SkillResource;
       conversationModelId: ModelId;
       agentConfigurationId: string | null;
+      createdAt: Date;
     }[]
   > {
     if (customSkills.length === 0) {
@@ -2524,7 +2551,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const skillsById = new Map(customSkills.map((s) => [s.id, s]));
 
     const records = await AgentMessageSkillModel.findAll({
-      attributes: ["conversationId", "customSkillId", "agentConfigurationId"],
+      attributes: [
+        "createdAt",
+        "conversationId",
+        "customSkillId",
+        "agentConfigurationId",
+      ],
       where: {
         workspaceId: workspace.id,
         customSkillId: { [Op.in]: [...skillsById.keys()] },
@@ -2544,6 +2576,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           skill,
           conversationModelId: r.conversationId,
           agentConfigurationId: r.agentConfigurationId,
+          createdAt: r.createdAt,
         };
       })
     );
@@ -2609,6 +2642,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
+    await AgentMessageSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await ConversationSkillModel.destroy({
+      where: { workspaceId },
+    });
+
     await SkillConfigurationModel.destroy({
       where: { workspaceId },
     });
@@ -2640,6 +2681,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
+      selfImprovementLock: this.selfImprovementLock,
+      selfImprovementCostsCapMicroUsd: this.selfImprovementCostsCapMicroUsd,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
       tools: this.mcpServerViews.map((view) => {

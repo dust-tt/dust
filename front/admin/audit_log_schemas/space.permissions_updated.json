@@ -9,13 +9,13 @@
     }
   ],
   "metadata": {
-    "spaceName": "string",
-    "managementMode": "string",
-    "isRestricted": "string",
-    "memberIds": "string",
-    "editorIds": "string",
-    "groupIds": "string",
-    "editorGroupIds": "string",
+    "space_name": "string",
+    "management_mode": "string",
+    "is_restricted": "string",
+    "member_ids": "string",
+    "editor_ids": "string",
+    "group_ids": "string",
+    "editor_group_ids": "string",
     "actor_type": "string"
   }
 }

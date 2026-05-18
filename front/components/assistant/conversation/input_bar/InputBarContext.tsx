@@ -3,7 +3,7 @@ import {
   type FileUploaderService,
   useFileUploaderService,
 } from "@app/hooks/useFileUploaderService";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { RichAgentMention } from "@app/types/assistant/mentions";
 import {
   createContext,
@@ -149,6 +149,7 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   const conversationId = useActiveConversationId();
 
   const { workspace } = useAuth();
+  const { hasFeature } = useFeatureFlags();
 
   const useCaseMetadata = useMemo(() => {
     if (!conversationId) {
@@ -160,6 +161,7 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   }, [conversationId]);
 
   const fileUploaderService = useFileUploaderService({
+    hasSandboxTools: hasFeature("sandbox_tools"),
     owner: workspace,
     useCase: "conversation",
     useCaseMetadata,

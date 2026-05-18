@@ -453,18 +453,25 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async fetchByIds(
     auth: Authenticator,
     ids: string[],
-    { includeDeleted }: { includeDeleted?: boolean } = {}
+    {
+      includeDeleted,
+      transaction,
+    }: { includeDeleted?: boolean; transaction?: Transaction } = {}
   ): Promise<SpaceResource[]> {
     if (ids.length === 0) {
       return [];
     }
 
-    return this.baseFetch(auth, {
-      where: {
-        id: removeNulls(ids.map(getResourceIdFromSId)),
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          id: removeNulls(ids.map(getResourceIdFromSId)),
+        },
+        includeDeleted,
       },
-      includeDeleted,
-    });
+      transaction
+    );
   }
 
   static async fetchByModelIds(
@@ -1415,6 +1422,35 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       groupsToProcess,
       allGroupMemberships,
     };
+  }
+
+  /**
+   * Distinct active users across this space's manual regular + editor groups
+   * ({@link SpaceResource.fetchManualGroupsMemberships} with active memberships only).
+   * Same user set returned as `space.members` on GET /api/w/[wId]/spaces/[spaceId]
+   * when `includeAllMembers` is not `"true"` (dedupe is by numeric user id, equivalent
+   * to `uniqBy(..., "sId")` on serialized members).
+   */
+  async fetchDistinctActiveManualGroupMembers(
+    auth: Authenticator
+  ): Promise<UserResource[]> {
+    const { groupsToProcess } = await this.fetchManualGroupsMemberships(auth, {
+      shouldIncludeAllMembers: false,
+    });
+
+    const batches = await concurrentExecutor(
+      groupsToProcess,
+      async (group) => group.getActiveMembers(auth),
+      { concurrency: 10 }
+    );
+
+    const byId = new Map<ModelId, UserResource>();
+    for (const user of batches.flat()) {
+      if (!byId.has(user.id)) {
+        byId.set(user.id, user);
+      }
+    }
+    return [...byId.values()];
   }
 
   toJSON(): SpaceType {

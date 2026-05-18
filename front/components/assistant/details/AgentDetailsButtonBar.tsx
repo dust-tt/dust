@@ -38,14 +38,17 @@ interface AgentDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   isAgentConfigurationValidating: boolean;
+  onClose: () => void;
 }
 
 export function AgentDetailsButtonBar({
   agentConfiguration,
   isAgentConfigurationValidating,
   owner,
+  onClose,
 }: AgentDetailsButtonBarProps) {
   const { user, providersHealth } = useAuth();
+  const router = useAppRouter();
 
   const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
@@ -64,6 +67,13 @@ export function AgentDetailsButtonBar({
 
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
+
+  const handleNewConversation = async () => {
+    onClose();
+    await router.push(
+      getConversationRoute(owner.sId, "new", `agent=${agentConfiguration.sId}`)
+    );
+  };
 
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
@@ -107,11 +117,7 @@ export function AgentDetailsButtonBar({
           size="sm"
           variant="outline"
           tooltip="New conversation"
-          href={getConversationRoute(
-            owner.sId,
-            "new",
-            `agent=${agentConfiguration.sId}`
-          )}
+          onClick={handleNewConversation}
         />
       )}
 

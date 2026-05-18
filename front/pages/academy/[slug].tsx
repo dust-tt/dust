@@ -1,3 +1,4 @@
+import { LocaleToggle } from "@app/components/academy/AcademyComponents";
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
@@ -13,8 +14,11 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
+  getAcademyLocaleFromCookies,
+  getAcademySettings,
   getChaptersByCourseSlug,
   getCourseBySlug,
+  getQuizSettings,
   getSearchableItems,
 } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
@@ -55,12 +59,22 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
     return { notFound: true };
   }
 
+  context.res.setHeader("Cache-Control", "no-store");
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
+  const locale = getAcademyLocaleFromCookies(context.req.cookies);
 
-  const [courseResult, chaptersResult, searchableResult] = await Promise.all([
-    getCourseBySlug(slug, resolvedUrl),
-    getChaptersByCourseSlug(slug, resolvedUrl),
-    getSearchableItems(resolvedUrl),
+  const [
+    courseResult,
+    chaptersResult,
+    searchableResult,
+    academySettings,
+    quizSettings,
+  ] = await Promise.all([
+    getCourseBySlug(slug, resolvedUrl, locale),
+    getChaptersByCourseSlug(slug, resolvedUrl, locale),
+    getSearchableItems(resolvedUrl, locale),
+    getAcademySettings(resolvedUrl, locale),
+    getQuizSettings(resolvedUrl, locale),
   ]);
 
   if (courseResult.isErr()) {
@@ -89,6 +103,9 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
       academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       fullWidth: true,
       preview: context.preview ?? false,
+      locale,
+      academySettings,
+      quizSettings,
     },
   };
 };
@@ -102,6 +119,9 @@ export default function CoursePage({
   searchableItems,
   academyUser,
   preview,
+  locale,
+  academySettings,
+  quizSettings,
 }: CoursePageProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const ogImageUrl = course.image?.url ?? "https://dust.tt/static/og_image.png";
@@ -163,11 +183,19 @@ export default function CoursePage({
             courseTitle={course.title}
             chapters={chapters}
             completedChapterSlugs={completedChapterSlugs}
+            backToAcademy={academySettings.backToAcademy}
+            searchPlaceholder={academySettings.searchPlaceholder}
+            chapterReadLabel={academySettings.chapterRead}
+            quizPassedLabel={academySettings.quizPassed}
+            mobileMenuTitle={academySettings.mobileMenuTitle}
           />
         ) : (
           <AcademySidebar
             searchableItems={searchableItems}
             tocItems={tocItems}
+            backToAcademy={academySettings.backToAcademy}
+            searchPlaceholder={academySettings.searchPlaceholder}
+            mobileMenuTitle={academySettings.mobileMenuTitle}
           />
         )}
         <article className="min-w-0 flex-1">
@@ -180,11 +208,19 @@ export default function CoursePage({
                 courseTitle={course.title}
                 chapters={chapters}
                 completedChapterSlugs={completedChapterSlugs}
+                backToAcademy={academySettings.backToAcademy}
+                searchPlaceholder={academySettings.searchPlaceholder}
+                chapterReadLabel={academySettings.chapterRead}
+                quizPassedLabel={academySettings.quizPassed}
+                mobileMenuTitle={academySettings.mobileMenuTitle}
               />
             ) : (
               <MobileMenuButton
                 searchableItems={searchableItems}
                 tocItems={tocItems}
+                backToAcademy={academySettings.backToAcademy}
+                searchPlaceholder={academySettings.searchPlaceholder}
+                mobileMenuTitle={academySettings.mobileMenuTitle}
               />
             )}
             <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
@@ -223,13 +259,18 @@ export default function CoursePage({
                           variant="outline"
                           size="xs"
                           icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                          label={isCopied ? "Copied!" : "Copy as Markdown"}
+                          label={
+                            isCopied
+                              ? academySettings.copied
+                              : academySettings.copyAsMarkdown
+                          }
                           onClick={handleCopyAsMarkdown}
                         />
                       </div>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-2">
+                    <LocaleToggle locale={locale} />
                     {course.estimatedDurationMinutes && (
                       <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
                         <svg
@@ -273,7 +314,7 @@ export default function CoursePage({
                 <div className={cn(WIDE_CLASSES, "mt-4")}>
                   <div className="rounded-2xl border border-highlight/20 bg-highlight/5 p-4 backdrop-blur-sm">
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
-                      Course Objectives
+                      {academySettings.courseObjectives}
                     </h3>
                     <Markdown content={course.tableOfContents} />
                   </div>
@@ -284,7 +325,7 @@ export default function CoursePage({
                 <div className={cn(WIDE_CLASSES, "mt-3 pb-6")}>
                   <div className="rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 backdrop-blur-sm">
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-amber-700">
-                      Prerequisites
+                      {academySettings.prerequisites}
                     </h3>
                     <div className="prose-amber">
                       {renderRichTextFromContentful(course.preRequisites)}
@@ -304,7 +345,7 @@ export default function CoursePage({
                   </div>
                 )}
                 <h2 className="mb-4 text-2xl font-semibold text-foreground">
-                  Chapters
+                  {academySettings.chapters}
                 </h2>
                 <div className="space-y-3">
                   {chapters.map((chapter, index) => {
@@ -405,6 +446,7 @@ export default function CoursePage({
                     userName={academyUser?.firstName}
                     contentSlug={course.slug}
                     browserId={anonBrowserId}
+                    quizSettings={quizSettings}
                   />
                 </div>
               </>
@@ -423,7 +465,7 @@ export default function CoursePage({
                       className="group flex flex-col"
                     >
                       <P size="sm" className="text-muted-foreground">
-                        Previous Course
+                        {academySettings.previousCourse}
                       </P>
                       <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
                         &larr; {course.previousCourse.title}
@@ -436,7 +478,7 @@ export default function CoursePage({
                       className="group flex flex-col items-end sm:items-start"
                     >
                       <P size="sm" className="text-muted-foreground">
-                        Next Course
+                        {academySettings.nextCourse}
                       </P>
                       <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
                         {course.nextCourse.title} &rarr;

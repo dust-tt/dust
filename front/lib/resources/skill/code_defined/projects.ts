@@ -1,15 +1,14 @@
 import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  CONVERSATION_FILES_SERVER_NAME,
-  CONVERSATION_SEARCH_FILES_ACTION_NAME,
-} from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  isProjectConversation,
+} from "@app/types/assistant/conversation";
 
 export const projectsSkill = {
   sId: "projects",
@@ -18,58 +17,44 @@ export const projectsSkill = {
     "Allow agents to create conversations & messages in projects, leverage projects knowledge.",
   agentFacingDescription:
     "Use project context instructions and tools for project knowledge retrieval and search. Allow agents to create conversations and messages in projects.",
-  fetchInstructions: async (
-    auth: Authenticator,
-    {
-      agentLoopData,
-    }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
-  ) => {
-    const conversation = agentLoopData?.conversation;
-
-    let instructions = "";
-
-    // Add important note for project conversations to strongly emphasize the importance of using project tools first.
-    if (conversation && isProjectConversation(conversation)) {
-      const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-      instructions += `
-IMPORTANT: This conversation (id: ${conversation.sId}) is part of the project "${space?.name}" (id: ${space?.sId}).
-Therefore, ALWAYS start by using the project tools to search for information before using company-wide tools.
-`;
-    }
-
-    instructions += `
+  instructions: `
 The project provides:
-- Persistent knowledge storage shared accross this project
+- Persistent knowledge storage shared across this project
 - Project metadata (description, URLs, members, etc.) for organizational context
-- Semantic search over project knowledge and project conversation transcripts
 - Collaborative context that persists beyond individual conversations
 
 ## Persistent Knowledge
 
-Can be also referred to as the "Project Context".
-It contains attachments (files, linked connected data nodes) as well as conversations transcripts.
-It is stored in the project data source and can be searched using the \`semantic_search\` tool.
+Can be also referred to as the "Project Context". Project files live under \`project/<rel>\`
+scoped paths and persist across every conversation in the project. Conversation-only files live
+under \`conversation/<rel>\` and are visible to this conversation only. Both surfaces are reached
+through the same file system; prefer the sandbox when it's available (see the sandbox skill for
+the mount layout), and fall back to the \`${FILES_SERVER_NAME}\` MCP tools when it isn't. The project also accepts
+references to connected data nodes (Company Data); those are managed through the
+\`${PROJECT_MANAGER_SERVER_NAME}\` server.
 
-### Project attachments vs conversation attachments
-- **Project attachments**: Persist for every conversation in the project; managed with \`${PROJECT_MANAGER_SERVER_NAME}\` (e.g. \`add_file\`).
-- **Conversation attachments**: Only for this conversation; use \`${CONVERSATION_FILES_SERVER_NAME}\` tools when present.
+To keep something for later project-wide use, write it under a \`project/<rel>\` path. To duplicate
+binary content (PDFs, images, audio) between scopes, use the dedicated copy tool rather than
+reading and rewriting, because the round-trip through the agent loses the bytes.
 
-To keep something for later project-wide use, add it with \`add_file\`.
-To reuse an existing project file in this conversation, use \`attach_to_conversation\`.
+## Referencing project tasks in messages
+
+To show a **project task** as an interactive chip in the conversation, use this markdown directive with the task's \`sId\`:
+
+\`:project_task[Short readable label]{sId=<projectTaskSId>}\`
+
+Use the \`sId\` from \`project_tasks\` tools (e.g. \`list_tasks\`, \`create_tasks\`) or from the kickoff message when you are working on a task. The bracket text is display-only; keep it concise.
 
 ## Tool Usage Priority
 
-When you need to find information, uses this order (skip steps if the relevant tools are not in your tool list):
-1. **Project overview**: \`${PROJECT_MANAGER_SERVER_NAME}\` \`get_information\` — project URL, description, and what is attached to the project.
-2. **This conversation's attachments** (only when \`${CONVERSATION_FILES_SERVER_NAME}\` is available): \`${CONVERSATION_SEARCH_FILES_ACTION_NAME}\` on \`${CONVERSATION_FILES_SERVER_NAME}\` — search files attached to the current conversation.
-3. **Project-wide search**: \`${PROJECT_MANAGER_SERVER_NAME}\` \`semantic_search\` — search project knowledge and/or conversations in the project; usually the best source for project-specific questions.
-4. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` for broader company data sources.
-`;
+When you need to find information, use this order (skip steps if the relevant tools are not in your tool list):
+1. **Project overview**: \`${PROJECT_MANAGER_SERVER_NAME}\` \`get_information\` returns the project URL, description, and what is attached to the project.
+2. **Project files**: read and search \`project/<rel>\` files through the sandbox or the \`${FILES_SERVER_NAME}\` MCP tools.
+3. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` for broader company data sources.
+`,
 
-    return instructions;
-  },
-  mcpServers: [{ name: "project_manager" }, { name: "project_todos" }],
-  version: 1,
+  mcpServers: [{ name: "project_manager" }, { name: "project_tasks" }],
+  version: 3,
   icon: "ActionFolderIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
@@ -78,3 +63,25 @@ When you need to find information, uses this order (skip steps if the relevant t
   },
   // Note: we auto enabled in listForAgentLoop for project conversations.
 } as const satisfies GlobalSkillDefinition;
+
+export async function constructProjectContext(
+  auth: Authenticator,
+  {
+    conversation,
+  }: {
+    conversation?: ConversationWithoutContentType;
+  }
+): Promise<string> {
+  let instructions = "";
+
+  // Add important note for project conversations to strongly emphasize the importance of using project tools first.
+  if (conversation && isProjectConversation(conversation)) {
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    instructions += `
+IMPORTANT: This conversation (id: ${conversation.sId}) is part of the project "${space?.name}" (id: ${space?.sId}).
+Therefore, ALWAYS start by using the project tools to search for information before using company-wide tools.
+`;
+  }
+
+  return instructions;
+}

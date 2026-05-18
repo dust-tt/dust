@@ -14,7 +14,7 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 export function SkillBuilderFilesSection() {
@@ -22,6 +22,7 @@ export function SkillBuilderFilesSection() {
   const sendNotification = useSendNotification();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
+  const [canScrollFilesDown, setCanScrollFilesDown] = useState(false);
 
   const { fields, append, remove } = useFieldArray<
     SkillBuilderFormData,
@@ -29,10 +30,14 @@ export function SkillBuilderFilesSection() {
   >({
     name: "fileAttachments",
   });
+  const hasFileAttachments = fields.length > 0;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileListRef = useRef<HTMLDivElement>(null);
+  const fileListBottomSentinelRef = useRef<HTMLDivElement>(null);
 
   const { handleFilesUpload, isProcessingFiles } = useFileUploaderService({
+    hasSandboxTools: false,
     owner,
     useCase: "skill_attachment",
     useCaseMetadata: skillId ? { skillId } : undefined,
@@ -68,6 +73,30 @@ export function SkillBuilderFilesSection() {
     isDiffMode &&
     (currentFileIds.size !== compareFileIds.size ||
       [...currentFileIds].some((id) => !compareFileIds.has(id)));
+
+  useEffect(() => {
+    const list = fileListRef.current;
+    const sentinel = fileListBottomSentinelRef.current;
+
+    if (
+      !hasFileAttachments ||
+      !list ||
+      !sentinel ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      setCanScrollFilesDown(false);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setCanScrollFilesDown(!entry.isIntersecting),
+      { root: list, threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [hasFileAttachments]);
 
   const restoreFiles = () => {
     if (!compareVersion) {
@@ -118,7 +147,7 @@ export function SkillBuilderFilesSection() {
     [handleFilesUpload, append, existingFileNames, sendNotification]
   );
 
-  const headerActions = !isDiffMode && fields.length > 0 && (
+  const headerActions = !isDiffMode && hasFileAttachments && (
     <Button
       type="button"
       onClick={onUploadClick}
@@ -130,7 +159,7 @@ export function SkillBuilderFilesSection() {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
@@ -165,63 +194,78 @@ export function SkillBuilderFilesSection() {
         />
       )}
 
-      <div className="flex-1">
-        {fields.length === 0 ? (
-          isDiffMode ? null : isProcessingFiles ? (
-            <div className="flex h-40 w-full items-center justify-center">
-              <Spinner />
-            </div>
-          ) : (
-            <EmptyCTA
-              action={
-                <Button
-                  type="button"
-                  onClick={onUploadClick}
-                  label="Upload files"
-                  icon={PlusIcon}
-                  variant="outline"
-                  disabled={isProcessingFiles}
-                />
-              }
-              className="py-8"
-            />
-          )
+      {!hasFileAttachments ? (
+        isDiffMode ? null : isProcessingFiles ? (
+          <div className="flex h-40 w-full items-center justify-center">
+            <Spinner />
+          </div>
         ) : (
-          <ContextItem.List>
-            {sortedFields.map(({ field, originalIndex }) => {
-              const isAdded = isDiffMode && !compareFileIds.has(field.fileId);
-              return (
-                <ContextItem
-                  key={field.id}
-                  title={
-                    <span
-                      className={cn(
-                        "text-sm font-normal",
-                        isAdded && "text-success dark:text-success-night"
-                      )}
-                    >
-                      {field.fileName}
-                    </span>
-                  }
-                  visual={<ContextItem.Visual visual={DocumentIcon} />}
-                  hoverAction={!isDiffMode}
-                  action={
-                    !isDiffMode ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        icon={XMarkIcon}
-                        size="xs"
-                        onClick={() => remove(originalIndex)}
-                      />
-                    ) : undefined
-                  }
-                />
-              );
-            })}
-          </ContextItem.List>
-        )}
-      </div>
+          <EmptyCTA
+            action={
+              <Button
+                type="button"
+                onClick={onUploadClick}
+                label="Upload files"
+                icon={PlusIcon}
+                variant="outline"
+                disabled={isProcessingFiles}
+              />
+            }
+            className="py-8"
+          />
+        )
+      ) : (
+        <div className="relative">
+          <div
+            ref={fileListRef}
+            className="max-h-64 overflow-y-auto overflow-x-hidden"
+          >
+            <ContextItem.List>
+              {sortedFields.map(({ field, originalIndex }) => {
+                const isAdded = isDiffMode && !compareFileIds.has(field.fileId);
+                return (
+                  <ContextItem
+                    key={field.id}
+                    title={
+                      <span
+                        className={cn(
+                          "text-sm font-normal",
+                          isAdded && "text-success dark:text-success-night"
+                        )}
+                      >
+                        {field.fileName}
+                      </span>
+                    }
+                    visual={<ContextItem.Visual visual={DocumentIcon} />}
+                    hoverAction={!isDiffMode}
+                    action={
+                      !isDiffMode ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          icon={XMarkIcon}
+                          size="xs"
+                          onClick={() => remove(originalIndex)}
+                        />
+                      ) : undefined
+                    }
+                  />
+                );
+              })}
+            </ContextItem.List>
+            <div ref={fileListBottomSentinelRef} className="h-px" aria-hidden />
+          </div>
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t",
+              "from-background via-background/60 to-transparent transition-opacity duration-300",
+              "dark:from-background-night dark:via-background-night/60",
+              canScrollFilesDown ? "opacity-100" : "opacity-0"
+            )}
+            aria-hidden
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,5 @@
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
 import type { Operation } from "@app/lib/api/sandbox/image/types";
-import fs from "fs";
-import path from "path";
 import { describe, expect, test } from "vitest";
 
 function getDustBaseImageOperations(): readonly Operation[] {
@@ -45,40 +43,7 @@ function getCopiedContent(
   return typeof content === "string" ? content : content.toString("utf-8");
 }
 
-function getSandboxBedrockDockerfile(): string {
-  const dockerfilePath = path.resolve(
-    __dirname,
-    "../../../../../dockerfiles/sandbox-bedrock.Dockerfile"
-  );
-
-  return fs.readFileSync(dockerfilePath, "utf-8");
-}
-
 describe("sandbox image registry", () => {
-  test("adds the PR1 base-image primitives to the sandbox bedrock Dockerfile", () => {
-    const dockerfile = getSandboxBedrockDockerfile();
-
-    expect(dockerfile).toContain("netcat-openbsd nftables acl");
-    expect(dockerfile).toContain("mkdir -p /etc/dust");
-    expect(dockerfile).toContain("command -v sudo >/dev/null 2>&1");
-  });
-
-  test("registers the PR1 sandbox image versions", () => {
-    const imageResult = getSandboxImageFromRegistry({ name: "dust-base" });
-
-    expect(imageResult.isOk()).toBe(true);
-    if (imageResult.isOk()) {
-      expect(imageResult.value.baseImage).toEqual({
-        type: "docker",
-        imageRef: "dust-sbx-bedrock:1.7.0",
-      });
-      expect(imageResult.value.imageId).toEqual({
-        imageName: "dust-base",
-        tag: "0.7.11",
-      });
-    }
-  });
-
   test("creates the dormant proxied user and shared-path permissions", () => {
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);

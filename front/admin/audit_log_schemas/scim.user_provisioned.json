@@ -10,7 +10,7 @@
   ],
   "metadata": {
     "email": "string",
-    "directoryId": "string",
+    "directory_id": "string",
     "actor_type": "string"
   }
 }

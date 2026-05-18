@@ -1,24 +1,23 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
 import type { ContentNodeType } from "../../core/content_node";
 
-const ParentsToAddRemoveSchema = t.type({
-  parentsToAdd: t.union([t.array(t.string), t.undefined]),
-  parentsToRemove: t.union([t.array(t.string), t.undefined]),
+const ParentsToAddRemoveSchema = z.object({
+  parentsToAdd: z.array(z.string()).optional(),
+  parentsToRemove: z.array(z.string()).optional(),
 });
 
-const ParentsInSchema = t.type({
-  parentsIn: t.array(t.string),
+const ParentsInSchema = z.object({
+  parentsIn: z.array(z.string()),
 });
 
-export const PatchDataSourceViewSchema = t.union([
-  ParentsToAddRemoveSchema,
+// It's important to have ParentsInSchema first, as ParentsToAddRemoveSchema only has optional fields and would always match if it were first.
+export const PatchDataSourceViewSchema = z.union([
   ParentsInSchema,
+  ParentsToAddRemoveSchema,
 ]);
 
-export type PatchDataSourceViewType = t.TypeOf<
-  typeof PatchDataSourceViewSchema
->;
+export type PatchDataSourceViewType = z.infer<typeof PatchDataSourceViewSchema>;
 
 export type LightContentNode = {
   expandable: boolean;

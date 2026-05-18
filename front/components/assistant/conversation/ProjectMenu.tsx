@@ -7,7 +7,7 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useSpaceInfo, useStarProject } from "@app/lib/swr/spaces";
 import {
   getConversationRoute,
   getProjectRoute,
@@ -31,6 +31,7 @@ import {
   EyeSlashIcon,
   LinkIcon,
   PencilSquareIcon,
+  StarIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -110,6 +111,7 @@ export function ProjectMenu({
   activeSpaceId,
   space,
   owner,
+  isStarred,
   trigger,
   isProjectDisplayed,
   isOpen,
@@ -119,6 +121,7 @@ export function ProjectMenu({
   activeSpaceId: string | null;
   space?: SpaceType;
   owner: WorkspaceType;
+  isStarred: boolean;
   trigger: ReactElement;
   isProjectDisplayed: boolean;
   isOpen: boolean;
@@ -146,6 +149,11 @@ export function ProjectMenu({
     includeAllMembers: true,
   });
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
+
+  const starProject = useStarProject({
+    workspaceId: owner.sId,
+    spaceId: activeSpaceId,
+  });
 
   const shareLink = activeSpaceId
     ? `${config.getApiBaseUrl()}${getProjectRoute(owner.sId, activeSpaceId)}`
@@ -242,6 +250,11 @@ export function ProjectMenu({
         )}
         <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
           <DropdownMenuLabel label="My settings" />
+          <DropdownMenuItem
+            label={isStarred ? "Remove from starred" : "Add to starred"}
+            icon={StarIcon}
+            onClick={() => void starProject(!isStarred)}
+          />
           {canLeave && (
             <DropdownMenuItem
               label="Leave"
@@ -284,6 +297,7 @@ export function ProjectMenu({
                         isRounded
                       />
                     }
+                    // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
                     className="!text-foreground dark:!text-foreground-night"
                   />
                 ))}

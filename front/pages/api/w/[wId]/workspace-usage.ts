@@ -11,45 +11,42 @@ import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage
 import { apiError } from "@app/logger/withlogging";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { endOfMonth } from "date-fns/endOfMonth";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const MonthSchema = t.refinement(
-  t.string,
-  (s): s is string => /^\d{4}-(0[1-9]|1[0-2])$/.test(s),
-  "YYYY-MM"
-);
+const MonthSchema = z
+  .string()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, { message: "YYYY-MM" });
 
-function getSupportedUsageTablesCodec(): t.Type<UsageTableType> {
+function getSupportedUsageTablesSchema(): z.ZodType<UsageTableType> {
   const [first, second, ...rest] = USAGE_TABLES;
-  return t.union([
-    t.literal(first),
-    t.literal(second),
-    ...rest.map((value) => t.literal(value)),
+  return z.union([
+    z.literal(first),
+    z.literal(second),
+    ...rest.map((value) => z.literal(value)),
   ]);
 }
 
-const GetUsageQueryParamsSchema = t.union([
-  t.type({
-    start: t.undefined,
-    end: t.undefined,
-    mode: t.literal("all"),
-    table: getSupportedUsageTablesCodec(),
+const GetUsageQueryParamsSchema = z.discriminatedUnion("mode", [
+  z.object({
+    start: z.undefined(),
+    end: z.undefined(),
+    mode: z.literal("all"),
+    table: getSupportedUsageTablesSchema(),
   }),
-  t.type({
+  z.object({
     start: MonthSchema,
-    end: t.undefined,
-    mode: t.literal("month"),
-    table: getSupportedUsageTablesCodec(),
+    end: z.undefined(),
+    mode: z.literal("month"),
+    table: getSupportedUsageTablesSchema(),
   }),
-  t.type({
+  z.object({
     start: MonthSchema,
     end: MonthSchema,
-    mode: t.literal("range"),
-    table: getSupportedUsageTablesCodec(),
+    mode: z.literal("range"),
+    table: getSupportedUsageTablesSchema(),
   }),
 ]);
 
@@ -73,9 +70,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = GetUsageQueryParamsSchema.decode(req.query);
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      const queryValidation = GetUsageQueryParamsSchema.safeParse(req.query);
+      if (!queryValidation.success) {
+        const pathError = fromError(queryValidation.error).toString();
         return apiError(req, res, {
           api_error: {
             type: "invalid_request_error",
@@ -85,7 +82,7 @@ async function handler(
         });
       }
 
-      const query = queryValidation.right;
+      const query = queryValidation.data;
       const { endDate, startDate } = resolveDates(query);
       const conversationsRetentionDays =
         await getConversationsDataRetention(auth);
@@ -159,7 +156,7 @@ async function handler(
 
 export default withSessionAuthenticationForWorkspace(handler);
 
-function resolveDates(query: t.TypeOf<typeof GetUsageQueryParamsSchema>) {
+function resolveDates(query: z.infer<typeof GetUsageQueryParamsSchema>) {
   switch (query.mode) {
     case "all":
       return {

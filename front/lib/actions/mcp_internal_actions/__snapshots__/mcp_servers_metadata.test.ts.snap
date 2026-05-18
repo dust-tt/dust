@@ -79,6 +79,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "conversation_files": {
     "cat": "never_ask",
     "list": "never_ask",
+    "list_content_nodes_and_tables": "never_ask",
     "semantic_search": "never_ask",
   },
   "data_sources_file_system": {
@@ -108,6 +109,14 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "convert_file_format": "never_ask",
     "generate_file": "never_ask",
     "get_supported_source_formats_for_output_format": "never_ask",
+  },
+  "files": {
+    "cat": "never_ask",
+    "copy": "never_ask",
+    "create": "never_ask",
+    "delete": "medium",
+    "grep": "never_ask",
+    "list": "never_ask",
   },
   "freshservice": {
     "add_ticket_note": "low",
@@ -186,8 +195,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "delete_draft": "high",
     "get_attachment": "never_ask",
     "get_drafts": "never_ask",
+    "get_labels": "never_ask",
     "get_messages": "never_ask",
     "send_mail": "high",
+    "set_message_labels": "medium",
   },
   "gong": {
     "get_call": "never_ask",
@@ -491,25 +502,24 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_note": "low",
   },
   "project_manager": {
-    "add_file": "never_ask",
+    "add_content_node": "never_ask",
     "add_message_to_conversation": "medium",
-    "attach_to_conversation": "never_ask",
     "create_conversation": "medium",
+    "create_project": "low",
     "edit_description": "low",
     "get_information": "never_ask",
     "list_conversations": "never_ask",
+    "list_members": "never_ask",
     "list_projects": "never_ask",
+    "remove_content_node": "medium",
     "retrieve_recent_documents": "never_ask",
-    "semantic_search": "never_ask",
-    "update_file": "medium",
   },
-  "project_todos": {
-    "create_todo": "low",
-    "create_todos_batch": "low",
-    "list_todos": "never_ask",
-    "mark_todo_done": "low",
-    "reopen_todo": "low",
-    "start_todo_agent": "low",
+  "project_tasks": {
+    "create_tasks": "low",
+    "list_tasks": "never_ask",
+    "mark_task_done": "low",
+    "start_task_agent": "low",
+    "update_task": "low",
   },
   "query_tables_v2": {
     "execute_database_query": "never_ask",
@@ -534,6 +544,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_actions": "never_ask",
   },
   "sandbox": {
+    "add_egress_domain": "high",
     "bash": "never_ask",
     "describe_toolset": "never_ask",
   },
@@ -573,6 +584,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "slack_bot": {
     "add_reaction": "low",
+    "edit_message": "low",
     "list_public_channels": "never_ask",
     "post_message": "low",
     "read_channel_history": "never_ask",
@@ -655,9 +667,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_vulnerabilities": "never_ask",
   },
   "wakeups": {
-    "cancel_wakeup": "low",
+    "cancel_wakeup": "never_ask",
     "list_wakeups": "never_ask",
-    "schedule_wakeup": "low",
+    "schedule_wakeup": "never_ask",
   },
   "web_search_&_browse": {
     "webbrowser": "never_ask",

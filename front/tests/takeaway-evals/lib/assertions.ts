@@ -34,12 +34,6 @@ export function validateTakeawayAssertion(
           error: `Expected action item "${assertion.descriptionContains}" to be assigned to "${assertion.assigneeUserId}", but got "${match.assigneeUserId}"`,
         };
       }
-      if (assertion.status && match.status !== assertion.status) {
-        return {
-          success: false,
-          error: `Expected action item "${assertion.descriptionContains}" to have status "${assertion.status}", but got "${match.status}"`,
-        };
-      }
       return { success: true };
     }
 

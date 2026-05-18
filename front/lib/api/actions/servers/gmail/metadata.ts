@@ -167,6 +167,32 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       done: "Create Gmail reply draft",
     },
   },
+  get_labels: {
+    description:
+      "Retrieve all Gmail labels, including system labels and user-created labels.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Gmail labels",
+      done: "Get Gmail labels",
+    },
+  },
+  set_message_labels: {
+    description: `Modify the labels of a message. System label IDs can be used directly (INBOX, SPAM, TRASH, UNREAD, STARRED, IMPORTANT, ...). User labels should be retrieved first via get_labels to get their IDs.`,
+    schema: {
+      messageId: z.string().describe("The ID of the message to modify."),
+      addLabelIds: z.array(z.string()).optional().describe("Label IDs to add."),
+      removeLabelIds: z
+        .array(z.string())
+        .optional()
+        .describe("Label IDs to remove."),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Modifying Gmail message labels",
+      done: "Modify Gmail message labels",
+    },
+  },
   send_mail: {
     description: `Send an email directly via Gmail.
 - The email will be sent immediately without creating a draft.
@@ -212,7 +238,7 @@ export const GMAIL_SERVER = {
       provider: "google_drive",
       supported_use_cases: ["personal_actions", "platform_actions"],
       scope:
-        "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose",
+        "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/gmail.modify",
     },
     icon: "GmailLogo",
     documentationUrl: "https://docs.dust.tt/docs/gmail",

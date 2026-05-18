@@ -11,6 +11,7 @@ async function buildWorker() {
       platform: "node",
       target: "node22",
       outfile: "dist/start_worker.js",
+      sourcemap: true,
       alias: {
         "@app": ".",
       },

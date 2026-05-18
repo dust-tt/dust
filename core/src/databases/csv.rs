@@ -52,6 +52,8 @@ impl GoogleCloudStorageCSVContent {
         // This is not the most efficient as we download the entire file here but we will
         // materialize it in memory as Vec<Row> anyway so that's not a massive difference.
         let content = Object::download(bucket, path).await?;
+        // csv_async only accepts UTF-8; transcode if the file starts with a UTF-16 BOM.
+        let content = Self::decode_to_utf8(content)?;
         let rdr = std::io::Cursor::new(content);
 
         // We buffer the reader to make sure we yield the thread while processing.
@@ -75,6 +77,38 @@ impl GoogleCloudStorageCSVContent {
             "CSV parse"
         );
         Ok(rows)
+    }
+
+    fn decode_to_utf8(content: Vec<u8>) -> Result<Vec<u8>> {
+        const UTF16_LE_BOM: [u8; 2] = [0xFF, 0xFE];
+        const UTF16_BE_BOM: [u8; 2] = [0xFE, 0xFF];
+
+        if content.starts_with(&UTF16_LE_BOM) {
+            return Self::utf16_to_utf8(&content[2..], true);
+        }
+        if content.starts_with(&UTF16_BE_BOM) {
+            return Self::utf16_to_utf8(&content[2..], false);
+        }
+        Ok(content)
+    }
+
+    fn utf16_to_utf8(bytes: &[u8], little_endian: bool) -> Result<Vec<u8>> {
+        if bytes.len() % 2 != 0 {
+            return Err(anyhow!("UTF-16 CSV content has odd byte length"));
+        }
+        let code_units: Vec<u16> = bytes
+            .chunks_exact(2)
+            .map(|c| {
+                if little_endian {
+                    u16::from_le_bytes([c[0], c[1]])
+                } else {
+                    u16::from_be_bytes([c[0], c[1]])
+                }
+            })
+            .collect();
+        let s = String::from_utf16(&code_units)
+            .map_err(|e| anyhow!("Failed to decode UTF-16 CSV content: {}", e))?;
+        Ok(s.into_bytes())
     }
 
     fn slugify(text: &str) -> String {
@@ -485,6 +519,48 @@ BAR,acme";
         assert_eq!(
             schema.columns()[4].value_type,
             TableSchemaFieldType::DateTime
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_decode_to_utf8() -> anyhow::Result<()> {
+        // ASCII input pass-through.
+        let utf8 = b"a,b,c\n1,2,3".to_vec();
+        assert_eq!(
+            GoogleCloudStorageCSVContent::decode_to_utf8(utf8.clone())?,
+            utf8
+        );
+
+        // UTF-16 LE with BOM transcodes to UTF-8 (BOM stripped).
+        let mut utf16_le = vec![0xFF, 0xFE];
+        for c in "a\tb\n1\t2".encode_utf16() {
+            utf16_le.extend_from_slice(&c.to_le_bytes());
+        }
+        assert_eq!(
+            GoogleCloudStorageCSVContent::decode_to_utf8(utf16_le)?,
+            b"a\tb\n1\t2".to_vec()
+        );
+
+        // UTF-16 BE with BOM transcodes to UTF-8 (BOM stripped).
+        let mut utf16_be = vec![0xFE, 0xFF];
+        for c in "a\tb\n1\t2".encode_utf16() {
+            utf16_be.extend_from_slice(&c.to_be_bytes());
+        }
+        assert_eq!(
+            GoogleCloudStorageCSVContent::decode_to_utf8(utf16_be)?,
+            b"a\tb\n1\t2".to_vec()
+        );
+
+        // UTF-16 LE with non-ASCII (surrogate pair for an emoji).
+        let mut utf16_le_emoji = vec![0xFF, 0xFE];
+        for c in "a\t🦄".encode_utf16() {
+            utf16_le_emoji.extend_from_slice(&c.to_le_bytes());
+        }
+        assert_eq!(
+            GoogleCloudStorageCSVContent::decode_to_utf8(utf16_le_emoji)?,
+            "a\t🦄".as_bytes().to_vec()
         );
 
         Ok(())

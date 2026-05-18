@@ -184,6 +184,21 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     return batch.id;
   }
 
+  override async deleteBatch(batchId: string): Promise<boolean> {
+    const batch = await this.client.batches.retrieve(batchId);
+
+    const fileIds = [batch.input_file_id, batch.output_file_id].filter(
+      (id): id is string => !!id
+    );
+
+    // At most 2 elements (input + output files).
+    const results = await Promise.all(
+      fileIds.map((fileId) => this.client.files.delete(fileId))
+    );
+
+    return results.every((result) => result.deleted);
+  }
+
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {
     const batch = await this.client.batches.retrieve(batchId);
 

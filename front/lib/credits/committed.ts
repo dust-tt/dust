@@ -12,15 +12,16 @@ import {
   getCreditAmountFromInvoice,
   getCreditPurchaseCouponId,
   isCreditPurchaseInvoice,
-  isEnterpriseSubscription,
   MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED,
-  makeCreditPurchaseOneOffInvoice,
+  makeCreditPurchaseOneOffInvoiceForCustomer,
+  makeCreditPurchaseOneOffInvoiceForSubscription,
   payInvoice,
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -29,20 +30,13 @@ import type Stripe from "stripe";
 export async function startCreditFromProOneOffInvoice({
   auth,
   invoice,
-  stripeSubscription,
 }: {
   auth: Authenticator;
   invoice: Stripe.Invoice;
-  stripeSubscription: Stripe.Subscription;
 }): Promise<Result<undefined, Error>> {
-  if (
-    !isCreditPurchaseInvoice(invoice) ||
-    isEnterpriseSubscription(stripeSubscription)
-  ) {
+  if (!isCreditPurchaseInvoice(invoice)) {
     throw new Error(
-      `Cannot process this invoice for credit purchase: ${invoice.id}\n` +
-        `isCreditPurchaseInvoice: ${isCreditPurchaseInvoice(invoice)}\n` +
-        `isEntrepriseSubscription: ${isEnterpriseSubscription(stripeSubscription)}`
+      `Cannot process this invoice for credit purchase: ${invoice.id}`
     );
   }
 
@@ -137,6 +131,128 @@ export async function startCreditFromProOneOffInvoice({
   return new Ok(undefined);
 }
 
+// We added this method because even though it's super rare, ENT customer
+// can self-serve credits, and if their plan/account was not correctly configured it can fail
+// with no path to recovery (other than manual eng intervention)
+export async function startCreditFromEnterpriseOneOffInvoice({
+  auth,
+  invoice,
+}: {
+  auth: Authenticator;
+  invoice: Stripe.Invoice;
+}): Promise<Result<{ alreadyStarted: boolean }, Error>> {
+  if (!isCreditPurchaseInvoice(invoice)) {
+    throw new Error(
+      `Cannot process this invoice for enterprise credit purchase: ${invoice.id}`
+    );
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const creditAmountCents = getCreditAmountFromInvoice(invoice);
+
+  if (creditAmountCents === null) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        invoiceId: invoice.id,
+        creditAmountCents: invoice.metadata?.credit_amount_cents,
+      },
+      "[Credit Purchase] Invalid credit amount in invoice metadata"
+    );
+    getStatsDClient().increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:committed",
+      "customer:enterprise",
+    ]);
+    return new Err(new Error("Invalid credit amount in invoice metadata"));
+  }
+
+  const credit = await CreditResource.fetchByInvoiceOrLineItemId(
+    auth,
+    invoice.id
+  );
+
+  if (!credit) {
+    logger.error(
+      {
+        panic: true,
+        workspaceId: workspace.sId,
+        invoiceId: invoice.id,
+      },
+      "[Credit Purchase] Credit not found for paid enterprise invoice"
+    );
+    getStatsDClient().increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:committed",
+      "customer:enterprise",
+    ]);
+    return new Err(new Error("Credit not found for invoice"));
+  }
+
+  // For enterprise, the credit is normally started optimistically at invoice creation
+  // (see createEnterpriseCreditPurchase). The webhook firing later just
+  // confirms payment, so finding a started credit is the expected case.
+  if (credit.startDate !== null) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        invoiceId: invoice.id,
+        creditId: credit.id,
+      },
+      "[Credit Purchase] Enterprise credit already started, ack only"
+    );
+    return new Ok({ alreadyStarted: true });
+  }
+
+  // Edge case: optimistic start did not happen. Recover by starting the credit now.
+  const startResult = await credit.start(auth);
+  if (startResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        creditAmountCents,
+        invoiceId: invoice.id,
+        creditId: credit.id,
+        expirationDate: credit.expirationDate,
+      },
+      "[Credit Purchase] Error starting enterprise credit from webhook"
+    );
+    getStatsDClient().increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:committed",
+      "customer:enterprise",
+    ]);
+    return new Err(startResult.error);
+  }
+  getStatsDClient().increment("credits.top_up.success", 1, [
+    `workspace_id:${workspace.sId}`,
+    "type:committed",
+    "customer:enterprise",
+  ]);
+
+  const metronomeResult = await addMetronomeCommitsForWorkspace({
+    auth,
+    credit,
+    amountCredits: creditAmountCents / 100,
+    startDate: startResult.value.startDate,
+    expirationDate: startResult.value.expirationDate,
+  });
+  if (metronomeResult.isErr()) {
+    return new Err(metronomeResult.error);
+  }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      creditAmountCents,
+      invoiceId: invoice.id,
+      creditId: credit.id,
+    },
+    "[Credit Purchase] Recovered and started enterprise credit from webhook"
+  );
+  return new Ok({ alreadyStarted: false });
+}
+
 export async function voidFailedProCreditPurchaseInvoice({
   auth,
   invoice,
@@ -190,7 +306,7 @@ export async function voidFailedProCreditPurchaseInvoice({
 
 export async function createEnterpriseCreditPurchase({
   auth,
-  stripeSubscriptionId,
+  billingTarget,
   amountMicroUsd,
   discountPercent,
   startDate,
@@ -199,7 +315,7 @@ export async function createEnterpriseCreditPurchase({
   customerFacingInfo,
 }: {
   auth: Authenticator;
-  stripeSubscriptionId: string;
+  billingTarget: CreditPurchaseBillingTarget;
   amountMicroUsd: number;
   discountPercent?: number;
   startDate?: Date;
@@ -239,14 +355,26 @@ export async function createEnterpriseCreditPurchase({
     couponId = undefined;
   }
 
-  const invoiceResult = await makeCreditPurchaseOneOffInvoice({
-    stripeSubscriptionId,
-    amountMicroUsd,
-    couponId,
-    customerFacingInfo,
-    collectionMethod: "send_invoice",
-    daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
-  });
+  const invoiceResult =
+    billingTarget.type === "stripe-subscription"
+      ? await makeCreditPurchaseOneOffInvoiceForSubscription({
+          stripeSubscriptionId: billingTarget.stripeSubscriptionId,
+          amountMicroUsd,
+          couponId,
+          customerFacingInfo,
+          collectionMethod: "send_invoice",
+          daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
+        })
+      : await makeCreditPurchaseOneOffInvoiceForCustomer({
+          stripeCustomerId: billingTarget.stripeCustomerId,
+          workspaceId: workspace.sId,
+          currency: billingTarget.currency,
+          amountMicroUsd,
+          couponId,
+          customerFacingInfo,
+          collectionMethod: "send_invoice",
+          daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
+        });
 
   if (invoiceResult.isErr()) {
     logger.error(
@@ -255,6 +383,7 @@ export async function createEnterpriseCreditPurchase({
         workspaceId: workspace.sId,
         amountMicroUsd,
         discountPercent,
+        billingTarget: billingTarget.type,
       },
       "[Credit Purchase] Failed to create enterprise credit purchase invoice"
     );
@@ -338,15 +467,27 @@ export async function createEnterpriseCreditPurchase({
   return new Ok({ credit, invoiceOrLineItemId: invoice.id });
 }
 
+// Where the Stripe one-off credit-purchase invoice lives:
+// - `stripe-subscription`: attached to the workspace's Stripe subscription.
+// - `metronome`: issued directly on the Stripe customer linked through the
+//   Metronome billing config (no Stripe subscription).
+export type CreditPurchaseBillingTarget =
+  | { type: "stripe-subscription"; stripeSubscriptionId: string }
+  | {
+      type: "metronome";
+      stripeCustomerId: string;
+      currency: SupportedCurrency;
+    };
+
 export async function createProCreditPurchase({
   auth,
-  stripeSubscriptionId,
+  billingTarget,
   amountMicroUsd,
   discountPercent,
   boughtByUserId,
 }: {
   auth: Authenticator;
-  stripeSubscriptionId: string;
+  billingTarget: CreditPurchaseBillingTarget;
   amountMicroUsd: number;
   discountPercent?: number;
   boughtByUserId?: number;
@@ -379,13 +520,24 @@ export async function createProCreditPurchase({
     couponId = couponResult.value;
   }
 
-  const invoiceResult = await makeCreditPurchaseOneOffInvoice({
-    stripeSubscriptionId,
-    amountMicroUsd,
-    couponId,
-    collectionMethod: "charge_automatically",
-    requestThreeDSecure: "challenge",
-  });
+  const invoiceResult =
+    billingTarget.type === "stripe-subscription"
+      ? await makeCreditPurchaseOneOffInvoiceForSubscription({
+          stripeSubscriptionId: billingTarget.stripeSubscriptionId,
+          amountMicroUsd,
+          couponId,
+          collectionMethod: "charge_automatically",
+          requestThreeDSecure: "challenge",
+        })
+      : await makeCreditPurchaseOneOffInvoiceForCustomer({
+          stripeCustomerId: billingTarget.stripeCustomerId,
+          workspaceId: workspace.sId,
+          currency: billingTarget.currency,
+          amountMicroUsd,
+          couponId,
+          collectionMethod: "charge_automatically",
+          requestThreeDSecure: "challenge",
+        });
 
   if (invoiceResult.isErr()) {
     logger.warn(
@@ -393,6 +545,7 @@ export async function createProCreditPurchase({
         error: invoiceResult.error.error_message,
         workspaceId: workspace.sId,
         amountMicroUsd,
+        billingTarget: billingTarget.type,
       },
       "[Credit Purchase] Failed to process credit purchase"
     );
@@ -448,6 +601,7 @@ export async function createProCreditPurchase({
       discountPercent,
       invoiceId: invoice.id,
       requiresAction: paymentUrl !== null,
+      billingTarget: billingTarget.type,
     },
     "[Credit Purchase] Credit purchase invoice created, credit will be started via webhook"
   );

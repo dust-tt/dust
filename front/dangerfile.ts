@@ -1,3 +1,4 @@
+import { spawnSync } from "child_process";
 import { danger, fail, warn } from "danger";
 import fs from "fs";
 
@@ -7,6 +8,15 @@ const documentationAckLabel = "documentation-ack";
 const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
 const sseAckLabel = "sse-ack";
+const skipMigrationCheckLabel = "skip-migration-check";
+
+// `git grep` exit codes used by the Hono migration sync check.
+const GIT_GREP_MATCH = 0;
+const GIT_GREP_NO_MATCH = 1;
+
+function errMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
 
 const REMOVE_INDEX_WARNING =
   "\n\nBefore deleting an index, make sure it is actually not used by running:" +
@@ -100,6 +110,31 @@ function checkSSESharedFilesLabel() {
     failSSESharedFilesAck();
   } else {
     warnSSESharedFilesAck(sseAckLabel);
+  }
+}
+
+function failSSESharedModelsAck() {
+  fail(
+    "Models queried by SSE endpoints have been modified. These models are " +
+      "loaded by code that runs on `front-sse` pods as well.\n\n" +
+      `Please add the \`${sseAckLabel}\` label to acknowledge ` +
+      "that a `front-sse` deploy is required alongside the `front` deploy."
+  );
+}
+
+function warnSSESharedModelsAck(sseAckLabel: string) {
+  warn(
+    "Models queried by SSE endpoints have been modified and the PR has the `" +
+      sseAckLabel +
+      "` label. Don't forget to deploy `front-sse` alongside `front`."
+  );
+}
+
+function checkSSESharedModelsLabel() {
+  if (!hasLabel(sseAckLabel)) {
+    failSSESharedModelsAck();
+  } else {
+    warnSSESharedModelsAck(sseAckLabel);
   }
 }
 
@@ -303,6 +338,82 @@ function warnTriggersWorkflowChanges() {
   );
 }
 
+function failMigrationSync(file: string, counterpart: string) {
+  fail(
+    `\`${file}\` was modified but its migration counterpart \`${counterpart}\` was not. ` +
+      `Both sides of a migrated handler must be updated together (see BACK17). ` +
+      `Add the \`${skipMigrationCheckLabel}\` label if this is intentional.`
+  );
+}
+
+function warnMigrationSync(file: string, counterpart: string) {
+  warn(
+    `\`${file}\` was modified but its migration counterpart \`${counterpart}\` was not. ` +
+      `The \`${skipMigrationCheckLabel}\` label is set — ensure this is intentional.`
+  );
+}
+
+function checkHonoMigrationSync() {
+  const diffFiles = danger.git.modified_files.concat(danger.git.created_files);
+
+  // For each API file in the diff, find its migration counterpart (if any)
+  // and check the counterpart is also in the diff.
+  //
+  // - Next file (`front/pages/api/...`): read it for a `@migration-target:`
+  //   marker pointing at a Hono path.
+  // - Hono file (`front-api/...`): `git grep` Next markers for one that
+  //   targets this Hono path.
+  //
+  // Danger runs with cwd=`front/`, so `git grep` results and `fs.readFileSync`
+  // paths are cwd-relative; `danger.git.modified_files` is repo-root relative.
+  // We prepend `front/` when crossing that boundary.
+  const checks: { file: string; counterpart: string }[] = [];
+
+  for (const file of diffFiles) {
+    if (file.startsWith("front/pages/api/")) {
+      const localPath = file.replace(/^front\//, "");
+      try {
+        const content = fs.readFileSync(localPath, "utf8");
+        const match = content.match(/^\s*\/\/\s*@migration-target:\s*(.+)$/m);
+        if (match) {
+          checks.push({ file, counterpart: match[1].trim() });
+        }
+      } catch (err) {
+        warn(
+          `Failed to read \`${file}\` while checking for migration marker: ${errMessage(err)}`
+        );
+      }
+    } else if (file.startsWith("front-api/")) {
+      const result = spawnSync(
+        "git",
+        ["grep", "-l", "-F", `@migration-target: ${file}`, "--", "pages/api/"],
+        { encoding: "utf8" }
+      );
+      if (result.status === GIT_GREP_MATCH) {
+        for (const nextFile of result.stdout.split("\n").filter(Boolean)) {
+          checks.push({ file, counterpart: `front/${nextFile}` });
+        }
+      } else if (result.status !== GIT_GREP_NO_MATCH) {
+        warn(
+          `Failed to look up Next counterpart for \`${file}\` ` +
+            `(git grep exited ${result.status}): ${result.stderr?.trim() ?? "unknown error"}`
+        );
+      }
+    }
+  }
+
+  for (const { file, counterpart } of checks) {
+    if (diffFiles.includes(counterpart)) {
+      continue;
+    }
+    if (hasLabel(skipMigrationCheckLabel)) {
+      warnMigrationSync(file, counterpart);
+    } else {
+      failMigrationSync(file, counterpart);
+    }
+  }
+}
+
 async function checkDiffFiles() {
   const diffFiles = danger.git.modified_files
     .concat(danger.git.created_files)
@@ -381,6 +492,8 @@ async function checkDiffFiles() {
     "front/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts",
     "front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/events.ts",
     "front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts",
+    "front/pages/api/w/[wId]/mcp/requests.ts",
+    "front/pages/api/v1/w/[wId]/mcp/requests.ts",
   ];
   const modifiedSseFiles = diffFiles.filter((path) =>
     sseEndpointFiles.includes(path)
@@ -397,6 +510,32 @@ async function checkDiffFiles() {
   if (modifiedSseSharedFiles.length > 0) {
     checkSSESharedFilesLabel();
   }
+
+  const sseSharedModels = [
+    "front/lib/models/agent/conversation_branch.ts",
+    "front/lib/models/agent/conversation_fork.ts",
+    "front/lib/models/agent/conversation.ts",
+    "front/lib/models/plan.ts",
+    "front/lib/models/provider_credential.ts",
+    "front/lib/resources/storage/models/group_memberships.ts",
+    "front/lib/resources/storage/models/group_spaces.ts",
+    "front/lib/resources/storage/models/groups.ts",
+    "front/lib/resources/storage/models/keys.ts",
+    "front/lib/resources/storage/models/kill_switches.ts",
+    "front/lib/resources/storage/models/membership.ts",
+    "front/lib/resources/storage/models/spaces.ts",
+    "front/lib/resources/storage/models/user.ts",
+    "front/lib/resources/storage/models/workspace.ts",
+  ];
+  const modifiedSseSharedModels = diffFiles.filter((path) =>
+    sseSharedModels.includes(path)
+  );
+  if (modifiedSseSharedModels.length > 0) {
+    checkSSESharedModelsLabel();
+  }
+
+  // Hono migration sync check (self-gates on diff contents).
+  checkHonoMigrationSync();
 }
 
 void checkDiffFiles();

@@ -6,11 +6,10 @@ import type { APIErrorType, WithAPIErrorResponse } from "@app/types/error";
 import { CheckBigQueryCredentialsSchema } from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { BigQuery } from "@google-cloud/bigquery";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-const PostCheckBigQueryRegionsRequestBodySchema = t.type({
+const PostCheckBigQueryRegionsRequestBodySchema = z.object({
   credentials: CheckBigQueryCredentialsSchema,
 });
 
@@ -47,11 +46,11 @@ async function handler(
     });
   }
 
-  const bodyValidation = PostCheckBigQueryRegionsRequestBodySchema.decode(
+  const bodyValidation = PostCheckBigQueryRegionsRequestBodySchema.safeParse(
     req.body
   );
 
-  if (isLeft(bodyValidation)) {
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -61,11 +60,11 @@ async function handler(
     });
   }
 
-  const credentialsValidation = CheckBigQueryCredentialsSchema.decode(
-    bodyValidation.right.credentials
+  const credentialsValidation = CheckBigQueryCredentialsSchema.safeParse(
+    bodyValidation.data.credentials
   );
 
-  if (isLeft(credentialsValidation)) {
+  if (!credentialsValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -75,7 +74,7 @@ async function handler(
     });
   }
 
-  const credentials = credentialsValidation.right;
+  const credentials = credentialsValidation.data;
 
   try {
     const bigquery = new BigQuery({

@@ -4,7 +4,7 @@ import { getNovuClient } from "@app/lib/notifications";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
-import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -44,13 +44,10 @@ export const filterMembersByNotifyCondition = async (
   });
 
   const projectPreferenceMap =
-    await UserProjectNotificationPreferenceResource.fetchAllBySpaceAndUsers(
-      auth,
-      {
-        spaceModelId,
-        userModelIds,
-      }
-    );
+    await UserProjectPreferencesResource.fetchNotificationPreferenceMap(auth, {
+      spaceModelId,
+      userModelIds,
+    });
 
   const generalPreferenceMap = new Map<number, NotificationCondition>();
   for (const pref of generalPreferences) {
@@ -91,6 +88,11 @@ const triggerProjectNewConversationNotifications = async (
 ): Promise<Result<void, DustError<"internal_error" | "space_not_found">>> => {
   // Only notify for project conversations.
   if (!isProjectConversation(conversation)) {
+    return new Ok(undefined);
+  }
+
+  // Skip notification for conversations created from a todo.
+  if (conversation.metadata?.projectTaskId) {
     return new Ok(undefined);
   }
 

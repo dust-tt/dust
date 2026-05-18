@@ -71,22 +71,28 @@ export function AttachmentCitation({
   const isLoading =
     attachmentCitation.type === "file" && attachmentCitation.isUploading;
 
+  const fileResourceId =
+    attachmentCitation.type === "file" && attachmentCitation.fileId
+      ? attachmentCitation.fileId
+      : null;
+
   const canOpenInDialog =
     attachmentCitation.type === "file" &&
+    fileResourceId !== null &&
     getFileFormat(attachmentCitation.contentType)?.isSafeToDisplay &&
     (isTextualContentType(attachmentCitation) ||
       isAudioContentType(attachmentCitation));
 
   const canOpenInteractivePanel =
     attachmentCitation.type === "file" &&
-    Boolean(attachmentCitation.fileId) &&
+    fileResourceId !== null &&
     !attachmentCitation.isUploading &&
     isInteractiveContentType(attachmentCitation.contentType) &&
     sidePanel != null;
 
   const canOpenInSheet =
     attachmentCitation.type === "file" &&
-    Boolean(attachmentCitation.fileId) &&
+    fileResourceId !== null &&
     !attachmentCitation.isUploading &&
     !canOpenInteractivePanel &&
     !canOpenInDialog &&
@@ -98,7 +104,7 @@ export function AttachmentCitation({
           e.preventDefault();
           sidePanel.openPanel({
             type: "interactive_content",
-            fileId: attachmentCitation.fileId as string,
+            fileId: fileResourceId,
           });
         },
       }
@@ -115,11 +121,11 @@ export function AttachmentCitation({
           ? {
               onClick: (e: React.MouseEvent<HTMLDivElement>) => {
                 e.preventDefault();
-                if (!attachmentCitation.fileId) {
+                if (!fileResourceId) {
                   return;
                 }
                 setPreviewFile({
-                  sId: attachmentCitation.fileId,
+                  sId: fileResourceId,
                   fileName: attachmentCitation.title,
                   contentType: attachmentCitation.contentType,
                 });

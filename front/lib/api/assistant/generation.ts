@@ -18,8 +18,10 @@ import {
   CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_SEARCH_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import type {
   StructuredSystemPrompt,
   SystemPromptContext,
@@ -196,9 +198,7 @@ function constructToolsSection({
 /**
  * Get the full instructions for an enabled skill, including extended skill instructions if applicable.
  */
-function getEnabledSkillInstructions(
-  skill: SkillResource & { extendedSkill: SkillResource | null }
-): string {
+function getEnabledSkillInstructions(skill: EnabledSkill): string {
   const { name, instructions, extendedSkill } = skill;
 
   if (!extendedSkill) {
@@ -215,13 +215,52 @@ function getEnabledSkillInstructions(
   ].join("\n");
 }
 
+function constructSkillsSectionForUserMessageRendering({
+  systemSkills,
+}: {
+  systemSkills: SkillResource[];
+}): string {
+  const toolDisplayName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
+
+  let skillsSection =
+    "\n## SKILLS\n" +
+    "Skills are modular capabilities that extend your abilities for specific tasks. " +
+    "Each skill includes specialized instructions and may provide additional tools.\n\n" +
+    "Skills can be in two states:\n" +
+    "- **Available**: Listed but not active yet. Their instructions are not loaded. " +
+    `You can enable them using the \`${toolDisplayName}\` tool when they become relevant to the conversation.\n` +
+    "- **Enabled**: Fully active with instructions loaded.\n\n" +
+    "Enable skills proactively when a user's request matches a skill's purpose.\n" +
+    `If a user message contains a \`<skill id=\"...\" name=\"...\" />\` tag, treat it as a strong hint that the ` +
+    "referenced skill is relevant: it means the user specifically mentioned this skill. If the skill is not already " +
+    `enabled, and it would help, enable it with \`${toolDisplayName}\`.\n` +
+    "Only enable skills you actually need, enabling a skill loads its full instructions into context.\n" +
+    "If you need to enable multiple skills, enable them in parallel.\n\n" +
+    "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
+    "perspective on the currently available context.\n";
+
+  if (systemSkills.length > 0) {
+    skillsSection +=
+      "\n### SYSTEM SKILLS\n" +
+      "The following baseline skills are always active for this agent:\n" +
+      systemSkills
+        .map(
+          (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
+        )
+        .join("\n") +
+      "\n";
+  }
+
+  return skillsSection;
+}
+
 function constructSkillsSection({
   systemSkills,
   enabledSkills,
   equippedSkills,
 }: {
   systemSkills: SkillResource[];
-  enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+  enabledSkills: EnabledSkill[];
   equippedSkills: SkillResource[];
 }): string {
   let skillsSection =
@@ -250,6 +289,16 @@ function constructSkillsSection({
   const sortedEnabledSkills = sortByName(enabledSkills);
   const sortedEquippedSkills = sortByName(equippedSkills);
 
+  const enabledSkillIds = new Set(
+    sortedEnabledSkills.map((skill) => skill.sId)
+  );
+  // This is a legacy behavior: enabled skills are removed from the list of equipped skills.
+  const sortedAvailableSkills = sortedEquippedSkills.filter(
+    (skill) => !enabledSkillIds.has(skill.sId)
+  );
+
+  const allEnabledSkills = [...sortedSystemSkills, ...sortedEnabledSkills];
+
   if (!systemSkills.length && !enabledSkills.length && !equippedSkills.length) {
     skillsSection +=
       "\nNo skills are currently available or enabled for this agent.\n";
@@ -257,7 +306,7 @@ function constructSkillsSection({
   }
 
   // Enabled skills - inject their full instructions.
-  if (sortedSystemSkills.length > 0 || sortedEnabledSkills.length > 0) {
+  if (allEnabledSkills.length > 0) {
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
 
@@ -272,12 +321,12 @@ function constructSkillsSection({
   }
 
   // Equipped but not yet enabled skills - show name and description only
-  if (sortedEquippedSkills.length > 0) {
+  if (sortedAvailableSkills.length > 0) {
     skillsSection += "\n### AVAILABLE SKILLS\n";
     skillsSection +=
       `These skills can be enabled using the \`${ENABLE_SKILL_TOOL_NAME}\` tool. ` +
       "Review their descriptions and enable the appropriate skill when relevant:\n";
-    const skillList = sortedEquippedSkills
+    const skillList = sortedAvailableSkills
       .map(
         ({ name, agentFacingDescription }) =>
           `- **${name}**: ${agentFacingDescription}`
@@ -289,6 +338,7 @@ function constructSkillsSection({
   return skillsSection;
 }
 
+// TODO(20260504 FILE SYSTEM): Remove in favor of constructAttachmentsSectionNewFileExplorer.
 function constructAttachmentsSection(): string {
   return (
     "# ATTACHMENTS\n" +
@@ -301,6 +351,25 @@ function constructAttachmentsSection(): string {
     `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_SEARCH_FILES_ACTION_NAME)}\`,` +
     " contents of this attachment will be considered in the search.\n" +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
+  );
+}
+
+function constructAttachmentsSectionNewFileExplorer({
+  hasSandboxTools,
+}: {
+  hasSandboxTools: boolean;
+}): string {
+  const tabularFilesLine = hasSandboxTools
+    ? '- Tabular files (CSV, spreadsheets) attached as `<file>` tags are mounted under /files/conversation; analyze them with code via the sandbox. Tabular files attached as `<attachment isQueryable="true">` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n'
+    : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
+
+  return (
+    "# FILES\n" +
+    `Files attached to the conversation are accessible via the \`${FILES_SERVER_NAME}\` server.\n\n` +
+    "Some attachments remain visible in the conversation history as metadata tags:\n\n" +
+    tabularFilesLine +
+    "- Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags; use the available search and retrieval tools to access their full content.\n\n" +
+    "Pasted content appears inline in `<pastedContent>` tags and already contains the full text, no tool call needed.\n"
   );
 }
 
@@ -413,13 +482,17 @@ export function constructPromptMultiActions(
     agentsList,
     conversation,
     serverToolsAndInstructions,
-    systemSkills,
     enabledSkills,
+    systemSkills,
     equippedSkills,
+    renderSkillsAsUserMessages = false,
     memoriesContext,
     toolsetsContext,
     userContext,
     workspaceContext,
+    projectContext,
+    isNewFileExplorer = false,
+    hasSandboxTools = false,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -430,13 +503,17 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    enabledSkills: EnabledSkill[];
     systemSkills: SkillResource[];
-    enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
+    renderSkillsAsUserMessages?: boolean;
     memoriesContext?: string;
     toolsetsContext?: string;
     userContext?: string;
     workspaceContext?: string;
+    projectContext?: string;
+    isNewFileExplorer?: boolean;
+    hasSandboxTools?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -465,18 +542,25 @@ export function constructPromptMultiActions(
     userMessage,
   });
   const branchContextSection = constructBranchContextSection({ conversation });
+
   const toolsSection = constructToolsSection({
     hasAvailableActions,
     model,
     agentConfiguration,
     serverToolsAndInstructions,
   });
-  const skillsSection = constructSkillsSection({
-    systemSkills,
-    enabledSkills,
-    equippedSkills,
-  });
-  const attachmentsSection = constructAttachmentsSection();
+  const skillsSection = renderSkillsAsUserMessages
+    ? constructSkillsSectionForUserMessageRendering({
+        systemSkills,
+      })
+    : constructSkillsSection({
+        systemSkills,
+        enabledSkills,
+        equippedSkills,
+      });
+  const attachmentsSection = isNewFileExplorer
+    ? constructAttachmentsSectionNewFileExplorer({ hasSandboxTools })
+    : constructAttachmentsSection();
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
 
@@ -512,6 +596,7 @@ export function constructPromptMultiActions(
       { role: "context" as const, content: branchContextSection },
       { role: "context" as const, content: memoriesContext ?? "" },
       { role: "context" as const, content: userContext ?? "" },
+      { role: "context" as const, content: projectContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
 
     const structured: StructuredSystemPrompt = {
@@ -537,6 +622,7 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: memoriesContext ?? "" },
     { role: "context" as const, content: userContext ?? "" },
     { role: "context" as const, content: workspaceContext ?? "" },
+    { role: "context" as const, content: projectContext ?? "" },
   ].filter((s) => s.content.trim() !== "");
 
   return allSections;

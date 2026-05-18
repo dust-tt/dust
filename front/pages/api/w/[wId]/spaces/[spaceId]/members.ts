@@ -16,35 +16,34 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;
 }
 
-const PatchSpaceMembersRequestBodySchema = t.intersection([
-  t.type({
-    isRestricted: t.boolean,
-    name: t.string,
+const PatchSpaceMembersRequestBodySchema = z.intersection(
+  z.object({
+    isRestricted: z.boolean(),
+    name: z.string(),
   }),
-  t.union([
-    t.type({
-      memberIds: t.array(t.string),
-      managementMode: t.literal("manual"),
-      editorIds: t.array(t.string),
+  z.discriminatedUnion("managementMode", [
+    z.object({
+      memberIds: z.array(z.string()),
+      managementMode: z.literal("manual"),
+      editorIds: z.array(z.string()),
     }),
-    t.type({
-      groupIds: t.array(t.string),
-      managementMode: t.literal("group"),
-      editorGroupIds: t.array(t.string),
+    z.object({
+      groupIds: z.array(z.string()),
+      managementMode: z.literal("group"),
+      editorGroupIds: z.array(z.string()),
     }),
-  ]),
-]);
+  ])
+);
 
-export type PatchSpaceMembersRequestBodyType = t.TypeOf<
+export type PatchSpaceMembersRequestBodyType = z.infer<
   typeof PatchSpaceMembersRequestBodySchema
 >;
 
@@ -77,12 +76,12 @@ export async function handler(
         });
       }
 
-      const bodyValidation = PatchSpaceMembersRequestBodySchema.decode(
+      const bodyValidation = PatchSpaceMembersRequestBodySchema.safeParse(
         req.body
       );
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
 
         return apiError(req, res, {
           status_code: 400,
@@ -95,7 +94,7 @@ export async function handler(
 
       // Track current members before update to identify newly added ones.
       let currentMemberIds: Set<string> | undefined;
-      const body = bodyValidation.right;
+      const body = bodyValidation.data;
       const owner = auth.getNonNullableWorkspace();
 
       if (
@@ -224,17 +223,17 @@ export async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          spaceName: space.name,
-          managementMode: body.managementMode,
-          isRestricted: String(body.isRestricted),
+          space_name: space.name,
+          management_mode: body.managementMode,
+          is_restricted: String(body.isRestricted),
           ...(body.managementMode === "manual"
             ? {
-                memberIds: body.memberIds.join(","),
-                editorIds: body.editorIds.join(","),
+                member_ids: body.memberIds.join(","),
+                editor_ids: body.editorIds.join(","),
               }
             : {
-                groupIds: body.groupIds.join(","),
-                editorGroupIds: body.editorGroupIds.join(","),
+                group_ids: body.groupIds.join(","),
+                editor_group_ids: body.editorGroupIds.join(","),
               }),
         },
       });

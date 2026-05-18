@@ -6,8 +6,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import type { SeedContext } from "@app/scripts/seed/factories/types";
 
-// The workspace sId created by dust-hive seed
-const WORKSPACE_SID = "DevWkSpace";
+// The workspace sId created by dust-hive seed, overridable via DEV_WORKSPACE_SID.
+export const WORKSPACE_SID = process.env.DEV_WORKSPACE_SID || "DevWkSpace";
 
 export async function createSeedContext({
   execute,

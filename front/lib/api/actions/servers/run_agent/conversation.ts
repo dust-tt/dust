@@ -1,5 +1,11 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import type { ResolvedScopedFilePath } from "@app/lib/api/actions/servers/run_agent/file_paths";
+import {
+  appendFilePathsHintToQuery,
+  copyConversationFilesIntoSub,
+  resolveFilePathsInParentScope,
+} from "@app/lib/api/actions/servers/run_agent/file_paths";
 import { isTransientNetworkError } from "@app/lib/api/actions/servers/run_agent/network_errors";
 import type { ChildAgentBlob } from "@app/lib/api/actions/servers/run_agent/types";
 import { isRunAgentResumeState } from "@app/lib/api/actions/servers/run_agent/types";
@@ -54,6 +60,7 @@ export async function getOrCreateConversation(
     query,
     toolsetsToAdd,
     fileOrContentFragmentIds,
+    filePaths,
     conversationId,
   }: {
     childAgentBlob: ChildAgentBlob;
@@ -64,6 +71,7 @@ export async function getOrCreateConversation(
     query: string;
     toolsetsToAdd: string[] | null;
     fileOrContentFragmentIds: string[] | null;
+    filePaths: string[] | null;
     conversationId: string | null;
   }
 ): Promise<
@@ -104,6 +112,30 @@ export async function getOrCreateConversation(
       userMessageId: resumeState.userMessageId,
     });
   }
+
+  // Resolve scoped file paths in the parent's auth/conversation scope. Any failure here surfaces
+  // cleanly before the sub-conversation is created. `project/<rel>` paths are validated but not
+  // copied (the project mount is shared across the project's conversations).
+  // `conversation/<rel>` paths are copied to the sub-conversation's mount once the sub exists.
+  // A short hint is appended to the sub's first message so it knows which paths were forwarded;
+  // the sub reads them through the files MCP server.
+  let resolvedFilePaths: ResolvedScopedFilePath[] = [];
+  if (filePaths && filePaths.length > 0) {
+    const resolvedFilePathsRes = await resolveFilePathsInParentScope(
+      auth,
+      mainConversation,
+      filePaths
+    );
+    if (resolvedFilePathsRes.isErr()) {
+      return resolvedFilePathsRes;
+    }
+    resolvedFilePaths = resolvedFilePathsRes.value;
+  }
+
+  const queryWithFilePaths = appendFilePathsHintToQuery(
+    query,
+    resolvedFilePaths
+  );
 
   const contentFragments: PublicPostContentFragmentRequestBody[] = [];
 
@@ -160,7 +192,7 @@ export async function getOrCreateConversation(
     const messageRes = await api.postUserMessage({
       conversationId,
       message: {
-        content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
+        content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${queryWithFilePaths}`,
         mentions: [{ configurationId: childAgentId }],
         context: {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -223,7 +255,7 @@ export async function getOrCreateConversation(
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
     message: {
-      content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
+      content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${queryWithFilePaths}`,
       mentions: [{ configurationId: childAgentId }],
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -273,6 +305,15 @@ export async function getOrCreateConversation(
 
   if (!createdUserMessage) {
     return new Err(new MCPError("Failed to retrieve the created message."));
+  }
+
+  const copyRes = await copyConversationFilesIntoSub(auth, {
+    parentConversation: mainConversation,
+    subConversationId: conversation.sId,
+    resolvedFilePaths,
+  });
+  if (copyRes.isErr()) {
+    return copyRes;
   }
 
   return new Ok({

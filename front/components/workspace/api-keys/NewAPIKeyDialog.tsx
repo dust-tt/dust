@@ -1,6 +1,9 @@
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import {
   dollarsToMicroUsd,
+  isKeyRole,
+  KEY_ROLES,
+  type KeyRole,
   monthlyCapDollarsSchema,
   prettifyGroupName,
 } from "@app/components/workspace/api-keys/utils";
@@ -17,6 +20,8 @@ import {
   Input,
   Label,
   PlusIcon,
+  RadioGroup,
+  RadioGroupItem,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -36,6 +41,7 @@ const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),
   monthlyCapDollars: monthlyCapDollarsSchema,
   selectedGroupIds: z.array(z.number()),
+  role: z.enum(KEY_ROLES),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -48,6 +54,7 @@ interface NewAPIKeyDialogProps {
     name: string;
     groups: GroupType[];
     monthlyCapMicroUsd: number | null;
+    role: KeyRole;
   }) => Promise<void>;
 }
 
@@ -67,6 +74,7 @@ export const NewAPIKeyDialog = ({
       name: "",
       monthlyCapDollars: "",
       selectedGroupIds: [],
+      role: "builder",
     },
   });
 
@@ -76,6 +84,13 @@ export const NewAPIKeyDialog = ({
     field: { value: selectedGroupIds, onChange: setSelectedGroupIds },
   } = useController<FormValues, "selectedGroupIds">({
     name: "selectedGroupIds",
+    control: form.control,
+  });
+
+  const {
+    field: { value: roleValue, onChange: setRoleValue },
+  } = useController<FormValues, "role">({
+    name: "role",
     control: form.control,
   });
 
@@ -120,6 +135,7 @@ export const NewAPIKeyDialog = ({
       name: data.name,
       groups: selectedGroups,
       monthlyCapMicroUsd: dollarsToMicroUsd(dollars),
+      role: data.role,
     });
     handleClose();
   };
@@ -235,6 +251,38 @@ export const NewAPIKeyDialog = ({
                     );
                   })}
                 </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label>Access scope</Label>
+                <RadioGroup
+                  value={roleValue}
+                  onValueChange={(value) => {
+                    if (isKeyRole(value)) {
+                      setRoleValue(value);
+                    }
+                  }}
+                  className="flex flex-col gap-1"
+                >
+                  <RadioGroupItem
+                    id="api-key-scope-user"
+                    value="user"
+                    className="gap-2"
+                    label="Can create conversations, read agents and data sources."
+                  />
+                  <RadioGroupItem
+                    id="api-key-scope-builder"
+                    value="builder"
+                    className="gap-2"
+                    label="Can also create and modify resources"
+                  />
+                  <RadioGroupItem
+                    id="api-key-scope-admin"
+                    value="admin"
+                    className="gap-2"
+                    label="Create and modify resources plus workspace administration (members, analytics export)"
+                  />
+                </RadioGroup>
               </div>
 
               <BaseFormFieldSection

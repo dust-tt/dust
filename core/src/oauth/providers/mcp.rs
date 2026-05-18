@@ -63,12 +63,17 @@ impl MCPConnectionProvider {
         MCPConnectionProvider {}
     }
 
+    /// RFC 6749 §2.3.1 requires URL-encoding client_id and client_secret before base64-encoding.
     fn build_basic_auth_header(client_id: &str, client_secret: &str) -> String {
         format!(
             "Basic {}",
             base64::Engine::encode(
                 &base64::engine::general_purpose::STANDARD,
-                format!("{}:{}", client_id, client_secret)
+                format!(
+                    "{}:{}",
+                    urlencoding::encode(client_id),
+                    urlencoding::encode(client_secret)
+                )
             )
         )
     }
@@ -447,7 +452,7 @@ impl Provider for MCPConnectionProvider {
         match &error {
             ProviderHttpRequestError::RequestFailed {
                 status, message, ..
-            } if *status == 400 => {
+            } if *status == 400 || *status == 401 => {
                 // Detect both "invalid_grant" and "invalid_refresh_token" as revoked token indicators.
                 let is_revoked =
                     message.contains("invalid_grant") || message.contains("invalid_refresh_token");

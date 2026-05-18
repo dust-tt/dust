@@ -9,56 +9,55 @@ import { apiError } from "@app/logger/withlogging";
 import { config as documentBodyParserConfig } from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PlanType } from "@app/types/plan";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const PlanTypeSchema = t.type({
-  code: t.string,
-  name: t.string,
-  limits: t.type({
-    assistant: t.type({
-      isSlackBotAllowed: t.boolean,
-      maxMessages: t.number,
-      maxMessagesTimeframe: t.union([t.literal("day"), t.literal("lifetime")]),
-      isDeepDiveAllowed: t.boolean,
+export const PlanTypeSchema = z.object({
+  code: z.string(),
+  name: z.string(),
+  limits: z.object({
+    assistant: z.object({
+      isSlackBotAllowed: z.boolean(),
+      maxMessages: z.number(),
+      maxMessagesTimeframe: z.enum(["day", "lifetime"]),
+      isDeepDiveAllowed: z.boolean(),
     }),
-    capabilities: t.type({
-      images: t.type({
-        maxImagesPerWeek: t.number,
+    capabilities: z.object({
+      images: z.object({
+        maxImagesPerWeek: z.number(),
       }),
     }),
-    connections: t.type({
-      isConfluenceAllowed: t.boolean,
-      isSlackAllowed: t.boolean,
-      isNotionAllowed: t.boolean,
-      isGoogleDriveAllowed: t.boolean,
-      isGithubAllowed: t.boolean,
-      isIntercomAllowed: t.boolean,
-      isWebCrawlerAllowed: t.boolean,
-      isSalesforceAllowed: t.boolean,
+    connections: z.object({
+      isConfluenceAllowed: z.boolean(),
+      isSlackAllowed: z.boolean(),
+      isNotionAllowed: z.boolean(),
+      isGoogleDriveAllowed: z.boolean(),
+      isGithubAllowed: z.boolean(),
+      isIntercomAllowed: z.boolean(),
+      isWebCrawlerAllowed: z.boolean(),
+      isSalesforceAllowed: z.boolean(),
     }),
-    dataSources: t.type({
-      count: t.number,
-      documents: t.type({
-        count: t.number,
-        sizeMb: t.number,
+    dataSources: z.object({
+      count: z.number(),
+      documents: z.object({
+        count: z.number(),
+        sizeMb: z.number(),
       }),
     }),
-    users: t.type({
-      maxUsers: t.number,
-      isSSOAllowed: t.boolean,
-      isSCIMAllowed: t.boolean,
+    users: z.object({
+      maxUsers: z.number(),
+      isSSOAllowed: z.boolean(),
+      isSCIMAllowed: z.boolean(),
     }),
-    vaults: t.type({
-      maxVaults: t.number,
+    vaults: z.object({
+      maxVaults: z.number(),
     }),
-    canUseProduct: t.boolean,
+    canUseProduct: z.boolean(),
   }),
-  trialPeriodDays: t.number,
-  isByok: t.boolean,
-  isAuditLogsAllowed: t.boolean,
+  trialPeriodDays: z.number(),
+  isByok: z.boolean(),
+  isAuditLogsAllowed: z.boolean(),
 });
 
 export type UpsertPokePlanResponseBody = {
@@ -103,18 +102,17 @@ async function handler(
       return;
 
     case "POST":
-      const bodyValidation = PlanTypeSchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PlanTypeSchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `The request body is invalid: ${pathError}`,
+            message: `The request body is invalid: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
-      const body = bodyValidation.right;
+      const body = bodyValidation.data;
 
       const { sizeLimit } = documentBodyParserConfig.api.bodyParser;
       const maxSizeMb = parseInt(sizeLimit.replace("mb", ""), 10);

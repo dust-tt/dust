@@ -7,6 +7,7 @@
  * - Plain text with @ symbols
  */
 
+import { type SkillReference, serializeSkillTag } from "@app/lib/skills/format";
 import type {
   AgentMention,
   MentionType,
@@ -14,6 +15,7 @@ import type {
   UserMention,
 } from "@app/types/assistant/mentions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import type { JSONContent } from "@tiptap/react";
 
 /**
@@ -23,7 +25,7 @@ import type { JSONContent } from "@tiptap/react";
 export const AGENT_MENTION_REGEX = /:mention\[([^\]]+)]\{sId=([^}]+?)}/g;
 export const AGENT_MENTION_REGEX_BEGINNING = new RegExp(
   "^" + AGENT_MENTION_REGEX.source,
-  AGENT_MENTION_REGEX.flags
+  AGENT_MENTION_REGEX.flags.replace("g", "")
 );
 
 /**
@@ -33,8 +35,12 @@ export const AGENT_MENTION_REGEX_BEGINNING = new RegExp(
 export const USER_MENTION_REGEX = /:mention_user\[([^\]]+)]\{sId=([^}]+?)}/g;
 export const USER_MENTION_REGEX_BEGINNING = new RegExp(
   "^" + USER_MENTION_REGEX.source,
-  USER_MENTION_REGEX.flags
+  USER_MENTION_REGEX.flags.replace("g", "")
 );
+
+export function startsWithUserMention(markdown: string): boolean {
+  return USER_MENTION_REGEX_BEGINNING.test(markdown.trimStart());
+}
 
 /**
  * Extracts mentions from content.
@@ -99,12 +105,14 @@ export function replaceMentionsWithAt(text: string): string {
 export function extractFromEditorJSON(node?: JSONContent): {
   text: string;
   mentions: RichMention[];
+  skills: SkillReference[];
 } {
   let textContent = "";
   let mentions: RichMention[] = [];
+  let skills: SkillReference[] = [];
 
   if (!node) {
-    return { text: textContent, mentions };
+    return { text: textContent, mentions, skills };
   }
 
   // Check if the node is of type 'text' and concatenate its text.
@@ -128,6 +136,25 @@ export function extractFromEditorJSON(node?: JSONContent): {
     });
   }
 
+  if (node.type === "skill") {
+    const skillId = node.attrs?.skillId;
+    const skillIcon = node.attrs?.skillIcon;
+    const skillName = node.attrs?.skillName;
+
+    if (isString(skillId) && isString(skillIcon) && isString(skillName)) {
+      skills.push({
+        id: skillId,
+        icon: skillIcon,
+        name: skillName,
+      });
+      textContent += serializeSkillTag({
+        id: skillId,
+        icon: skillIcon,
+        name: skillName,
+      });
+    }
+  }
+
   // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
   if (node.type && ["hardBreak", "paragraph"].includes(node.type)) {
     textContent += "\n";
@@ -145,8 +172,9 @@ export function extractFromEditorJSON(node?: JSONContent): {
       const childResult = extractFromEditorJSON(childNode);
       textContent += childResult.text;
       mentions = mentions.concat(childResult.mentions);
+      skills = skills.concat(childResult.skills);
     });
   }
 
-  return { text: textContent, mentions };
+  return { text: textContent, mentions, skills };
 }

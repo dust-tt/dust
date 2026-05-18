@@ -4,6 +4,7 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -21,7 +22,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
-  isReinforcedSkillNotificationMetadata,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { Result } from "../shared/result";
@@ -30,8 +30,8 @@ import { isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
 
 /**
- * Error types for getAgentLoopData that indicate soft-deleted resources.
- * These are safe to ignore in callers since the resource was intentionally deleted.
+ * Error types for getAgentLoopData that indicate deleted or unavailable resources.
+ * These are safe to ignore in callers since retrying won't make the data available.
  */
 export const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "conversation_deleted",
@@ -218,13 +218,13 @@ export async function getAgentLoopDataWithAuth(
         error instanceof ConversationError &&
         error.type === "conversation_not_found"
       ) {
-        // Check if the conversation was soft-deleted.
+        // Check if the conversation was deleted or is no longer readable.
         const conv = await ConversationResource.fetchById(
           auth,
           conversationId,
           { includeDeleted: true }
         );
-        if (conv?.visibility === "deleted") {
+        if (!conv || conv.visibility === "deleted") {
           return new Err(new AgentLoopDataError("conversation_deleted"));
         }
       }
@@ -244,13 +244,13 @@ export async function getAgentLoopDataWithAuth(
 
     if (conversationRes.isErr()) {
       if (conversationRes.error.type === "conversation_not_found") {
-        // Check if the conversation was soft-deleted.
+        // Check if the conversation was deleted or is no longer readable.
         const conv = await ConversationResource.fetchById(
           auth,
           conversationId,
           { includeDeleted: true }
         );
-        if (conv?.visibility === "deleted") {
+        if (!conv || conv.visibility === "deleted") {
           return new Err(new AgentLoopDataError("conversation_deleted"));
         }
       }
@@ -309,20 +309,12 @@ export async function getAgentLoopDataWithAuth(
 
   const agentId = agentMessage.configuration.sId;
 
-  const reinforcedSkillMeta =
-    conversation.metadata?.reinforcedSkillNotification;
-  const reinforcedSkillNotification = isReinforcedSkillNotificationMetadata(
-    reinforcedSkillMeta
-  )
-    ? reinforcedSkillMeta
-    : undefined;
-
   const globalAgentContext: GlobalAgentContext = {
     userMessageRank: userMessage.rank,
     sidekickIsNewAgentFromScratch:
       conversation.metadata?.sidekickIsNewAgentFromScratch === true ||
       undefined,
-    reinforcedSkillNotification,
+    staticReply: getStaticReplyForUserMessage({ conversation, userMessage }),
   };
 
   // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.

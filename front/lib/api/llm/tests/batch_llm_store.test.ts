@@ -132,11 +132,17 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         if (sendBatchResult.isErr()) {
           throw sendBatchResult.error;
         }
+        if (!sendBatchResult.value) {
+          throw new Error("Expected a batch to be sent");
+        }
         const { batchId, conversationIds } = sendBatchResult.value;
 
         expect(batchId).toBeTruthy();
         expect(conversationIds).toHaveLength(1);
         const conversationId = conversationIds[0];
+        if (!conversationId) {
+          throw new Error("Expected a conversation id");
+        }
 
         // Verify conversation was created.
         const conversation = await ConversationResource.fetchById(
@@ -175,7 +181,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
           authenticator,
           llm,
           batchId,
-          conversationIds,
+          conversationIds.filter((id): id is string => id !== null),
           agentConfigurationId
         );
 
@@ -335,10 +341,16 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         if (sendBatchCallResult1.isErr()) {
           throw sendBatchCallResult1.error;
         }
+        if (!sendBatchCallResult1.value) {
+          throw new Error("Expected a batch to be sent");
+        }
         const { batchId: batchId1, conversationIds: conversationIds1 } =
           sendBatchCallResult1.value;
 
         const conversationId = conversationIds1[0];
+        if (!conversationId) {
+          throw new Error("Expected a conversation id");
+        }
 
         await awaitBatch(llm, batchId1);
 
@@ -347,7 +359,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
           authenticator,
           llm,
           batchId1,
-          conversationIds1,
+          conversationIds1.filter((id): id is string => id !== null),
           agentConfigurationId
         );
 
@@ -365,6 +377,9 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         if (sendBatchCallResult2.isErr()) {
           throw sendBatchCallResult2.error;
         }
+        if (!sendBatchCallResult2.value) {
+          throw new Error("Expected a batch to be sent");
+        }
         const { batchId: batchId2, conversationIds: conversationIds2 } =
           sendBatchCallResult2.value;
 
@@ -378,7 +393,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
           authenticator,
           llm,
           batchId2,
-          conversationIds2,
+          conversationIds2.filter((id): id is string => id !== null),
           agentConfigurationId
         );
 
@@ -390,6 +405,89 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         if (textEvent2?.type === "text_generated") {
           expect(textEvent2.content.text).toContain("42");
         }
+      },
+      TEST_TIMEOUT_MS
+    );
+
+    it(
+      "sendBatchCallToLlm skips conversations that exceed the context window",
+      async () => {
+        const { authenticator, llm, agentConfigurationId } = await setupTest();
+
+        // The mocked tokenizer counts 1 char as 1 token, and the test model
+        // has a 190k-token context window. A 250k-char message guarantees the
+        // render step returns "Context window exceeded".
+        const oversizedMessage = "x".repeat(250_000);
+
+        const result = await sendBatchCallToLlm(authenticator, llm, [
+          makeConversationOptions("What is 1+1? Reply with just the number.", {
+            title: "Skip Test - Normal",
+          }),
+          makeConversationOptions(oversizedMessage, {
+            title: "Skip Test - Oversized",
+          }),
+        ]);
+
+        if (result.isErr()) {
+          throw result.error;
+        }
+        expect(result.value).not.toBeNull();
+        if (!result.value) {
+          return;
+        }
+        const { batchId, conversationIds } = result.value;
+
+        expect(batchId).toBeTruthy();
+        expect(conversationIds).toHaveLength(2);
+        expect(typeof conversationIds[0]).toBe("string");
+        expect(conversationIds[1]).toBeNull();
+
+        // Wait for the batch to finish and verify the surviving conversation
+        // produced a real result (proving the batch was submitted correctly
+        // even with one conversation skipped).
+        const survivingConversationId = conversationIds[0];
+        if (typeof survivingConversationId !== "string") {
+          throw new Error("Expected a surviving conversation id");
+        }
+        await awaitBatch(llm, batchId);
+
+        const results = await downloadBatchResultFromLlm(
+          authenticator,
+          llm,
+          batchId,
+          [survivingConversationId],
+          agentConfigurationId
+        );
+
+        expect(results.events.size).toBe(1);
+        const events = results.events.get(survivingConversationId);
+        expect(events).toBeDefined();
+        const textEvent = events?.find((e) => e.type === "text_generated");
+        expect(textEvent).toBeDefined();
+        if (textEvent?.type === "text_generated") {
+          expect(textEvent.content.text).toContain("2");
+        }
+      },
+      TEST_TIMEOUT_MS
+    );
+
+    it(
+      "sendBatchCallToLlm returns null when every conversation exceeds the context window",
+      async () => {
+        const { authenticator, llm } = await setupTest();
+
+        const oversizedMessage = "x".repeat(250_000);
+
+        const result = await sendBatchCallToLlm(authenticator, llm, [
+          makeConversationOptions(oversizedMessage, {
+            title: "All-Skipped Test",
+          }),
+        ]);
+
+        if (result.isErr()) {
+          throw result.error;
+        }
+        expect(result.value).toBeNull();
       },
       TEST_TIMEOUT_MS
     );

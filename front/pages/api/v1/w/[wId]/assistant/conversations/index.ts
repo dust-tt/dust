@@ -175,6 +175,8 @@ async function handler(
       const origin = message?.context.origin ?? "api";
 
       if (message) {
+        // Keep this before createConversation to avoid creating an empty conversation when the
+        // initial programmatic message is blocked.
         if (isProgrammaticUsage(auth, { userMessageOrigin: origin })) {
           const limitsResult = await checkProgrammaticUsageLimits(auth);
           if (limitsResult.isErr()) {
@@ -325,6 +327,14 @@ async function handler(
         spaceId: resolvedSpaceModelId,
       });
 
+      if (conversation.depth === 0) {
+        await ConversationResource.upsertParticipation(auth, {
+          conversation,
+          action: "subscribed",
+          user: auth.user()?.toJSON() ?? null,
+        });
+      }
+
       let newContentFragment: ContentFragmentType | null = null;
       let newMessage: UserMessageType | null = null;
 
@@ -334,6 +344,7 @@ async function handler(
 
         if (isContentFragmentInputWithInlinedContent(contentFragment)) {
           const contentFragmentRes = await toFileContentFragment(auth, {
+            conversation,
             contentFragment,
           });
           if (contentFragmentRes.isErr()) {
@@ -417,6 +428,17 @@ async function handler(
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
         if (message.context.selectedMCPServerViewIds) {
+          if (!auth.user()) {
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Selecting MCP server views is only available to authenticated users.",
+              },
+            });
+          }
+
           const mcpServerViews = await MCPServerViewResource.fetchByIds(
             auth,
             message.context.selectedMCPServerViewIds
@@ -442,7 +464,7 @@ async function handler(
 
         const validateUserMessageContextRes = isUserMessageContextValid(
           auth,
-          req,
+          req.headers,
           ctx
         );
         if (!validateUserMessageContextRes) {

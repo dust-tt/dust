@@ -39,8 +39,9 @@ import {
   getCitationsFromActions,
   getRefs,
 } from "@app/lib/api/assistant/citations";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
+import { cancelAgentLoop } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -48,10 +49,16 @@ import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
+import type {
+  AgentErrorCategory,
+  GenericErrorContent,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { getHeaderFromUserEmail } from "@app/types/user";
 import type {
@@ -63,11 +70,76 @@ import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import maxBy from "lodash/maxBy";
 import type z from "zod";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
+const UNTRACKED_CHILD_AGENT_ERROR_CATEGORIES = [
+  "retryable_model_error",
+  "context_window_exceeded",
+  "empty_content",
+  "provider_internal_error",
+  "stream_error",
+] satisfies AgentErrorCategory[];
+const UNTRACKED_CHILD_AGENT_ERROR_CODES = ["max_step_reached"] as const;
+
+function shouldTrackChildAgentError(error: GenericErrorContent): boolean {
+  const category = error.metadata?.category;
+  if (
+    typeof category === "string" &&
+    UNTRACKED_CHILD_AGENT_ERROR_CATEGORIES.some((c) => c === category)
+  ) {
+    return false;
+  }
+
+  return !UNTRACKED_CHILD_AGENT_ERROR_CODES.some((code) => code === error.code);
+}
+
+function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
+  switch (agent.status) {
+    case "active":
+    case "draft":
+      return agent.canRead;
+    case "disabled_free_workspace":
+    case "disabled_missing_datasource":
+    case "disabled_by_admin":
+    case "archived":
+    case "pending":
+      return false;
+    default:
+      assertNever(agent.status);
+  }
+}
+
+function makeChildAgentUnavailableError(childAgentName: string): MCPError {
+  return new MCPError(
+    `Agent @${childAgentName} is not available to the user running this conversation. ` +
+      "Ask a workspace admin to grant access to the agent and its spaces.",
+    { tracked: false }
+  );
+}
+
+async function checkChildAgentCanRun(
+  auth: Authenticator,
+  {
+    agentId,
+    childAgentName,
+  }: {
+    agentId: string;
+    childAgentName: string;
+  }
+): Promise<Result<void, MCPError>> {
+  const childAgent = await getAgentConfiguration(auth, {
+    agentId,
+    variant: "extra_light",
+  });
+
+  if (!childAgent || !canRunChildAgent(childAgent)) {
+    return new Err(makeChildAgentUnavailableError(childAgentName));
+  }
+
+  return new Ok(undefined);
+}
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
@@ -84,12 +156,14 @@ const runAgent = async (
     executionMode,
     toolsetsToAdd,
     fileOrContentFragmentIds,
+    filePaths,
   }: {
     query: string;
     childAgent: { uri: string };
     executionMode: { value: "run-agent" | "handoff" };
     toolsetsToAdd?: string[] | null;
     fileOrContentFragmentIds?: string[] | null;
+    filePaths?: string[] | null;
   },
   {
     auth,
@@ -130,6 +204,18 @@ const runAgent = async (
   };
   const isHandoff = executionMode.value === "handoff";
 
+  if (isHandoff && filePaths && filePaths.length > 0) {
+    return finalizeAndReturn(
+      new Err(
+        new MCPError(
+          "`filePaths` is not supported in handoff mode: the sub-agent continues in the same " +
+            "conversation, so files are already visible to it.",
+          { tracked: false }
+        )
+      )
+    );
+  }
+
   const { agentConfiguration: mainAgent, conversation: mainConversation } =
     agentLoopContext.runContext;
 
@@ -140,6 +226,14 @@ const runAgent = async (
     );
   }
   const parsedChildAgentId = parsedChildAgentIdRes.value;
+
+  const childAgentAccessRes = await checkChildAgentCanRun(auth, {
+    agentId: parsedChildAgentId,
+    childAgentName: childAgentBlob.name,
+  });
+  if (childAgentAccessRes.isErr()) {
+    return finalizeAndReturn(childAgentAccessRes);
+  }
 
   const user = auth.user();
 
@@ -210,6 +304,7 @@ const runAgent = async (
         : query,
       toolsetsToAdd: toolsetsToAdd ?? null,
       fileOrContentFragmentIds: fileOrContentFragmentIds ?? null,
+      filePaths: filePaths ?? null,
       conversationId: isHandoff ? mainConversation.sId : null,
       originMessage: agentLoopContext.runContext.agentMessage,
     }
@@ -243,21 +338,16 @@ const runAgent = async (
     userMessageId
   );
 
-  const requestChildCancellation = () => {
-    if (!agentMessage) {
-      logger.warn(
-        {
-          childConversationId: conversation.sId,
-          conversationId: mainConversation.sId,
-        },
-        "run_agent cancellation error: No agent message found."
-      );
-      return;
-    }
+  if (!agentMessage) {
+    return finalizeAndReturn(
+      new Err(makeChildAgentUnavailableError(childAgentBlob.name))
+    );
+  }
 
+  const requestChildCancellation = () => {
     /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */
     if (!childCancellationPromise) {
-      childCancellationPromise = cancelMessageGenerationEvent(auth, {
+      childCancellationPromise = cancelAgentLoop(auth, {
         messageIds: [agentMessage.sId],
         conversationId: conversation.sId,
       }).catch((cancelError) => {
@@ -499,11 +589,7 @@ const runAgent = async (
         // Certain types of agent errors should not be tracked as run_agent tool execution
         // errors (they will be exposed to the model and will be tracked as errors from the
         // agentic loop in the sub agent conversation).
-        const tracked = ![
-          "retryable_model_error",
-          "context_window_exceeded",
-          "provider_internal_error",
-        ].includes(event.error.metadata?.category);
+        const tracked = shouldTrackChildAgentError(event.error);
         return await finalizeAndReturn(
           new Err(
             new MCPError(errorMessage, {
@@ -819,7 +905,7 @@ function getLatestVersionByParentMessageId(
   });
 
   return messageIndex !== -1
-    ? _.maxBy(
+    ? maxBy(
         conversation.content[messageIndex] as AgentMessagePublicType[],
         (m) => m.version
       )

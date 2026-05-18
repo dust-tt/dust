@@ -1,0 +1,117 @@
+/**
+ * dust-tools is a single CLI entrypoint for sandbox profile file/search tools.
+ *
+ * The caller selects a provider profile with `--profile <anthropic|openai|gemini>`,
+ * then invokes a subcommand whose argument contract may vary slightly by profile.
+ * The shell profile wrappers stay thin and dispatch into this binary.
+ */
+
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+import { getProfile } from "./profile";
+import { logToolInvocation } from "./shared/telemetry";
+import * as editFile from "./tools/edit_file";
+import * as glob from "./tools/glob";
+import * as grepFiles from "./tools/grep_files";
+import * as listDir from "./tools/list_dir";
+import * as readFile from "./tools/read_file";
+import * as shell from "./tools/shell";
+import * as writeFile from "./tools/write_file";
+
+type ToolModule = {
+  readonly help: string;
+  run(
+    args: readonly string[],
+    profile: ReturnType<typeof getProfile>
+  ): Promise<number>;
+};
+
+const TOOLS: Record<string, ToolModule> = {
+  edit_file: editFile,
+  glob,
+  grep_files: grepFiles,
+  list_dir: listDir,
+  read_file: readFile,
+  shell,
+  write_file: writeFile,
+};
+
+function printGlobalUsage(stream: NodeJS.WriteStream): void {
+  stream.write("Usage: dust-tools [--profile NAME] <tool> [args...]\n");
+  stream.write(`Available tools: ${Object.keys(TOOLS).sort().join(", ")}\n`);
+}
+
+export async function runCli(argv: readonly string[]): Promise<number> {
+  const startedAtMs = Date.now();
+  let toolName = "unknown";
+  let profileArg: string | undefined;
+  let exitCode = 0;
+
+  try {
+    let index = 0;
+
+    if (argv[index] === "--profile") {
+      profileArg = argv[index + 1];
+      if (profileArg === undefined) {
+        process.stderr.write("Error: --profile requires a value\n");
+        exitCode = 1;
+        return exitCode;
+      }
+      index += 2;
+    }
+
+    const remaining = argv.slice(index);
+    if (
+      remaining.length === 0 ||
+      (remaining.length === 1 && ["--help", "-h"].includes(remaining[0] ?? ""))
+    ) {
+      printGlobalUsage(process.stderr);
+      exitCode = remaining.length === 0 ? 1 : 0;
+      return exitCode;
+    }
+
+    toolName = remaining[0] ?? "";
+    const toolArgs = remaining.slice(1);
+    const tool = TOOLS[toolName];
+
+    if (!tool) {
+      process.stderr.write(`Error: unknown tool: ${toolName}\n`);
+      printGlobalUsage(process.stderr);
+      exitCode = 1;
+      return exitCode;
+    }
+
+    try {
+      exitCode = await tool.run(toolArgs, getProfile(profileArg));
+      return exitCode;
+    } catch (err: unknown) {
+      process.stderr.write(`Error: ${normalizeError(err).message}\n`);
+      exitCode = 1;
+      return exitCode;
+    }
+  } finally {
+    logToolInvocation({
+      tool: toolName,
+      profile: getProfile(profileArg),
+      exitCode,
+      durationMs: Date.now() - startedAtMs,
+    });
+  }
+}
+
+const entrypointPath = fileURLToPath(import.meta.url);
+const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : "";
+
+if (entrypointPath === invokedPath) {
+  process.stdout.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EPIPE") {
+      process.exit(0);
+    }
+  });
+  void runCli(process.argv.slice(2)).then((exitCode) => {
+    process.exit(exitCode);
+  });
+}

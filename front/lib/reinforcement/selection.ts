@@ -1,13 +1,15 @@
 import type { Authenticator } from "@app/lib/auth";
+import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
+import { getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd } from "@app/lib/reinforcement/consumption";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { daysAgo } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
-
 import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
   PENDING_SUGGESTION_MAX_AGE_DAYS,
@@ -40,6 +42,29 @@ interface ScoredConversation {
   score: number;
 }
 
+interface AgentMessageSkillRecordForEligibility {
+  agentConfigurationId: string | null;
+  createdAt: Date;
+  skill: { updatedAt: Date };
+}
+
+function isEligibleCurrentSkillVersionRecord(
+  record: AgentMessageSkillRecordForEligibility
+): boolean {
+  // Discard records where the skill was invoked by a custom agent.
+  // A null agentConfigurationId means the skill was added to the conversation
+  // directly (not via an agent config), which is eligible.
+  const isEligibleSkillSource =
+    record.agentConfigurationId === null ||
+    isGlobalAgentId(record.agentConfigurationId);
+  if (!isEligibleSkillSource) {
+    return false;
+  }
+
+  // Only keep records that are newer than the skill version.
+  return record.createdAt >= record.skill.updatedAt;
+}
+
 /**
  * Stage 1: Determine which custom skills are eligible for reinforcement.
  *
@@ -48,6 +73,7 @@ interface ScoredConversation {
  * - It has not been modified in the last SKILL_STALENESS_THRESHOLD_DAYS days.
  * - It has pending suggestions with source=reinforcement younger than
  *   PENDING_SUGGESTION_MAX_AGE_DAYS days.
+ * - It has not reached the cap of credits for self-improving already.
  */
 async function fetchEligibleSkillIds(
   auth: Authenticator
@@ -78,22 +104,46 @@ async function fetchEligibleSkillIds(
     (skill) => !skillsWithPendingSuggestions.has(skill.id)
   );
 
+  // Filter out skills that have reached their per-skill consumption cap.
+  const { cycleStart } = await getCurrentPeriod(auth);
+  const skillConsumptionMap =
+    await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDateForSkills(
+      auth,
+      {
+        createdAfter: cycleStart,
+        skillModelIds: eligibleSkills.map((s) => s.id),
+      }
+    );
+
+  const defaultCapMicroUsd =
+    getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(workspace);
+  const capEligibleSkills = eligibleSkills.filter((skill) => {
+    const consumedMicroUsd = skillConsumptionMap.get(skill.id) ?? 0;
+    const capMicroUsd =
+      skill.selfImprovementCostsCapMicroUsd ?? defaultCapMicroUsd;
+    return consumedMicroUsd < capMicroUsd;
+  });
+
   logger.info(
     {
       workspaceId: workspace.sId,
       recentSkillCount: recentSkills.length,
       pendingSuggestionSkillCount: skillsWithPendingSuggestions.size,
       eligibleSkillCount: eligibleSkills.length,
+      capEligibleSkillCount: capEligibleSkills.length,
     },
     "ReinforcedSkills: eligible skill determination"
   );
 
-  return eligibleSkills;
+  return capEligibleSkills;
 }
 
 /**
  * Stage 2: Discover conversations that used eligible custom skills,
  * filtering out conversations where skills were invoked by custom agents.
+ *
+ * The returned skill IDs per conversation contain only the eligible skills,
+ * not every skill used in the conversation.
  */
 async function discoverConversations(
   auth: Authenticator,
@@ -125,12 +175,8 @@ async function discoverConversations(
     return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
   }
 
-  // Post-filter: discard records where the skill was invoked by a custom agent.
-  // A null agentConfigurationId means the skill was added to the conversation
-  // directly (not via an agent config), which is eligible.
-  const filteredRecords = skillRecords.filter(
-    (r) =>
-      r.agentConfigurationId === null || isGlobalAgentId(r.agentConfigurationId)
+  const filteredRecords = skillRecords.filter((r) =>
+    isEligibleCurrentSkillVersionRecord(r)
   );
 
   if (filteredRecords.length === 0) {

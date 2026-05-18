@@ -58,6 +58,7 @@ export type LimitsType = {
 
 export const SUBSCRIPTION_STATUSES = [
   "active",
+  "created_backend_only", // Provisioned in DB, waiting on contract.start to flip to "active"
   "ended",
   "ended_backend_only", // Ended on the backend but not yet propagated to Stripe
 ] as const;
@@ -87,6 +88,30 @@ export type SubscriptionType = {
   plan: PlanType;
   requestCancelAt: number | null;
 };
+
+type StripeBilledSubscriptionType = SubscriptionType & {
+  stripeSubscriptionId: string;
+};
+
+type MetronomeBilledSubscriptionType = SubscriptionType & {
+  stripeSubscriptionId: null;
+  metronomeContractId: string;
+};
+
+export function isSubscriptionStripeBilled(
+  subscription: SubscriptionType
+): subscription is StripeBilledSubscriptionType {
+  return subscription.stripeSubscriptionId !== null;
+}
+
+export function isSubscriptionMetronomeBilled(
+  subscription: SubscriptionType
+): subscription is MetronomeBilledSubscriptionType {
+  return (
+    subscription.metronomeContractId !== null &&
+    !isSubscriptionStripeBilled(subscription)
+  );
+}
 
 export type BillingPeriod = "monthly" | "yearly";
 
@@ -132,7 +157,13 @@ export const EnterpriseUpgradeFormSchema = t.intersection([
   }),
   t.partial({
     stripeSubscriptionId: NonEmptyString,
-    metronomeContractId: NonEmptyString,
+    // For the Metronome path: id of the Metronome package the customer will
+    // be placed on, plus a timestamp at least one hour in the future
+    // when the new contracts starts (and the existing contract sunsets),
+    // and the Stripe customer ID to link as the Metronome billing provider.
+    metronomePackageId: NonEmptyString,
+    startingAt: NonEmptyString,
+    stripeCustomerId: NonEmptyString,
     freeCreditsDollars: t.number,
     defaultDiscountPercent: t.number,
     paygCapDollars: t.number,
@@ -159,7 +190,11 @@ export type FreePlanUpgradeFormType = t.TypeOf<
   typeof FreePlanUpgradeFormSchema
 >;
 
-export type CheckoutUrlResult = {
-  checkoutUrl: string;
-  plan: PlanType;
-};
+export type CheckoutUrlResult =
+  | { mode: "hosted"; checkoutUrl: string; plan: PlanType }
+  | {
+      mode: "embedded";
+      clientSecret: string;
+      sessionId: string;
+      plan: PlanType;
+    };

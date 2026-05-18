@@ -1,4 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   GetMetronomeUsageResponse,
   MetronomeUsageGroupByType,
@@ -8,6 +9,7 @@ import type {
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
@@ -23,10 +25,17 @@ import type { GetWorkspaceTopAgentsResponse } from "@app/pages/api/w/[wId]/analy
 import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analytics/top-users";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
+import type { GetCouponValidateResponseBody } from "@app/pages/api/w/[wId]/coupon/validate";
 import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
+import type { GetMetronomeContractResponseBody } from "@app/pages/api/w/[wId]/metronome/contract";
+import type { GetMetronomeInvoiceResponseBody } from "@app/pages/api/w/[wId]/metronome/invoice";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
-import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
+import type {
+  GetSubscriptionsResponseBody,
+  PostSubscriptionResponseBody,
+} from "@app/pages/api/w/[wId]/subscriptions";
+import type { GetCheckoutStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout-status";
 import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
 import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
 import type { GetSubscriptionTrialInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/trial-info";
@@ -36,9 +45,10 @@ import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import type { BillingPeriod } from "@app/types/plan";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 // Type guard to check if response is a region redirect
@@ -88,21 +98,26 @@ export function useWorkspace({
 
 export function useWorkspaceSubscriptions({
   owner,
+  disabled,
 }: {
   owner: LightWorkspaceType;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const workspaceSubscrptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
+  const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/subscriptions`,
-    workspaceSubscrptionsFetcher
+    workspaceSubscriptionsFetcher,
+    {
+      disabled,
+    }
   );
 
   return {
     subscriptions: data?.subscriptions ?? emptyArray(),
-    isSubscriptionsLoading: !error && !data,
+    isSubscriptionsLoading: !error && !data && !disabled,
     isSubscriptionsError: error,
   };
 }
@@ -606,6 +621,62 @@ export function usePerSeatPricing({
   };
 }
 
+export function useMetronomeContract({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const contractFetcher: Fetcher<GetMetronomeContractResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/metronome/contract`,
+    contractFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    }
+  );
+
+  return {
+    contract: data?.contract ?? null,
+    isMetronomeContractLoading: !error && !data && !disabled,
+    isMetronomeContractError: error,
+    mutateMetronomeContract: mutate,
+  };
+}
+
+export function useMetronomeInvoice({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const invoiceFetcher: Fetcher<GetMetronomeInvoiceResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/metronome/invoice`,
+    invoiceFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    }
+  );
+
+  return {
+    invoice: data?.invoice ?? null,
+    isMetronomeInvoiceLoading: !error && !data && !disabled,
+    isMetronomeInvoiceError: error,
+    mutateMetronomeInvoice: mutate,
+  };
+}
+
 export function useWorkspaceVerifiedDomains({
   workspaceId,
   disabled,
@@ -750,6 +821,38 @@ export function useAuthContext(
     isAuthContextLoading: isFetching || !!isRegionRedirectResponse,
     authContextError: error,
     mutateAuthContext: mutate,
+  };
+}
+
+export function useCheckoutStatus({
+  workspaceId,
+  sessionId,
+  planCode,
+  disabled,
+  pollIntervalMs = 0,
+}: {
+  workspaceId: string;
+  sessionId: string;
+  planCode: string;
+  disabled?: boolean;
+  pollIntervalMs?: number;
+}) {
+  const { fetcher } = useFetcher();
+  const checkoutFetcher: Fetcher<GetCheckoutStatusResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`,
+    checkoutFetcher,
+    { refreshInterval: pollIntervalMs }
+  );
+
+  return {
+    checkoutStatus: data ?? null,
+    isCheckoutStatusLoading: !error && !data && !disabled,
+    isCheckoutStatusError: error,
+    mutateCheckoutStatus: mutate,
   };
 }
 
@@ -909,4 +1012,73 @@ export function useWorkspaceLookup({ flow }: { flow: string | null }) {
     isWorkspaceLookupLoading: !error && !data && !!flow,
     isWorkspaceLookupError: error,
   };
+}
+
+export function useCreateCheckoutSession({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const [isCreating, setIsCreating] = useState(false);
+
+  const createSession = useCallback(
+    async ({
+      billingPeriod,
+      couponCode,
+    }: {
+      billingPeriod: BillingPeriod;
+      couponCode?: string;
+    }): Promise<PostSubscriptionResponseBody | null> => {
+      setIsCreating(true);
+      try {
+        const res = await clientFetch(`/api/w/${workspaceId}/subscriptions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ billingPeriod, couponCode }),
+        });
+        if (!res.ok) {
+          sendNotification({
+            type: "error",
+            title: "Checkout failed",
+            description:
+              "Could not initialise the payment form. Please try again.",
+          });
+          return null;
+        }
+        return res.json() as Promise<PostSubscriptionResponseBody>;
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { createSession, isCreating };
+}
+
+export function useValidateCoupon({ workspaceId }: { workspaceId: string }) {
+  const validateCoupon = useCallback(
+    async (
+      code: string
+    ): Promise<
+      | { ok: true; coupon: GetCouponValidateResponseBody["coupon"] }
+      | { ok: false; message: string }
+    > => {
+      const res = await clientFetch(
+        `/api/w/${workspaceId}/coupon/validate?code=${encodeURIComponent(code)}`
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message =
+          body?.error?.message ?? "Invalid or expired coupon code.";
+        return { ok: false, message };
+      }
+      const body = (await res.json()) as GetCouponValidateResponseBody;
+      return { ok: true, coupon: body.coupon };
+    },
+    [workspaceId]
+  );
+
+  return { validateCoupon };
 }

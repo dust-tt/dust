@@ -98,13 +98,20 @@ export async function indexConversationEsActivity({
     return;
   }
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  // `dangerouslyRequestAllGroups` is required so the indexer can read conversations
+  // whose `spaceId` or `requestedSpaceIds` reference a restricted project space. Without
+  // it the auth only carries the global group, `canRead` rejects those conversations,
+  // and `fetchById` returns `null` — which would cause the activity to drop the doc.
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
+    dangerouslyRequestAllGroups: true,
+  });
 
   // fetchById excludes deleted conversations (no includeDeleted flag), so null covers both
   // hard-deleted (scrubbed) and soft-deleted cases. Both should be removed from the index.
   const conversation = await ConversationResource.fetchById(
     auth,
-    conversationId
+    conversationId,
+    { includeForkingData: true }
   );
 
   if (!conversation) {

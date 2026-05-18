@@ -7,18 +7,17 @@ import { isKillSwitchType } from "@app/lib/poke/types";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type GetKillSwitchesResponseBody = {
   killSwitches: KillSwitchType[];
 };
 
-const KillSwitchTypeSchema = t.type({
-  enabled: t.boolean,
-  type: t.string,
+const KillSwitchTypeSchema = z.object({
+  enabled: z.boolean(),
+  type: z.string(),
 });
 
 async function handler(
@@ -45,20 +44,17 @@ async function handler(
       const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
       return res.status(200).json({ killSwitches });
     case "POST":
-      const payloadValidation = KillSwitchTypeSchema.decode(req.body);
-      if (isLeft(payloadValidation)) {
-        const pathError = reporter.formatValidationErrors(
-          payloadValidation.left
-        );
+      const payloadValidation = KillSwitchTypeSchema.safeParse(req.body);
+      if (!payloadValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `The request body is invalid: ${pathError}`,
+            message: `The request body is invalid: ${fromError(payloadValidation.error).toString()}`,
           },
         });
       }
-      const { enabled, type } = payloadValidation.right;
+      const { enabled, type } = payloadValidation.data;
       if (!isKillSwitchType(type)) {
         return apiError(req, res, {
           status_code: 400,

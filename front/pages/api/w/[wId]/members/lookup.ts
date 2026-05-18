@@ -1,3 +1,6 @@
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/members/lookup.ts
+
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -6,15 +9,13 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { UserType } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import { NumberFromString } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 const MEMBERS_LOOKUP_MAX_IDS = 50;
 
-const MembersLookupQuery = t.type({
-  ids: t.union([NumberFromString, t.array(NumberFromString)]),
+const MembersLookupQuerySchema = z.object({
+  ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
 export type MembersLookupResponseBody = {
@@ -28,8 +29,8 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
-      const queryValidation = MembersLookupQuery.decode(req.query);
-      if (isLeft(queryValidation)) {
+      const queryValidation = MembersLookupQuerySchema.safeParse(req.query);
+      if (!queryValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -39,7 +40,7 @@ async function handler(
         });
       }
 
-      const rawIds = queryValidation.right.ids;
+      const rawIds = queryValidation.data.ids;
       const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
 
       if (ids.length === 0) {

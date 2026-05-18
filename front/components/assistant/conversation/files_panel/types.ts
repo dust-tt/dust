@@ -30,7 +30,20 @@ export type ConversationAttachmentRow = {
 export type SandboxTreeNode = {
   name: string;
   path: string;
-  contentType: string;
+  isDirectory: boolean;
+  contentType: string | null;
   fileId: string | null;
   children: SandboxTreeNode[];
 };
+
+export type FileExplorerBucket =
+  | "tables"
+  | "frames"
+  | "texts"
+  | "folders"
+  | "images"
+  | "code";
+
+export type FileExplorerFilter = "all" | FileExplorerBucket;
+
+export type FileExplorerSortMode = "last-modified" | "name-asc" | "name-desc";

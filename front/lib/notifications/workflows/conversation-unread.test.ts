@@ -62,7 +62,7 @@ vi.mock("@app/lib/api/assistant/conversation_rendering", () => ({
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 describe("conversation-unread workflow business logic", () => {
@@ -94,6 +94,7 @@ describe("conversation-unread workflow business logic", () => {
     zendesk: false,
     reinforced_skill_notification: false,
     reinforcement: false,
+    branch_anchor: false,
   };
   describe("shouldSendNotificationForAgentAnswer", () => {
     it.each(
@@ -370,9 +371,9 @@ describe("conversation-unread workflow business logic", () => {
           user.sId,
           workspace.sId
         );
-        await UserProjectNotificationPreferenceResource.setPreference(
+        await UserProjectPreferencesResource.setNotificationPreference(
           userAuth,
-          { spaceModelId: space.id, preference }
+          { spaceModelId: space.id, notificationPreference: preference }
         );
       }
 

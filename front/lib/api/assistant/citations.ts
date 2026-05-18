@@ -185,6 +185,7 @@ export function getLightAgentMessageFromAgentMessage(
       .flatMap((a) => a.generatedFiles)
       .map((f) => ({
         fileId: f.fileId,
+        filePath: f.filePath,
         title: f.title,
         contentType: f.contentType,
         isInProjectContext: f.isInProjectContext,

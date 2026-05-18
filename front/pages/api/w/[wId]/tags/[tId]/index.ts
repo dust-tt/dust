@@ -5,13 +5,12 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-const PatchBodySchema = t.type({
-  name: t.string,
-  kind: t.union([t.literal("standard"), t.literal("protected")]),
+const PatchBodySchema = z.object({
+  name: z.string(),
+  kind: z.enum(["standard", "protected"]),
 });
 
 async function handler(
@@ -96,9 +95,9 @@ async function handler(
         });
       }
 
-      const r = PatchBodySchema.decode(req.body);
+      const r = PatchBodySchema.safeParse(req.body);
 
-      if (isLeft(r)) {
+      if (!r.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -107,7 +106,7 @@ async function handler(
           },
         });
       }
-      const body = r.right;
+      const body = r.data;
       const { name, kind } = body;
 
       await tag.updateTag({ name, kind });

@@ -8,10 +8,9 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
+import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
-  useAddDeleteConversationSkill,
   useAddDeleteConversationTool,
-  useConversationSkills,
   useConversationTools,
 } from "@app/hooks/conversations";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
@@ -26,15 +25,13 @@ import {
 } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { isEqualNode } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import uniqBy from "lodash/uniqBy";
 import React, {
   useCallback,
   useContext,
@@ -52,8 +49,7 @@ interface InputBarProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[],
-    selectedSkillIds?: string[]
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
@@ -66,7 +62,9 @@ interface InputBarProps {
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
   isAgentBuilder?: boolean;
+  disableInput?: boolean;
   submitBlockMessage?: string | null;
+  placeholder?: string;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -83,7 +81,9 @@ export const InputBar = React.memo(function InputBar({
   isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
+  disableInput = false,
   submitBlockMessage = null,
+  placeholder,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
@@ -188,10 +188,6 @@ export const InputBar = React.memo(function InputBar({
     MCPServerViewType[]
   >([]);
 
-  const [selectedSkills, setSelectedSkills] = useState<
-    SkillWithoutInstructionsAndToolsType[]
-  >([]);
-
   const { conversationTools } = useConversationTools({
     conversationId: conversation?.sId,
     workspaceId: owner.sId,
@@ -206,64 +202,39 @@ export const InputBar = React.memo(function InputBar({
     conversationId: conversation?.sId,
     workspaceId: owner.sId,
   });
-
-  const { conversationSkills } = useConversationSkills({
-    conversationId: conversation?.sId,
-    workspaceId: owner.sId,
-  });
-
-  // The truth is in the conversationSkills, we need to update the selectedSkills when the conversationSkills change.
-  useEffect(() => {
-    setSelectedSkills(conversationSkills);
-  }, [conversationSkills]);
-
-  const selectedSkillIds = useMemo(
-    () => new Set(selectedSkills.map((skill) => skill.sId)),
-    [selectedSkills]
+  const selectedMCPServerViewIds = useMemo(
+    () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
+    [selectedMCPServerViews]
   );
 
-  // JIT skills apply to all agents in the conversation, so we pass null for agentConfigurationId
-  const { addSkill, deleteSkill } = useAddDeleteConversationSkill({
-    conversationId: conversation?.sId,
-    workspaceId: owner.sId,
-  });
-
-  const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
-    // Optimistic update
-    setSelectedMCPServerViews((prev) => [...prev, serverView]);
-    void addTool(serverView.sId);
-  };
-
-  const handleMCPServerViewDeselect = (serverView: MCPServerViewType) => {
-    // Optimistic update
-    setSelectedMCPServerViews((prev) =>
-      prev.filter((sv) => sv.sId !== serverView.sId)
-    );
-    void deleteTool(serverView.sId);
-  };
-
-  const handleSkillSelect = useCallback(
-    (skill: SkillWithoutInstructionsAndToolsType) => {
-      if (selectedSkillIds.has(skill.sId)) {
+  const handleMCPServerViewSelect = useCallback(
+    (serverView: MCPServerViewType) => {
+      if (selectedMCPServerViewIds.has(serverView.sId)) {
         return;
       }
 
-      setSelectedSkills((prev) => [...prev, skill]);
-      void addSkill(skill.sId);
+      setSelectedMCPServerViews((prev) =>
+        prev.some((sv) => sv.sId === serverView.sId)
+          ? prev
+          : [...prev, serverView]
+      );
+      void addTool(serverView.sId);
     },
-    [addSkill, selectedSkillIds]
+    [addTool, selectedMCPServerViewIds]
   );
 
-  const handleSkillDeselect = useCallback(
-    (skill: SkillWithoutInstructionsAndToolsType) => {
-      if (!selectedSkillIds.has(skill.sId)) {
+  const handleMCPServerViewDeselect = useCallback(
+    (serverView: MCPServerViewType) => {
+      if (!selectedMCPServerViewIds.has(serverView.sId)) {
         return;
       }
 
-      setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
-      void deleteSkill(skill.sId);
+      setSelectedMCPServerViews((prev) =>
+        prev.filter((sv) => sv.sId !== serverView.sId)
+      );
+      void deleteTool(serverView.sId);
     },
-    [deleteSkill, selectedSkillIds]
+    [deleteTool, selectedMCPServerViewIds]
   );
 
   const activeAgents = useMemo(() => {
@@ -288,19 +259,14 @@ export const InputBar = React.memo(function InputBar({
     }
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
-    // When single-agent input is enabled, inject the selected agent into mentions
-    // since it's no longer in the editor as a mention node.
-    const hasUserMention = rawMentions.some((m) => m.type === "user");
     const shouldInjectSelectedAgent =
       selectedSingleAgent &&
-      !hasUserMention &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
 
     const allMentions = shouldInjectSelectedAgent
       ? [selectedSingleAgent, ...rawMentions]
       : rawMentions;
-    const mentions = _.uniqBy(allMentions, "id");
-
+    const mentions = uniqBy(allMentions, "id");
     const uploadedFiles = fileUploaderService.getFileBlobs();
     const mentionedAgents = agentConfigurations.filter((a) =>
       mentions.some((m) => m.id === a.sId && m.type === "agent")
@@ -350,9 +316,7 @@ export const InputBar = React.memo(function InputBar({
           },
           // Only send the selectedMCPServerViewIds if we are creating a new conversation.
           // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId),
-          // JIT skills for new conversations
-          selectedSkills.map((s) => s.sId)
+          selectedMCPServerViews.map((sv) => sv.sId)
         );
 
         if (r.isOk()) {
@@ -406,16 +370,11 @@ export const InputBar = React.memo(function InputBar({
     setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
-  const handleResetSelections = () => {
+  const handleResetMCPServerViews = () => {
     setSelectedMCPServerViews((prev) => {
       prev.forEach((sv) => void deleteTool(sv.sId));
       return [];
     });
-    setSelectedSkills((prev) => {
-      prev.forEach((s) => void deleteSkill(s.sId));
-      return [];
-    });
-    setAttachedNodes([]);
   };
 
   const handleShake = useCallback(() => {
@@ -428,6 +387,10 @@ export const InputBar = React.memo(function InputBar({
 
   return (
     <div className="flex w-full flex-col">
+      <PlanCard
+        conversationId={conversation?.sId ?? null}
+        workspaceId={owner.sId}
+      />
       <div
         onAnimationEnd={() => setIsShaking(false)}
         className={classNames(
@@ -437,17 +400,17 @@ export const InputBar = React.memo(function InputBar({
           "bg-muted-background dark:bg-muted-background-night",
           "border",
           "border-border-dark dark:border-border-dark/10",
-          "sm:border-border-dark/50 sm:focus-within:border-border-dark",
-          "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
+          "sm:border-border-dark/50 sm:has-[.tiptap:focus]:border-border-dark",
+          "dark:has-[.tiptap:focus]:border-border-dark-night sm:has-[.tiptap:focus]:border-border-dark",
           isFloating
             ? classNames(
-                "focus-within:ring-1 dark:focus-within:ring-1",
-                "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
-                "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
+                "has-[.tiptap:focus]:ring-1 dark:has-[.tiptap:focus]:ring-1",
+                "dark:has-[.tiptap:focus]:ring-highlight/30-night has-[.tiptap:focus]:ring-highlight/30",
+                "sm:has-[.tiptap:focus]:ring-2 dark:sm:has-[.tiptap:focus]:ring-2"
               )
             : classNames(
-                "focus-within:border-highlight-300",
-                "dark:focus-within:border-highlight-300-night"
+                "has-[.tiptap:focus]:border-highlight-300",
+                "dark:has-[.tiptap:focus]:border-highlight-300-night"
               ),
           "duration-300"
         )}
@@ -483,20 +446,16 @@ export const InputBar = React.memo(function InputBar({
             selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
-            selectedSkills={selectedSkills}
-            onSkillSelect={handleSkillSelect}
-            onSkillDeselect={handleSkillDeselect}
-            onResetSelections={handleResetSelections}
+            onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}
             getDraft={getDraft}
             user={user}
-            disableAgentSelector={
-              isBlockedByAgentSwitch || submitBlockMessage !== null
-            }
-            disableInput={submitBlockMessage !== null}
+            disableAgentSelector={isBlockedByAgentSwitch}
+            disableInput={disableInput}
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
+            placeholder={placeholder}
             onShake={handleShake}
           />
         </div>

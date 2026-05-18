@@ -1,5 +1,4 @@
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import {
   createConversation,
   postNewContentFragment,
@@ -507,31 +506,24 @@ export async function userAndWorkspaceFromEmail({
   });
 }
 
-export async function emailAssistantMatcher({
-  auth,
+export function emailAssistantMatcher({
   targetEmail,
+  allAgentConfigurations,
 }: {
-  auth: Authenticator;
   targetEmail: string;
-}): Promise<
-  Result<
-    {
-      agentConfiguration: LightAgentConfigurationType;
-    },
-    EmailTriggerError
-  >
+  allAgentConfigurations: LightAgentConfigurationType[];
+}): Result<
+  {
+    agentConfiguration: LightAgentConfigurationType;
+  },
+  EmailTriggerError
 > {
-  const agentConfigurations = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "list",
-    variant: "light",
-    limit: undefined,
-    sort: undefined,
-  });
-
   const agentPrefix = targetEmail.split("@")[0];
 
-  const matchingAgents = filterAndSortAgents(agentConfigurations, agentPrefix);
+  const matchingAgents = filterAndSortAgents(
+    allAgentConfigurations,
+    agentPrefix
+  );
   if (matchingAgents.length === 0) {
     return new Err({
       type: "assistant_not_found",
@@ -582,15 +574,16 @@ export async function splitThreadContent(content: string) {
  * Stores email context in Redis and the reply is sent by the agent loop
  * finalization activity when the message completes.
  */
-export async function triggerFromEmail({
-  auth,
-  agentConfigurations,
-  email,
-}: {
-  auth: Authenticator;
-  agentConfigurations: LightAgentConfigurationType[];
-  email: InboundEmail;
-}): Promise<
+export async function triggerFromEmail(
+  auth: Authenticator,
+  {
+    agentConfigurations,
+    email,
+  }: {
+    agentConfigurations: LightAgentConfigurationType[];
+    email: InboundEmail;
+  }
+): Promise<
   Result<
     {
       conversation: ConversationType;
@@ -632,6 +625,7 @@ export async function triggerFromEmail({
 
   if (restOfThread.length > 0) {
     const cfRes = await toFileContentFragment(auth, {
+      conversation,
       contentFragment: {
         title: `Email thread: ${email.subject}`,
         content: restOfThread,
@@ -885,7 +879,7 @@ export async function sendToolValidationEmail({
     ? email.subject
     : `Re: ${email.subject}`;
 
-  const baseUrl = config.getClientFacingUrl();
+  const baseUrl = config.getAppUrl();
   const conversationUrl = getConversationRoute(
     workspace.sId,
     conversation.sId,

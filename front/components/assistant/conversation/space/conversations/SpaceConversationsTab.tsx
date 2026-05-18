@@ -1,5 +1,4 @@
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { ProjectTodosPanel } from "@app/components/assistant/conversation/space/conversations/ProjectTodosPanel";
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceLoadingConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceLoadingConversationListItem";
@@ -8,9 +7,9 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useSpaceUnreadConversationIds } from "@app/hooks/conversations";
+import type { SpaceConversationListFilter } from "@app/hooks/conversations/useSpaceConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
@@ -25,6 +24,9 @@ import type { Result } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
+  Chip,
   cn,
   EmptyCTA,
   ListGroup,
@@ -54,6 +56,9 @@ interface SpaceConversationsTabProps {
   loadMore: () => void;
   isLoadingMore: boolean;
   spaceInfo: GetSpaceResponseBody["space"];
+  isSpaceEmpty: boolean;
+  conversationFilter: SpaceConversationListFilter;
+  onConversationFilterChange: (filter: SpaceConversationListFilter) => void;
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -72,11 +77,13 @@ export function SpaceConversationsTab({
   loadMore,
   isLoadingMore,
   spaceInfo,
+  isSpaceEmpty,
+  conversationFilter,
+  onConversationFilterChange,
   onSubmit,
   onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
   const { isEditor: isProjectEditor } = spaceInfo;
-  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -90,6 +97,17 @@ export function SpaceConversationsTab({
   });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
+
+  const noConversationsForFilterMessage = useMemo(() => {
+    switch (conversationFilter) {
+      case "all":
+        return "No conversations found.";
+      case "group":
+        return "No group conversations yet in this project.";
+      case "with_me":
+        return "You are not a participant in any conversation yet.";
+    }
+  }, [conversationFilter]);
 
   const {
     conversations: searchResults,
@@ -126,7 +144,10 @@ export function SpaceConversationsTab({
     [owner.sId, router, setSearchText]
   );
 
-  const isEmpty = !isConversationsLoading && !hasHistory;
+  const isProjectEmpty = !isConversationsLoading && isSpaceEmpty;
+  const isFilteredEmpty =
+    !isConversationsLoading && !isSpaceEmpty && !hasHistory;
+  const isSingleMemberProject = spaceInfo.members.length === 1;
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
@@ -136,15 +157,26 @@ export function SpaceConversationsTab({
       >
         <div
           className={cn(
-            "mx-auto flex w-full max-w-4xl flex-col gap-6 py-8",
-            isEmpty && "h-full justify-center py-8"
+            "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
+            isProjectEmpty && "h-full justify-center py-8"
           )}
         >
           <div className="flex w-full flex-col gap-3">
-            <h2 className="heading-2xl text-foreground dark:text-foreground-night">
-              {spaceInfo.name}
-            </h2>
-            {isEmpty && (
+            <div className="flex items-center gap-2">
+              <h2
+                className={cn(
+                  "heading-2xl text-foreground dark:text-foreground-night",
+                  spaceInfo.archivedAt &&
+                    "text-muted-foreground dark:text-muted-foreground-night"
+                )}
+              >
+                {spaceInfo.name}
+              </h2>
+              {spaceInfo.archivedAt && (
+                <Chip size="xs" color="rose" label="Archived" />
+              )}
+            </div>
+            {isProjectEmpty && (
               <h3 className="heading-lg text-foreground dark:text-foreground-night">
                 Start a first conversation!
               </h3>
@@ -152,7 +184,7 @@ export function SpaceConversationsTab({
             {spaceInfo.archivedAt ? (
               <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
                 <EmptyCTA
-                  message="This project is archived. You can view past conversations, but you cannot start new ones."
+                  message="This project is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
                   action={null}
                 />
               </div>
@@ -164,6 +196,7 @@ export function SpaceConversationsTab({
                 draftKey={`space-${spaceInfo.sId}-new-conversation`}
                 space={spaceInfo}
                 disableAutoFocus={false}
+                placeholder={`Start a conversation in ${spaceInfo.name}`}
               />
             ) : (
               <ProjectJoinCTA
@@ -176,16 +209,8 @@ export function SpaceConversationsTab({
             )}
           </div>
 
-          {hasFeature("project_todo") && (
-            <ProjectTodosPanel
-              owner={owner}
-              spaceId={spaceInfo.sId}
-              isArchived={!!spaceInfo.archivedAt}
-            />
-          )}
-
           {/* Suggestions for empty rooms */}
-          {isEmpty ? (
+          {isProjectEmpty ? (
             <SpaceConversationsActions
               isEditor={isProjectEditor}
               onOpenMembersPanel={onOpenMembersPanel}
@@ -194,62 +219,93 @@ export function SpaceConversationsTab({
             /* Space conversations section */
             <div className="w-full">
               <div className="flex flex-col gap-3">
-                <div className="px-3 flex flex-row gap-2">
-                  <SearchInputWithPopover
-                    name="conversation-search"
-                    value={searchText}
-                    onChange={setSearchText}
-                    placeholder={`Search in ${spaceInfo.name}`}
-                    open={isSearchPopoverOpen && searchText.trim().length > 0}
-                    onOpenChange={setIsSearchPopoverOpen}
-                    items={searchResults}
-                    isLoading={isSearching}
-                    noResults={
-                      searchText.trim().length > 0 && !isSearching
-                        ? isSearchError
-                          ? "Failed to search conversations. Please try again."
-                          : "No conversations found."
-                        : ""
-                    }
-                    displayItemCount={true}
-                    renderItem={(conversation, selected) => {
-                      const conversationLabel =
-                        getConversationDisplayTitle(conversation);
-                      const time = moment(conversation.updated).fromNow();
+                <div className="my-3 flex min-w-0 flex-row gap-2 px-3">
+                  <div className="min-w-0 flex-1">
+                    <SearchInputWithPopover
+                      name="conversation-search"
+                      value={searchText}
+                      onChange={setSearchText}
+                      placeholder={`Search in ${spaceInfo.name}`}
+                      open={isSearchPopoverOpen && searchText.trim().length > 0}
+                      onOpenChange={setIsSearchPopoverOpen}
+                      items={searchResults}
+                      isLoading={isSearching}
+                      noResults={
+                        searchText.trim().length > 0 && !isSearching
+                          ? isSearchError
+                            ? "Failed to search conversations. Please try again."
+                            : "No conversations found."
+                          : ""
+                      }
+                      displayItemCount={true}
+                      renderItem={(conversation, selected) => {
+                        const conversationLabel =
+                          getConversationDisplayTitle(conversation);
+                        const time = moment(conversation.updated).fromNow();
 
-                      return (
-                        <div
-                          className={cn(
-                            "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
-                            selected && "bg-gray-100 dark:bg-gray-700"
-                          )}
-                          onClick={() => navigateToConversation(conversation)}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0 flex-1 truncate">
-                              <div className="text-sm font-medium text-foreground dark:text-foreground-night">
-                                {conversationLabel}
+                        return (
+                          <div
+                            className={cn(
+                              "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
+                              selected && "bg-gray-100 dark:bg-gray-700"
+                            )}
+                            onClick={() => navigateToConversation(conversation)}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0 flex-1 truncate">
+                                <div className="text-sm font-medium text-foreground dark:text-foreground-night">
+                                  {conversationLabel}
+                                </div>
+                              </div>
+                              <div className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                                {time}
                               </div>
                             </div>
-                            <div className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
-                              {time}
-                            </div>
                           </div>
-                        </div>
-                      );
-                    }}
-                    onItemSelect={navigateToConversation}
-                  />
+                        );
+                      }}
+                      onItemSelect={navigateToConversation}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-row items-center justify-between gap-3">
+                  {!isSingleMemberProject && (
+                    <ButtonsSwitchList
+                      key={conversationFilter}
+                      defaultValue={conversationFilter}
+                      size="xs"
+                    >
+                      <ButtonsSwitch
+                        value="with_me"
+                        label="Mine"
+                        tooltip="Conversations where you have sent a message."
+                        onClick={() => onConversationFilterChange("with_me")}
+                      />
+                      <ButtonsSwitch
+                        value="group"
+                        label="Group"
+                        tooltip="Conversations with more than one person"
+                        onClick={() => onConversationFilterChange("group")}
+                      />
+                      <ButtonsSwitch
+                        value="all"
+                        label="All"
+                        tooltip="Every conversation in this project."
+                        onClick={() => onConversationFilterChange("all")}
+                      />
+                    </ButtonsSwitchList>
+                  )}
                   <Button
-                    size="sm"
+                    size="xs"
                     variant="outline"
                     label="Mark all as read"
+                    className="shrink-0"
                     onClick={() => markAllAsRead(unreadConversationIds)}
                     isLoading={isMarkingAllAsRead}
                     disabled={unreadConversationIds.length === 0}
                   />
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col -mt-2">
                   {isConversationsLoading ? (
                     <>
                       <ListItemSection>
@@ -261,6 +317,13 @@ export function SpaceConversationsTab({
                         ))}
                       </ListGroup>
                     </>
+                  ) : isFilteredEmpty ? (
+                    <div className="px-3 py-8">
+                      <EmptyCTA
+                        message={noConversationsForFilterMessage}
+                        action={null}
+                      />
+                    </div>
                   ) : (
                     Object.keys(conversationsByDate).map((dateLabel) => {
                       const dateConversations =
@@ -272,7 +335,7 @@ export function SpaceConversationsTab({
                       return (
                         <div key={dateLabel}>
                           <ListItemSection>{dateLabel}</ListItemSection>
-                          <ListGroup>
+                          <ListGroup className="border-b-0">
                             {dateConversations
                               .toSorted((a, b) => b.updated - a.updated)
                               .map((conversation) => (

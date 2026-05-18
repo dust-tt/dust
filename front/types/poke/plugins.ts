@@ -1,4 +1,4 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
 import type { LightWorkspaceType } from "../user";
 
@@ -149,27 +149,27 @@ export type PluginResourceTarget =
   | PluginResourceScope
   | PluginWorkspaceResource;
 
-export function createIoTsCodecFromArgs(
+export function createZodSchemaFromArgs(
   args: PluginArgs
-): t.TypeC<Record<string, t.Mixed>> {
-  const codecProps: Record<string, t.Mixed> = {};
+): z.ZodObject<Record<string, z.ZodTypeAny>> {
+  const schemaProps: Record<string, z.ZodTypeAny> = {};
 
   for (const [key, arg] of Object.entries(args)) {
     switch (arg.type) {
       case "text":
-        codecProps[key] = t.string;
+        schemaProps[key] = z.string();
         break;
 
       case "string":
-        codecProps[key] = t.string;
+        schemaProps[key] = z.string();
         break;
 
       case "number":
-        codecProps[key] = t.number;
+        schemaProps[key] = z.number();
         break;
 
       case "boolean":
-        codecProps[key] = t.boolean;
+        schemaProps[key] = z.boolean();
         break;
 
       case "enum":
@@ -190,25 +190,25 @@ export function createIoTsCodecFromArgs(
 
         // Handle empty async enums
         if (enumValues.length === 0) {
-          codecProps[key] = t.array(t.string); // Allow any string for async enums initially.
+          schemaProps[key] = z.array(z.string()); // Allow any string for async enums initially.
         } else if (enumValues.length === 1) {
-          codecProps[key] = t.array(t.literal(enumValues[0]));
+          schemaProps[key] = z.array(z.literal(enumValues[0]));
         } else {
-          codecProps[key] = t.array(t.string);
+          schemaProps[key] = z.array(z.string());
         }
         break;
 
       case "file":
-        codecProps[key] = t.any;
+        schemaProps[key] = z.any();
         break;
 
       case "date":
-        codecProps[key] = t.string;
+        schemaProps[key] = z.string();
         break;
     }
   }
 
-  return t.type(codecProps);
+  return z.object(schemaProps);
 }
 
 export const supportedResourceTypes = [

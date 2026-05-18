@@ -159,7 +159,7 @@ export function CreateSkillSuggestionSheet({
                   />
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-fit py-0"
+                  className="w-fit p-0"
                   onInteractOutside={() => setIsIconPickerOpen(false)}
                   onEscapeKeyDown={() => setIsIconPickerOpen(false)}
                 >

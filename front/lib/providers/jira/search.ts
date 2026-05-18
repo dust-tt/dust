@@ -1,7 +1,7 @@
 import {
   getIssue,
   getIssueComments,
-  getJiraBaseUrl,
+  getJiraBaseUrlAndResourceInfo,
   searchJiraIssuesUsingJql,
 } from "@app/lib/api/actions/servers/jira/jira_api_helper";
 import { renderIssue } from "@app/lib/api/actions/servers/jira/rendering";
@@ -21,11 +21,14 @@ export async function search({
   accessToken,
   query,
   pageSize,
+  metadata,
 }: ToolSearchParams): Promise<ToolSearchRawResult[]> {
-  const baseUrl = await getJiraBaseUrl(accessToken);
-  if (!baseUrl) {
+  const cloudUrl = metadata?.jira_cloud_url ?? null;
+  const jiraResult = await getJiraBaseUrlAndResourceInfo(accessToken, cloudUrl);
+  if (!jiraResult) {
     return [];
   }
+  const { baseUrl, resourceInfo } = jiraResult;
 
   const issueKeyMatch = query.match(/^#?([A-Z][A-Z0-9]*-\d+)$/i);
 
@@ -33,6 +36,7 @@ export async function search({
     const issueKey = issueKeyMatch[1].toUpperCase();
     const issueResult = await getIssue({
       baseUrl,
+      resourceInfo,
       accessToken,
       issueKey,
     });
@@ -54,10 +58,16 @@ export async function search({
   }
 
   const jql = `summary ~ "${query.replace(/"/g, '\\"')}" ORDER BY updated DESC`;
-  const result = await searchJiraIssuesUsingJql(baseUrl, accessToken, jql, {
-    maxResults: pageSize,
-    fields: ["summary"],
-  });
+  const result = await searchJiraIssuesUsingJql(
+    baseUrl,
+    resourceInfo,
+    accessToken,
+    jql,
+    {
+      maxResults: pageSize,
+      fields: ["summary"],
+    }
+  );
 
   if (result.isErr()) {
     return [];
@@ -75,14 +85,18 @@ export async function search({
 export async function download({
   accessToken,
   externalId,
+  metadata,
 }: ToolDownloadParams): Promise<ToolDownloadResult> {
-  const baseUrl = await getJiraBaseUrl(accessToken);
-  if (!baseUrl) {
-    throw new Error("Failed to get Jira base URL");
+  const cloudUrl = metadata?.jira_cloud_url ?? null;
+  const jiraResult = await getJiraBaseUrlAndResourceInfo(accessToken, cloudUrl);
+  if (!jiraResult) {
+    throw new Error("Failed to get Jira base URL or resource info");
   }
+  const { baseUrl, resourceInfo } = jiraResult;
 
   const issueResult = await getIssue({
     baseUrl,
+    resourceInfo,
     accessToken,
     issueKey: externalId,
     fields: [

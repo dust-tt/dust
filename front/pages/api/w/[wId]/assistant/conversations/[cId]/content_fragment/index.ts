@@ -66,17 +66,16 @@
  *         description: Unauthorized
  */
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/internal/assistant";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 async function handler(
   req: NextApiRequest,
@@ -98,7 +97,11 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversationRes = await getConversation(auth, conversationId);
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      conversationId
+    );
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
@@ -109,10 +112,10 @@ async function handler(
   switch (req.method) {
     case "POST":
       const bodyValidation =
-        InternalPostContentFragmentRequestBodySchema.decode(req.body);
+        InternalPostContentFragmentRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
 
         return apiError(req, res, {
           status_code: 400,
@@ -123,7 +126,7 @@ async function handler(
         });
       }
 
-      const contentFragmentPayload = bodyValidation.right;
+      const contentFragmentPayload = bodyValidation.data;
       const baseContext = {
         username: user.username,
         fullName: user.fullName(),

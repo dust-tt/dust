@@ -13,3 +13,20 @@ export function makeConversationUrl(
   }
   return null;
 }
+
+/**
+ * Opens the agent details sheet in the given conversation (same query as front
+ * `getConversationRoute(wId, conversationId, \`agentDetails=${agentConfigurationId}\`)`).
+ */
+export function makeAgentDetailsInConversationUrl(
+  workspaceId: string,
+  conversationId: string,
+  agentConfigurationId: string
+): string {
+  const q = new URLSearchParams({
+    agentDetails: agentConfigurationId,
+  });
+  return makeDustAppUrl(
+    `/w/${workspaceId}/conversation/${conversationId}?${q.toString()}`
+  );
+}

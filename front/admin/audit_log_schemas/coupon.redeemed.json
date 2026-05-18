@@ -1,0 +1,9 @@
+{
+  "action": "coupon.redeemed",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "code": "string",
+    "redemption_id": "string",
+    "amount": "string"
+  }
+}

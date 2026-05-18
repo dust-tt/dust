@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
-
 import {
   buildWaitAndCollectCommand,
   wrapCommand,
   wrapCommandWithCapture,
 } from "./profile";
+import { getSandboxImageFromRegistry } from "./registry";
+
+function expectedWrappedCommand(cmd: string, timeoutSec = 60): string {
+  return [
+    `DUST_PROFILE=anthropic source /opt/dust/profile/common.sh && shell "$(cat <<'DUST_CMD_EOF'`,
+    cmd,
+    "DUST_CMD_EOF",
+    `)" ${timeoutSec}`,
+  ].join("\n");
+}
 
 describe("wrapCommandWithCapture", () => {
   it("includes tee redirect to output file", () => {
@@ -19,18 +28,16 @@ describe("wrapCommandWithCapture", () => {
 
   it("sources the profile and wraps the command", () => {
     const result = wrapCommandWithCapture("echo hello", "abc123", "anthropic");
-    expect(result).toContain(
-      'source /opt/dust/profile/common.sh && shell "echo hello" 60'
-    );
+    expect(result).toContain(expectedWrappedCommand("echo hello"));
   });
 
-  it("escapes double quotes and backslashes", () => {
+  it("preserves double quotes and backslashes", () => {
     const result = wrapCommandWithCapture(
       'echo "hello \\ world"',
       "abc123",
       "anthropic"
     );
-    expect(result).toContain('shell "echo \\"hello \\\\ world\\"" 60');
+    expect(result).toContain(expectedWrappedCommand('echo "hello \\ world"'));
   });
 
   it("respects custom timeout", () => {
@@ -73,8 +80,27 @@ describe("buildWaitAndCollectCommand", () => {
 describe("wrapCommand", () => {
   it("still works unchanged", () => {
     const result = wrapCommand("echo hi", "anthropic");
-    expect(result).toBe(
-      'source /opt/dust/profile/common.sh && shell "echo hi" 60'
-    );
+    expect(result).toBe(expectedWrappedCommand("echo hi"));
+  });
+
+  it("does not advertise edit_file for openai", () => {
+    const imageResult = getSandboxImageFromRegistry({ name: "dust-base" });
+    expect(imageResult.isOk()).toBe(true);
+
+    if (imageResult.isErr()) {
+      return;
+    }
+
+    const openaiTools = imageResult.value.tools.filter((tool) => {
+      if (!tool.profile) {
+        return true;
+      }
+
+      return Array.isArray(tool.profile)
+        ? tool.profile.includes("openai")
+        : tool.profile === "openai";
+    });
+
+    expect(openaiTools.map((tool) => tool.name)).not.toContain("edit_file");
   });
 });

@@ -24,12 +24,11 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import throttle from "lodash/throttle";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 function createUpdateMessageThrottled() {
-  return _.throttle(
+  return throttle(
     ({
       chainOfThought,
       content,
@@ -303,6 +302,17 @@ export function useAgentMessageStream({
     []
   );
 
+  // Short-circuit replays of events we've already processed in this hook
+  // instance. The hook is mounted per agent message (via AgentMessage.tsx),
+  // so the ref is scoped to a single message and resets on remount or when a
+  // retry creates a new agentMessage.sId. Within a single mount,
+  // `useEventSource` reconnects on every server-side "done" frame and on
+  // network errors using `lastEventId`; if the server replays an event we
+  // already saw (e.g. just past the cursor boundary), the handlers downstream
+  // are not idempotent — inline activity step IDs are built from `Date.now()`
+  // and same-millisecond re-processing produces duplicate React keys.
+  const seenEventIds = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     return () => {
       updateMessageThrottled.cancel();
@@ -331,7 +341,7 @@ export function useAgentMessageStream({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events`;
+      const esURL = `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
@@ -353,6 +363,12 @@ export function useAgentMessageStream({
         eventId: string;
         data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
+      if (eventPayload.eventId) {
+        if (seenEventIds.current.has(eventPayload.eventId)) {
+          return;
+        }
+        seenEventIds.current.add(eventPayload.eventId);
+      }
       const eventType = eventPayload.data.type;
       switch (eventType) {
         case "end-of-stream":
@@ -476,6 +492,7 @@ export function useAgentMessageStream({
                     id: `action-${action.id}`,
                     actionId: action.sId,
                     internalMCPServerName: action.internalMCPServerName,
+                    toolName: action.toolName ?? null,
                   },
                 ];
             return {
@@ -611,6 +628,10 @@ export function useAgentMessageStream({
 
         case "agent_generation_cancelled": {
           updateMessageThrottled.cancel();
+          const cancelData = eventPayload.data;
+          if (cancelData.type !== "agent_generation_cancelled") {
+            break;
+          }
           methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
@@ -624,7 +645,7 @@ export function useAgentMessageStream({
             });
             return {
               ...m,
-              status: "cancelled",
+              status: cancelData.status,
               ...(contentCleared ? { content: null } : {}),
               streaming: {
                 ...m.streaming,

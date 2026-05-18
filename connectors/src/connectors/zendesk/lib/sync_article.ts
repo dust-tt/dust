@@ -83,6 +83,22 @@ export async function syncArticle({
     brandId: category.brandId,
     articleId: article.id,
   });
+
+  // Drafts (unpublished articles) must not be exposed in the data source. If the article was
+  // previously synced as published and is now a draft, remove the existing data.
+  if (article.draft) {
+    if (articleInDb) {
+      await deleteArticle({
+        connectorId,
+        brandId: category.brandId,
+        articleId: article.id,
+        dataSourceConfig,
+        loggerArgs,
+      });
+    }
+    return;
+  }
+
   const updatedAtDate = new Date(article.updated_at);
 
   // we either create a new article or update the existing one

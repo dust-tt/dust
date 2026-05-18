@@ -11,6 +11,7 @@ use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
 use serde_json::json;
 use std::env;
+use urlencoding;
 
 lazy_static! {
     static ref OAUTH_NOTION_CLIENT_ID: String = env::var("OAUTH_NOTION_CLIENT_ID").unwrap();
@@ -61,7 +62,12 @@ impl NotionConnectionProvider {
             ),
             NotionUseCase::Connection => (&*OAUTH_NOTION_CLIENT_ID, &*OAUTH_NOTION_CLIENT_SECRET),
         };
-        general_purpose::STANDARD.encode(&format!("{}:{}", client_id, client_secret))
+        // RFC 6749 §2.3.1 requires URL-encoding client_id and client_secret before base64-encoding.
+        general_purpose::STANDARD.encode(&format!(
+            "{}:{}",
+            urlencoding::encode(client_id),
+            urlencoding::encode(client_secret)
+        ))
     }
 }
 

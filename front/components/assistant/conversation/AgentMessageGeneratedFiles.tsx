@@ -49,11 +49,16 @@ export function AgentMessageInteractiveContentGeneratedFiles({
   return (
     <CitationGrid variant={variant}>
       {files.map((file) => {
+        if (!file.fileId) {
+          return null;
+        }
+
+        const { fileId } = file;
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
           openPanel({
             type: "interactive_content",
-            fileId: file.fileId,
+            fileId,
           });
           onClick?.();
         };
@@ -62,7 +67,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
 
         return (
           <Citation
-            key={file.fileId}
+            key={fileId}
             tooltip={file.title}
             onClick={handleClick}
             className="bg-gray-50 dark:bg-gray-800"

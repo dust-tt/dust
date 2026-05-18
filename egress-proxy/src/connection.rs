@@ -3,7 +3,7 @@ use crate::config::Config;
 use crate::dns::DnsResolver;
 use crate::gcs::GcsPolicyProvider;
 use crate::handshake::{read_handshake, Handshake, HandshakeError, ALLOW_RESPONSE, DENY_RESPONSE};
-use crate::jwt::{JwtValidationError, JwtValidator, ValidatedSandboxToken};
+use crate::jwt::{JwtValidationError, JwtValidator, ValidatedToken};
 use crate::policy::DefaultAllowlist;
 use std::fmt;
 use std::net::SocketAddr;
@@ -148,6 +148,20 @@ async fn handle_connection_inner(
     };
     drop(raw_token);
 
+    let sb_id = match token.sb_id.as_deref() {
+        Some(sb_id) if token.action.is_none() => sb_id,
+        _ => {
+            deny(
+                stream,
+                DenyReason::InvalidClaims,
+                Some(&token),
+                Some(&request),
+            )
+            .await;
+            return Err(DenyReason::InvalidClaims);
+        }
+    };
+
     if request.domain.is_empty() {
         // TODO(sandbox-egress): Track empty_domain separately from malformed_handshake because
         // this is the expected deny path for non-HTTP/non-TLS connections where dsbx cannot
@@ -181,7 +195,7 @@ async fn handle_connection_inner(
     if !default_allows
         && !state
             .policy_provider
-            .evaluate(token.w_id.as_deref(), &token.sb_id, &request.domain)
+            .evaluate(token.w_id.as_deref(), sb_id, &request.domain)
             .await
     {
         deny(
@@ -205,7 +219,7 @@ async fn handle_connection_inner(
         Ok(Ok(addresses)) => addresses,
         Err(_) => {
             warn!(
-                sb_id = %token.sb_id,
+                sb_id = sb_id,
                 domain = %request.domain,
                 original_dest_port = request.original_dest_port,
                 dns_timeout_seconds = DNS_TIMEOUT_SECONDS,
@@ -223,7 +237,7 @@ async fn handle_connection_inner(
         Ok(Err(error)) => {
             warn!(
                 error = %error,
-                sb_id = %token.sb_id,
+                sb_id = sb_id,
                 domain = %request.domain,
                 original_dest_port = request.original_dest_port,
                 "dns resolution failed"
@@ -277,7 +291,7 @@ async fn handle_connection_inner(
         Ok(Ok(upstream)) => upstream,
         Err(_) => {
             warn!(
-                sb_id = %token.sb_id,
+                sb_id = sb_id,
                 domain = %request.domain,
                 original_dest_port = request.original_dest_port,
                 upstream_addr = %upstream_addr,
@@ -296,7 +310,7 @@ async fn handle_connection_inner(
         Ok(Err(error)) => {
             warn!(
                 error = %error,
-                sb_id = %token.sb_id,
+                sb_id = sb_id,
                 domain = %request.domain,
                 original_dest_port = request.original_dest_port,
                 upstream_addr = %upstream_addr,
@@ -321,7 +335,7 @@ async fn handle_connection_inner(
     }
 
     info!(
-        sb_id = %token.sb_id,
+        sb_id = sb_id,
         domain = %request.domain,
         original_dest_port = request.original_dest_port,
         upstream_addr = %upstream_addr,
@@ -333,7 +347,7 @@ async fn handle_connection_inner(
     match copy_bidirectional(stream, &mut upstream).await {
         Ok((from_client_bytes, from_upstream_bytes)) => {
             info!(
-                sb_id = %token.sb_id,
+                sb_id = sb_id,
                 domain = %request.domain,
                 original_dest_port = request.original_dest_port,
                 upstream_addr = %upstream_addr,
@@ -346,7 +360,7 @@ async fn handle_connection_inner(
         Err(error) => {
             warn!(
                 error = %error,
-                sb_id = %token.sb_id,
+                sb_id = sb_id,
                 domain = %request.domain,
                 original_dest_port = request.original_dest_port,
                 upstream_addr = %upstream_addr,
@@ -360,7 +374,7 @@ async fn handle_connection_inner(
 async fn deny(
     stream: &mut TlsStream<TcpStream>,
     reason: DenyReason,
-    token: Option<&ValidatedSandboxToken>,
+    token: Option<&ValidatedToken>,
     request: Option<&RequestMetadata>,
 ) {
     // TODO(sandbox-egress): Emit allow/deny/JWT/GCS/upstream metrics once service telemetry
@@ -377,13 +391,13 @@ async fn deny(
 
 fn log_deny(
     reason: DenyReason,
-    token: Option<&ValidatedSandboxToken>,
+    token: Option<&ValidatedToken>,
     request: Option<&RequestMetadata>,
     upstream_addr: Option<SocketAddr>,
 ) {
     warn!(
         deny_reason = %reason,
-        sb_id = token.map(|token| token.sb_id.as_str()),
+        sb_id = token.and_then(|token| token.sb_id.as_deref()),
         domain = request.map(|request| request.domain.as_str()),
         original_dest_port = request.map(|request| request.original_dest_port),
         upstream_addr = upstream_addr.map(|address| address.to_string()),

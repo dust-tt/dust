@@ -3,8 +3,10 @@ import {
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
+import { getParentConversationTitleLabel } from "@app/components/assistant/conversation/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { useConversation, useConversations } from "@app/hooks/conversations";
+import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -17,16 +19,18 @@ import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
   ActionGitBranchIcon,
   ArrowLeftIcon,
-  AttachmentIcon,
   Breadcrumbs,
   Button,
   Chip,
+  FolderIcon,
   MoreIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
-import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
+const BREADCRUMB_MIDDLE_TRUNCATE_LENGTH = 35;
+const DESKTOP_TITLE_TRUNCATE_LENGTH = 120;
+const MOBILE_FORKED_TITLE_TRUNCATE_LENGTH = 35;
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
@@ -40,7 +44,6 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? null,
   });
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
   const router = useAppRouter();
   const isMobile = useIsMobile();
 
@@ -52,9 +55,6 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     handleRightClick,
     handleMenuOpenChange,
   } = useConversationMenu();
-  const onConversationBranched = useCallback(() => {
-    void mutateConversations();
-  }, [mutateConversations]);
 
   const currentTitle = conversation
     ? getConversationDisplayTitle(conversation)
@@ -68,6 +68,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const isProjectConversation = !!spaceId;
   const isLoading = isProjectConversation && !spaceInfo;
   const forkedFrom = conversation?.forkingData?.forkedFrom;
+  const isMobileForkedConversation = isMobile && !!forkedFrom;
 
   const breadcrumbItems: BreadcrumbItem[] = [];
 
@@ -95,25 +96,29 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
       return null;
     }
 
-    const chipLabel =
-      forkedFrom.parentConversationTitle ?? "Unnamed parent conversation";
+    const chipLabel = getParentConversationTitleLabel(forkedFrom);
+    const tooltipLabel = `Branched from '${chipLabel}'`;
 
     return (
-      <div className="flex h-9 items-center">
+      <div className="flex h-9 shrink-0 items-center">
         <Tooltip
-          label={`Branched from '${chipLabel}'`}
+          label={tooltipLabel}
           tooltipTriggerAsChild
           trigger={
             <span className="inline-flex h-9 items-center">
               <Chip
-                className="max-w-44 shrink-0 dd-privacy-mask"
+                className={
+                  isMobile
+                    ? "shrink-0 dd-privacy-mask [&>span]:sr-only"
+                    : "max-w-44 shrink-0 dd-privacy-mask"
+                }
                 color="primary"
                 href={getConversationRoute(
                   owner.sId,
                   forkedFrom.parentConversationId
                 )}
                 icon={ActionGitBranchIcon}
-                label={chipLabel}
+                label={isMobile ? tooltipLabel : chipLabel}
                 size="mini"
               />
             </span>
@@ -129,13 +134,29 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
         className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
-        <div className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide">
-          <div className="flex min-w-0 items-center">
+        <div
+          className={
+            isMobileForkedConversation
+              ? "flex min-w-0 items-center gap-2 overflow-hidden scrollbar-hide"
+              : "flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide"
+          }
+        >
+          <div
+            className={
+              isMobileForkedConversation
+                ? "flex min-w-0 flex-1 items-center overflow-hidden"
+                : "flex min-w-0 items-center"
+            }
+          >
             <Breadcrumbs
               items={breadcrumbItems}
               className="dd-privacy-mask"
-              truncateLengthMiddle={35}
-              truncateLengthEnd={120}
+              truncateLengthMiddle={BREADCRUMB_MIDDLE_TRUNCATE_LENGTH}
+              truncateLengthEnd={
+                isMobileForkedConversation
+                  ? MOBILE_FORKED_TITLE_TRUNCATE_LENGTH
+                  : DESKTOP_TITLE_TRUNCATE_LENGTH
+              }
             />
           </div>
           <ForkedFromChip />
@@ -151,14 +172,13 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           <Button
             size="sm"
             label={isMobile ? undefined : "Files"}
-            icon={AttachmentIcon}
+            icon={FolderIcon}
             variant="ghost"
             onClick={() => openPanel({ type: "files" })}
           />
           <ConversationMenu
             activeConversationId={activeConversationId}
             conversation={conversation}
-            onConversationBranched={onConversationBranched}
             owner={owner}
             trigger={({ isPendingAction }) => (
               <Button

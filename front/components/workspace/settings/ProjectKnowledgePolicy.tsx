@@ -17,16 +17,14 @@ const PROJECT_KNOWLEDGE_POLICIES = [
   {
     value: "enabled",
     label: "Manual updates allowed",
-    description:
-      "Members can manually add knowledge to project knowledge bases.",
+    description: "Members can manually add files to project.",
     icon: BookOpenIcon,
     allowManualProjectKnowledgeManagement: true,
   },
   {
     value: "disabled",
     label: "Manual updates disabled",
-    description:
-      "Members cannot manually add knowledge to project knowledge bases.",
+    description: "Members cannot manually add files to project.",
     icon: LockIcon,
     allowManualProjectKnowledgeManagement: false,
   },
@@ -52,8 +50,8 @@ export function ProjectKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
 
   return (
     <ContextItem
-      title="Project knowledge base policy"
-      subElement="Control whether members can manually add knowledge to project knowledge bases."
+      title="Project files policy"
+      subElement="Control whether members can manually add files to project."
       visual={<BookOpenIcon className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={

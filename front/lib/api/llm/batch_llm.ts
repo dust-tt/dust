@@ -1,5 +1,10 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
+import {
+  type EnabledSkill,
+  renderEquippedSkillsUserMessage,
+} from "@app/lib/api/assistant/skills_rendering";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
@@ -8,7 +13,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
@@ -16,8 +21,10 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import {
   type AgentMessageStatus,
@@ -31,12 +38,15 @@ import { isTextContent } from "@app/types/assistant/generation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Transaction } from "sequelize";
 
 export interface LlmConversationOptions
   extends LLMParametersWithoutConversation {
   newMessages: ModelMessageTypeMultiActionsWithoutContentFragment[];
   existingConversationId?: string;
+  enabledSkills?: EnabledSkill[];
+  equippedSkills?: SkillResource[];
   title?: string;
   visibility?: ConversationVisibility;
   metadata?: ConversationMetadata;
@@ -266,7 +276,11 @@ export async function storeLlmResult(
  * Create (or reuse) conversations, store the new user messages, reconstruct the
  * full conversation from DB, and submit a batch to the LLM.
  *
- * Returns the batch ID and the conversation sIds in the same order as the input array.
+ * Returns the batch ID and the conversation sIds in the same order as the input
+ * array. Conversations whose rendering fails because the context window is
+ * exceeded are skipped (returned as `null` in `conversationIds`) since
+ * retrying would not help. If every conversation is skipped, returns
+ * `Ok(null)` to signal that no batch was sent.
  */
 export async function sendBatchCallToLlm(
   auth: Authenticator,
@@ -276,15 +290,19 @@ export async function sendBatchCallToLlm(
   Result<
     {
       batchId: string;
-      conversationIds: string[];
-    },
+      conversationIds: (string | null)[];
+    } | null,
     Error
   >
 > {
-  const conversationIds: string[] = [];
+  const conversationIds: (string | null)[] = [];
   const batchMap = new Map<string, LLMStreamParameters>();
 
   const modelConfig = llm.getModelConfig();
+  const renderSkillsAsUserMessages = await hasFeatureFlag(
+    auth,
+    "skills_as_user_messages"
+  );
 
   for (const input of conversations) {
     // Store new messages in DB.
@@ -293,7 +311,6 @@ export async function sendBatchCallToLlm(
       return writeBatchResult;
     }
     const conversationResource = writeBatchResult.value;
-    conversationIds.push(conversationResource.sId);
 
     // Reconstruct the full conversation from DB.
     const conversationRes = await getConversation(
@@ -313,23 +330,53 @@ export async function sendBatchCallToLlm(
       }))
     );
 
+    const { enabledSkills, equippedSkills } = input;
+
+    const leadingMessages = equippedSkills
+      ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
+      : [];
+
     const modelConversationRes = await renderConversationForModel(auth, {
       conversation: conversationRes.value,
       model: modelConfig,
+      leadingMessages,
+      enabledSkills: enabledSkills ?? [],
       prompt: promptText,
+      renderSkillsAsUserMessages,
       tools,
       allowedTokenCount:
         modelConfig.contextSize - modelConfig.generationTokensCount,
     });
 
     if (modelConversationRes.isErr()) {
+      // Context window exceeded is non-recoverable for this conversation:
+      // skip it and continue with the rest of the batch instead of failing.
+      if (
+        categorizeConversationRenderErrorMessage(modelConversationRes.error)
+          ?.category === "context_window_exceeded"
+      ) {
+        logger.warn(
+          {
+            conversationId: conversationResource.sId,
+            error: modelConversationRes.error.message,
+          },
+          "sendBatchCallToLlm: skipping conversation, context window exceeded"
+        );
+        conversationIds.push(null);
+        continue;
+      }
       return modelConversationRes;
     }
 
+    conversationIds.push(conversationResource.sId);
     batchMap.set(conversationResource.sId, {
       conversation: modelConversationRes.value.modelConversation,
       ...input,
     });
+  }
+
+  if (batchMap.size === 0) {
+    return new Ok(null);
   }
 
   const batchId = await llm.sendBatchProcessing(batchMap);
@@ -381,6 +428,20 @@ export async function downloadBatchResultFromLlm(
       { runIds: [dustRunId] }
     );
     storedResultInfo.set(conversationId, info);
+  }
+
+  const deleted = await llm.deleteBatch(batchId);
+  if (!deleted) {
+    const metadata = llm.getMetadata();
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        providerId: metadata.clientId,
+        modelId: metadata.modelId,
+        batchId,
+      },
+      "Failed to delete batch after downloading results"
+    );
   }
 
   return { events, storedResultInfo };

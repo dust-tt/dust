@@ -32,6 +32,7 @@ type NextHandler = (
  * @param options Configuration options
  * @param options.systemKey If true, creates a system API key instead of regular key (default: false)
  * @param options.method HTTP method to use for the request (default: "GET")
+ * @param options.role Role to assign to the regular key ("user" | "builder" | "admin"). Ignored when systemKey is true. Defaults to "builder".
  * @returns Object containing:
  *   - req: Mocked NextApiRequest
  *   - res: Mocked NextApiResponse
@@ -42,15 +43,24 @@ type NextHandler = (
 export const createPublicApiMockRequest = async ({
   systemKey = false,
   method = "GET",
+  role = "builder",
 }: {
   systemKey?: boolean;
   method?: RequestMethod;
+  role?: "user" | "builder" | "admin";
 } = {}) => {
   const workspace = await WorkspaceFactory.basic();
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
-  const key = systemKey
-    ? await KeyFactory.system(globalGroup)
-    : await KeyFactory.regular(globalGroup);
+  let key;
+  if (systemKey) {
+    key = await KeyFactory.system(globalGroup);
+  } else if (role === "user") {
+    key = await KeyFactory.readOnly(globalGroup);
+  } else if (role === "admin") {
+    key = await KeyFactory.admin(globalGroup);
+  } else {
+    key = await KeyFactory.regular(globalGroup);
+  }
 
   const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
     method: method,

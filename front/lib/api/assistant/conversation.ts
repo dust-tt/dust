@@ -1,5 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {
@@ -9,10 +7,13 @@ import {
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import {
+  getConversationRankVersionLock,
+  getNextConversationMessageRank,
+} from "@app/lib/api/assistant/conversation/lock";
 import { createUserMentions } from "@app/lib/api/assistant/conversation/mentions";
 import {
   createAgentMessages,
-  createCompactionMessage,
   createUserMessage,
 } from "@app/lib/api/assistant/conversation/messages";
 import {
@@ -50,14 +51,18 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
-import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import {
+  checkProgrammaticUsageLimits,
+  isProgrammaticUsage,
+} from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
-import { hasCredits } from "@app/lib/metronome/credit_balance";
 import { isLegacyPlan } from "@app/lib/metronome/plan_type";
+import { isUserBlocked } from "@app/lib/metronome/user_block";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -65,7 +70,6 @@ import {
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
-  CompactionMessageModel,
   ConversationModel,
   MentionModel,
   MessageModel,
@@ -81,7 +85,6 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -96,10 +99,7 @@ import {
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger, { auditLog } from "@app/logger/logger";
-import {
-  launchAgentLoopWorkflow,
-  launchCompactionWorkflow,
-} from "@app/temporal/agent_loop/client";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -110,9 +110,9 @@ import type {
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
   AgenticMessageData,
+  AgentMessageStatus,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
   CitationType,
@@ -140,24 +140,20 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
-import type { SupportedModel } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
 } from "@app/types/content_fragment";
-import { isContentFragmentType } from "@app/types/content_fragment";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+import type { IncomingHttpHeaders } from "http";
 import uniq from "lodash/uniq";
-import type { NextApiRequest } from "next";
-import type { Transaction } from "sequelize";
 import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
@@ -249,6 +245,7 @@ export async function createConversation(
     triggerId: conversation.triggerSId,
     metadata: conversation.metadata,
     branchId: null,
+    isRunningAgentLoop: conversation.isRunningAgentLoop,
   };
 }
 
@@ -443,67 +440,9 @@ export async function getLastUserMessageMentions(
  * Conversation API
  */
 
-/**
- * To avoid deadlocks when using Postgresql advisory locks, please make sure to not issue any other
- * SQL query outside of the transaction `t` that is holding the lock.
- * Otherwise, the other query will be competing for a connection in the database connection pool,
- * resulting in a potential deadlock when the pool is fully occupied.
- */
-async function getConversationRankVersionLock(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  t: Transaction
-) {
-  const now = new Date();
-  // Get a lock using the unique lock key (number withing postgresql BigInt range).
-  const hash = md5(`conversation_message_rank_version_${conversation.id}`);
-  const lockKey = parseInt(hash, 16) % 9999999999;
-  // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
-  await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
-    transaction: t,
-    replacements: { key: lockKey },
-  });
-
-  logger.info(
-    {
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      conversationId: conversation.sId,
-      duration: new Date().getTime() - now.getTime(),
-      lockKey,
-    },
-    "[ASSISTANT_TRACE] Advisory lock acquired"
-  );
-}
-
-async function getNextConversationMessageRank(
-  auth: Authenticator,
-  {
-    conversation,
-    transaction,
-  }: {
-    conversation: ConversationWithoutContentType;
-    transaction: Transaction;
-  }
-): Promise<number> {
-  const owner = auth.getNonNullableWorkspace();
-
-  return (
-    ((await MessageModel.max<number | null, MessageModel>("rank", {
-      where: {
-        workspaceId: owner.id,
-        conversationId: conversation.id,
-        branchId: conversation.branchId
-          ? getResourceIdFromSId(conversation.branchId)
-          : null,
-      },
-      transaction,
-    })) ?? -1) + 1
-  );
-}
-
 export function isUserMessageContextValid(
   auth: Authenticator,
-  req: NextApiRequest,
+  headers: IncomingHttpHeaders,
   context: UserMessageContext
 ): boolean {
   const authMethod = auth.authMethod();
@@ -516,7 +455,7 @@ export function isUserMessageContextValid(
     "user-agent": userAgent,
     "x-dust-extension-version": extensionVersion,
     "x-zendesk-user-id": zendeskUserId,
-  } = req.headers;
+  } = headers;
 
   switch (context.origin) {
     case "api":
@@ -552,6 +491,7 @@ export function isUserMessageContextValid(
     case "project_kickoff":
     case "reinforced_skill_notification":
     case "reinforcement":
+    case "branch_anchor":
     case "web":
       return false;
     default:
@@ -834,7 +774,6 @@ export async function postUserMessage(
     // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
     // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
     // - Message has user mentions, we don't support multiple users in a branch yet.
-    // - Conversation has no content, we cannot create a branch as the start of the conversation.
     // - Last message in conversation has no content should never happen, but we will log an error and continue.
     // If we do not create a branch, the user will receive a notification that the agent is not usable.
     if (shouldCreateBranch) {
@@ -846,9 +785,36 @@ export async function postUserMessage(
           "Message has user mentions, for now we do not support branching with user mentions."
         );
       } else if (conversation.content.length === 0) {
-        logger.info(
-          "Conversation has no content, cannot create branch as the start of the conversation."
+        // Create an invisible anchor message so the branch has a previousMessageId
+        // to reference.
+        const anchorMessage = await createUserMessage(auth, {
+          conversation,
+          content: "",
+          metadata: {
+            type: "create",
+            user: user.toJSON(),
+            rank: 0,
+            context: {
+              ...context,
+              origin: "branch_anchor",
+            },
+          },
+          transaction: t,
+        });
+
+        const branch = await ConversationBranchResource.makeNew(
+          auth,
+          {
+            conversationId: conversation.id,
+            previousMessageId: anchorMessage.id,
+            state: "open",
+            userId: user.id,
+          },
+          t
         );
+
+        conversation.branchId = branch.sId;
+        nextMessageRank = 1;
       } else {
         // Get the last message in the conversation.
         const previousMessage =
@@ -1038,11 +1004,11 @@ export async function postUserMessage(
         buildAuditLogTarget("agent", agentMessage.configuration),
       ],
       metadata: {
-        conversationId: conversation.sId,
-        agentName: agentMessage.configuration.name,
+        conversation_id: conversation.sId,
+        agent_name: agentMessage.configuration.name,
         origin: context.origin,
         ...(conversation.triggerId
-          ? { triggerId: conversation.triggerId }
+          ? { trigger_id: conversation.triggerId }
           : {}),
         initiating_user_id: auth.user()?.sId ?? "unknown",
         initiating_user_email: auth.user()?.email ?? "unknown",
@@ -1552,15 +1518,24 @@ export async function createAgentMessageFromText(
         {
           workspaceId: owner.id,
           mcpServerConfigurationId: "",
-          version: 0,
           agentMessageId: agentMessageRow.id,
-          stepContentId: functionCallStepContent.id,
           status: "succeeded",
           citationsAllocated,
           augmentedInputs: {},
           toolConfiguration: {} as LightMCPToolConfigurationType,
           stepContext: {} as StepContext,
           executionDurationMs: null,
+        },
+        { transaction: t }
+      );
+
+      await AgentStepContentToolExecutionModel.create(
+        {
+          workspaceId: owner.id,
+          conversationId: conversation.id,
+          agentMessageId: agentMessageRow.id,
+          agentMCPActionId: createdAction.id,
+          stepContentId: functionCallStepContent.id,
         },
         { transaction: t }
       );
@@ -1713,6 +1688,38 @@ export async function retryAgentMessage(
     return limitResult;
   }
 
+  const retryAgentConfiguration = await getAgentConfiguration(auth, {
+    agentId: message.configuration.sId,
+    variant: "extra_light",
+  });
+  if (!retryAgentConfiguration || !canAccessAgent(retryAgentConfiguration)) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Invalid agent message retry request, the agent is no longer available to you.",
+      },
+    });
+  }
+
+  if (isProjectConversation(conversation)) {
+    const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+      configuration: retryAgentConfiguration,
+      conversation,
+    });
+    if (!canAgentBeUsed) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Invalid agent message retry request, the agent is restricted by space usage.",
+        },
+      });
+    }
+  }
+
   let agentMessageResult: {
     agentMessage: AgentMessageType;
   } | null = null;
@@ -1763,30 +1770,6 @@ export async function retryAgentMessage(
         throw new AgentMessageError(
           "Invalid agent message retry request, this message was already retried."
         );
-      }
-
-      // Check if agent is still available to the user.
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: message.configuration.sId,
-        variant: "extra_light",
-      });
-      if (!agentConfiguration || !canAccessAgent(agentConfiguration)) {
-        throw new AgentMessageError(
-          "Invalid agent message retry request, the agent is no longer available to you."
-        );
-      }
-
-      // Agent could be part of a conversation that was moved to a space OR the agent configuration could have changed to use a space that is not usable in a project.
-      if (isProjectConversation(conversation)) {
-        const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
-          configuration: agentConfiguration,
-          conversation,
-        });
-        if (!canAgentBeUsed) {
-          throw new AgentMessageError(
-            "Invalid agent message retry request, the agent is restricted by space usage."
-          );
-        }
       }
 
       const { agentMessages } = await createAgentMessages(auth, {
@@ -1891,13 +1874,18 @@ export async function retryAgentMessage(
 // Injects a new content fragment in the conversation.
 export async function postNewContentFragment(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode,
   context: ContentFragmentContextType | null
 ): Promise<Result<ContentFragmentType, Error>> {
   const owner = auth.workspace();
-  if (!owner || owner.id !== conversation.owner.id) {
+  if (!owner) {
     throw new Error("Invalid auth for conversation.");
+  }
+  if (
+    (await ConversationResource.canAccess(auth, conversation.sId)) !== "allowed"
+  ) {
+    return new Err(new Error("Conversation access restricted."));
   }
 
   // Project conversations only allow content fragments from the project space or the global space.
@@ -1935,14 +1923,12 @@ export async function postNewContentFragment(
         cf.fileId
       );
       if (r) {
-        const alreadyPresent = conversation.content.some((versions) => {
-          const latest = versions[versions.length - 1];
-          return (
-            isContentFragmentType(latest) &&
-            latest.contentFragmentVersion === "latest" &&
-            latest.contentFragmentId === r.fragment.sId
-          );
-        });
+        const alreadyPresent =
+          await ConversationResource.hasMessageForContentFragmentSeries(auth, {
+            conversation,
+            contentFragmentId: r.fragment.sId,
+            contentFragmentVersion: "latest",
+          });
 
         if (!alreadyPresent) {
           await withTransaction(async (t) => {
@@ -2002,13 +1988,13 @@ export async function postNewContentFragment(
   // If the request is superseding an existing content fragment, we need to validate that it exists
   // and is part of the conversation.
   if (supersededContentFragmentId) {
-    const found = conversation.content.some((versions) => {
-      const latest = versions[versions.length - 1];
-      return (
-        isContentFragmentType(latest) &&
-        latest.contentFragmentId === supersededContentFragmentId
-      );
-    });
+    const found = await ConversationResource.hasMessageForContentFragmentSeries(
+      auth,
+      {
+        conversation,
+        contentFragmentId: supersededContentFragmentId,
+      }
+    );
 
     if (!found) {
       return new Err(new Error("Superseded content fragment not found."));
@@ -2338,7 +2324,33 @@ export async function softDeleteAgentMessage(
 
 interface MessageLimit {
   isLimitReached: boolean;
-  limitType: "rate_limit_error" | "plan_message_limit_exceeded" | null;
+  limitType:
+    | "rate_limit_error"
+    | "plan_message_limit_exceeded"
+    | "credits_exhausted"
+    | null;
+  message?: string;
+}
+
+function getMessageLimitErrorMessage({
+  limitType,
+  message,
+}: {
+  limitType: NonNullable<MessageLimit["limitType"]>;
+  message?: string;
+}): string {
+  if (message) {
+    return message;
+  }
+
+  switch (limitType) {
+    case "plan_message_limit_exceeded":
+      return "The message limit for this plan has been exceeded.";
+    case "credits_exhausted":
+      return "Your workspace has run out of credits. Please purchase more credits to continue.";
+    case "rate_limit_error":
+      return "Rate limit exceeded. Please retry later.";
+  }
 }
 
 async function checkMessagesLimit(
@@ -2356,20 +2368,17 @@ async function checkMessagesLimit(
     return new Ok(undefined);
   }
 
-  // Check Metronome credits.
+  // Block users flagged by the Metronome `alerts.spend_threshold_reached`
+  // webhook. The flag is set per (workspace, user) in Redis and is only
+  // checked for non-legacy Metronome plans.
   const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(auth);
-  if (featureFlags.includes("metronome_billing") && owner.metronomeCustomerId) {
+  if (owner.metronomeCustomerId) {
     const onLegacyPlan = await isLegacyPlan(owner.sId);
     if (!onLegacyPlan) {
       const user = auth.user();
       if (user) {
-        const hasCreds = await hasCredits(
-          owner.sId,
-          user.sId,
-          owner.metronomeCustomerId
-        );
-        if (!hasCreds) {
+        const blocked = await isUserBlocked(owner.sId, user.sId);
+        if (blocked) {
           return new Err({
             status_code: 403,
             api_error: {
@@ -2392,10 +2401,10 @@ async function checkMessagesLimit(
       status_code: 403,
       api_error: {
         type: messageLimit.limitType,
-        message:
-          messageLimit.limitType === "plan_message_limit_exceeded"
-            ? "The message limit for this plan has been exceeded."
-            : "Rate limit exceeded. Please retry later.",
+        message: getMessageLimitErrorMessage({
+          limitType: messageLimit.limitType,
+          message: messageLimit.message,
+        }),
       },
     });
   }
@@ -2572,7 +2581,25 @@ async function isMessagesLimitReached(
   }
 
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
-    return checkProgrammaticUsageRateLimit(auth);
+    const limitsResult = await checkProgrammaticUsageLimits(auth);
+    if (limitsResult.isErr()) {
+      return {
+        isLimitReached: true,
+        limitType: limitsResult.error.type,
+        message: limitsResult.error.message,
+      };
+    }
+
+    const programmaticUsageRateLimit =
+      await checkProgrammaticUsageRateLimit(auth);
+    if (programmaticUsageRateLimit.isLimitReached) {
+      return programmaticUsageRateLimit;
+    }
+
+    return {
+      isLimitReached: false,
+      limitType: null,
+    };
   }
 
   // Checking rate limit
@@ -2691,195 +2718,6 @@ export async function isConversationEventAllowedForAuth(
 }
 
 /**
- * Create a CompactionMessage in the conversation and launch the compaction workflow.
- *
- * The CompactionMessage is created with status "created" inside the conversation advisory lock,
- * ensuring it's serialized with other conversation operations. The workflow is launched
- * fire-and-forget after the transaction commits.
- */
-export async function compactConversation(
-  auth: Authenticator,
-  {
-    conversation,
-    model,
-    sourceConversation,
-  }: {
-    conversation: ConversationType;
-    model: SupportedModel;
-    sourceConversation?: CompactionSourceConversation;
-  }
-): Promise<
-  Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
-> {
-  const owner = auth.getNonNullableWorkspace();
-
-  // Block compaction while an agent message is running or a compaction is running.
-  const runningAgentMessage = conversation.content
-    .flat()
-    .find(
-      (m): m is AgentMessageType =>
-        isAgentMessageType(m) && m.status === "created"
-    );
-  const runningCompaction = conversation.content
-    .flat()
-    .find(
-      (m): m is CompactionMessageType =>
-        isCompactionMessageType(m) && m.status === "created"
-    );
-  const lastMessage = conversation.content.at(-1)?.at(-1);
-
-  if (
-    runningAgentMessage ||
-    runningCompaction ||
-    (lastMessage && isCompactionMessageType(lastMessage))
-  ) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Cannot compact while another compaction or an agent message is running, or when the last message is already a compaction message.",
-      },
-    });
-  }
-
-  const { compactionMessage } = await withTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
-
-    // Re-check the existence of a compaction message or running agent message inside the critical
-    // section of the advisory lock to avoid stacking compaction with other compaction or running
-    // agent loop.
-    const [runningCompactionMessage, runningAgentMessage] = await Promise.all([
-      MessageModel.findOne({
-        where: {
-          conversationId: conversation.id,
-          workspaceId: owner.id,
-        },
-        include: [
-          {
-            model: CompactionMessageModel,
-            as: "compactionMessage",
-            required: true,
-            where: { status: "created" },
-          },
-        ],
-        transaction: t,
-      }),
-      MessageModel.findOne({
-        where: {
-          conversationId: conversation.id,
-          workspaceId: owner.id,
-        },
-        include: [
-          {
-            model: AgentMessageModel,
-            as: "agentMessage",
-            required: true,
-            where: { status: "created" },
-          },
-        ],
-        transaction: t,
-      }),
-    ]);
-
-    if (runningCompactionMessage || runningAgentMessage) {
-      return { compactionMessage: null };
-    }
-
-    const nextMessageRank = await getNextConversationMessageRank(auth, {
-      conversation,
-      transaction: t,
-    });
-
-    const compactionMessage = await createCompactionMessage(auth, {
-      conversation,
-      rank: nextMessageRank,
-      sourceConversationId:
-        sourceConversation?.conversationId &&
-        sourceConversation.conversationId !== conversation.sId
-          ? sourceConversation.conversationId
-          : undefined,
-      transaction: t,
-    });
-
-    return { compactionMessage };
-  });
-
-  if (!compactionMessage) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Cannot compact while another compaction or an agent message is running.",
-      },
-    });
-  }
-
-  await publishConversationEvent(
-    {
-      type: "compaction_message_new",
-      created: Date.now(),
-      messageId: compactionMessage.sId,
-      message: compactionMessage,
-    },
-    { conversationId: conversation.sId }
-  );
-
-  void launchCompactionWorkflow({
-    auth,
-    conversationId: conversation.sId,
-    compactionMessageId: compactionMessage.sId,
-    compactionMessageVersion: compactionMessage.version,
-    model,
-    sourceConversation,
-  });
-
-  return new Ok({ compactionMessage });
-}
-
-export async function updateCompactionMessageWithContentAndFinalStatus(
-  auth: Authenticator,
-  {
-    conversation,
-    compactionMessage,
-    status,
-    content,
-  }: {
-    conversation: ConversationWithoutContentType;
-    compactionMessage: CompactionMessageType;
-    status: "succeeded" | "failed";
-    content: string | null;
-  }
-): Promise<{
-  completedTs: number;
-  status: "succeeded" | "failed";
-}> {
-  const completedAt = new Date();
-  const owner = auth.getNonNullableWorkspace();
-
-  await withTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
-
-    await CompactionMessageModel.update(
-      { status, content },
-      {
-        where: {
-          id: compactionMessage.compactionMessageId,
-          workspaceId: owner.id,
-        },
-        transaction: t,
-      }
-    );
-  });
-
-  return {
-    completedTs: completedAt.getTime(),
-    status,
-  };
-}
-
-/**
  * Finalize an agent message terminal status behind the conversation advisory lock.
  *
  * This ensures the status transition is serialized against other conversation operations (e.g.
@@ -2895,12 +2733,12 @@ export async function updateAgentMessageWithFinalStatus(
   }: {
     conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageType;
-    status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
+    status: Exclude<AgentMessageStatus, "created">;
     error?: ToolErrorEvent["error"];
   }
 ): Promise<{
   completedTs: number;
-  status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
+  status: Exclude<AgentMessageStatus, "created">;
 }> {
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
@@ -3002,8 +2840,8 @@ export async function updateAgentMessageWithFinalStatus(
 
     if (status === "cancelled") {
       // When the agent message is cancelled it means the user pushed the "stop" button so the
-      // intent is to interrupt all work. We promot user messages but don't trigger a new agent
-      // message.
+      // intent is to abort all work. "interrupted" is NOT included here: the user chose to
+      // redirect rather than stop, so pending messages continue processing.
       return {
         promotedUserMessages,
         promotedAuth,
@@ -3073,11 +2911,11 @@ export async function updateAgentMessageWithFinalStatus(
         buildAuditLogTarget("agent", newAgentMessage.configuration),
       ],
       metadata: {
-        conversationId: conversation.sId,
-        agentName: newAgentMessage.configuration.name,
+        conversation_id: conversation.sId,
+        agent_name: newAgentMessage.configuration.name,
         origin: "steering",
         ...(conversation.triggerId
-          ? { triggerId: conversation.triggerId }
+          ? { trigger_id: conversation.triggerId }
           : {}),
         initiating_user_id: promotedAuth.user()?.sId ?? "unknown",
         initiating_user_email: promotedAuth.user()?.email ?? "unknown",

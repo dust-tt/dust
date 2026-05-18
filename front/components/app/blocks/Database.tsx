@@ -13,10 +13,8 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import last from "lodash/last";
 import { useCallback, useEffect } from "react";
-
 import Block from "./Block";
 
 export interface TableConfig {
@@ -174,7 +172,7 @@ export function TablesManager({
           size="xs"
           variant="outline"
           disabled={
-            !_.last(block.config.tables as Partial<TableConfig>[])?.table_id
+            !last(block.config.tables as Partial<TableConfig>[])?.table_id
           }
         />
       </div>

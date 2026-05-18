@@ -613,7 +613,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
         ],
         metadata: {
           reason: normalizeError(error).message,
-          authenticationMethod: "workos",
+          authentication_method: "workos",
         },
       });
     }

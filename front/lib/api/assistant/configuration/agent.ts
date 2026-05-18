@@ -68,7 +68,10 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import {
+  GLOBAL_AGENTS_SID,
+  isGlobalAgentId,
+} from "@app/types/assistant/assistant";
 import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -408,6 +411,40 @@ export async function searchAgentConfigurationsByName(
   });
 
   return removeNulls(agents);
+}
+
+/**
+ * Resolve an agent configuration sId from a name. Searches workspace agents and
+ * global agents (case-insensitive substring), preferring an exact match. Returns
+ * null when no agent matches.
+ */
+export async function resolveAgentConfigurationIdByName(
+  auth: Authenticator,
+  agentName: string
+): Promise<string | null> {
+  const normalizedAgentName = agentName.trim().toLowerCase();
+  if (normalizedAgentName === "dust" || normalizedAgentName === "dust agent") {
+    return GLOBAL_AGENTS_SID.DUST;
+  }
+
+  const workspaceMatches = await searchAgentConfigurationsByName(
+    auth,
+    agentName
+  );
+  const globalAgents = await getGlobalAgents(auth, undefined, "light");
+  const globalMatches = globalAgents.filter((a) =>
+    a.name.toLowerCase().includes(normalizedAgentName)
+  );
+  const matches = [...workspaceMatches, ...globalMatches];
+  if (matches.length === 0) {
+    return null;
+  }
+
+  // Prefer exact case-insensitive match, otherwise fallback to first result.
+  const exactMatch = matches.find(
+    (a) => a.name.trim().toLowerCase() === normalizedAgentName
+  );
+  return exactMatch?.sId ?? matches[0].sId;
 }
 
 export async function createAgentConfiguration(
@@ -867,7 +904,7 @@ export async function createAgentConfiguration(
         ],
         context: getAuditLogContext(auth),
         metadata: {
-          agentName: agentConfiguration.name,
+          agent_name: agentConfiguration.name,
           scope: scope,
           model: `${model.providerId}/${model.modelId}`,
         },
@@ -1280,7 +1317,7 @@ export async function archiveAgentConfiguration(
       ],
       context: getAuditLogContext(auth),
       metadata: {
-        agentName: agentConfig.name,
+        agent_name: agentConfig.name,
       },
     });
   }
@@ -1293,7 +1330,10 @@ export async function restoreAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
 ): Promise<
-  Result<{ restored: boolean }, DustError<"name_conflict" | "internal_error">>
+  Result<
+    { restored: boolean },
+    DustError<"name_conflict" | "internal_error" | "unauthorized">
+  >
 > {
   const owner = auth.getNonNullableWorkspace();
 
@@ -1314,6 +1354,19 @@ export async function restoreAgentConfiguration(
     return new Err(
       new DustError("internal_error", "Agent configuration is not archived")
     );
+  }
+
+  // Check publishing restrictions: restoring a visible agent is equivalent to publishing it.
+  if (latestConfig.scope === "visible") {
+    const { canPublish, message } = await canPublishAgent(auth);
+    if (!canPublish) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          message ?? "Publishing agents is restricted."
+        )
+      );
+    }
   }
 
   // Check for an active agent with the same name to avoid a unique constraint violation on
@@ -1401,7 +1454,7 @@ export async function restoreAgentConfiguration(
       ],
       context: getAuditLogContext(auth),
       metadata: {
-        agentName: latestConfig.name,
+        agent_name: latestConfig.name,
       },
     });
   }
@@ -1732,10 +1785,10 @@ export async function updateAgentConfigurationsScope(
       ],
       context: getAuditLogContext(auth),
       metadata: {
-        agentName: agentConfig.name,
-        previousScope:
+        agent_name: agentConfig.name,
+        previous_scope:
           previousScopeByAgentId.get(agentConfig.sId) ?? agentConfig.scope,
-        newScope: scope,
+        new_scope: scope,
       },
     });
   }

@@ -1,0 +1,9 @@
+{
+  "action": "self_improvement.batch_mode_updated",
+  "targets": [
+    { "type": "workspace" }
+  ],
+  "metadata": {
+    "enabled": "string"
+  }
+}

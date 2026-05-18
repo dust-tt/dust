@@ -9,6 +9,7 @@ import {
   makeFileAuthorizationError,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import {
   getFileFromConversationAttachment,
   sanitizeFilename,
@@ -28,10 +29,50 @@ import {
   MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/api/actions/servers/google_drive/metadata";
+import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Common } from "googleapis";
 import { Readable } from "stream";
+
+export type BinaryFileResourceBlock = {
+  type: "resource";
+  resource: {
+    blob: string;
+    _meta: { text: string };
+    mimeType: string;
+    uri: string;
+  };
+};
+
+/**
+ * Builds a resource block for a binary Google Drive file so downstream tools
+ * (sandbox upload, file viewer, etc.) can consume the raw bytes alongside any
+ * extracted text. Exported for unit testing.
+ */
+export function buildBinaryFileResource({
+  buffer,
+  fileName,
+  mimeType,
+}: {
+  buffer: Buffer;
+  fileName: string | null | undefined;
+  mimeType: string;
+}): BinaryFileResourceBlock {
+  const safeFileName = sanitizeFilename(fileName ?? "unknown");
+  return {
+    type: "resource",
+    resource: {
+      blob: buffer.toString("base64"),
+      _meta: { text: `File: ${safeFileName}` },
+      mimeType,
+      uri: safeFileName,
+    },
+  };
+}
+
+const EXTRACTION_FAILED_PLACEHOLDER =
+  "[Text extraction failed — file attached as binary resource]";
 
 /**
  * Normalizes GaxiosError code to string for comparison.
@@ -381,6 +422,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       }
 
       let content: string;
+      let binaryResource: BinaryFileResourceBlock | null = null;
 
       switch (file.mimeType) {
         case "application/vnd.google-apps.document":
@@ -415,6 +457,48 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
           content = downloadRes.data;
           break;
         }
+        case "application/pdf":
+        case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+          // Binary documents: download as an arraybuffer, extract text via Tika
+          // (OCR enabled), and always attach the raw bytes as a resource block
+          // so downstream tools can consume the file even when extraction yields
+          // little or nothing.
+          const downloadRes = await drive.files.get(
+            { fileId, alt: "media" },
+            { responseType: "arraybuffer" }
+          );
+          if (!(downloadRes.data instanceof ArrayBuffer)) {
+            return new Err(
+              new MCPError("Failed to download file content as arraybuffer")
+            );
+          }
+          const buffer = Buffer.from(downloadRes.data);
+
+          const extractionResult = await extractTextFromBuffer(
+            buffer,
+            file.mimeType
+          );
+          if (extractionResult.isErr()) {
+            logger.warn(
+              {
+                fileId,
+                mimeType: file.mimeType,
+                error: extractionResult.error,
+              },
+              "Text extraction failed for Google Drive binary file"
+            );
+          }
+          content = extractionResult.isOk()
+            ? extractionResult.value
+            : EXTRACTION_FAILED_PLACEHOLDER;
+          binaryResource = buildBinaryFileResource({
+            buffer,
+            fileName: file.name,
+            mimeType: file.mimeType,
+          });
+          break;
+        }
         default:
           return new Err(
             new MCPError(`Unsupported file type: ${file.mimeType}`, {
@@ -432,7 +516,10 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       const hasMore = endIndex < content.length;
       const nextOffset = hasMore ? endIndex : undefined;
 
-      return new Ok([
+      const responseBlocks: (
+        | { type: "text"; text: string }
+        | BinaryFileResourceBlock
+      )[] = [
         {
           type: "text" as const,
           text: JSON.stringify(
@@ -457,7 +544,13 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
             2
           ),
         },
-      ]);
+      ];
+
+      if (binaryResource) {
+        responseBlocks.push(binaryResource);
+      }
+
+      return new Ok(responseBlocks);
     } catch (err) {
       return handleDriveAccessError(err, authInfo);
     }

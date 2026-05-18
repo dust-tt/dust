@@ -24,7 +24,7 @@ import { renderEmail } from "@app/lib/notifications/email-templates/conversation
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
-import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -35,6 +35,7 @@ import {
   isLightAgentMessageType,
   isProjectConversation,
   isUserMessageType,
+  isVisibleMessage,
 } from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
 import { isContentFragmentType } from "@app/types/content_fragment";
@@ -87,6 +88,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "agent_sidekick":
     case "reinforced_skill_notification":
     case "reinforcement":
+    case "branch_anchor":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":
@@ -222,10 +224,10 @@ const getConversationDetails = async ({
   const isFromTrigger = !!conversation.triggerId;
 
   // Retrieve the message that triggered the notification.
-  // For new project conversations, use the first message
+  // For new project conversations, use the first visible message
   const message = !payload.isNewProjectConversation
     ? conversation.content.find((msg) => msg.sId === payload.messageId)
-    : conversation.content[0];
+    : conversation.content.find(isVisibleMessage);
   if (!message) {
     // Message doesn't exist at all - could be true if it's in a branch.
     return new Err(new ConversationError("message_not_found"));
@@ -1114,9 +1116,12 @@ export const filterParticipantsByNotifyCondition = async ({
   }
 
   const projectPreferenceMap = spaceModelId
-    ? await UserProjectNotificationPreferenceResource.fetchAllBySpaceAndUsers(
+    ? await UserProjectPreferencesResource.fetchNotificationPreferenceMap(
         auth,
-        { spaceModelId, userModelIds }
+        {
+          spaceModelId,
+          userModelIds,
+        }
       )
     : new Map<ModelId, NotificationCondition>();
 

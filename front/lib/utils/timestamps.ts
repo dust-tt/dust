@@ -31,8 +31,7 @@ export const cleanTimestamp = (
 
 export const formatTimestring = (timestamp: number): string => {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString("en-US", {
-    hour12: false,
+  return date.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });

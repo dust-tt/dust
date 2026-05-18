@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/assistant/builder/slack.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,14 +23,23 @@ export type GetSlackChannelsLinkedWithAgentResponseBody = {
   slackDataSource?: DataSourceType;
 };
 
-export async function handleSlackChannelsLinkedWithAgent(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<GetSlackChannelsLinkedWithAgentResponseBody>
   >,
-  auth: Authenticator,
-  connectorProvider: Extract<ConnectorProvider, "slack" | "slack_bot">
+  auth: Authenticator
 ): Promise<void> {
+  if (req.method !== "GET") {
+    return apiError(req, res, {
+      status_code: 405,
+      api_error: {
+        type: "method_not_supported_error",
+        message: "The method passed is not supported, GET is expected.",
+      },
+    });
+  }
+
   if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 403,
@@ -44,6 +55,7 @@ export async function handleSlackChannelsLinkedWithAgent(
     DataSourceResource.listByConnectorProvider(auth, "slack"),
     DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
   ]);
+
   let isSlackBotEnabled = false;
   if (dataSourceSlackBot && dataSourceSlackBot.connectorId) {
     const connectorsAPI = new ConnectorsAPI(
@@ -89,60 +101,36 @@ export async function handleSlackChannelsLinkedWithAgent(
       status_code: 400,
       api_error: {
         type: "data_source_not_managed",
-        message: `The data source you requested is not managed by a ${connectorProvider} connector.`,
+        message:
+          "The data source you requested is not managed by a slack connector.",
       },
     });
   }
 
-  switch (req.method) {
-    case "GET":
-      const connectorsAPI = new ConnectorsAPI(
-        config.getConnectorsAPIConfig(),
-        logger
-      );
-      const linkedSlackChannelsRes =
-        await connectorsAPI.getSlackChannelsLinkedWithAgent({
-          connectorId: dataSource.connectorId,
-        });
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+  const linkedSlackChannelsRes =
+    await connectorsAPI.getSlackChannelsLinkedWithAgent({
+      connectorId: dataSource.connectorId,
+    });
 
-      if (linkedSlackChannelsRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `An error occurred while fetching the linked Slack channels.`,
-          },
-        });
-      }
-
-      res.status(200).json({
-        provider,
-        slackChannels: linkedSlackChannelsRes.value.slackChannels,
-        slackDataSource: dataSource.toJSON(),
-      });
-
-      break;
-
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, GET or POST is expected.",
-        },
-      });
+  if (linkedSlackChannelsRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "An error occurred while fetching the linked Slack channels.",
+      },
+    });
   }
-}
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetSlackChannelsLinkedWithAgentResponseBody>
-  >,
-  auth: Authenticator
-): Promise<void> {
-  return handleSlackChannelsLinkedWithAgent(req, res, auth, "slack");
+  return res.status(200).json({
+    provider,
+    slackChannels: linkedSlackChannelsRes.value.slackChannels,
+    slackDataSource: dataSource.toJSON(),
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

@@ -1,14 +1,15 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import {
   launchOrSignalProjectTodoWorkflow,
+  startImmediateProjectTodoWorkflowOnce,
   stopProjectTodoWorkflow,
-} from "@app/temporal/project_todo/client";
+} from "@app/temporal/project_task/client";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
@@ -57,7 +58,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message: "Only project members can update project metadata.",
+            message: "Only project editors can update project metadata.",
           },
         });
       }
@@ -79,44 +80,83 @@ async function handler(
       const body = bodyValidation.data;
 
       let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
-      const featureFlags = await getFeatureFlags(auth);
-      const projectTodoEnabled = featureFlags.includes("project_todo");
+
+      const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
+      const priorTodoGenerationEnabled =
+        metadata?.todoGenerationEnabled ?? false;
+
+      const shouldTriggerFirstImmediateSync =
+        body.todoGenerationEnabled === true &&
+        !priorTodoGenerationEnabled &&
+        priorLastTodoAnalysisAt === null;
 
       if (!metadata) {
-        // Create new metadata
         metadata = await ProjectMetadataResource.makeNew(auth, space, {
           description: body.description ?? null,
           archivedAt: body.archive ? new Date() : null,
+          todoGenerationEnabled: body.todoGenerationEnabled ?? false,
+          initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
         });
-        if (!body.archive && projectTodoEnabled) {
+        if (!body.archive) {
           void launchOrSignalProjectTodoWorkflow({
             workspaceId: auth.getNonNullableWorkspace().sId,
             spaceId: space.sId,
           });
         }
+        if (shouldTriggerFirstImmediateSync && !body.archive) {
+          void startImmediateProjectTodoWorkflowOnce({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            spaceId: space.sId,
+          });
+        }
       } else {
-        // Update existing metadata
         if (body.archive !== undefined) {
           if (body.archive) {
             await metadata.archive();
-            if (projectTodoEnabled) {
-              void stopProjectTodoWorkflow({
-                workspaceId: auth.getNonNullableWorkspace().sId,
-                spaceId: space.sId,
-              });
-            }
+
+            void stopProjectTodoWorkflow({
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              spaceId: space.sId,
+            });
           } else {
             await metadata.unarchive();
-            if (projectTodoEnabled) {
-              void launchOrSignalProjectTodoWorkflow({
-                workspaceId: auth.getNonNullableWorkspace().sId,
-                spaceId: space.sId,
-              });
-            }
+
+            void launchOrSignalProjectTodoWorkflow({
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              spaceId: space.sId,
+            });
           }
         }
         if (body.description !== undefined) {
           await metadata.updateDescription(body.description);
+        }
+        if (body.todoGenerationEnabled !== undefined) {
+          await metadata.updateTodoGenerationEnabled(
+            body.todoGenerationEnabled
+          );
+          if (!body.todoGenerationEnabled) {
+            await metadata.updateInitialTodoAnalysisLookback(null);
+          }
+        }
+        if (body.initialTodoAnalysisLookback !== undefined) {
+          await metadata.updateInitialTodoAnalysisLookback(
+            body.initialTodoAnalysisLookback
+          );
+        }
+        if (
+          body.todoGenerationEnabled === true &&
+          !priorTodoGenerationEnabled
+        ) {
+          void launchOrSignalProjectTodoWorkflow({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            spaceId: space.sId,
+          });
+        }
+        if (shouldTriggerFirstImmediateSync) {
+          void startImmediateProjectTodoWorkflowOnce({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            spaceId: space.sId,
+          });
         }
       }
 

@@ -1,5 +1,7 @@
+import { useOpenConversationBranch } from "@app/hooks/conversations/useOpenConversationBranch";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import type { CloseConversationBranchResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/branches/[bId]/close";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
@@ -11,6 +13,12 @@ export function useConversationBranchActions({
   conversationId?: string | null;
 }) {
   const sendNotification = useSendNotification();
+
+  const { mutateOpenBranch } = useOpenConversationBranch({
+    owner,
+    conversationId: conversationId ?? "",
+    disabled: true,
+  });
 
   const [isMerging, setIsMerging] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -29,6 +37,7 @@ export function useConversationBranchActions({
         if (!res.ok) {
           throw new Error("Failed to merge branch");
         }
+        void mutateOpenBranch({ branch: null }, { revalidate: false });
         return true;
       } catch {
         sendNotification({ type: "error", title: "Failed to publish branch" });
@@ -37,13 +46,15 @@ export function useConversationBranchActions({
         setIsMerging(false);
       }
     },
-    [conversationId, owner.sId, sendNotification]
+    [conversationId, owner.sId, sendNotification, mutateOpenBranch]
   );
 
   const closeBranch = useCallback(
-    async (branchId: string) => {
+    async (
+      branchId: string
+    ): Promise<{ ok: boolean; conversationDeleted: boolean }> => {
       if (!conversationId) {
-        return false;
+        return { ok: false, conversationDeleted: false };
       }
       setIsClosing(true);
       try {
@@ -54,15 +65,17 @@ export function useConversationBranchActions({
         if (!res.ok) {
           throw new Error("Failed to close branch");
         }
-        return true;
+        void mutateOpenBranch({ branch: null }, { revalidate: false });
+        const body: CloseConversationBranchResponse = await res.json();
+        return { ok: true, conversationDeleted: body.conversationDeleted };
       } catch {
         sendNotification({ type: "error", title: "Failed to reject branch" });
-        return false;
+        return { ok: false, conversationDeleted: false };
       } finally {
         setIsClosing(false);
       }
     },
-    [conversationId, owner.sId, sendNotification]
+    [conversationId, owner.sId, sendNotification, mutateOpenBranch]
   );
 
   return {

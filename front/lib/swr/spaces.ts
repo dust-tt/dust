@@ -39,6 +39,7 @@ import type {
   GetUserProjectNotificationPreferenceResponseBody,
   PatchUserProjectNotificationPreferenceResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_notification_preferences";
+import type { PostUserProjectStarResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/star";
 import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
@@ -1034,7 +1035,11 @@ export function useUpdateProjectMetadata({
         ? updates.archive
           ? "Project archived"
           : "Project unarchived"
-        : "Project updated";
+        : updates.todoGenerationEnabled !== undefined
+          ? updates.todoGenerationEnabled
+            ? "Automatic task suggestions turned on"
+            : "Automatic task suggestions turned off"
+          : "Project updated";
 
     sendNotification({
       type: "success",
@@ -1227,4 +1232,71 @@ export function useJoinProject({
   };
 
   return doJoin;
+}
+
+export function useStarProject({
+  workspaceId,
+  spaceId,
+}: {
+  workspaceId: string;
+  spaceId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId,
+    options: { disabled: true },
+  });
+
+  return useCallback(
+    async (
+      isStarred: boolean
+    ): Promise<PostUserProjectStarResponseBody | null> => {
+      if (!spaceId) {
+        return null;
+      }
+
+      const res = await clientFetch(
+        `/api/w/${workspaceId}/spaces/${spaceId}/star`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ starred: isStarred }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: isStarred
+            ? "Error starring project"
+            : "Error unstarring project",
+          description: `Error: ${errorData.message}`,
+        });
+        return null;
+      }
+
+      const response: PostUserProjectStarResponseBody = await res.json();
+
+      void mutateSpaceSummary((data) => {
+        if (!data) {
+          return data;
+        }
+        return {
+          ...data,
+          summary: data.summary.map((entry) =>
+            entry.space.sId === spaceId
+              ? {
+                  ...entry,
+                  space: { ...entry.space, isStarred: response.isStarred },
+                }
+              : entry
+          ),
+        };
+      }, false);
+
+      return response;
+    },
+    [workspaceId, spaceId, mutateSpaceSummary, sendNotification]
+  );
 }

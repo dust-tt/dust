@@ -23,6 +23,7 @@ import {
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import {
   startActiveObservation,
   updateActiveObservation,
@@ -33,22 +34,34 @@ import assert from "assert";
 const CONVERSATION_CACHE_TTL_MS = 5000;
 
 // Extracts sIds of accessed datasources/tables from tool augmentedInputs.
-// All datasource-accessing tools use a standard `dataSources` or `tables` array
-// of { uri } objects whose last path segment is the configuration sId.
+// Dust-internal MCP servers receive { uri } objects whose last path segment is
+// the configuration sId. External MCP servers (e.g. Airtable) bypass that
+// augmentation and may send entries like { tableId, fieldIds } with no uri, so
+// uri access must be guarded and we fall back to tableId when available.
 function extractDataSourceIds(
   inputs: Record<string, unknown>
 ): Record<string, string> {
   const result: Record<string, string> = {};
   const ds = inputs.dataSources;
   const tables = inputs.tables;
+  const lastUriSegment = (v: unknown): string | undefined =>
+    isString(v) ? v.split("/").pop() : undefined;
   if (Array.isArray(ds) && ds.length > 0) {
-    result.accessedDataSourceIds = ds
-      .map((d: { uri: string }) => d.uri.split("/").pop() ?? "")
+    result.accessed_data_source_ids = ds
+      .map((d: { uri?: unknown }) => lastUriSegment(d.uri) ?? "")
+      .filter(Boolean)
       .join(",");
   }
   if (Array.isArray(tables) && tables.length > 0) {
-    result.accessedTableIds = tables
-      .map((t: { uri: string }) => t.uri.split("/").pop() ?? "")
+    result.accessed_table_ids = tables
+      .map((t: { uri?: unknown; tableId?: unknown }) => {
+        const segment = lastUriSegment(t.uri);
+        if (segment) {
+          return segment;
+        }
+        return isString(t.tableId) ? t.tableId : "";
+      })
+      .filter(Boolean)
       .join(",");
   }
   return result;
@@ -364,16 +377,16 @@ async function executeToolStreaming(
           ],
           context: { location: auth.clientIp() ?? "internal" },
           metadata: {
-            toolName: action.toolConfiguration.originalName,
-            toolType: isLightClientSideMCPToolConfiguration(
+            tool_name: action.toolConfiguration.originalName,
+            tool_type: isLightClientSideMCPToolConfiguration(
               action.toolConfiguration
             )
               ? "remote"
               : "internal",
-            mcpServerName: action.toolConfiguration.mcpServerName,
-            conversationId: conversation.sId,
+            mcp_server_name: action.toolConfiguration.mcpServerName,
+            conversation_id: conversation.sId,
             ...(conversation.triggerId
-              ? { triggerId: conversation.triggerId }
+              ? { trigger_id: conversation.triggerId }
               : {}),
             initiating_user_id: auth.user()?.sId ?? "unknown",
             initiating_user_email: auth.user()?.email ?? "unknown",

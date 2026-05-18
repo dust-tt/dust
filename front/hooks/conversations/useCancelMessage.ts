@@ -13,7 +13,7 @@ export function useCancelMessage({
   const sendNotification = useSendNotification();
 
   return useCallback(
-    async (messageIds: string[]) => {
+    async (messageIds: string[], action: "cancel" | "interrupt" = "cancel") => {
       if (!conversationId || messageIds.length === 0) {
         return;
       }
@@ -24,7 +24,7 @@ export function useCancelMessage({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              action: "cancel",
+              action,
               messageIds,
             }),
           }

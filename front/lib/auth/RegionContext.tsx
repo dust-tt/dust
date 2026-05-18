@@ -15,7 +15,7 @@ import { useSWRConfig } from "swr";
 const STORAGE_KEY =
   import.meta.env?.VITE_DUST_REGION_STORAGE_KEY ?? "dust-region-api";
 
-const DEFAULT_URL = import.meta.env?.VITE_DUST_CLIENT_FACING_URL ?? "";
+const DEFAULT_URL = import.meta.env?.VITE_DUST_API_URL ?? "";
 
 const DEFAULT_REGION: RegionType =
   (import.meta.env?.VITE_DUST_REGION as RegionType) ?? "us-central1";

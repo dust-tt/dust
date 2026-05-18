@@ -352,7 +352,7 @@ function KnowledgeConfigurationSheetContent({
         label: "Cancel",
         variant: "outline",
         onClick: async () => {
-          if (isManageSelectionMode) {
+          if (isManageSelectionMode && isEditing) {
             setSheetPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
           } else {
             await onCancel();
@@ -372,7 +372,14 @@ function KnowledgeConfigurationSheetContent({
         },
       },
     };
-  }, [currentPageId, hasSourceSelection, setSheetPageId, onCancel, onSave]);
+  }, [
+    currentPageId,
+    hasSourceSelection,
+    isEditing,
+    onCancel,
+    onSave,
+    setSheetPageId,
+  ]);
 
   const pages: MultiPageSheetPage[] = [
     {

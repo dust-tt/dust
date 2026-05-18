@@ -1,6 +1,6 @@
 import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import { createFrameSession } from "@app/lib/api/share/frame_session";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import {
   ExternalViewerSessionModel,
@@ -10,6 +10,8 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { FileShareScope } from "@app/types/files";
 import { frameContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -175,9 +177,33 @@ describe("GET /api/v1/public/frames/[token]", () => {
       expect(res._getStatusCode()).toBe(200);
     });
 
-    it("blocks logged-in workspace member whose email has no grant", async () => {
+    it("blocks logged-in non-owner workspace member whose email has no grant", async () => {
       const { token } = await createFrameWithScope("emails_only");
-      // User IS authenticated but has no grant.
+
+      // A different workspace member who is NOT the file owner.
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+      vi.mocked(getAuthForSharedEndpointWorkspaceMembersOnly).mockResolvedValue(
+        otherAuth
+      );
+
+      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+        method: "GET",
+        query: { token },
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+    });
+
+    it("allows the file owner without an email grant", async () => {
+      // File is created by `user` and `auth` is for `user`, so `user` is the owner.
+      const { token } = await createFrameWithScope("emails_only");
       vi.mocked(getAuthForSharedEndpointWorkspaceMembersOnly).mockResolvedValue(
         auth
       );
@@ -189,7 +215,7 @@ describe("GET /api/v1/public/frames/[token]", () => {
 
       await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(404);
+      expect(res._getStatusCode()).toBe(200);
     });
 
     it("allows external viewer with valid session and grant", async () => {

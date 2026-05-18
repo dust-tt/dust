@@ -113,6 +113,8 @@ export async function pruneConflictingSkillEditSuggestions(
 
   const newInstructionEdits = newSuggestion.suggestion.instructionEdits ?? [];
   const newToolEdits = newSuggestion.suggestion.toolEdits ?? [];
+  const newHasAgentFacingDescriptionEdit =
+    newSuggestion.suggestion.agentFacingDescriptionEdit !== undefined;
 
   // Full rewrite — everything is outdated.
   if (
@@ -145,6 +147,8 @@ export async function pruneConflictingSkillEditSuggestions(
       : new Map<string, Set<string>>();
 
   const toMarkOutdated = existingPending.filter((existing) => {
+    const existingHasAgentFacingDescriptionEdit =
+      existing.suggestion.agentFacingDescriptionEdit !== undefined;
     return (
       instructionEditSetsConflict(
         newInstructionEdits,
@@ -152,7 +156,9 @@ export async function pruneConflictingSkillEditSuggestions(
         skill.instructionsHtml,
         descendantMap
       ) ||
-      toolEditSetsConflict(newToolEdits, existing.suggestion.toolEdits ?? [])
+      toolEditSetsConflict(newToolEdits, existing.suggestion.toolEdits ?? []) ||
+      (newHasAgentFacingDescriptionEdit &&
+        existingHasAgentFacingDescriptionEdit)
     );
   });
 

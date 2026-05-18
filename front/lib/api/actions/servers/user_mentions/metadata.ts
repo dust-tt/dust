@@ -26,14 +26,16 @@ export const USER_MENTIONS_TOOLS_METADATA = createToolsRecord({
   },
   [GET_MENTION_MARKDOWN_TOOL_NAME]: {
     description:
-      "Get the markdown directive to use to mention a user in a message.",
+      "Get the markdown directive to use to mention a list of users in a message.",
     schema: {
-      mention: z
-        .object({
-          id: z.string(),
-          label: z.string(),
-        })
-        .describe("A mention to get the markdown directive for."),
+      mentions: z
+        .array(
+          z.object({
+            id: z.string(),
+            label: z.string(),
+          })
+        )
+        .describe("A list of mentions to get the markdown directive for."),
     },
     stake: "never_ask",
     displayLabels: {

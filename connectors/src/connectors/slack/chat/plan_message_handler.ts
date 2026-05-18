@@ -1,4 +1,5 @@
 import {
+  AWAITING_TOOL_APPROVAL_LABEL,
   getActionDetails,
   getActionDoneLabel,
   getActionRunningLabel,
@@ -111,6 +112,14 @@ export class PlanMessageHandler {
     });
   }
 
+  setTaskAwaitingToolApproval(taskId: string = "default"): void {
+    this.taskCards.set(taskId, {
+      taskId,
+      title: AWAITING_TOOL_APPROVAL_LABEL,
+      status: "pending",
+    });
+  }
+
   private async handleChildStreamEvent(
     taskId: string,
     event: AgentEvent
@@ -138,6 +147,11 @@ export class PlanMessageHandler {
           sources: getActionSources(event.action),
         });
         await this.upsertPlanMessage(label);
+        return "continue";
+      }
+      case "tool_approve_execution": {
+        this.setTaskAwaitingToolApproval(taskId);
+        await this.upsertPlanMessage(AWAITING_TOOL_APPROVAL_LABEL);
         return "continue";
       }
       case "agent_message_success":

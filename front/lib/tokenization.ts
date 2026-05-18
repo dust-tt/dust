@@ -8,9 +8,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import type { TokenizerConfig } from "@app/types/tokenizer";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
-
+import chunk from "lodash/chunk";
 import config from "./api/config";
 
 // Tokenizing large text payloads causes memory stress in core API, leading to OOM issues.
@@ -33,7 +31,7 @@ export async function tokenCountForTexts(
   try {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     // Split texts into batches to prevent OOM in core API.
-    const batches = _.chunk(texts, MAX_BATCH_SIZE);
+    const batches = chunk(texts, MAX_BATCH_SIZE);
 
     const batchResults = await concurrentExecutor(
       batches,

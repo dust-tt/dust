@@ -57,6 +57,7 @@ export type DustErrorCode =
   | "space_already_exists"
   // Conversation errors
   | "conversation_not_found"
+  | "failed_to_copy_files"
   | "no_unread_messages_found"
   | "no_whitelisted_model_found"
   | "generation_failed"
@@ -65,7 +66,8 @@ export type DustErrorCode =
   | "subscription_already_exists"
   | "workspace_not_found"
   | "plan_not_found"
-  | "metronome_error";
+  | "metronome_error"
+  | "coupon_redemption_error";
 
 export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
   constructor(

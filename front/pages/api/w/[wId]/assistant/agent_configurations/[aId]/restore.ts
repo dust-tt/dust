@@ -59,6 +59,14 @@ async function handler(
                 message: restoredResult.error.message,
               },
             });
+          case "unauthorized":
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "app_auth_error",
+                message: restoredResult.error.message,
+              },
+            });
           case "internal_error":
             return apiError(req, res, {
               status_code: 500,

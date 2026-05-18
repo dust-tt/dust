@@ -4,16 +4,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type SuggestResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];
 };
 
-const SuggestQuerySchema = t.type({
-  cId: t.string,
+const SuggestQuerySchema = z.object({
+  cId: z.string(),
 });
 
 async function handler(
@@ -31,8 +30,8 @@ async function handler(
     });
   }
 
-  const queryValidation = SuggestQuerySchema.decode(req.query);
-  if (isLeft(queryValidation)) {
+  const queryValidation = SuggestQuerySchema.safeParse(req.query);
+  if (!queryValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -45,7 +44,7 @@ async function handler(
   // Keep endpoint alive for backward compatibility with older clients while
   // removing the underlying suggestion feature.
   void auth;
-  void queryValidation.right;
+  void queryValidation.data;
 
   res.status(200).json({
     agentConfigurations: [],

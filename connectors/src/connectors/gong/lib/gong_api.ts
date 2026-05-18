@@ -5,6 +5,7 @@ import {
   isNotFoundError,
 } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import type { ModelId } from "@connectors/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
@@ -236,6 +237,25 @@ const GongPermissionProfilesResponseCodec = t.intersection([
   CatchAllCodec,
 ]);
 
+// Gong's documented Retry-After unit is seconds, we have observerd it to be in anything betwee 1 to
+// 55k.  We thought before that it was milliseconds but we've observed in the while a decrease of
+// that value with following a second pattern (spolu). We floor at 10s and ceil at 1h to avoid
+// outliers.
+const RETRY_AFTER_FLOOR_SECONDS = 10;
+const RETRY_AFTER_CEILING_SECONDS = 3600;
+
+export function clampRetryAfterSeconds(
+  raw: number | undefined
+): number | undefined {
+  if (raw === undefined || Number.isNaN(raw)) {
+    return undefined;
+  }
+  return Math.min(
+    Math.max(raw, RETRY_AFTER_FLOOR_SECONDS),
+    RETRY_AFTER_CEILING_SECONDS
+  );
+}
+
 export class GongClient {
   private readonly baseUrl = "https://api.gong.io/v2";
 
@@ -280,9 +300,8 @@ export class GongClient {
           )
         );
 
-        // Gong docs says the Retry-After header is in seconds, our findings show it is actually
-        // in milliseconds.
-        const retryAfterMs = response.headers.get("Retry-After")
+        // Gong docs says the Retry-After header is in seconds. It is indeed seconds
+        const retryAfterSeconds = response.headers.get("Retry-After")
           ? parseInt(response.headers.get("Retry-After")!, 10)
           : undefined;
 
@@ -292,10 +311,15 @@ export class GongClient {
             endpoint,
             headers,
             provider: "gong",
-            retryAfterMs,
+            retryAfterSeconds,
           },
           "Rate limit hit on Gong API."
         );
+
+        statsDClient.increment("gong.api.rate_limit", 1, [
+          `endpoint:${endpoint}`,
+          `provider:gong`,
+        ]);
 
         // Don't attempt to parse the body in JSON.
         const body = await response.text();
@@ -304,7 +328,7 @@ export class GongClient {
           body,
           connectorId: this.connectorId,
           endpoint,
-          retryAfterMs,
+          retryAfterSeconds,
         });
       }
 
@@ -434,6 +458,42 @@ export class GongClient {
       return {
         users: users.users,
         nextPageCursor: users.records.cursor,
+      };
+    } catch (err) {
+      if (isNotFoundError(err)) {
+        return {
+          users: [],
+          nextPageCursor: null,
+        };
+      }
+
+      throw err;
+    }
+  }
+
+  // https://gong.app.gong.io/settings/api/documentation#post-/v2/users/extensive
+  async getUsersByIds({
+    userIds,
+    pageCursor = null,
+  }: {
+    userIds: string[];
+    pageCursor?: string | null;
+  }) {
+    try {
+      const users = await this.postRequest(
+        "/users/extensive",
+        {
+          cursor: pageCursor,
+          filter: {
+            userIds,
+          },
+        },
+        GongPaginatedResults("users", GongUserCodec)
+      );
+
+      return {
+        users: users.users,
+        nextPageCursor: users.records.cursor ?? null,
       };
     } catch (err) {
       if (isNotFoundError(err)) {

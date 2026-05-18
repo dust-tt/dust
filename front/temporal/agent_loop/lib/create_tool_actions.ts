@@ -1,11 +1,13 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
-import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getInternalMCPServerDisplayedAs,
+  getInternalMCPServerNameFromSId,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
-import type { ToolInputContext } from "@app/lib/actions/tool_status";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
@@ -156,18 +158,14 @@ async function createActionForTool(
   const argumentsRequiringApproval =
     actionConfiguration.argumentsRequiringApproval ?? [];
 
-  // Build context for medium stake per-argument approval checks
-  const mediumStakeContext: ToolInputContext = {
-    agentId: agentConfiguration.sId,
-    toolInputs: rawInputs,
-  };
-
-  const { status } = await getExecutionStatusFromConfig(
-    auth,
+  const { status } = await getExecutionStatusFromConfig(auth, {
     actionConfiguration,
     agentMessage,
-    mediumStakeContext
-  );
+    context: {
+      agentId: agentConfiguration.sId,
+      toolInputs: rawInputs,
+    },
+  });
 
   const validateToolInputsResult = validateToolInputs(rawInputs);
   if (validateToolInputsResult.isErr()) {
@@ -214,11 +212,12 @@ async function createActionForTool(
   // We store the action here as the params have been generated, if an error occurs later on,
   // the error will be stored on the parent agent message.
   const action = await createMCPAction(auth, {
-    agentMessage,
-    status,
     actionConfiguration,
+    agentMessage,
     augmentedInputs,
-    stepContentId,
+    conversation,
+    status,
+    stepContent,
     stepContext,
   });
 
@@ -261,6 +260,9 @@ async function createActionForTool(
               mcpServerName: actionConfiguration.mcpServerName,
               agentName: agentConfiguration.name,
               icon: actionConfiguration.icon,
+              displayedAs: getInternalMCPServerDisplayedAs(
+                actionConfiguration.toolServerId
+              ),
             },
             argumentsRequiringApproval,
             approvalArgsLabel: await getApprovalArgsLabel({

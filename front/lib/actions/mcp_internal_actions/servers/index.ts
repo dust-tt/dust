@@ -22,6 +22,7 @@ import { default as databricksServer } from "@app/lib/api/actions/servers/databr
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fathomServer } from "@app/lib/api/actions/servers/fathom";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
+import { default as filesServer } from "@app/lib/api/actions/servers/files";
 import { default as freshserviceServer } from "@app/lib/api/actions/servers/freshservice";
 import { default as frontServer } from "@app/lib/api/actions/servers/front";
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
@@ -52,7 +53,7 @@ import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
 import { default as projectManagerServer } from "@app/lib/api/actions/servers/project_manager";
-import { default as projectTodosServer } from "@app/lib/api/actions/servers/project_todos";
+import { default as projectTasksServer } from "@app/lib/api/actions/servers/project_tasks";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as runAgentServer } from "@app/lib/api/actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
@@ -191,6 +192,8 @@ export async function getInternalMCPServer(
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     case "conversation_files":
       return conversationFilesServer(auth, agentLoopContext);
+    case "files":
+      return filesServer(auth, agentLoopContext);
     case "databricks":
       return databricksServer(auth, agentLoopContext);
     case "jira":
@@ -249,8 +252,8 @@ export async function getInternalMCPServer(
       return productboardServer(auth, agentLoopContext);
     case "project_manager":
       return projectManagerServer(auth, agentLoopContext);
-    case "project_todos":
-      return projectTodosServer(auth, agentLoopContext);
+    case "project_tasks":
+      return projectTasksServer(auth, agentLoopContext);
     case "poke":
       return pokeServer(auth, agentLoopContext);
     case "ask_user_question":

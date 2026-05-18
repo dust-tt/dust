@@ -1,21 +1,22 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/builder/skills.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { SkillDescriptionSuggestionInputs } from "@app/lib/api/skills/description_suggestion";
 import { getSkillDescriptionSuggestion } from "@app/lib/api/skills/description_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const PostSkillSuggestionsRequestBodySchema = t.type({
-  instructions: t.string,
-  agentFacingDescription: t.string,
-  tools: t.array(t.type({ name: t.string, description: t.string })),
+const PostSkillSuggestionsRequestBodySchema = z.object({
+  instructions: z.string(),
+  agentFacingDescription: z.string(),
+  tools: z.array(z.object({ name: z.string(), description: z.string() })),
 });
-export type PostSkillSuggestionsRequestBody = t.TypeOf<
+export type PostSkillSuggestionsRequestBody = z.infer<
   typeof PostSkillSuggestionsRequestBodySchema
 >;
 
@@ -30,11 +31,11 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "POST": {
-      const bodyValidation = PostSkillSuggestionsRequestBodySchema.decode(
+      const bodyValidation = PostSkillSuggestionsRequestBodySchema.safeParse(
         req.body
       );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -44,7 +45,7 @@ async function handler(
         });
       }
 
-      const inputs: SkillDescriptionSuggestionInputs = bodyValidation.right;
+      const inputs: SkillDescriptionSuggestionInputs = bodyValidation.data;
 
       const suggestionRes = await getSkillDescriptionSuggestion(auth, inputs);
       if (suggestionRes.isErr()) {

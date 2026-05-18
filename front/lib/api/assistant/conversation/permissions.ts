@@ -88,9 +88,11 @@ export async function canAgentBeUsedInProjectConversation(
   {
     configuration,
     conversation,
+    transaction,
   }: {
     configuration: LightAgentConfigurationType;
     conversation: ConversationWithoutContentType;
+    transaction?: Transaction;
   }
 ): Promise<boolean> {
   if (!isProjectConversation(conversation)) {
@@ -112,11 +114,37 @@ export async function canAgentBeUsedInProjectConversation(
     // Need to load all the spaces to check if they are restricted.
     const spaces = await SpaceResource.fetchByIds(
       auth,
-      configuration.requestedSpaceIds.filter(
-        (spaceId) => spaceId !== conversation.spaceId
-      )
+      // Ensure we have the project's space in the list of spaces to check.
+      uniq([conversation.spaceId, ...configuration.requestedSpaceIds]),
+      { transaction }
     );
-    if (spaces.some((space) => !space.isOpen())) {
+    if (
+      spaces
+        // Exclude the project's space from the check.
+        .filter((space) => space.sId !== conversation.spaceId)
+        // Check if any of the other spaces are restricted.
+        .some((space) => !space.isOpen())
+    ) {
+      const project = spaces.find(
+        (space) => space.sId === conversation.spaceId
+      );
+      if (!project) {
+        throw new Error("Unexpected: project not found");
+      }
+
+      // Special case for restricted projects with only one member that is the user, we can use the agent directly.
+      if (!project.isOpen()) {
+        const members =
+          await project.fetchDistinctActiveManualGroupMembers(auth);
+        if (
+          members.length === 1 &&
+          members[0].sId === auth.getNonNullableUser().sId
+        ) {
+          return true;
+        }
+      }
+
+      // Otherwises, we cannot use the agent directly.
       return false;
     }
   }

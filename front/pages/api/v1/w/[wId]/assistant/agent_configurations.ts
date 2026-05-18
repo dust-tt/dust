@@ -6,22 +6,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const GetAgentConfigurationsQuerySchema = t.type({
-  view: t.union([
-    t.literal("all"),
-    t.literal("list"),
-    t.literal("workspace"),
-    t.literal("published"),
-    t.literal("global"),
-    t.literal("favorites"),
-    t.undefined,
-  ]),
-  withAuthors: t.union([t.literal("true"), t.literal("false"), t.undefined]),
+export const GetAgentConfigurationsQuerySchema = z.object({
+  view: z
+    .enum(["all", "list", "workspace", "published", "global", "favorites"])
+    .optional(),
+  withAuthors: z.enum(["true", "false"]).optional(),
 });
 
 const viewRequiresUser = (view?: string): boolean =>
@@ -98,34 +91,33 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
-      const queryValidation = GetAgentConfigurationsQuerySchema.decode(
+      const queryValidation = GetAgentConfigurationsQuerySchema.safeParse(
         req.query
       );
 
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      if (!queryValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${pathError}`,
+            message: `Invalid query parameters: ${fromError(queryValidation.error).toString()}`,
           },
         });
       }
 
-      if (viewRequiresUser(queryValidation.right.view) && !auth.user()) {
+      if (viewRequiresUser(queryValidation.data.view) && !auth.user()) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
             type: "invalid_request_error",
-            message: `The user must be authenticated with oAuth to retrieve ${queryValidation.right.view} agents.`,
+            message: `The user must be authenticated with oAuth to retrieve ${queryValidation.data.view} agents.`,
           },
         });
       }
 
       const defaultAgentGetView = auth.user() ? "list" : "all";
-      const agentsGetView = queryValidation.right.view ?? defaultAgentGetView;
-      const withAuthors = queryValidation.right.withAuthors === "true";
+      const agentsGetView = queryValidation.data.view ?? defaultAgentGetView;
+      const withAuthors = queryValidation.data.withAuthors === "true";
 
       let agentConfigurations = await getAgentConfigurationsForView({
         auth,

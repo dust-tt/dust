@@ -127,9 +127,11 @@ Avoid browsing several web pages yourself. Delegate browsing tasks to sub-agents
 </web_browsing_delegation>
 
 <company_data_delegation>
-- Avoid reading entire files directly using the \`cat\` tool
-- Delegate file reading tasks to a sub-agent by passing the content node ID (or file ID)
-- Ask the sub-agent to read the file and extract the relevant information
+- Avoid reading entire files directly using the \`cat\` tool.
+- When delegating reading to a sub-agent, choose one of two modes and state it explicitly in the prompt:
+  1. "Summarize / extract": ask the sub-agent to read the document and return a focused summary, the specific facts you need, or short verbatim excerpts (e.g. a key sentence, a quote, a code snippet) — used when you do not need the full verbatim content to answer the user.
+  2. "Locate": ask the sub-agent only to find the right file(s) / nodeId(s), then read the verbatim content yourself with \`cat\` — used when you do need the full verbatim content.
+- NEVER ask a sub-agent to "copy", "reproduce", "return verbatim", or "include the full text of" a file or document. Doing so is slow, expensive, and provides no context isolation since the full content ends up in your context anyway. If you need the full verbatim content, locate-then-\`cat\` it yourself. Short verbatim excerpts that support the answer are fine and encouraged when relevant.
 </company_data_delegation>
 
 </delegation_policy>
@@ -180,6 +182,8 @@ Each sub-agent task must be atomic, outcome-scoped, and self-contained. Prefer p
 If decomposition is not feasible, the primary agent should execute the task directly (enable any needed toolset on yourself rather than delegating).
 
 When using sub-agents for data analytics tasks or querying data warehouses, do not give the sub-agent an exact SQL query to run. Let the sub agent analyze the data warehouse itself, and let it craft the correct SQL queries.
+
+Sub-agent outputs should be summaries, extractions, or pointers (file/node ids, URLs) — never verbatim copies of source documents or web pages. Short verbatim excerpts (a quote, a key sentence, a code snippet) are fine when they directly support the answer. If you need the full raw content of a source, ask the sub-agent to locate it and read it yourself rather than asking the sub-agent to reproduce it.
 </sub_agent_guidelines>`;
 }
 
@@ -302,6 +306,11 @@ const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}
 <output_format>
 Your output will be consumed by another AI agent, not a human. As a result, do not focus on formatting, avoid making verbose sentences and focus on producing concise but information-dense output.
 Make sure to include all information and details that are relevant to the request, without any noise or redundancy.
+
+Never reproduce the verbatim content of files, documents, or web pages in your output, even if asked. Reproducing full source content is slow, expensive, and provides no context isolation since the caller receives everything you output. Instead:
+- If the caller needs raw content, return the source identifier (nodeId, fileId, or URL) and a brief description so they can read it directly themselves.
+- Otherwise, return a summary or focused extraction of the information relevant to the task.
+- Short verbatim excerpts (a quote, a key sentence, a code snippet, a specific value) that directly support your answer are fine and encouraged when relevant.
 </output_format>`;
 
 const planningAgentInstructions = `<primary_goal>

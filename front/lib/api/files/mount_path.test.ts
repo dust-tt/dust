@@ -3,7 +3,10 @@ import {
   getBaseMountPathForWorkspace,
   getConversationFilePath,
   getConversationFilesBasePath,
+  getProjectFilesBasePath,
   makeProcessedMountFileName,
+  parseProcessedFilename,
+  parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -26,6 +29,38 @@ describe("mount_path helpers", () => {
           conversationId: "conv1",
         })
       ).toBe("w/ws1/conversations/conv1/files/");
+    });
+  });
+
+  describe("getProjectFilesBasePath", () => {
+    it("should return full project files path", () => {
+      expect(
+        getProjectFilesBasePath({ workspaceId: "ws1", projectId: "spc1" })
+      ).toBe("w/ws1/projects/spc1/files/");
+    });
+  });
+
+  describe("parseScopedFilePath", () => {
+    it("parses a conversation path", () => {
+      expect(parseScopedFilePath("conversation/report.pdf")).toEqual({
+        prefix: "conversation",
+        rel: "report.pdf",
+      });
+    });
+
+    it("parses a project path", () => {
+      expect(parseScopedFilePath("project/notes/2026/draft.md")).toEqual({
+        prefix: "project",
+        rel: "notes/2026/draft.md",
+      });
+    });
+
+    it("returns null for unknown prefixes", () => {
+      expect(parseScopedFilePath("other/foo.txt")).toBeNull();
+    });
+
+    it("returns null when there is no slash", () => {
+      expect(parseScopedFilePath("conversation")).toBeNull();
     });
   });
 
@@ -84,6 +119,66 @@ describe("mount_path helpers", () => {
           processedContentType: "image/png",
         })
       ).toBe("dir/photo.processed.png");
+    });
+  });
+
+  describe("parseProcessedFilename", () => {
+    it("recognizes a processed file with a swapped extension (PDF → text)", () => {
+      expect(parseProcessedFilename("report.processed.txt")).toEqual({
+        isProcessed: true,
+        sourceBaseName: "report",
+      });
+    });
+
+    it("recognizes a processed image (same content type)", () => {
+      expect(parseProcessedFilename("photo.processed.jpg")).toEqual({
+        isProcessed: true,
+        sourceBaseName: "photo",
+      });
+    });
+
+    it("recognizes a processed file without an original extension", () => {
+      expect(parseProcessedFilename("Makefile.processed")).toEqual({
+        isProcessed: true,
+        sourceBaseName: "Makefile",
+      });
+    });
+
+    it("recognizes a processed file when the source name itself contains dots", () => {
+      expect(parseProcessedFilename("my.file.name.processed.txt")).toEqual({
+        isProcessed: true,
+        sourceBaseName: "my.file.name",
+      });
+    });
+
+    it("does not flag regular user files", () => {
+      expect(parseProcessedFilename("report.pdf")).toEqual({
+        isProcessed: false,
+      });
+      expect(parseProcessedFilename("notes.txt")).toEqual({
+        isProcessed: false,
+      });
+    });
+
+    it("does not flag user files that merely contain '.processed.' mid-name", () => {
+      // ".processed." is not the final segment-before-extension here.
+      expect(parseProcessedFilename("my.processed.report.pdf")).toEqual({
+        isProcessed: false,
+      });
+      // Multi-segment extension after ".processed." is not produced by our writer.
+      expect(parseProcessedFilename("data.processed.tar.gz")).toEqual({
+        isProcessed: false,
+      });
+    });
+
+    it("does not flag .processed-only or empty inputs", () => {
+      expect(parseProcessedFilename(".processed")).toEqual({
+        isProcessed: false,
+      });
+      expect(parseProcessedFilename(".processed.txt")).toEqual({
+        isProcessed: false,
+      });
+      expect(parseProcessedFilename("")).toEqual({ isProcessed: false });
     });
   });
 

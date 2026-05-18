@@ -3,6 +3,7 @@
 import { Spinner } from "@viz/app/components/Components";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
+import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
 import type {
   VisualizationAPI,
   VisualizationConfig,
@@ -32,6 +33,58 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
+
+const FRAME_MIME_TYPES = new Set([
+  "application/vnd.dust.frame",
+  "application/vnd.dust.frame.slideshow",
+]);
+
+/**
+ * Recursively resolves a file ref to its import value.
+ * - Frame files (code): compiled via importCode so they can be used as React modules.
+ * - Data files: wrapped as { default: File } for direct use.
+ * A promise cache prevents redundant fetches and handles diamond dependencies.
+ * /!\ Circular imports will deadlock. Callers should not create cycles.
+ */
+async function resolveFileRef(
+  key: string,
+  dataAPI: VisualizationDataAPI,
+  baseImports: Record<string, unknown>,
+  cache: Map<string, Promise<unknown>>
+): Promise<unknown> {
+  const cached = cache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  const promise = (async () => {
+    const file = await dataAPI.fetchFile(key);
+    if (!file) {
+      return { default: null };
+    }
+
+    if (FRAME_MIME_TYPES.has(file.type)) {
+      const text = await file.text();
+      const refs = extractFileRefs(text);
+      const nestedEntries = await Promise.all(
+        refs.map(async (ref) => {
+          const nestedKey = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
+          return [
+            nestedKey,
+            await resolveFileRef(nestedKey, dataAPI, baseImports, cache),
+          ] as const;
+        })
+      );
+      const nestedScope = Object.fromEntries(nestedEntries);
+      return importCode(text, { import: { ...baseImports, ...nestedScope } });
+    }
+
+    return { default: file };
+  })();
+
+  cache.set(key, promise);
+  return promise;
+}
 
 // Regular expressions to capture the value inside a className attribute.
 // We check both double and single quotes separately to handle mixed usage.
@@ -314,6 +367,38 @@ export function VisualizationWrapper({
         // exposed to user for retry, providing feedback to the model.
         validateTailwindCode(codeToUse);
 
+        const baseImports: Record<string, unknown> = {
+          papaparse: papaparseAll,
+          react: reactAll,
+          recharts: rechartsAll,
+          shadcn: shadcnAll,
+          // Legacy support for utils from previous versions.
+          utils: utilsAll,
+          // New location for utils.
+          "@viz/lib/utils": utilsAll,
+          "lucide-react": lucideAll,
+          "@dust/slideshow/v1": dustSlideshowV1,
+          "@dust/slideshow/v2": dustSlideshowV2,
+          "@dust/react-hooks": {
+            captureScreenshot: handleScreenshotDownload,
+            triggerUserFileDownload: memoizedDownloadFile,
+            useFile: (fileId: string) => useFile(fileId, api.data),
+          },
+        };
+
+        const refs = extractFileRefs(codeToUse);
+        const cache = new Map<string, Promise<unknown>>();
+        const fileEntries = await Promise.all(
+          refs.map(async (ref) => {
+            const key = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
+            return [
+              key,
+              await resolveFileRef(key, api.data, baseImports, cache),
+            ] as const;
+          })
+        );
+        const fileImportScope = Object.fromEntries(fileEntries);
+
         setRunnerParams({
           code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
           scope: {
@@ -327,22 +412,8 @@ export function VisualizationWrapper({
               "@dust/slideshow/v2": dustSlideshowV2,
               "@dust/generated-code": importCode(codeToUse, {
                 import: {
-                  papaparse: papaparseAll,
-                  react: reactAll,
-                  recharts: rechartsAll,
-                  shadcn: shadcnAll,
-                  // Legacy support for utils from previous versions.
-                  utils: utilsAll,
-                  // New location for utils.
-                  "@viz/lib/utils": utilsAll,
-                  "lucide-react": lucideAll,
-                  "@dust/slideshow/v1": dustSlideshowV1,
-                  "@dust/slideshow/v2": dustSlideshowV2,
-                  "@dust/react-hooks": {
-                    captureScreenshot: handleScreenshotDownload,
-                    triggerUserFileDownload: memoizedDownloadFile,
-                    useFile: (fileId: string) => useFile(fileId, api.data),
-                  },
+                  ...fileImportScope,
+                  ...baseImports,
                 },
               }),
             },

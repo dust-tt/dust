@@ -28,9 +28,16 @@ vi.mock("@app/hooks/useURLSheet", () => ({
 const getConversationRouteMock = vi.fn(
   (..._: any[]) => "/w/w_123/a/new?agent=agent_conf_1"
 );
+const getManageSkillsRouteMock = vi.fn(
+  (workspaceId: string, skillId?: string) =>
+    `/w/${workspaceId}/builder/skills${skillId ? `#?skillId=${skillId}` : ""}`
+);
 const setQueryParamMock = vi.fn();
 vi.mock("@app/lib/utils/router", () => ({
   getConversationRoute: (...args: any[]) => getConversationRouteMock(...args),
+  getManageSkillsRoute: (
+    ...args: Parameters<typeof getManageSkillsRouteMock>
+  ) => getManageSkillsRouteMock(...args),
   setQueryParam: (...args: any[]) => setQueryParamMock(...args),
 }));
 
@@ -209,6 +216,43 @@ Quote text
       expect(container).toBeInTheDocument();
     });
 
+    it("renders inline skill tags as chips", () => {
+      const content =
+        'Please use <skill id="skill_123" name="commit" icon="book_open" />';
+      const message = { ...mockMessage, content };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+
+      expect(container.textContent).toContain("Please use");
+      expect(container.textContent).toContain("commit");
+      expect(container.textContent).not.toContain("<skill");
+    });
+
+    it("links inline skill tags for builders", () => {
+      const content =
+        'Please use <skill id="skill_123" name="commit" icon="book_open" />';
+      const message = { ...mockMessage, content };
+      const builderOwner = { ...mockOwner, role: "builder" } as const;
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={builderOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+
+      const skillLink = container.querySelector("a[href]");
+      expect(skillLink).toHaveAttribute(
+        "href",
+        "/w/test-workspace/builder/skills#?skillId=skill_123"
+      );
+    });
+
     it("renders content node mentions", () => {
       const content = ":content_node_mention[Document]{nodeId=doc-123}";
       const message = { ...mockMessage, content };
@@ -221,6 +265,22 @@ Quote text
       );
       // The component should render with content node mention directive processed
       expect(container).toBeInTheDocument();
+    });
+
+    it("renders project task directives", () => {
+      const content = ":project_task[Review PR]{sId=ptodo_123}";
+      const message = { ...mockMessage, content };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+      expect(
+        container.querySelector("[data-project-task-sid]")
+      ).toHaveAttribute("data-project-task-sid", "ptodo_123");
+      expect(container.textContent).toContain("Review PR");
     });
 
     it("renders pasted attachments", () => {

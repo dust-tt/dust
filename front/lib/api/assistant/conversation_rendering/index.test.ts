@@ -146,6 +146,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -183,6 +184,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -201,7 +203,7 @@ describe("renderConversationForModel", () => {
     );
     expect(functionOutput).toBeDefined();
     expect((functionOutput as any).content).toContain(
-      "Warning: the content of this function result was pruned"
+      "This tool result is no longer available"
     );
     expect(res.value.prunedContext).toBe(true);
   });
@@ -230,6 +232,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -251,7 +254,7 @@ describe("renderConversationForModel", () => {
     );
     expect(oldTool).toBeDefined();
     expect((oldTool as any).content).toContain(
-      "This function result is no longer available."
+      "This tool result is no longer available"
     );
     expect(newTool).toBeDefined();
     expect((newTool as any).content).toBe("new_function");
@@ -278,6 +281,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -319,6 +323,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -348,6 +353,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -376,6 +382,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -454,6 +461,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -477,5 +485,46 @@ describe("renderConversationForModel", () => {
     expect(names).not.toContain("tool_04");
     expect(names).not.toContain("tool_05");
     expect(names).not.toContain("tool_06");
+  });
+
+  it("prepends leading messages", async () => {
+    const leadingMessage = {
+      role: "user" as const,
+      name: "user",
+      content: [{ type: "text" as const, text: "preface" }],
+    };
+
+    vi.mocked(renderAllMessages).mockResolvedValue([userMessage("rendered")]);
+    mockTokenCounter({
+      byContains: {
+        preface: 10,
+        rendered: 10,
+      },
+    });
+
+    const res = await renderConversationForModel(auth, {
+      conversation: createConversation(),
+      model,
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      allowedTokenCount: computeAllowedTokenCount({
+        promptTokens: 10,
+        toolsTokens: 10,
+        interactionTokens: 20,
+        availableDelta: 100,
+      }),
+      leadingMessages: [leadingMessage],
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isErr()) {
+      return;
+    }
+
+    expect(res.value.modelConversation.messages).toEqual([
+      leadingMessage,
+      userMessage("rendered"),
+    ]);
   });
 });

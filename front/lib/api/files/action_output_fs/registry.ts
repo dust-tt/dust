@@ -46,11 +46,17 @@ export function resolveResourceOutput(
   return null;
 }
 
+const TEXT_OFFLOAD_EXEMPT_MCP_SERVERS: readonly string[] = [
+  "interactive_content",
+];
+
 export function shouldOffloadTextBlock(
-  block: CallToolResult["content"][number]
+  block: CallToolResult["content"][number],
+  { serverName }: { serverName: string }
 ): block is { type: "text"; text: string } {
   return (
     block.type === "text" &&
-    Buffer.byteLength(block.text, "utf8") > FILE_OFFLOAD_TEXT_SIZE_BYTES
+    Buffer.byteLength(block.text, "utf8") > FILE_OFFLOAD_TEXT_SIZE_BYTES &&
+    !TEXT_OFFLOAD_EXEMPT_MCP_SERVERS.includes(serverName)
   );
 }

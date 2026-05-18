@@ -1,4 +1,5 @@
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -27,12 +28,17 @@ describe("POST /api/w/[wId]/assistant/conversations", () => {
     vi.clearAllMocks();
   });
 
-  it("creates a conversation with both content fragments and an initial message", async () => {
+  it("creates a conversation with content fragments when private conversation URLs are enabled", async () => {
     const { req, res, workspace, auth, globalSpace } =
       await createPrivateApiMockRequest({
         method: "POST",
         role: "admin",
       });
+
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      privateConversationUrlsByDefault: true,
+    });
+    expect(updateResult.isOk()).toBe(true);
 
     const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
       auth,

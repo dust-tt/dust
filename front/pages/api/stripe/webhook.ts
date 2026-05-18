@@ -10,26 +10,32 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
   deleteCreditFromVoidedInvoice,
+  startCreditFromEnterpriseOneOffInvoice,
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
-import {
-  grantFreeCreditFromSubscriptionStateChangeYearly,
-  grantFreeCreditsFromSubscriptionStateChange,
-} from "@app/lib/credits/free";
 import {
   allocatePAYGCreditsOnCycleRenewal,
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
+import { storeMetronomeCheckoutError } from "@app/lib/metronome/checkout_error";
 import {
+  floorToHourISO,
   reactivateMetronomeContract,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
+import {
+  ensureMetronomeCustomerForWorkspace,
+  provisionMetronomeContract,
+} from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
-import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
+import {
+  resolveCurrencyFromStripe,
+  resolvePackageAliasForCurrency,
+} from "@app/lib/plans/billing_currency";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
@@ -80,72 +86,62 @@ export const StripeBillingPeriodSchema = z.object({
   current_period_end: z.number(),
 });
 
-function isYearlySubscription(
-  stripeSubscription: Stripe.Subscription
-): boolean {
-  const firstItem = stripeSubscription.items.data[0];
-  return firstItem?.price?.recurring?.interval === "year";
-}
-
-async function grantFreeCreditsForSubscription({
-  auth,
-  stripeSubscription,
-}: {
-  auth: Authenticator;
-  stripeSubscription: Stripe.Subscription;
-}) {
-  if (isYearlySubscription(stripeSubscription)) {
-    return grantFreeCreditFromSubscriptionStateChangeYearly({
-      auth,
-      stripeSubscription,
-    });
-  }
-  return grantFreeCreditsFromSubscriptionStateChange({
-    auth,
-    stripeSubscription,
-  });
-}
-
 /**
  * Shadow-provision Metronome customer + contract for a workspace.
  * Uses shadow packages (no billing provider) so Metronome generates invoices
  * but does NOT deliver them to Stripe. Fire-and-forget: logs errors but does not throw.
  */
-async function shadowProvisionMetronome({
+async function provisionShadowMetronome({
   workspace,
   stripeCustomerId,
   metronomePackageAlias,
   sessionId,
   subscriptionModelId,
+  periodStart,
+  planCode,
 }: {
   workspace: WorkspaceResource;
   stripeCustomerId: string;
   metronomePackageAlias: string;
   sessionId: string;
   subscriptionModelId: ModelId;
+  periodStart: Date;
+  planCode: string;
 }): Promise<void> {
   try {
-    const result = await provisionMetronomeCustomerAndContract({
-      workspace: renderLightWorkspaceType({ workspace }),
-      stripeCustomerId,
-      packageAlias: metronomePackageAlias,
-      uniquenessKey: sessionId,
-    });
+    const lightWorkspace = renderLightWorkspaceType({ workspace });
 
-    if (result.isErr()) {
+    const customerResult = await ensureMetronomeCustomerForWorkspace({
+      workspace: lightWorkspace,
+      stripeCustomerId,
+    });
+    if (customerResult.isErr()) {
       logger.error(
-        { workspaceId: workspace.sId, error: result.error.message },
-        "[Stripe Webhook] Failed to shadow-provision Metronome"
+        { workspaceId: workspace.sId, error: customerResult.error.message },
+        "[Stripe Webhook] Failed to ensure Metronome customer for shadow provisioning"
       );
       return;
     }
+    const { metronomeCustomerId } = customerResult.value;
 
-    const { metronomeCustomerId, metronomeContractId } = result.value;
+    const contractResult = await provisionMetronomeContract({
+      metronomeCustomerId,
+      workspace: lightWorkspace,
+      packageAlias: metronomePackageAlias,
+      uniquenessKey: sessionId,
+      startingAt: periodStart,
+      enableStripeBilling: false,
+      planCode,
+    });
+    if (contractResult.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, error: contractResult.error.message },
+        "[Stripe Webhook] Failed to shadow-provision Metronome contract"
+      );
+      return;
+    }
+    const { metronomeContractId } = contractResult.value;
 
-    await WorkspaceResource.updateMetronomeCustomerId(
-      workspace.id,
-      metronomeCustomerId
-    );
     await SubscriptionResource.updateMetronomeContractId(
       subscriptionModelId,
       metronomeContractId
@@ -163,6 +159,563 @@ async function shadowProvisionMetronome({
     logger.error(
       { workspaceId: workspace.sId, error: normalizeError(err) },
       "[Stripe Webhook] Failed to shadow-provision Metronome"
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Invoice classification & context resolution
+//
+// A Stripe invoice received on this webhook falls into one of three buckets:
+//
+//   1. Stripe-subscription invoice         — `invoice.subscription` is set.
+//      Either a regular periodic invoice or a Stripe-subscription credit
+//      purchase (distinguished by `metadata.credit_purchase`).
+//
+//   2. Metronome subscription invoice      — no `invoice.subscription`.
+//      Pushed by Metronome via direct_to_billing_provider. Workspace is
+//      resolved through `invoice.metadata.metronome_customer_id`, which
+//      Metronome stamps on every invoice it pushes.
+//
+//   3. Credit-purchase invoice (no subscription) — no `invoice.subscription`,
+//      `metadata.credit_purchase = "true"`. Workspace is stamped directly on
+//      `invoice.metadata.workspace_id` when the invoice is created.
+//
+// Each `resolve*InvoiceCtx` helper builds the context for its bucket and
+// logs/returns null on missing data so callers can stay terse.
+// ---------------------------------------------------------------------------
+
+interface SubscriptionInvoiceCtx {
+  workspace: WorkspaceResource;
+  subscription: SubscriptionResource;
+  auth: Authenticator;
+  isEnterprise: boolean;
+}
+
+function isAuthOnEnterprisePlan(auth: Authenticator): boolean {
+  const subscription = auth.subscription();
+  return (
+    subscription !== null && isEntreprisePlanPrefix(subscription.plan.code)
+  );
+}
+
+async function resolveStripeSubscriptionInvoiceCtx(
+  invoice: Stripe.Invoice
+): Promise<SubscriptionInvoiceCtx | null> {
+  if (typeof invoice.subscription !== "string") {
+    return null;
+  }
+  const subscription = await SubscriptionResource.fetchByStripeId(
+    invoice.subscription
+  );
+  if (!subscription || !subscription.stripeSubscriptionId) {
+    logger.warn(
+      { invoiceId: invoice.id, stripeSubscriptionId: invoice.subscription },
+      "[Stripe Webhook] Subscription not found."
+    );
+    return null;
+  }
+  // Determine enterprise status from the invoice's Stripe subscription when
+  // we can retrieve it (matches behavior prior to the unified ctx). Fall back
+  // to the workspace's current plan when the Stripe subscription can't be
+  // retrieved — should be very rare.
+  const stripeSubscription = await getStripeSubscription(
+    subscription.stripeSubscriptionId
+  );
+  if (!stripeSubscription) {
+    logger.error(
+      {
+        invoiceId: invoice.id,
+        stripeSubscriptionId: invoice.subscription,
+        stripeError: true,
+      },
+      "[Stripe Webhook] Stripe subscription not found."
+    );
+  }
+  const workspace = await WorkspaceResource.fetchByModelId(
+    subscription.workspaceId
+  );
+  assert(workspace !== null, "Workspace not found for subscription.");
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const isEnterprise = stripeSubscription
+    ? isEnterpriseSubscription(stripeSubscription)
+    : isAuthOnEnterprisePlan(auth);
+  return { workspace, subscription, auth, isEnterprise };
+}
+
+async function resolveMetronomeSubscriptionInvoiceCtx(
+  invoice: Stripe.Invoice
+): Promise<SubscriptionInvoiceCtx | null> {
+  // Metronome stamps `metronome_customer_id` on every invoice it pushes to
+  // Stripe. Map it back to our workspace via the persisted Metronome customer
+  // id on the workspace row.
+  const metronomeCustomerId = invoice.metadata?.metronome_customer_id;
+  if (!metronomeCustomerId) {
+    logger.error(
+      {
+        invoiceId: invoice.id,
+        customer: invoice.customer,
+        stripeError: true,
+      },
+      "[Stripe Webhook] Metronome subscription invoice missing metronome_customer_id metadata"
+    );
+    return null;
+  }
+  const workspace =
+    await WorkspaceResource.fetchByMetronomeCustomerId(metronomeCustomerId);
+  if (!workspace) {
+    logger.warn(
+      { invoiceId: invoice.id, metronomeCustomerId },
+      "[Stripe Webhook] Metronome subscription invoice: workspace not found"
+    );
+    return null;
+  }
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  if (!subscription) {
+    return null;
+  }
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  return {
+    workspace,
+    subscription,
+    auth,
+    isEnterprise: isAuthOnEnterprisePlan(auth),
+  };
+}
+
+async function resolveCreditPurchaseInvoiceCtx(
+  invoice: Stripe.Invoice
+): Promise<SubscriptionInvoiceCtx | null> {
+  const workspaceId = invoice.metadata?.workspace_id;
+  if (!workspaceId) {
+    logger.error(
+      { invoiceId: invoice.id, customer: invoice.customer },
+      "[Stripe Webhook] Credit purchase invoice missing workspace_id metadata"
+    );
+    return null;
+  }
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    return null;
+  }
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  if (!subscription) {
+    return null;
+  }
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  return {
+    workspace,
+    subscription,
+    auth,
+    isEnterprise: isAuthOnEnterprisePlan(auth),
+  };
+}
+
+/**
+ * Single entry point for resolving any invoice (subscription or credit
+ * purchase, Stripe-billed or Metronome-pushed) to a uniform context.
+ * Picks the right underlying resolver based on which identifiers are present
+ * on the invoice.
+ */
+async function resolveInvoiceCtx(
+  invoice: Stripe.Invoice
+): Promise<SubscriptionInvoiceCtx | null> {
+  // Stripe-subscription invoice (regular or credit-purchase).
+  if (typeof invoice.subscription === "string") {
+    return resolveStripeSubscriptionInvoiceCtx(invoice);
+  }
+  // Standalone credit-purchase invoice — workspace_id stamped on the invoice
+  // when it was created.
+  if (invoice.metadata?.workspace_id) {
+    return resolveCreditPurchaseInvoiceCtx(invoice);
+  }
+  // Metronome subscription invoice — metronome_customer_id stamped by
+  // Metronome on every invoice it pushes.
+  if (invoice.metadata?.metronome_customer_id) {
+    return resolveMetronomeSubscriptionInvoiceCtx(invoice);
+  }
+
+  return null;
+}
+
+/**
+ * Dispatch a paid credit-purchase invoice to the Pro or Enterprise activator.
+ * Used for both Stripe-subscription invoices and Metronome-pushed invoices.
+ */
+async function startCreditFromPaidInvoice({
+  invoice,
+  auth,
+  isEnterprise,
+}: {
+  invoice: Stripe.Invoice;
+  auth: Authenticator;
+  isEnterprise: boolean;
+}): Promise<void> {
+  const result = isEnterprise
+    ? await startCreditFromEnterpriseOneOffInvoice({ auth, invoice })
+    : await startCreditFromProOneOffInvoice({ auth, invoice });
+
+  if (result.isErr()) {
+    logger.error(
+      { error: result.error, invoiceId: invoice.id, isEnterprise },
+      "[Stripe Webhook] Error processing credit purchase"
+    );
+  }
+}
+
+async function voidProCreditPurchaseInvoiceOnFailure({
+  auth,
+  invoice,
+  workspaceId,
+}: {
+  auth: Authenticator;
+  invoice: Stripe.Invoice;
+  workspaceId: string;
+}): Promise<void> {
+  const result = await voidFailedProCreditPurchaseInvoice({ auth, invoice });
+  if (result.isErr()) {
+    // For eng-oncall: this is supposed to be extremely rare. Inspect the
+    // invoice in Stripe and invoice manually with the metadata put in
+    // `voidFailedProCreditPurchase`. Contact Stripe owners in case of doubt.
+    logger.error(
+      {
+        error: result.error,
+        panic: true,
+        stripeError: true,
+        invoiceId: invoice.id,
+        workspaceId,
+      },
+      "[Stripe Webhook] Error handling failed credit purchase"
+    );
+    return;
+  }
+  if (result.value.voided) {
+    logger.warn(
+      { invoiceId: invoice.id, workspaceId },
+      "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Metronome-pushed invoice force-charge (invoice.finalized)
+//
+// Metronome pushes its subscription invoices to Stripe via
+// `direct_to_billing_provider` with `charge_automatically`, but Stripe
+// occasionally finalizes them with the PaymentIntent in "incomplete" state
+// (no PM on the PI), so the auto-charge never fires. We force a charge here
+// using the customer's default PM. Stripe dunning still handles real
+// declines / SCA fallthrough.
+// ---------------------------------------------------------------------------
+
+async function forceChargeMetronomeFinalizedInvoice(
+  invoice: Stripe.Invoice
+): Promise<void> {
+  if (
+    invoice.status !== "open" ||
+    invoice.amount_due <= 0 ||
+    invoice.collection_method !== "charge_automatically" ||
+    !invoice.id
+  ) {
+    return;
+  }
+  try {
+    await getStripeClient().invoices.pay(invoice.id);
+    logger.info(
+      { invoiceId: invoice.id, customer: invoice.customer },
+      "[Stripe Webhook] Charged Metronome subscription invoice on finalize"
+    );
+  } catch (err) {
+    logger.warn(
+      {
+        error: normalizeError(err),
+        invoiceId: invoice.id,
+        customer: invoice.customer,
+      },
+      "[Stripe Webhook] Failed to charge Metronome subscription invoice on finalize; Stripe dunning will retry"
+    );
+  }
+}
+
+/**
+ * Shared payment-failure handling for a workspace subscription. Skips
+ * enterprise plans (paid by wire on 30-day terms), flags the subscription as
+ * payment-failing, and emails admins + the Stripe customer email.
+ * Used by both the Stripe-subscription and Metronome-subscription paths.
+ */
+async function notifyAdminsOfPaymentFailure({
+  auth,
+  subscription,
+  invoice,
+  now,
+}: {
+  auth: Authenticator;
+  subscription: SubscriptionResource;
+  invoice: Stripe.Invoice;
+  now: Date;
+}): Promise<void> {
+  const owner = auth.workspace();
+  const subscriptionType = auth.subscription();
+  if (!owner || !subscriptionType) {
+    throw new Error(
+      "notifyAdminsOfPaymentFailure: missing owner or subscription on auth"
+    );
+  }
+  if (isEntreprisePlanPrefix(subscriptionType.plan.code)) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        invoiceId: invoice.id,
+        planCode: subscriptionType.plan.code,
+      },
+      "[Stripe Webhook] Skipping payment_failed handling for enterprise workspace."
+    );
+    return;
+  }
+  if (subscription.paymentFailingSince === null) {
+    await subscription.setPaymentFailingStatus({
+      paymentFailingSince: now,
+    });
+  }
+  const { members } = await getMembers(auth, {
+    roles: ["admin"],
+    activeOnly: true,
+  });
+  const adminEmails = members.map((u) => u.email);
+  const customerEmail = invoice.customer_email;
+  if (customerEmail && !adminEmails.includes(customerEmail)) {
+    adminEmails.push(customerEmail);
+  }
+  const portalUrl = await createCustomerPortalSession({
+    owner,
+    subscription: subscriptionType,
+  });
+  for (const adminEmail of adminEmails) {
+    await sendAdminSubscriptionPaymentFailedEmail(adminEmail, portalUrl);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// checkout.session.completed handlers
+// ---------------------------------------------------------------------------
+
+/**
+ * Handles a completed Stripe Checkout session in `setup` mode (Metronome
+ * subscriptions). On error, stores the error alongside the session for the
+ * client-side payment-processing page to surface, then logs at the right
+ * severity based on the error code.
+ *
+ * Does not write a response — the caller acks Stripe via the trailing 200.
+ */
+async function handleMetronomeCheckoutCompleted({
+  session,
+  workspaceId,
+  planCode,
+  now,
+}: {
+  session: Stripe.Checkout.Session;
+  workspaceId: string | null;
+  planCode: string | null;
+  now: Date;
+}): Promise<void> {
+  const result = await handleMetronomeSetupCheckout({ session, now });
+  if (result.isErr()) {
+    await storeMetronomeCheckoutError({
+      sessionId: session.id,
+      message: result.error.message,
+    });
+
+    switch (result.error.code) {
+      case "workspace_not_found":
+        break;
+      case "subscription_already_exists":
+        logger.warn(
+          { error: result.error, workspaceId, planCode },
+          `[Stripe Webhook] Metronome setup: ${result.error.message}`
+        );
+        break;
+      default:
+        logger.error(
+          { error: result.error, workspaceId, planCode },
+          `[Stripe Webhook] Metronome setup: ${result.error.message}`
+        );
+        break;
+    }
+  }
+}
+
+/**
+ * Handles a completed Stripe Checkout session in `subscription` mode (the
+ * legacy Stripe-billed path). Creates the local Subscription row, ends any
+ * prior active subscription, restores the workspace, and shadow-provisions a
+ * Metronome contract when the session carries a `metronomePackageAlias`.
+ *
+ * Does not write a response — the caller acks Stripe via the trailing 200.
+ */
+async function handleStripeCheckoutCompleted({
+  session,
+  workspaceId,
+  planCode,
+  stripeSubscriptionId,
+  metronomePackageAlias,
+  stripe,
+  now,
+}: {
+  session: Stripe.Checkout.Session;
+  workspaceId: string | null;
+  planCode: string | null;
+  stripeSubscriptionId: string | Stripe.Subscription | null;
+  metronomePackageAlias: string | null;
+  stripe: Stripe;
+  now: Date;
+}): Promise<void> {
+  try {
+    if (
+      workspaceId === null ||
+      planCode === null ||
+      typeof stripeSubscriptionId !== "string"
+    ) {
+      throw new Error("Missing required data in event.");
+    }
+
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    if (!workspace) {
+      // DD watches this warning across regions; alerts if it fires in all of
+      // them (i.e. the workspace really doesn't exist anywhere).
+      logger.warn(
+        { workspaceId, subscriptionId: stripeSubscriptionId },
+        "[Stripe Webhook] Cannot find workspace."
+      );
+      return;
+    }
+    const plan = await PlanModel.findOne({ where: { code: planCode } });
+    if (!plan) {
+      throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
+    }
+    const checkoutStripeSubscription =
+      await stripe.subscriptions.retrieve(stripeSubscriptionId);
+
+    // Conflict checks return null from the transaction so we skip the rest
+    // of the post-creation work (tracking, restore, shadow Metronome,
+    // WorkOS workflow). The conflict is already logged.
+    const newSubscription = await withTransaction(async (t) => {
+      const activeSubscription =
+        await SubscriptionResource.fetchActiveByWorkspaceModelId(
+          workspace.id,
+          t
+        );
+
+      // Block a double subscription on the same plan.
+      if (activeSubscription && activeSubscription.planId === plan.id) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            stripeSubscriptionId,
+            planCode,
+            stripeError: true,
+          },
+          "[Stripe Webhook] Received checkout.session.completed when we already have a subscription for this plan on the workspace. Check on Stripe dashboard."
+        );
+        return null;
+      }
+
+      // Block a new subscription if the active one is already paid.
+      if (
+        activeSubscription &&
+        activeSubscription.stripeSubscriptionId !== null
+      ) {
+        logger.error(
+          {
+            workspaceId,
+            stripeSubscriptionId,
+            planCode,
+            stripeError: true,
+          },
+          "[Stripe Webhook] Received checkout.session.completed when we already have a paid subscription on the workspace. Check on Stripe dashboard."
+        );
+        return null;
+      }
+
+      if (activeSubscription) {
+        await activeSubscription.markAsEnded("ended", t);
+      }
+
+      return SubscriptionResource.makeNew(
+        {
+          sId: generateRandomModelSId(),
+          workspaceId: workspace.id,
+          planId: plan.id,
+          status: "active",
+          trialing: checkoutStripeSubscription.status === "trialing",
+          startDate: now,
+          stripeSubscriptionId,
+        },
+        renderPlanFromModel({ plan }),
+        t
+      );
+    });
+
+    if (!newSubscription) {
+      // Conflict already logged inside the transaction.
+      return;
+    }
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const workspaceSeats = await MembershipResource.countActiveSeatsInWorkspace(
+      workspace.sId
+    );
+    await ServerSideTracking.trackSubscriptionCreated({
+      workspace: renderLightWorkspaceType({ workspace }),
+      planCode,
+      workspaceSeats,
+      subscriptionStartAt: now,
+    });
+    await restoreWorkspaceAfterSubscription(auth);
+
+    if (
+      metronomePackageAlias &&
+      isString(checkoutStripeSubscription.customer)
+    ) {
+      const currentPeriodStart = new Date(
+        checkoutStripeSubscription.current_period_start * 1000
+      );
+
+      const billingCurrency = resolveCurrencyFromStripe({
+        stripeSubscription: checkoutStripeSubscription,
+      });
+      const resolvedAlias = resolvePackageAliasForCurrency(
+        metronomePackageAlias,
+        billingCurrency
+      );
+      void provisionShadowMetronome({
+        workspace,
+        stripeCustomerId: checkoutStripeSubscription.customer,
+        metronomePackageAlias: resolvedAlias,
+        sessionId: session.id,
+        subscriptionModelId: newSubscription.id,
+        periodStart: new Date(floorToHourISO(currentPeriodStart)),
+        planCode,
+      });
+    }
+
+    await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({ workspaceId });
+  } catch (error) {
+    // Ack to Stripe (no retry) — retrying won't fix data/logic errors. The
+    // failure is logged for follow-up.
+    logger.error(
+      {
+        error,
+        workspaceId,
+        stripeSubscriptionId,
+        planCode,
+        stripeError: true,
+      },
+      "Error creating subscription."
     );
   }
 }
@@ -217,13 +770,11 @@ async function handler(
         "Processing Stripe event."
       );
 
-      let subscription;
       let stripeSubscription;
-      let invoice;
       const now = new Date();
 
       switch (event.type) {
-        case "checkout.session.completed":
+        case "checkout.session.completed": {
           // Payment is successful and the stripe subscription is created.
           // We can create the new subscription and end the active one if any.
           const session = event.data.object as Stripe.Checkout.Session;
@@ -232,20 +783,15 @@ async function handler(
           const planCode = session?.metadata?.planCode || null;
           const metronomePackageAlias =
             session?.metadata?.metronomePackageAlias || null;
-          const userId = session?.metadata?.userId || null;
 
           if (session.status === "open" || session.status === "expired") {
-            // Open: The checkout session is still in progress. Payment processing has not started.
-            // Expired: The checkout session has expired (e.g., because of lack of payment).
+            // Open: still in progress, payment processing has not started.
+            // Expired: e.g. lack of payment.
             logger.info(
-              {
-                workspaceId,
-                stripeSubscriptionId,
-                planCode,
-              },
+              { workspaceId, stripeSubscriptionId, planCode },
               `[Stripe Webhook] Received checkout.session.completed with status "${session.status}". Ignoring event.`
             );
-            return res.status(200).json({ success: true });
+            break;
           }
           if (session.status !== "complete") {
             logger.error(
@@ -255,475 +801,114 @@ async function handler(
                 planCode,
                 stripeError: true,
               },
-              `[Stripe Webhook] Received checkout.session.completed with unkown status "${session.status}". Ignoring event.`
+              `[Stripe Webhook] Received checkout.session.completed with unknown status "${session.status}". Ignoring event.`
             );
-            return res.status(200).json({ success: true });
+            break;
           }
 
-          // Branch on session mode: "setup" for Metronome, "subscription" for Stripe.
+          // Branch on session mode: "setup" for Metronome, "subscription"
+          // for the legacy Stripe-billed path.
           if (session.mode === "setup") {
-            const result = await handleMetronomeSetupCheckout({
+            await handleMetronomeCheckoutCompleted({
               session,
+              workspaceId,
+              planCode,
               now,
             });
-
-            if (result.isOk()) {
-              return res.status(200).json({ success: true });
-            }
-
-            switch (result.error.code) {
-              case "subscription_already_exists":
-              case "workspace_not_found":
-                logger.warn(
-                  { error: result.error, workspaceId, planCode },
-                  `[Stripe Webhook] Metronome setup: ${result.error.message}`
-                );
-                return res
-                  .status(200)
-                  .json({ success: false, message: result.error.message });
-
-              default:
-                logger.error(
-                  { error: result.error, workspaceId, planCode },
-                  `[Stripe Webhook] Metronome setup: ${result.error.message}`
-                );
-                return apiError(req, res, {
-                  status_code: 500,
-                  api_error: {
-                    type: "internal_server_error",
-                    message:
-                      "Stripe Webhook: error handling Metronome setup checkout.session.completed.",
-                  },
-                });
-            }
-          }
-
-          try {
-            if (
-              workspaceId === null ||
-              planCode === null ||
-              typeof stripeSubscriptionId !== "string"
-            ) {
-              throw new Error("Missing required data in event.");
-            }
-
-            const workspace = await WorkspaceResource.fetchById(workspaceId);
-            if (!workspace) {
-              logger.warn(
-                {
-                  event,
-                  workspaceId,
-                  subscriptionId: stripeSubscriptionId,
-                },
-                "[Stripe Webhook] Cannot find workspace."
-              );
-              // We return a 200 here to handle multiple regions, DD will watch
-              // the warnings and create an alert if this log appears in all regions
-              return res.status(200).json({ success: true });
-            }
-            const plan = await PlanModel.findOne({
-              where: { code: planCode },
-            });
-            if (!plan) {
-              throw new Error(
-                `Cannot subscribe to plan ${planCode}: not found.`
-              );
-            }
-            const checkoutStripeSubscription =
-              await stripe.subscriptions.retrieve(stripeSubscriptionId);
-
-            const newSubscription = await withTransaction(async (t) => {
-              const activeSubscription =
-                await SubscriptionResource.fetchActiveByWorkspaceModelId(
-                  workspace.id,
-                  t
-                );
-
-              // We block a double subscription for a workspace on the same plan
-              if (activeSubscription && activeSubscription.planId === plan.id) {
-                logger.error(
-                  {
-                    workspaceId: workspace.sId,
-                    stripeSubscriptionId,
-                    planCode,
-                    stripeError: true,
-                  },
-                  "[Stripe Webhook] Received checkout.session.completed when we already have a subscription for this plan on the workspace. Check on Stripe dashboard."
-                );
-
-                return res.status(200).json({
-                  success: false,
-                  message:
-                    "Conflict: Active subscription already exists for this workspace/plan.",
-                });
-              }
-
-              // We block a new subscription if the active one is with payment
-              if (
-                activeSubscription &&
-                activeSubscription.stripeSubscriptionId !== null
-              ) {
-                logger.error(
-                  {
-                    workspaceId,
-                    stripeSubscriptionId,
-                    planCode,
-                    stripeError: true,
-                  },
-                  "[Stripe Webhook] Received checkout.session.completed when we already have a paid subscription on the workspace. Check on Stripe dashboard."
-                );
-
-                return res.status(200).json({
-                  success: false,
-                  message:
-                    "Conflict: Active subscription with payment already exists for this workspace.",
-                });
-              }
-
-              if (activeSubscription) {
-                await activeSubscription.markAsEnded("ended", t);
-              }
-
-              return SubscriptionResource.makeNew(
-                {
-                  sId: generateRandomModelSId(),
-                  workspaceId: workspace.id,
-                  planId: plan.id,
-                  status: "active",
-                  trialing: checkoutStripeSubscription.status === "trialing",
-                  startDate: now,
-                  stripeSubscriptionId: stripeSubscriptionId,
-                },
-                renderPlanFromModel({ plan }),
-                t
-              );
-            });
-            const auth = await Authenticator.internalAdminForWorkspace(
-              workspace.sId
-            );
-            const shouldGrantFreeCreditsOnCheckoutCompletion =
-              checkoutStripeSubscription.status === "active" ||
-              checkoutStripeSubscription.status === "trialing";
-
-            if (shouldGrantFreeCreditsOnCheckoutCompletion) {
-              const freeCreditsResult = await grantFreeCreditsForSubscription({
-                auth,
-                stripeSubscription: checkoutStripeSubscription,
-              });
-
-              if (freeCreditsResult.isErr()) {
-                logger.error(
-                  {
-                    error: freeCreditsResult.error,
-                    subscriptionId: checkoutStripeSubscription.id,
-                    workspaceId: workspace.sId,
-                  },
-                  "[Stripe Webhook] Error granting free credits on checkout.session.completed"
-                );
-              }
-            }
-
-            if (userId) {
-              const workspaceSeats =
-                await MembershipResource.countActiveSeatsInWorkspace(
-                  workspace.sId
-                );
-              await ServerSideTracking.trackSubscriptionCreated({
-                userId,
-                workspace: renderLightWorkspaceType({ workspace }),
-                planCode,
-                workspaceSeats,
-                subscriptionStartAt: now,
-              });
-            }
-            await restoreWorkspaceAfterSubscription(auth);
-
-            if (
-              metronomePackageAlias &&
-              newSubscription &&
-              isString(checkoutStripeSubscription.customer)
-            ) {
-              // Resolve EUR variant based on Stripe subscription currency.
-              const subscriptionCurrency =
-                checkoutStripeSubscription.currency === "eur" ? "eur" : "usd";
-              const resolvedAlias = resolvePackageAliasForCurrency(
-                metronomePackageAlias,
-                subscriptionCurrency
-              );
-              void shadowProvisionMetronome({
-                workspace,
-                stripeCustomerId: checkoutStripeSubscription.customer,
-                metronomePackageAlias: resolvedAlias,
-                sessionId: session.id,
-                subscriptionModelId: newSubscription.id,
-              });
-            }
-
-            await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
+          } else {
+            await handleStripeCheckoutCompleted({
+              session,
               workspaceId,
-            });
-
-            return res.status(200).json({ success: true });
-          } catch (error) {
-            logger.error(
-              {
-                error,
-                workspaceId,
-                stripeSubscriptionId,
-                planCode,
-                stripeError: true,
-              },
-              "Error creating subscription."
-            );
-
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message:
-                  "Stripe Webhook: error handling checkout.session.completed.",
-              },
+              planCode,
+              stripeSubscriptionId,
+              metronomePackageAlias,
+              stripe,
+              now,
             });
           }
+          break;
+        }
+
         case "invoice.paid": {
-          // This is what confirms the subscription is active and payments are being made.
           logger.info(
             { event },
             "[Stripe Webhook] Received customer.invoice.paid event."
           );
           const invoice = event.data.object as Stripe.Invoice;
-          if (typeof invoice.subscription !== "string") {
-            return _returnStripeApiError(
-              req,
-              res,
-              "invoice.paid",
-              "Subscription in event is not a string."
-            );
+          const ctx = await resolveInvoiceCtx(invoice);
+          if (!ctx) {
+            break;
           }
-          // Setting subscription payment status to succeeded.
-          const subscription = await SubscriptionResource.fetchByStripeId(
-            invoice.subscription
-          );
-
-          if (!subscription || !subscription.stripeSubscriptionId) {
-            logger.warn(
-              {
-                event,
-                stripeSubscriptionId: invoice.subscription,
-              },
-              "[Stripe Webhook] Subscription not found."
-            );
-            // We return a 200 here to handle multiple regions, DD will watch
-            // the warnings and create an alert if this log appears in all regions
-            return res.status(200).json({ success: true });
-          }
-
-          const stripeSubscription = await getStripeSubscription(
-            subscription.stripeSubscriptionId
-          );
-
-          if (!stripeSubscription) {
-            logger.warn(
-              {
-                event,
-                stripeSubscriptionId: invoice.subscription,
-              },
-              "[Stripe Webhook] Stripe subscription not found."
-            );
-            // We return a 200 here to handle multiple regions, DD will watch
-            // the warnings and create an alert if this log appears in all regions
-            return res.status(200).json({ success: true });
-          }
-
-          const isProCreditPurchaseInvoice =
-            isCreditPurchaseInvoice(invoice) &&
-            !isEnterpriseSubscription(stripeSubscription);
-
-          const workspace = await WorkspaceResource.fetchByModelId(
-            subscription.workspaceId
-          );
-          assert(workspace !== null, "Workspace not found for subscription.");
-
-          const auth = await Authenticator.internalAdminForWorkspace(
-            workspace.sId
-          );
-
-          if (isProCreditPurchaseInvoice) {
-            const creditPurchaseResult = await startCreditFromProOneOffInvoice({
-              auth,
+          if (isCreditPurchaseInvoice(invoice)) {
+            await startCreditFromPaidInvoice({
               invoice,
-              stripeSubscription,
+              auth: ctx.auth,
+              isEnterprise: ctx.isEnterprise,
             });
-
-            if (creditPurchaseResult.isErr()) {
-              logger.error(
-                {
-                  error: creditPurchaseResult.error,
-                  invoiceId: invoice.id,
-                  stripeSubscriptionId: invoice.subscription,
-                },
-                "[Stripe Webhook] Error processing credit purchase"
-              );
-            }
-          } else if (!isCreditPurchaseInvoice(invoice)) {
-            await subscription.clearPaymentFailingStatus();
+          } else {
+            await ctx.subscription.clearPaymentFailingStatus();
           }
           break;
         }
 
-        case "invoice.payment_failed":
-          // Occurs when payment failed or the user does not have a valid payment method.
-          // The stripe subscription becomes "past_due".
-          // We log it on the Subscription to display a banner and email the admins.
+        case "invoice.finalized": {
+          logger.info(
+            { event },
+            "[Stripe Webhook] Received invoice.finalized event."
+          );
+
+          const invoice = event.data.object as Stripe.Invoice;
+          const isMetronomeInvoice = typeof invoice.subscription !== "string";
+          const isCreditPurchase = isCreditPurchaseInvoice(invoice);
+
+          // Only Metronome subscription invoices need the force-charge.
+          // Stripe-subscription invoices have their own auto-charge flow;
+          // credit-purchase invoices have their own flow too.
+          if (isMetronomeInvoice && !isCreditPurchase) {
+            await forceChargeMetronomeFinalizedInvoice(invoice);
+          }
+          break;
+        }
+
+        case "invoice.payment_failed": {
           logger.warn(
             { event },
             "[Stripe Webhook] Received invoice.payment_failed event."
           );
-          invoice = event.data.object as Stripe.Invoice;
+          const invoice = event.data.object as Stripe.Invoice;
 
-          // If the invoice is for a subscription creation, we don't need to do anything
+          // First-invoice failures during subscription creation are handled
+          // by Stripe's own dunning retries — nothing to do.
           if (invoice.billing_reason === "subscription_create") {
-            return res.status(200).json({ success: true });
+            break;
           }
 
-          if (typeof invoice.subscription !== "string") {
-            return _returnStripeApiError(
-              req,
-              res,
-              "invoice.payment_failed",
-              "Subscription in event is not a string."
-            );
+          const ctx = await resolveInvoiceCtx(invoice);
+          if (!ctx) {
+            break;
           }
-
-          // Logging that we have a failed payment
-          subscription = await SubscriptionResource.fetchByStripeId(
-            invoice.subscription
-          );
-          if (!subscription) {
-            logger.warn(
-              {
-                event,
-                stripeSubscriptionId: invoice.subscription,
-              },
-              "[Stripe Webhook] Subscription not found."
-            );
-            // We return a 200 here to handle multiple regions, DD will watch
-            // the warnings and create an alert if this log appears in all regions
-            return res.status(200).json({ success: true });
-          }
-
-          // TODO(2024-01-16 by flav) This line should be removed after all Stripe webhooks have been retried.
-          // Previously, there was an error in how we handled the cancellation of subscriptions.
-          // This change ensures that we return a success status if the subscription is already marked as "ended".
-          if (subscription.status === "ended") {
-            return res.status(200).json({ success: true });
-          }
-
-          const workspace = await WorkspaceResource.fetchByModelId(
-            subscription.workspaceId
-          );
-          assert(
-            workspace !== null,
-            "Workspace not found for subscription in invoice.payment_failed."
-          );
-
-          // Send email to admins + customer email who subscribed in Stripe
-          const auth = await Authenticator.internalAdminForWorkspace(
-            workspace.sId
-          );
-
-          // Handle Pro credit purchase invoice failures
-          stripeSubscription = await getStripeSubscription(
-            invoice.subscription
-          );
-
-          if (!stripeSubscription) {
-            logger.error(
-              {
-                event,
-                stripeError: true,
-                stripeSubscriptionId: invoice.subscription,
-              },
-              "[Stripe Webhook] Stripe Subscription not found."
-            );
-          }
-          const isProCreditPurchaseInvoice =
-            stripeSubscription &&
-            isCreditPurchaseInvoice(invoice) &&
-            !isEnterpriseSubscription(stripeSubscription);
-          // When we received a failed payment for a credit purchase (pro or enterprise),
-          // we do NOT want to set the payment failing status or send an email to the admin
-          // telling them their subscription is going to be cancelled.
-          // Credits have not been provisioned yet — for pro, we void the invoice after
-          // repeated failures; for enterprise, they are paid in arrears or with a 30-day notice.
           if (isCreditPurchaseInvoice(invoice)) {
-            if (isProCreditPurchaseInvoice) {
-              const result = await voidFailedProCreditPurchaseInvoice({
-                auth,
+            // Credits have not been provisioned yet, so we do NOT mark the
+            // subscription as payment-failing or email admins. Pro: void
+            // after repeated failures. Enterprise: paid in arrears /
+            // 30-day notice — no-op.
+            if (!ctx.isEnterprise) {
+              await voidProCreditPurchaseInvoiceOnFailure({
+                auth: ctx.auth,
                 invoice,
+                workspaceId: ctx.workspace.sId,
               });
-              if (result.isErr()) {
-                // For eng-oncall
-                // This case is supposed to be extremely rare, as there are not a lot of things that can fail
-                // during an invoice void, you will need to inspect the invoice directly in stripe to see what
-                // happened, and invoice it by hand, with the added metadata put in `voidFailedProCreditPurchase`
-                // contact Stripe owners in case of doubt
-                logger.error(
-                  {
-                    error: result.error,
-                    panic: true,
-                    stripeError: true,
-                    invoiceId: invoice.id,
-                  },
-                  "[Stripe Webhook] Error handling failed credit purchase"
-                );
-              } else if (result.value.voided) {
-                logger.warn(
-                  { invoiceId: invoice.id },
-                  "[Stripe Webhook] Voided Pro credit purchase invoice after 3 failures"
-                );
-              }
             }
           } else {
-            const owner = auth.workspace();
-            const subscriptionType = auth.subscription();
-
-            if (!owner || !subscriptionType) {
-              return _returnStripeApiError(
-                req,
-                res,
-                "invoice.payment_failed",
-                "Couldn't get owner or subscription from `auth`."
-              );
-            }
-
-            if (subscription.paymentFailingSince === null) {
-              await subscription.setPaymentFailingStatus({
-                paymentFailingSince: now,
-              });
-            }
-
-            const { members } = await getMembers(auth, {
-              roles: ["admin"],
-              activeOnly: true,
+            await notifyAdminsOfPaymentFailure({
+              auth: ctx.auth,
+              subscription: ctx.subscription,
+              invoice,
+              now,
             });
-            const adminEmails = members.map((u) => u.email);
-            const customerEmail = invoice.customer_email;
-            if (customerEmail && !adminEmails.includes(customerEmail)) {
-              adminEmails.push(customerEmail);
-            }
-            const portalUrl = await createCustomerPortalSession({
-              owner,
-              subscription: subscriptionType,
-            });
-            for (const adminEmail of adminEmails) {
-              await sendAdminSubscriptionPaymentFailedEmail(
-                adminEmail,
-                portalUrl
-              );
-            }
           }
           break;
+        }
 
         case "charge.dispute.created": {
           const dispute = event.data.object as Stripe.Dispute;
@@ -751,72 +936,37 @@ async function handler(
             break;
           }
 
-          if (!isString(disputeInvoice.subscription)) {
-            logger.error(
-              {
-                disputeId: dispute.id,
-                invoiceId: disputeInvoice.id,
-                stripeError: true,
-              },
-              "[Stripe Webhook] Credit purchase invoice has no subscription."
-            );
+          // Disputed credit purchase: freeze the credit, regardless of
+          // whether the invoice is Stripe-subscription-attached or pushed by
+          // Metronome.
+          const ctx = await resolveInvoiceCtx(disputeInvoice);
+          if (!ctx) {
             break;
           }
-
-          const disputeSubscription =
-            await SubscriptionResource.fetchByStripeId(
-              disputeInvoice.subscription
-            );
-          if (!disputeSubscription) {
-            logger.warn(
-              {
-                disputeId: dispute.id,
-                invoiceId: disputeInvoice.id,
-                stripeSubscriptionId: disputeInvoice.subscription,
-              },
-              "[Stripe Webhook] Subscription not found for disputed credit purchase."
-            );
-            break;
-          }
-
-          const workspace = await WorkspaceResource.fetchByModelId(
-            disputeSubscription.workspaceId
-          );
-          assert(
-            workspace !== null,
-            "Workspace not found for subscription in charge.dispute.created."
-          );
-
-          const disputeAuth = await Authenticator.internalAdminForWorkspace(
-            workspace.sId
-          );
-
           const credit = await CreditResource.fetchByInvoiceOrLineItemId(
-            disputeAuth,
+            ctx.auth,
             disputeInvoice.id
           );
-
           if (!credit) {
             logger.error(
               {
                 disputeId: dispute.id,
                 invoiceId: disputeInvoice.id,
-                workspaceId: workspace.sId,
+                workspaceId: ctx.workspace.sId,
                 stripeError: true,
               },
               "[Stripe Webhook] Credit not found for disputed credit purchase invoice."
             );
             break;
           }
-
-          const freezeResult = await credit.freeze(disputeAuth);
+          const freezeResult = await credit.freeze(ctx.auth);
           if (freezeResult.isErr()) {
             logger.error(
               {
                 disputeId: dispute.id,
                 invoiceId: disputeInvoice.id,
                 creditId: credit.id,
-                workspaceId: workspace.sId,
+                workspaceId: ctx.workspace.sId,
                 error: freezeResult.error,
                 stripeError: true,
               },
@@ -828,12 +978,11 @@ async function handler(
                 disputeId: dispute.id,
                 invoiceId: disputeInvoice.id,
                 creditId: credit.id,
-                workspaceId: workspace.sId,
+                workspaceId: ctx.workspace.sId,
               },
               "[Stripe Webhook] Successfully froze credit due to payment dispute."
             );
           }
-
           break;
         }
 
@@ -844,89 +993,39 @@ async function handler(
             break;
           }
 
-          if (!isString(voidedInvoice.subscription)) {
-            logger.warn(
-              { invoiceId: voidedInvoice.id, stripeError: true },
-              "[Stripe Webhook] Voided credit purchase invoice has no subscription."
-            );
+          const ctx = await resolveInvoiceCtx(voidedInvoice);
+          if (!ctx) {
             break;
           }
-
-          const voidedSubscription = await SubscriptionResource.fetchByStripeId(
-            voidedInvoice.subscription
-          );
-
-          if (!voidedSubscription) {
-            logger.warn(
-              {
-                invoiceId: voidedInvoice.id,
-                stripeSubscriptionId: voidedInvoice.subscription,
-              },
-              "[Stripe Webhook] Subscription not found for voided credit purchase invoice."
-            );
+          // Enterprise customers handle credit purchases differently (paid
+          // in arrears / 30-day notice) — no auto-delete on void.
+          if (ctx.isEnterprise) {
             break;
           }
-
-          const stripeSubscription = await getStripeSubscription(
-            voidedInvoice.subscription
-          );
-
-          if (!stripeSubscription) {
-            logger.error(
-              {
-                invoiceId: voidedInvoice.id,
-                stripeSubscriptionId: voidedInvoice.subscription,
-                stripeError: true,
-              },
-              "[Stripe Webhook] Stripe subscription not found for voided invoice"
-            );
-            break;
-          }
-
-          // Skip enterprise subscriptions - they handle credit purchases differently
-          if (isEnterpriseSubscription(stripeSubscription)) {
-            break;
-          }
-          const workspace = await WorkspaceResource.fetchByModelId(
-            voidedSubscription.workspaceId
-          );
-          assert(
-            workspace !== null,
-            "Workspace not found for subscription in invoice.voided."
-          );
-
-          const auth = await Authenticator.internalAdminForWorkspace(
-            workspace.sId
-          );
 
           const deleteResult = await deleteCreditFromVoidedInvoice({
-            auth,
+            auth: ctx.auth,
             invoice: voidedInvoice,
           });
-
           if (deleteResult.isOk()) {
             logger.info(
-              {
-                invoiceId: voidedInvoice.id,
-                workspaceId: workspace.sId,
-              },
+              { invoiceId: voidedInvoice.id, workspaceId: ctx.workspace.sId },
               "[Stripe Webhook] Successfully deleted credit for voided credit purchase invoice."
             );
             break;
           }
 
           const error = deleteResult.error;
-
           switch (error.type) {
             case "credit_already_started": {
               // Unexpected: credit was started but invoice was voided. Freeze it.
-              const freezeResult = await error.credit.freeze(auth);
+              const freezeResult = await error.credit.freeze(ctx.auth);
               if (freezeResult.isErr()) {
                 logger.warn(
                   {
                     invoiceId: voidedInvoice.id,
                     creditId: error.credit.id,
-                    workspaceId: workspace.sId,
+                    workspaceId: ctx.workspace.sId,
                     error: freezeResult.error.message,
                   },
                   "[Stripe Webhook] Failed to freeze started credit for voided invoice. Possible race condition."
@@ -936,7 +1035,7 @@ async function handler(
                   {
                     invoiceId: voidedInvoice.id,
                     creditId: error.credit.id,
-                    workspaceId: workspace.sId,
+                    workspaceId: ctx.workspace.sId,
                   },
                   "[Stripe Webhook] Froze started credit for voided invoice"
                 );
@@ -944,12 +1043,11 @@ async function handler(
               break;
             }
             case "credit_not_found":
-              // Possible race condition with voidFailedProCreditPurchaseInvoice
-              // no-op
+              // Possible race with voidFailedProCreditPurchaseInvoice — no-op.
               logger.warn(
                 {
                   invoiceId: voidedInvoice.id,
-                  workspaceId: workspace.sId,
+                  workspaceId: ctx.workspace.sId,
                   error: error.type,
                 },
                 "[Stripe Webhook] Failed to delete credit for voided invoice, credit_not_found. Possible race condition."
@@ -958,7 +1056,6 @@ async function handler(
             default:
               assertNever(error);
           }
-
           break;
         }
 
@@ -988,38 +1085,6 @@ async function handler(
               },
               "[Stripe Webhook] Received customer.subscription.created event with invalid subscription."
             );
-          }
-
-          const subscription = await SubscriptionResource.fetchByStripeId(
-            stripeSubscription.id
-          );
-          if (subscription) {
-            const workspace = await WorkspaceResource.fetchByModelId(
-              subscription.workspaceId
-            );
-            assert(
-              workspace !== null,
-              "Workspace not found for subscription in customer.subscription.created."
-            );
-            const auth = await Authenticator.internalAdminForWorkspace(
-              workspace.sId
-            );
-
-            const freeCreditsResult = await grantFreeCreditsForSubscription({
-              auth,
-              stripeSubscription,
-            });
-
-            if (freeCreditsResult.isErr()) {
-              logger.error(
-                {
-                  error: freeCreditsResult.error,
-                  subscriptionId: stripeSubscription.id,
-                  workspaceId: workspace.sId,
-                },
-                "[Stripe Webhook] Error granting free credits on subscription created"
-              );
-            }
           }
 
           break;
@@ -1074,22 +1139,6 @@ async function handler(
             const auth = await Authenticator.internalAdminForWorkspace(
               workspace.sId
             );
-
-            const freeCreditsResult = await grantFreeCreditsForSubscription({
-              auth,
-              stripeSubscription,
-            });
-
-            if (freeCreditsResult.isErr()) {
-              logger.error(
-                {
-                  error: freeCreditsResult.error,
-                  subscriptionId: stripeSubscription.id,
-                  workspaceId: workspace.sId,
-                },
-                "[Stripe Webhook] Error granting free credits"
-              );
-            }
 
             if (subscriptionCycleChanged) {
               const paygEnabled = await isPAYGEnabled(auth);
@@ -1368,13 +1417,16 @@ async function handler(
           stripeSubscription = event.data.object as Stripe.Subscription;
 
           if (stripeSubscription.status !== "canceled") {
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: `[Stripe Webhook] Received customer.subscription.deleted with unknown status = ${stripeSubscription.status}. Expected status = canceled.`,
+            logger.error(
+              {
+                event,
+                stripeSubscriptionId: stripeSubscription.id,
+                status: stripeSubscription.status,
+                stripeError: true,
               },
-            });
+              `[Stripe Webhook] Received customer.subscription.deleted with unknown status = ${stripeSubscription.status}. Expected status = canceled.`
+            );
+            return res.status(200).json({ success: true });
           }
 
           const matchingSubscription =
@@ -1399,6 +1451,14 @@ async function handler(
                 { event },
                 "[Stripe Webhook] Received customer.subscription.deleted event but the subscription was already with status = ended. Doing nothing."
               );
+              break;
+            case "created_backend_only":
+              // Should never happen — pending subs have no stripeSubscriptionId.
+              logger.warn(
+                { event },
+                "[Stripe Webhook] Unexpected: customer.subscription.deleted matched a created_backend_only subscription. Marking it as ended."
+              );
+              await matchingSubscription.markAsEnded("ended");
               break;
             case "ended_backend_only":
               // This status is set by the backend after a Poké workspace migration from one plan to another.
@@ -1504,21 +1564,6 @@ async function handler(
         },
       });
   }
-}
-
-function _returnStripeApiError(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetResponseBody>>,
-  event: string,
-  message: string
-) {
-  return apiError(req, res, {
-    status_code: 500,
-    api_error: {
-      type: "internal_server_error",
-      message: `[Stripe Webhook][${event}] ${message}`,
-    },
-  });
 }
 
 export default withLogging(handler);

@@ -84,9 +84,14 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   // Fetch user data whenever there is a session (or posthogId). We need the
   // user's sId for posthog.identify() in all contexts, including authenticated
   // SPAs where hasCookiesAccepted is auto-true.
+  // This tracker is mounted globally (every page, public + app). On public
+  // pages a stale `dust-has-session` cookie can yield a 401 here; we must
+  // not redirect to login in that case. Real session expiry on app pages is
+  // still handled by other authenticated SWR calls.
   const disabled = !posthogId && !hasSession;
   const { user } = useUser({
     disabled,
+    redirectOnUnauthenticated: false,
   });
 
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
@@ -141,6 +146,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   const hasInitialized = useRef(false);
   const hasUpgradedPersistence = useRef(false);
   const lastIdentifiedUserId = useRef<string | null>(null);
+  const lastPageviewPathnameRef = useRef<string | null>(null);
 
   // Phase 1: Initialize PostHog with memory-only persistence (no cookies).
   // This captures events for all visitors including anonymous ad traffic,
@@ -265,14 +271,19 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
         }
         event.properties["user_agent"] = navigator.userAgent;
 
-        // Inject blog SEO article flag from page-level meta tag.
+        // Inject blog article classification flags from page-level meta tags.
         if (event.event === "$pageview") {
-          const seoMeta = document.querySelector(
-            'meta[name="dust:is_seo_article"]'
-          );
-          if (seoMeta) {
-            event.properties["is_seo_article"] =
-              seoMeta.getAttribute("content") === "true";
+          const articleFlags = [
+            ["dust:is_seo_article", "is_seo_article"],
+            ["dust:is_geo_article", "is_geo_article"],
+            ["dust:is_thought_leadership", "is_thought_leadership"],
+          ] as const;
+          for (const [metaName, propertyName] of articleFlags) {
+            const meta = document.querySelector(`meta[name="${metaName}"]`);
+            if (meta) {
+              event.properties[propertyName] =
+                meta.getAttribute("content") === "true";
+            }
           }
         }
 
@@ -412,14 +423,24 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     currentWorkspace?.role,
   ]);
 
-  // Track pageviews on route changes.
+  // Track pageviews on client navigations when the pathname changes. Shallow
+  // query updates (e.g. space search `?q=`) still fire routeChangeComplete but
+  // must not emit a new $pageview.
   useEffect(() => {
     if (!posthog.__loaded || !isTrackablePage) {
       return;
     }
 
+    lastPageviewPathnameRef.current = router.pathname;
+
     const handleRouteChange = () => {
       const pathname = router.pathname;
+
+      if (pathname === lastPageviewPathnameRef.current) {
+        return;
+      }
+
+      lastPageviewPathnameRef.current = pathname;
 
       // Don't track pageviews on conversation pages (/conversation/[cId]), but track /conversation/new.
       const isConversationPage = /\/conversation\/(?!new$)[^/]+$/.test(

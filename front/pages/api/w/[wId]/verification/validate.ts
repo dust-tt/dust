@@ -13,12 +13,11 @@ import type {
   VerificationErrorResponse,
   VerifyCodeResponse,
 } from "@app/types/workspace_verification";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const PostValidateVerificationRequestBody = t.type({
+const PostValidateVerificationRequestBody = z.object({
   phoneNumber: E164PhoneNumber,
   code: OtpCode,
 });
@@ -43,11 +42,11 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const bodyValidation = PostValidateVerificationRequestBody.decode(
+      const bodyValidation = PostValidateVerificationRequestBody.safeParse(
         req.body
       );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -57,7 +56,7 @@ async function handler(
         });
       }
 
-      const { phoneNumber, code } = bodyValidation.right;
+      const { phoneNumber, code } = bodyValidation.data;
 
       const result = await validateVerification(auth, phoneNumber, code);
 

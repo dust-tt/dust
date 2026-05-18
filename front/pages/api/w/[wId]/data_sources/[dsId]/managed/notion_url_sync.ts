@@ -9,7 +9,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { GetPostNotionSyncResponseBody } from "@app/types/api/internal/spaces";
 import { PostNotionSyncPayloadSchema } from "@app/types/api/internal/spaces";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -86,19 +85,19 @@ async function handler(
       );
       return res.status(200).json({ syncResults: lastSyncedUrls });
     case "POST":
-      const bodyValidation = PostNotionSyncPayloadSchema.decode(req.body);
+      const bodyValidation = PostNotionSyncPayloadSchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: fromError(bodyValidation.left).toString(),
+            message: fromError(bodyValidation.error).toString(),
           },
         });
       }
 
-      const { urls, method } = bodyValidation.right;
+      const { urls, method } = bodyValidation.data;
 
       const syncResults = (
         await syncNotionUrls({

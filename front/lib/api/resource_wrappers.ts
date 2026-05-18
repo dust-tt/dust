@@ -143,6 +143,7 @@ export function withResourceFetchingFromRoute<
       options: Partial<OptionsMap<ResourceKey>>,
       sessionOrKeyAuth: A
     ) => {
+      console.log(req.url);
       const keys = RESOURCE_KEYS.filter((key) => key in options);
       if (!isResourceMap<U>(resources, keys)) {
         return apiError(req, res, {
@@ -204,7 +205,6 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
           : // casting is fine since conditions checked above exclude
             // possibility of `spaceId` being undefined
             await SpaceResource.fetchById(auth, spaceId as string);
-
       if (!spaceCheck(space) || !hasPermission(auth, space, options.space)) {
         return apiError(req, res, {
           status_code: 404,
@@ -228,10 +228,10 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
-            spaceName: space.name,
-            spaceKind: spaceJSON.kind,
-            isRestricted: "true",
-            accessMethod: deriveAccessMethod(auth),
+            space_name: space.name,
+            space_kind: spaceJSON.kind,
+            is_restricted: "true",
+            access_method: deriveAccessMethod(auth),
           },
         });
       }

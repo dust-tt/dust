@@ -49,6 +49,7 @@ export type PokeDataSourceViewType = DataSourceViewType &
 
 export type PokeMCPServerViewType = MCPServerViewType &
   PokeItemBase & {
+    customName: string | null;
     space: PokeSpaceType;
     connections: {
       connectionType: "workspace" | "personal";

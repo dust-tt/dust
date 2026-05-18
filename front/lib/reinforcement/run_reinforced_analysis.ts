@@ -5,11 +5,8 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import {
-  getLargeWhitelistedModel,
-  isProviderWhitelisted,
-} from "@app/lib/assistant";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { getLargeWhitelistedModel } from "@app/lib/assistant";
+import type { Authenticator } from "@app/lib/auth";
 import {
   hasSuggestionSelfConflict,
   pruneConflictingSkillEditSuggestions,
@@ -33,7 +30,6 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import logger from "@app/logger/logger";
-import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -117,6 +113,19 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
         )
         .optional()
         .describe("Tools to add or remove from the skill."),
+      agentFacingDescriptionEdit: z
+        .object({
+          content: z
+            .string()
+            .min(1)
+            .describe(
+              "The full new agent-facing description (replaces the current one)."
+            ),
+        })
+        .optional()
+        .describe(
+          "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction or tool edits."
+        ),
       analysis: z
         .string()
         .optional()
@@ -315,13 +324,8 @@ export async function getReinforcedSkillsLLM(
   if (!owner) {
     return null;
   }
-  const useOpenAi =
-    (await hasFeatureFlag(auth, "reinforcement_on_openai")) &&
-    isProviderWhitelisted(auth, "openai");
 
-  const model = useOpenAi
-    ? GPT_5_5_MODEL_CONFIG
-    : getLargeWhitelistedModel(auth);
+  const model = getLargeWhitelistedModel(auth);
   if (!model) {
     return null;
   }
@@ -349,6 +353,7 @@ export async function processSkillReinforcedEvents({
   operationType,
   contextId,
   conversation,
+  eligibleSkillIds,
 }: {
   auth: Authenticator;
   events: LLMEvent[];
@@ -356,6 +361,7 @@ export async function processSkillReinforcedEvents({
   operationType: ReinforcedSkillsOperationType;
   contextId: string;
   conversation?: ConversationResource;
+  eligibleSkillIds: string[];
 }): Promise<ProcessReinforcedSkillsEventsResult> {
   const errorEvents = events.filter((e) => e.type === "error");
   if (errorEvents.length > 0) {
@@ -411,6 +417,7 @@ export async function processSkillReinforcedEvents({
       operationType,
       contextId,
       conversation,
+      eligibleSkillIds,
     });
     switch (result.type) {
       case "created": {
@@ -466,6 +473,7 @@ async function createSkillSuggestionsFromToolCall({
   operationType,
   contextId,
   conversation,
+  eligibleSkillIds,
 }: {
   auth: Authenticator;
   toolName: string;
@@ -474,6 +482,7 @@ async function createSkillSuggestionsFromToolCall({
   operationType: ReinforcedSkillsOperationType;
   contextId: string;
   conversation?: ConversationResource;
+  eligibleSkillIds: string[];
 }): Promise<ToolCallResult> {
   switch (toolName) {
     case "edit_skill": {
@@ -498,14 +507,31 @@ async function createSkillSuggestionsFromToolCall({
         return { type: "error", errorMessage: "Skill not found" };
       }
 
+      if (!eligibleSkillIds.includes(parsed.data.skillId)) {
+        logger.warn(
+          { skillId: parsed.data.skillId, contextId },
+          "ReinforcedSkills: skill is not eligible for reinforcement suggestions"
+        );
+        return {
+          type: "error",
+          errorMessage: `Skill ${parsed.data.skillId} is not eligible for reinforcement suggestions`,
+        };
+      }
+
       const hasInstructionEdits =
         (parsed.data.instructionEdits?.length ?? 0) > 0;
       const hasToolEdits = (parsed.data.toolEdits?.length ?? 0) > 0;
-      if (!hasInstructionEdits && !hasToolEdits) {
+      const hasAgentFacingDescriptionEdit =
+        parsed.data.agentFacingDescriptionEdit !== undefined;
+      if (
+        !hasInstructionEdits &&
+        !hasToolEdits &&
+        !hasAgentFacingDescriptionEdit
+      ) {
         return {
           type: "error",
           errorMessage:
-            "edit_skill requires at least one instruction edit or tool edit.",
+            "edit_skill requires at least one instruction edit, tool edit, or description edit.",
         };
       }
 
@@ -522,6 +548,7 @@ async function createSkillSuggestionsFromToolCall({
           {
             instructionEdits: parsed.data.instructionEdits,
             toolEdits: parsed.data.toolEdits,
+            agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           skill.instructionsHtml
         )
@@ -560,13 +587,13 @@ async function createSkillSuggestionsFromToolCall({
           suggestion: {
             instructionEdits: parsed.data.instructionEdits,
             toolEdits: parsed.data.toolEdits,
+            agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           analysis: parsed.data.analysis ?? null,
           title: parsed.data.title ?? null,
           state: "pending",
           source,
           sourceConversationIds,
-          groupId: null,
         });
 
       await pruneConflictingSkillEditSuggestions(auth, skill, newSuggestion);

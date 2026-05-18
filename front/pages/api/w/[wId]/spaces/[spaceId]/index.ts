@@ -75,6 +75,13 @@
  *                         archivedAt:
  *                           type: integer
  *                           nullable: true
+ *                         todoGenerationEnabled:
+ *                           type: boolean
+ *                           description: Whether automatic todo suggestions from project activity are enabled.
+ *                         lastTodoAnalysisAt:
+ *                           type: integer
+ *                           nullable: true
+ *                           description: Unix timestamp (ms) of the last automatic todo suggestion scan, if any.
  *       401:
  *         description: Unauthorized
  *   patch:
@@ -194,10 +201,9 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import uniqBy from "lodash/uniqBy";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export type SpaceCategoryInfo = {
   usage: AgentsUsageType;
@@ -214,6 +220,9 @@ export type RichSpaceType = SpaceType & {
   // Useful in case of projects
   description: string | null;
   archivedAt: number | null;
+  /** Background todo suggestions from project activity (project spaces only). */
+  todoGenerationEnabled: boolean;
+  lastTodoAnalysisAt: number | null;
 };
 export type GetSpaceResponseBody = {
   space: RichSpaceType;
@@ -340,6 +349,10 @@ async function handler(
           members: currentMembers,
           description: projectMetadata?.description ?? null,
           archivedAt: projectMetadata?.archivedAt?.getTime() ?? null,
+          todoGenerationEnabled:
+            projectMetadata?.todoGenerationEnabled ?? false,
+          lastTodoAnalysisAt:
+            projectMetadata?.lastTodoAnalysisAt?.getTime() ?? null,
         },
       });
     }
@@ -356,20 +369,18 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchSpaceRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      const bodyValidation = PatchSpaceRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
 
-      const { content, name } = bodyValidation.right;
+      const { content, name } = bodyValidation.data;
 
       if (content) {
         const currentViews = await DataSourceViewResource.listBySpace(
@@ -483,8 +494,8 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          spaceName: space.name,
-          spaceKind: space.kind,
+          space_name: space.name,
+          space_kind: space.kind,
         },
       });
 

@@ -5,4 +5,6 @@ export interface ProjectMetadataType {
   spaceId: string;
   description: string | null;
   archivedAt: number | null;
+  todoGenerationEnabled: boolean;
+  lastTodoAnalysisAt: number | null;
 }

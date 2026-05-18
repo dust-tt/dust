@@ -60,8 +60,8 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type { ContentMessageProps } from "@dust-tt/sparkle/dist/esm/components/ContentMessage";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import cloneDeep from "lodash/cloneDeep";
+import omit from "lodash/omit";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -193,7 +193,7 @@ const updateSelection = ({
   );
 
   if (onlyAdd && exists) {
-    return _.cloneDeep(prevState);
+    return cloneDeep(prevState);
   }
 
   if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
@@ -835,7 +835,7 @@ export function DataSourceViewSelector({
   const handleSelectAll = () => {
     if (hasActiveSelection) {
       setSelectionConfigurations((prevState) =>
-        _.omit(prevState, dataSourceView.sId)
+        omit(prevState, dataSourceView.sId)
       );
       selectAll.reset();
       return;
@@ -917,7 +917,7 @@ export function DataSourceViewSelector({
 
         if (updatedConfig.selectedResources.length === 0) {
           // Nothing is selected at all, remove from the list
-          return _.omit(prevState, dataSourceView.sId);
+          return omit(prevState, dataSourceView.sId);
         }
 
         // Return a new object to trigger a re-render

@@ -1,4 +1,8 @@
-import { makeFileAttachment } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  getAttachmentFromFileContentFragment,
+  makeFileAttachment,
+} from "@app/lib/api/assistant/conversation/attachments";
+import type { FileContentFragmentType } from "@app/types/content_fragment";
 import { describe, expect, it } from "vitest";
 
 describe("makeFileAttachment", () => {
@@ -49,5 +53,85 @@ describe("makeFileAttachment", () => {
     });
 
     expect(attachment.isSearchable).toBe(false);
+  });
+});
+
+function makeFileContentFragment({
+  isInProjectContext = false,
+  skipFileProcessing = false,
+  snippet = "snippet",
+}: {
+  isInProjectContext?: boolean;
+  skipFileProcessing?: boolean;
+  snippet?: string | null;
+}): FileContentFragmentType {
+  return {
+    type: "content_fragment",
+    id: 1,
+    sId: "cf_123",
+    created: Date.now(),
+    visibility: "visible",
+    version: 1,
+    rank: 0,
+    branchId: null,
+    sourceUrl: null,
+    title: "data.csv",
+    contentType: "text/csv",
+    context: {
+      username: null,
+      fullName: null,
+      email: null,
+      profilePictureUrl: null,
+    },
+    contentFragmentId: "cf_123",
+    contentFragmentVersion: "latest",
+    expiredReason: null,
+    contentFragmentType: "file",
+    path: "conversation/data.csv",
+    skipFileProcessing,
+    fileId: "fil_123",
+    snippet,
+    generatedTables: [],
+    textUrl: "",
+    textBytes: null,
+    sourceProvider: null,
+    sourceIcon: null,
+    isInProjectContext,
+    hidden: false,
+  };
+}
+
+describe("getAttachmentFromFileContentFragment", () => {
+  it("suppresses queryable and includable hints for raw sandbox delimited files", () => {
+    const attachment = getAttachmentFromFileContentFragment(
+      makeFileContentFragment({ skipFileProcessing: true })
+    );
+
+    expect(attachment?.isQueryable).toBe(false);
+    expect(attachment?.isIncludable).toBe(false);
+    expect(attachment?.generatedTables).toEqual([]);
+    expect(attachment?.path).toBe("conversation/data.csv");
+  });
+
+  it("keeps old-style CSV files queryable when skipFileProcessing is false", () => {
+    const attachment = getAttachmentFromFileContentFragment(
+      makeFileContentFragment({ skipFileProcessing: false })
+    );
+
+    expect(attachment?.isQueryable).toBe(true);
+    expect(attachment?.isIncludable).toBe(true);
+    expect(attachment?.generatedTables).toEqual(["fil_123"]);
+  });
+
+  it("does not suppress project-context CSV hints", () => {
+    const attachment = getAttachmentFromFileContentFragment(
+      makeFileContentFragment({
+        isInProjectContext: true,
+        skipFileProcessing: true,
+      })
+    );
+
+    expect(attachment?.isQueryable).toBe(true);
+    expect(attachment?.isIncludable).toBe(true);
   });
 });

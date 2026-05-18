@@ -12,6 +12,10 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
+import {
+  getTaskDirectiveBlock,
+  taskDirective,
+} from "@app/components/markdown/TaskDirectiveBlock";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useChildAgentStream } from "@app/hooks/useChildAgentStream";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -158,19 +162,21 @@ export function MCPRunAgentActionDetails({
     if (!resultResource?.resource.refs) {
       return {};
     }
-    const mcpReferenceCitations: { [key: string]: MCPReferenceCitation } = {};
-    Object.entries(resultResource.resource.refs).forEach(([key, citation]) => {
-      mcpReferenceCitations[key] = {
-        provider: citation.provider,
-        contentType:
-          citation.contentType as AllSupportedWithDustSpecificFileContentType,
-        title: citation.title,
-        href: citation.href,
-        description: citation.description,
-        fileId: key,
-      };
-    });
-    return mcpReferenceCitations;
+
+    return Object.fromEntries(
+      Object.entries(resultResource.resource.refs).map(([ref, citation]) => [
+        ref,
+        {
+          ref,
+          provider: citation.provider,
+          contentType:
+            citation.contentType as AllSupportedWithDustSpecificFileContentType,
+          title: citation.title,
+          href: citation.href,
+          description: citation.description,
+        },
+      ])
+    ) satisfies Record<string, MCPReferenceCitation>;
   }, [resultResource]);
 
   if (!childAgent) {
@@ -247,7 +253,7 @@ function MCPRunAgentActionDetailsDisplay({
   };
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), agentMentionDirective],
+    () => [getCiteDirective(), agentMentionDirective, taskDirective],
     []
   );
 
@@ -256,6 +262,7 @@ function MCPRunAgentActionDetailsDisplay({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
+      project_task: getTaskDirectiveBlock(owner),
     }),
     [owner]
   );
@@ -296,6 +303,8 @@ function MCPRunAgentActionDetailsDisplay({
                     forcedTextSize="text-sm"
                     textColor="text-muted-foreground"
                     isLastMessage={false}
+                    additionalMarkdownPlugins={additionalMarkdownPlugins}
+                    additionalMarkdownComponents={additionalMarkdownComponents}
                   />
                 </ContentMessage>
               </div>
@@ -367,6 +376,12 @@ function MCPRunAgentActionDetailsDisplay({
                             forcedTextSize="text-sm"
                             textColor="text-muted-foreground"
                             isLastMessage={false}
+                            additionalMarkdownPlugins={
+                              additionalMarkdownPlugins
+                            }
+                            additionalMarkdownComponents={
+                              additionalMarkdownComponents
+                            }
                           />
                         </ContentMessage>
                       </div>
@@ -455,6 +470,12 @@ function MCPRunAgentActionDetailsDisplay({
                               forcedTextSize="text-sm"
                               textColor="text-muted-foreground"
                               isLastMessage={false}
+                              additionalMarkdownPlugins={
+                                additionalMarkdownPlugins
+                              }
+                              additionalMarkdownComponents={
+                                additionalMarkdownComponents
+                              }
                             />
                           </ContentMessage>
                         </div>

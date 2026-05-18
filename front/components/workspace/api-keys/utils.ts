@@ -7,6 +7,12 @@ import {
 } from "@app/types/groups";
 import { z } from "zod";
 
+export const KEY_ROLES = ["user", "builder", "admin"] as const;
+export type KeyRole = (typeof KEY_ROLES)[number];
+
+export const isKeyRole = (value: string): value is KeyRole =>
+  (KEY_ROLES as readonly string[]).includes(value);
+
 /**
  * Schema for monthly cap input in dollars (as string from input).
  * - Empty string → valid (unlimited)

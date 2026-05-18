@@ -22,6 +22,7 @@ const RESOURCE_TYPES = [
   "data_source_configuration",
   "table_configuration",
   "agent_configuration",
+  "project_task",
 ] as const;
 
 makeScript(

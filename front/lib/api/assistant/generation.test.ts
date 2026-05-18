@@ -495,6 +495,127 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("<existing_memories>");
   });
 
+  it("should keep equipped skills out of the system prompt", async () => {
+    const equippedSkills = [
+      await SkillFactory.create(authenticator1, {
+        name: "commit",
+        agentFacingDescription:
+          "Create a git commit with a descriptive message.",
+      }),
+    ];
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills,
+      renderSkillsAsUserMessages: true,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("## SKILLS");
+    expect(text).toContain(
+      "Skills are modular capabilities that extend your abilities for specific tasks."
+    );
+    expect(text).toContain("skill_management__enable_skill");
+    expect(text).not.toContain(
+      "Create a git commit with a descriptive message."
+    );
+    expect(text).not.toContain("## AVAILABLE SKILLS");
+  });
+
+  it("should keep equipped skills in the system prompt on the legacy path", async () => {
+    const equippedSkills = [
+      await SkillFactory.create(authenticator1, {
+        name: "commit",
+        agentFacingDescription:
+          "Create a git commit with a descriptive message.",
+      }),
+    ];
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("## AVAILABLE SKILLS");
+    expect(text).toContain(
+      "- **commit**: Create a git commit with a descriptive message."
+    );
+  });
+
+  it("should not show enabled skills in available skills on the legacy path", async () => {
+    const commitSkill = await SkillFactory.create(authenticator1, {
+      name: "commit",
+      agentFacingDescription: "Create a git commit with a descriptive message.",
+    });
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [SkillFactory.withExtendedSkill(commitSkill)],
+      equippedSkills: [commitSkill],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("### ENABLED SKILLS");
+    expect(text).not.toContain("### AVAILABLE SKILLS");
+    expect(text).not.toContain(
+      "- **commit**: Create a git commit with a descriptive message."
+    );
+  });
+
+  it("should keep system skill instructions in the system prompt", async () => {
+    const discoverSkills = await SkillResource.fetchById(
+      authenticator1,
+      "discover_skills"
+    );
+    expect(discoverSkills).not.toBeNull();
+    if (!discoverSkills) {
+      return;
+    }
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [discoverSkills],
+      enabledSkills: [],
+      equippedSkills: [],
+      renderSkillsAsUserMessages: true,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("## SKILLS");
+    expect(text).toContain("### SYSTEM SKILLS");
+    expect(text).toContain(discoverSkills.instructions);
+  });
+
   it("should keep memory_guidelines in instructions but existing_memories in ephemeral tier for dust-like agents", () => {
     const dustConfig = {
       ...agentConfig1,

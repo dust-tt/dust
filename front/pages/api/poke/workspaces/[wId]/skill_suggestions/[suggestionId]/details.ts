@@ -13,6 +13,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 export type PokeGetSkillSuggestionDetails = {
   suggestion: SkillSuggestionType;
   skillInstructionsHtml: string | null;
+  skillAgentFacingDescription: string | null;
 };
 
 async function handler(
@@ -74,9 +75,11 @@ async function handler(
     suggestion.skillConfigurationSId
   );
 
+  const skillJson = skill?.toJSON(auth);
   return res.status(200).json({
     suggestion: suggestion.toJSON(),
-    skillInstructionsHtml: skill?.toJSON(auth).instructionsHtml ?? null,
+    skillInstructionsHtml: skillJson?.instructionsHtml ?? null,
+    skillAgentFacingDescription: skillJson?.agentFacingDescription ?? null,
   });
 }
 

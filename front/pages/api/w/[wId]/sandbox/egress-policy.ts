@@ -57,6 +57,17 @@ async function handler(
     });
   }
 
+  if (!(await hasFeatureFlag(auth, "sandbox_workspace_admin"))) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "feature_flag_not_found",
+        message:
+          "Sandbox workspace admin configuration is not enabled for this workspace.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET": {
       const result = await readWorkspacePolicy(auth);
@@ -111,8 +122,8 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          allowedDomainCount: String(result.value.allowedDomains.length),
-          allowedDomains: result.value.allowedDomains.join(","),
+          allowed_domain_count: String(result.value.allowedDomains.length),
+          allowed_domains: result.value.allowedDomains.join(","),
         },
       });
 

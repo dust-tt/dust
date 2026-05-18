@@ -12,19 +12,18 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { ActiveRoleSchema } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
+import { ACTIVE_ROLES } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type PostRoleUserResponseBody = {
   success: true;
 };
 
-const PostRoleUserRequestBody = t.type({
-  userId: t.string,
-  role: ActiveRoleSchema,
+const PostRoleUserRequestBody = z.object({
+  userId: z.string(),
+  role: z.enum(ACTIVE_ROLES),
 });
 
 async function handler(
@@ -50,18 +49,17 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostRoleUserRequestBody.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostRoleUserRequestBody.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `The request body is invalid: ${pathError}`,
+            message: `The request body is invalid: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
-      const { userId, role } = bodyValidation.right;
+      const { userId, role } = bodyValidation.data;
 
       const user = await getUserForWorkspace(auth, { userId });
       if (!user) {
@@ -125,8 +123,8 @@ async function handler(
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
-            previousRole: updateRes.value.previousRole,
-            newRole: updateRes.value.newRole,
+            previous_role: updateRes.value.previousRole,
+            new_role: updateRes.value.newRole,
           },
         });
       }

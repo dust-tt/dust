@@ -7,7 +7,6 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
-import { AGENT_SUGGESTION_SOURCES } from "@app/types/suggestions/agent_suggestion";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PokeListSuggestions = {
@@ -46,9 +45,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const suggestions =
-        await AgentSuggestionResource.listByAgentConfigurationId(auth, aId, {
-          sources: [...AGENT_SUGGESTION_SOURCES],
-        });
+        await AgentSuggestionResource.listByAgentConfigurationId(auth, aId);
 
       return res.status(200).json({
         suggestions: suggestions.map((s) => s.toJSON()),

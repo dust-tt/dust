@@ -13,17 +13,17 @@ import {
 } from "@app/components/poke/shadcn/ui/form";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
 import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
-import { createIoTsCodecFromArgs } from "@app/types/poke/plugins";
+import { createZodSchemaFromArgs } from "@app/types/poke/plugins";
 import { Button, Checkbox, SliderToggle } from "@dust-tt/sparkle";
-import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import type * as t from "io-ts";
+import { zodResolver } from "@hookform/resolvers/zod";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import type { z } from "zod";
 
 type FallbackArgs = Record<string, unknown>;
 
-type FormValues<T> = T extends t.TypeC<any> ? t.TypeOf<T> : FallbackArgs;
+type FormValues<T> = T extends z.ZodTypeAny ? z.infer<T> : FallbackArgs;
 
 interface PluginFormProps {
   asyncArgs?: Partial<
@@ -42,13 +42,13 @@ export function PluginForm({
 }: PluginFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const argsCodec = useMemo(() => {
+  const argsSchema = useMemo(() => {
     if (!manifest) {
       return null;
     }
 
-    // Create codec from original manifest - async values are handled in rendering
-    return createIoTsCodecFromArgs(manifest.args);
+    // Create schema from original manifest - async values are handled in rendering
+    return createZodSchemaFromArgs(manifest.args);
   }, [manifest]);
 
   const defaultValues = useMemo(() => {
@@ -110,7 +110,7 @@ export function PluginForm({
   }, [manifest, asyncArgs]);
 
   const form = useForm({
-    resolver: argsCodec ? ioTsResolver(argsCodec) : undefined,
+    resolver: argsSchema ? zodResolver(argsSchema) : undefined,
     defaultValues,
   });
 
@@ -137,7 +137,7 @@ export function PluginForm({
     watchedValues[field] = watchedValuesArray[index];
   });
 
-  async function handleSubmit(values: FormValues<typeof argsCodec>) {
+  async function handleSubmit(values: FormValues<typeof argsSchema>) {
     // Lock the form to prevent multiple submissions.
     setIsSubmitted(true);
 

@@ -1,8 +1,15 @@
+import {
+  getMicrosoftThrottleRetryAfterMs,
+  MicrosoftThrottlingError,
+} from "@connectors/connectors/microsoft/lib/errors";
 import type {
   DriveItem,
   MicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/types";
-import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
+import {
+  DRIVE_ITEM_EXPANDS_AND_SELECTS,
+  DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS,
+} from "@connectors/connectors/microsoft/lib/types";
 import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
@@ -34,6 +41,16 @@ export async function clientApiGet(
   try {
     return await client.api(endpoint).get();
   } catch (error) {
+    if (error instanceof GraphError && error.statusCode === 429) {
+      const retryAfterMs = getMicrosoftThrottleRetryAfterMs(
+        error.headers?.get("retry-after")
+      );
+      logger.warn(
+        { endpoint, retryAfterMs },
+        "Microsoft Graph API throttled (429). Will retry after delay."
+      );
+      throw new MicrosoftThrottlingError(endpoint, retryAfterMs);
+    }
     logger.error({ error, endpoint }, `Graph API call threw an error`);
     if (error instanceof GraphError && error.statusCode === 403) {
       throw new ExternalOAuthTokenError(error);
@@ -51,6 +68,16 @@ export async function clientApiPost(
   try {
     return await client.api(endpoint).post(content);
   } catch (error) {
+    if (error instanceof GraphError && error.statusCode === 429) {
+      const retryAfterMs = getMicrosoftThrottleRetryAfterMs(
+        error.headers?.get("retry-after")
+      );
+      logger.warn(
+        { endpoint, retryAfterMs },
+        "Microsoft Graph API throttled (429). Will retry after delay."
+      );
+      throw new MicrosoftThrottlingError(endpoint, retryAfterMs);
+    }
     logger.error({ error, endpoint }, `Graph API call threw an error`);
     if (error instanceof GraphError && error.statusCode === 403) {
       throw new ExternalOAuthTokenError(error);
@@ -138,7 +165,8 @@ export async function getFilesAndFolders(
   logger: LoggerInterface,
   client: Client,
   parentInternalId: string,
-  nextLink?: string
+  nextLink?: string,
+  withLabels = false
 ): Promise<{ results: DriveItem[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
@@ -149,10 +177,13 @@ export async function getFilesAndFolders(
     );
   }
 
+  const expandsAndSelects = withLabels
+    ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS
+    : DRIVE_ITEM_EXPANDS_AND_SELECTS;
   const endpoint =
     nodeType === "drive"
-      ? `${parentResourcePath}/root/children?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
-      : `${parentResourcePath}/children?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`;
+      ? `${parentResourcePath}/root/children?${expandsAndSelects}`
+      : `${parentResourcePath}/children?${expandsAndSelects}`;
 
   const res = nextLink
     ? await clientApiGet(logger, client, nextLink)
@@ -178,10 +209,12 @@ export async function getDeltaResults({
   parentInternalId,
   nextLink,
   token,
+  withLabels = false,
 }: {
   logger: LoggerInterface;
   client: Client;
   parentInternalId: string;
+  withLabels?: boolean;
 } & (
   | { nextLink?: string; token?: never }
   | { nextLink?: never; token: string }
@@ -201,10 +234,13 @@ export async function getDeltaResults({
     { parentInternalId, itemAPIPath, nextLink, token },
     "Getting delta"
   );
+  const expandsAndSelects = withLabels
+    ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS
+    : DRIVE_ITEM_EXPANDS_AND_SELECTS;
   const deltaPath =
     (nodeType === "folder"
-      ? `${itemAPIPath}/delta?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
-      : `${itemAPIPath}/root/delta?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`) +
+      ? `${itemAPIPath}/delta?${expandsAndSelects}`
+      : `${itemAPIPath}/root/delta?${expandsAndSelects}`) +
     (token ? `&token=${token}` : "");
 
   const res = nextLink
@@ -228,6 +264,15 @@ export async function getDeltaResults({
   return { results: res.value };
 }
 
+export const DELTA_MAX_ITEMS = 500_000;
+
+export class DeltaTooLargeError extends Error {
+  constructor(public readonly itemCount: number) {
+    super(`Delta exceeded item threshold (${itemCount} items)`);
+    this.name = "DeltaTooLargeError";
+  }
+}
+
 /**
  * Similar to getDeltaResults but goes through pagination (returning results and
  * the deltalink)
@@ -246,16 +291,38 @@ export async function getFullDeltaResults({
   heartbeatFunction: () => void;
 }): Promise<{ results: DriveItem[]; deltaLink: string }> {
   let nextLink: string | undefined = initialDeltaLink;
-  let allItems: DriveItem[] = [];
+  const itemMap = new Map<string, DriveItem>();
   let deltaLink: string | undefined = undefined;
+  let pageCount = 0;
 
   do {
+    heartbeatFunction();
     const {
       results,
       nextLink: newNextLink,
       deltaLink: finalDeltaLink,
     } = await getDeltaResults({ logger, client, parentInternalId, nextLink });
-    allItems = allItems.concat(results);
+    for (const item of results) {
+      if (item.id) {
+        itemMap.set(item.id, item); // last write wins = correct dedup
+      }
+    }
+    pageCount++;
+    logger.info(
+      { pageCount, pageItems: results.length, totalItems: itemMap.size },
+      "Delta pagination progress"
+    );
+    if (itemMap.size > DELTA_MAX_ITEMS) {
+      logger.warn(
+        {
+          totalItems: itemMap.size,
+          parentInternalId,
+          threshold: DELTA_MAX_ITEMS,
+        },
+        "Delta exceeded item threshold, aborting incremental sync"
+      );
+      throw new DeltaTooLargeError(itemMap.size);
+    }
     nextLink = newNextLink;
     deltaLink = finalDeltaLink;
     heartbeatFunction();
@@ -265,7 +332,7 @@ export async function getFullDeltaResults({
     throw new Error("Delta link not found");
   }
 
-  return { results: allItems, deltaLink };
+  return { results: Array.from(itemMap.values()), deltaLink };
 }
 
 export async function getWorksheets(

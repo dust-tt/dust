@@ -11,6 +11,10 @@ import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import {
+  AgentMessageModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { notifySkillSuggestionsReady } from "@app/lib/notifications/workflows/skill-suggestions-ready";
 import {
   buildSkillAggregationBatchMap,
@@ -23,10 +27,12 @@ import {
   buildSkillAnalysisSystemPrompt,
   buildSkillConversationAnalysisBatchMap,
 } from "@app/lib/reinforcement/analyze_conversation";
+import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
 } from "@app/lib/reinforcement/constants";
+import { getReinforcementMonthlyCapMicroUsd } from "@app/lib/reinforcement/consumption";
 import {
   buildReinforcedSkillsSpecifications,
   classifySkillToolCalls,
@@ -44,21 +50,97 @@ import {
   storeTerminalToolCallResults,
 } from "@app/lib/reinforcement/tool_execution";
 import type { ReinforcedSkillsOperationType } from "@app/lib/reinforcement/types";
+import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { getAuthForWorkspace } from "@app/lib/reinforcement/utils";
 import {
   hasReinforcementEnabled,
   isReinforcementBatchModeAllowed,
 } from "@app/lib/reinforcement/workspace_check";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
+import type { SelfImprovingSkillsUsageCreateBlob } from "@app/lib/resources/self_improving_skills_usage_resource";
+import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { isResourceSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
+import {
+  launchEmitMetronomeUsageEvents,
+  launchTrackProgrammaticUsage,
+} from "@app/temporal/agent_loop/activities/usage_tracking";
 import { ensureReinforcementWorkspaceSchedules } from "@app/temporal/reinforcement/client";
+import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { ApplicationFailure } from "@temporalio/common";
+import { Op } from "sequelize";
 
 // Re-export runToolActivity so the reinforced skills worker registers it,
 // allowing the workflow to call it via proxyActivities.
 export { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
+
+/**
+ * Report usage for a single reinforcement LLM step to Metronome, ES analytics,
+ * and programmatic usage. Gated behind the self_improving_skills_report_usage
+ * feature flag. Fire-and-forget: failures are logged but do not break the
+ * reinforcement workflow.
+ */
+async function reportSelfImprovingSkillsStepUsage({
+  auth,
+  reinforcementConversationId,
+  conversationTitle,
+  agentMessageId,
+  userMessageId,
+  dustRunIds,
+}: {
+  auth: Authenticator;
+  reinforcementConversationId: string;
+  conversationTitle: string | null;
+  agentMessageId: string;
+  userMessageId: string;
+  dustRunIds?: string[];
+}): Promise<void> {
+  const hasFlag = await hasFeatureFlag(
+    auth,
+    "self_improving_skills_report_usage"
+  );
+  if (!hasFlag) {
+    return;
+  }
+
+  const authType = auth.toJSON();
+  // Reinforcement messages are created with default version 0 and are never
+  // retried at a higher version (Temporal retries create new message sIds).
+  const agentLoopArgs: AgentLoopArgs = {
+    agentMessageId,
+    agentMessageVersion: 0,
+    conversationId: reinforcementConversationId,
+    conversationTitle,
+    conversationBranchId: null,
+    userMessageId,
+    userMessageVersion: 0,
+    userMessageOrigin: "reinforcement",
+    dustRunIds,
+  };
+
+  try {
+    await Promise.all([
+      launchAgentMessageAnalytics(authType, agentLoopArgs),
+      launchTrackProgrammaticUsage(authType, agentLoopArgs),
+      launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
+    ]);
+  } catch (err) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        reinforcementConversationId,
+        agentMessageId,
+        err,
+      },
+      "SelfImprovingSkills: failed to report step usage to billing channels"
+    );
+  }
+}
 
 /**
  * Common logic for a single reinforced skills step (analysis or aggregation).
@@ -76,6 +158,7 @@ async function runReinforcedSkillsStep({
   contextId,
   source,
   conversation,
+  eligibleSkillIds,
 }: {
   auth: Authenticator;
   reinforcementConversationId: string;
@@ -84,11 +167,11 @@ async function runReinforcedSkillsStep({
   contextId: string;
   source: "synthetic" | "reinforcement";
   conversation?: ConversationResource;
+  eligibleSkillIds: string[];
 }): Promise<{
   isTerminal: boolean;
   suggestionsCreated: number;
   approvedSourceSuggestionIds: string[];
-  reinforcementConversationId?: string;
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const llm = await getReinforcedSkillsLLM(auth, operationType);
@@ -126,6 +209,7 @@ async function runReinforcedSkillsStep({
     conversation: conversationRes.value,
     model: modelConfig,
     prompt: systemPrompt,
+    enabledSkills: [],
     tools: toolsJson,
     allowedTokenCount:
       modelConfig.contextSize - modelConfig.generationTokensCount,
@@ -156,13 +240,24 @@ async function runReinforcedSkillsStep({
     );
   }
 
+  const dustRunIds = [llm.getTraceId()];
   const storedResult = await storeLlmResult(
     auth,
     reinforcementConv,
     events,
     REINFORCEMENT_SKILLS_AGENT_ID,
-    { runIds: [llm.getTraceId()] }
+    { runIds: dustRunIds }
   );
+
+  // Report usage to billing channels (fire-and-forget, gated by flag).
+  await reportSelfImprovingSkillsStepUsage({
+    auth,
+    reinforcementConversationId,
+    conversationTitle: reinforcementConv.title,
+    agentMessageId: storedResult.agentMessageId,
+    userMessageId: storedResult.userMessageId,
+    dustRunIds,
+  });
 
   const { exploratoryToolCalls, terminalToolCalls } =
     classifySkillToolCalls(events);
@@ -183,10 +278,12 @@ async function runReinforcedSkillsStep({
       operationType,
       contextId,
       conversation,
+      eligibleSkillIds,
     });
 
     // Store results for all terminal tool calls so the conversation is complete.
     await storeTerminalToolCallResults(auth, {
+      conversation: reinforcementConv.toJSON(),
       successfulToolCalls: result.successfulToolCalls,
       failedToolCalls: result.failedToolCalls,
       agentMessageModelId: storedResult.agentMessageModelId,
@@ -198,7 +295,6 @@ async function runReinforcedSkillsStep({
         isTerminal: false,
         suggestionsCreated: result.suggestionsCreated,
         approvedSourceSuggestionIds: result.approvedSourceSuggestionIds,
-        reinforcementConversationId,
       };
     }
 
@@ -206,24 +302,22 @@ async function runReinforcedSkillsStep({
       isTerminal: true,
       suggestionsCreated: result.suggestionsCreated,
       approvedSourceSuggestionIds: result.approvedSourceSuggestionIds,
-      reinforcementConversationId,
     };
   }
 
   // Prepare tool actions for the workflow to execute via runRetryableToolActivity.
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
+    conversation: reinforcementConv.toJSON(),
     exploratoryToolCalls,
     agentMessageModelId: storedResult.agentMessageModelId,
     agentMessageId: storedResult.agentMessageId,
     userMessageId: storedResult.userMessageId,
-    conversationId: reinforcementConversationId,
   });
 
   return {
     isTerminal: false,
     suggestionsCreated: 0,
     approvedSourceSuggestionIds: [],
-    reinforcementConversationId,
     toolActionInfo,
   };
 }
@@ -231,6 +325,219 @@ async function runReinforcedSkillsStep({
 // ---------------------------------------------------------------------------
 // Activities
 // ---------------------------------------------------------------------------
+
+function getReinforcedSkillIdsFromMetadata(
+  metadata: Record<string, unknown>
+): string[] {
+  const skillIds = metadata[REINFORCED_SKILLS_METADATA_KEYS.reinforcedSkillIds];
+
+  if (!Array.isArray(skillIds)) {
+    return [];
+  }
+
+  return [
+    ...new Set(skillIds.filter((skillId) => typeof skillId === "string")),
+  ];
+}
+
+function splitPriceMicroUsdAcrossSkills(
+  priceMicroUsd: number,
+  skillCount: number
+): number[] {
+  if (skillCount <= 0) {
+    return [];
+  }
+
+  const basePriceMicroUsd = Math.floor(priceMicroUsd / skillCount);
+  const remainderMicroUsd = priceMicroUsd % skillCount;
+
+  return Array.from(
+    { length: skillCount },
+    (_, index) => basePriceMicroUsd + (index < remainderMicroUsd ? 1 : 0)
+  );
+}
+
+/**
+ * Records reinforcement LLM usage against the skills stored in reinforcement
+ * conversation metadata. The write is idempotent for the passed conversations:
+ * existing usage rows for those conversation IDs are replaced.
+ */
+export async function recordSelfImprovingSkillsUsageActivity({
+  workspaceId,
+  conversationIds,
+}: {
+  workspaceId: string;
+  conversationIds: string[];
+}): Promise<{
+  conversationsProcessed: number;
+  usagesCreated: number;
+  totalPriceMicroUsd: number;
+}> {
+  const uniqueConversationIds = [...new Set(conversationIds)];
+  if (uniqueConversationIds.length === 0) {
+    return {
+      conversationsProcessed: 0,
+      usagesCreated: 0,
+      totalPriceMicroUsd: 0,
+    };
+  }
+
+  const auth = await getAuthForWorkspace(workspaceId);
+  const workspace = auth.getNonNullableWorkspace();
+
+  const conversations = await ConversationResource.fetchByIds(
+    auth,
+    uniqueConversationIds
+  );
+
+  const conversationsWithSkills = conversations
+    .map((conversation) => ({
+      conversation,
+      skillIds: getReinforcedSkillIdsFromMetadata(conversation.metadata),
+    }))
+    .filter(({ skillIds }) => skillIds.length > 0);
+
+  const conversationModelIds = conversationsWithSkills.map(
+    ({ conversation }) => conversation.id
+  );
+
+  if (conversationModelIds.length === 0) {
+    return {
+      conversationsProcessed: 0,
+      usagesCreated: 0,
+      totalPriceMicroUsd: 0,
+    };
+  }
+
+  const messages = await MessageModel.findAll({
+    where: {
+      workspaceId: workspace.id,
+      conversationId: { [Op.in]: conversationModelIds },
+      agentMessageId: { [Op.ne]: null },
+    },
+    attributes: ["conversationId"],
+    include: [
+      {
+        model: AgentMessageModel,
+        as: "agentMessage",
+        required: true,
+        attributes: ["runIds"],
+      },
+    ],
+  });
+
+  const runIdsByConversationModelId = new Map<number, Set<string>>();
+  for (const message of messages) {
+    const runIds = message.agentMessage?.runIds ?? [];
+    if (runIds.length === 0) {
+      continue;
+    }
+
+    const runIdsForConversation =
+      runIdsByConversationModelId.get(message.conversationId) ??
+      new Set<string>();
+    for (const runId of runIds) {
+      runIdsForConversation.add(runId);
+    }
+    runIdsByConversationModelId.set(
+      message.conversationId,
+      runIdsForConversation
+    );
+  }
+
+  const allDustRunIds = [
+    ...new Set(
+      [...runIdsByConversationModelId.values()].flatMap((runIds) => [...runIds])
+    ),
+  ];
+
+  const runCostMicroUsdByDustRunId = new Map<string, number>();
+  if (allDustRunIds.length > 0) {
+    const runs = await RunResource.listByDustRunIds(auth, {
+      dustRunIds: allDustRunIds,
+    });
+
+    for (const run of runs) {
+      const usages = await run.listRunUsages(auth);
+      const runCostMicroUsd = usages.reduce(
+        (sum, usage) => sum + usage.costMicroUsd,
+        0
+      );
+
+      runCostMicroUsdByDustRunId.set(
+        run.dustRunId,
+        (runCostMicroUsdByDustRunId.get(run.dustRunId) ?? 0) + runCostMicroUsd
+      );
+    }
+  }
+
+  const allSkillIds = [
+    ...new Set(conversationsWithSkills.flatMap(({ skillIds }) => skillIds)),
+  ];
+  const skills = await SkillResource.fetchByIds(auth, allSkillIds);
+  const skillModelIdById = new Map(
+    skills
+      .filter((skill) => isResourceSId("skill", skill.sId))
+      .map((skill) => [skill.sId, skill.id])
+  );
+
+  const usages: SelfImprovingSkillsUsageCreateBlob[] = [];
+  let totalPriceMicroUsd = 0;
+
+  for (const { conversation, skillIds } of conversationsWithSkills) {
+    const dustRunIds =
+      runIdsByConversationModelId.get(conversation.id) ?? new Set<string>();
+    const conversationPriceMicroUsd = [...dustRunIds].reduce(
+      (sum, dustRunId) =>
+        sum + (runCostMicroUsdByDustRunId.get(dustRunId) ?? 0),
+      0
+    );
+
+    if (conversationPriceMicroUsd <= 0) {
+      continue;
+    }
+
+    totalPriceMicroUsd += conversationPriceMicroUsd;
+    // A single conversation being analysed can have several skill enabled it it
+    // In that case we split the cost of analysis evenly per skill.
+    const prices = splitPriceMicroUsdAcrossSkills(
+      conversationPriceMicroUsd,
+      skillIds.length
+    );
+
+    for (let i = 0; i < skillIds.length; i++) {
+      usages.push({
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
+        skillId: skillModelIdById.get(skillIds[i]) ?? null,
+        conversationId: conversation.id,
+        priceMicroUsd: prices[i],
+      });
+    }
+  }
+
+  const createdUsages =
+    await SelfImprovingSkillsUsageResource.replaceForConversations(auth, {
+      conversationModelIds,
+      usages,
+    });
+
+  logger.info(
+    {
+      workspaceId,
+      conversationCount: conversationModelIds.length,
+      usageCount: createdUsages.length,
+      totalPriceMicroUsd,
+    },
+    "ReinforcedSkills: recorded self-improving skills usage"
+  );
+
+  return {
+    conversationsProcessed: conversationModelIds.length,
+    usagesCreated: createdUsages.length,
+    totalPriceMicroUsd,
+  };
+}
 
 /**
  * Checks reinforcement settings for this workspace:
@@ -241,11 +548,45 @@ export async function getReinforcementSettingsActivity({
   workspaceId,
 }: {
   workspaceId: string;
-}): Promise<{ reinforcementEnabled: boolean; batchModeAllowed: boolean }> {
+}): Promise<
+  | { reinforcementEnabled: false }
+  | {
+      reinforcementEnabled: true;
+      batchModeAllowed: boolean;
+      globalConsumptionMicroUsd: number;
+      globalCapMicroUsd: number;
+    }
+> {
   const auth = await getAuthForWorkspace(workspaceId);
+  const reinforcementEnabled = await hasReinforcementEnabled(auth);
+  if (!reinforcementEnabled) {
+    return { reinforcementEnabled: false };
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const { cycleStart: periodStart } = await getCurrentPeriod(auth);
+  const globalConsumptionMicroUsd =
+    await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
+      auth,
+      periodStart
+    );
+  const globalCapMicroUsd = getReinforcementMonthlyCapMicroUsd(workspace);
+
+  logger.info(
+    {
+      workspaceId,
+      globalConsumptionMicroUsd,
+      globalCapMicroUsd,
+      capReached: globalConsumptionMicroUsd >= globalCapMicroUsd,
+    },
+    "ReinforcedSkills: workspace consumption check"
+  );
+
   return {
-    reinforcementEnabled: await hasReinforcementEnabled(auth),
-    batchModeAllowed: isReinforcementBatchModeAllowed(auth),
+    reinforcementEnabled: true,
+    batchModeAllowed: await isReinforcementBatchModeAllowed(auth),
+    globalConsumptionMicroUsd,
+    globalCapMicroUsd,
   };
 }
 
@@ -360,7 +701,7 @@ export async function analyzeConversationStepActivity({
   const conversation =
     (await ConversationResource.fetchById(auth, conversationId)) ?? undefined;
 
-  return runReinforcedSkillsStep({
+  const result = await runReinforcedSkillsStep({
     auth,
     reinforcementConversationId,
     operationType: "reinforcement_analyze_conversation",
@@ -368,7 +709,9 @@ export async function analyzeConversationStepActivity({
     contextId: conversationId,
     source: "synthetic",
     conversation,
+    eligibleSkillIds: skillIds,
   });
+  return { ...result, reinforcementConversationId };
 }
 
 /**
@@ -459,14 +802,16 @@ export async function aggregateSuggestionsForSkillStepActivity({
     );
   }
 
-  return runReinforcedSkillsStep({
+  const result = await runReinforcedSkillsStep({
     auth,
     reinforcementConversationId,
     operationType: "reinforcement_aggregate_suggestions",
     systemPrompt: buildSkillAggregationSystemPrompt(),
     contextId: skillId,
     source: "reinforcement",
+    eligibleSkillIds: [skillId],
   });
+  return { ...result, reinforcementConversationId };
 }
 
 /**
@@ -664,14 +1009,22 @@ export async function startSkillConversationAnalysisBatchActivity({
   if (result.isErr()) {
     throw result.error;
   }
+  if (!result.value) {
+    return null;
+  }
 
   // Build the map of analysed conversation ID -> reinforcement conversation ID.
+  // Conversations skipped by sendBatchCallToLlm (e.g. context window exceeded)
+  // appear as null in conversationIds and are dropped from the map.
   const reinforcementConversationMap: Record<string, string> = {
     ...(existingReinforcementConversationMap ?? {}),
   };
   for (let i = 0; i < orderedAnalysedConversationIds.length; i++) {
-    reinforcementConversationMap[orderedAnalysedConversationIds[i]] =
-      result.value.conversationIds[i];
+    const conversationId = result.value.conversationIds[i];
+    if (conversationId !== null) {
+      reinforcementConversationMap[orderedAnalysedConversationIds[i]] =
+        conversationId;
+    }
   }
 
   logger.info(
@@ -700,10 +1053,13 @@ export async function processSkillConversationAnalysisBatchResultActivity({
   workspaceId,
   batchId,
   reinforcementConversationMap,
+  conversationSkillMap,
 }: {
   workspaceId: string;
   batchId: string;
   reinforcementConversationMap: Record<string, string>;
+  // mapping from analysed conversation id to analysed skill ids
+  conversationSkillMap: Record<string, string[]>;
 }): Promise<ConversationContinuationInfo[]> {
   const auth = await getAuthForWorkspace(workspaceId);
 
@@ -745,12 +1101,43 @@ export async function processSkillConversationAnalysisBatchResultActivity({
     analysedConversations.map((c) => [c.sId, c])
   );
 
+  const reinforcementConversations = await ConversationResource.fetchByIds(
+    auth,
+    reinforcementConversationIds
+  );
+  const reinforcementConvById = new Map(
+    reinforcementConversations.map((c) => [c.sId, c])
+  );
+
+  // Report usage to billing channels for each stored result (fire-and-forget).
+  await concurrentExecutor(
+    [...storedResultInfo],
+    ([convId, info]) =>
+      reportSelfImprovingSkillsStepUsage({
+        auth,
+        reinforcementConversationId: convId,
+        conversationTitle: reinforcementConvById.get(convId)?.title ?? null,
+        agentMessageId: info.agentMessageId,
+        userMessageId: info.userMessageId,
+      }),
+    { concurrency: 4 }
+  );
+
   let totalCreated = 0;
   const continuations: ConversationContinuationInfo[] = [];
 
   for (const [reinforcementConvId, events] of batchEvents) {
     const analysedConvId =
       reinforcementToAnalysed.get(reinforcementConvId) ?? reinforcementConvId;
+
+    const reinforcementConv = reinforcementConvById.get(reinforcementConvId);
+    if (!reinforcementConv) {
+      logger.warn(
+        { reinforcementConvId, batchId },
+        "ReinforcedSkills: reinforcement conversation not found, skipping"
+      );
+      continue;
+    }
 
     const { exploratoryToolCalls, terminalToolCalls } =
       classifySkillToolCalls(events);
@@ -764,6 +1151,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
         operationType: "reinforcement_analyze_conversation",
         contextId: analysedConvId,
         conversation: conversationById.get(analysedConvId),
+        eligibleSkillIds: conversationSkillMap[analysedConvId] ?? [],
       });
       totalCreated += result.suggestionsCreated;
 
@@ -771,6 +1159,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
       const storedInfo = storedResultInfo.get(reinforcementConvId);
       if (storedInfo) {
         await storeTerminalToolCallResults(auth, {
+          conversation: reinforcementConv.toJSON(),
           successfulToolCalls: result.successfulToolCalls,
           failedToolCalls: result.failedToolCalls,
           agentMessageModelId: storedInfo.agentMessageModelId,
@@ -789,11 +1178,11 @@ export async function processSkillConversationAnalysisBatchResultActivity({
       const storedInfo = storedResultInfo.get(reinforcementConvId);
       if (storedInfo) {
         const toolActionInfo = await prepareReinforcedToolActions(auth, {
+          conversation: reinforcementConv.toJSON(),
           exploratoryToolCalls,
           agentMessageModelId: storedInfo.agentMessageModelId,
           agentMessageId: storedInfo.agentMessageId,
           userMessageId: storedInfo.userMessageId,
-          conversationId: reinforcementConvId,
         });
 
         continuations.push({
@@ -864,7 +1253,10 @@ export async function startSkillAggregationBatchActivity({
         existingConversationId: existingReinforcementConversationId,
         prompt: systemPrompt,
         specifications,
-        userContextOrigin: "reinforcement",
+        ...getReinforcedSkillsDefaultOptions(
+          "reinforcement_aggregate_suggestions",
+          [skillId]
+        ),
       },
     ];
   } else {
@@ -896,6 +1288,9 @@ export async function startSkillAggregationBatchActivity({
   if (sendResult.isErr()) {
     throw sendResult.error;
   }
+  if (!sendResult.value) {
+    return null;
+  }
   const { batchId, conversationIds } = sendResult.value;
 
   logger.info(
@@ -907,7 +1302,13 @@ export async function startSkillAggregationBatchActivity({
     "ReinforcedSkills: started aggregation batch"
   );
 
-  return { batchId, reinforcementConversationIds: conversationIds };
+  // Drop null entries (conversations skipped by sendBatchCallToLlm).
+  return {
+    batchId,
+    reinforcementConversationIds: conversationIds.filter(
+      (id): id is string => id !== null
+    ),
+  };
 }
 
 /**
@@ -969,6 +1370,30 @@ export async function processSkillAggregationBatchResultActivity({
     };
   }
 
+  // Hydrate the reinforcement conversation from its sId so we can pass
+  // ConversationWithoutContentType to action helpers (activity inputs are frozen).
+  const reinforcementConv = await ConversationResource.fetchById(
+    auth,
+    firstConvId
+  );
+  if (!reinforcementConv) {
+    throw new Error(`Reinforcement conversation not found: ${firstConvId}`);
+  }
+
+  // Report usage to billing channels for each stored result (fire-and-forget).
+  await concurrentExecutor(
+    [...storedResultInfo],
+    ([convId, info]) =>
+      reportSelfImprovingSkillsStepUsage({
+        auth,
+        reinforcementConversationId: convId,
+        conversationTitle: reinforcementConv.title,
+        agentMessageId: info.agentMessageId,
+        userMessageId: info.userMessageId,
+      }),
+    { concurrency: 4 }
+  );
+
   const { exploratoryToolCalls, terminalToolCalls } =
     classifySkillToolCalls(events);
 
@@ -980,12 +1405,14 @@ export async function processSkillAggregationBatchResultActivity({
       source: "reinforcement",
       operationType: "reinforcement_aggregate_suggestions",
       contextId: skillId,
+      eligibleSkillIds: [skillId],
     });
 
     // Store results for all terminal tool calls.
     const storedInfo = storedResultInfo.get(firstConvId);
     if (storedInfo) {
       await storeTerminalToolCallResults(auth, {
+        conversation: reinforcementConv.toJSON(),
         successfulToolCalls: result.successfulToolCalls,
         failedToolCalls: result.failedToolCalls,
         agentMessageModelId: storedInfo.agentMessageModelId,
@@ -1029,11 +1456,11 @@ export async function processSkillAggregationBatchResultActivity({
   }
 
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
+    conversation: reinforcementConv.toJSON(),
     exploratoryToolCalls,
     agentMessageModelId: storedInfo.agentMessageModelId,
     agentMessageId: storedInfo.agentMessageId,
     userMessageId: storedInfo.userMessageId,
-    conversationId: firstConvId,
   });
 
   return {

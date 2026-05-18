@@ -26,7 +26,6 @@ export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionMod
   declare state: SkillSuggestionState;
   declare source: SkillSuggestionSource;
   declare sourceConversationIds: number[] | null;
-  declare groupId: string | null;
   declare updatedByUserId: ForeignKey<UserModel["id"]> | null;
   declare notificationConversationModelId: ForeignKey<
     ConversationModel["id"]
@@ -84,10 +83,6 @@ SkillSuggestionModel.init(
       comment:
         "Array of conversation model IDs that contributed to this reinforcement suggestion.",
     },
-    groupId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
     updatedByUserId: {
       type: DataTypes.BIGINT,
       allowNull: true,
@@ -126,12 +121,6 @@ SkillSuggestionModel.init(
         name: "skill_suggestions_workspace_skill_config_kind",
         fields: ["skillConfigurationId"],
         concurrently: true,
-      },
-      {
-        name: "idx_skill_suggestions_group",
-        fields: ["groupId"],
-        concurrently: true,
-        where: { groupId: { [Op.ne]: null } },
       },
       {
         name: "idx_skill_suggestions_updated_by_user_id",

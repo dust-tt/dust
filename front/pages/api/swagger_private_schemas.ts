@@ -586,6 +586,13 @@
  *           type: string
  *           nullable: true
  *           description: Present for file content fragments
+ *         path:
+ *           type: string
+ *           nullable: true
+ *           description: Path of this file inside the sandbox conversation mount.
+ *         skipFileProcessing:
+ *           type: boolean
+ *           description: Whether upload-time file processing was skipped.
  *         snippet:
  *           type: string
  *           nullable: true
@@ -852,6 +859,13 @@
  *             archivedAt:
  *               type: integer
  *               nullable: true
+ *             todoGenerationEnabled:
+ *               type: boolean
+ *               description: Whether automatic todo suggestions from project activity are enabled.
+ *             lastTodoAnalysisAt:
+ *               type: integer
+ *               nullable: true
+ *               description: Unix timestamp (ms) of the last automatic todo suggestion scan, if any.
  *     PrivateDataSourceView:
  *       type: object
  *       description: A view on a data source within a space.

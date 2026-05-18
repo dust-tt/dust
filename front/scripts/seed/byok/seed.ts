@@ -3,9 +3,8 @@ import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
+import { WORKSPACE_SID } from "@app/scripts/seed/factories/seedContext";
 
-// The workspace sId created by dust-hive seed.
-const WORKSPACE_ID = "DevWkSpace";
 const BYOK_PLAN_CODE = "FREE_BYOK";
 
 // Based on FREE_UPGRADED_PLAN with isByok = true.
@@ -39,10 +38,10 @@ const FREE_BYOK_PLAN_DATA: PlanAttributes = {
 };
 
 makeScript({}, async ({ execute }, logger) => {
-  const workspace = await WorkspaceResource.fetchById(WORKSPACE_ID);
+  const workspace = await WorkspaceResource.fetchById(WORKSPACE_SID);
   if (!workspace) {
     throw new Error(
-      `Workspace ${WORKSPACE_ID} not found. Make sure dust-hive seed has run first.`
+      `Workspace ${WORKSPACE_SID} not found. Make sure dust-hive seed has run first.`
     );
   }
 
@@ -59,20 +58,20 @@ makeScript({}, async ({ execute }, logger) => {
     await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
   if (activeSubscription?.getPlan().code === BYOK_PLAN_CODE) {
     logger.info(
-      `Workspace ${WORKSPACE_ID} already on ${BYOK_PLAN_CODE} — skipping.`
+      `Workspace ${WORKSPACE_SID} already on ${BYOK_PLAN_CODE} — skipping.`
     );
     return;
   }
 
   if (execute) {
     await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
-      workspaceId: WORKSPACE_ID,
+      workspaceId: WORKSPACE_SID,
       planCode: BYOK_PLAN_CODE,
       endDate: null,
     });
   }
 
   logger.info(
-    `${execute ? "" : "[DRYRUN]: "}Switched ${WORKSPACE_ID} subscription to ${BYOK_PLAN_CODE}.`
+    `${execute ? "" : "[DRYRUN]: "}Switched ${WORKSPACE_SID} subscription to ${BYOK_PLAN_CODE}.`
   );
 });

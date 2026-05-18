@@ -9,9 +9,7 @@ import {
 // Mock the config module before importing
 vi.mock("@app/lib/api/config", () => ({
   default: {
-    getClientFacingUrl: vi.fn(() => "dust.tt"),
     getAppUrl: vi.fn(() => "dust.tt"),
-    getApiBaseUrl: vi.fn(() => "https://dust.tt"),
   },
 }));
 

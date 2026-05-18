@@ -9,6 +9,7 @@ import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { WorkspaceDatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/WorkspaceDatasourceRetrievalTreemapPluginChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { ProjectsDataTable } from "@app/components/poke/projects/table";
 import {
   PokeAlert,
   PokeAlertDescription,
@@ -127,11 +128,13 @@ export function WorkspacePage() {
 
   const {
     activeSubscription,
-    hasMetronomeBilling,
     hasDummyFeature,
+    hasMetronomeFeature,
     membersCount,
     metronomeCustomerId,
+    pendingSubscription,
     stripeSubscription,
+    stripeCustomerId,
     subscriptions,
     whitelistableFeatures,
     workspaceVerifiedDomains,
@@ -212,6 +215,7 @@ export function WorkspacePage() {
                   owner={owner}
                   membersCount={membersCount}
                   metronomeCustomerId={metronomeCustomerId}
+                  stripeCustomerId={stripeCustomerId}
                   workspaceVerifiedDomains={workspaceVerifiedDomains}
                   workspaceCreationDay={workspaceCreationDay}
                   extensionConfig={extensionConfig}
@@ -226,9 +230,11 @@ export function WorkspacePage() {
                   owner={owner}
                   metronomeCustomerId={metronomeCustomerId}
                   subscription={activeSubscription}
+                  pendingSubscription={pendingSubscription}
                   subscriptions={subscriptions}
                   programmaticUsageConfig={programmaticUsageConfig}
-                  hasMetronomeBilling={hasMetronomeBilling}
+                  hasMetronomeBillingFeature={hasMetronomeFeature}
+                  stripeCustomerId={stripeCustomerId}
                 />
               </TabsContent>
               <TabsContent value="planlimitations">
@@ -259,6 +265,7 @@ export function WorkspacePage() {
               <TabsTrigger value="featureflags" label="Feature Flags" />
               <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="mcpviews" label="MCP Server Views" />
+              <TabsTrigger value="projects" label="Projects" />
               <TabsTrigger value="skills" label="Skills" />
               <TabsTrigger value="spaces" label="Spaces" />
 
@@ -276,6 +283,9 @@ export function WorkspacePage() {
             </TabsContent>
             <TabsContent value="mcpviews">
               <MCPServerViewsDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="projects">
+              <ProjectsDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="spaces">
               <SpaceDataTable owner={owner} loadOnInit />

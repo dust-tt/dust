@@ -5,50 +5,55 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  FILES_LIST_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
+import { listProjectFiles } from "@app/lib/api/actions/servers/files/tools/utils";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
-import { buildProjectSearchDataSources } from "@app/lib/api/actions/servers/project_manager/build_project_search_data_sources";
 import {
   buildProjectRetrieveDataSources,
   getProjectSpace,
   getWritableProjectContext,
   makeSuccessResponse,
-  validateSourceFileForCopy,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_manager/metadata";
-import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
+import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { renderAttachmentXml } from "@app/lib/api/assistant/conversation/attachments";
+import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   getConversation,
   getLightConversation,
 } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import {
-  addFileToProject,
-  fetchLatestProjectContextFileContentFragment,
+  addContentNodeToProject,
   listProjectContextAttachments,
+  removeContentNodeFromProject,
 } from "@app/lib/api/projects/context";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
-import logger from "@app/logger/logger";
+import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import {
   isUserMessageType,
   type UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import {
-  contentTypeFromFileName,
-  isAllSupportedFileContentType,
-} from "@app/types/files";
+import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { formatConversationsForDisplay } from "./conversation_formatting";
@@ -77,28 +82,12 @@ function formatListedConversationWithoutMessages(
   };
 }
 
-/**
- * Reads content from a source file.
- */
-async function readSourceFileContent(
-  auth: Authenticator,
-  sourceFile: FileResource
-): Promise<string> {
-  const owner = auth.getNonNullableWorkspace();
-  const readStream = sourceFile.getSharedReadStream(owner, "original");
-  const chunks: Buffer[] = [];
-  for await (const chunk of readStream) {
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString("utf-8");
-}
-
 export function createProjectManagerTools(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof PROJECT_MANAGER_TOOLS_METADATA> = {
-    add_file: async (params) => {
+    add_content_node: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
           agentLoopContext,
@@ -109,299 +98,118 @@ export function createProjectManagerTools(
         }
 
         const { space } = contextRes.value;
-        const { fileName, content, sourceFileId, contentType } = params;
-        const owner = auth.getNonNullableWorkspace();
-        const user = auth.getNonNullableUser();
 
-        let file: FileResource;
-
-        // If sourceFileId is provided, use the copy method.
-        if (sourceFileId) {
-          const sourceFileRes = await validateSourceFileForCopy(auth, {
-            sourceFileId,
-            targetSpaceId: space.id,
-          });
-          if (sourceFileRes.isErr()) {
-            return sourceFileRes;
-          }
-
-          const sourceFile = sourceFileRes.value;
-          const sourceConversationId = sourceFile.useCaseMetadata
-            ?.conversationId
-            ? sourceFile.useCaseMetadata.sourceConversationId
-            : undefined;
-
-          const copyResult = await FileResource.copy(auth, {
-            sourceId: sourceFileId,
-            useCase: "project_context",
-            useCaseMetadata: {
-              spaceId: space.sId,
-              sourceConversationId,
-            },
-          });
-
-          if (copyResult.isErr()) {
-            return new Err(
-              new MCPError(`Failed to copy file: ${copyResult.error.message}`, {
-                tracked: false,
-              })
-            );
-          }
-
-          file = copyResult.value;
-
-          // Rename if a different fileName was provided.
-          if (fileName !== file.fileName) {
-            await file.rename(fileName);
-          }
-        } else if (content) {
-          // Create file from direct content.
-          const finalContentType =
-            contentType ?? contentTypeFromFileName(fileName) ?? "text/plain";
-
-          // Validate content type is text-based.
-          if (!finalContentType.startsWith("text/")) {
-            return new Err(
-              new MCPError(
-                `Only text-based content types are supported. Got: ${finalContentType}`,
-                { tracked: false }
-              )
-            );
-          }
-
-          // Validate content type is supported.
-          if (!isAllSupportedFileContentType(finalContentType)) {
-            return new Err(
-              new MCPError(`Unsupported content type: ${finalContentType}`, {
-                tracked: false,
-              })
-            );
-          }
-
-          // Create file resource.
-          file = await FileResource.makeNew({
-            workspaceId: owner.id,
-            userId: user.id,
-            contentType: finalContentType,
-            fileName,
-            fileSize: Buffer.byteLength(content, "utf-8"),
-            useCase: "project_context",
-            useCaseMetadata: {
-              spaceId: space.sId,
-              sourceConversationId:
-                agentLoopContext?.runContext?.conversation?.sId,
-            },
-          });
-
-          // Upload content to GCS.
-          await file.uploadContent(auth, content);
-        } else {
-          return new Err(
-            new MCPError(
-              "Either 'content' or 'sourceFileId' must be provided",
-              { tracked: false }
-            )
-          );
-        }
-
-        const upsertRes = await addFileToProject(auth, {
-          file,
-          space,
-          sourceConversationId: agentLoopContext?.runContext?.conversation?.sId,
-        });
-
-        if (upsertRes.isErr()) {
-          logger.warn(
-            {
-              error: upsertRes.error,
-              fileId: file.sId,
-            },
-            "Failed to add file to project (datasource or content fragment)"
-          );
-          // Don't fail - file is uploaded, just not fully indexed yet.
-        }
-
-        // Adapt the message based on the input
-        let message: string;
-        if (sourceFileId) {
-          message = `File "${fileName}" (${file.sId}) created in project context successfully by copying from the source file (${sourceFileId}). These 2 files are NOT the same, you must use the appropriate file ID depending if you want to work on the original file or the new one.`;
-        } else {
-          message = `File "${fileName}" (${file.sId}) created in project context successfully from provided content.`;
-        }
-
-        return new Ok([
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              uri: file.getPublicUrl(auth),
-              fileId: file.sId,
-              title: file.fileName,
-              contentType: file.contentType,
-              snippet: null,
-              text: message,
-            },
-          },
-        ]);
-      }, "Failed to add file");
-    },
-
-    update_file: async (params) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const { fileId, content, sourceFileId } = params;
-
-        // Fetch file.
-        const file = await FileResource.fetchById(auth, fileId);
-        if (!file) {
-          return new Err(
-            new MCPError(`File not found: ${fileId}`, { tracked: false })
-          );
-        }
-
-        // Verify it's a project context file for this space.
-        const metadata = file.useCaseMetadata as { spaceId?: string };
-        if (
-          file.useCase !== "project_context" ||
-          metadata?.spaceId !== space.sId
-        ) {
-          return new Err(
-            new MCPError("File not found in this project context", {
-              tracked: false,
-            })
-          );
-        }
-
-        // Get file content from either direct content or source file.
-        let fileContent: string;
-
-        if (sourceFileId) {
-          const sourceFileRes = await validateSourceFileForCopy(auth, {
-            sourceFileId,
-            targetSpaceId: space.id,
-          });
-          if (sourceFileRes.isErr()) {
-            return sourceFileRes;
-          }
-
-          const sourceFile = sourceFileRes.value;
-          fileContent = await readSourceFileContent(auth, sourceFile);
-
-          if (!fileContent) {
-            return new Err(
-              new MCPError(
-                `Failed to read content from source file: ${sourceFileId}`,
-                { tracked: false }
-              )
-            );
-          }
-        } else if (content) {
-          fileContent = content;
-        } else {
-          return new Err(
-            new MCPError(
-              "Either 'content' or 'sourceFileId' must be provided",
-              { tracked: false }
-            )
-          );
-        }
-
-        // Upload new content.
-        await file.uploadContent(auth, fileContent);
-
-        // Re-upsert to datasource to update search index.
-        const upsertRes = await addFileToProject(auth, {
-          file,
-          space,
-          sourceConversationId: agentLoopContext?.runContext?.conversation?.sId,
-        });
-
-        if (upsertRes.isErr()) {
-          logger.error(
-            {
-              error: upsertRes.error,
-              fileId: file.sId,
-            },
-            "Failed to re-index updated file"
-          );
-          // Don't fail - content is updated, just not re-indexed.
-        }
-
-        return new Ok([
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              uri: file.getPublicUrl(auth),
-              fileId: file.sId,
-              title: file.fileName,
-              contentType: file.contentType,
-              snippet: null,
-              text: `File "${file.fileName}" (${file.sId}) updated in project context successfully.`,
-            },
-          },
-        ]);
-      }, "Failed to update file");
-    },
-
-    attach_to_conversation: async (params) => {
-      return withErrorHandling(async () => {
-        if (!agentLoopContext?.runContext?.conversation) {
-          return new Err(
-            new MCPError("No conversation context available", {
-              tracked: false,
-            })
-          );
-        }
-
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const { fileId } = params;
-
-        const projectFile = await fetchLatestProjectContextFileContentFragment(
-          auth,
-          space,
-          fileId
+        const dataSourceId = extractDataSourceIdFromNodeId(
+          params.dataSourceNodeId
         );
-        if (!projectFile) {
+        if (!dataSourceId) {
           return new Err(
-            new MCPError("File not found in this project context", {
+            new MCPError("Invalid node ID, unable to extract data source ID", {
               tracked: false,
             })
           );
         }
-        const { file } = projectFile;
 
-        return new Ok([
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              uri: file.getPublicUrl(auth),
-              fileId: file.sId,
-              title: file.fileName,
-              contentType: file.contentType,
-              snippet: file.snippet,
-              text: `File "${file.fileName}" (${file.sId}) attached to the current conversation.`,
-            },
+        const dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
+          auth,
+          dataSourceId
+        );
+
+        if (!dataSource) {
+          return new Err(
+            new MCPError(`Data source not found: ${dataSourceId}`, {
+              tracked: false,
+            })
+          );
+        }
+
+        // We assume the node is coming from company data, as it's the only allowed source for projects.
+        const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+        const [dataSourceView] =
+          await DataSourceViewResource.listForDataSourcesInSpace(
+            auth,
+            [dataSource],
+            globalSpace
+          );
+
+        if (!dataSourceView) {
+          return new Err(
+            new MCPError(
+              `Data source view not found for Company Data node: ${params.dataSourceNodeId}`,
+              {
+                tracked: false,
+              }
+            )
+          );
+        }
+
+        const upsertRes = await addContentNodeToProject(auth, {
+          space,
+          contentFragment: {
+            title: params.title,
+            url: params.url,
+            nodeId: params.nodeId,
+            nodeDataSourceViewId: dataSourceView.sId,
           },
-        ]);
-      }, "Failed to attach project file to conversation");
+        });
+
+        if (upsertRes.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to add content node to project: ${upsertRes.error.message}`,
+              { tracked: false }
+            )
+          );
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            contentNode: {
+              title: params.title,
+              nodeId: params.nodeId,
+              nodeDataSourceViewId: dataSourceView.sId,
+              url: params.url ?? null,
+            },
+            message: `Content node "${params.title}" added to project context successfully.`,
+          })
+        );
+      }, "Failed to add content node");
+    },
+
+    remove_content_node: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+
+        const removeRes = await removeContentNodeFromProject(auth, {
+          space,
+          nodeId: params.nodeId,
+          nodeDataSourceViewId: params.nodeDataSourceViewId,
+        });
+        if (removeRes.isErr()) {
+          return new Err(
+            new MCPError(removeRes.error.message, { tracked: false })
+          );
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            nodeId: params.nodeId,
+            nodeDataSourceViewId: params.nodeDataSourceViewId,
+            message:
+              "Content node reference removed from the project context if present (Company Data unchanged).",
+          })
+        );
+      }, "Failed to remove linked content from project");
     },
 
     edit_description: async (params) => {
@@ -462,7 +270,25 @@ export function createProjectManagerTools(
           space
         );
 
+        // Linked content nodes (Company Data references) have no other discovery surface, so we
+        // surface them here. Project files do (they live under `project/<rel>` scoped paths and
+        // are discovered through the `files` MCP server), so we only report a count plus a hint.
         const attachments = await listProjectContextAttachments(auth, space);
+        const contentNodes = attachments
+          .filter(isContentNodeAttachmentType)
+          .map((node) => ({
+            name: node.title,
+            nodeId: node.nodeId,
+            dataSourceViewId: node.nodeDataSourceViewId,
+          }));
+
+        const projectFilesRes = await listProjectFiles(auth, space);
+        if (projectFilesRes.isErr()) {
+          return projectFilesRes;
+        }
+        const projectFileCount = projectFilesRes.value.filter(
+          (e) => !e.isDirectory
+        ).length;
 
         // Construct project URL
         const projectPath = getProjectRoute(owner.sId, space.sId);
@@ -476,20 +302,10 @@ export function createProjectManagerTools(
               name: space.name,
               url: projectUrl,
               description: metadata?.description ?? null,
-              context: {
-                count: attachments.length,
-                attachments: attachments
-                  .map((a) =>
-                    renderAttachmentXml({
-                      attachment: a,
-                      content: "",
-                      // When in the project context, the flags might be misleading, version is useless (it's always the latest)
-                      // eg: a csv might have been uploaded in a convo (becoming queryable) but then moved to the project context.
-                      // This will be obsolete once we run query directly in the sandbox.
-                      hideFlagsAndVersion: true,
-                    })
-                  )
-                  .join("\n"),
+              contentNodes,
+              files: {
+                count: projectFileCount,
+                hint: `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` with \`scope: "project"\` to enumerate.`,
               },
             },
             message: "Successfully retrieved project information",
@@ -497,7 +313,138 @@ export function createProjectManagerTools(
         );
       }, "Failed to get project information");
     },
+    list_members: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getProjectSpace(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
 
+        const { space } = contextRes.value;
+        const { limit = 20, pageCursor } = params;
+
+        const decodedPageOffset = pageCursor
+          ? Number.parseInt(pageCursor, 10)
+          : 0;
+        const pageOffset =
+          Number.isInteger(decodedPageOffset) && decodedPageOffset >= 0
+            ? decodedPageOffset
+            : null;
+
+        if (pageOffset === null) {
+          return new Err(
+            new MCPError(
+              "Invalid pageCursor. Expected an offset cursor from a previous list_members response.",
+              { tracked: false }
+            )
+          );
+        }
+
+        const { groupsToProcess, allGroupMemberships } =
+          await space.fetchManualGroupsMemberships(auth, {
+            shouldIncludeAllMembers: true,
+          });
+
+        const groupById = new Map(
+          groupsToProcess.map((group) => [group.id, group] as const)
+        );
+        const membershipByUserId = new Map<
+          number,
+          {
+            isEditor: boolean;
+            isActive: boolean;
+            joinedAtMs: number;
+          }
+        >();
+
+        for (const membership of allGroupMemberships) {
+          const group = groupById.get(membership.groupId);
+          if (!group) {
+            continue;
+          }
+
+          const previous = membershipByUserId.get(membership.userId);
+          membershipByUserId.set(membership.userId, {
+            isEditor:
+              Boolean(previous?.isEditor) || group.kind === "space_editors",
+            isActive:
+              Boolean(previous?.isActive) || membership.status === "active",
+            joinedAtMs: Math.min(
+              previous?.joinedAtMs ?? Number.POSITIVE_INFINITY,
+              membership.startAt.getTime()
+            ),
+          });
+        }
+
+        const users = await UserResource.fetchByModelIds([
+          ...membershipByUserId.keys(),
+        ]);
+        const userByModelId = new Map(
+          users.map((user) => [user.id, user] as const)
+        );
+
+        const members = [...membershipByUserId.entries()]
+          .map(([userModelId, membershipInfo]) => {
+            const user = userByModelId.get(userModelId);
+            if (!user) {
+              return null;
+            }
+
+            return {
+              id: user.sId,
+              name: user.fullName(),
+              email: user.email,
+              role: membershipInfo.isEditor ? "editor" : "member",
+              status: membershipInfo.isActive ? "active" : "suspended",
+              joinedAt: new Date(membershipInfo.joinedAtMs).toISOString(),
+            };
+          })
+          .filter(
+            (member): member is NonNullable<typeof member> => member !== null
+          )
+          .sort((a, b) => {
+            if (a.name !== b.name) {
+              return a.name.localeCompare(b.name, undefined, {
+                sensitivity: "base",
+              });
+            }
+            return a.id.localeCompare(b.id);
+          });
+
+        if (members.length === 0) {
+          return new Ok(
+            makeSuccessResponse({
+              success: true,
+              count: 0,
+              hasMore: false,
+              nextPageCursor: null,
+              members: [],
+              message: `No members found in project "${space.name}".`,
+            })
+          );
+        }
+
+        const pageMembers = members.slice(pageOffset, pageOffset + limit);
+        const nextOffset = pageOffset + pageMembers.length;
+        const hasMore = nextOffset < members.length;
+        const nextPageCursor = hasMore ? String(nextOffset) : null;
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            count: pageMembers.length,
+            total: members.length,
+            hasMore,
+            nextPageCursor,
+            members: pageMembers,
+            message: `Found ${pageMembers.length} member(s) in project "${space.name}" (page)${hasMore ? ". Pass nextPageCursor to fetch more members." : ""}.`,
+          })
+        );
+      }, "Failed to list project members");
+    },
     list_projects: async () => {
       return withErrorHandling(async () => {
         const owner = auth.getNonNullableWorkspace();
@@ -532,6 +479,123 @@ export function createProjectManagerTools(
         );
       }, "Failed to list projects");
     },
+    create_project: async (params) => {
+      return withErrorHandling(async () => {
+        const owner = auth.getNonNullableWorkspace();
+
+        if (params.visibility === "open" && !areOpenProjectsAllowed(owner)) {
+          return new Err(
+            new MCPError(
+              "Open projects are disabled by your workspace admin. Create a private project instead.",
+              { tracked: false }
+            )
+          );
+        }
+
+        const createSpaceRes = await createSpaceAndGroup(
+          auth,
+          {
+            name: params.title,
+            isRestricted: params.visibility !== "open",
+            spaceKind: "project",
+            managementMode: "manual",
+            memberIds: [],
+          },
+          { seedInitialTasks: params.seedInitialTasks ?? false }
+        );
+
+        if (createSpaceRes.isErr()) {
+          const error = createSpaceRes.error;
+          switch (error.code) {
+            case "limit_reached":
+              return new Err(
+                new MCPError(
+                  "Project creation limit reached for this workspace plan.",
+                  { tracked: false }
+                )
+              );
+            case "space_already_exists":
+              return new Err(
+                new MCPError("A project with this title already exists.", {
+                  tracked: false,
+                })
+              );
+            case "unauthorized":
+              return new Err(
+                new MCPError(
+                  "You do not have permission to create a project.",
+                  { tracked: false }
+                )
+              );
+            case "internal_error":
+              return new Err(
+                new MCPError(error.message, {
+                  tracked: false,
+                })
+              );
+            default:
+              return new Err(
+                new MCPError(error.message, {
+                  tracked: false,
+                })
+              );
+          }
+        }
+
+        const projectSpace = createSpaceRes.value;
+
+        if (params.description) {
+          const metadata = await ProjectMetadataResource.fetchBySpace(
+            auth,
+            projectSpace
+          );
+          if (metadata) {
+            await metadata.updateDescription(params.description);
+          } else {
+            await ProjectMetadataResource.makeNew(auth, projectSpace, {
+              description: params.description,
+            });
+          }
+        }
+
+        if (params.memberIds && params.memberIds.length > 0) {
+          const uniqueMemberIds = [...new Set(params.memberIds)];
+          const addMembersRes = await projectSpace.addMembers(auth, {
+            userIds: uniqueMemberIds,
+          });
+          if (addMembersRes.isErr()) {
+            return new Err(
+              new MCPError(
+                `Project created but failed to add some members: ${addMembersRes.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+        }
+
+        const projectUrl = `${config.getAppUrl()}${getProjectRoute(
+          owner.sId,
+          projectSpace.sId
+        )}`;
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            project: {
+              spaceId: projectSpace.sId,
+              title: projectSpace.name,
+              visibility: projectSpace.isOpen() ? "open" : "private",
+              dustProject: {
+                uri: makeProjectConfigurationURI(owner.sId, projectSpace.sId),
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+              },
+              url: projectUrl,
+            },
+            message: `Project "${projectSpace.name}" created successfully.`,
+          })
+        );
+      }, "Failed to create project");
+    },
 
     retrieve_recent_documents: async (params) => {
       return withErrorHandling(async () => {
@@ -552,7 +616,10 @@ export function createProjectManagerTools(
         }
 
         const { space } = contextRes.value;
-        const dataSources = await buildProjectRetrieveDataSources(auth, space);
+        const dataSources = await buildProjectRetrieveDataSources(auth, {
+          space,
+          onlyGroupConversationsAndConnectedData: false,
+        });
 
         if (dataSources.length === 0) {
           return new Err(
@@ -578,53 +645,6 @@ export function createProjectManagerTools(
           retrievalTopK: agentLoopContext.runContext.stepContext.retrievalTopK,
         });
       }, "Failed to retrieve recent project documents");
-    },
-
-    semantic_search: async (params) => {
-      return withErrorHandling(async () => {
-        if (!agentLoopContext?.runContext) {
-          return new Err(
-            new MCPError("No conversation context available", {
-              tracked: false,
-            })
-          );
-        }
-
-        const scope = params.searchScope ?? "all";
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const dataSources = await buildProjectSearchDataSources(
-          auth,
-          space,
-          scope
-        );
-
-        if (dataSources.length === 0) {
-          return new Err(
-            new MCPError(
-              scope === "conversations"
-                ? "No project data source available to search conversations, or the project connector is not linked (required to scope transcript documents)."
-                : "No project data sources available to search for this scope.",
-              { tracked: false }
-            )
-          );
-        }
-
-        return searchFunction(auth, {
-          query: params.query,
-          relativeTimeFrame: params.relativeTimeFrame ?? "all",
-          dataSources,
-          nodeIds: params.nodeIds,
-          agentLoopContext,
-        });
-      }, "Failed to search project");
     },
 
     create_conversation: async (params) => {
@@ -662,10 +682,22 @@ export function createProjectManagerTools(
         const agentProfilePictureUrl =
           agentLoopContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
 
-        // Build mentions if agentId is provided
-        const mentions = params.agentId
-          ? [{ configurationId: params.agentId }]
-          : [];
+        let mentions: { configurationId: string }[] = [];
+        if (params.agentName) {
+          const matchedAgentId = await resolveAgentConfigurationIdByName(
+            auth,
+            params.agentName
+          );
+          if (!matchedAgentId) {
+            return new Err(
+              new MCPError(
+                `No agent found matching name: "${params.agentName}"`,
+                { tracked: false }
+              )
+            );
+          }
+          mentions = [{ configurationId: matchedAgentId }];
+        }
 
         // Create conversation in the project space
         const conversation = await createConversation(auth, {
@@ -938,9 +970,22 @@ export function createProjectManagerTools(
         const agentProfilePictureUrl =
           agentLoopContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
 
-        const mentions = params.agentId
-          ? [{ configurationId: params.agentId }]
-          : [];
+        let mentions: { configurationId: string }[] = [];
+        if (params.agentName) {
+          const matchedAgentId = await resolveAgentConfigurationIdByName(
+            auth,
+            params.agentName
+          );
+          if (!matchedAgentId) {
+            return new Err(
+              new MCPError(
+                `No agent found matching name: "${params.agentName}"`,
+                { tracked: false }
+              )
+            );
+          }
+          mentions = [{ configurationId: matchedAgentId }];
+        }
 
         const messageRes = await postUserMessage(auth, {
           conversation,

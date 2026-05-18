@@ -10,12 +10,11 @@ import {
   acceptableTranscriptsWithConnectorProvidersCodec,
 } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
-  provider: t.union([
+export const GetDefaultTranscriptsConfigurationBodySchema = z.object({
+  provider: z.union([
     acceptableTranscriptProvidersCodec,
     acceptableTranscriptsWithConnectorProvidersCodec,
   ]),
@@ -48,9 +47,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       const queryValidation =
-        GetDefaultTranscriptsConfigurationBodySchema.decode(req.query);
+        GetDefaultTranscriptsConfigurationBodySchema.safeParse(req.query);
 
-      if (isLeft(queryValidation)) {
+      if (!queryValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -60,7 +59,7 @@ async function handler(
         });
       }
 
-      const { provider } = queryValidation.right;
+      const { provider } = queryValidation.data;
 
       const allDataSources = await getDataSources(auth);
 

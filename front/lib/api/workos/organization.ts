@@ -168,7 +168,7 @@ export async function updateWorkOSOrganizationName(
       workspaceId: workspace.id,
       organizationId: organization.id,
     });
-    return new Ok(undefined);
+    return new Err(e);
   }
 
   return new Ok(undefined);

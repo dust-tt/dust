@@ -28,6 +28,7 @@ const MODEL_IDS_WITH_TOOLS_SUPPORT: &[&str] = &[
     "accounts/fireworks/models/firefunction-v1",
     "accounts/fireworks/models/kimi-k2-instruct-0905",
     "accounts/fireworks/models/deepseek-v3p2",
+    "accounts/fireworks/models/deepseek-v4-pro",
 ];
 
 pub struct FireworksLLM {

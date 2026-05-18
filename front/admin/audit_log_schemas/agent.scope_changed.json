@@ -9,9 +9,9 @@
     }
   ],
   "metadata": {
-    "agentName": "string",
-    "previousScope": "string",
-    "newScope": "string",
+    "agent_name": "string",
+    "previous_scope": "string",
+    "new_scope": "string",
     "actor_type": "string"
   }
 }

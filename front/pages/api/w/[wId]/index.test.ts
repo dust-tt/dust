@@ -377,6 +377,140 @@ describe("POST /api/w/[wId]", () => {
     });
   });
 
+  it("sets reinforcement cap", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      reinforcementCapMicroUsd: 50_000_000,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          reinforcementCapMicroUsd: 50_000_000,
+        }),
+      }),
+    });
+  });
+
+  it("sets self-improvement cap per skill", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      selfImprovementCapPerSkillMicroUsd: 20_000_000,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          selfImprovementCapPerSkillMicroUsd: 20_000_000,
+        }),
+      }),
+    });
+  });
+
+  it("sets self-improvement cap per skill to 0", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      selfImprovementCapPerSkillMicroUsd: 0,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          selfImprovementCapPerSkillMicroUsd: 0,
+        }),
+      }),
+    });
+  });
+
+  it("sets reinforcement cap to 0", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      reinforcementCapMicroUsd: 0,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          reinforcementCapMicroUsd: 0,
+        }),
+      }),
+    });
+  });
+
+  it("disables audit logs", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = { disableAuditLogs: true };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          disableAuditLogs: true,
+        }),
+      }),
+    });
+  });
+
+  it("enables audit logs", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = { disableAuditLogs: false };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          disableAuditLogs: false,
+        }),
+      }),
+    });
+  });
+
   it("returns 405 for non-POST methods", async () => {
     for (const method of ["PUT", "DELETE"] as const) {
       const { req, res } = await createPrivateApiMockRequest({

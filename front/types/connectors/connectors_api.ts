@@ -1,6 +1,6 @@
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { type ConnectorsAPIError, isConnectorsAPIError } from "@dust-tt/client";
-import * as t from "io-ts";
+import { z } from "zod";
 import type { ContentNodeType } from "../core/content_node";
 import type { ConnectorProvider, DataSourceType } from "../data_source";
 import type { LoggerInterface } from "../shared/logger";
@@ -13,39 +13,39 @@ import { DiscordBotConfigurationTypeSchema } from "./discord_bot";
 import { SlackConfigurationTypeSchema } from "./slack";
 import { WebCrawlerConfigurationTypeSchema } from "./webcrawler";
 
-export const ConnectorConfigurationTypeSchema = t.union([
+export const ConnectorConfigurationTypeSchema = z.union([
   WebCrawlerConfigurationTypeSchema,
   SlackConfigurationTypeSchema,
   DiscordBotConfigurationTypeSchema,
-  t.null,
+  z.null(),
 ]);
 
-export const UpdateConnectorConfigurationTypeSchema = t.type({
+export const UpdateConnectorConfigurationTypeSchema = z.object({
   configuration: ConnectorConfigurationTypeSchema,
 });
 
-export type UpdateConnectorConfigurationType = t.TypeOf<
+export type UpdateConnectorConfigurationType = z.infer<
   typeof UpdateConnectorConfigurationTypeSchema
 >;
 
-export const ConnectorCreateRequestBodySchema = t.type({
-  workspaceAPIKey: t.string,
-  dataSourceId: t.string,
-  workspaceId: t.string,
-  connectionId: t.string,
+export const ConnectorCreateRequestBodySchema = z.object({
+  workspaceAPIKey: z.string(),
+  dataSourceId: z.string(),
+  workspaceId: z.string(),
+  connectionId: z.string(),
   configuration: ConnectorConfigurationTypeSchema,
 });
 
-export type ConnectorCreateRequestBody = t.TypeOf<
+export type ConnectorCreateRequestBody = z.infer<
   typeof ConnectorCreateRequestBodySchema
 >;
 
-export const UpdateConnectorRequestBodySchema = t.type({
-  connectionId: t.string,
-  extraConfig: t.union([t.undefined, t.record(t.string, t.string)]),
+export const UpdateConnectorRequestBodySchema = z.object({
+  connectionId: z.string(),
+  extraConfig: z.record(z.string(), z.string()).optional(),
 });
 
-export type UpdateConnectorRequestBody = t.TypeOf<
+export type UpdateConnectorRequestBody = z.infer<
   typeof UpdateConnectorRequestBodySchema
 >;
 

@@ -13,10 +13,9 @@ import { apiError } from "@app/logger/withlogging";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { DatasetType } from "@app/types/dataset";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type GetDatasetsResponseBody = {
   datasets: DatasetType[];
@@ -26,22 +25,17 @@ export type PostDatasetResponseBody = {
   dataset: DatasetType;
 };
 
-export const PostDatasetRequestBodySchema = t.type({
-  dataset: t.type({
-    name: t.string,
-    description: t.union([t.string, t.null]),
-    data: t.array(t.record(t.string, t.any)),
+export const PostDatasetRequestBodySchema = z.object({
+  dataset: z.object({
+    name: z.string(),
+    description: z.string().nullable(),
+    data: z.array(z.record(z.string(), z.any())),
   }),
-  schema: t.array(
-    t.type({
-      key: t.string,
-      type: t.union([
-        t.literal("string"),
-        t.literal("number"),
-        t.literal("boolean"),
-        t.literal("json"),
-      ]),
-      description: t.union([t.string, t.null]),
+  schema: z.array(
+    z.object({
+      key: z.string(),
+      type: z.enum(["string", "number", "boolean", "json"]),
+      description: z.string().nullable(),
     })
   ),
 });
@@ -99,9 +93,9 @@ async function handler(
       return;
 
     case "POST":
-      const bodyValidation = PostDatasetRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostDatasetRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -122,7 +116,7 @@ async function handler(
 
       let exists = false;
       existing.forEach((e) => {
-        if (e.name == bodyValidation.right.dataset.name) {
+        if (e.name == bodyValidation.data.dataset.name) {
           exists = true;
         }
       });
@@ -138,8 +132,8 @@ async function handler(
 
       // Check name validity
       if (
-        !bodyValidation.right.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
-        bodyValidation.right.dataset.name.length === 0
+        !bodyValidation.data.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
+        bodyValidation.data.dataset.name.length === 0
       ) {
         return apiError(req, res, {
           status_code: 400,
@@ -155,8 +149,8 @@ async function handler(
       // Check data validity.
       try {
         checkDatasetData({
-          data: bodyValidation.right.dataset.data,
-          schema: bodyValidation.right.schema,
+          data: bodyValidation.data.dataset.data,
+          schema: bodyValidation.data.schema,
         });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
@@ -171,7 +165,7 @@ async function handler(
       }
 
       // Reorder all keys as Dust API expects them ordered.
-      const data = bodyValidation.right.dataset.data.map((d: any) => {
+      const data = bodyValidation.data.dataset.data.map((d: any) => {
         return Object.keys(d)
           .sort()
           .reduce((obj: { [key: string]: any }, key) => {
@@ -182,7 +176,7 @@ async function handler(
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const dataset = await coreAPI.createDataset({
         projectId: app.dustAPIProjectId,
-        datasetId: bodyValidation.right.dataset.name,
+        datasetId: bodyValidation.data.dataset.name,
         data,
       });
       if (dataset.isErr()) {
@@ -197,16 +191,16 @@ async function handler(
       }
 
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const description = bodyValidation.right.dataset.description
-        ? bodyValidation.right.dataset.description
+      const description = bodyValidation.data.dataset.description
+        ? bodyValidation.data.dataset.description
         : null;
 
       await DatasetModel.create({
-        name: bodyValidation.right.dataset.name,
+        name: bodyValidation.data.dataset.name,
         description,
         appId: app.id,
         workspaceId: owner.id,
-        schema: bodyValidation.right.schema,
+        schema: bodyValidation.data.schema,
       });
 
       res.status(201).json({

@@ -33,6 +33,13 @@ export class ConnectorManagerError<T extends string> extends Error {
   }
 }
 
+export class ContentNodeNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ContentNodeNotFoundError";
+  }
+}
+
 export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
   readonly connectorId: ModelId;
 

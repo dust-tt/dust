@@ -25,9 +25,8 @@ import { isAPIError } from "@app/types/error";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;
@@ -89,10 +88,12 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = UpdateConnectorRequestBodySchema.decode(req.body);
+      const bodyValidation = UpdateConnectorRequestBodySchema.safeParse(
+        req.body
+      );
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
 
         return apiError(req, res, {
           status_code: 400,
@@ -109,7 +110,7 @@ async function handler(
       );
       const updateRes = await connectorsAPI.updateConnector({
         connectorId: dataSource.connectorId.toString(),
-        connectionId: bodyValidation.right.connectionId,
+        connectionId: bodyValidation.data.connectionId,
       });
       const email = user.email;
       if (email && !isDisposableEmailDomain(email)) {
@@ -150,8 +151,8 @@ async function handler(
       // For Slack connections, update the signing secret in the webhook router
       if (dataSource.connectorProvider === "slack") {
         const webhookRes = await registerSlackWebhookRouterEntry({
-          connectionId: bodyValidation.right.connectionId,
-          extraConfig: bodyValidation.right.extraConfig,
+          connectionId: bodyValidation.data.connectionId,
+          extraConfig: bodyValidation.data.extraConfig,
         });
 
         if (webhookRes.isErr()) {
@@ -188,9 +189,9 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          dataSourceName: dataSource.name,
+          data_source_name: dataSource.name,
           provider: dataSource.connectorProvider ?? "unknown",
-          newConnectionId: bodyValidation.right.connectionId,
+          new_connection_id: bodyValidation.data.connectionId,
         },
       });
 

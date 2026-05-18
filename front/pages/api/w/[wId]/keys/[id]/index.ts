@@ -12,16 +12,15 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { KeyType } from "@app/types/key";
 import { isString } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type PatchKeyResponseBody = {
   key: KeyType;
 };
 
-const PatchKeyBodySchema = t.type({
-  monthly_cap_micro_usd: t.union([t.number, t.null]),
+const PatchKeyBodySchema = z.object({
+  monthly_cap_micro_usd: z.number().nullable(),
 });
 
 async function handler(
@@ -67,8 +66,8 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
-      const bodyValidation = PatchKeyBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
+      const bodyValidation = PatchKeyBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -79,7 +78,7 @@ async function handler(
         });
       }
 
-      const { monthly_cap_micro_usd } = bodyValidation.right;
+      const { monthly_cap_micro_usd } = bodyValidation.data;
 
       if (monthly_cap_micro_usd !== null && monthly_cap_micro_usd < 0) {
         return apiError(req, res, {
@@ -114,8 +113,8 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          previousSpendingCap: String(previousCapMicroUsd ?? "none"),
-          newSpendingCap: String(monthly_cap_micro_usd ?? "none"),
+          previous_spending_cap: String(previousCapMicroUsd ?? "none"),
+          new_spending_cap: String(monthly_cap_micro_usd ?? "none"),
         },
       });
 

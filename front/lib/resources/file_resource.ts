@@ -5,6 +5,7 @@ import config from "@app/lib/api/config";
 import {
   disambiguateFileName,
   getConversationFilePath,
+  getProjectFilesBasePath,
   makeProcessedMountFileName,
 } from "@app/lib/api/files/mount_path";
 import {
@@ -98,8 +99,12 @@ export class FileResource extends BaseResource<FileModel> {
   static async makeNew(
     blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
   ) {
+    // Normalize the user-visible file name to NFC. GCS object names are byte-exact and macOS
+    // uploads commonly arrive in NFD, which breaks lookups when consumers (e.g. LLMs) echo paths
+    // back in NFC. Normalizing on the way in keeps mount paths stable.
     const key = await FileResource.model.create({
       ...blob,
+      fileName: blob.fileName.normalize("NFC"),
       status: "created",
       version: 0,
     });
@@ -591,6 +596,10 @@ export class FileResource extends BaseResource<FileModel> {
    * Returns the file version to read for "best available" content.
    */
   private getContentVersion(): FileVersion {
+    if (this.useCaseMetadata?.skipFileProcessing === true) {
+      return "original";
+    }
+
     return hasProcessedVersion(this.contentType) ? "processed" : "original";
   }
 
@@ -934,11 +943,20 @@ export class FileResource extends BaseResource<FileModel> {
     return result;
   }
 
+  /**
+   * Public entry point to trigger mount path resolution. Idempotent — no-ops when a path is
+   * already set or when the file's use case isn't mount-eligible. Used by backfill scripts.
+   */
+  async ensureMountFilePath(auth: Authenticator): Promise<void> {
+    await this.resolveAndSetMountFilePath(auth);
+  }
+
   // Mount file path logic.
   //
-  // Files used in conversations are copied to a gcsfuse-mountable GCS path so sandboxes can access
-  // them as a flat, human-readable filesystem:
+  // Files used in conversations or projects are copied to a gcsfuse-mountable GCS path so
+  // sandboxes can access them as a flat, human-readable filesystem:
   //   w/{wId}/conversations/{cId}/files/{fileName}
+  //   w/{wId}/projects/{spaceId}/files/{fileName}
   //
   // The canonical path (files/w/{wId}/{fileId}/{version}) remains the immutable original. The mount
   // path is the mutable "live" version. Initial copy from canonical, then frame edits write
@@ -953,7 +971,7 @@ export class FileResource extends BaseResource<FileModel> {
    * Examines the file's use case and metadata to determine whether a mount path should be created.
    * Branches internally by use case:
    * - conversation / tool_output: mounts under w/{wId}/conversations/{cId}/files/
-   * - (future use cases can be added here)
+   * - project_context:            mounts under w/{wId}/projects/{spaceId}/files/
    *
    * No-ops if the file already has a mountFilePath or conditions aren't met.
    */
@@ -970,9 +988,11 @@ export class FileResource extends BaseResource<FileModel> {
       resolvedPath = await this.resolveConversationMountPath(auth, {
         conversationId: useCaseMetadata.conversationId,
       });
+    } else if (useCase === "project_context" && useCaseMetadata?.spaceId) {
+      resolvedPath = await this.resolveProjectMountPath(auth, {
+        projectId: useCaseMetadata.spaceId,
+      });
     }
-
-    // TODO(2026-03-09 SANDBOX): Add support for project context.
 
     if (resolvedPath) {
       await this.setMountFilePath(auth, resolvedPath);
@@ -1007,8 +1027,29 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
+   * Resolve the mount path for a project_context file. Checks for collisions via the unique index
+   * on mountFilePath and disambiguates with the file's sId if needed.
+   */
+  private async resolveProjectMountPath(
+    auth: Authenticator,
+    { projectId }: { projectId: string }
+  ): Promise<string> {
+    const owner = auth.getNonNullableWorkspace();
+    const basePath = getProjectFilesBasePath({
+      workspaceId: owner.sId,
+      projectId,
+    });
+
+    const desiredPath = `${basePath}${this.fileName}`;
+    const isTaken = await this.isMountFilePathTaken(desiredPath);
+
+    return isTaken ? `${basePath}${disambiguateFileName(this)}` : desiredPath;
+  }
+
+  /**
    * Set the mount file path and copy the file's original (and processed if exists) versions to the
-   * conversation-level GCS path for gcsfuse mounting.
+   * given GCS path for gcsfuse mounting. The path is conversation- or project-scoped depending on
+   * the caller.
    *
    * This is a one-time operation: copies from the canonical path to the mount path. Subsequent
    * edits (frames) write directly to the mount path.
@@ -1038,7 +1079,11 @@ export class FileResource extends BaseResource<FileModel> {
   private async isMountFilePathTaken(mountFilePath: string): Promise<boolean> {
     const existing = await FileResource.model.findOne({
       attributes: ["id"],
-      where: { workspaceId: this.workspaceId, mountFilePath },
+      where: {
+        workspaceId: this.workspaceId,
+        mountFilePath,
+        id: { [Op.ne]: this.id },
+      },
     });
     return existing !== null;
   }
@@ -1050,6 +1095,13 @@ export class FileResource extends BaseResource<FileModel> {
 
     const bucket = getPrivateUploadBucket();
     await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
+
+    if (
+      this.useCaseMetadata?.skipFileProcessing === true ||
+      !hasProcessedVersion(this.contentType)
+    ) {
+      return;
+    }
 
     // Only delete processed mount file if this file type has real processing.
     const processedMountPath = makeProcessedMountFileName({
@@ -1116,7 +1168,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   rename(newFileName: string) {
-    return this.update({ fileName: newFileName });
+    return this.update({ fileName: newFileName.normalize("NFC") });
   }
 
   // Sharing logic.

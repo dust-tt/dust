@@ -8,22 +8,17 @@ import { apiError } from "@app/logger/withlogging";
 import type { CoreAPISearchTagsResponse } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const PostTagSearchBodySchema = t.type({
-  query: t.string,
-  queryType: t.union([
-    t.literal("exact"),
-    t.literal("prefix"),
-    t.literal("match"),
-  ]),
-  dataSourceViewIds: t.array(t.string),
+export const PostTagSearchBodySchema = z.object({
+  query: z.string(),
+  queryType: z.enum(["exact", "prefix", "match"]),
+  dataSourceViewIds: z.array(z.string()),
 });
 
-export type PostTagSearchBody = t.TypeOf<typeof PostTagSearchBodySchema>;
+export type PostTagSearchBody = z.infer<typeof PostTagSearchBodySchema>;
 
 export type PostTagSearchResponseBody = CoreAPISearchTagsResponse;
 
@@ -55,9 +50,9 @@ async function handler(
     });
   }
 
-  const bodyValidation = PostTagSearchBodySchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = PostTagSearchBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
 
     return apiError(req, res, {
       status_code: 400,
@@ -68,7 +63,7 @@ async function handler(
     });
   }
 
-  const { dataSourceViewIds, query, queryType } = bodyValidation.right;
+  const { dataSourceViewIds, query, queryType } = bodyValidation.data;
 
   const dataSourceViews = await DataSourceViewResource.fetchByIds(
     auth,

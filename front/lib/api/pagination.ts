@@ -1,11 +1,8 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { createRangeCodec } from "@app/types/shared/utils/iots_utils";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest } from "next";
+import type { ParsedUrlQuery } from "querystring";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 class InvalidPaginationParamsError extends Error {
   constructor(
@@ -23,30 +20,28 @@ export interface PaginationParams {
   limit: number;
 }
 
-function getOrderColumnCodec(supportedOrderColumns: string[]): t.Mixed {
-  const [first, second, ...rest] = supportedOrderColumns;
+function getOrderColumnSchema(
+  supportedOrderColumns: string[]
+): z.ZodType<string> {
+  const [first, ...rest] = supportedOrderColumns;
   if (supportedOrderColumns.length === 1) {
-    return t.literal(first);
+    return z.literal(first);
   }
 
-  return t.union([
-    t.literal(first),
-    t.literal(second),
-    ...rest.map((value) => t.literal(value)),
-  ]);
+  return z.enum([first, ...rest] as [string, ...string[]]);
 }
 
 const DEFAULT_MAX_LIMIT = 2000;
 
-const PaginationParamsCodec = (
+const PaginationParamsSchema = (
   supportedOrderColumns: string[],
   maxLimit: number
 ) =>
-  t.type({
-    orderColumn: getOrderColumnCodec(supportedOrderColumns),
-    orderDirection: t.union([t.literal("asc"), t.literal("desc")]),
-    lastValue: t.union([t.string, t.undefined]),
-    limit: createRangeCodec(0, maxLimit),
+  z.object({
+    orderColumn: getOrderColumnSchema(supportedOrderColumns),
+    orderDirection: z.enum(["asc", "desc"]),
+    lastValue: z.string().optional(),
+    limit: z.number().min(0).max(maxLimit),
   });
 
 interface PaginationOptions {
@@ -58,53 +53,51 @@ interface PaginationOptions {
 }
 
 export function getPaginationParams(
-  req: NextApiRequest,
+  query: ParsedUrlQuery,
   defaults: PaginationOptions
 ): Result<PaginationParams, InvalidPaginationParamsError> {
   const rawParams = {
     // Don't support a default order column.
-    orderColumn: req.query.orderColumn ?? defaults.defaultOrderColumn,
-    orderDirection: req.query.orderDirection ?? defaults.defaultOrderDirection,
-    lastValue: req.query.lastValue,
-    limit: req.query.limit
-      ? parseInt(req.query.limit as string)
+    orderColumn: query.orderColumn ?? defaults.defaultOrderColumn,
+    orderDirection: query.orderDirection ?? defaults.defaultOrderDirection,
+    lastValue: query.lastValue,
+    limit: query.limit
+      ? parseInt(query.limit as string)
       : defaults.defaultLimit,
   };
 
-  const queryValidation = PaginationParamsCodec(
+  const queryValidation = PaginationParamsSchema(
     defaults.supportedOrderColumn,
     defaults.maxLimit ?? DEFAULT_MAX_LIMIT
-  ).decode(rawParams);
+  ).safeParse(rawParams);
 
   // Validate and decode the raw parameters.
-  if (isLeft(queryValidation)) {
-    const pathError = reporter.formatValidationErrors(queryValidation.left);
-
+  if (!queryValidation.success) {
     return new Err(
       new InvalidPaginationParamsError(
         "Invalid pagination parameters",
-        pathError.join(",")
+        fromError(queryValidation.error).toString()
       )
     );
   }
 
-  return new Ok(queryValidation.right);
+  return new Ok(queryValidation.data);
 }
 
-export const SortingParamsCodec = t.array(
-  t.type({
-    field: t.string,
-    direction: t.union([t.literal("asc"), t.literal("desc")]),
+export const SortingParamsCodec = z.array(
+  z.object({
+    field: z.string(),
+    direction: z.enum(["asc", "desc"]),
   })
 );
 
-export type SortingParams = t.TypeOf<typeof SortingParamsCodec>;
+export type SortingParams = z.infer<typeof SortingParamsCodec>;
 
 // Cursor pagination.
 
-const CursorPaginationParamsCodec = t.type({
-  limit: createRangeCodec(0, DEFAULT_MAX_LIMIT),
-  cursor: t.union([t.string, t.null]),
+const CursorPaginationParamsSchema = z.object({
+  limit: z.number().min(0).max(DEFAULT_MAX_LIMIT),
+  cursor: z.string().nullable(),
 });
 
 export interface CursorPaginationParams {
@@ -113,30 +106,28 @@ export interface CursorPaginationParams {
 }
 
 export function getCursorPaginationParams(
-  req: NextApiRequest
+  query: ParsedUrlQuery
 ): Result<CursorPaginationParams | undefined, InvalidPaginationParamsError> {
-  if (!req.query.limit) {
+  if (!query.limit) {
     return new Ok(undefined);
   }
 
   const rawParams = {
-    cursor: req.query.cursor ?? null,
-    limit: parseInt(req.query.limit as string, 10),
+    cursor: query.cursor ?? null,
+    limit: parseInt(query.limit as string, 10),
   };
 
-  const queryValidation = CursorPaginationParamsCodec.decode(rawParams);
+  const queryValidation = CursorPaginationParamsSchema.safeParse(rawParams);
 
   // Validate and decode the raw parameters.
-  if (isLeft(queryValidation)) {
-    const pathError = reporter.formatValidationErrors(queryValidation.left);
-
+  if (!queryValidation.success) {
     return new Err(
       new InvalidPaginationParamsError(
         "Invalid pagination parameters",
-        pathError.join(",")
+        fromError(queryValidation.error).toString()
       )
     );
   }
 
-  return new Ok(queryValidation.right);
+  return new Ok(queryValidation.data);
 }

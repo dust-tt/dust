@@ -9,7 +9,7 @@
     }
   ],
   "metadata": {
-    "agentName": "string",
+    "agent_name": "string",
     "scope": "string",
     "model": "string",
     "actor_type": "string"

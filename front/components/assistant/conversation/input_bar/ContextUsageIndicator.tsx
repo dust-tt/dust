@@ -2,13 +2,14 @@ import {
   useCompactConversation,
   useConversationContextUsage,
 } from "@app/hooks/conversations";
+import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
+  LinkWrapper,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
 } from "@dust-tt/sparkle";
 
 interface ContextUsageIndicatorProps {
@@ -20,11 +21,16 @@ interface ContextUsageIndicatorProps {
 interface CircleProgressProps {
   percentage: number;
   size?: number;
+  variant?: "default" | "warning";
 }
 
-const CONTEXT_USAGE_PERCENT_THRESHOLD = 33;
+const COMPACTION_GUIDE_URL = "https://docs.dust.tt/docs/context-compaction";
 
-function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
+function CircleProgress({
+  percentage,
+  size = 16,
+  variant = "default",
+}: CircleProgressProps) {
   const strokeWidth = size * 0.14;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -32,7 +38,14 @@ function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
   const offset = circumference - (clampedPct / 100) * circumference;
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className={
+        variant === "warning" ? "text-red-400 dark:text-red-400-night" : ""
+      }
+    >
       <circle
         cx={size / 2}
         cy={size / 2}
@@ -64,55 +77,74 @@ export function ContextUsageIndicator({
   owner,
   conversationId,
 }: ContextUsageIndicatorProps) {
-  const { contextUsage } = useConversationContextUsage({
-    conversationId,
-    workspaceId: owner.sId,
-  });
+  const { contextUsage, contextUsagePercentage, isContextUsageLoading } =
+    useConversationContextUsage({
+      conversationId,
+      workspaceId: owner.sId,
+      options: { disabled: !conversationId },
+    });
 
   const { compact, isCompacting } = useCompactConversation({
     owner,
     conversationId,
   });
 
-  const percentage =
-    contextUsage && contextUsage.contextSize > 0
-      ? Math.round((contextUsage.contextUsage / contextUsage.contextSize) * 100)
-      : 0;
+  if (isContextUsageLoading) {
+    return null;
+  }
+
+  const circleProgressVariant =
+    contextUsagePercentage > CONTEXT_USAGE_PERCENT_THRESHOLDS["show_warning"]
+      ? "warning"
+      : "default";
 
   return (
-    <div className="hidden md:block">
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost-secondary"
-              size={buttonSize}
-              icon={() => <CircleProgress percentage={percentage} size={16} />}
-            />
-          </TooltipTrigger>
-          <TooltipContent side="top" className="p-3">
-            <div className="flex flex-col items-start gap-3">
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                The current context usage is at {percentage}%
-              </span>
-              {percentage > CONTEXT_USAGE_PERCENT_THRESHOLD && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  label={isCompacting ? "Compacting" : "Compact now"}
-                  onClick={() => {
-                    if (contextUsage?.model) {
-                      void compact(contextUsage.model);
-                    }
-                  }}
-                  disabled={isCompacting || !contextUsage?.model}
-                  isLoading={isCompacting}
-                />
-              )}
-            </div>
-          </TooltipContent>
-        </TooltipRoot>
-      </TooltipProvider>
+    <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
+      <PopoverRoot>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost-secondary"
+            size={buttonSize}
+            icon={
+              <CircleProgress
+                percentage={contextUsagePercentage}
+                size={16}
+                variant={circleProgressVariant}
+              />
+            }
+          />
+        </PopoverTrigger>
+        <PopoverContent side="top" className="w-auto p-3">
+          <div className="flex flex-col items-start gap-3">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {contextUsagePercentage}% of context used.{" "}
+              <LinkWrapper
+                href={COMPACTION_GUIDE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-0.5 text-sm underline"
+              >
+                Learn more
+              </LinkWrapper>
+            </span>
+            {contextUsagePercentage >
+              CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
+              <Button
+                variant="outline"
+                size="xs"
+                label={isCompacting ? "Compacting" : "Compact now"}
+                onClick={() => {
+                  if (contextUsage?.model) {
+                    void compact(contextUsage.model);
+                  }
+                }}
+                disabled={isCompacting || !contextUsage?.model}
+                isLoading={isCompacting}
+              />
+            )}
+          </div>
+        </PopoverContent>
+      </PopoverRoot>
     </div>
   );
 }

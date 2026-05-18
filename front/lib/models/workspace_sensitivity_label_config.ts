@@ -50,11 +50,12 @@ WorkspaceSensitivityLabelConfigModel.init(
   },
   {
     sequelize: frontSequelize,
-    modelName: "workspace_sensitivity_label_config",
+    modelName: "workspace_sensitivity_label_configs",
     indexes: [
       {
         fields: ["workspaceId", "sourceType", "sourceId"],
         name: "workspace_sensitivity_label_configs_workspace_source_idx",
+        unique: true,
         concurrently: true,
       },
     ],

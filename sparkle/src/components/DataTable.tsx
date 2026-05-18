@@ -112,6 +112,8 @@ interface DataTableProps<TData extends TBaseData> {
   enableRowSelection?: boolean | ((row: Row<TData>) => boolean);
   enableMultiRowSelection?: boolean;
   enableSortingRemoval?: boolean;
+  /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
+  hideRowDivider?: boolean;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -136,6 +138,7 @@ export function DataTable<TData extends TBaseData>({
   enableMultiRowSelection = true,
   getRowId,
   enableSortingRemoval = true,
+  hideRowDivider = false,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -285,6 +288,7 @@ export function DataTable<TData extends TBaseData>({
               <DataTable.Row
                 widthClassName={widthClassName}
                 key={row.id}
+                hideBottomBorder={hideRowDivider}
                 onClick={
                   enableRowSelection ? handleRowClick : row.original.onClick
                 }
@@ -362,6 +366,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   enableMultiRowSelection = true,
   getRowId,
   containerRef,
+  hideRowDivider = false,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -644,6 +649,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
                   key={row.id}
                   id={row.id}
                   widthClassName={widthClassName}
+                  hideBottomBorder={hideRowDivider}
                   onClick={
                     enableRowSelection ? handleRowClick : row.original.onClick
                   }
@@ -814,6 +820,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   widthClassName: string;
   "data-selected"?: boolean;
   rowData?: TBaseData;
+  hideBottomBorder?: boolean;
 }
 
 DataTable.Row = function Row({
@@ -823,6 +830,7 @@ DataTable.Row = function Row({
   onDoubleClick,
   widthClassName,
   rowData,
+  hideBottomBorder = false,
   ...props
 }: RowProps) {
   const [contextMenuPosition, setContextMenuPosition] = useState<{
@@ -843,8 +851,11 @@ DataTable.Row = function Row({
     <>
       <tr
         className={cn(
-          "s-group/dt-row s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
-          "s-border-separator dark:s-border-separator-night",
+          "s-group/dt-row s-justify-center s-transition-colors s-duration-300 s-ease-out",
+          !hideBottomBorder && [
+            "s-border-b",
+            "s-border-separator dark:s-border-separator-night",
+          ],
           (onClick || onDoubleClick) &&
             "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-background dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-background-night",
           props["data-selected"] &&

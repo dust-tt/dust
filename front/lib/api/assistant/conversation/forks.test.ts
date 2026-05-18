@@ -14,6 +14,7 @@ import * as dataSourcesModule from "@app/lib/api/data_sources";
 import * as fileUpsertModule from "@app/lib/api/files/upsert";
 import * as fileUtilsModule from "@app/lib/api/files/utils";
 import { Authenticator } from "@app/lib/auth";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -169,9 +170,7 @@ async function createAgentMessage(
   const action = await AgentMCPActionModel.create({
     workspaceId: workspace.id,
     agentMessageId: agentMessage.id,
-    stepContentId: stepContent.id,
     mcpServerConfigurationId: generateRandomModelSId(),
-    version: 0,
     status: "succeeded",
     citationsAllocated: 0,
     augmentedInputs: {},
@@ -205,6 +204,14 @@ async function createAgentMessage(
       retrievalTopK: 10,
       websearchResultCount: 0,
     },
+  });
+
+  await AgentStepContentToolExecutionModel.create({
+    workspaceId: workspace.id,
+    conversationId: conversation.id,
+    agentMessageId: agentMessage.id,
+    agentMCPActionId: action.id,
+    stepContentId: stepContent.id,
   });
 
   await AgentMCPActionOutputItemModel.create({
@@ -494,7 +501,7 @@ describe("createConversationFork", () => {
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     expect(childConversation.title).toBeNull();
@@ -689,7 +696,7 @@ describe("createConversationFork", () => {
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     expect(childConversation.forkingData?.forkedFrom?.sourceMessageId).toBe(
@@ -798,7 +805,7 @@ describe("createConversationFork", () => {
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childMCPServerViews = await ConversationResource.fetchMCPServerViews(
@@ -861,7 +868,7 @@ describe("createConversationFork", () => {
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childSkills = await SkillResource.listEnabledByConversation(auth, {
@@ -938,7 +945,7 @@ describe("createConversationFork", () => {
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1072,7 +1079,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1226,7 +1233,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1310,7 +1317,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1408,7 +1415,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1476,7 +1483,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1580,7 +1587,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1682,7 +1689,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     expect(childConversation.requestedSpaceIds).toEqual([

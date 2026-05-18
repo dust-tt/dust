@@ -293,6 +293,7 @@ export async function prepareParamsWithHistory(
 
       const convoRes = await renderConversationForModel(auth, {
         conversation: agentLoopRunContext.conversation,
+        enabledSkills: [],
         model,
         prompt: "",
         tools: "",

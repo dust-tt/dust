@@ -189,6 +189,11 @@ export function getMcpServerDisplayName(
     if (serverConfig.isPreview === true) {
       displayName += " (Preview)";
     }
+    // Only matches the old internal Notion server; the new official Notion is a remote
+    // MCP server, so its sId doesn't decode here and this branch is skipped.
+    if (res.value.name === "notion") {
+      displayName += " (old)";
+    }
     // Will append Dust App name.
     if (res.value.name === "run_dust_app" && action) {
       displayName += " - " + action.name;

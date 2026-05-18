@@ -7,8 +7,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isAdmin } from "@app/types/user";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 const DEFAULT_SUGGESTIONS = [
   "Writing",
@@ -34,20 +34,18 @@ const DEFAULT_SUGGESTIONS = [
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const GetSuggestionsResponseBodySchema = t.type({
-  suggestions: t.union([
-    t.array(
-      t.type({
-        name: t.string,
-        agents: t.array(t.type({ sId: t.string, name: t.string })),
+const GetSuggestionsResponseBodySchema = z.object({
+  suggestions: z
+    .array(
+      z.object({
+        name: z.string(),
+        agents: z.array(z.object({ sId: z.string(), name: z.string() })),
       })
-    ),
-    t.null,
-    t.undefined,
-  ]),
+    )
+    .nullish(),
 });
 
-export type GetSuggestionsResponseBody = t.TypeOf<
+export type GetSuggestionsResponseBody = z.infer<
   typeof GetSuggestionsResponseBodySchema
 >;
 

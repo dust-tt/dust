@@ -16,6 +16,7 @@ use async_trait::async_trait;
 use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
 use std::env;
+use urlencoding;
 
 lazy_static! {
     static ref OAUTH_SLACK_CLIENT_ID: String = env::var("OAUTH_SLACK_CLIENT_ID").unwrap();
@@ -63,7 +64,12 @@ impl SlackConnectionProvider {
             ),
         };
 
-        Ok(general_purpose::STANDARD.encode(&format!("{}:{}", client_id, client_secret)))
+        // RFC 6749 §2.3.1 requires URL-encoding client_id and client_secret before base64-encoding.
+        Ok(general_purpose::STANDARD.encode(&format!(
+            "{}:{}",
+            urlencoding::encode(&client_id),
+            urlencoding::encode(&client_secret)
+        )))
     }
 
     pub fn get_credentials(credentials: Credential) -> Result<(String, String)> {

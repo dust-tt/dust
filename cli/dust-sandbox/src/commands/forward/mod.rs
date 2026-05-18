@@ -3,34 +3,43 @@ mod handshake;
 mod http_host;
 mod original_dst;
 mod sni;
+mod tls_mitm;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{ensure, Context, Result};
-use clap::Args;
 use rustls::pki_types::ServerName;
 use rustls::ClientConfig;
 use rustls::RootCertStore;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::{sleep, timeout, timeout_at, Instant};
 use tokio_rustls::TlsConnector;
 use tracing::{debug, info, warn};
+
+use crate::egress_secrets::SecretTable;
 
 use self::deny_log::{append_deny_log, DenyReason};
 use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
 use self::http_host::parse_http_host;
 use self::original_dst::resolve_original_dst;
 use self::sni::parse_client_hello_sni;
+use self::tls_mitm::MitmCa;
 
 const DOMAIN_PEEK_TIMEOUT: Duration = Duration::from_secs(2);
 const DOMAIN_PEEK_RETRY_DELAY: Duration = Duration::from_millis(25);
 const PROXY_RESPONSE_TIMEOUT: Duration = Duration::from_secs(2);
 const DOMAIN_PEEK_BUFFER_SIZE: usize = 16 * 1024;
 
-#[derive(Args, Debug, Clone)]
+const MITM_CA_CERT_PATH: &str = "/run/dust/egress-ca.pem";
+const MITM_CA_KEY_PATH: &str = "/run/dust/egress-ca.key";
+// Must match `front/lib/api/sandbox/egress_secrets.ts:EGRESS_SECRETS_PATH`.
+const EGRESS_SECRETS_PATH: &str = "/run/dust/egress-secrets.json";
+
+#[derive(clap::Args, Debug, Clone)]
 pub struct ForwardArgs {
     /// Path to the JWT token file
     #[arg(long)]
@@ -47,6 +56,9 @@ pub struct ForwardArgs {
     /// Path to the deny log file
     #[arg(long, default_value = "/tmp/dust-egress-denied.log")]
     deny_log: PathBuf,
+    /// Path to the one-shot egress secrets file loaded at startup
+    #[arg(long, default_value = EGRESS_SECRETS_PATH)]
+    secrets_file: PathBuf,
 }
 
 #[derive(Clone)]
@@ -55,6 +67,10 @@ struct ForwardRuntime {
     proxy_addr: std::net::SocketAddr,
     proxy_tls_name: Arc<str>,
     deny_log: Arc<PathBuf>,
+    // Plumbed in Slice 4; consumed by SNI-scoped MITM in Slice 5 and the
+    // request rewriter in Slice 6.
+    #[allow(dead_code)]
+    secret_table: Arc<SecretTable>,
     tls_connector: TlsConnector,
 }
 
@@ -74,6 +90,26 @@ struct DomainExtraction {
 pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
     let token = load_token(&args.token_file).await?;
     let tls_connector = build_tls_connector()?;
+
+    // The CA must be loaded/generated BEFORE we bind the listener. Front uses
+    // "port 9990 is LISTEN" as the readiness signal and, the moment that's
+    // true, reads /run/dust/egress-ca.pem to build the sandbox trust bundle.
+    // Bind-then-write would race: front could see a missing or stale CA file.
+    // Keep this ordering intact on restarts too. The slice that wires up TLS
+    // termination will reintroduce the CA into ForwardRuntime; today only its
+    // on-disk side effect matters, so we drop the in-memory handle.
+    let _ = MitmCa::load_or_generate(
+        std::path::Path::new(MITM_CA_CERT_PATH),
+        std::path::Path::new(MITM_CA_KEY_PATH),
+    )
+    .context("failed to load or generate persistent MITM CA")?;
+
+    // The secrets file is intentionally loaded once at dsbx startup. Front
+    // propagates changes in Phase 1 by rewriting the file and restarting dsbx
+    // on sandbox wake; live reload/inotify is deferred to a later phase.
+    let secret_table =
+        SecretTable::load(&args.secrets_file).context("failed to load egress secrets table")?;
+
     let listener = TcpListener::bind(args.listen)
         .await
         .with_context(|| format!("failed to bind forward listener on {}", args.listen))?;
@@ -83,6 +119,9 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
         proxy_addr = %args.proxy_addr,
         proxy_tls_name = %args.proxy_tls_name,
         deny_log = %args.deny_log.display(),
+        secrets_file = %args.secrets_file.display(),
+        secret_count = secret_table.len(),
+        domain_pattern_count = secret_table.sni_match_set.pattern_count(),
         "starting dsbx forwarder"
     );
 
@@ -91,6 +130,7 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
         proxy_addr: args.proxy_addr,
         proxy_tls_name: Arc::<str>::from(args.proxy_tls_name),
         deny_log: Arc::new(args.deny_log),
+        secret_table: Arc::new(secret_table),
         tls_connector,
     };
 
@@ -193,6 +233,7 @@ async fn handle_connection(
                 domain = display_domain(&domain_extraction.domain),
                 "proxy allowed forwarded connection"
             );
+
             tokio::io::copy_bidirectional(&mut client_stream, &mut proxy_stream)
                 .await
                 .context("bidirectional copy failed")?;

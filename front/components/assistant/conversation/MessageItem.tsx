@@ -336,6 +336,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               user={context.user}
               triggeringUser={triggeringUser}
               conversationId={context.conversation.sId}
+              spaceId={context.conversation.spaceId ?? null}
               hideHeader={isSteeredAgentMessage}
               isLastMessage={!nextData}
               agentMessage={data}
@@ -343,7 +344,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={context.owner}
               handleSubmit={context.handleSubmit}
               isOnboardingConversation={context.isOnboardingConversation}
-              onConversationBranched={context.onConversationBranched}
               onCompletionStatusClick={onAgentMessageCompletionStatusClick}
               additionalMarkdownComponents={
                 context.additionalMarkdownComponents

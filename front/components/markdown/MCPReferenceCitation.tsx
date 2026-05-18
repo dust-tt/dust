@@ -7,5 +7,6 @@ export interface MCPReferenceCitation {
   href?: string;
   title: string;
   contentType: AllSupportedWithDustSpecificFileContentType;
-  fileId: string;
+  fileId?: string;
+  ref?: string;
 }

@@ -30,6 +30,7 @@ export { default as ActionCommandIcon } from "./Command";
 export { default as ActionCommand1Icon } from "./Command1";
 export { default as ActionCommunityIcon } from "./Community";
 export { default as ActionCompanyIcon } from "./Company";
+export { default as ActionCreditCoinsIcon } from "./CreditCoins";
 export { default as ActionCubeIcon } from "./Cube";
 export { default as ActionCupIcon } from "./Cup";
 export { default as ActionCustomerServiceIcon } from "./CustomerService";

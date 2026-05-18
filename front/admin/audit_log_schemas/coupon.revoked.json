@@ -1,0 +1,7 @@
+{
+  "action": "coupon.revoked",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "redemption_id": "string"
+  }
+}

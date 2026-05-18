@@ -140,8 +140,8 @@ export function SandboxTab({
   const files = useMemo(
     () =>
       sandboxFiles.filter(
-        (f) =>
-          !f.fileName.startsWith(".") && f.contentType !== "inode/directory"
+        (f): f is GCSMountFileEntry =>
+          !f.isDirectory && !f.fileName.startsWith(".")
       ),
     [sandboxFiles]
   );

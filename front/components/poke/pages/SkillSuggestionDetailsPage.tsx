@@ -39,6 +39,10 @@ export function SkillSuggestionDetailsPage() {
     () => data?.skillInstructionsHtml ?? "",
     [data?.skillInstructionsHtml]
   );
+  const getCurrentAgentFacingDescription = useCallback(
+    () => data?.skillAgentFacingDescription ?? "",
+    [data?.skillAgentFacingDescription]
+  );
 
   if (isLoading) {
     return (
@@ -136,6 +140,10 @@ export function SkillSuggestionDetailsPage() {
             <SkillSuggestionCard
               suggestion={suggestion}
               getSkillInstructionsHtml={getSkillInstructionsHtml}
+              getCurrentAgentFacingDescription={
+                getCurrentAgentFacingDescription
+              }
+              workspaceId={owner.sId}
             />
           </MCPServerViewsContext.Provider>
         </div>

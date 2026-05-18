@@ -5,15 +5,10 @@ import {
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
-import { getStatsDClient } from "@app/lib/utils/statsd";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import assert from "assert";
 import type Stripe from "stripe";
 
 const BRACKET_1_USERS = 10;
@@ -22,8 +17,6 @@ const BRACKET_2_USERS = 40; // 11-50
 const BRACKET_2_MICRO_USD_PER_USER = 2_000_000; // $2
 const BRACKET_3_USERS = 50; // 51-100
 const BRACKET_3_MICRO_USD_PER_USER = 1_000_000; // $1
-
-const TRIAL_CREDIT_MICRO_USD = 5_000_000; // $5
 
 const MONTHLY_BILLING_CYCLE_SECONDS = 30 * 24 * 60 * 60; // ~30 days
 const YEARLY_BILLING_CYCLE_SECONDS = 365 * 24 * 60 * 60; // ~365 days
@@ -151,351 +144,141 @@ export async function getCustomerPaymentStatus(
   return "not_paying";
 }
 
-export async function grantFreeCreditsFromSubscriptionStateChange({
+export const YEARLY_MULTIPLIER = 12;
+
+/**
+ * Create + start the DB free credit corresponding to a Metronome recurring
+ * free credit segment. Called by the Metronome webhook on
+ * `credit.segment.start` — Metronome is the source of truth for the
+ * recurring free credit, so the DB credit's dates and id are taken straight
+ * from the Metronome segment.
+ *
+ * Idempotent: if a free credit already exists for the same period (e.g.
+ * because the contract was dropped and recreated within the same billing
+ * cycle), the existing credit is returned unchanged.
+ */
+export async function grantFreeCreditFromMetronomeSegment({
   auth,
-  stripeSubscription,
+  metronomeCreditId,
+  contractId,
+  segmentId,
+  isAnnual,
+  amountMicroUsd,
+  periodStart,
+  periodEnd,
 }: {
   auth: Authenticator;
-  stripeSubscription: Stripe.Subscription;
-}): Promise<Result<undefined, Error>> {
+  metronomeCreditId: string;
+  contractId: string;
+  segmentId: string;
+  isAnnual: boolean;
+  amountMicroUsd: number;
+  periodStart: Date;
+  periodEnd: Date;
+}): Promise<
+  Result<
+    { credit: CreditResource; created: boolean; alreadyExisted: boolean },
+    Error
+  >
+> {
   const workspace = auth.getNonNullableWorkspace();
-  const workspaceId = workspace.sId;
 
-  // Check if credit already exists for this billing cycle (idempotency)
-  const idempotencyKey = `free-renewal-${stripeSubscription.id}-${stripeSubscription.current_period_start}`;
-  const existingCredit = await CreditResource.fetchByInvoiceOrLineItemId(
+  // Contract recreations can re-fire credit.segment.start for a period
+  // we've already provisioned. The (workspaceId, type, startDate,
+  // expirationDate) unique index would block re-creation in start();
+  // we leave the original DB credit untouched and skip.
+  const existingForPeriod = await CreditResource.fetchByTypeAndDates(
     auth,
-    idempotencyKey
+    "free",
+    periodStart,
+    periodEnd
   );
-
-  if (existingCredit) {
-    logger.info(
-      {
-        workspaceId,
-        creditId: existingCredit.id,
-        subscriptionId: stripeSubscription.id,
-      },
-      "[Free Credits] Credit already exists for this billing cycle, skipping"
-    );
-    return new Ok(undefined);
-  }
-
-  // Enterprise subscriptions are always eligible
-  const isEnterprise = isEnterpriseSubscription(stripeSubscription);
-  const customerPaymentStatus: CustomerPaymentStatus =
-    await getCustomerPaymentStatus(stripeSubscription);
-
-  logger.info(
-    {
-      workspaceId,
-      subscriptionId: stripeSubscription.id,
-      isEnterprise,
-    },
-    "[Free Credits] Processing free credit grant on subscription renewal"
-  );
-
-  let creditAmountMicroUsd: number;
-
-  const programmaticConfig =
-    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-
-  if (
-    programmaticConfig &&
-    programmaticConfig.freeCreditMicroUsd !== null &&
-    customerPaymentStatus === "paying"
-  ) {
-    creditAmountMicroUsd = programmaticConfig.freeCreditMicroUsd;
-    logger.info(
-      {
-        workspaceId,
-        creditAmountMicroUsd,
-      },
-      "[Free Credits] Using ProgrammaticUsageConfiguration override amount"
-    );
-  } else {
-    switch (customerPaymentStatus) {
-      case "not_paying":
-        logger.warn(
-          {
-            workspaceId,
-            subscriptionId: stripeSubscription.id,
-          },
-          "[Free Credits] Pro subscription not eligible for free credits (subscription payment too old or missing)"
-        );
-        return new Err(
-          new Error("Pro subscription not eligible for free credits")
-        );
-      case "trialing":
-        creditAmountMicroUsd = TRIAL_CREDIT_MICRO_USD;
-        break;
-      case "paying":
-        const userCount = await countEligibleUsersForFreeCredits(workspace);
-        creditAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
-        logger.info(
-          {
-            workspaceId,
-            userCount,
-            creditAmountMicroUsd,
-            customerPaymentStatus,
-          },
-          "[Free Credits] Calculated credit amount using brackets system"
-        );
-        break;
-      default:
-        assertNever(customerPaymentStatus);
+  if (existingForPeriod) {
+    await existingForPeriod.setMetronomeCreditId(metronomeCreditId);
+    const amountUpdated =
+      amountMicroUsd > existingForPeriod.consumedAmountMicroUsd;
+    if (amountUpdated) {
+      await existingForPeriod.updateInitialAmountMicroUsd(auth, amountMicroUsd);
     }
-
-    assert(
-      creditAmountMicroUsd > 0,
-      "Unexpected programmatic usage free credit amount equal to zero"
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        existingCreditId: existingForPeriod.id,
+        existingMetronomeCreditId: existingForPeriod.metronomeCreditId,
+        newMetronomeCreditId: metronomeCreditId,
+        existingInitialAmountMicroUsd: existingForPeriod.initialAmountMicroUsd,
+        existingConsumedAmountMicroUsd:
+          existingForPeriod.consumedAmountMicroUsd,
+        newAmountMicroUsd: amountMicroUsd,
+        amountUpdated,
+        segmentId,
+        contractId,
+        periodStart,
+        periodEnd,
+      },
+      `[Free Credits] free credit already exists for this period (likely contract recreated), updated metronomeCreditId${amountUpdated ? " and amount" : ""}`
     );
+    return new Ok({
+      credit: existingForPeriod,
+      created: false,
+      alreadyExisted: true,
+    });
   }
 
-  const periodStart = new Date(stripeSubscription.current_period_start * 1000);
-  const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
+  // Mirrors the Stripe-side `free-renewal-...` key format, with the
+  // Metronome contract id substituted for the Stripe subscription id and
+  // the period start in unix seconds.
+  const periodStartSeconds = Math.floor(periodStart.getTime() / 1000);
+  const idempotencyKey = isAnnual
+    ? `free-renewal-yearly-${contractId}-${periodStartSeconds}`
+    : `free-renewal-${contractId}-${periodStartSeconds}`;
 
   const { credit, created } =
     await CreditResource.makeNewOrFetchByInvoiceOrLineItemId(auth, {
       type: "free",
-      initialAmountMicroUsd: creditAmountMicroUsd,
+      initialAmountMicroUsd: amountMicroUsd,
       consumedAmountMicroUsd: 0,
       discount: null,
       invoiceOrLineItemId: idempotencyKey,
+      metronomeCreditId,
     });
 
-  if (!created) {
-    logger.info(
-      {
-        workspaceId,
-        creditId: credit.id,
-        subscriptionId: stripeSubscription.id,
-      },
-      "[Free Credits] Credit already exists for this billing cycle, skipping"
-    );
-    return new Ok(undefined);
-  }
-
-  logger.info(
-    {
-      workspaceId,
-      creditId: credit.id,
-      creditAmountMicroUsd,
-      periodStart,
-      periodEnd,
-    },
-    "[Free Credits] Created credit, now starting"
-  );
-
-  // Start the credit at beginning of billing cycle.
-  const startResult = await credit.start(auth, {
-    startDate: periodStart,
-    expirationDate: periodEnd,
-  });
-  if (startResult.isErr()) {
-    logger.error(
-      {
-        panic: true,
-        workspaceId,
-        creditId: credit.id,
-        error: startResult.error,
-      },
-      "[Free Credits] Error starting credit"
-    );
-    getStatsDClient().increment("credits.top_up.error", 1, [
-      `workspace_id:${workspaceId}`,
-      "type:free",
-      `customer:${isEnterprise ? "enterprise" : "pro"}`,
-    ]);
-    return new Err(startResult.error);
-  }
-
-  getStatsDClient().increment("credits.top_up.success", 1, [
-    `workspace_id:${workspaceId}`,
-    "type:free",
-    `customer:${isEnterprise ? "enterprise" : "pro"}`,
-  ]);
-  logger.info(
-    {
-      workspaceId,
-      creditId: credit.id,
-      creditAmountMicroUsd,
-      periodStart,
-      periodEnd,
-    },
-    "[Free Credits] Successfully granted and activated free credit on renewal"
-  );
-
-  return new Ok(undefined);
-}
-
-const YEARLY_MULTIPLIER = 12;
-
-export async function grantFreeCreditFromSubscriptionStateChangeYearly({
-  auth,
-  stripeSubscription,
-}: {
-  auth: Authenticator;
-  stripeSubscription: Stripe.Subscription;
-}): Promise<Result<undefined, Error>> {
-  const workspace = auth.getNonNullableWorkspace();
-  const workspaceId = workspace.sId;
-
-  // Check if credit already exists for this billing cycle (idempotency)
-  const idempotencyKey = `free-renewal-yearly-${stripeSubscription.id}-${stripeSubscription.current_period_start}`;
-  const existingCredit = await CreditResource.fetchByInvoiceOrLineItemId(
-    auth,
-    idempotencyKey
-  );
-
-  if (existingCredit) {
-    logger.info(
-      {
-        workspaceId,
-        creditId: existingCredit.id,
-        subscriptionId: stripeSubscription.id,
-      },
-      "[Free Credits Yearly] Credit already exists for this billing cycle, skipping"
-    );
-    return new Ok(undefined);
-  }
-
-  const isEnterprise = isEnterpriseSubscription(stripeSubscription);
-  const customerPaymentStatus: CustomerPaymentStatus =
-    await getCustomerPaymentStatus(stripeSubscription);
-
-  logger.info(
-    {
-      workspaceId,
-      subscriptionId: stripeSubscription.id,
-      isEnterprise,
-    },
-    "[Free Credits Yearly] Processing free credit grant on yearly subscription renewal"
-  );
-
-  // Yearly subscriptions don't have trials - must be paying
-  if (customerPaymentStatus !== "paying") {
-    logger.warn(
-      {
-        workspaceId,
-        subscriptionId: stripeSubscription.id,
-        customerPaymentStatus,
-      },
-      "[Free Credits Yearly] Yearly subscription not eligible for free credits (not paying)"
-    );
-    return new Err(
-      new Error("Yearly subscription not eligible for free credits")
-    );
-  }
-
-  let creditAmountMicroUsd: number;
-
-  const programmaticConfig =
-    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-
-  if (programmaticConfig && programmaticConfig.freeCreditMicroUsd !== null) {
-    // For yearly subscriptions, the configured amount is assumed to be yearly
-    creditAmountMicroUsd = programmaticConfig.freeCreditMicroUsd;
-    logger.info(
-      {
-        workspaceId,
-        creditAmountMicroUsd,
-      },
-      "[Free Credits Yearly] Using ProgrammaticUsageConfiguration override amount (yearly)"
-    );
-  } else {
-    // Calculate monthly amount and multiply by 12 for yearly
-    const userCount = await countEligibleUsersForFreeCredits(workspace);
-    const monthlyAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
-    creditAmountMicroUsd = monthlyAmountMicroUsd * YEARLY_MULTIPLIER;
-    logger.info(
-      {
-        workspaceId,
-        userCount,
-        monthlyAmountMicroUsd,
-        creditAmountMicroUsd,
-      },
-      "[Free Credits Yearly] Calculated credit amount using brackets system x 12"
-    );
-  }
-
-  assert(
-    creditAmountMicroUsd > 0,
-    "Unexpected programmatic usage free credit amount equal to zero"
-  );
-
-  const periodStart = new Date(stripeSubscription.current_period_start * 1000);
-  const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
-
-  const { credit, created } =
-    await CreditResource.makeNewOrFetchByInvoiceOrLineItemId(auth, {
-      type: "free",
-      initialAmountMicroUsd: creditAmountMicroUsd,
-      consumedAmountMicroUsd: 0,
-      discount: null,
-      invoiceOrLineItemId: idempotencyKey,
+  if (created) {
+    const startResult = await credit.start(auth, {
+      startDate: periodStart,
+      expirationDate: periodEnd,
     });
-
-  if (!created) {
-    logger.info(
-      {
-        workspaceId,
-        creditId: credit.id,
-        subscriptionId: stripeSubscription.id,
-      },
-      "[Free Credits Yearly] Credit already exists for this billing cycle, skipping"
-    );
-    return new Ok(undefined);
+    if (startResult.isErr()) {
+      logger.error(
+        {
+          panic: true,
+          workspaceId: workspace.sId,
+          creditId: credit.id,
+          metronomeCreditId,
+          segmentId,
+          error: startResult.error,
+        },
+        "[Free Credits] failed to start DB credit from metronome credit segment"
+      );
+      return new Err(startResult.error);
+    }
   }
 
   logger.info(
     {
-      workspaceId,
+      workspaceId: workspace.sId,
       creditId: credit.id,
-      creditAmountMicroUsd,
+      metronomeCreditId,
+      segmentId,
+      contractId,
+      amountMicroUsd,
+      isAnnual,
+      created,
       periodStart,
       periodEnd,
     },
-    "[Free Credits Yearly] Created credit, now starting"
+    "[Free Credits] DB free credit ensured from metronome credit segment"
   );
 
-  // Start the credit at beginning of billing cycle (spans the full year).
-  const startResult = await credit.start(auth, {
-    startDate: periodStart,
-    expirationDate: periodEnd,
-  });
-  if (startResult.isErr()) {
-    logger.error(
-      {
-        panic: true,
-        workspaceId,
-        creditId: credit.id,
-        error: startResult.error,
-      },
-      "[Free Credits Yearly] Error starting credit"
-    );
-    getStatsDClient().increment("credits.top_up.error", 1, [
-      `workspace_id:${workspaceId}`,
-      "type:free_yearly",
-      `customer:${isEnterprise ? "enterprise" : "pro"}`,
-    ]);
-    return new Err(startResult.error);
-  }
-
-  getStatsDClient().increment("credits.top_up.success", 1, [
-    `workspace_id:${workspaceId}`,
-    "type:free_yearly",
-    `customer:${isEnterprise ? "enterprise" : "pro"}`,
-  ]);
-  logger.info(
-    {
-      workspaceId,
-      creditId: credit.id,
-      creditAmountMicroUsd,
-      periodStart,
-      periodEnd,
-    },
-    "[Free Credits Yearly] Successfully granted and activated free credit on yearly renewal"
-  );
-
-  return new Ok(undefined);
+  return new Ok({ credit, created, alreadyExisted: false });
 }

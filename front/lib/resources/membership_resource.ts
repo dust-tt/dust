@@ -20,6 +20,7 @@ import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/clien
 import type {
   MembershipOriginType,
   MembershipRoleType,
+  MembershipSeatType,
 } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -49,7 +50,7 @@ type GetMembershipsOptions = RequireAtLeastOne<{
 export type MembershipsPaginationParams = {
   orderColumn: "createdAt";
   orderDirection: "asc" | "desc";
-  lastValue: number | null | undefined;
+  lastValue?: number;
   limit: number;
 };
 
@@ -799,6 +800,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     role,
     origin = "invited",
+    seatType = "workspace",
     startAt = new Date(),
     transaction,
   }: {
@@ -806,6 +808,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
     origin?: MembershipOriginType;
+    seatType?: MembershipSeatType;
     startAt?: Date;
     transaction?: Transaction;
   }): Promise<MembershipResource> {
@@ -835,6 +838,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         workspaceId: workspace.id,
         role,
         origin,
+        seatType,
         firstUsedAt: origin === "provisioned" ? null : new Date(),
       },
       { transaction }
@@ -1103,12 +1107,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       });
     } else {
       // If the last membership was terminated, we create a new membership with the new role.
-      // Preserve the origin from the previous membership.
+      // Preserve the origin and seatType from the previous membership.
       await this.createMembership({
         user,
         workspace,
         role: newRole,
         origin: membership.origin,
+        seatType: membership.seatType,
         startAt: new Date(),
         transaction,
       });
@@ -1218,6 +1223,47 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
 
     return { previousOrigin, newOrigin };
+  }
+
+  /**
+   * Update the seatType of an active membership. Callers are responsible for
+   * re-syncing Metronome seat counts (via `syncSeatCount`) after this returns.
+   */
+  async updateMembershipSeat({
+    user,
+    workspace,
+    newSeatType,
+    transaction,
+    author,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    newSeatType: MembershipSeatType;
+    transaction?: Transaction;
+    author: UserType | "no-author";
+  }): Promise<{
+    previousSeatType: MembershipSeatType;
+    newSeatType: MembershipSeatType;
+  }> {
+    const previousSeatType = this.seatType;
+    if (previousSeatType === newSeatType) {
+      return { previousSeatType, newSeatType };
+    }
+
+    await this.update({ seatType: newSeatType }, transaction);
+
+    auditLog(
+      {
+        author,
+        userId: user.id,
+        workspaceId: workspace.id,
+        previousSeatType,
+        newSeatType,
+      },
+      "Membership seat type updated"
+    );
+
+    return { previousSeatType, newSeatType };
   }
 
   async delete(

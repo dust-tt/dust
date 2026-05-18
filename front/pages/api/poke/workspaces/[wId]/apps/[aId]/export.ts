@@ -7,8 +7,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { AppType } from "@app/types/app";
 import type { DatasetType } from "@app/types/dataset";
 import type { WithAPIErrorResponse } from "@app/types/error";
-// biome-ignore lint/plugin/noBulkLodash: existing usage
-import _ from "lodash";
+import omit from "lodash/omit";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type ExportAppResponseBody = {
@@ -79,7 +78,7 @@ async function handler(
           datasets.push(fromCore);
         }
       }
-      const appJson = _.omit(app.toJSON(), "id", "space");
+      const appJson = omit(app.toJSON(), "id", "space");
 
       res.status(200).json({ app: { ...appJson, datasets } });
       return;

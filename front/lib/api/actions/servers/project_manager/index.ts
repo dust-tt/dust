@@ -10,7 +10,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  * Creates the project_manager MCP server.
  *
  * This server provides tools for managing projects:
- * - File operations: list, add, and update project files
+ * - File operations: list, add, update, and remove project knowledge files
+ * - Linked data: add/remove Company Data nodes from project context
  * - Metadata operations: edit description, add/edit URLs
  * - Retrieval: recent documents from the project data source and context nodes
  * - Semantic search: project knowledge, project conversations, or both

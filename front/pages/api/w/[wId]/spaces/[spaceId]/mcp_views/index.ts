@@ -4,13 +4,13 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
-  listWorkspaceConnectedMCPServerIds,
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
   withWorkspaceConnectionRequirement,
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { getActiveAdminEmails } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -21,9 +21,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type GetMCPServerViewsResponseBody = {
   success: boolean;
@@ -35,21 +34,17 @@ export type PostMCPServerViewResponseBody = {
   serverView: MCPServerViewType;
 };
 
-const GetQueryParamsSchema = t.type({
-  availability: t.union([
-    t.undefined,
-    t.literal("manual"),
-    t.literal("auto"),
-    t.literal("auto_hidden_builder"),
-    t.literal("all"),
-  ]),
+const GetQueryParamsSchema = z.object({
+  availability: z
+    .enum(["manual", "auto", "auto_hidden_builder", "all"])
+    .optional(),
 });
 
-const PostQueryParamsSchema = t.type({
-  mcpServerId: t.string,
+const PostQueryParamsSchema = z.object({
+  mcpServerId: z.string(),
 });
 
-export type PostMCPServersQueryParams = t.TypeOf<typeof PostQueryParamsSchema>;
+export type PostMCPServersQueryParams = z.infer<typeof PostQueryParamsSchema>;
 
 async function notifyWorkspaceAdminsAboutAffectedAgents(
   auth: Authenticator,
@@ -133,9 +128,9 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      const r = GetQueryParamsSchema.decode(req.query);
+      const r = GetQueryParamsSchema.safeParse(req.query);
 
-      if (isLeft(r)) {
+      if (!r.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -145,7 +140,7 @@ async function handler(
         });
       }
 
-      const { availability = "manual" } = r.right;
+      const { availability = "manual" } = r.data;
 
       const serverViews = (
         await MCPServerViewResource.listBySpace(auth, space)
@@ -158,24 +153,38 @@ async function handler(
       // Some OAuth providers require a workspace-level connection before users
       // can set up personal connections. We enrich the authorization info so the
       // client can block the OAuth popup and show an inline error instead.
-      // The DB query is only made when at least one server in the list needs it.
-      const needsWorkspaceConnectionEnrichment = filteredServerViews.some(
-        (s) =>
-          s.server.authorization !== null &&
-          oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
-            s.server.authorization.provider
-          )
-      );
+      // The DB query is only made for servers in the list that need it.
+      const mcpServerIdsRequiringWorkspaceConnection = [
+        ...new Set(
+          filteredServerViews
+            .filter(
+              (s) =>
+                s.server.authorization !== null &&
+                oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
+                  s.server.authorization.provider
+                )
+            )
+            .map((s) => s.server.sId)
+        ),
+      ];
 
-      if (!needsWorkspaceConnectionEnrichment) {
+      if (mcpServerIdsRequiringWorkspaceConnection.length === 0) {
         return res.status(200).json({
           success: true,
           serverViews: filteredServerViews,
         });
       }
 
-      const workspaceConnectedMCPServerIds =
-        await listWorkspaceConnectedMCPServerIds(auth);
+      const workspaceConnections =
+        await MCPServerConnectionResource.listWorkspaceConnectionsByMCPServerIds(
+          auth,
+          {
+            mcpServerIds: mcpServerIdsRequiringWorkspaceConnection,
+          }
+        );
+      const workspaceConnectedMCPServerIds = new Set(
+        workspaceConnections.map((connection) => connection.mcpServerId)
+      );
 
       return res.status(200).json({
         success: true,
@@ -196,9 +205,9 @@ async function handler(
       });
     }
     case "POST": {
-      const r = PostQueryParamsSchema.decode(req.body);
+      const r = PostQueryParamsSchema.safeParse(req.body);
 
-      if (isLeft(r)) {
+      if (!r.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -208,7 +217,7 @@ async function handler(
         });
       }
 
-      const { mcpServerId } = r.right;
+      const { mcpServerId } = r.data;
 
       if (!auth.isAdmin()) {
         return apiError(req, res, {

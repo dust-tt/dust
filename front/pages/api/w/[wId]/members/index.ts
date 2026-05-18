@@ -6,10 +6,9 @@ import type { MembershipsPaginationParams } from "@app/lib/resources/membership_
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import { NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export const DEFAULT_PAGE_LIMIT = 50;
 export const MAX_PAGE_LIMIT = 150;
@@ -20,24 +19,16 @@ export type GetMembersResponseBody = {
   nextPageUrl?: string;
 };
 
-const MembersPaginationCodec = t.type({
-  limit: withFallback(
-    t.refinement(
-      NumberFromString,
-      (n): n is number => n >= 0 && n <= MAX_PAGE_LIMIT,
-      `LimitWithRange`
-    ),
-    DEFAULT_PAGE_LIMIT
-  ),
-  orderColumn: withFallback(t.literal("createdAt"), "createdAt"),
-  orderDirection: withFallback(
-    t.union([t.literal("asc"), t.literal("desc")]),
-    "desc"
-  ),
-  lastValue: withFallback(
-    t.union([NumberFromString, t.null, t.undefined]),
-    undefined
-  ),
+const MembersPaginationSchema = z.object({
+  limit: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_PAGE_LIMIT)
+    .catch(DEFAULT_PAGE_LIMIT),
+  orderColumn: z.literal("createdAt").catch("createdAt"),
+  orderDirection: z.enum(["asc", "desc"]).catch("desc"),
+  lastValue: z.coerce.number().optional().catch(undefined),
 });
 
 const buildUrlWithParams = (
@@ -76,18 +67,18 @@ async function handler(
         });
       }
 
-      const paginationRes = MembersPaginationCodec.decode(req.query);
-      if (isLeft(paginationRes)) {
+      const paginationRes = MembersPaginationSchema.safeParse(req.query);
+      if (!paginationRes.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Invalid pagination parameters",
+            message: `Invalid pagination parameters: ${fromError(paginationRes.error).toString()}`,
           },
         });
       }
 
-      const paginationParams = paginationRes.right;
+      const paginationParams = paginationRes.data;
 
       if (req.query.role && req.query.role === "admin") {
         const { members, total, nextPageParams } = await getMembers(
