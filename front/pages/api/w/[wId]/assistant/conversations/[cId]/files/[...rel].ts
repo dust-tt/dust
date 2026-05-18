@@ -1,6 +1,9 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import {
+  getConversationFilesBasePath,
+  parseScopedFilePath,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -50,17 +53,14 @@ async function handler(
 
   const owner = auth.getNonNullableWorkspace();
 
-  // filePath is relative to the conversation's files base. Reject any traversal attempt.
-  const normalizedRelative = path.posix.normalize(rel.join("/"));
-  if (
-    normalizedRelative.startsWith("..") ||
-    normalizedRelative.startsWith("/")
-  ) {
+  const scopedPath = parseScopedFilePath(rel.join("/"));
+  if (!scopedPath || scopedPath.prefix !== "conversation") {
     return apiError(req, res, {
-      status_code: 403,
+      status_code: 400,
       api_error: {
-        type: "workspace_auth_error",
-        message: "Access denied: path is outside conversation scope.",
+        type: "invalid_request_error",
+        message:
+          "Path must start with the scope prefix `conversation/`.",
       },
     });
   }
@@ -69,7 +69,19 @@ async function handler(
     workspaceId: owner.sId,
     conversationId: cId,
   });
-  const gcsPath = `${basePath}${normalizedRelative}`;
+  const normalizedGcsPath = path.posix.normalize(
+    `${basePath}${scopedPath.rel}`
+  );
+  if (!normalizedGcsPath.startsWith(basePath)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Access denied: path is outside conversation scope.",
+      },
+    });
+  }
+  const gcsPath = normalizedGcsPath;
 
   const bucket = getPrivateUploadBucket();
   const contentTypeResult = await bucket.getFileContentType(gcsPath);

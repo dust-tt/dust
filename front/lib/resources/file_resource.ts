@@ -1171,6 +1171,13 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ fileName: newFileName.normalize("NFC") });
   }
 
+  renameMountFile(newFileName: string, newMountFilePath: string) {
+    return this.update({
+      fileName: newFileName.normalize("NFC"),
+      mountFilePath: newMountFilePath,
+    });
+  }
+
   // Sharing logic.
 
   private getShareUrlForShareableFile({

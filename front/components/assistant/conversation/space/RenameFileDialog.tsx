@@ -37,7 +37,8 @@ interface RenameFileDialogProps {
   onClose: () => void;
   onRenamed: () => void;
   owner: LightWorkspaceType;
-  file: { sId: string; fileName: string } | null;
+  spaceId: string;
+  file: { path: string; fileName: string } | null;
 }
 
 export function RenameFileDialog({
@@ -45,12 +46,13 @@ export function RenameFileDialog({
   onClose,
   onRenamed,
   owner,
+  spaceId,
   file,
 }: RenameFileDialogProps) {
   const [baseName, setBaseName] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const renameFile = useRenameProjectFile({ owner });
+  const renameFile = useRenameProjectFile({ owner, spaceId });
 
   const extension = useMemo(() => {
     if (!file) {
@@ -75,7 +77,7 @@ export function RenameFileDialog({
       return;
     }
     const newFileName = baseName.trim() + extension;
-    const result = await renameFile(file.sId, newFileName);
+    const result = await renameFile(file.path, newFileName);
     if (result.isOk()) {
       onRenamed();
       onClose();

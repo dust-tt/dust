@@ -279,22 +279,26 @@ export function useRemoveProjectContextContentNodes({
   };
 }
 
-export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
+export function useRenameProjectFile({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
   const sendNotification = useSendNotification();
 
   return async (
-    fileId: string,
-    fileName: string
+    relPath: string,
+    newFileName: string
   ): Promise<Result<void, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/files/${fileId}/rename`,
+        `/api/w/${owner.sId}/spaces/${spaceId}/files/${relPath}`,
         {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ fileName }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName: newFileName }),
         }
       );
 
@@ -310,7 +314,7 @@ export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: `File renamed to "${fileName}"`,
+        title: `File renamed to "${newFileName}"`,
       });
 
       return new Ok(undefined);
@@ -319,6 +323,50 @@ export function useRenameProjectFile({ owner }: { owner: LightWorkspaceType }) {
       sendNotification({
         type: "error",
         title: "Failed to rename file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useDeleteProjectFile({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async (relPath: string): Promise<Result<void, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/files/${relPath}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to delete file",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: "File deleted",
+      });
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to delete file",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));

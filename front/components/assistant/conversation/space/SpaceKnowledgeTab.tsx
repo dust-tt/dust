@@ -22,10 +22,10 @@ import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAddProjectContextContentNodes,
+  useDeleteProjectFile,
   useProjectContextAttachments,
   useProjectFiles,
   useRemoveProjectContextContentNodes,
-  useRemoveProjectContextFile,
 } from "@app/lib/swr/projects";
 import { useSpaceDataSourceViews, useSpaces } from "@app/lib/swr/spaces";
 import { isManualProjectKnowledgeManagementAllowed } from "@app/lib/workspace_policies";
@@ -333,7 +333,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [fileToRename, setFileToRename] = useState<{
-    sId: string;
+    path: string;
     fileName: string;
   } | null>(null);
   const [selectedFile, setSelectedFile] = useState<{
@@ -415,7 +415,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     [contentNodeAttachments, fileAttachments]
   );
 
-  const removeProjectContextFile = useRemoveProjectContextFile({
+  const deleteProjectFile = useDeleteProjectFile({
     owner,
     spaceId: space.sId,
   });
@@ -469,7 +469,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   }, [droppedFiles, setDroppedFiles, handleDroppedFiles]);
 
   const handleDeleteFile = async (item: ContextAttachmentItem) => {
-    if (!isFileAttachmentType(item)) {
+    if (!isFileAttachmentType(item) || !item.path) {
       return;
     }
     const confirmed = await confirm({
@@ -480,7 +480,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     });
 
     if (confirmed) {
-      const result = await removeProjectContextFile(item.fileId);
+      const result = await deleteProjectFile(item.path);
       if (result.isOk()) {
         void mutateProjectFiles();
       }
@@ -515,9 +515,8 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     (item: ContextAttachmentItem) => {
       if (isFileAttachmentType(item)) {
         if (isAgentFileId(item.fileId) && item.path) {
-          const rel = item.path.replace(/^project\//, "");
           window.open(
-            `${config.getApiBaseUrl()}/api/w/${owner.sId}/spaces/${space.sId}/files/${rel}`,
+            `${config.getApiBaseUrl()}/api/w/${owner.sId}/spaces/${space.sId}/files/${item.path}`,
             "_blank",
             "noopener,noreferrer"
           );
@@ -674,10 +673,10 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   );
 
   const handleRenameClick = (item: ContextAttachmentItem) => {
-    if (!isFileAttachmentType(item)) {
+    if (!isFileAttachmentType(item) || !item.path) {
       return;
     }
-    setFileToRename({ sId: item.fileId, fileName: item.title });
+    setFileToRename({ path: item.path, fileName: item.title });
     setShowRenameDialog(true);
   };
 
@@ -687,29 +686,27 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       ...attachment,
       onClick: () => openAttachment(attachment),
       menuItems: isFileAttachmentType(attachment)
-        ? isAgentFileId(attachment.fileId)
-          ? []
-          : [
-              {
-                kind: "item" as const,
-                label: "Rename",
-                icon: PencilSquareIcon,
-                onClick: (e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  handleRenameClick(attachment);
-                },
+        ? [
+            {
+              kind: "item" as const,
+              label: "Rename",
+              icon: PencilSquareIcon,
+              onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+                handleRenameClick(attachment);
               },
-              {
-                kind: "item" as const,
-                label: "Delete",
-                icon: TrashIcon,
-                variant: "warning" as const,
-                onClick: (e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  void handleDeleteFile(attachment);
-                },
+            },
+            {
+              kind: "item" as const,
+              label: "Delete",
+              icon: TrashIcon,
+              variant: "warning" as const,
+              onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+                void handleDeleteFile(attachment);
               },
-            ]
+            },
+          ]
         : isContentNodeAttachmentType(attachment)
           ? [
               {
@@ -842,6 +839,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
         onClose={() => setShowRenameDialog(false)}
         onRenamed={() => void mutateProjectFiles()}
         owner={owner}
+        spaceId={space.sId}
         file={fileToRename}
       />
 

@@ -25,6 +25,7 @@ const GCS_MOUNT_COPY_MAX_FILES = 5000;
 
 type GCSMountEntryBase = {
   fileName: string;
+  /** Scoped path, e.g. `project/report.pdf` or `conversation/.tool_outputs/chart.png`. */
   path: string;
   sizeBytes: number;
   lastModifiedMs: number;
@@ -301,6 +302,46 @@ export async function listGCSMountFiles(
 }
 
 /**
+ * Rename (move) a file within a GCS mount point.
+ * If a FileResource is linked to the old path via mountFilePath, its fileName
+ * and mountFilePath are updated to stay in sync.
+ */
+export async function renameGCSMountFile(
+  auth: Authenticator,
+  scope: GCSMountPoint,
+  {
+    relativeFilePath,
+    newFileName,
+  }: { relativeFilePath: string; newFileName: string }
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const prefix = resolvePrefix(owner, scope);
+
+  const oldGcsPath = `${prefix}${relativeFilePath}`;
+  const lastSlash = relativeFilePath.lastIndexOf("/");
+  const dir = lastSlash >= 0 ? relativeFilePath.slice(0, lastSlash + 1) : "";
+  const newGcsPath = `${prefix}${dir}${newFileName}`;
+
+  const bucket = getPrivateUploadBucket();
+
+  try {
+    await bucket.copyFile(oldGcsPath, newGcsPath);
+    await bucket.delete(oldGcsPath);
+
+    const fileResources = await FileResource.fetchByMountFilePaths(auth, [
+      oldGcsPath,
+    ]);
+    if (fileResources.length > 0) {
+      await fileResources[0].renameMountFile(newFileName, newGcsPath);
+    }
+
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
  * Generate a short-lived signed URL for a GCS mount file.
  * Validates that the path belongs to the expected scope before signing.
  */
@@ -367,6 +408,30 @@ export async function createGCSMountFile(
       owner.sId
     )
   );
+}
+
+/**
+ * Delete a file from a GCS mount point.
+ * If a FileResource is linked via mountFilePath, it is deleted through FileResource.delete()
+ * so the DB record is cleaned up. For path-only files (no FileResource), the GCS object is
+ * removed directly.
+ */
+export async function deleteGCSMountFile(
+  auth: Authenticator,
+  scope: GCSMountPoint,
+  { relativeFilePath }: { relativeFilePath: string }
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const prefix = resolvePrefix(owner, scope);
+  const gcsPath = `${prefix}${relativeFilePath}`;
+
+  const bucket = getPrivateUploadBucket();
+  try {
+    await bucket.delete(gcsPath, { ignoreNotFound: true });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 }
 
 /**

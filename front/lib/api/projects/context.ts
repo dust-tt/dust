@@ -5,6 +5,8 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import { deleteGCSMountFile } from "@app/lib/api/files/gcs_mount/files";
+import { getProjectFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { MessageModel } from "@app/lib/models/agent/conversation";
@@ -420,6 +422,43 @@ export async function removeFileFromProject(
   }
 
   return new Ok(undefined);
+}
+
+/**
+ * Delete a project file by its relative path.
+ *
+ * When a FileResource is linked to the path (user-uploaded files), delegates to
+ * removeFileFromProject which handles ContentFragment cleanup and Core artifact removal.
+ * For path-only files (agent-created, no FileResource), delegates to the GCS primitive.
+ */
+export async function deleteProjectFile(
+  auth: Authenticator,
+  {
+    space,
+    relativeFilePath,
+  }: {
+    space: SpaceResource;
+    relativeFilePath: string;
+  }
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const gcsPath = `${getProjectFilesBasePath({ workspaceId: owner.sId, projectId: space.sId })}${relativeFilePath}`;
+
+  const fileResources = await FileResource.fetchByMountFilePaths(auth, [
+    gcsPath,
+  ]);
+  if (fileResources.length > 0) {
+    return removeFileFromProject(auth, {
+      space,
+      fileId: fileResources[0].sId,
+    });
+  }
+
+  return deleteGCSMountFile(
+    auth,
+    { useCase: "project", projectId: space.sId },
+    { relativeFilePath }
+  );
 }
 
 /**
