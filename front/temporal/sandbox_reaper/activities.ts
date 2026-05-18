@@ -38,6 +38,53 @@ async function fetchWorkspaceMap(
  * returned a full batch, signalling the workflow to loop for more.
  */
 export async function reapStaleSandboxesActivity(): Promise<boolean> {
+  // Phase 0: Destroy sandboxes flagged with killRequestedAt. These bypass the
+  // sleep→destroy cycle and are reaped immediately regardless of status/age.
+  const killRequestedConversations =
+    await SandboxResource.dangerouslyGetKillRequestedConversationIds({
+      limit: BATCH_SIZE,
+    });
+
+  if (killRequestedConversations.length > 0) {
+    logger.info(
+      { count: killRequestedConversations.length },
+      "Reaper: kill-requested sandboxes found."
+    );
+
+    const workspaceMap = await fetchWorkspaceMap(killRequestedConversations);
+
+    await concurrentExecutor(
+      killRequestedConversations,
+      async ({ conversationId, workspaceModelId }) => {
+        const workspace = workspaceMap.get(workspaceModelId);
+
+        if (!workspace) {
+          logger.warn(
+            { conversationId, workspaceModelId },
+            "Workspace not found, skipping"
+          );
+          return;
+        }
+
+        const auth = await Authenticator.internalBuilderForWorkspace(
+          workspace.sId
+        );
+        const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
+          auth,
+          conversationId
+        );
+        if (result.isErr()) {
+          logger.error(
+            { conversationId, error: result.error.message },
+            "Reaper: failed to destroy kill-requested sandbox — continuing."
+          );
+        }
+        heartbeat();
+      },
+      { concurrency: REAPER_CONCURRENCY }
+    );
+  }
+
   // Phase 1: Sleep running sandboxes that have been idle > SLEEP_THRESHOLD_MS.
   const runningConversations =
     await SandboxResource.dangerouslyGetStaleConversationIds({
@@ -201,6 +248,7 @@ export async function reapStaleSandboxesActivity(): Promise<boolean> {
   }
 
   return (
+    killRequestedConversations.length >= BATCH_SIZE ||
     runningConversations.length >= BATCH_SIZE ||
     pendingConversations.length >= BATCH_SIZE ||
     sleepingConversations.length >= BATCH_SIZE
