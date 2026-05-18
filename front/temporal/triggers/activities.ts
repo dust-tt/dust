@@ -31,7 +31,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 class TriggerNonRetryableError extends Error {}
-class WakeUpNonRetryableError extends Error {}
 
 async function createConversationForAgentConfiguration({
   auth,
@@ -367,7 +366,7 @@ export async function runWakeUpActivity({
       { wakeUpId, workspaceId, error: normalizeError(wakeUpAndAuthRes.error) },
       "Skipping wake-up: workspace or wake-up not found."
     );
-    throw new WakeUpNonRetryableError("Workspace or wake-up not found.");
+    return;
   }
 
   const { auth, wakeUp } = wakeUpAndAuthRes.value;
@@ -377,7 +376,7 @@ export async function runWakeUpActivity({
       { status: wakeUp.status, wakeUpId, workspaceId },
       "Skipping wake-up: wake-up is not scheduled."
     );
-    throw new WakeUpNonRetryableError("Wake-up is not scheduled.");
+    return;
   }
 
   const [c] = await ConversationResource.fetchByModelIds(auth, [
@@ -389,7 +388,7 @@ export async function runWakeUpActivity({
       "Cancelling wake-up: conversation not found."
     );
     await wakeUp.markCancelled(auth);
-    throw new WakeUpNonRetryableError("Conversation not found.");
+    return;
   }
 
   const conversationRes = await getConversation(auth, c.sId);
@@ -404,7 +403,7 @@ export async function runWakeUpActivity({
       "Cancelling wake-up: conversation not accessible."
     );
     await wakeUp.markCancelled(auth);
-    throw new WakeUpNonRetryableError("Conversation not accessible.");
+    return;
   }
 
   const conversation = conversationRes.value;
@@ -434,10 +433,16 @@ export async function runWakeUpActivity({
       type === "agent_inaccessible" ||
       type === "model_disabled"
     ) {
-      await wakeUp.markCancelled(auth);
-      throw new WakeUpNonRetryableError(
-        `Cancelling wake-up: ${type} (${message}).`
+      logger.info(
+        {
+          wakeUpId,
+          workspaceId,
+          error: postMessageResult.error,
+        },
+        "Cancelling wake-up: agent cannot be invoked."
       );
+      await wakeUp.markCancelled(auth);
+      return;
     }
 
     throw new Error(`Error posting wake-up message: [${type}] ${message}`);
@@ -476,7 +481,7 @@ export async function expireWakeUpActivity({
       { wakeUpId, workspaceId, error: normalizeError(wakeUpAndAuthRes.error) },
       "Expire wake-up: workspace or wake-up not found."
     );
-    throw new WakeUpNonRetryableError("Workspace or wake-up not found.");
+    return;
   }
   const { auth, wakeUp } = wakeUpAndAuthRes.value;
 
