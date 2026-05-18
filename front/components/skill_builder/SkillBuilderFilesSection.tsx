@@ -134,17 +134,20 @@ export function SkillBuilderFilesSection() {
       )
     : -1;
 
-  const previewPreviousFile = () => {
-    if (previewIndex > 0) {
-      setPreviewFileAttachment(sortedFields[previewIndex - 1]?.field ?? null);
-    }
-  };
-
-  const previewNextFile = () => {
-    if (previewIndex >= 0 && previewIndex < sortedFields.length - 1) {
-      setPreviewFileAttachment(sortedFields[previewIndex + 1]?.field ?? null);
-    }
-  };
+  const handlePreviewPrev =
+    previewIndex > 0
+      ? () =>
+          setPreviewFileAttachment(
+            sortedFields[previewIndex - 1]?.field ?? null
+          )
+      : undefined;
+  const handlePreviewNext =
+    previewIndex >= 0 && previewIndex < sortedFields.length - 1
+      ? () =>
+          setPreviewFileAttachment(
+            sortedFields[previewIndex + 1]?.field ?? null
+          )
+      : undefined;
 
   const downloadFile = async (fileAttachment: SkillBuilderFileAttachment) => {
     window.open(
@@ -339,12 +342,8 @@ export function SkillBuilderFilesSection() {
             await downloadFile(previewFileAttachment);
           }
         }}
-        onPrev={previewIndex > 0 ? previewPreviousFile : undefined}
-        onNext={
-          previewIndex >= 0 && previewIndex < sortedFields.length - 1
-            ? previewNextFile
-            : undefined
-        }
+        onPrev={handlePreviewPrev}
+        onNext={handlePreviewNext}
         onOpenChange={(open) => {
           if (!open) {
             setPreviewFileAttachment(null);
