@@ -182,7 +182,9 @@ makeScript(
                   );
                 }
 
-                await bucket.delete(disambiguatedPath, { ignoreNotFound: true });
+                await bucket.delete(disambiguatedPath, {
+                  ignoreNotFound: true,
+                });
                 if (disambiguatedProcessed) {
                   await bucket.delete(disambiguatedProcessed, {
                     ignoreNotFound: true,
