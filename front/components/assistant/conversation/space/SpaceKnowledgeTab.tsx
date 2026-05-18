@@ -6,6 +6,7 @@ import { RenameFileDialog } from "@app/components/assistant/conversation/space/R
 import { ConfirmContext } from "@app/components/Confirm";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { FilePreviewSheet } from "@app/components/spaces/FilePreviewSheet";
+import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type {
@@ -18,26 +19,43 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import { useAppRouter } from "@app/lib/platform";
 import {
-  useAddProjectContextContentNode,
+  useAddProjectContextContentNodes,
   useProjectContextAttachments,
   useProjectFiles,
-  useRemoveProjectContextContentNode,
+  useRemoveProjectContextContentNodes,
   useRemoveProjectContextFile,
 } from "@app/lib/swr/projects";
-import { useSpaces } from "@app/lib/swr/spaces";
+import { useSpaceDataSourceViews, useSpaces } from "@app/lib/swr/spaces";
 import { isManualProjectKnowledgeManagementAllowed } from "@app/lib/workspace_policies";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+} from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { ProjectType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
+  Button,
   CloudArrowLeftRightIcon,
+  CloudArrowUpIcon,
   DataTable,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   Icon,
   PencilSquareIcon,
+  PlusIcon,
   SearchInput,
   Spinner,
   Tooltip,
@@ -55,7 +73,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { InputBarAttachmentsPicker } from "../input_bar/InputBarAttachmentsPicker";
 
 interface SpaceKnowledgeTabProps {
   owner: WorkspaceType;
@@ -176,6 +193,123 @@ const KnowledgeSearchAndTable = memo(function KnowledgeSearchAndTable({
   );
 });
 
+interface AttachKnowledgeDropdownProps {
+  buttonLabel: string;
+  isDisabled: boolean;
+  onUploadFileClick: () => void;
+  onShowCompanyDataClick: () => void;
+}
+
+function AttachKnowledgeDropdown({
+  buttonLabel,
+  isDisabled,
+  onUploadFileClick,
+  onShowCompanyDataClick,
+}: AttachKnowledgeDropdownProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button label={buttonLabel} icon={PlusIcon} disabled={isDisabled} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
+          icon={CloudArrowLeftRightIcon}
+          label="From Company Data"
+          onClick={onShowCompanyDataClick}
+        />
+        <DropdownMenuItem
+          icon={CloudArrowUpIcon}
+          label="Upload file"
+          onClick={onUploadFileClick}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+interface AttachKnowledgeButtonProps extends AttachKnowledgeDropdownProps {
+  canManuallyManageProjectKnowledge: boolean;
+}
+
+function AttachKnowledgeButton({
+  buttonLabel,
+  canManuallyManageProjectKnowledge,
+  isDisabled,
+  onShowCompanyDataClick,
+  onUploadFileClick,
+}: AttachKnowledgeButtonProps) {
+  if (canManuallyManageProjectKnowledge) {
+    return (
+      <AttachKnowledgeDropdown
+        buttonLabel={buttonLabel}
+        isDisabled={isDisabled}
+        onShowCompanyDataClick={onShowCompanyDataClick}
+        onUploadFileClick={onUploadFileClick}
+      />
+    );
+  }
+  return (
+    <Tooltip
+      label={PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP}
+      trigger={
+        <div>
+          <AttachKnowledgeDropdown
+            buttonLabel={buttonLabel}
+            isDisabled={isDisabled}
+            onShowCompanyDataClick={onShowCompanyDataClick}
+            onUploadFileClick={onUploadFileClick}
+          />
+        </div>
+      }
+    />
+  );
+}
+
+interface NoCompanyDataDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onGoToCompanyData: () => void;
+}
+
+function NoCompanyDataDialog({
+  isOpen,
+  onClose,
+  onGoToCompanyData,
+}: NoCompanyDataDialogProps) {
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>No data available in Company Data</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          There is no data available in Company Data yet. Go to Company Data to
+          add data.
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Close",
+            variant: "outline",
+            onClick: onClose,
+          }}
+          rightButtonProps={{
+            label: "Go to Company Data",
+            variant: "primary",
+            onClick: onGoToCompanyData,
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
   const isArchived = !!space.archivedAt;
 
@@ -208,7 +342,9 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     contentType: string;
     projectId?: string | null;
   } | null>(null);
-  const [showPreviewSheet, setShowPreviewSheet] = useState(false);
+  const [activeOverlay, setActiveOverlay] = useState<
+    "preview" | "companyData" | "noCompanyData" | null
+  >(null);
   const isArchived = !!space.archivedAt;
   const canManuallyManageProjectKnowledge =
     isManualProjectKnowledgeManagementAllowed(owner);
@@ -219,6 +355,14 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     kinds: ["global"],
   });
   const globalSpace = spaces.find((space) => space.kind === "global");
+
+  const { spaceDataSourceViews: globalSpaceDSVs } = useSpaceDataSourceViews({
+    workspaceId: owner.sId,
+    spaceId: globalSpace?.sId ?? "",
+    disabled: !globalSpace,
+  });
+
+  const router = useAppRouter();
 
   const {
     attachments: contentNodeAttachments,
@@ -276,12 +420,12 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     spaceId: space.sId,
   });
 
-  const removeProjectContextContentNode = useRemoveProjectContextContentNode({
+  const removeProjectContextContentNodes = useRemoveProjectContextContentNodes({
     owner,
     spaceId: space.sId,
   });
 
-  const addProjectContextContentNode = useAddProjectContextContentNode({
+  const addProjectContextContentNodes = useAddProjectContextContentNodes({
     owner,
     spaceId: space.sId,
   });
@@ -355,10 +499,12 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
     });
 
     if (confirmed) {
-      const result = await removeProjectContextContentNode({
-        nodeId: item.nodeId,
-        nodeDataSourceViewId: item.nodeDataSourceViewId,
-      });
+      const result = await removeProjectContextContentNodes([
+        {
+          nodeId: item.nodeId,
+          nodeDataSourceViewId: item.nodeDataSourceViewId,
+        },
+      ]);
       if (result.isOk()) {
         void mutateProjectContextAttachments();
       }
@@ -383,7 +529,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
           contentType: item.contentType,
           projectId: space.sId,
         });
-        setShowPreviewSheet(true);
+        setActiveOverlay("preview");
         return;
       }
       if (isContentNodeAttachmentType(item) && item.sourceUrl) {
@@ -588,6 +734,95 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   const isAddKnowledgeDisabled =
     !canManuallyManageProjectKnowledge || isUploading;
 
+  const handleUploadFileClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleShowCompanyDataClick = () => {
+    setActiveOverlay(
+      globalSpaceDSVs.length === 0 ? "noCompanyData" : "companyData"
+    );
+  };
+
+  const handleCloseOverlay = () => {
+    setActiveOverlay(null);
+  };
+
+  const handleGoToCompanyData = () => {
+    if (!globalSpace) {
+      return;
+    }
+    void router.push(`/w/${owner.sId}/spaces/${globalSpace.sId}`);
+  };
+
+  const initialSelectedDataSources = useMemo<DataSourceViewType[]>(() => {
+    const nodeIdsByDataSoureceViewId = new Map<string, string[]>();
+    for (const attachment of attachments) {
+      if (!isContentNodeAttachmentType(attachment)) {
+        continue;
+      }
+      const existing =
+        nodeIdsByDataSoureceViewId.get(attachment.nodeDataSourceViewId) ?? [];
+      nodeIdsByDataSoureceViewId.set(attachment.nodeDataSourceViewId, [
+        ...existing,
+        attachment.nodeId,
+      ]);
+    }
+    return Array.from(nodeIdsByDataSoureceViewId.entries()).flatMap(
+      ([dsvId, nodeIds]) => {
+        const dsv = globalSpaceDSVs.find((v) => v.sId === dsvId);
+        return dsv ? [{ ...dsv, parentsIn: nodeIds }] : [];
+      }
+    );
+  }, [attachments, globalSpaceDSVs]);
+
+  const handleCompanyDataSave = async (
+    selectionConfigurations: DataSourceViewSelectionConfigurations
+  ) => {
+    // 1. Flatten modal selection into a list of nodes.
+    const selectedNodes = Object.values(selectionConfigurations).flatMap(
+      ({ dataSourceView, selectedResources }) =>
+        selectedResources.map((node) => ({
+          title: node.title,
+          nodeId: node.internalId,
+          nodeDataSourceViewId: dataSourceView.sId,
+          sourceUrl: node.sourceUrl,
+        }))
+    );
+
+    // 2. Build identity keys for both sides of the diff.
+    const keyOf = (n: { nodeDataSourceViewId: string; nodeId: string }) =>
+      `${n.nodeDataSourceViewId}:${n.nodeId}`;
+    const currentContentNodes = attachments.filter(isContentNodeAttachmentType);
+    const currentKeys = new Set(currentContentNodes.map(keyOf));
+    const selectedKeys = new Set(selectedNodes.map(keyOf));
+
+    // 3. Diff.
+    const toAdd = selectedNodes.filter((n) => !currentKeys.has(keyOf(n)));
+    const toRemove = currentContentNodes.filter(
+      (n) => !selectedKeys.has(keyOf(n))
+    );
+
+    // 4. Apply both sides
+    await addProjectContextContentNodes(
+      toAdd.map((n) => ({
+        title: n.title,
+        nodeId: n.nodeId,
+        nodeDataSourceViewId: n.nodeDataSourceViewId,
+        ...(n.sourceUrl ? { url: n.sourceUrl } : {}),
+      }))
+    );
+    await removeProjectContextContentNodes(
+      toRemove.map((n) => ({
+        nodeId: n.nodeId,
+        nodeDataSourceViewId: n.nodeDataSourceViewId,
+      }))
+    );
+
+    // 5. Refresh.
+    void mutateProjectContextAttachments();
+  };
+
   if (isProjectContextAttachmentsLoading || isProjectFilesLoading) {
     return (
       <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
@@ -599,53 +834,6 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       </div>
     );
   }
-
-  const attachButton = (
-    <InputBarAttachmentsPicker
-      owner={owner}
-      fileUploaderService={projectFileUpload}
-      onNodeSelect={async (node: DataSourceViewContentNode) => {
-        const result = await addProjectContextContentNode({
-          title: node.title,
-          nodeId: node.internalId,
-          nodeDataSourceViewId: node.dataSourceView.sId,
-          ...(node.sourceUrl != null ? { url: node.sourceUrl } : {}),
-        });
-        if (result.isOk()) {
-          void mutateProjectContextAttachments();
-        }
-      }}
-      onNodeUnselect={(_node: DataSourceViewContentNode) => {
-        // Selection state is not tracked locally; project context is updated on select only.
-      }}
-      onFileChange={() => {
-        void mutateProjectFiles();
-      }}
-      attachedNodes={[]}
-      isLoading={isUploading}
-      disabled={isAddKnowledgeDisabled}
-      buttonLabel={uploadButtonLabel}
-      buttonSize="sm"
-      buttonVariant="outline"
-      toolFileUpload={{
-        useCase: "project_context",
-        useCaseMetadata: {
-          spaceId: space.sId,
-        },
-      }}
-      spaceId={globalSpace?.sId}
-      type="dropdown"
-    />
-  );
-
-  const attachButtonWithPolicyTooltip = canManuallyManageProjectKnowledge ? (
-    attachButton
-  ) : (
-    <Tooltip
-      label={PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP}
-      trigger={<div>{attachButton}</div>}
-    />
-  );
 
   return (
     <>
@@ -660,8 +848,29 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       <FilePreviewSheet
         owner={owner}
         file={selectedFile}
-        isOpen={showPreviewSheet}
-        onOpenChange={setShowPreviewSheet}
+        isOpen={activeOverlay === "preview"}
+        onOpenChange={(open) => setActiveOverlay(open ? "preview" : null)}
+      />
+
+      {globalSpace && (
+        <SpaceManagedDatasourcesViewsModal
+          isOpen={activeOverlay === "companyData"}
+          isRootSelectable={false}
+          onClose={handleCloseOverlay}
+          onSave={handleCompanyDataSave}
+          owner={owner}
+          space={globalSpace}
+          systemSpace={globalSpace}
+          systemSpaceDataSourceViews={globalSpaceDSVs}
+          initialSelectedDataSources={initialSelectedDataSources}
+          title="Add data from Company Data"
+        />
+      )}
+
+      <NoCompanyDataDialog
+        isOpen={activeOverlay === "noCompanyData"}
+        onClose={handleCloseOverlay}
+        onGoToCompanyData={handleGoToCompanyData}
       />
 
       {!isArchived && (
@@ -679,7 +888,17 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-8">
           <div className="flex gap-2">
             <h3 className="heading-2xl flex-1 items-center">Files</h3>
-            {hasFiles && !isArchived && attachButtonWithPolicyTooltip}
+            {hasFiles && !isArchived && (
+              <AttachKnowledgeButton
+                buttonLabel={uploadButtonLabel}
+                canManuallyManageProjectKnowledge={
+                  canManuallyManageProjectKnowledge
+                }
+                isDisabled={isAddKnowledgeDisabled}
+                onShowCompanyDataClick={handleShowCompanyDataClick}
+                onUploadFileClick={handleUploadFileClick}
+              />
+            )}
           </div>
 
           {!hasFiles ? (
@@ -689,7 +908,19 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
                   ? "This project is archived. No files have been added."
                   : "No files have been added to this project yet."
               }
-              action={isArchived ? null : attachButtonWithPolicyTooltip}
+              action={
+                isArchived ? null : (
+                  <AttachKnowledgeButton
+                    buttonLabel={uploadButtonLabel}
+                    canManuallyManageProjectKnowledge={
+                      canManuallyManageProjectKnowledge
+                    }
+                    isDisabled={isAddKnowledgeDisabled}
+                    onShowCompanyDataClick={handleShowCompanyDataClick}
+                    onUploadFileClick={handleUploadFileClick}
+                  />
+                )
+              }
             />
           ) : (
             <KnowledgeSearchAndTable columns={columns} data={tableData} />

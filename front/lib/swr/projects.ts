@@ -107,9 +107,9 @@ export function useProjectFiles({
 }
 
 export type ProjectContextContentNodeFragment =
-  PostProjectContextContentNodeResponseBody["contentFragment"];
+  PostProjectContextContentNodeResponseBody["contentFragments"][number];
 
-export function useAddProjectContextContentNode({
+export function useAddProjectContextContentNodes({
   owner,
   spaceId,
 }: {
@@ -119,15 +119,18 @@ export function useAddProjectContextContentNode({
   const sendNotification = useSendNotification();
 
   return async (
-    contentFragment: ContentFragmentInputWithContentNode
-  ): Promise<Result<ProjectContextContentNodeFragment, Error>> => {
+    items: ContentFragmentInputWithContentNode[]
+  ): Promise<Result<PostProjectContextContentNodeResponseBody, Error>> => {
+    if (items.length === 0) {
+      return new Ok({ contentFragments: [], errors: [] });
+    }
     try {
       const res = await clientFetch(
         `/api/w/${owner.sId}/spaces/${spaceId}/project_context`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(contentFragment),
+          body: JSON.stringify({ items }),
         }
       );
 
@@ -135,7 +138,7 @@ export function useAddProjectContextContentNode({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to add reference to project",
+          title: "Failed to add references to project",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
@@ -143,17 +146,30 @@ export function useAddProjectContextContentNode({
 
       const responseData: PostProjectContextContentNodeResponseBody =
         await res.json();
-      sendNotification({
-        type: "success",
-        title: "Added to project context",
-      });
+      const addedCount = responseData.contentFragments.length;
+      const errorCount = responseData.errors.length;
+      if (errorCount === 0) {
+        sendNotification({
+          type: "success",
+          title:
+            addedCount === 1
+              ? "Added to project context"
+              : `Added ${addedCount} items to project context`,
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Some items could not be added",
+          description: `${addedCount} added, ${errorCount} failed.`,
+        });
+      }
 
-      return new Ok(responseData.contentFragment);
+      return new Ok(responseData);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to add reference to project",
+        title: "Failed to add references to project",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
@@ -207,7 +223,7 @@ export function useRemoveProjectContextFile({
   };
 }
 
-export function useRemoveProjectContextContentNode({
+export function useRemoveProjectContextContentNodes({
   owner,
   spaceId,
 }: {
@@ -216,20 +232,19 @@ export function useRemoveProjectContextContentNode({
 }) {
   const sendNotification = useSendNotification();
 
-  return async ({
-    nodeId,
-    nodeDataSourceViewId,
-  }: {
-    nodeId: string;
-    nodeDataSourceViewId: string;
-  }): Promise<Result<void, Error>> => {
+  return async (
+    items: Array<{ nodeId: string; nodeDataSourceViewId: string }>
+  ): Promise<Result<void, Error>> => {
+    if (items.length === 0) {
+      return new Ok(undefined);
+    }
     try {
       const res = await clientFetch(
         `/api/w/${owner.sId}/spaces/${spaceId}/project_context/content_nodes`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nodeId, nodeDataSourceViewId }),
+          body: JSON.stringify({ items }),
         }
       );
 
@@ -237,7 +252,7 @@ export function useRemoveProjectContextContentNode({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to remove content node from project",
+          title: "Failed to remove content nodes from project",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
@@ -245,7 +260,10 @@ export function useRemoveProjectContextContentNode({
 
       sendNotification({
         type: "success",
-        title: "Removed from project knowledge",
+        title:
+          items.length === 1
+            ? "Removed from project knowledge"
+            : `Removed ${items.length} items from project knowledge`,
       });
 
       return new Ok(undefined);
@@ -253,7 +271,7 @@ export function useRemoveProjectContextContentNode({
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to remove content node from project",
+        title: "Failed to remove content nodes from project",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));

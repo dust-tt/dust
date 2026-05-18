@@ -430,40 +430,60 @@ export async function removeFileFromProject(
  * - If some fragments are referenced by messages, we keep them but detach them from the space
  *   and mark them expired so conversation rendering can display an appropriate placeholder.
  */
-export async function removeContentNodeFromProject(
+export async function removeContentNodesFromProject(
   auth: Authenticator,
   {
     space,
-    nodeId,
-    nodeDataSourceViewId,
+    nodes,
   }: {
     space: SpaceResource;
-    nodeId: string;
-    nodeDataSourceViewId: string; // data source view sId
+    nodes: Array<{
+      nodeId: string;
+      nodeDataSourceViewId: string; // data source view sId
+    }>;
   }
 ): Promise<Result<void, Error>> {
-  const dsView = await DataSourceViewResource.fetchById(
-    auth,
-    nodeDataSourceViewId
-  );
-  if (!dsView) {
-    return new Err(new Error("Data source view not found."));
+  if (nodes.length === 0) {
+    return new Ok(undefined);
   }
 
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  const projectFragmentIds = await ContentFragmentModel.findAll({
+  const uniqueDataSourceViewIds = Array.from(
+    new Set(nodes.map((n) => n.nodeDataSourceViewId))
+  );
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    uniqueDataSourceViewIds
+  );
+  const dataSourceViewModelIdById = new Map(
+    dataSourceViews.map((dsv) => [dsv.sId, dsv.id])
+  );
+
+  const pairs = nodes.flatMap((n) => {
+    const dsvModelId = dataSourceViewModelIdById.get(n.nodeDataSourceViewId);
+    return dsvModelId !== undefined
+      ? [{ nodeId: n.nodeId, nodeDataSourceViewModelId: dsvModelId }]
+      : [];
+  });
+  if (pairs.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const projectFragmentModelIds = await ContentFragmentModel.findAll({
     attributes: ["id"],
     where: {
       workspaceId,
       spaceId: space.id,
       fileId: null,
-      nodeId,
-      nodeDataSourceViewId: dsView.id,
+      [Op.or]: pairs.map((p) => ({
+        nodeId: p.nodeId,
+        nodeDataSourceViewId: p.nodeDataSourceViewModelId,
+      })),
     },
   }).then((rows) => rows.map((r) => r.id));
 
-  if (projectFragmentIds.length === 0) {
+  if (projectFragmentModelIds.length === 0) {
     return new Ok(undefined);
   }
 
@@ -471,33 +491,30 @@ export async function removeContentNodeFromProject(
     attributes: ["contentFragmentId"],
     where: {
       workspaceId,
-      contentFragmentId: {
-        [Op.in]: projectFragmentIds,
-      },
+      contentFragmentId: { [Op.in]: projectFragmentModelIds },
     },
   });
 
-  const referencedIds = new Set(
+  const referencedModelIds = new Set(
     removeNulls(messagesReferencing.map((m) => m.contentFragmentId))
   );
-  const orphanIds = projectFragmentIds.filter((id) => !referencedIds.has(id));
+  const orphanIds = projectFragmentModelIds.filter(
+    (id) => !referencedModelIds.has(id)
+  );
 
   if (orphanIds.length > 0) {
     await ContentFragmentModel.destroy({
-      where: {
-        workspaceId,
-        id: { [Op.in]: orphanIds },
-      },
+      where: { workspaceId, id: { [Op.in]: orphanIds } },
     });
   }
 
-  if (referencedIds.size > 0) {
+  if (referencedModelIds.size > 0) {
     await ContentFragmentModel.update(
       { spaceId: null },
       {
         where: {
           workspaceId,
-          id: { [Op.in]: Array.from(referencedIds) },
+          id: { [Op.in]: Array.from(referencedModelIds) },
         },
       }
     );

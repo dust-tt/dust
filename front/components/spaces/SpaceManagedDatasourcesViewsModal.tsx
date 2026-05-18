@@ -41,6 +41,7 @@ function useStabilizedValue<T>(
 interface SpaceManagedDataSourcesViewsModalProps {
   initialSelectedDataSources: DataSourceViewType[];
   isOpen: boolean;
+  isRootSelectable?: boolean;
   onClose: () => void;
   onSave: (
     selectionConfigurations: DataSourceViewSelectionConfigurations
@@ -49,17 +50,20 @@ interface SpaceManagedDataSourcesViewsModalProps {
   systemSpaceDataSourceViews: DataSourceViewType[];
   space: SpaceType;
   systemSpace: SpaceType;
+  title?: string;
 }
 
 export default function SpaceManagedDataSourcesViewsModal({
   initialSelectedDataSources,
   isOpen,
+  isRootSelectable = true,
   onClose,
   onSave,
   owner,
   systemSpaceDataSourceViews,
   space,
   systemSpace,
+  title,
 }: SpaceManagedDataSourcesViewsModalProps) {
   const defaultSelectedDataSources = useStabilizedValue(
     initialSelectedDataSources,
@@ -156,7 +160,9 @@ export default function SpaceManagedDataSourcesViewsModal({
     >
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle>Add connected data to space "{space.name}"</SheetTitle>
+          <SheetTitle>
+            {title ?? `Add connected data to space "${space.name}"`}
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="overflow-x-auto">
@@ -172,7 +178,7 @@ export default function SpaceManagedDataSourcesViewsModal({
                 selectionConfigurations={selectionConfigurations}
                 setSelectionConfigurations={setSelectionConfigurationsCallback}
                 viewType="all"
-                isRootSelectable={true}
+                isRootSelectable={isRootSelectable}
                 space={systemSpace}
                 allowAdminSearch={isAdmin(owner)}
               />
