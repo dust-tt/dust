@@ -1,6 +1,6 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
-import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import {
   expireWakeUpActivity,
   runWakeUpActivity,
@@ -40,7 +40,7 @@ describe("wake-up activities", () => {
     });
 
     await expect(
-      runWakeUpActivity({ workspaceId: workspace.sId, wakeUpId }),
+      runWakeUpActivity({ workspaceId: workspace.sId, wakeUpId })
     ).resolves.toBeUndefined();
   });
 
@@ -52,10 +52,10 @@ describe("wake-up activities", () => {
     });
 
     await expect(
-      runWakeUpActivity({ workspaceId: workspace.sId, wakeUpId }),
+      runWakeUpActivity({ workspaceId: workspace.sId, wakeUpId })
     ).resolves.toBeUndefined();
     await expect(
-      expireWakeUpActivity({ workspaceId: workspace.sId, wakeUpId }),
+      expireWakeUpActivity({ workspaceId: workspace.sId, wakeUpId })
     ).resolves.toBeUndefined();
   });
 });
