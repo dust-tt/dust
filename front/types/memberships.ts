@@ -39,3 +39,22 @@ export function isMembershipSeatType(
     MEMBERSHIP_SEAT_TYPES.includes(value as MembershipSeatType)
   );
 }
+
+// Per-user credit state on a membership. Only models the per-user dimension, the
+// workspace-level pool state lives separately on `workspaces.poolCreditState`
+// (see WORKSPACE_POOL_CREDIT_STATES in `front/types/credits.ts`). A user is
+// allowed to spend iff `creditState = 'normal'` AND the workspace pool is not
+// depleted.
+//
+//   normal:  within personal spend limits
+//   capped:  admin-set per-user spend cap hit (Enterprise Pooled only today)
+export const USER_CREDIT_STATES = ["normal", "capped"] as const;
+
+export type UserCreditState = (typeof USER_CREDIT_STATES)[number];
+
+export function isUserCreditState(value: unknown): value is UserCreditState {
+  return (
+    typeof value === "string" &&
+    USER_CREDIT_STATES.includes(value as UserCreditState)
+  );
+}

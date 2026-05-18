@@ -2336,7 +2336,8 @@ interface AlertDef {
   name: string;
   alert_type:
     | "low_remaining_contract_credit_balance_reached"
-    | "low_remaining_commit_balance_reached";
+    | "low_remaining_commit_balance_reached"
+    | "low_remaining_contract_credit_and_commit_balance_reached";
   threshold: number;
   // Idempotency key — Metronome rejects duplicate creates with the same key.
   uniqueness_key: string;
@@ -2360,6 +2361,13 @@ const ALERTS: AlertDef[] = [
     alert_type: "low_remaining_commit_balance_reached",
     threshold: 0,
     uniqueness_key: "default-low-commit-balance-zero-awu",
+    credit_type: "AWU",
+  },
+  {
+    name: "Default: Empty contract credit + commit balance (AWU)",
+    alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
+    threshold: 0,
+    uniqueness_key: "default-low-contract-credit-and-commit-balance-zero-awu",
     credit_type: "AWU",
   },
 ];

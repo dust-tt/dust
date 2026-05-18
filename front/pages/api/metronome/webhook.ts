@@ -1,5 +1,12 @@
 /** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
+import {
+  dispatchCreditsAdded,
+  dispatchPaygCapReached,
+  dispatchPerUserCapReached,
+  dispatchPerUserCapResolved,
+  dispatchPoolExhausted,
+} from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -17,7 +24,6 @@ import {
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
-import { setUserBlocked } from "@app/lib/metronome/user_block";
 import {
   getCustomerIdFromEvent,
   MetronomeWebhookEventSchema,
@@ -146,42 +152,137 @@ async function handler(
 
       switch (event.type) {
         case "alerts.spend_threshold_reached": {
-          // Block the user that triggered the threshold. Metronome attaches
-          // the presentation group values that scoped the alert under
-          // `group_values` — extract `user_id` from there.
-          const userId = event.properties.group_values?.find(
+          // Two flavours land on this event type:
+          //   - Per-user cap: scoped via `presentation_group_key = user_id`,
+          //   so `group_values` includes a `{ key: "user_id" }` entry
+          //   (with or without a populated `value`).
+          //   - Workspace-level PAYG cap: no `user_id` key in group_values.
+          // The presence of the user_id key, not its value, decides the routing.
+          // A missing value still means "this is a per-user alert",
+          // it's just one we cannot act on.
+          const userIdGroup = event.properties.group_values?.find(
             (g) => g.key === "user_id"
-          )?.value;
-          if (!userId) {
-            logger.warn(
-              { eventId: event.id, workspaceId: workspace.sId },
-              "[Metronome Webhook] spend_threshold_reached: no user_id in group_values, skipping"
+          );
+          const isPerUser = userIdGroup !== undefined;
+          const userId = userIdGroup?.value;
+
+          if (isPerUser) {
+            if (!userId) {
+              logger.warn(
+                { eventId: event.id, workspaceId: workspace.sId },
+                "[Metronome Webhook] spend_threshold_reached: per-user alert with no user_id value, skipping"
+              );
+              break;
+            }
+            await dispatchPerUserCapReached({ workspace, userId });
+            logger.info(
+              {
+                eventId: event.id,
+                workspaceId: workspace.sId,
+                userId,
+                currentSpend: event.properties.current_spend,
+              },
+              "[Metronome Webhook] spend_threshold_reached: per_user dispatched"
             );
-            break;
+          } else {
+            await dispatchPaygCapReached({ workspace });
+            logger.info(
+              {
+                eventId: event.id,
+                workspaceId: workspace.sId,
+                currentSpend: event.properties.current_spend,
+              },
+              "[Metronome Webhook] spend_threshold_reached: payg cap dispatched"
+            );
           }
+          break;
+        }
+        case "alerts.spend_threshold_resolved": {
+          // Per-user: at billing-cycle renewal current_spend resets to 0, so
+          // Metronome fires this for every previously-capped user, we uncap them.
+          //
+          // Workspace-level: a `payg_cap_resolved` event means
+          // spend dropped back below the PAYG threshold. We do not transition
+          // on this signal: once the workspace is `depleted`, only a real
+          // pool replenishment (commit.segment.start) brings it back.
+          const userIdGroup = event.properties.group_values?.find(
+            (g) => g.key === "user_id"
+          );
+          const isPerUser = userIdGroup !== undefined;
+          const userId = userIdGroup?.value;
 
-          const currentSpend = event.properties.current_spend;
+          if (isPerUser) {
+            if (!userId) {
+              logger.warn(
+                { eventId: event.id, workspaceId: workspace.sId },
+                "[Metronome Webhook] spend_threshold_resolved: per-user alert with no user_id value, skipping"
+              );
+              break;
+            }
 
-          // TODO: Check user seat and spend limit and block if needed, don't block on every spend threshold reached.
-          await setUserBlocked(workspace.sId, userId);
+            await dispatchPerUserCapResolved({ workspace, userId });
+            logger.info(
+              {
+                eventId: event.id,
+                workspaceId: workspace.sId,
+                userId,
+              },
+              "[Metronome Webhook] spend_threshold_resolved: per-user dispatched"
+            );
+          } else {
+            logger.info(
+              { eventId: event.id, workspaceId: workspace.sId },
+              "[Metronome Webhook] spend_threshold_resolved: workspace-level, no transition"
+            );
+          }
+          break;
+        }
+        case "alerts.low_remaining_contract_credit_and_commit_balance_reached": {
+          // Pool-exhaustion signal: total remaining (contract credits + commit balance)
+          // hit zero. The commit-only and contract-credit-only alerts fire too early
+          // when only one side is exhausted, so we listen to this combined alert
+          // exclusively.
+          //
+          // Gate on `remaining_balance` defensively in case a non-zero warning threshold
+          // is added under the same alert type later (e.g. early warning notification).
+          const remaining = event.properties.remaining_balance;
+          if (remaining == null || remaining <= 0) {
+            await dispatchPoolExhausted({ workspace });
+            logger.info(
+              {
+                eventId: event.id,
+                workspaceId: workspace.sId,
+                remaining,
+              },
+              "[Metronome Webhook] low_remaining_contract_credit_and_commit_balance_reached: pool exhausted dispatched"
+            );
+          }
+          break;
+        }
+        case "alerts.low_remaining_contract_credit_and_commit_balance_resolved": {
+          await dispatchCreditsAdded({ workspace });
           logger.info(
             {
               eventId: event.id,
               workspaceId: workspace.sId,
-              userId,
-              currentSpend,
+              remaining: event.properties.remaining_balance,
             },
-            "[Metronome Webhook] spend_threshold_reached: user blocked"
+            "[Metronome Webhook] low_remaining_contract_credit_and_commit_balance_resolved: credits added dispatched"
           );
           break;
         }
-
         case "alerts.invoice_total_reached":
+        case "alerts.invoice_total_resolved":
         case "alerts.low_remaining_commit_balance_reached":
+        case "alerts.low_remaining_commit_balance_resolved":
         case "alerts.low_remaining_contract_credit_balance_reached":
+        case "alerts.low_remaining_contract_credit_balance_resolved":
         case "alerts.low_remaining_credit_balance_reached":
+        case "alerts.low_remaining_credit_balance_resolved":
         case "alerts.low_remaining_seat_balance_reached":
+        case "alerts.low_remaining_seat_balance_resolved":
         case "alerts.usage_threshold_reached":
+        case "alerts.usage_threshold_resolved":
         case "commit.archive":
         case "commit.create":
         case "commit.edit":

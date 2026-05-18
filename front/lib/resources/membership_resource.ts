@@ -21,6 +21,7 @@ import type {
   MembershipOriginType,
   MembershipRoleType,
   MembershipSeatType,
+  UserCreditState,
 } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -749,6 +750,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     await this.update({ firstUsedAt: new Date() });
 
     return true;
+  }
+
+  async updateCreditState(
+    creditState: UserCreditState,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update({ creditState }, transaction);
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
