@@ -125,150 +125,163 @@ function WorkspaceUsageBar({ consumed, limit }: WorkspaceUsageBarProps) {
   );
 }
 
-const columns: ColumnDef<RowData, string>[] = [
-  {
-    id: "name" as const,
-    header: "Name",
-    accessorFn: (row) => row.name,
-    cell: (info: Info) => (
-      <DataTable.CellContent
-        avatarUrl={info.row.original.image ?? undefined}
-        roundedAvatar
-      >
-        <div>
-          <div>{info.row.original.name}</div>
-          {info.row.original.email && (
-            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              {info.row.original.email}
-            </div>
-          )}
-        </div>
-      </DataTable.CellContent>
-    ),
-  },
-  {
-    id: "seatType" as const,
-    header: "Seat",
-    accessorFn: (row) => row.seatType ?? "",
-    cell: (info: Info) => {
-      const seatType = info.row.original.seatType;
-      return (
-        <DataTable.CellContent>
-          <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
-            <SeatTypeIcon seatType={seatType} />
-            {seatType ?? "—"}
-          </span>
-        </DataTable.CellContent>
-      );
-    },
-    meta: {
-      className: "w-24",
-    },
-  },
-  {
-    id: "billingFrequency" as const,
-    header: "Period",
-    accessorFn: (row) => row.billingFrequency ?? "",
-    cell: (info: Info) => {
-      const freq = info.row.original.billingFrequency;
-      let label: string;
-      switch (freq) {
-        case "MONTHLY":
-          label = "Monthly";
-          break;
-        case "ANNUAL":
-          label = "Annual";
-          break;
-        case null:
-          label = "—";
-          break;
-        default:
-          assertNeverAndIgnore(freq);
-          label = "—";
-      }
-      return (
-        <DataTable.CellContent>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            {label}
-          </span>
-        </DataTable.CellContent>
-      );
-    },
-    meta: {
-      className: "w-24",
-    },
-  },
-  {
-    id: "seatUsagePercent" as const,
-    header: "Seat usage",
-    accessorFn: (row) => (row.seatUsagePercent ?? 0).toString(),
-    cell: (info: Info) => {
-      const pct = info.row.original.seatUsagePercent;
-      let textColor: string | undefined;
-      if (pct !== null) {
-        if (pct >= 100) {
-          textColor = "#ef4444";
-        } else if (pct >= 80) {
-          textColor = "#FE9C1A";
-        }
-      }
-      return (
-        <DataTable.CellContent>
-          {pct !== null ? (
-            <span
-              className="flex items-center gap-1.5 text-sm font-semibold tabular-nums"
-              style={textColor ? { color: textColor } : undefined}
-            >
-              {`${Math.round(pct)}%`}
-              <CircleProgress percentage={pct} />
-            </span>
-          ) : (
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              —
-            </span>
-          )}
-        </DataTable.CellContent>
-      );
-    },
-    meta: {
-      className: "w-32",
-    },
-    enableSorting: true,
-    sortingFn: (a, b) =>
-      (a.original.seatUsagePercent ?? -1) - (b.original.seatUsagePercent ?? -1),
-  },
-  {
-    id: "consumedWorkplacePoolCredits" as const,
-    header: () => (
-      <span className="flex items-center gap-1.5">
-        <Icon visual={ActionCreditCoinsIcon} size="xs" />
-        Workspace usage
-      </span>
-    ),
-    accessorFn: (row) => row.consumedWorkplacePoolCredits.toString(),
-    cell: (info: Info) => (
-      <div className="w-full pr-3">
-        <WorkspaceUsageBar
-          consumed={info.row.original.consumedWorkplacePoolCredits}
-          limit={null}
-        />
+const nameColumn: ColumnDef<RowData, string> = {
+  id: "name" as const,
+  header: "Name",
+  accessorFn: (row) => row.name,
+  cell: (info: Info) => (
+    <DataTable.CellContent
+      avatarUrl={info.row.original.image ?? undefined}
+      roundedAvatar
+    >
+      <div>
+        <div>{info.row.original.name}</div>
+        {info.row.original.email && (
+          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            {info.row.original.email}
+          </div>
+        )}
       </div>
-    ),
-    meta: {
-      className: "w-64",
-    },
-    enableSorting: true,
-    sortingFn: (a, b) =>
-      a.original.consumedWorkplacePoolCredits -
-      b.original.consumedWorkplacePoolCredits,
+    </DataTable.CellContent>
+  ),
+};
+
+const seatTypeColumn: ColumnDef<RowData, string> = {
+  id: "seatType" as const,
+  header: "Seat",
+  accessorFn: (row) => row.seatType ?? "",
+  cell: (info: Info) => {
+    const seatType = info.row.original.seatType;
+    return (
+      <DataTable.CellContent>
+        <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
+          <SeatTypeIcon seatType={seatType} />
+          {seatType ?? "—"}
+        </span>
+      </DataTable.CellContent>
+    );
   },
-];
+  meta: {
+    className: "w-24",
+  },
+};
+
+const billingFrequencyColumn: ColumnDef<RowData, string> = {
+  id: "billingFrequency" as const,
+  header: "Period",
+  accessorFn: (row) => row.billingFrequency ?? "",
+  cell: (info: Info) => {
+    const freq = info.row.original.billingFrequency;
+    let label: string;
+    switch (freq) {
+      case "MONTHLY":
+        label = "Monthly";
+        break;
+      case "ANNUAL":
+        label = "Annual";
+        break;
+      case null:
+        label = "—";
+        break;
+      default:
+        assertNeverAndIgnore(freq);
+        label = "—";
+    }
+    return (
+      <DataTable.CellContent>
+        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {label}
+        </span>
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-24",
+  },
+};
+
+const seatUsagePercentColumn: ColumnDef<RowData, string> = {
+  id: "seatUsagePercent" as const,
+  header: "Seat usage",
+  accessorFn: (row) => (row.seatUsagePercent ?? 0).toString(),
+  cell: (info: Info) => {
+    const pct = info.row.original.seatUsagePercent;
+    let textColor: string | undefined;
+    if (pct !== null) {
+      if (pct >= 100) {
+        textColor = "#ef4444";
+      } else if (pct >= 80) {
+        textColor = "#FE9C1A";
+      }
+    }
+    return (
+      <DataTable.CellContent>
+        {pct !== null ? (
+          <span
+            className="flex items-center gap-1.5 text-sm font-semibold tabular-nums"
+            style={textColor ? { color: textColor } : undefined}
+          >
+            {`${Math.round(pct)}%`}
+            <CircleProgress percentage={pct} />
+          </span>
+        ) : (
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            —
+          </span>
+        )}
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "w-32",
+  },
+  enableSorting: true,
+  sortingFn: (a, b) =>
+    (a.original.seatUsagePercent ?? -1) - (b.original.seatUsagePercent ?? -1),
+};
+
+const consumedWorkplacePoolCreditsColumn: ColumnDef<RowData, string> = {
+  id: "consumedWorkplacePoolCredits" as const,
+  header: () => (
+    <span className="flex items-center gap-1.5">
+      <Icon visual={ActionCreditCoinsIcon} size="xs" />
+      Workspace usage
+    </span>
+  ),
+  accessorFn: (row) => row.consumedWorkplacePoolCredits.toString(),
+  cell: (info: Info) => (
+    <div className="w-full pr-3">
+      <WorkspaceUsageBar
+        consumed={info.row.original.consumedWorkplacePoolCredits}
+        limit={null}
+      />
+    </div>
+  ),
+  meta: {
+    className: "w-64",
+  },
+  enableSorting: true,
+  sortingFn: (a, b) =>
+    a.original.consumedWorkplacePoolCredits -
+    b.original.consumedWorkplacePoolCredits,
+};
+
+function buildColumns(showSeatColumns: boolean): ColumnDef<RowData, string>[] {
+  return [
+    nameColumn,
+    ...(showSeatColumns
+      ? [seatTypeColumn, billingFrequencyColumn, seatUsagePercentColumn]
+      : []),
+    consumedWorkplacePoolCreditsColumn,
+  ];
+}
 
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   isLoading: boolean;
   searchTerm: string;
   seatTypeFilter: MembershipSeatType | "none" | null;
+  showSeatColumns: boolean;
 }
 
 export function MembersUsageTable({
@@ -276,6 +289,7 @@ export function MembersUsageTable({
   isLoading,
   searchTerm,
   seatTypeFilter,
+  showSeatColumns,
 }: MembersUsageTableProps) {
   if (isLoading) {
     return (
@@ -320,5 +334,5 @@ export function MembersUsageTable({
     billingFrequency: m.billingFrequency,
   }));
 
-  return <DataTable data={rows} columns={columns} />;
+  return <DataTable data={rows} columns={buildColumns(showSeatColumns)} />;
 }

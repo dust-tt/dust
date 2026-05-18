@@ -7,6 +7,7 @@ import {
   reactivateWorkspaceContract,
 } from "@app/lib/metronome/contract_lifecycle";
 import { parseMauTiers } from "@app/lib/metronome/mau_sync";
+import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -25,6 +26,8 @@ export type MetronomeContractSummary = {
   mauTiers: Array<{ start: number; end: number | null }> | null;
   /** ms epoch — set when the contract is scheduled to end (cancellation or fixed term). */
   contractEndingAtMs: number | null;
+  /** True if the contract has at least one seat-billed subscription */
+  hasSeatSubscription: boolean;
 };
 
 export type GetMetronomeContractResponseBody = {
@@ -130,6 +133,7 @@ async function handleGet(
       planFamily,
       mauTiers,
       contractEndingAtMs,
+      hasSeatSubscription: hasContractSeatSubscription(contract),
     },
   });
 }

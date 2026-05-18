@@ -13,6 +13,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { useAwuPoolSummary, useCreditPurchaseInfo } from "@app/lib/swr/credits";
 import { useMembersUsage } from "@app/lib/swr/memberships";
 import {
+  useMetronomeContract,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
@@ -173,6 +174,12 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
+  const { contract } = useMetronomeContract({
+    workspaceId: owner.sId,
+  });
+
+  const hasSeatSubscription = contract?.hasSeatSubscription ?? false;
+
   const plan = subscription.plan;
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
@@ -312,52 +319,55 @@ export function UsagePage() {
               />
             )}
           </div>
-          <div className="flex flex-row justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  label={
-                    seatTypeFilter === "none"
-                      ? "No seat"
-                      : seatTypeFilter
-                        ? seatTypeFilter.charAt(0).toUpperCase() +
-                          seatTypeFilter.slice(1)
-                        : "All seats"
-                  }
-                  size="sm"
-                  isSelect
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  label="All seats"
-                  onClick={() => setSeatTypeFilter(null)}
-                />
-                <DropdownMenuItem
-                  label="No seat"
-                  onClick={() => setSeatTypeFilter("none")}
-                />
-                <DropdownMenuItem
-                  label="Free"
-                  onClick={() => setSeatTypeFilter("free")}
-                />
-                <DropdownMenuItem
-                  label="Pro"
-                  onClick={() => setSeatTypeFilter("pro")}
-                />
-                <DropdownMenuItem
-                  label="Max"
-                  onClick={() => setSeatTypeFilter("max")}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          {hasSeatSubscription && (
+            <div className="flex flex-row justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    label={
+                      seatTypeFilter === "none"
+                        ? "No seat"
+                        : seatTypeFilter
+                          ? seatTypeFilter.charAt(0).toUpperCase() +
+                            seatTypeFilter.slice(1)
+                          : "All seats"
+                    }
+                    size="sm"
+                    isSelect
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    label="All seats"
+                    onClick={() => setSeatTypeFilter(null)}
+                  />
+                  <DropdownMenuItem
+                    label="No seat"
+                    onClick={() => setSeatTypeFilter("none")}
+                  />
+                  <DropdownMenuItem
+                    label="Free"
+                    onClick={() => setSeatTypeFilter("free")}
+                  />
+                  <DropdownMenuItem
+                    label="Pro"
+                    onClick={() => setSeatTypeFilter("pro")}
+                  />
+                  <DropdownMenuItem
+                    label="Max"
+                    onClick={() => setSeatTypeFilter("max")}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
           <MembersUsageTable
             members={membersUsage}
             isLoading={isMembersUsageLoading}
             searchTerm={searchTerm}
             seatTypeFilter={seatTypeFilter}
+            showSeatColumns={hasSeatSubscription}
           />
         </Page.Vertical>
 
