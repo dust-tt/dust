@@ -1,12 +1,59 @@
+import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type { InboundEmail } from "@app/lib/api/assistant/email/email_trigger";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   buildEmailUserMessage,
   buildReplyThreadingHeaders,
   parseEmailReplyContext,
+  sendToolValidationEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
-import { describe, expect, it } from "vitest";
+import { sendEmail } from "@app/lib/api/email";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { LightWorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const {
+  mockGetAppUrl,
+  mockGetCurrentRegion,
+  mockGetEmailValidationSecret,
+  mockSendEmail,
+  mockSendEmailToRecipients,
+} = vi.hoisted(() => ({
+  mockGetAppUrl: vi.fn(),
+  mockGetCurrentRegion: vi.fn(),
+  mockGetEmailValidationSecret: vi.fn(),
+  mockSendEmail: vi.fn(),
+  mockSendEmailToRecipients: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/config", () => ({
+  default: {
+    getAppUrl: mockGetAppUrl,
+    getEmailValidationSecret: mockGetEmailValidationSecret,
+  },
+}));
+
+vi.mock("@app/lib/api/email", () => ({
+  sendEmail: mockSendEmail,
+  sendEmailToRecipients: mockSendEmailToRecipients,
+}));
+
+vi.mock("@app/lib/api/regions/config", () => ({
+  config: {
+    getCurrentRegion: mockGetCurrentRegion,
+  },
+}));
 
 const TEST_EMAIL_AUTH = { SPF: "pass", dkim: [], dkimRaw: "" };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+
+  mockGetAppUrl.mockReturnValue("https://dust.tt");
+  mockGetCurrentRegion.mockReturnValue("europe-west1");
+  mockGetEmailValidationSecret.mockReturnValue("test-email-validation-secret");
+  mockSendEmail.mockResolvedValue(undefined);
+});
 
 describe("buildEmailUserMessage", () => {
   it("keeps thread context but replies only to the sender", () => {
@@ -174,3 +221,93 @@ describe("buildReplyThreadingHeaders", () => {
     });
   });
 });
+
+describe("sendToolValidationEmail", () => {
+  it("adds region metadata to approval links", async () => {
+    await sendToolValidationEmail({
+      email: makeInboundEmail(),
+      agentConfiguration: {
+        name: "approvals",
+      } as LightAgentConfigurationType,
+      blockedActions: [makeBlockedAction()],
+      conversation: { sId: "conversation-1" },
+      workspace: { sId: "workspace-1" } as LightWorkspaceType,
+    });
+
+    expect(sendEmail).toHaveBeenCalledOnce();
+
+    const [[recipient, message]] = mockSendEmail.mock.calls;
+    expect(recipient).toBe("sender@dust.tt");
+    expect(message).toMatchObject({ html: expect.any(String) });
+
+    const validationUrls = [...message.html.matchAll(/href="([^"]+)"/g)]
+      .map((match) => match[1])
+      .filter((href) => href.includes("/email/validation"));
+
+    expect(validationUrls).toHaveLength(2);
+    const approvalStates = validationUrls.map((href) => {
+      const url = new URL(href);
+      expect(url.origin + url.pathname).toBe(
+        "https://dust.tt/email/validation"
+      );
+      expect(url.searchParams.get("region")).toBe("europe-west1");
+      expect(url.searchParams.has("regionUrl")).toBe(false);
+
+      const token = url.searchParams.get("token");
+      if (!token) {
+        throw new Error("Expected validation token");
+      }
+      const [payload] = token.split(".");
+      return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"))
+        .approvalState;
+    });
+
+    expect(approvalStates).toEqual(["approved", "rejected"]);
+  });
+});
+
+function makeInboundEmail(): InboundEmail {
+  return {
+    subject: "Approve this tool",
+    text: "Please approve the pending tool.",
+    auth: TEST_EMAIL_AUTH,
+    threadingHeaders: {
+      messageId: "<incoming-message-id@dust.tt>",
+      inReplyTo: null,
+      references: null,
+    },
+    sender: {
+      email: "sender@dust.tt",
+      full: "Sender <sender@dust.tt>",
+    },
+    envelope: {
+      from: "bounce@mailer.dust.tt",
+      to: [`approvals@${ASSISTANT_EMAIL_SUBDOMAIN}`],
+      cc: [],
+      bcc: [],
+    },
+    attachments: [],
+  };
+}
+
+function makeBlockedAction(): BlockedToolExecution {
+  const blockedAction: BlockedToolExecution = {
+    conversationId: "conversation-1",
+    messageId: "message-1",
+    actionId: "action-1",
+    configurationId: "agent-config-1",
+    created: Date.now(),
+    metadata: {
+      toolName: "write_report",
+      mcpServerName: "project_tools",
+      agentName: "approvals",
+    },
+    inputs: {
+      title: "Q2 report",
+    },
+    status: "blocked_validation_required",
+    authorizationInfo: null,
+  };
+
+  return blockedAction;
+}

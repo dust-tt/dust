@@ -12,6 +12,7 @@ import { generateValidationToken } from "@app/lib/api/email/validation_token";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
@@ -880,6 +881,7 @@ export async function sendToolValidationEmail({
     : `Re: ${email.subject}`;
 
   const baseUrl = config.getAppUrl();
+  const currentRegion = regionsConfig.getCurrentRegion();
   const conversationUrl = getConversationRoute(
     workspace.sId,
     conversation.sId,
@@ -892,8 +894,13 @@ export async function sendToolValidationEmail({
     const approveToken = generateValidationToken(action.actionId, "approved");
     const rejectToken = generateValidationToken(action.actionId, "rejected");
 
-    const approveUrl = `${baseUrl}/email/validation?token=${encodeURIComponent(approveToken)}`;
-    const rejectUrl = `${baseUrl}/email/validation?token=${encodeURIComponent(rejectToken)}`;
+    const approveUrl = new URL("/email/validation", baseUrl);
+    approveUrl.searchParams.set("token", approveToken);
+    approveUrl.searchParams.set("region", currentRegion);
+
+    const rejectUrl = new URL("/email/validation", baseUrl);
+    rejectUrl.searchParams.set("token", rejectToken);
+    rejectUrl.searchParams.set("region", currentRegion);
 
     const inputsJson = JSON.stringify(action.inputs, null, 2)
       .replace(/</g, "&lt;")
@@ -913,8 +920,8 @@ export async function sendToolValidationEmail({
         <h3 style="margin: 0 0 8px 0; color: #333;">Allow ${serverName} to ${toolName}?</h3>
         <pre style="background-color: #fff; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; border: 1px solid #eee;">${inputsJson}</pre>
         <div style="margin-top: 12px;">
-          <a href="${approveUrl}" style="display: inline-block; padding: 10px 20px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; margin-right: 8px; font-weight: 500;">Allow</a>
-          <a href="${rejectUrl}" style="display: inline-block; padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">Decline</a>
+          <a href="${approveUrl.toString()}" style="display: inline-block; padding: 10px 20px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; margin-right: 8px; font-weight: 500;">Allow</a>
+          <a href="${rejectUrl.toString()}" style="display: inline-block; padding: 10px 20px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 4px; font-weight: 500;">Decline</a>
         </div>
       </div>
     `;

@@ -20,24 +20,46 @@ const DEFAULT_URL = import.meta.env?.VITE_DUST_API_URL ?? "";
 const DEFAULT_REGION: RegionType =
   (import.meta.env?.VITE_DUST_REGION as RegionType) ?? "us-central1";
 
-const DEFAULT_REGION_INFO: RegionInfo = {
-  name: DEFAULT_REGION,
-  url: DEFAULT_URL,
-};
+function getRegionUrl(region: RegionType): string {
+  return (
+    (region === "europe-west1"
+      ? import.meta.env?.VITE_DUST_API_URL_EU
+      : import.meta.env?.VITE_DUST_API_URL_US) ?? DEFAULT_URL
+  );
+}
 
-function getStoredRegionInfo(): RegionInfo | null {
+function getRegionInfo(region: RegionType): RegionInfo {
+  return { name: region, url: getRegionUrl(region) };
+}
+
+const DEFAULT_REGION_INFO: RegionInfo = getRegionInfo(DEFAULT_REGION);
+
+function getStoredRegion(): RegionType | null {
   const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) {
+    return null;
+  }
 
   try {
-    return stored && JSON.parse(stored);
+    const regionInfo = JSON.parse(stored);
+    if (
+      typeof regionInfo === "object" &&
+      regionInfo !== null &&
+      "name" in regionInfo &&
+      typeof regionInfo.name === "string" &&
+      isRegionType(regionInfo.name)
+    ) {
+      return regionInfo.name;
+    }
+    return null;
   } catch {
     // Invalid JSON, return null.
     return null;
   }
 }
 
-function setStoredRegionInfo({ name, url }: RegionInfo): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, url }));
+function setStoredRegionInfo({ name }: RegionInfo): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ name }));
 }
 
 export interface RegionContextValue {
@@ -66,13 +88,12 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
     // Check URL params first (set by /api/login after authentication).
     const params = new URLSearchParams(window.location.search);
     const region = params.get("region");
-    const regionUrl = params.get("regionUrl");
 
-    if (region && regionUrl && isRegionType(region)) {
-      regionInfo = { name: region, url: regionUrl };
+    if (region && isRegionType(region)) {
+      regionInfo = getRegionInfo(region);
       setStoredRegionInfo(regionInfo);
 
-      // Clean region params from URL.
+      // Clean region params from URL once consumed.
       params.delete("region");
       params.delete("regionUrl");
       const qs = params.toString();
@@ -80,7 +101,8 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
         window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
       window.history.replaceState(null, "", newUrl);
     } else {
-      regionInfo = getStoredRegionInfo();
+      const storedRegion = getStoredRegion();
+      regionInfo = storedRegion ? getRegionInfo(storedRegion) : null;
     }
 
     const resolvedRegionInfo = regionInfo ?? DEFAULT_REGION_INFO;
