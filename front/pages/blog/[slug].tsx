@@ -13,6 +13,7 @@ import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import {
   renderCtaFromContentful,
   renderRichTextFromContentful,
+  splitDocumentForMidCta,
 } from "@app/lib/contentful/richTextRenderer";
 import { extractTableOfContents } from "@app/lib/contentful/tableOfContents";
 import type { BlogPostPageProps } from "@app/lib/contentful/types";
@@ -100,6 +101,8 @@ export default function BlogPost({
   const canonicalUrl = `https://dust.tt/blog/${post.slug}`;
   const tocItems = extractTableOfContents(post.body);
   const ctaContent = renderCtaFromContentful(post.cta);
+  const inlineCtaContent = renderCtaFromContentful(post.cta, "inline");
+  const bodySplit = inlineCtaContent ? splitDocumentForMidCta(post.body) : null;
 
   return (
     <>
@@ -260,7 +263,17 @@ export default function BlogPost({
           <div className={classNames(WIDE_CLASSES, "mt-4")}>
             <div className="grid gap-8 lg:grid-cols-12">
               <div className="min-w-0 lg:col-span-9">
-                {renderRichTextFromContentful(post.body)}
+                {bodySplit ? (
+                  <>
+                    {renderRichTextFromContentful(bodySplit.first)}
+                    <aside className="my-10 flex justify-center">
+                      {inlineCtaContent}
+                    </aside>
+                    {renderRichTextFromContentful(bodySplit.second)}
+                  </>
+                ) : (
+                  renderRichTextFromContentful(post.body)
+                )}
               </div>
               {(tocItems.length > 0 || ctaContent) && (
                 <div className="hidden lg:col-span-3 lg:block">

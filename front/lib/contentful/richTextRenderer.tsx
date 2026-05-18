@@ -501,7 +501,12 @@ function hasCtaContent(document: Document | null): document is Document {
   return document.content.some(hasLink);
 }
 
-export function renderCtaFromContentful(document: Document | null): ReactNode {
+type CtaLayout = "sidebar" | "inline";
+
+export function renderCtaFromContentful(
+  document: Document | null,
+  layout: CtaLayout = "sidebar"
+): ReactNode {
   if (!hasCtaContent(document)) {
     return null;
   }
@@ -527,7 +532,7 @@ export function renderCtaFromContentful(document: Document | null): ReactNode {
         return (
           <Button
             variant={buttonVariantForNextLink()}
-            size="md"
+            size="sm"
             label={label}
             href={url}
             target={isExternal ? "_blank" : undefined}
@@ -544,7 +549,7 @@ export function renderCtaFromContentful(document: Document | null): ReactNode {
         return (
           <Button
             variant={buttonVariantForNextLink()}
-            size="md"
+            size="sm"
             label={label}
             href={href}
           />
@@ -552,11 +557,66 @@ export function renderCtaFromContentful(document: Document | null): ReactNode {
       },
     },
   };
+  const layoutClass =
+    layout === "inline"
+      ? "flex flex-wrap items-center justify-center gap-3"
+      : "flex flex-col gap-3 [&>a]:w-full [&>a]:justify-center";
   return (
-    <div className="flex flex-col gap-3 [&>a]:w-full [&>a]:justify-center">
+    <div className={layoutClass}>
       {documentToReactComponents(document, options)}
     </div>
   );
+}
+
+function isHeadingBlock(node: Block | Inline | Text): boolean {
+  if (!isBlockOrInline(node)) {
+    return false;
+  }
+  switch (node.nodeType) {
+    case BLOCKS.HEADING_1:
+    case BLOCKS.HEADING_2:
+    case BLOCKS.HEADING_3:
+    case BLOCKS.HEADING_4:
+    case BLOCKS.HEADING_5:
+    case BLOCKS.HEADING_6:
+      return true;
+    default:
+      return false;
+  }
+}
+
+export function splitDocumentForMidCta(
+  document: Document | null
+): { first: Document; second: Document } | null {
+  if (!document?.content || document.content.length < 6) {
+    return null;
+  }
+  const headingIndices: number[] = [];
+  for (let i = 0; i < document.content.length; i++) {
+    if (isHeadingBlock(document.content[i])) {
+      headingIndices.push(i);
+    }
+  }
+  if (headingIndices.length === 0) {
+    return null;
+  }
+  const midIndex = Math.floor(document.content.length / 2);
+  let splitIndex = headingIndices[0];
+  let bestDistance = Math.abs(splitIndex - midIndex);
+  for (const idx of headingIndices) {
+    const distance = Math.abs(idx - midIndex);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      splitIndex = idx;
+    }
+  }
+  if (splitIndex < 2 || splitIndex > document.content.length - 2) {
+    return null;
+  }
+  return {
+    first: { ...document, content: document.content.slice(0, splitIndex) },
+    second: { ...document, content: document.content.slice(splitIndex) },
+  };
 }
 
 function extractPlainText(node: Block | Inline | Document): string {
