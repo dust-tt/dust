@@ -306,11 +306,22 @@ export const SCENE_CSS = `
 .dust-floor-host .chat-card-body .mention.agent-mention {
   background: rgba(17,20,24,0.08); color: #1A1D21;
 }
-.dust-floor-host[data-paused="true"],
-.dust-floor-host[data-paused="true"] *,
-.dust-floor-host[data-paused="true"] *::before,
-.dust-floor-host[data-paused="true"] *::after {
-  animation-play-state: paused !important;
+.dust-floor-host[data-paused="true"] .human-body,
+.dust-floor-host[data-paused="true"] .human.sway .human-body,
+.dust-floor-host[data-paused="true"] .status-online-pulse,
+.dust-floor-host[data-paused="true"] .activity-emoji.pop,
+.dust-floor-host[data-paused="true"] .agent-body,
+.dust-floor-host[data-paused="true"] .agent.active .agent-halo,
+.dust-floor-host[data-paused="true"] .agent.active.working .agent-halo,
+.dust-floor-host[data-paused="true"] .agent-spark,
+.dust-floor-host[data-paused="true"] .agent-trail,
+.dust-floor-host[data-paused="true"] .door-light.flash,
+.dust-floor-host[data-paused="true"] .door-light.active,
+.dust-floor-host[data-paused="true"] .chat-card-caret,
+.dust-floor-host[data-paused="true"] .chat-card-reactions .react-pill,
+.dust-floor-host[data-paused="true"] .reaction-pill,
+.dust-floor-host[data-paused="true"] .agent-tag .caret {
+  animation-play-state: paused;
 }
 .dust-floor-host .chat-card-body .tool-chip {
   display: inline-flex; align-items: center; gap: 4px;
@@ -428,10 +439,10 @@ export const SCENE_CSS = `
 .dust-floor-host .ground { fill: #FAFAF8; }
 .dust-floor-host .grid-line { stroke: rgba(17,20,24,0.06); stroke-width: 1; }
 .dust-floor-host .roof { fill: #FFFFFF; stroke: rgba(17,20,24,0.12); stroke-width: 1; }
-.dust-floor-host [data-room="office-d"]  .roof-logo { fill: #E2F78C !important; }
-.dust-floor-host [data-room="office-c"]  .roof-logo { fill: #FFC3DF !important; }
-.dust-floor-host [data-room="office-bl"] .roof-logo { fill: #9FDBFF !important; }
-.dust-floor-host [data-room="office-t"]  .roof-logo { fill: #3B82F6 !important; }
+.dust-floor-host [data-room="office-d"]  .roof-logo { fill: #E2F78C; }
+.dust-floor-host [data-room="office-c"]  .roof-logo { fill: #FFC3DF; }
+.dust-floor-host [data-room="office-bl"] .roof-logo { fill: #9FDBFF; }
+.dust-floor-host [data-room="office-t"]  .roof-logo { fill: #3B82F6; }
 .dust-floor-host .roof-edge { fill: none; stroke: rgba(17,20,24,0.18); stroke-width: 1.2; stroke-linejoin: round; }
 .dust-floor-host .wall-right { fill: #EFEEE9; stroke: rgba(17,20,24,0.14); stroke-width: 1; }
 .dust-floor-host .wall-front { fill: #E5E4DE; stroke: rgba(17,20,24,0.14); stroke-width: 1; }
@@ -456,8 +467,8 @@ export const SCENE_CSS = `
   .dust-floor-host .status-online-pulse,
   .dust-floor-host .activity-emoji.pop,
   .dust-floor-host .agent-body,
-  .dust-floor-host .agent-halo,
-  .dust-floor-host .agent.working .agent-halo,
+  .dust-floor-host .agent.active .agent-halo,
+  .dust-floor-host .agent.active.working .agent-halo,
   .dust-floor-host .agent-spark,
   .dust-floor-host .agent-trail,
   .dust-floor-host .door-light.flash,
@@ -467,8 +478,8 @@ export const SCENE_CSS = `
   .dust-floor-host .reaction-pill,
   .dust-floor-host .agent-tag .caret,
   .dust-floor-fly-emoji {
-    animation: none !important;
-    transition: none !important;
+    animation: none;
+    transition: none;
   }
 }
 `;
