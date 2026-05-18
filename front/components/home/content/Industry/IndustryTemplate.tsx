@@ -1,5 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
+import { HomeAIOperatorsCTASection } from "@app/components/home/content/Product/HomeAIOperatorsCTASection";
 import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -431,72 +432,6 @@ const TestimonialSection = ({
   </div>
 );
 
-// Just Use Dust Section Component
-const JustUseDustSection = ({
-  config,
-  trackingPrefix,
-}: {
-  config: NonNullable<IndustryPageConfig["justUseDust"]>;
-  trackingPrefix?: string;
-}) => (
-  <div
-    className={classNames(
-      "relative overflow-hidden rounded-xl py-16 md:py-20",
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      config.bgColor || "bg-blue-50"
-    )}
-  >
-    {config.decorativeShapes && (
-      <>
-        <div className="absolute left-0 top-0 h-48 w-48 -translate-x-1/3 -translate-y-1/3 rounded-full bg-brand-pink-rose" />
-        <div className="absolute right-0 top-0 h-32 w-32 -translate-y-1/3 translate-x-1/3 rotate-45 bg-brand-electric-blue" />
-        <div className="absolute bottom-0 left-0 h-40 w-40 -translate-x-1/3 translate-y-1/3 rounded-full bg-brand-hunter-green" />
-        <div className="absolute bottom-0 right-0 h-40 w-40 translate-x-1/3 translate-y-1/3 bg-brand-red-rose" />
-      </>
-    )}
-
-    <div className="container mx-auto max-w-4xl px-6">
-      <div className="relative flex flex-col items-center justify-center py-12 text-center md:py-16">
-        <H2
-          className={classNames(
-            "mb-8 text-4xl sm:text-5xl md:text-6xl",
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            config.titleColor || "text-blue-600"
-          )}
-        >
-          {config.title}
-        </H2>
-        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-          <Link href={config.ctaButtons.primary.href} passHref legacyBehavior>
-            <Button
-              variant="highlight"
-              size="md"
-              label={config.ctaButtons.primary.label}
-              className="w-full sm:w-auto"
-              onClick={withTracking(
-                TRACKING_AREAS.INDUSTRY,
-                `${trackingPrefix ?? "default"}_footer_cta_primary`
-              )}
-            />
-          </Link>
-          <Link href={config.ctaButtons.secondary.href} passHref legacyBehavior>
-            <Button
-              variant="outline"
-              size="md"
-              label={config.ctaButtons.secondary.label}
-              className="w-full sm:w-auto"
-              onClick={withTracking(
-                TRACKING_AREAS.INDUSTRY,
-                `${trackingPrefix ?? "default"}_footer_cta_secondary`
-              )}
-            />
-          </Link>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
 // Main Industry Template Component
 export default function IndustryTemplate({
   config,
@@ -594,11 +529,12 @@ export default function IndustryTemplate({
 
       case "justUseDust":
         return config.justUseDust ? (
-          <JustUseDustSection
+          <div
             key="justUseDust"
-            config={config.justUseDust}
-            trackingPrefix={trackingPrefix}
-          />
+            className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen"
+          >
+            <HomeAIOperatorsCTASection />
+          </div>
         ) : null;
 
       default:
