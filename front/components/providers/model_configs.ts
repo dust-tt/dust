@@ -32,11 +32,7 @@ import {
   O4_MINI_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import type { ModelConfig } from "@app/types/assistant/models/types";
-import {
-  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
-  GROK_4_1_FAST_REASONING_MODEL_CONFIG,
-  GROK_4_MODEL_CONFIG,
-} from "@app/types/assistant/models/xai";
+import { GROK_4_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   GPT_5_5_MODEL_CONFIG,
@@ -61,8 +57,6 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
   GROK_4_MODEL_CONFIG,
-  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
-  GROK_4_1_FAST_REASONING_MODEL_CONFIG,
 ] as const;
 
 // Sorted by preference order
