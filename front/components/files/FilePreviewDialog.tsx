@@ -279,7 +279,7 @@ function FilePreviewDialogContent({
 interface FilePreviewDialogProps {
   file: FilePreviewDialogFile | null;
   isOpen: boolean;
-  onDownload: (file: FilePreviewDialogFile) => Promise<void> | void;
+  onDownload: (file: FilePreviewDialogFile) => Promise<void>;
   onNext?: () => void;
   onOpenChange: (open: boolean) => void;
   onPrev?: () => void;

@@ -39,13 +39,13 @@ interface FileExplorerItemMenuAction {
   id: string;
   label: string;
   loadingLabel?: string;
-  onClick: () => Promise<void> | void;
+  onClick: () => Promise<void>;
 }
 
 export type FileExplorerItemProps = {
-  onDownload?: () => Promise<void> | void;
+  onDownload?: () => Promise<void>;
   onOpen?: () => void;
-  onRemove?: () => Promise<void> | void;
+  onRemove?: () => Promise<void>;
   subtitle: string;
   titleClassName?: string;
   title: string;

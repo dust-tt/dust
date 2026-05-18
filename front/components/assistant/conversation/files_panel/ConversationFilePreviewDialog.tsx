@@ -33,7 +33,7 @@ interface ConversationFilePreviewDialogProps {
   conversationId: string;
   entry: GCSMountFileEntry | null;
   isOpen: boolean;
-  onDownload: (entry: GCSMountFileEntry) => void;
+  onDownload: (entry: GCSMountFileEntry) => Promise<void>;
   onNext?: () => void;
   onOpenChange: (open: boolean) => void;
   onPrev?: () => void;
@@ -81,9 +81,9 @@ export function ConversationFilePreviewDialog({
     <FilePreviewDialog
       file={file}
       isOpen={isOpen}
-      onDownload={() => {
+      onDownload={async () => {
         if (entry) {
-          onDownload(entry);
+          await onDownload(entry);
         }
       }}
       onNext={onNext}

@@ -146,7 +146,7 @@ export function SkillBuilderFilesSection() {
     }
   };
 
-  const downloadFile = (fileAttachment: SkillBuilderFileAttachment) => {
+  const downloadFile = async (fileAttachment: SkillBuilderFileAttachment) => {
     window.open(
       getFileDownloadUrl(owner, fileAttachment.fileId),
       "_blank",
@@ -154,7 +154,7 @@ export function SkillBuilderFilesSection() {
     );
   };
 
-  const removeFile = ({
+  const removeFile = async ({
     fileAttachment,
     originalIndex,
   }: {
@@ -334,9 +334,9 @@ export function SkillBuilderFilesSection() {
             : null
         }
         isOpen={isPreviewOpen}
-        onDownload={() => {
+        onDownload={async () => {
           if (previewFileAttachment) {
-            downloadFile(previewFileAttachment);
+            await downloadFile(previewFileAttachment);
           }
         }}
         onPrev={previewIndex > 0 ? previewPreviousFile : undefined}
