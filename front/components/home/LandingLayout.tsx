@@ -9,6 +9,7 @@ import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import { PromoBanner } from "@app/components/home/PromoBanner";
+import { PublicWebsiteLogo } from "@app/components/home/PublicWebsiteLogo";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
@@ -25,8 +26,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 import { getOrCreateAnonymousId } from "@app/lib/utils/anonymous_id";
 import { appendUTMParams } from "@app/lib/utils/utm";
-import { Button, cn, DustLogo } from "@dust-tt/sparkle";
-import { cva } from "class-variance-authority";
+import { Button, cn } from "@dust-tt/sparkle";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -416,38 +416,5 @@ const Header = () => {
         href="/static/AppIcon_228.png"
       />
     </Head>
-  );
-};
-
-interface PublicWebsiteLogoProps {
-  size?: "default" | "small";
-  utmParam?: string;
-  baseUrl?: string;
-}
-
-const logoVariants = cva("", {
-  variants: {
-    size: {
-      default: "h-[24px] w-[96px]",
-      small: "h-[20px] w-[80px]",
-    },
-  },
-  defaultVariants: {
-    size: "default",
-  },
-});
-
-export const PublicWebsiteLogo = ({
-  size = "default",
-  utmParam,
-  baseUrl,
-}: PublicWebsiteLogoProps) => {
-  const className = logoVariants({ size });
-  const href = `${baseUrl ?? ""}/home${utmParam ? `?${utmParam}` : ""}`;
-
-  return (
-    <Link href={href}>
-      <DustLogo className={className} />
-    </Link>
   );
 };
