@@ -2396,6 +2396,31 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  static async addManyToAgent(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      skills,
+    }: {
+      agentConfiguration: LightAgentConfigurationType;
+      skills: SkillResource[];
+    }
+  ): Promise<void> {
+    if (skills.length === 0) {
+      return;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    await AgentSkillModel.bulkCreate(
+      skills.map((skill) => ({
+        ...skill.skillReference,
+        workspaceId: workspace.id,
+        agentConfigurationId: agentConfiguration.id,
+      })),
+    );
+  }
+
   async enableForAgent(
     auth: Authenticator,
     {
