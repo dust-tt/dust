@@ -8,6 +8,7 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { DustProjectConfigurationResource } from "@connectors/resources/dust_project_configuration_resource";
 import { DustProjectConversationResource } from "@connectors/resources/dust_project_conversation_resource";
+import { DustProjectMountFileResource } from "@connectors/resources/dust_project_mount_file_resource";
 import type { ModelId } from "@connectors/types";
 import type { Transaction } from "sequelize";
 
@@ -30,6 +31,10 @@ export class DustProjectConnectorStrategy
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
+    await DustProjectMountFileResource.deleteByConnector(
+      connector,
+      transaction
+    );
     await DustProjectConversationResource.deleteByConnector(
       connector,
       transaction

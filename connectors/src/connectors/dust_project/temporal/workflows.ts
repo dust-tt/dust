@@ -5,6 +5,8 @@ import { proxyActivities } from "@temporalio/workflow";
 const {
   dustProjectConversationsFullSyncActivity,
   dustProjectConversationsIncrementalSyncActivity,
+  dustProjectMountFilesFullSyncActivity,
+  dustProjectMountFilesIncrementalSyncActivity,
   dustProjectSyncMetadataActivity,
   dustProjectMarkSyncedActivity,
 } = proxyActivities<typeof activities>({
@@ -34,6 +36,7 @@ export async function dustProjectFullSyncWorkflow({
   connectorId: ModelId;
 }): Promise<void> {
   await dustProjectConversationsFullSyncActivity({ connectorId });
+  await dustProjectMountFilesFullSyncActivity({ connectorId });
   await dustProjectSyncMetadataActivity({ connectorId });
   await dustProjectMarkSyncedActivity({ connectorId });
 }
@@ -48,6 +51,7 @@ export async function dustProjectIncrementalSyncWorkflow({
   connectorId: ModelId;
 }): Promise<void> {
   await dustProjectConversationsIncrementalSyncActivity({ connectorId });
+  await dustProjectMountFilesIncrementalSyncActivity({ connectorId });
   await dustProjectSyncMetadataActivity({ connectorId });
   await dustProjectMarkSyncedActivity({ connectorId });
 }

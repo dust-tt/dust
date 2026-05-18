@@ -2657,6 +2657,47 @@ export type GetSpaceMetadataResponseType = z.infer<
   typeof GetSpaceMetadataResponseSchema
 >;
 
+export const ProjectMountFileEntrySchema = z.object({
+  isDirectory: z.literal(false),
+  fileName: z.string(),
+  path: z.string(),
+  sizeBytes: z.number(),
+  lastModifiedMs: z.number(),
+  contentType: z.string(),
+  fileId: z.string().nullable(),
+  thumbnailUrl: z.string().nullable(),
+  signedDownloadUrl: z.string().nullable(),
+});
+export type ProjectMountFileEntryType = z.infer<
+  typeof ProjectMountFileEntrySchema
+>;
+
+export const ProjectMountDirectoryEntrySchema = z.object({
+  isDirectory: z.literal(true),
+  fileName: z.string(),
+  path: z.string(),
+  sizeBytes: z.number(),
+  lastModifiedMs: z.number(),
+});
+export type ProjectMountDirectoryEntryType = z.infer<
+  typeof ProjectMountDirectoryEntrySchema
+>;
+
+export const ProjectMountListEntrySchema = z.discriminatedUnion("isDirectory", [
+  ProjectMountDirectoryEntrySchema,
+  ProjectMountFileEntrySchema,
+]);
+export type ProjectMountListEntryType = z.infer<
+  typeof ProjectMountListEntrySchema
+>;
+
+export const GetProjectFilesResponseSchema = z.object({
+  files: z.array(ProjectMountListEntrySchema),
+});
+export type GetProjectFilesResponseType = z.infer<
+  typeof GetProjectFilesResponseSchema
+>;
+
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),
   total: z.number(),

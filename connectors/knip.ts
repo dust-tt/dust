@@ -6,6 +6,7 @@ const config: KnipConfig = {
     "src/connectors/dust_project/**",
     "src/resources/dust_project_configuration_resource.ts",
     "src/resources/dust_project_conversation_resource.ts",
+    "src/resources/dust_project_mount_file_resource.ts",
     "src/lib/conversation_rendering.ts",
   ],
   project: ["**/*.{js,jsx,ts,tsx}"],

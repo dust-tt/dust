@@ -36,6 +36,8 @@ export type GCSMountFileEntry = GCSMountEntryBase & {
   contentType: string;
   fileId: string | null;
   thumbnailUrl: string | null;
+  /** Present when the listing endpoint adds read-signed URLs (e.g. system project_files API). */
+  signedDownloadUrl?: string | null;
 };
 
 export type GCSMountEntry = GCSMountDirectoryEntry | GCSMountFileEntry;

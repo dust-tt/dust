@@ -104,3 +104,58 @@ DustProjectConversationModel.init(
     relationship: "hasMany",
   }
 );
+
+export class DustProjectMountFileModel extends ConnectorBaseModel<DustProjectMountFileModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare projectId: string;
+  /** Scoped mount path from Front list API (e.g. `project/report.pdf`). */
+  declare scopedPath: string;
+  /** Core document id used for upsert/delete. */
+  declare documentId: string;
+  declare sourceUpdatedAt: Date;
+}
+
+DustProjectMountFileModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    projectId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    scopedPath: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    documentId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    sourceUpdatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: connectorsSequelize,
+    indexes: [
+      { fields: ["connectorId", "scopedPath"], unique: true },
+      { fields: ["connectorId", "sourceUpdatedAt"] },
+      {
+        fields: ["connectorId", "projectId", "scopedPath"],
+        name: "dust_project_mount_files_connector_project_scoped",
+      },
+    ],
+    modelName: "dust_project_mount_files",
+    relationship: "hasMany",
+  }
+);
