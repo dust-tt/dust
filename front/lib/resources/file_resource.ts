@@ -1079,7 +1079,11 @@ export class FileResource extends BaseResource<FileModel> {
   private async isMountFilePathTaken(mountFilePath: string): Promise<boolean> {
     const existing = await FileResource.model.findOne({
       attributes: ["id"],
-      where: { workspaceId: this.workspaceId, mountFilePath },
+      where: {
+        workspaceId: this.workspaceId,
+        mountFilePath,
+        id: { [Op.ne]: this.id },
+      },
     });
     return existing !== null;
   }
