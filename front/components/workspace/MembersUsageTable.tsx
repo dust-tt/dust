@@ -1,5 +1,7 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import type { BillingFrequency } from "@app/lib/metronome/types";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ActionCreditCoinsIcon,
   DataTable,
@@ -20,6 +22,7 @@ type RowData = {
   seatType: MembershipSeatType | null;
   seatUsagePercent: number | null;
   consumedWorkplacePoolCredits: number;
+  billingFrequency: BillingFrequency | null;
   onClick?: () => void;
 };
 
@@ -159,7 +162,40 @@ const columns: ColumnDef<RowData, string>[] = [
       );
     },
     meta: {
-      className: "w-28",
+      className: "w-24",
+    },
+  },
+  {
+    id: "billingFrequency" as const,
+    header: "Period",
+    accessorFn: (row) => row.billingFrequency ?? "",
+    cell: (info: Info) => {
+      const freq = info.row.original.billingFrequency;
+      let label: string;
+      switch (freq) {
+        case "MONTHLY":
+          label = "Monthly";
+          break;
+        case "ANNUAL":
+          label = "Annual";
+          break;
+        case null:
+          label = "—";
+          break;
+        default:
+          assertNeverAndIgnore(freq);
+          label = "—";
+      }
+      return (
+        <DataTable.CellContent>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            {label}
+          </span>
+        </DataTable.CellContent>
+      );
+    },
+    meta: {
+      className: "w-24",
     },
   },
   {
@@ -195,7 +231,7 @@ const columns: ColumnDef<RowData, string>[] = [
       );
     },
     meta: {
-      className: "w-28",
+      className: "w-32",
     },
     enableSorting: true,
     sortingFn: (a, b) =>
@@ -219,7 +255,7 @@ const columns: ColumnDef<RowData, string>[] = [
       </div>
     ),
     meta: {
-      className: "w-56",
+      className: "w-64",
     },
     enableSorting: true,
     sortingFn: (a, b) =>
@@ -281,6 +317,7 @@ export function MembersUsageTable({
     seatType: m.seatType,
     seatUsagePercent: m.seatUsagePercent,
     consumedWorkplacePoolCredits: m.consumedWorkplacePoolCredits,
+    billingFrequency: m.billingFrequency,
   }));
 
   return <DataTable data={rows} columns={columns} />;

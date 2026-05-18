@@ -29,6 +29,8 @@ export const LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS = "legacy-enterprise-eur";
 
 export type MetronomePackageTier = "pro" | "business" | "enterprise";
 
+export type BillingFrequency = "MONTHLY" | "ANNUAL";
+
 /**
  * Classify a Metronome package by its display name. The match is a
  * case-insensitive whole-word search ordered by specificity:
