@@ -183,21 +183,9 @@ export async function scrubSpaceActivity({
   // TakeawaySourcesModel, so the join-table rows must be removed first.
   await TakeawaysResource.deleteAllForSpace(auth, { spaceModelId: space.id });
 
-  // Delete all project todos for this space, before the conversations as it's linked to convo
-  const projectTodos = await ProjectTaskResource.fetchBySpace(auth, {
-    spaceId: space.id,
-    timeScope: "all",
-  });
-  await concurrentExecutor(
-    projectTodos,
-    async (todo) => {
-      const res = await todo.delete(auth, {});
-      if (res.isErr()) {
-        throw res.error;
-      }
-    },
-    { concurrency: 8 }
-  );
+  // Delete all project todos for this space before conversations, as project
+  // todo conversation rows reference conversations.
+  await ProjectTaskResource.deleteAllBySpace(auth, { spaceId: space.id });
 
   // Delete all conversations in the space.
   // Won't scale if there's tons of conversations in spaces.
@@ -221,21 +209,6 @@ export async function scrubSpaceActivity({
     );
     await concurrentExecutor(
       projectTodoStates,
-      async (todoState) => {
-        const result = await todoState.delete(auth, {});
-        if (result.isErr()) {
-          throw result.error;
-        }
-      },
-      { concurrency: 8 }
-    );
-
-    const projectTodos = await ProjectTaskResource.fetchBySpace(auth, {
-      spaceId: space.id,
-      timeScope: "all",
-    });
-    await concurrentExecutor(
-      projectTodos,
       async (todoState) => {
         const result = await todoState.delete(auth, {});
         if (result.isErr()) {

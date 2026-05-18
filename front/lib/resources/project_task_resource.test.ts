@@ -1,7 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ProjectTaskModel } from "@app/lib/resources/storage/models/project_task";
+import {
+  ProjectTaskModel,
+  ProjectTaskSourceModel,
+  ProjectTaskVersionModel,
+} from "@app/lib/resources/storage/models/project_task";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -41,6 +45,7 @@ describe("ProjectTaskResource", () => {
   let user: UserResource;
   let auth: Authenticator;
   let space: SpaceResource;
+  let otherSpace: SpaceResource;
 
   beforeEach(async () => {
     const setup = await createResourceTest({ role: "user" });
@@ -48,6 +53,7 @@ describe("ProjectTaskResource", () => {
     user = setup.user;
     auth = setup.authenticator;
     space = setup.globalSpace;
+    otherSpace = setup.systemSpace;
   });
 
   describe("makeNew", () => {
@@ -646,6 +652,50 @@ describe("ProjectTaskResource", () => {
       // The main row is gone — no observable version leakage through the public API.
       const fetched = await ProjectTaskResource.fetchBySId(auth, sId);
       expect(fetched).toBeNull();
+    });
+  });
+
+  describe("deleteAllBySpace", () => {
+    it("should delete soft-deleted todos and their child rows", async () => {
+      const todo = await ProjectTaskResource.makeNewWithSource(auth, {
+        blob: makeTodoBlob(space.id, user.id),
+        itemId: "item-delete-space",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-delete-space",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+      await todo.softDelete(auth);
+
+      const otherTodo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(otherSpace.id, user.id)
+      );
+
+      await ProjectTaskResource.deleteAllBySpace(auth, { spaceId: space.id });
+
+      await expect(
+        ProjectTaskModel.count({
+          where: { workspaceId: workspace.id, spaceId: space.id },
+        })
+      ).resolves.toBe(0);
+      await expect(
+        ProjectTaskVersionModel.count({
+          where: { workspaceId: workspace.id, spaceId: space.id },
+        })
+      ).resolves.toBe(0);
+      await expect(
+        ProjectTaskSourceModel.count({
+          where: { workspaceId: workspace.id, projectTodoId: todo.id },
+        })
+      ).resolves.toBe(0);
+      await expect(
+        ProjectTaskModel.count({
+          where: { workspaceId: workspace.id, id: otherTodo.id },
+        })
+      ).resolves.toBe(1);
     });
   });
 });

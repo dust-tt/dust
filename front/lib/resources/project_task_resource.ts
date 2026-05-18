@@ -433,6 +433,48 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     return todos.map((todo) => new this(ProjectTaskModel, todo.get()));
   }
 
+  static async deleteAllBySpace(
+    auth: Authenticator,
+    { spaceId }: { spaceId: ModelId },
+    transaction?: Transaction
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const todoIds = (
+      await ProjectTaskModel.findAll({
+        attributes: ["id"],
+        where: { workspaceId, spaceId },
+        raw: true,
+        transaction,
+      })
+    ).map((todo) => todo.id);
+
+    if (todoIds.length > 0) {
+      const childWhere = {
+        workspaceId,
+        projectTodoId: { [Op.in]: todoIds },
+      };
+
+      await ProjectTaskConversationModel.destroy({
+        where: childWhere,
+        transaction,
+      });
+      await ProjectTaskSourceModel.destroy({
+        where: childWhere,
+        transaction,
+      });
+    }
+
+    await ProjectTaskVersionModel.destroy({
+      where: { workspaceId, spaceId },
+      transaction,
+    });
+    await ProjectTaskModel.destroy({
+      where: { workspaceId, spaceId },
+      transaction,
+    });
+  }
+
   // Batch variant: fetches the current todo row for each itemId in one pass.
   // Returns a map from itemId to the matching ProjectTaskResource — missing
   // entries mean no todo yet exists for that item.
