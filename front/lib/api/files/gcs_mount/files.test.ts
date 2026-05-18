@@ -11,7 +11,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -557,7 +556,7 @@ describe("renameGCSMountFile", () => {
     vi.restoreAllMocks();
   });
 
-  it("copies to the new path and deletes the old path", async () => {
+  it("copies to the new path, deletes the old path, and returns the new GCS path", async () => {
     const result = await renameGCSMountFile(
       auth,
       { useCase: "project", projectId: "proj123" },
@@ -571,6 +570,9 @@ describe("renameGCSMountFile", () => {
       `${prefix}final.pdf`
     );
     expect(deleteMock).toHaveBeenCalledWith(`${prefix}report.pdf`);
+    if (result.isOk()) {
+      expect(result.value.newGcsPath).toBe(`${prefix}final.pdf`);
+    }
   });
 
   it("preserves directory structure when renaming a nested file", async () => {
@@ -602,26 +604,6 @@ describe("renameGCSMountFile", () => {
       expect(result.error.message).toContain("copy failed");
     }
     expect(deleteMock).not.toHaveBeenCalled();
-  });
-
-  it("calls renameMountFile on the FileResource when one is linked to the old path", async () => {
-    const renameMountFileMock = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(FileResource, "fetchByMountFilePaths").mockResolvedValue([
-      { renameMountFile: renameMountFileMock } as unknown as FileResource,
-    ]);
-
-    const result = await renameGCSMountFile(
-      auth,
-      { useCase: "project", projectId: "proj123" },
-      { relativeFilePath: "old.pdf", newFileName: "new.pdf" }
-    );
-
-    const prefix = `w/${workspaceId}/projects/proj123/files/`;
-    expect(result.isOk()).toBe(true);
-    expect(renameMountFileMock).toHaveBeenCalledWith(
-      "new.pdf",
-      `${prefix}new.pdf`
-    );
   });
 });
 

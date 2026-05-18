@@ -5,7 +5,10 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
-import { deleteGCSMountFile } from "@app/lib/api/files/gcs_mount/files";
+import {
+  deleteGCSMountFile,
+  renameGCSMountFile,
+} from "@app/lib/api/files/gcs_mount/files";
 import { getProjectFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -419,6 +422,50 @@ export async function removeFileFromProject(
   const deleteRes = await file.delete(auth);
   if (deleteRes.isErr()) {
     return new Err(deleteRes.error);
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * Rename a project file by its relative path.
+ *
+ * Renames the GCS object and, if a FileResource is linked to the path, updates
+ * its fileName and mountFilePath to stay in sync.
+ */
+export async function renameProjectFile(
+  auth: Authenticator,
+  {
+    space,
+    relativeFilePath,
+    newFileName,
+  }: {
+    space: SpaceResource;
+    relativeFilePath: string;
+    newFileName: string;
+  }
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const oldGcsPath = `${getProjectFilesBasePath({ workspaceId: owner.sId, projectId: space.sId })}${relativeFilePath}`;
+
+  const fileResources = await FileResource.fetchByMountFilePaths(auth, [
+    oldGcsPath,
+  ]);
+
+  const renameResult = await renameGCSMountFile(
+    auth,
+    { useCase: "project", projectId: space.sId },
+    { relativeFilePath, newFileName }
+  );
+  if (renameResult.isErr()) {
+    return renameResult;
+  }
+
+  if (fileResources.length > 0) {
+    await fileResources[0].renameMountFile(
+      newFileName,
+      renameResult.value.newGcsPath
+    );
   }
 
   return new Ok(undefined);

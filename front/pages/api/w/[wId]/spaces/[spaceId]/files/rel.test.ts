@@ -1,4 +1,3 @@
-import * as gcsFiles from "@app/lib/api/files/gcs_mount/files";
 import * as projectsContext from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -118,12 +117,12 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
 
   describe("PATCH", () => {
     beforeEach(() => {
-      vi.spyOn(gcsFiles, "renameGCSMountFile").mockResolvedValue(
+      vi.spyOn(projectsContext, "renameProjectFile").mockResolvedValue(
         new Ok(undefined)
       );
     });
 
-    it("returns 200 and calls renameGCSMountFile with the right args", async () => {
+    it("returns 200 and calls renameProjectFile with the right args", async () => {
       const { req, res, project } = await makeProjectRequest(
         "PATCH",
         ["project", "old.txt"],
@@ -131,10 +130,13 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
       );
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
-      expect(gcsFiles.renameGCSMountFile).toHaveBeenCalledWith(
+      expect(projectsContext.renameProjectFile).toHaveBeenCalledWith(
         expect.anything(),
-        { useCase: "project", projectId: project.sId },
-        { relativeFilePath: "old.txt", newFileName: "new.txt" }
+        {
+          space: expect.objectContaining({ sId: project.sId }),
+          relativeFilePath: "old.txt",
+          newFileName: "new.txt",
+        }
       );
     });
 
@@ -187,8 +189,8 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
       expect(res._getStatusCode()).toBe(403);
     });
 
-    it("returns 500 when renameGCSMountFile fails", async () => {
-      vi.spyOn(gcsFiles, "renameGCSMountFile").mockResolvedValue(
+    it("returns 500 when renameProjectFile fails", async () => {
+      vi.spyOn(projectsContext, "renameProjectFile").mockResolvedValue(
         new Err(new Error("GCS error"))
       );
       const { req, res } = await makeProjectRequest(

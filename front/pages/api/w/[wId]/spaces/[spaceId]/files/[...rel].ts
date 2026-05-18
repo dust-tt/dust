@@ -1,11 +1,13 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { renameGCSMountFile } from "@app/lib/api/files/gcs_mount/files";
 import {
   getProjectFilesBasePath,
   parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
-import { deleteProjectFile } from "@app/lib/api/projects/context";
+import {
+  deleteProjectFile,
+  renameProjectFile,
+} from "@app/lib/api/projects/context";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -132,11 +134,11 @@ async function handler(
         });
       }
 
-      const renameResult = await renameGCSMountFile(
-        auth,
-        { useCase: "project", projectId: space.sId },
-        { relativeFilePath: normalizedRelative, newFileName: fileName.trim() }
-      );
+      const renameResult = await renameProjectFile(auth, {
+        space,
+        relativeFilePath: normalizedRelative,
+        newFileName: fileName.trim(),
+      });
       if (renameResult.isErr()) {
         return apiError(req, res, {
           status_code: 500,

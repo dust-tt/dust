@@ -302,9 +302,9 @@ export async function listGCSMountFiles(
 }
 
 /**
- * Rename (move) a file within a GCS mount point.
- * If a FileResource is linked to the old path via mountFilePath, its fileName
- * and mountFilePath are updated to stay in sync.
+ * Rename (move) a file within a GCS mount point — pure GCS primitive.
+ * Does not touch FileResource records; callers are responsible for any DB sync.
+ * Returns the new GCS path on success so callers can update linked records.
  */
 export async function renameGCSMountFile(
   auth: Authenticator,
@@ -313,7 +313,7 @@ export async function renameGCSMountFile(
     relativeFilePath,
     newFileName,
   }: { relativeFilePath: string; newFileName: string }
-): Promise<Result<void, Error>> {
+): Promise<Result<{ newGcsPath: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
   const prefix = resolvePrefix(owner, scope);
 
@@ -327,15 +327,7 @@ export async function renameGCSMountFile(
   try {
     await bucket.copyFile(oldGcsPath, newGcsPath);
     await bucket.delete(oldGcsPath);
-
-    const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-      oldGcsPath,
-    ]);
-    if (fileResources.length > 0) {
-      await fileResources[0].renameMountFile(newFileName, newGcsPath);
-    }
-
-    return new Ok(undefined);
+    return new Ok({ newGcsPath });
   } catch (err) {
     return new Err(normalizeError(err));
   }
@@ -411,10 +403,8 @@ export async function createGCSMountFile(
 }
 
 /**
- * Delete a file from a GCS mount point.
- * If a FileResource is linked via mountFilePath, it is deleted through FileResource.delete()
- * so the DB record is cleaned up. For path-only files (no FileResource), the GCS object is
- * removed directly.
+ * Delete a file from a GCS mount point — pure GCS primitive.
+ * Does not touch FileResource records; callers are responsible for any DB cleanup.
  */
 export async function deleteGCSMountFile(
   auth: Authenticator,
