@@ -185,7 +185,9 @@ export async function scrubSpaceActivity({
 
   // Delete all project todos for this space before conversations, as project
   // todo conversation rows reference conversations.
-  await ProjectTaskResource.deleteAllBySpace(auth, { spaceId: space.id });
+  await ProjectTaskResource.deleteAllBySpace(auth, {
+    spaceModelId: space.id,
+  });
 
   // Delete all conversations in the space.
   // Won't scale if there's tons of conversations in spaces.

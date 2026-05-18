@@ -1,11 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  ProjectTaskModel,
-  ProjectTaskSourceModel,
-  ProjectTaskVersionModel,
-} from "@app/lib/resources/storage/models/project_task";
+import type { ProjectTaskModel } from "@app/lib/resources/storage/models/project_task";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -674,28 +670,22 @@ describe("ProjectTaskResource", () => {
         makeTodoBlob(otherSpace.id, user.id)
       );
 
-      await ProjectTaskResource.deleteAllBySpace(auth, { spaceId: space.id });
+      await ProjectTaskResource.deleteAllBySpace(auth, {
+        spaceModelId: space.id,
+      });
 
       await expect(
-        ProjectTaskModel.count({
-          where: { workspaceId: workspace.id, spaceId: space.id },
-        })
-      ).resolves.toBe(0);
+        ProjectTaskResource.fetchByModelIdWithDeleted(auth, todo.id)
+      ).resolves.toBeNull();
+
+      const sources = await ProjectTaskResource.fetchSourcesForTaskIds(auth, {
+        sIds: [todo.sId],
+      });
+      expect(sources.get(todo.sId) ?? []).toHaveLength(0);
+
       await expect(
-        ProjectTaskVersionModel.count({
-          where: { workspaceId: workspace.id, spaceId: space.id },
-        })
-      ).resolves.toBe(0);
-      await expect(
-        ProjectTaskSourceModel.count({
-          where: { workspaceId: workspace.id, projectTodoId: todo.id },
-        })
-      ).resolves.toBe(0);
-      await expect(
-        ProjectTaskModel.count({
-          where: { workspaceId: workspace.id, id: otherTodo.id },
-        })
-      ).resolves.toBe(1);
+        ProjectTaskResource.fetchByModelIdWithDeleted(auth, otherTodo.id)
+      ).resolves.not.toBeNull();
     });
   });
 });

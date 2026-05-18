@@ -435,7 +435,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
 
   static async deleteAllBySpace(
     auth: Authenticator,
-    { spaceId }: { spaceId: ModelId },
+    { spaceModelId }: { spaceModelId: ModelId },
     transaction?: Transaction
   ): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
@@ -443,7 +443,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     const todoIds = (
       await ProjectTaskModel.findAll({
         attributes: ["id"],
-        where: { workspaceId, spaceId },
+        where: { workspaceId, spaceId: spaceModelId },
         raw: true,
         transaction,
       })
@@ -470,7 +470,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     }
 
     await ProjectTaskModel.destroy({
-      where: { workspaceId, spaceId },
+      where: { workspaceId, spaceId: spaceModelId },
       transaction,
     });
   }
