@@ -112,12 +112,12 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Only Frame files can be saved to a project.",
+        message: "Only Frame files can be saved to a pod.",
       },
     });
   });
 
-  it("should return 400 when file is already in a project", async () => {
+  it("should return 400 when file is already in a pod", async () => {
     const {
       auth: auth,
       req,
@@ -155,7 +155,7 @@ describe("POST /api/w/[wId]/files/[fileId]/save-in-project", () => {
       error: {
         type: "invalid_request_error",
         message:
-          "Only conversation frame files can be saved to a project. This file is already in a project or has another use case.",
+          "Only conversation frame files can be saved to a pod. This file is already in a pod or has another use case.",
       },
     });
   });
