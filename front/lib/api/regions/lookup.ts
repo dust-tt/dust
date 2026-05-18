@@ -265,11 +265,9 @@ export async function fetchInvitationsFromOtherRegion(
       return new Err(new Error(data.error.message));
     }
 
-    // Keep regionUrl for existing clients; new clients derive the URL from region.
     const invitations = data.pendingInvitations.map((inv) => ({
       ...inv,
       region: name,
-      regionUrl: url,
     }));
 
     return new Ok(invitations);

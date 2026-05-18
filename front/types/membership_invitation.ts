@@ -26,7 +26,6 @@ export interface PendingInvitationOption {
   createdAt: number;
   isExpired: boolean;
   region?: RegionType;
-  regionUrl?: string;
 }
 
 // Types for the invite form in Poke.

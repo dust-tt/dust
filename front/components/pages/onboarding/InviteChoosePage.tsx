@@ -20,10 +20,8 @@ export function InviteChoosePage() {
     usePendingInvitations();
 
   const handleInvitationSelection = useCallback(
-    (token: string, region?: RegionType, regionUrl?: string) => {
-      const baseUrl = region
-        ? getRegionUrl(region)
-        : (regionUrl ?? config.getApiBaseUrl());
+    (token: string, region?: RegionType) => {
+      const baseUrl = region ? getRegionUrl(region) : config.getApiBaseUrl();
       window.location.assign(
         `${baseUrl}/api/login?inviteToken=${encodeURIComponent(token)}`
       );
@@ -88,8 +86,7 @@ export function InviteChoosePage() {
                       onClick={() =>
                         handleInvitationSelection(
                           invitation.token,
-                          invitation.region,
-                          invitation.regionUrl
+                          invitation.region
                         )
                       }
                     />
