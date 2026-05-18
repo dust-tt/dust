@@ -150,20 +150,24 @@ export function NewFileExplorer({
             </div>
           </div>
         </AppLayoutTitle>
-        <div className="flex flex-col gap-5 pt-5 px-4">
-          <FileExplorerToolbar
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            sortMode={sortMode}
-            onSortModeChange={setSortMode}
-          />
-          <FileExplorerFilters
-            active={activeFilter}
-            onActiveChange={setActiveFilter}
-            counts={filterCounts}
-          />
+        <div className="flex flex-1 min-h-0 flex-col gap-5 pt-5">
+          <div className="px-4">
+            <FileExplorerToolbar
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              sortMode={sortMode}
+              onSortModeChange={setSortMode}
+            />
+          </div>
+          <div className="px-4">
+            <FileExplorerFilters
+              active={activeFilter}
+              onActiveChange={setActiveFilter}
+              counts={filterCounts}
+            />
+          </div>
           <FileExplorerContent
             isLoading={isLoading}
             sortedNodes={sortedNodes}

@@ -43,10 +43,12 @@ export function FileExplorerContent({
         />
       );
     }
+
     const entry = entryByRelativePath.get(node.path);
     if (!entry) {
       return null;
     }
+
     return (
       <FileExplorerFileCard
         key={`file:${entry.path}`}
@@ -58,16 +60,26 @@ export function FileExplorerContent({
     );
   });
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-4">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isEmpty) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-4">
+        <FileExplorerEmptyState />
+      </div>
+    );
+  }
+
   return (
     <ScrollArea className="flex-1">
-      <div className="flex flex-1 flex-col overflow-hidden gap-5">
-        {isLoading ? (
-          <div className="flex flex-1 items-center justify-center">
-            <Spinner />
-          </div>
-        ) : isEmpty ? (
-          <FileExplorerEmptyState />
-        ) : viewMode === "list" ? (
+      <div className="flex flex-col gap-5 px-4">
+        {viewMode === "list" ? (
           <div className="flex flex-col gap-0.5">{items}</div>
         ) : (
           <CardGrid gridClassName={cardGridClasses}>{items}</CardGrid>
