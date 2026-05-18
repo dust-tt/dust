@@ -1,9 +1,9 @@
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { requestSandboxKillsActivity } from "@app/temporal/sandbox_reaper/kill_requester/activities";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@temporalio/activity", () => ({
@@ -46,12 +46,12 @@ describe("requestSandboxKillsActivity", () => {
       version: "2.0.0",
     });
 
-    const count = await requestSandboxKillsActivity({
+    const hasMore = await requestSandboxKillsActivity({
       baseImage: "dust-base",
       version: "2.0.0",
     });
 
-    expect(count).toBe(1);
+    expect(hasMore).toBe(false);
     const marked = await SandboxResource.fetchByConversationId(
       authenticator,
       c1.sId

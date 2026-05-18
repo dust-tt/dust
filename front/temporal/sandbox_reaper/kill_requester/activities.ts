@@ -10,7 +10,7 @@ interface RequestSandboxKillsActivityInput {
 /**
  * Mark up to `BATCH_SIZE` non-deleted sandboxes for the given `baseImage` (and
  * any version different from `version`, if provided) with `killRequestedAt =
- * now()`. Returns the count of rows updated.
+ * now()`. Returns whether more rows likely remain (i.e. the batch was full).
  *
  * Already-marked rows (`killRequestedAt IS NOT NULL`) are skipped — re-runs
  * won't push the timestamp forward.
@@ -18,7 +18,7 @@ interface RequestSandboxKillsActivityInput {
 export async function requestSandboxKillsActivity({
   baseImage,
   version,
-}: RequestSandboxKillsActivityInput): Promise<number> {
+}: RequestSandboxKillsActivityInput): Promise<boolean> {
   const affectedCount =
     await SandboxResource.dangerouslyRequestKillForBaseImage({
       baseImage,
@@ -31,5 +31,5 @@ export async function requestSandboxKillsActivity({
     "Kill-requester: marked sandboxes."
   );
 
-  return affectedCount;
+  return affectedCount === BATCH_SIZE;
 }

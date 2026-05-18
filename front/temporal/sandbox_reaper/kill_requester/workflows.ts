@@ -16,17 +16,9 @@ interface SandboxKillRequesterWorkflowInput {
 export async function sandboxKillRequesterWorkflow({
   baseImage,
   version,
-}: SandboxKillRequesterWorkflowInput): Promise<{ updatedCount: number }> {
-  let updatedCount = 0;
-  // Loop until the activity reports an empty batch, signalling all matching
-  // rows have been marked.
-  for (;;) {
-    const affected = await requestSandboxKillsActivity({ baseImage, version });
-    updatedCount += affected;
-    if (affected === 0) {
-      break;
-    }
+}: SandboxKillRequesterWorkflowInput): Promise<void> {
+  let hasMore = true;
+  while (hasMore) {
+    hasMore = await requestSandboxKillsActivity({ baseImage, version });
   }
-
-  return { updatedCount };
 }
