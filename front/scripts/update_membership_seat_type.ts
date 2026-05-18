@@ -58,7 +58,7 @@ makeScript(
     }
 
     const membership =
-      await MembershipResource.getLatestMembershipOfUserInWorkspace({
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
         user,
         workspace: lightWorkspace,
       });

@@ -24,8 +24,8 @@ type RowData = {
   seatUsagePercent: number | null;
   consumedWorkplacePoolCredits: number;
   billingFrequency: BillingFrequency | null;
-  pendingDowngradeSeatType: MembershipSeatType | null;
-  pendingDowngradeAt: string | null;
+  scheduledSeatType: MembershipSeatType | null;
+  scheduledSeatChangeAt: string | null;
   menuItems: MenuItem[];
 };
 
@@ -155,11 +155,10 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   accessorFn: (row) => row.seatType ?? "",
   cell: (info: Info) => {
     const seatType = info.row.original.seatType;
-    const pendingDowngradeSeatType =
-      info.row.original.pendingDowngradeSeatType;
-    const pendingDowngradeAt = info.row.original.pendingDowngradeAt;
-    const pendingDate = pendingDowngradeAt
-      ? new Date(pendingDowngradeAt).toLocaleDateString("en-US", {
+    const scheduledSeatType = info.row.original.scheduledSeatType;
+    const scheduledSeatChangeAt = info.row.original.scheduledSeatChangeAt;
+    const scheduledDate = scheduledSeatChangeAt
+      ? new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           timeZone: "UTC",
@@ -172,9 +171,9 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
             <SeatTypeIcon seatType={seatType} />
             {seatType ?? "—"}
           </span>
-          {pendingDowngradeSeatType && pendingDate && (
+          {scheduledSeatType && scheduledDate && (
             <span className="text-xs capitalize text-amber-600 dark:text-amber-400">
-              → {pendingDowngradeSeatType} on {pendingDate}
+              → {scheduledSeatType} on {scheduledDate}
             </span>
           )}
         </span>
@@ -367,8 +366,8 @@ export function MembersUsageTable({
     seatUsagePercent: m.seatUsagePercent,
     consumedWorkplacePoolCredits: m.consumedWorkplacePoolCredits,
     billingFrequency: m.billingFrequency,
-    pendingDowngradeSeatType: m.pendingDowngradeSeatType,
-    pendingDowngradeAt: m.pendingDowngradeAt,
+    scheduledSeatType: m.scheduledSeatType,
+    scheduledSeatChangeAt: m.scheduledSeatChangeAt,
     menuItems: [
       {
         kind: "item" as const,

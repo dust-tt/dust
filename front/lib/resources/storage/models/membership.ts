@@ -21,8 +21,6 @@ export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare firstUsedAt: Date | null;
   declare seatType: CreationOptional<MembershipSeatType>;
   declare creditState: CreationOptional<UserCreditState>;
-  declare pendingDowngradeSeatType: MembershipSeatType | null;
-  declare pendingDowngradeAt: Date | null;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare user: NonAttribute<UserModel>;
@@ -69,14 +67,6 @@ MembershipModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "normal",
-    },
-    pendingDowngradeSeatType: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    pendingDowngradeAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
     },
   },
   {

@@ -230,12 +230,12 @@ export function useUpdateMemberSeatType({
       memberId,
       memberName,
       seatType,
-      isCancellingPendingDowngrade,
+      isCancellingScheduledChange,
     }: {
       memberId: string;
       memberName: string;
       seatType: "pro" | "max";
-      isCancellingPendingDowngrade: boolean;
+      isCancellingScheduledChange: boolean;
     }): Promise<boolean> => {
       const res = await clientFetch(
         `/api/w/${workspaceId}/members/${memberId}/seat-type`,
@@ -257,14 +257,14 @@ export function useUpdateMemberSeatType({
       }
 
       const body = await res.json();
-      const isDeferred = !!body?.pendingDowngradeAt;
+      const isDeferred = !!body?.scheduledSeatChangeAt;
       sendNotification({
         type: "success",
-        title: isDeferred ? "Downgrade scheduled" : "Seat updated",
+        title: isDeferred ? "Seat change scheduled" : "Seat updated",
         description: isDeferred
-          ? `${memberName}'s seat will be downgraded to ${seatType} at the next credit refresh.`
-          : isCancellingPendingDowngrade
-            ? `${memberName}'s pending downgrade has been cancelled.`
+          ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
+          : isCancellingScheduledChange
+            ? `${memberName}'s scheduled seat change has been cancelled.`
             : `${memberName}'s seat has been updated to ${seatType}.`,
       });
 

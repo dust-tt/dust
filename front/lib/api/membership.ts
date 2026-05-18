@@ -301,29 +301,30 @@ export async function updateMembershipRoleAndTrack({
 }
 
 /**
- * Schedules the inverse Metronome transition at the same future date, overriding
- * the previously scheduled downgrade. Returns Err if subscription IDs are missing.
+ * Schedules the inverse Metronome transition at the same future date,
+ * overriding the previously scheduled seat change. Returns Err if subscription
+ * IDs are missing.
  */
-async function cancelScheduledDowngradeInMetronome({
+async function cancelScheduledSeatChangeInMetronome({
   metronomeCustomerId,
   contractId,
   contract,
   currentSeatType,
-  pendingDowngradeSeatType,
-  pendingDowngradeAt,
+  scheduledSeatType,
+  scheduledAt,
   userId,
 }: {
   metronomeCustomerId: string;
   contractId: string;
   contract: CachedContract;
   currentSeatType: MembershipSeatType;
-  pendingDowngradeSeatType: MembershipSeatType;
-  pendingDowngradeAt: Date;
+  scheduledSeatType: MembershipSeatType;
+  scheduledAt: Date;
   userId: string;
 }): Promise<Result<void, Error>> {
   const fromSubId = getSubscriptionIdForSeatTypeFromContract(
     contract,
-    pendingDowngradeSeatType
+    scheduledSeatType
   );
   const toSubId = getSubscriptionIdForSeatTypeFromContract(
     contract,
@@ -332,7 +333,7 @@ async function cancelScheduledDowngradeInMetronome({
   if (!fromSubId || !toSubId) {
     return new Err(
       new Error(
-        `Missing subscription IDs to cancel downgrade from ${pendingDowngradeSeatType} to ${currentSeatType}`
+        `Missing subscription IDs to cancel scheduled change from ${scheduledSeatType} to ${currentSeatType}`
       )
     );
   }
@@ -343,7 +344,7 @@ async function cancelScheduledDowngradeInMetronome({
     toSubscriptionId: toSubId,
     addSeatIds: [userId],
     removeSeatIds: [userId],
-    startingAt: pendingDowngradeAt.toISOString(),
+    startingAt: scheduledAt.toISOString(),
   });
 }
 
@@ -351,6 +352,10 @@ async function cancelScheduledDowngradeInMetronome({
  * Update a membership's seat type and re-sync Metronome seat counts.
  * Seat-based Metronome subscriptions (Pro / Max) bucket users by seat type,
  * so any change must trigger a seat-count sync.
+ *
+ * Deferred transitions (Max → Pro at next billing period) close the current
+ * membership row at the scheduled date and insert a future row that takes
+ * effect at that date — no separate "pending" state is persisted.
  */
 export async function updateMembershipSeatAndTrack({
   user,
@@ -367,27 +372,28 @@ export async function updateMembershipSeatAndTrack({
     {
       previousSeatType: MembershipSeatType;
       newSeatType: MembershipSeatType;
-      pendingDowngradeAt: Date | undefined;
+      scheduledSeatChangeAt: Date | undefined;
     },
-    { type: "not_found" | "membership_revoked" | "metronome_error" }
+    { type: "not_found" | "metronome_error" }
   >
 > {
   const membership =
-    await MembershipResource.getLatestMembershipOfUserInWorkspace({
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
       user,
       workspace,
     });
   if (!membership) {
     return new Err({ type: "not_found" });
   }
-  if (membership.isRevoked()) {
-    return new Err({ type: "membership_revoked" });
-  }
 
   const previousSeatType = membership.seatType;
+  const scheduledRow =
+    await MembershipResource.getScheduledMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
 
-  let newPendingDowngradeSeatType: MembershipSeatType | null | undefined;
-  let newPendingDowngradeAt: Date | null | undefined;
+  let scheduledAt: Date | undefined;
 
   if (workspace.metronomeCustomerId) {
     const subscription =
@@ -424,22 +430,17 @@ export async function updateMembershipSeatAndTrack({
         return new Err({ type: "metronome_error" });
       }
 
-      const scheduledDowngradeAt = transitionResult.value.pendingDowngradeAt;
+      scheduledAt = transitionResult.value.scheduledAt;
 
-      if (scheduledDowngradeAt) {
-        newPendingDowngradeSeatType = newSeatType;
-        newPendingDowngradeAt = scheduledDowngradeAt;
-      } else if (
-        membership.pendingDowngradeSeatType &&
-        membership.pendingDowngradeAt
-      ) {
-        const cancelResult = await cancelScheduledDowngradeInMetronome({
+      if (!scheduledAt && scheduledRow) {
+        // Same-seat selection while a future row exists → cancel the scheduled change.
+        const cancelResult = await cancelScheduledSeatChangeInMetronome({
           metronomeCustomerId,
           contractId,
           contract,
           currentSeatType: membership.seatType,
-          pendingDowngradeSeatType: membership.pendingDowngradeSeatType,
-          pendingDowngradeAt: membership.pendingDowngradeAt,
+          scheduledSeatType: scheduledRow.seatType,
+          scheduledAt: scheduledRow.startAt,
           userId: user.sId,
         });
         if (cancelResult.isErr()) {
@@ -449,32 +450,43 @@ export async function updateMembershipSeatAndTrack({
               userId: user.sId,
               error: cancelResult.error,
             },
-            "[Metronome] Failed to cancel scheduled downgrade"
+            "[Metronome] Failed to cancel scheduled seat change"
           );
           return new Err({ type: "metronome_error" });
         }
-        newPendingDowngradeSeatType = null;
-        newPendingDowngradeAt = null;
       }
     }
   }
 
-  const dbSeatType =
-    newPendingDowngradeAt instanceof Date ? previousSeatType : newSeatType;
+  if (scheduledAt) {
+    await membership.scheduleSeatChange({
+      user,
+      workspace,
+      newSeatType,
+      scheduledAt,
+      author,
+    });
+    return new Ok({
+      previousSeatType,
+      newSeatType: previousSeatType,
+      scheduledSeatChangeAt: scheduledAt,
+    });
+  }
 
-  await membership.updateMembershipSeat({
-    user,
-    workspace,
-    newSeatType: dbSeatType,
-    author,
-    newPendingDowngradeSeatType,
-    newPendingDowngradeAt,
-  });
+  if (scheduledRow) {
+    await membership.cancelScheduledSeatChange({ user, workspace, author });
+  } else if (previousSeatType !== newSeatType) {
+    await membership.updateMembershipSeat({
+      user,
+      workspace,
+      newSeatType,
+      author,
+    });
+  }
 
   return new Ok({
     previousSeatType,
-    newSeatType: dbSeatType,
-    pendingDowngradeAt:
-      newPendingDowngradeAt instanceof Date ? newPendingDowngradeAt : undefined,
+    newSeatType,
+    scheduledSeatChangeAt: undefined,
   });
 }

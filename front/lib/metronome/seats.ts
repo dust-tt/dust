@@ -373,9 +373,9 @@ export async function handleSeatTransition({
   userId: string;
   previousSeatType: MembershipSeatType;
   newSeatType: MembershipSeatType;
-}): Promise<Result<{ pendingDowngradeAt: Date | undefined }, Error>> {
+}): Promise<Result<{ scheduledAt: Date | undefined }, Error>> {
   if (previousSeatType === newSeatType) {
-    return new Ok({ pendingDowngradeAt: undefined });
+    return new Ok({ scheduledAt: undefined });
   }
 
   if (
@@ -413,7 +413,7 @@ export async function handleSeatTransition({
     if (result.isErr()) {
       return new Err(result.error);
     }
-    return new Ok({ pendingDowngradeAt: undefined });
+    return new Ok({ scheduledAt: undefined });
   }
 
   // Pro → Max: immediate atomic transition.
@@ -434,7 +434,7 @@ export async function handleSeatTransition({
     if (result.isErr()) {
       return new Err(result.error);
     }
-    return new Ok({ pendingDowngradeAt: undefined });
+    return new Ok({ scheduledAt: undefined });
   }
 
   // Max → Pro: deferred — schedule the transition at the next billing period
@@ -465,12 +465,12 @@ export async function handleSeatTransition({
     if (result.isErr()) {
       return new Err(result.error);
     }
-    return new Ok({ pendingDowngradeAt: nextPeriodStart });
+    return new Ok({ scheduledAt: nextPeriodStart });
   }
 
   logger.warn(
     { previousSeatType, newSeatType, userId, contractId },
     "[Metronome] Unhandled seat transition — no Metronome action taken"
   );
-  return new Ok({ pendingDowngradeAt: undefined });
+  return new Ok({ scheduledAt: undefined });
 }

@@ -2,6 +2,7 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -345,6 +346,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     };
   }
 
+  /**
+   * Returns the most recent membership row by `startAt` (still excluding
+   * future-dated rows), regardless of revocation state. Used by call sites
+   * that need to detect a previously-revoked membership.
+   *
+   * Use `getActiveMembershipOfUserInWorkspace` for "active right now".
+   */
   static async getLatestMembershipOfUserInWorkspace({
     user,
     workspace,
@@ -354,29 +362,72 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace: LightWorkspaceType;
     transaction?: Transaction;
   }): Promise<MembershipResource | null> {
-    const { memberships, total } = await this.getLatestMemberships({
-      users: [user],
-      workspace,
+    const row = await this.model.findOne({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: { [Op.lte]: new Date() },
+      },
+      order: [["startAt", "DESC"]],
       transaction,
     });
-    if (total === 0) {
-      return null;
+    return row ? new MembershipResource(this.model, row.get()) : null;
+  }
+
+  /**
+   * Returns the future-scheduled membership row for the user (startAt > NOW)
+   * if any. Used to detect / consume scheduled seat changes.
+   */
+  static async getScheduledMembershipOfUserInWorkspace({
+    user,
+    workspace,
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<MembershipResource | null> {
+    const row = await this.model.findOne({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: { [Op.gt]: new Date() },
+      },
+      transaction,
+    });
+    return row ? new MembershipResource(this.model, row.get()) : null;
+  }
+
+  /**
+   * Returns the next-scheduled membership row keyed by userId for the given
+   * users in a workspace. Single query for use by paginated listings.
+   */
+  static async getScheduledMembershipsByUserIdInWorkspace({
+    workspace,
+    userIds,
+  }: {
+    workspace: LightWorkspaceType;
+    userIds: ModelId[];
+  }): Promise<Map<ModelId, MembershipResource>> {
+    if (userIds.length === 0) {
+      return new Map();
     }
-    if (memberships.length > 1) {
-      logger.error(
-        {
-          panic: true,
-          userId: user.id,
-          workspaceId: workspace.id,
-          memberships,
-        },
-        "Unreachable: Found multiple latest memberships for user in workspace."
-      );
-      throw new Error(
-        `Unreachable: Found multiple latest memberships for user ${user.id} in workspace ${workspace.id}`
-      );
+    const rows = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        userId: userIds,
+        startAt: { [Op.gt]: new Date() },
+      },
+    });
+    const result = new Map<ModelId, MembershipResource>();
+    for (const row of rows) {
+      const resource = new MembershipResource(this.model, row.get());
+      const existing = result.get(row.userId);
+      if (!existing || row.startAt < existing.startAt) {
+        result.set(row.userId, resource);
+      }
     }
-    return memberships[0];
+    return result;
   }
 
   private static readonly roleCacheKeyResolver = ({
@@ -931,7 +982,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (endAt < membership.startAt) {
       return new Err({ type: "invalid_end_at" });
     }
-    if (membership.endAt) {
+    if (membership.endAt && membership.endAt < new Date()) {
       return new Err({ type: "already_revoked" });
     }
 
@@ -953,6 +1004,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       { endAt },
       { where: { id: membership.id }, transaction }
     );
+
+    // Drop any future-scheduled seat-change rows so they don't reactivate the
+    // user after the revoke date.
+    await MembershipModel.destroy({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: { [Op.gt]: new Date() },
+      },
+      transaction,
+    });
 
     if (workspace.workOSOrganizationId && user.workOSUserId) {
       try {
@@ -1051,7 +1113,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       transaction,
     });
 
-    if (membership?.endAt && !allowTerminated) {
+    const isRevoked = !!(membership?.endAt && membership.endAt < new Date());
+    if (isRevoked && !allowTerminated) {
       return new Err({ type: "membership_already_terminated" });
     }
     if (!membership) {
@@ -1062,7 +1125,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     // If the membership is not terminated, we update the role in place.
     // We do not historicize the roles.
-    if (!membership.endAt) {
+    if (!isRevoked) {
       if (previousRole === newRole) {
         return new Err({ type: "already_on_role" });
       }
@@ -1234,8 +1297,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Update the seatType of an active membership. Callers are responsible for
-   * calling handleSeatTransition after this returns.
+   * Update the seatType of an active membership in place. Callers are
+   * responsible for calling handleSeatTransition before this returns.
    */
   async updateMembershipSeat({
     user,
@@ -1243,66 +1306,132 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     newSeatType,
     transaction,
     author,
-    newPendingDowngradeSeatType,
-    newPendingDowngradeAt,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     newSeatType: MembershipSeatType;
     transaction?: Transaction;
     author: UserType | "no-author";
-    newPendingDowngradeSeatType?: MembershipSeatType | null;
-    newPendingDowngradeAt?: Date | null;
   }): Promise<{
     previousSeatType: MembershipSeatType;
     newSeatType: MembershipSeatType;
   }> {
     const previousSeatType = this.seatType;
-    const seatTypeChanging = previousSeatType !== newSeatType;
-    const pendingStateChanging = newPendingDowngradeSeatType !== undefined;
-
-    if (!seatTypeChanging && !pendingStateChanging) {
+    if (previousSeatType === newSeatType) {
       return { previousSeatType, newSeatType };
     }
 
-    await this.update(
-      {
-        ...(seatTypeChanging ? { seatType: newSeatType } : {}),
-        ...(pendingStateChanging
-          ? {
-              pendingDowngradeSeatType: newPendingDowngradeSeatType,
-              pendingDowngradeAt: newPendingDowngradeAt ?? null,
-            }
-          : {}),
-      },
-      transaction
-    );
+    await this.update({ seatType: newSeatType }, transaction);
 
-    if (seatTypeChanging) {
-      auditLog(
-        {
-          author,
-          userId: user.id,
-          workspaceId: workspace.id,
-          previousSeatType,
-          newSeatType,
-        },
-        "Membership seat type updated"
-      );
-    }
+    auditLog(
+      {
+        author,
+        userId: user.id,
+        workspaceId: workspace.id,
+        previousSeatType,
+        newSeatType,
+      },
+      "Membership seat type updated"
+    );
 
     return { previousSeatType, newSeatType };
   }
 
-  async removePendingDowngrade(): Promise<void> {
-    if (!this.pendingDowngradeSeatType) {
-      return;
-    }
-    await this.update({
-      seatType: this.pendingDowngradeSeatType,
-      pendingDowngradeSeatType: null,
-      pendingDowngradeAt: null,
+  /**
+   * Schedule a seat-type change at a future date by closing the current
+   * row at `scheduledAt` and inserting a future row that becomes active
+   * once `scheduledAt` is reached. Both rows coexist during the window;
+   * only the future one has `endAt = null`, preserving the unique
+   * `WHERE endAt IS NULL` invariant.
+   */
+  async scheduleSeatChange({
+    user,
+    workspace,
+    newSeatType,
+    scheduledAt,
+    author,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    newSeatType: MembershipSeatType;
+    scheduledAt: Date;
+    author: UserType | "no-author";
+  }): Promise<void> {
+    const previousSeatType = this.seatType;
+    await frontSequelize.transaction(async (transaction) => {
+      // Replace any existing future row (re-scheduling is idempotent).
+      await MembershipModel.destroy({
+        where: {
+          userId: user.id,
+          workspaceId: workspace.id,
+          startAt: { [Op.gt]: new Date() },
+        },
+        transaction,
+      });
+      await this.update({ endAt: scheduledAt }, transaction);
+      await MembershipModel.create(
+        {
+          startAt: scheduledAt,
+          userId: user.id,
+          workspaceId: workspace.id,
+          role: this.role,
+          origin: this.origin,
+          seatType: newSeatType,
+          firstUsedAt: this.firstUsedAt,
+        },
+        { transaction }
+      );
     });
+
+    auditLog(
+      {
+        author,
+        userId: user.id,
+        workspaceId: workspace.id,
+        previousSeatType,
+        newSeatType,
+        scheduledAt: scheduledAt.toISOString(),
+      },
+      "Membership seat change scheduled"
+    );
+  }
+
+  /**
+   * Cancel a previously scheduled seat change. Reopens the current row
+   * (clears its `endAt`) and removes the future row.
+   */
+  async cancelScheduledSeatChange({
+    user,
+    workspace,
+    author,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    author: UserType | "no-author";
+  }): Promise<void> {
+    await frontSequelize.transaction(async (transaction) => {
+      const futureRow = await MembershipModel.findOne({
+        where: {
+          userId: user.id,
+          workspaceId: workspace.id,
+          startAt: { [Op.gt]: new Date() },
+        },
+        transaction,
+      });
+      if (futureRow) {
+        await futureRow.destroy({ transaction });
+      }
+      await this.update({ endAt: null }, transaction);
+    });
+
+    auditLog(
+      {
+        author,
+        userId: user.id,
+        workspaceId: workspace.id,
+      },
+      "Membership scheduled seat change cancelled"
+    );
   }
 
   async delete(

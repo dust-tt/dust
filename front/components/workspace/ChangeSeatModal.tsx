@@ -165,12 +165,12 @@ export function ChangeSeatModal({
     return info ? formatAwuCredits(info.awuCredits) : null;
   }
 
-  // Member has a pending downgrade and is re-selecting their current seat to cancel it.
-  const isCancellingPendingDowngrade =
-    !!member.pendingDowngradeSeatType && selectedSeat === currentSeatType;
+  // Member has a scheduled seat change and is re-selecting their current seat to cancel it.
+  const isCancellingScheduledChange =
+    !!member.scheduledSeatType && selectedSeat === currentSeatType;
 
   async function handleValidate() {
-    if (selectedSeat === currentSeatType && !isCancellingPendingDowngrade) {
+    if (selectedSeat === currentSeatType && !isCancellingScheduledChange) {
       onClose();
       return;
     }
@@ -181,7 +181,7 @@ export function ChangeSeatModal({
         memberId: member.sId,
         memberName: member.name,
         seatType: selectedSeat,
-        isCancellingPendingDowngrade,
+        isCancellingScheduledChange,
       });
       if (ok) {
         onClose();
@@ -192,8 +192,7 @@ export function ChangeSeatModal({
   }
 
   // Max→Pro is deferred; show a note when that's the selection.
-  const isDeferredDowngrade =
-    currentSeatType === "max" && selectedSeat === "pro";
+  const isDeferredChange = currentSeatType === "max" && selectedSeat === "pro";
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -237,18 +236,15 @@ export function ChangeSeatModal({
               />
             ))}
 
-            {isDeferredDowngrade && (
+            {isDeferredChange && (
               <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                Downgrading from Max to Pro will take effect at the next credit
-                refresh.
+                The change will take effect at the next credit refresh.
               </p>
             )}
-            {isCancellingPendingDowngrade && (
+            {isCancellingScheduledChange && (
               <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                Pending downgrade to{" "}
-                <span className="capitalize">
-                  {member.pendingDowngradeSeatType}
-                </span>{" "}
+                Scheduled change to{" "}
+                <span className="capitalize">{member.scheduledSeatType}</span>{" "}
                 will be cancelled.
               </p>
             )}
@@ -266,7 +262,7 @@ export function ChangeSeatModal({
             disabled:
               isSaving ||
               (selectedSeat === currentSeatType &&
-                !isCancellingPendingDowngrade),
+                !isCancellingScheduledChange),
             onClick: handleValidate,
           }}
         />

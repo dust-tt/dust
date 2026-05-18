@@ -18,6 +18,7 @@ const UpdateMemberSeatTypeBodySchema = z.object({
 
 type PatchMemberSeatTypeResponseBody = {
   seatType: MembershipSeatType;
+  scheduledSeatChangeAt: string | null;
 };
 
 async function handler(
@@ -99,14 +100,6 @@ async function handler(
                 message: "Could not find the user or their active membership.",
               },
             });
-          case "membership_revoked":
-            return apiError(req, res, {
-              status_code: 409,
-              api_error: {
-                type: "membership_revoked",
-                message: "User's membership is revoked.",
-              },
-            });
           case "metronome_error":
             return apiError(req, res, {
               status_code: 502,
@@ -120,7 +113,11 @@ async function handler(
         }
       }
 
-      return res.status(200).json({ seatType: result.value.newSeatType });
+      return res.status(200).json({
+        seatType: result.value.newSeatType,
+        scheduledSeatChangeAt:
+          result.value.scheduledSeatChangeAt?.toISOString() ?? null,
+      });
     }
 
     default:
