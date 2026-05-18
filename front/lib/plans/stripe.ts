@@ -380,12 +380,13 @@ export async function calculateTax({
   }
 }
 
-export async function makeFirstPeriodInvoiceForCustomer({
+async function makeFirstPeriodInvoiceForCustomer({
   stripeCustomerId,
   paymentMethodId,
   subtotalCents,
   seatCount,
   setupSessionId,
+  workspaceId,
   currency,
 }: {
   stripeCustomerId: string;
@@ -393,6 +394,7 @@ export async function makeFirstPeriodInvoiceForCustomer({
   subtotalCents: number;
   seatCount: number;
   setupSessionId: string;
+  workspaceId: string;
   currency: SupportedCurrency;
 }): Promise<Result<Stripe.Invoice, { error_message: string }>> {
   const stripe = getStripeClient();
@@ -408,6 +410,7 @@ export async function makeFirstPeriodInvoiceForCustomer({
         metadata: {
           metronome_first_period: "true",
           setup_session_id: setupSessionId,
+          workspace_id: workspaceId,
         },
       },
       { idempotencyKey: `first-period-invoice-${setupSessionId}` }
@@ -435,6 +438,93 @@ export async function makeFirstPeriodInvoiceForCustomer({
       error_message: `Failed to create invoice: ${normalizeError(error).message}`,
     });
   }
+}
+
+export async function chargeFirstPeriodInvoice({
+  stripeCustomerId,
+  paymentMethodId,
+  subtotalCents,
+  seatCount,
+  setupSessionId,
+  workspaceId,
+  currency,
+}: {
+  stripeCustomerId: string;
+  paymentMethodId: string;
+  subtotalCents: number;
+  seatCount: number;
+  setupSessionId: string;
+  workspaceId: string;
+  currency: SupportedCurrency;
+}): Promise<Result<void, { error_message: string }>> {
+  const invoiceResult = await makeFirstPeriodInvoiceForCustomer({
+    stripeCustomerId,
+    paymentMethodId,
+    subtotalCents,
+    seatCount,
+    setupSessionId,
+    workspaceId,
+    currency,
+  });
+  if (invoiceResult.isErr()) {
+    logger.error(
+      {
+        workspaceId,
+        error: normalizeError(invoiceResult.error).message,
+      },
+      "[Checkout] Failed to create first-period invoice"
+    );
+    return invoiceResult;
+  }
+
+  const finalizeResult = await finalizeInvoice(invoiceResult.value);
+  if (finalizeResult.isErr()) {
+    logger.error(
+      {
+        workspaceId,
+        error: normalizeError(finalizeResult.error).message,
+        invoiceId: invoiceResult.value.id,
+      },
+      "[Checkout] Failed to finalize first-period invoice"
+    );
+    return finalizeResult;
+  }
+
+  const stripe = getStripeClient();
+  try {
+    const payResult = await stripe.invoices.pay(finalizeResult.value.id, {
+      expand: ["payment_intent"],
+    });
+
+    const paymentIntent = payResult.payment_intent;
+    if (payResult.status !== "paid") {
+      logger.error(
+        {
+          workspaceId,
+          invoiceId: finalizeResult.value.id,
+          invoiceStatus: payResult.status,
+          paymentIntentStatus:
+            paymentIntent && !isString(paymentIntent)
+              ? paymentIntent.status
+              : paymentIntent,
+        },
+        "[Checkout] First-period invoice payment failed"
+      );
+      return new Err({ error_message: "Invoice payment failed" });
+    }
+  } catch (payError) {
+    logger.error(
+      {
+        workspaceId,
+        error: normalizeError(payError).message,
+        invoiceId: finalizeResult.value.id,
+      },
+      "[Checkout] First-period invoice payment failed"
+    );
+    return new Err({ error_message: normalizeError(payError).message });
+  }
+
+  return new Ok(undefined);
 }
 
 /**

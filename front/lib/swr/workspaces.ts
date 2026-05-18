@@ -835,20 +835,22 @@ export function useCheckoutStatus({
 }: {
   workspaceId: string;
   sessionId: string;
-  planCode: string;
+  planCode?: string;
   disabled?: boolean;
   pollIntervalMs?: number;
 }) {
   const { fetcher } = useFetcher();
   const checkoutFetcher: Fetcher<GetCheckoutStatusResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`,
-    checkoutFetcher,
-    { refreshInterval: pollIntervalMs }
-  );
+  const url = disabled
+    ? null
+    : planCode
+      ? `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`
+      : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, checkoutFetcher, {
+    refreshInterval: pollIntervalMs,
+  });
 
   return {
     checkoutStatus: data ?? null,
@@ -1076,12 +1078,35 @@ export function usePreparePayment({
       ? null
       : `/api/w/${workspaceId}/subscriptions/checkout/prepare-payment?setup_session_id=${setupSessionId}`;
 
-  const { data, error } = useSWRWithDefaults(url, preparePaymentFetcher);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
+
+  const { data, error } = useSWRWithDefaults(url, preparePaymentFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 500,
+    refreshInterval: (d) =>
+      d?.status === "pending" && !pollTimedOut ? 500 : 0,
+  });
+
+  const isPending = data?.status === "pending";
+
+  useEffect(() => {
+    if (!isPending) {
+      setPollTimedOut(false);
+      return;
+    }
+    const timer = setTimeout(() => setPollTimedOut(true), 5_000);
+    return () => clearTimeout(timer);
+  }, [isPending]);
+
+  const completeData = data?.status === "success" ? data : null;
 
   return {
-    preparePayment: data ?? null,
-    isPreparePaymentLoading: !error && !data && !disabled && !!setupSessionId,
-    isPreparePaymentError: !!error,
+    preparePayment: completeData,
+    isPreparePaymentLoading:
+      (!error && !data && !disabled && !!setupSessionId) ||
+      (isPending && !pollTimedOut),
+    isPreparePaymentError: !!error || pollTimedOut,
   };
 }
 

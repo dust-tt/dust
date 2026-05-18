@@ -4,7 +4,6 @@ import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import { calculateTax, getStripeClient } from "@app/lib/plans/stripe";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { getStripeCheckoutSessionStatus } from "@app/pages/api/stripe/webhook";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -12,39 +11,22 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const SETUP_SESSION_POLL_INTERVAL_MS = 500;
-const SETUP_SESSION_POLL_TIMEOUT_MS = 5_000;
-
-async function pollUntilSetupSessionComplete(
-  sessionId: string
-): Promise<boolean> {
-  const deadlineMs = Date.now() + SETUP_SESSION_POLL_TIMEOUT_MS;
-
-  while (Date.now() < deadlineMs) {
-    const result = await getStripeCheckoutSessionStatus(sessionId);
-    if (result?.status === "complete") {
-      return true;
-    }
-    await new Promise((resolve) =>
-      setTimeout(resolve, SETUP_SESSION_POLL_INTERVAL_MS)
-    );
-  }
-
-  return false;
-}
-
-export type GetPreparePaymentResponseBody = {
-  subtotalCents: number;
-  taxCents: number;
-  totalCents: number;
-  seatCount: number;
-  pricePerSeatCents: number;
-  planCode: string;
-  metronomePackageAlias: string;
-  currency: SupportedCurrency;
-  cardBrand?: string;
-  cardLast4?: string;
-};
+export type GetPreparePaymentResponseBody =
+  | { status: "pending" }
+  | {
+      status: "success";
+      subtotalCents: number;
+      taxCents: number;
+      totalCents: number;
+      seatCount: number;
+      pricePerSeatCents: number;
+      planCode: string;
+      metronomePackageAlias: string;
+      currency: SupportedCurrency;
+      cardBrand?: string;
+      cardLast4?: string;
+      sepaLast4?: string;
+    };
 
 async function handler(
   req: NextApiRequest,
@@ -71,6 +53,7 @@ async function handler(
       },
     });
   }
+  const owner = auth.getNonNullableWorkspace();
 
   const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
   if (!useMetronomeBilling) {
@@ -83,6 +66,9 @@ async function handler(
     });
   }
 
+  // Prevent HTTP caching as session status can change on every call.
+  res.setHeader("Cache-Control", "no-store");
+
   const { setup_session_id } = req.query;
   if (!isString(setup_session_id)) {
     return apiError(req, res, {
@@ -94,35 +80,17 @@ async function handler(
     });
   }
 
-  // We are using the onComplete for checkout session completion.
-  // This is a server-side event that can be triggered
-  // before the session actually has completed.
-  // This is why we need to check for session completion with polling.
-  const isComplete = await pollUntilSetupSessionComplete(setup_session_id);
-  if (!isComplete) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Setup session did not complete in time.",
-      },
-    });
+  // onComplete fires on the client before Stripe marks the session complete server-side.
+  // We return "pending" so the client can retry instead of blocking here.
+  const sessionStatus = await getStripeCheckoutSessionStatus(setup_session_id);
+  if (sessionStatus?.status !== "complete") {
+    return res.status(200).json({ status: "pending" });
   }
 
   const stripe = getStripeClient();
   const setupSession = await stripe.checkout.sessions.retrieve(
     setup_session_id,
     { expand: ["setup_intent", "setup_intent.payment_method"] }
-  );
-  logger.info(
-    {
-      sessionId: setup_session_id,
-      sessionStatus: setupSession.status,
-      setupIntentStatus: isString(setupSession.setup_intent)
-        ? setupSession.setup_intent
-        : setupSession.setup_intent?.status,
-    },
-    "Stripe setup session retrieved"
   );
 
   const setupIntent = setupSession.setup_intent;
@@ -136,6 +104,15 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "Setup session has not completed successfully.",
+      },
+    });
+  }
+  if (setupSession.client_reference_id !== owner.sId) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Setup intent does not correspond to the current workspace.",
       },
     });
   }
@@ -176,13 +153,14 @@ async function handler(
   const rawPaymentMethod = setupIntent.payment_method;
   let cardBrand: string | undefined;
   let cardLast4: string | undefined;
-  if (
-    rawPaymentMethod &&
-    !isString(rawPaymentMethod) &&
-    rawPaymentMethod.card
-  ) {
-    cardBrand = rawPaymentMethod.card.brand;
-    cardLast4 = rawPaymentMethod.card.last4;
+  let sepaLast4: string | undefined;
+  if (rawPaymentMethod && !isString(rawPaymentMethod)) {
+    if (rawPaymentMethod.card) {
+      cardBrand = rawPaymentMethod.card.brand;
+      cardLast4 = rawPaymentMethod.card.last4;
+    } else if (rawPaymentMethod.sepa_debit) {
+      sepaLast4 = rawPaymentMethod.sepa_debit.last4 ?? undefined;
+    }
   }
 
   const customer = await stripe.customers.retrieve(stripeCustomerId);
@@ -214,6 +192,7 @@ async function handler(
   }
 
   return res.status(200).json({
+    status: "success",
     subtotalCents,
     taxCents: taxResult.value.taxCents,
     totalCents: taxResult.value.totalCents,
@@ -224,6 +203,7 @@ async function handler(
     currency,
     cardBrand,
     cardLast4,
+    sepaLast4,
   });
 }
 
