@@ -294,7 +294,12 @@ export async function retrieveGongTranscriptContent(
 
   if (!call.ok) {
     localLogger.error(
-      { fileId },
+      {
+        fileId,
+        error: call.statusText,
+        status: call.status,
+        body: await call.text(),
+      },
       "[retrieveGongTranscripts] Error fetching call from Gong. Skipping."
     );
     throw new Error("Error fetching call from Gong. Skipping.");
