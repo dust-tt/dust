@@ -92,8 +92,7 @@ async function handler(
         });
       }
 
-      const contentType =
-        contentTypeResult.value ?? "application/octet-stream";
+      const contentType = contentTypeResult.value ?? "application/octet-stream";
       res.setHeader("Content-Type", contentType);
       const readStream = bucket.file(gcsPath).createReadStream();
       readStream.on("error", (err) => {

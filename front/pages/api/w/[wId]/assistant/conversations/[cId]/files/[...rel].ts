@@ -59,8 +59,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message:
-          "Path must start with the scope prefix `conversation/`.",
+        message: "Path must start with the scope prefix `conversation/`.",
       },
     });
   }

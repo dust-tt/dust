@@ -1,7 +1,7 @@
 import * as gcsFiles from "@app/lib/api/files/gcs_mount/files";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import * as projectsContext from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -19,8 +19,7 @@ vi.mock("@app/lib/api/auth_wrappers", async () => {
   return {
     ...actual,
     withSessionAuthenticationForWorkspace:
-      (fn: (...args: unknown[]) => unknown) =>
-      async (req: any, res: any) =>
+      (fn: (...args: unknown[]) => unknown) => async (req: any, res: any) =>
         fn(req, res, req._auth),
   };
 });
@@ -62,9 +61,11 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
       vi.mocked(getPrivateUploadBucket).mockReturnValue({
         getFileContentType: vi.fn().mockResolvedValue(new Ok("text/plain")),
         file: vi.fn(() => ({
-          createReadStream: vi.fn().mockReturnValue(
-            Object.assign(new PassThrough(), { pipe: vi.fn() })
-          ),
+          createReadStream: vi
+            .fn()
+            .mockReturnValue(
+              Object.assign(new PassThrough(), { pipe: vi.fn() })
+            ),
         })),
       } as unknown as ReturnType<typeof getPrivateUploadBucket>);
     });
