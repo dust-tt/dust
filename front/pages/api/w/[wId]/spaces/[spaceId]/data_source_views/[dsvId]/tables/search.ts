@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
+// @migration-target: front-api/routes/w/spaces/data_source_views.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
