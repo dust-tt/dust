@@ -299,6 +299,44 @@ async function handler(
         case "invoice.finalized":
           break;
 
+        // Payment-gated commit lifecycle. Metronome activates the commit
+        // itself on success, so we don't grant credits here — just log the
+        // outcome for observability (and surface failures with their
+        // Stripe error message). AWU credit top-ups go through this flow
+        // via `addPaymentGatedCommitToContract`.
+        case "payment_gate.payment_status": {
+          const {
+            customer_id: customerId,
+            contract_id: contractId,
+            invoice_id: invoiceId,
+            payment_status: paymentStatus,
+            error_message: errorMessage,
+          } = event.properties;
+          if (paymentStatus === "succeeded") {
+            logger.info(
+              { customerId, contractId, invoiceId, paymentStatus },
+              "[Metronome Webhook] Payment-gated commit paid"
+            );
+          } else {
+            logger.warn(
+              {
+                customerId,
+                contractId,
+                invoiceId,
+                paymentStatus,
+                errorMessage,
+              },
+              "[Metronome Webhook] Payment-gated commit payment failed"
+            );
+          }
+          break;
+        }
+
+        case "payment_gate.payment_pending_action_required":
+        case "payment_gate.threshold_reached":
+        case "payment_gate.external_initiate":
+          break;
+
         case "credit.segment.start": {
           const {
             customer_id: customerId,

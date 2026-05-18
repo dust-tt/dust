@@ -27,7 +27,6 @@ function subscribeToAwuPurchaseLoading(callback: () => void) {
 
 export type AwuPurchaseOutcome =
   | { status: "success" }
-  | { status: "redirect"; paymentUrl: string }
   | { status: "error"; message: string };
 
 export function useAwuPurchase({ workspaceId }: { workspaceId: string }) {
@@ -72,14 +71,9 @@ export function useAwuPurchase({ workspaceId }: { workspaceId: string }) {
           return { status: "error", message };
         }
 
-        const data = await response.json();
+        await response.json();
 
         void mutateAwuPurchaseInfo();
-
-        if (data.paymentUrl) {
-          return { status: "redirect", paymentUrl: data.paymentUrl };
-        }
-
         resetAwuPostPurchaseRefreshCount(workspaceId);
         void mutateAwuPoolSummary();
 
