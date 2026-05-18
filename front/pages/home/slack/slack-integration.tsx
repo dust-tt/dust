@@ -6,6 +6,7 @@ import {
   H4,
   P,
 } from "@app/components/home/ContentComponents";
+import { HomeAIOperatorsCTASection } from "@app/components/home/content/Product/HomeAIOperatorsCTASection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -255,42 +256,6 @@ function InstallationSection() {
   );
 }
 
-function JustUseDustSection() {
-  return (
-    <div className="relative overflow-hidden rounded-xl bg-blue-50 py-16 md:py-20">
-      {/* Decorative shapes */}
-      <div className="absolute left-0 top-0 h-48 w-48 -translate-x-1/3 -translate-y-1/3 rounded-full bg-pink-300" />
-      <div className="absolute right-0 top-0 h-32 w-32 -translate-y-1/3 translate-x-1/3 rotate-45 bg-blue-400" />
-      <div className="absolute bottom-0 left-0 h-40 w-40 -translate-x-1/3 translate-y-1/3 rounded-full bg-green-400" />
-      <div className="absolute bottom-0 right-0 h-40 w-40 translate-x-1/3 translate-y-1/3 bg-red-400" />
-
-      <div className={CONTAINER_CLASSES}>
-        <div className="relative flex flex-col items-center justify-center py-12 text-center md:py-16">
-          <H2 className="mb-8 text-4xl text-blue-600 sm:text-5xl md:text-6xl">
-            Just use Dust
-          </H2>
-          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-            <Button
-              variant="highlight"
-              size="md"
-              label="Start Free Trial"
-              href="/pricing"
-              className="w-full sm:w-auto"
-            />
-            <Button
-              variant="outline"
-              size="md"
-              label="Contact Sales"
-              href="/home/contact"
-              className="w-full sm:w-auto"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function SlackIntegration() {
   const router = useRouter();
@@ -310,7 +275,9 @@ export default function SlackIntegration() {
         <PainPointsSection />
         <VideoSection />
         <TrustedBy logoSet="landing" />
-        <JustUseDustSection />
+        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
+          <HomeAIOperatorsCTASection />
+        </div>
       </div>
     </>
   );
