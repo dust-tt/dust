@@ -1,6 +1,5 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/w/spaces/project_context.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { removeContentNodeFromProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";

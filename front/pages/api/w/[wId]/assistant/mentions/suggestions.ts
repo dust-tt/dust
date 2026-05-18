@@ -1,5 +1,4 @@
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/w/assistant/mentions.ts
 /**
  * @swagger
  * /api/w/{wId}/assistant/mentions/suggestions:

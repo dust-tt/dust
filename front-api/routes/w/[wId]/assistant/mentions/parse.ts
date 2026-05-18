@@ -1,0 +1,23 @@
+import { Hono } from "hono";
+import { z } from "zod";
+
+import { parseMentionsInMarkdown } from "@app/lib/api/assistant/parse_mentions";
+
+import { validate } from "@front-api/middleware/validator";
+
+const ParseMentionsRequestBodySchema = z.object({
+  markdown: z.string(),
+});
+
+// Mounted at /api/w/:wId/assistant/mentions/parse.
+const app = new Hono();
+
+app.post("/", validate("json", ParseMentionsRequestBodySchema), async (c) => {
+  const auth = c.get("auth");
+  const { markdown } = c.req.valid("json");
+
+  const processedMarkdown = await parseMentionsInMarkdown({ auth, markdown });
+  return c.json({ markdown: processedMarkdown });
+});
+
+export default app;

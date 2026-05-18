@@ -1,4 +1,3 @@
-import { spawnSync } from "child_process";
 import { danger, fail, warn } from "danger";
 import fs from "fs";
 
@@ -9,14 +8,6 @@ const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
 const sseAckLabel = "sse-ack";
 const skipMigrationCheckLabel = "skip-migration-check";
-
-// `git grep` exit codes used by the Hono migration sync check.
-const GIT_GREP_MATCH = 0;
-const GIT_GREP_NO_MATCH = 1;
-
-function errMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
 
 const REMOVE_INDEX_WARNING =
   "\n\nBefore deleting an index, make sure it is actually not used by running:" +
@@ -353,53 +344,62 @@ function warnMigrationSync(file: string, counterpart: string) {
   );
 }
 
+// Returns true if the Next handler at `nextLocalPath` (cwd-relative) is
+// marked as migrated to Hono via the `@migration-status: MIGRATED_TO_HONO`
+// marker.
+function isMigratedToHono(nextLocalPath: string): boolean {
+  let content: string;
+  try {
+    content = fs.readFileSync(nextLocalPath, "utf8");
+  } catch {
+    // File does not exist (or unreadable) — treat as not migrated.
+    return false;
+  }
+  return /^\s*\/\/\s*@migration-status:\s*MIGRATED_TO_HONO\s*$/m.test(content);
+}
+
 function checkHonoMigrationSync() {
   const diffFiles = danger.git.modified_files.concat(danger.git.created_files);
 
-  // For each API file in the diff, find its migration counterpart (if any)
+  // For each modified API file, derive its migration counterpart from the
+  // 1:1 path mapping (Next `pages/api/<path>` ↔ Hono `front-api/routes/<path>`)
   // and check the counterpart is also in the diff.
   //
-  // - Next file (`front/pages/api/...`): read it for a `@migration-target:`
-  //   marker pointing at a Hono path.
-  // - Hono file (`front-api/...`): `git grep` Next markers for one that
-  //   targets this Hono path.
+  // A pair is considered migrated when:
+  //   - both files exist on disk, AND
+  //   - the Next file carries `@migration-status: MIGRATED_TO_HONO`.
   //
-  // Danger runs with cwd=`front/`, so `git grep` results and `fs.readFileSync`
-  // paths are cwd-relative; `danger.git.modified_files` is repo-root relative.
-  // We prepend `front/` when crossing that boundary.
+  // Danger runs with cwd=`front/`; `danger.git.modified_files` is
+  // repo-root relative. We prepend `front/` when crossing that boundary.
   const checks: { file: string; counterpart: string }[] = [];
 
   for (const file of diffFiles) {
+    let nextRepoPath: string | null = null;
+    let honoRepoPath: string | null = null;
+
     if (file.startsWith("front/pages/api/")) {
-      const localPath = file.replace(/^front\//, "");
-      try {
-        const content = fs.readFileSync(localPath, "utf8");
-        const match = content.match(/^\s*\/\/\s*@migration-target:\s*(.+)$/m);
-        if (match) {
-          checks.push({ file, counterpart: match[1].trim() });
-        }
-      } catch (err) {
-        warn(
-          `Failed to read \`${file}\` while checking for migration marker: ${errMessage(err)}`
-        );
-      }
-    } else if (file.startsWith("front-api/")) {
-      const result = spawnSync(
-        "git",
-        ["grep", "-l", "-F", `@migration-target: ${file}`, "--", "pages/api/"],
-        { encoding: "utf8" }
-      );
-      if (result.status === GIT_GREP_MATCH) {
-        for (const nextFile of result.stdout.split("\n").filter(Boolean)) {
-          checks.push({ file, counterpart: `front/${nextFile}` });
-        }
-      } else if (result.status !== GIT_GREP_NO_MATCH) {
-        warn(
-          `Failed to look up Next counterpart for \`${file}\` ` +
-            `(git grep exited ${result.status}): ${result.stderr?.trim() ?? "unknown error"}`
-        );
-      }
+      nextRepoPath = file;
+      honoRepoPath = file.replace(/^front\/pages\/api\//, "front-api/routes/");
+    } else if (file.startsWith("front-api/routes/")) {
+      honoRepoPath = file;
+      nextRepoPath = file.replace(/^front-api\/routes\//, "front/pages/api/");
+    } else {
+      continue;
     }
+
+    const nextLocalPath = nextRepoPath.replace(/^front\//, "");
+    const honoLocalPath = `../${honoRepoPath}`;
+
+    if (!fs.existsSync(nextLocalPath) || !fs.existsSync(honoLocalPath)) {
+      continue;
+    }
+
+    if (!isMigratedToHono(nextLocalPath)) {
+      continue;
+    }
+
+    const counterpart = file === nextRepoPath ? honoRepoPath : nextRepoPath;
+    checks.push({ file, counterpart });
   }
 
   for (const { file, counterpart } of checks) {

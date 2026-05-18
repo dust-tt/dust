@@ -1,6 +1,5 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/w/builder/assistants.ts
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import {
   buildInitialActions,

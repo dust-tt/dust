@@ -1,0 +1,65 @@
+import { Hono } from "hono";
+
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
+import { getFlattenedContentNodesOfViewTypeForDataSourceView } from "@app/lib/api/data_source_view";
+
+import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
+import { spaceResource } from "@front-api/middleware/space_resource";
+
+import search from "./search";
+import tableId from "./[tableId]";
+
+// Mounted under /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables.
+const app = new Hono();
+
+// GET / — list tables.
+app.get(
+  "/",
+  spaceResource({ requireCanReadOrAdministrate: true }),
+  dataSourceViewResource({ requireCanReadOrAdministrate: true }),
+  async (c) => {
+    const dataSourceView = c.get("dataSourceView");
+    const paginationRes = getCursorPaginationParams(c.req.query());
+    if (paginationRes.isErr()) {
+      return c.json(
+        {
+          error: {
+            type: "invalid_pagination_parameters",
+            message: "Invalid pagination parameters",
+          },
+        },
+        400
+      );
+    }
+    const contentNodes =
+      await getFlattenedContentNodesOfViewTypeForDataSourceView(
+        dataSourceView,
+        {
+          viewType: "table",
+          pagination: paginationRes.value,
+        }
+      );
+    if (contentNodes.isErr()) {
+      return c.json(
+        {
+          error: {
+            type: "internal_server_error",
+            message: contentNodes.error.message,
+          },
+        },
+        500
+      );
+    }
+    return c.json({
+      tables: contentNodes.value.nodes,
+      nextPageCursor: contentNodes.value.nextPageCursor,
+    });
+  }
+);
+
+// Register `/search` BEFORE `/:tableId` so the param route does not swallow
+// "search" as an id. Hono's router scans in registration order.
+app.route("/search", search);
+app.route("/:tableId", tableId);
+
+export default app;

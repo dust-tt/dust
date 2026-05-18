@@ -1,5 +1,4 @@
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/invitations.ts
 
 /** @ignoreswagger */
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";

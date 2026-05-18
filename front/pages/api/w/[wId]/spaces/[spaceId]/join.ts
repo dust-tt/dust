@@ -1,6 +1,5 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/w/spaces/join.ts
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
