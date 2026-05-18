@@ -1,6 +1,5 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/w/mcp/deregister.ts
 import { deregisterMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

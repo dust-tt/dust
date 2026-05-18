@@ -24,6 +24,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@app": path.resolve(__dirname, "../front"),
+      "@front-api": path.resolve(__dirname, "."),
     },
   },
 });

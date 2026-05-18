@@ -1,5 +1,4 @@
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/kill.ts
 
 /** @ignoreswagger */
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";

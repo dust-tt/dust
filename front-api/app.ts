@@ -11,8 +11,8 @@ import { createNewWorkspaceApp } from "./routes/create-new-workspace";
 import { healthzApp } from "./routes/healthz";
 import { invitationsApp } from "./routes/invitations";
 import { killApp } from "./routes/kill";
-import { publicWorkspaceApp } from "./routes/v1/w";
-import { workspaceApp } from "./routes/w";
+import publicWorkspaceApp from "./routes/v1/w/[wId]";
+import workspaceApp from "./routes/w/[wId]";
 import { workspaceLookupApp } from "./routes/workspace-lookup";
 
 const apiApp = new Hono();

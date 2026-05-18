@@ -1,5 +1,4 @@
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/w/trial-message-usage.ts
 
 /** @ignoreswagger */
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";

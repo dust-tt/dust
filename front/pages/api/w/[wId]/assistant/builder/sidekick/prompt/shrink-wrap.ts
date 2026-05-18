@@ -1,6 +1,5 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/w/assistant/builder/sidekick.ts
 import { buildShrinkWrapPromptForConversation } from "@app/lib/api/assistant/builder/sidekick_prompts";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

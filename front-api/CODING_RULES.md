@@ -14,101 +14,126 @@ matched requests go to Hono, the rest fall through to Next.
 
 ## ROUTING
 
-### [API1] Route file layout follows the URL hierarchy
+### [API1] One file per Next path; mirror Next layout exactly
 
-Hono is not file-system routed — the directory tree is purely organizational.
-But we keep it aligned with URL prefixes for discoverability:
+`front-api/routes/<path>.ts` mirrors `front/pages/api/<path>.ts` 1:1,
+including dynamic segments (`[wId]`, `[spaceId]`, etc.) as literal directory
+names. The path mapping is deterministic and used by DangerJS to enforce the
+migration sync check (see [BACK17]).
 
 ```
 front-api/routes/
-  healthz.ts                # GET /api/healthz
+  healthz.ts                                       # /api/healthz
   w/
-    index.ts                # workspaceApp (mounted at /api/w/:wId), applies workspaceAuth
-    spaces/
-      index.ts              # spacesApp (mounted at /api/w/:wId/spaces) — GET /, POST /
-      mcp.ts                # mcpApp (mounted at /api/w/:wId/spaces/:spaceId/mcp)
-      ...
+    [wId]/
+      index.ts                                     # mounts children, applies workspaceAuth
+      models.ts                                    # /api/w/:wId/models
+      providers/
+        index.ts                                   # /api/w/:wId/providers
+      spaces/
+        index.ts                                   # /api/w/:wId/spaces — GET /, POST /
+        [spaceId]/
+          index.ts                                 # mounts /:spaceId children
+          leave.ts                                 # /api/w/:wId/spaces/:spaceId/leave
+          mcp/
+            available.ts                           # /api/w/:wId/spaces/:spaceId/mcp/available
+          ...
   v1/
     w/
-      index.ts              # publicWorkspaceApp, applies publicApiAuth
-      spaces.ts             # public-API spaces handlers
+      [wId]/
+        index.ts                                   # applies publicApiAuth
+        spaces.ts
 ```
 
-One file per **logical sub-resource**, not per HTTP endpoint. All handlers
-for a sub-resource (GET list, POST create, GET by id, PATCH, DELETE, etc.)
-live in the same file. Split further (e.g.
-`data_source_views/index.ts` + `data_source_views/tables.ts`) only when a
-single file gets large.
+**One file per Next path, one route per file at `/`.** A leaf at
+`pages/api/<path>.ts` is migrated to `front-api/routes/<path>.ts` whose
+handlers register under `"/"` (the parent mount owns the path segment).
+GET/POST/PATCH/DELETE on the **same URL** stay together in one file; only
+different URLs split into different files.
 
-Do not mirror Next's `[wId]/[spaceId]/index.ts` deep tree — Hono routes are
-explicit, the tree adds nesting without benefit.
-
-### [API2] Register Hono-served routes in `HONO_ROUTES`
-
-A route only takes effect when its pattern is added to `HONO_ROUTES` in
-`front-api/app.ts`. Without it, `isHonoRoute` returns false and the request
-falls through to Next — even if the Hono route is defined.
+Each leaf exports `export default app`:
 
 ```ts
-const HONO_ROUTES: HonoRoute[] = [
-  { pattern: "/api/w/:wId/spaces", methods: ["GET", "POST"] },
-  { pattern: "/api/w/:wId/spaces/:spaceId/mcp/available", methods: ["GET"] },
-  // …
-];
+// front-api/routes/w/[wId]/spaces/[spaceId]/leave.ts
+const app = new Hono();
+app.post("/", spaceResource({ requireCanReadOrAdministrate: true }), ...);
+export default app;
 ```
 
-`OPTIONS` is auto-added by the regex builder, so CORS preflights for any
-registered pattern are handled by Hono.
+### [API2] Each directory has an `index.ts` that mounts its children
 
-### [API3] Compose sub-apps with `app.route()`
+The directory tree is composed via per-directory `index.ts` files. Each
+`index.ts` does one or both of:
 
-A new sub-resource is wired in by adding one `.route()` call in the parent
-sub-app:
+- Mount children via `app.route("/segment", child)`.
+- Apply directory-scoped middleware (e.g. resource fetch that all routes in
+  the directory need — see [API5]).
 
 ```ts
-// front-api/routes/w/spaces/index.ts
-spacesApp.route("/:spaceId/mcp", mcpApp);
-spacesApp.route("/:spaceId/data_source_views", dsvApp);
+// front-api/routes/w/[wId]/spaces/[spaceId]/index.ts
+const app = new Hono();
+app.route("/leave", leave);
+app.route("/mcp", mcp);
+app.route("/data_source_views", dataSourceViews);
+// ...
+export default app;
 ```
 
-Path parameters from the parent mount (`:wId`, `:spaceId`) are propagated
-into the child sub-app's context (`c.req.param("spaceId")` keeps working).
+**Registration order matters** when two sibling routes share a prefix and
+one is a literal while the other is a param — e.g. `/tables/search` must be
+mounted before `/tables/:tableId`, otherwise the param route swallows
+"search" as an id. Hono's router scans in registration order.
+
+### [API3] Dispatch is automatic — no manual route list
+
+Whether a request goes to Hono or falls through to Next is determined at
+startup by walking `honoApp.routes` (the flattened route table populated by
+every `.get`/`.post`/`.route` call). Registering a Hono route is the single
+source of truth — there is no separate `HONO_ROUTES` list to maintain.
 
 ## MIDDLEWARE
 
 ### [API4] Apply auth middleware once, at the sub-app boundary
 
 `workspaceAuth` and `publicApiAuth` are applied once at the workspace
-sub-app level, not per-route:
+sub-app level (the `[wId]/index.ts` mount file), not per-route:
 
 ```ts
-// front-api/routes/w/index.ts
-workspaceApp.use("*", workspaceAuth);
-workspaceApp.route("/spaces", spacesApp);
+// front-api/routes/w/[wId]/index.ts
+const app = new Hono();
+app.use("*", workspaceAuth);
+app.route("/spaces", spaces);
+// ...
+export default app;
 ```
 
 All routes below inherit it. The resolved `Authenticator` is available via
 `c.get("auth")`.
 
-### [API5] Resource-fetching middleware is applied per-handler
+The same pattern applies for any directory-scoped resource fetch — e.g.
+`routes/w/[wId]/assistant/skills/[sId]/index.ts` fetches the `SkillResource`
+once and stashes it on `c` so every route below can read it from
+`c.get("skill")`.
+
+### [API5] Resource-fetching middleware is applied per-handler when options vary
 
 Resource middlewares like `spaceResource` carry permission options
 (`requireCanRead`, `requireCanWrite`, etc.) that vary per endpoint. Apply
-them on the individual handler, not on the sub-app:
+them on the individual handler, not on the parent's `index.ts`:
 
 ```ts
-mcpApp.get(
-  "/available",
-  spaceResource({ requireCanRead: true }),
-  async (c) => {
-    const space = c.get("space");
-    // …
-  }
-);
+// front-api/routes/w/[wId]/spaces/[spaceId]/mcp/available.ts
+const app = new Hono();
+app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
+  const space = c.get("space");
+  // …
+});
+export default app;
 ```
 
-Do not `mcpApp.use("*", spaceResource({...}))` — sibling handlers in the
-same sub-app may need different permission levels.
+Lift the middleware to the parent `index.ts` only when **every** route in the
+subtree uses the exact same options (e.g. `routes/w/[wId]/assistant/skills/[sId]/index.ts`,
+where the skill fetch and `canWrite` check are identical for all children).
 
 ## VALIDATION
 
@@ -142,9 +167,30 @@ Next handlers produce via `apiError`. For dynamic status codes carried in
 `jsonApiError(c, err)` helper — it centralizes the
 `number → ContentfulStatusCode` cast in one place with a comment.
 
+## IMPORTS
+
+### [API8] Use `@front-api/*` for self-references; `@app/*` for `front/`
+
+The path tree is deeply nested, so relative imports across the tree get long
+fast. Use the `@front-api/*` alias for anything inside `front-api/` itself
+(middleware, app, helpers), and the existing `@app/*` alias for reaching
+into `front/`:
+
+```ts
+// front-api/routes/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search.ts
+import { validate } from "@front-api/middleware/validator";        // self
+import { spaceResource } from "@front-api/middleware/space_resource";
+import { CoreAPI } from "@app/types/core/core_api";                // front
+```
+
+Both aliases are configured in `tsconfig.json` and `vite.config.mjs`.
+Relative imports (`./sibling`, `../parent`) are still fine for files
+adjacent in the tree, but anything reaching across more than one segment
+should use the alias.
+
 ## DEPENDENCIES
 
-### [API8] Avoid Next types in front-api code
+### [API9] Avoid Next types in front-api code
 
 `NextApiRequest` / `NextApiResponse` should not appear in new code. New
 middleware reads what it needs from Hono's `Context` directly

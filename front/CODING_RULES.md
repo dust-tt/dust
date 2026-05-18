@@ -297,22 +297,32 @@ authorize → validate → call business function → respond.
 
 ### [BACK17] Keep migrated Next and Hono handlers in sync during migration
 
-Any Next handler that has been migrated to Hono must carry a migration marker at the top of the file:
+Hono routes mirror the Next path 1:1: `front/pages/api/<path>.ts` corresponds
+to `front-api/routes/<path>.ts`. Any Next handler that has been migrated to
+Hono must carry a migration marker at the top of the file:
 
 ```
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: <path/to/hono/route.ts>
 ```
 
-The Hono file does not need a marker — its existence is enough.
+The Hono counterpart is inferred from the file path — no marker is needed on
+the Hono side.
 
-If you modify either side of a migrated pair, you must update the other side as well. DangerJS enforces this: if a PR modifies one side without the other, the check fails.
+If you modify either side of a migrated pair, you must update the other side
+as well. DangerJS enforces this: if a PR modifies one side without the other,
+the check fails.
 
-If a change is intentionally one-sided (e.g. deleting the Next handler, or cleanup that only applies to one framework), add the `skip-migration-check` label to the PR.
+If a change is intentionally one-sided (e.g. deleting the Next handler, or
+cleanup that only applies to one framework), add the `skip-migration-check`
+label to the PR.
 
-When migrating a new handler, add the marker to the Next file immediately.
+When migrating a new handler, add the marker to the Next file immediately,
+and place the Hono file at the mirrored path under `front-api/routes/`.
 
-Reviewer: If a PR touches a file that is part of a migrated pair (either a Next file with a `@migration-target` marker, or a Hono file that is the target of such a marker), verify the counterpart is also updated in the same PR.
+Reviewer: If a PR touches a file that is part of a migrated pair (a Next file
+carrying `@migration-status: MIGRATED_TO_HONO` paired with a Hono file at the
+same path under `front-api/routes/`), verify the counterpart is also updated
+in the same PR.
 
 ### [BACK18] Business-layer code must not return HTTP error envelopes
 

@@ -2,7 +2,8 @@
   "extends": "../front/tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@app/*": ["../front/*"]
+      "@app/*": ["../front/*"],
+      "@front-api/*": ["./*"]
     }
   },
   "include": ["**/*.ts", "../front/global.d.ts"]

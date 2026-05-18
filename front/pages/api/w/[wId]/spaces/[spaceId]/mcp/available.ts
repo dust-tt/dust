@@ -1,6 +1,5 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/w/spaces/mcp.ts
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";

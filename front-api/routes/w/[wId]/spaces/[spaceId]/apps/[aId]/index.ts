@@ -1,0 +1,133 @@
+import { Hono } from "hono";
+import { z } from "zod";
+
+import { softDeleteApp } from "@app/lib/api/apps";
+import { AppResource } from "@app/lib/resources/app_resource";
+import { APP_NAME_REGEXP } from "@app/types/app";
+
+import { spaceResource } from "@front-api/middleware/space_resource";
+import { validate } from "@front-api/middleware/validator";
+
+import runs from "./runs";
+import state from "./state";
+
+const PatchAppBodySchema = z.object({
+  name: z.string(),
+  description: z.string(),
+});
+
+// Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId.
+const app = new Hono();
+
+// GET / — read app.
+app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
+  const auth = c.get("auth");
+  const space = c.get("space");
+  const aId = c.req.param("aId") ?? "";
+
+  const found = await AppResource.fetchById(auth, aId);
+  if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
+    return c.json(
+      {
+        error: { type: "app_not_found", message: "The app was not found." },
+      },
+      404
+    );
+  }
+  return c.json({ app: found.toJSON() });
+});
+
+// POST / — update app settings.
+app.post(
+  "/",
+  spaceResource({ requireCanRead: true }),
+  validate("json", PatchAppBodySchema),
+  async (c) => {
+    const auth = c.get("auth");
+    const space = c.get("space");
+    const aId = c.req.param("aId") ?? "";
+
+    const found = await AppResource.fetchById(auth, aId);
+    if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
+      return c.json(
+        {
+          error: { type: "app_not_found", message: "The app was not found." },
+        },
+        404
+      );
+    }
+    if (!found.canWrite(auth)) {
+      return c.json(
+        {
+          error: {
+            type: "app_auth_error",
+            message:
+              "Modifying an app requires write access to the app's space.",
+          },
+        },
+        403
+      );
+    }
+    const { name, description } = c.req.valid("json");
+    if (!APP_NAME_REGEXP.test(name)) {
+      return c.json(
+        {
+          error: {
+            type: "invalid_request_error",
+            message:
+              "The app name is invalid, expects a string with a length of 1-64 characters, containing only alphanumeric characters, underscores, and dashes.",
+          },
+        },
+        400
+      );
+    }
+    await found.updateSettings(auth, { name, description });
+    return c.json({ app: found.toJSON() });
+  }
+);
+
+// DELETE / — soft delete app.
+app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
+  const auth = c.get("auth");
+  const space = c.get("space");
+  const aId = c.req.param("aId") ?? "";
+
+  const found = await AppResource.fetchById(auth, aId);
+  if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
+    return c.json(
+      {
+        error: { type: "app_not_found", message: "The app was not found." },
+      },
+      404
+    );
+  }
+  if (!found.canWrite(auth)) {
+    return c.json(
+      {
+        error: {
+          type: "app_auth_error",
+          message: "Deleting an app requires write access to the app's space.",
+        },
+      },
+      403
+    );
+  }
+  const deleteRes = await softDeleteApp(auth, found);
+  if (deleteRes.isErr()) {
+    return c.json(
+      {
+        error: {
+          type: "invalid_request_error",
+          message: deleteRes.error.message,
+        },
+      },
+      409
+    );
+  }
+  return c.body(null, 204);
+});
+
+app.route("/state", state);
+app.route("/runs", runs);
+
+export default app;

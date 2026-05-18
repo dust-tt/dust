@@ -1,6 +1,5 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-// @migration-target: front-api/routes/w/assistant/builder/sidekick.ts
 import { buildTemplatePrompt } from "@app/lib/api/assistant/builder/sidekick_prompts";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
