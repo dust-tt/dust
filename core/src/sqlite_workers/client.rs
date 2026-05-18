@@ -37,6 +37,23 @@ pub enum SqliteWorkerError {
     UnexpectedError(anyhow::Error),
 }
 
+impl SqliteWorkerError {
+    fn is_not_found(&self) -> bool {
+        match self {
+            SqliteWorkerError::ServerError(_, _, status, _) => {
+                *status == StatusCode::NOT_FOUND.as_u16()
+            }
+            SqliteWorkerError::UnexpectedServerError(_, status, _) => {
+                *status == StatusCode::NOT_FOUND.as_u16()
+            }
+            SqliteWorkerError::BodyParsingError(_, _, status) => {
+                *status == StatusCode::NOT_FOUND.as_u16()
+            }
+            _ => false,
+        }
+    }
+}
+
 impl From<hyper::http::Error> for SqliteWorkerError {
     fn from(e: hyper::http::Error) -> Self {
         SqliteWorkerError::UnexpectedError(anyhow!(e))
@@ -75,17 +92,33 @@ impl SqliteWorker {
         query: &str,
     ) -> Result<Vec<QueryResult>, SqliteWorkerError> {
         let worker_url = self.url();
-        let uri = format!("{}/databases/{}", worker_url, encode(database_unique_id));
+        let uri = format!("{}/databases/query", worker_url);
 
         let req = reqwest::Client::new()
             .post(&uri)
             .header("Content-Type", "application/json")
             .json(&json!({
+                "database_id": database_unique_id,
                 "tables": tables.iter().map(|lt| &lt.table).collect::<Vec<_>>(),
                 "query": query,
             }));
 
-        let body_bytes = get_response_body(req, &uri).await?;
+        let body_bytes = match get_response_body(req, &uri).await {
+            Ok(body_bytes) => body_bytes,
+            Err(e) if e.is_not_found() => {
+                let uri = format!("{}/databases/{}", worker_url, encode(database_unique_id));
+                let req = reqwest::Client::new()
+                    .post(&uri)
+                    .header("Content-Type", "application/json")
+                    .json(&json!({
+                        "tables": tables.iter().map(|lt| &lt.table).collect::<Vec<_>>(),
+                        "query": query,
+                    }));
+
+                get_response_body(req, &uri).await?
+            }
+            Err(e) => return Err(e),
+        };
 
         #[derive(Deserialize)]
         struct ExecuteQueryResponseBody {
@@ -111,11 +144,25 @@ impl SqliteWorker {
         database_unique_id: &str,
     ) -> Result<(), SqliteWorkerError> {
         let worker_url = self.url();
-        let uri = format!("{}/databases/{}", worker_url, encode(database_unique_id));
+        let uri = format!("{}/databases/invalidate", worker_url);
 
-        let req = reqwest::Client::new().delete(&uri);
+        let req = reqwest::Client::new()
+            .post(&uri)
+            .header("Content-Type", "application/json")
+            .json(&json!({
+                "database_id": database_unique_id,
+            }));
 
-        let _ = get_response_body(req, &uri).await?;
+        match get_response_body(req, &uri).await {
+            Ok(_) => (),
+            Err(e) if e.is_not_found() => {
+                let uri = format!("{}/databases/{}", worker_url, encode(database_unique_id));
+                let req = reqwest::Client::new().delete(&uri);
+
+                let _ = get_response_body(req, &uri).await?;
+            }
+            Err(e) => return Err(e),
+        }
 
         Ok(())
     }
