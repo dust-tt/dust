@@ -229,12 +229,12 @@ async function handler(
             [Op.or]: [
               {
                 sId: {
-                  [Op.iLike]: `${searchTerm}%`,
+                  [Op.iLike]: `%${searchTerm}%`,
                 },
               },
               {
                 name: {
-                  [Op.iLike]: `${searchTerm}%`,
+                  [Op.iLike]: `%${searchTerm}%`,
                 },
               },
             ],
