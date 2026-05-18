@@ -4,13 +4,12 @@ import type {
   MessageCreateParamsNonStreaming,
 } from "@anthropic-ai/sdk/resources";
 import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/messages";
-import AnthropicVertex from "@anthropic-ai/vertex-sdk";
-import config from "@app/lib/api/config";
+import type AnthropicVertex from "@anthropic-ai/vertex-sdk";
+
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
   ANTHROPIC_PROVIDER_ID,
   overwriteLLMParameters,
-  VERTEX_MODEL_ID_MAP,
 } from "@app/lib/api/llm/clients/anthropic/types";
 import {
   toAutoThinkingConfig,
@@ -31,6 +30,11 @@ import {
   handleInvalidToolJsonAnthropicError,
   isAnthropicErrorUnableToParseToolParam,
 } from "@app/lib/api/llm/clients/anthropic/utils/errors";
+import {
+  getInferenceClient,
+  getModel,
+  getModelForTokenCount,
+} from "@app/lib/api/llm/clients/anthropic/utils/vertex";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
@@ -124,14 +128,10 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       apiKey: ANTHROPIC_API_KEY,
     });
 
-    // Vertex does not support batches
-    this.inferenceClient = this.useVertex
-      ? // Routing everything to Europe first to check that Vertex works correctly.
-        new AnthropicVertex({
-          region: "europe-west1",
-          projectId: config.getVertexAiProjectId(),
-        })
-      : this.client;
+    // Vertex does not support batches.
+    this.inferenceClient = getInferenceClient(this.useVertex, {
+      anthropicClient: this.client,
+    });
   }
 
   private async buildBaseRequestPayload({
@@ -198,21 +198,15 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       return undefined;
     }
 
-    const model = this.useVertex ? this.getModel().split("@")[0] : this.modelId;
+    const model = getModelForTokenCount(this.useVertex, {
+      modelId: this.modelId,
+    });
 
     return (body: MessageCountTokensParams) =>
       this.inferenceClient.messages.countTokens({
         ...body,
         model,
       });
-  }
-
-  private getModel(): string {
-    if (!this.useVertex) {
-      return this.modelId;
-    }
-
-    return VERTEX_MODEL_ID_MAP[this.modelId] ?? this.modelId;
   }
 
   protected async *sendRequest(
@@ -231,7 +225,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
         ? { ...basePayload.output_config, format: outputFormat }
         : basePayload.output_config,
       cache_control: { type: "ephemeral" },
-      model: this.getModel(),
+      model: getModel(this.useVertex, { modelId: this.modelId }),
     };
 
     try {
