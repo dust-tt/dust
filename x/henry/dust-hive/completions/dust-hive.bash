@@ -342,25 +342,45 @@ dhb() {
 }
 
 dhdb() {
-  local query="${1:?usage: dhdb <worktree-name-query> [dust_front|dust_connectors|dust_api|dust_oauth]}"
-  local db="${2:-dust_front}"
+  local usage="usage: dhdb <worktree-name-query> [front|connectors|core|dust_front|dust_connectors|dust_api|dust_oauth] [psql-args...]"
+  local query="${1:?$usage}"
+  shift
+  local db="dust_front"
   local offset="${DHDB_PORT_OFFSET:-432}"
   local base port
 
-  case "$db" in
-    dust_front|dust_connectors|dust_api|dust_oauth) ;;
-    *)
-      echo "Invalid database: $db" >&2
-      echo "usage: dhdb <worktree-name-query> [dust_front|dust_connectors|dust_api|dust_oauth]" >&2
-      return 2
-      ;;
-  esac
+  if (( $# > 0 )); then
+    case "$1" in
+      front|dust_front)
+        db="dust_front"
+        shift
+        ;;
+      connectors|dust_connectors)
+        db="dust_connectors"
+        shift
+        ;;
+      core|dust_api)
+        db="dust_api"
+        shift
+        ;;
+      oauth|dust_oauth)
+        db="dust_oauth"
+        shift
+        ;;
+      -*) ;;
+      *)
+        echo "Invalid database: $1" >&2
+        echo "$usage" >&2
+        return 2
+        ;;
+    esac
+  fi
 
   base="$(_dust_hive_base_port "$query")" || return
   port=$((base + offset))
 
   echo "Connecting to $db on localhost:$port"
-  command psql "postgres://dev:dev@localhost:${port}/${db}"
+  command psql "postgres://dev:dev@localhost:${port}/${db}" "$@"
 }
 
 # dhcd: cd into an environment's worktree in the current shell
@@ -396,7 +416,16 @@ _dhdb() {
   if (( COMP_CWORD == 1 )); then
     COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "${COMP_WORDS[COMP_CWORD]}"))
   elif (( COMP_CWORD == 2 )); then
-    COMPREPLY=($(compgen -W "dust_front dust_connectors dust_api dust_oauth" -- "${COMP_WORDS[COMP_CWORD]}"))
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+
+    case "$cur" in
+      front*) COMPREPLY=(dust_front) ;;
+      connectors*) COMPREPLY=(dust_connectors) ;;
+      core*) COMPREPLY=(dust_api) ;;
+      oauth*) COMPREPLY=(dust_oauth) ;;
+      "") COMPREPLY=(dust_front dust_connectors dust_api dust_oauth) ;;
+      *) COMPREPLY=($(compgen -W "dust_front dust_connectors dust_api dust_oauth" -- "$cur")) ;;
+    esac
   fi
 }
 _dhcd() { local COMP_WORDS=("dust-hive" "cd" "${COMP_WORDS[@]:1}"); local COMP_CWORD=$(( COMP_CWORD + 1 )); _dust_hive_complete; }

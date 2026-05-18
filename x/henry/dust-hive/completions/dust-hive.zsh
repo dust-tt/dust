@@ -328,25 +328,45 @@ function dhb {
 }
 
 function dhdb {
-  local query="${1:?usage: dhdb <worktree-name-query> [dust_front|dust_connectors|dust_api|dust_oauth]}"
-  local db="${2:-dust_front}"
+  local usage="usage: dhdb <worktree-name-query> [front|connectors|core|dust_front|dust_connectors|dust_api|dust_oauth] [psql-args...]"
+  local query="${1:?$usage}"
+  shift
+  local db="dust_front"
   local offset="${DHDB_PORT_OFFSET:-432}"
   local base port
 
-  case "$db" in
-    dust_front|dust_connectors|dust_api|dust_oauth) ;;
-    *)
-      echo "Invalid database: $db" >&2
-      echo "usage: dhdb <worktree-name-query> [dust_front|dust_connectors|dust_api|dust_oauth]" >&2
-      return 2
-      ;;
-  esac
+  if (( $# > 0 )); then
+    case "$1" in
+      front|dust_front)
+        db="dust_front"
+        shift
+        ;;
+      connectors|dust_connectors)
+        db="dust_connectors"
+        shift
+        ;;
+      core|dust_api)
+        db="dust_api"
+        shift
+        ;;
+      oauth|dust_oauth)
+        db="dust_oauth"
+        shift
+        ;;
+      -*) ;;
+      *)
+        echo "Invalid database: $1" >&2
+        echo "$usage" >&2
+        return 2
+        ;;
+    esac
+  fi
 
   base="$(_dust_hive_base_port "$query")" || return
   port=$((base + offset))
 
   echo "Connecting to $db on localhost:$port"
-  command psql "postgres://dev:dev@localhost:${port}/${db}"
+  command psql "postgres://dev:dev@localhost:${port}/${db}" "$@"
 }
 
 # dhcd: cd into an environment's worktree in the current shell
@@ -375,19 +395,40 @@ function _dhc  { local words=("dust-hive" "cool" "${(@)words[2,-1]}"); local CUR
 function _dhx  { local words=("dust-hive" "spawn" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
 function _dhb  { _arguments '1::worktree:_dust_hive_envs'; }
 function _dhdb_database {
-  local -a dbs=(
-    'dust_front:Front database'
-    'dust_connectors:Connectors database'
-    'dust_api:API database'
-    'dust_oauth:OAuth database'
-  )
+  local cur="${words[CURRENT]}"
+  local use_unmatched=0
+  local -a dbs
 
-  _describe 'database' dbs
+  case "$cur" in
+    front*) dbs=(dust_front); use_unmatched=1 ;;
+    connectors*) dbs=(dust_connectors); use_unmatched=1 ;;
+    core*) dbs=(dust_api); use_unmatched=1 ;;
+    oauth*) dbs=(dust_oauth); use_unmatched=1 ;;
+    *) dbs=(dust_front dust_connectors dust_api dust_oauth) ;;
+  esac
+
+  if (( use_unmatched )); then
+    compadd -U -X database -- "${dbs[@]}"
+  else
+    compadd -X database -- "${dbs[@]}"
+  fi
 }
 function _dhdb {
-  _arguments \
-    '1::worktree:_dust_hive_envs' \
-    '2::database:_dhdb_database'
+  case "$CURRENT" in
+    2)
+      _dust_hive_envs
+      ;;
+    3)
+      if [[ "${words[CURRENT]}" == -* ]]; then
+        _files
+      else
+        _dhdb_database
+      fi
+      ;;
+    *)
+      _files
+      ;;
+  esac
 }
 function _dhcd { local words=("dust-hive" "cd" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
 
