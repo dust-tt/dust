@@ -26,6 +26,7 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactElement } from "react";
+import { useMemo } from "react";
 
 export const getStaticPaths: GetStaticPaths = async () => {
   // Don't pre-generate any paths at build time to minimize Contentful API calls.
@@ -100,9 +101,18 @@ export default function BlogPost({
   const ogImageUrl = post.image?.url ?? "https://dust.tt/static/og_image.png";
   const canonicalUrl = `https://dust.tt/blog/${post.slug}`;
   const tocItems = extractTableOfContents(post.body);
-  const ctaContent = renderCtaFromContentful(post.cta);
-  const inlineCtaContent = renderCtaFromContentful(post.cta, "inline");
-  const bodySplit = inlineCtaContent ? splitDocumentForMidCta(post.body) : null;
+  const ctaContent = useMemo(
+    () => renderCtaFromContentful(post.cta),
+    [post.cta]
+  );
+  const inlineCtaContent = useMemo(
+    () => renderCtaFromContentful(post.cta, "inline"),
+    [post.cta]
+  );
+  const bodySplit = useMemo(
+    () => (inlineCtaContent ? splitDocumentForMidCta(post.body) : null),
+    [inlineCtaContent, post.body]
+  );
 
   return (
     <>
