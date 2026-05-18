@@ -225,7 +225,8 @@ export function SkillBuilderFilesSection() {
   );
 
   const fileItems = sortedFields.map(({ field, originalIndex }) => {
-    const isAdded = isDiffMode && !compareFileIds.has(field.fileId);
+    const diffStatus =
+      isDiffMode && !compareFileIds.has(field.fileId) ? "added" : undefined;
     const FileIcon = getFileTypeIcon(field.contentType, field.fileName);
 
     return (
@@ -235,7 +236,7 @@ export function SkillBuilderFilesSection() {
         visual={FileIcon}
         viewMode={viewMode}
         title={field.fileName}
-        isAdded={isAdded}
+        diffStatus={diffStatus}
         subtitle={getSingularFileCategoryLabelForContentType(field.contentType)}
         onOpen={canPreviewFiles ? () => openPreviewDialog(field) : undefined}
         onDownload={() => downloadFile(field)}

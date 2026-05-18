@@ -7,6 +7,7 @@ import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import {
+  type ActionCardDiffStatus,
   ArrowDownOnSquareIcon,
   Button,
   type ButtonProps,
@@ -42,8 +43,13 @@ interface FileExplorerItemMenuAction {
   onClick: () => Promise<void>;
 }
 
+const TITLE_DIFF_STATUS_CLASSES: Record<ActionCardDiffStatus, string> = {
+  added: "text-success dark:text-success-night",
+  removed: "text-warning dark:text-warning-night",
+};
+
 export type FileExplorerItemProps = {
-  isAdded?: boolean;
+  diffStatus?: ActionCardDiffStatus;
   onDownload?: () => Promise<void>;
   onOpen?: () => void;
   onRemove?: () => Promise<void>;
@@ -85,8 +91,15 @@ export function FileExplorerViewToggle({
 
 // TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
 export function FileExplorerItem(props: FileExplorerItemProps) {
-  const { onDownload, onOpen, onRemove, isAdded, subtitle, title, viewMode } =
-    props;
+  const {
+    diffStatus,
+    onDownload,
+    onOpen,
+    onRemove,
+    subtitle,
+    title,
+    viewMode,
+  } = props;
 
   const thumbnailContent =
     props.kind === "icon" ? (
@@ -194,7 +207,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
             className={cn(
               "text-sm truncate text-foreground dark:text-foreground-night leading-5",
               "justify-start",
-              isAdded && "text-success dark:text-success-night"
+              diffStatus && TITLE_DIFF_STATUS_CLASSES[diffStatus]
             )}
           >
             {title}
