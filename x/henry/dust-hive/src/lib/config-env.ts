@@ -1,4 +1,8 @@
+import { rename } from "node:fs/promises";
 import { CONFIG_ENV_PATH } from "./paths";
+
+const TMP_PATH = `${CONFIG_ENV_PATH}.tmp`;
+const BAK_PATH = `${CONFIG_ENV_PATH}.bak`;
 
 interface EnvVar {
   key: string;
@@ -35,6 +39,10 @@ async function readContent(): Promise<string> {
   return file.text();
 }
 
+async function backupContent(content: string): Promise<void> {
+  if (content) await Bun.write(BAK_PATH, content);
+}
+
 export async function listConfigVars(): Promise<EnvVar[]> {
   const content = await readContent();
   const vars: EnvVar[] = [];
@@ -59,6 +67,7 @@ export async function setConfigVar(key: string, value: string): Promise<void> {
     throw new Error("Value must not contain newlines");
   }
   const content = await readContent();
+  await backupContent(content);
   const newLine = `export ${key}=${quoteValue(value)}`;
   const lines = content.split("\n");
 
@@ -80,12 +89,14 @@ export async function setConfigVar(key: string, value: string): Promise<void> {
     updated.push("");
   }
 
-  await Bun.write(CONFIG_ENV_PATH, updated.join("\n"));
+  await Bun.write(TMP_PATH, updated.join("\n"));
+  await rename(TMP_PATH, CONFIG_ENV_PATH);
 }
 
 export async function unsetConfigVar(key: string): Promise<boolean> {
   const content = await readContent();
   if (!content) return false;
+  await backupContent(content);
 
   const lines = content.split("\n");
   let found = false;
@@ -100,6 +111,7 @@ export async function unsetConfigVar(key: string): Promise<boolean> {
 
   if (!found) return false;
 
-  await Bun.write(CONFIG_ENV_PATH, updated.join("\n"));
+  await Bun.write(TMP_PATH, updated.join("\n"));
+  await rename(TMP_PATH, CONFIG_ENV_PATH);
   return true;
 }
