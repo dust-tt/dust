@@ -383,16 +383,10 @@ function checkHonoMigrationSync() {
 
     if (file.startsWith("front/pages/api/")) {
       nextRepoPath = file;
-      honoRepoPath = file.replace(
-        /^front\/pages\/api\//,
-        "front-api/routes/"
-      );
+      honoRepoPath = file.replace(/^front\/pages\/api\//, "front-api/routes/");
     } else if (file.startsWith("front-api/routes/")) {
       honoRepoPath = file;
-      nextRepoPath = file.replace(
-        /^front-api\/routes\//,
-        "front/pages/api/"
-      );
+      nextRepoPath = file.replace(/^front-api\/routes\//, "front/pages/api/");
     } else {
       continue;
     }
@@ -408,8 +402,7 @@ function checkHonoMigrationSync() {
       continue;
     }
 
-    const counterpart =
-      file === nextRepoPath ? honoRepoPath : nextRepoPath;
+    const counterpart = file === nextRepoPath ? honoRepoPath : nextRepoPath;
     checks.push({ file, counterpart });
   }
 
