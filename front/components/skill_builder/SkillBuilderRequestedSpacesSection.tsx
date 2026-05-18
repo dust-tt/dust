@@ -4,7 +4,10 @@ import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActio
 import { useBlockedSkillSpaceRemovalConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import type {
+  AttachedKnowledgeFormData,
+  SkillBuilderFormData,
+} from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Button, ContentMessage, PlanetIcon } from "@dust-tt/sparkle";
@@ -86,10 +89,7 @@ export function SkillBuilderRequestedSpacesSection({
     (!initialRequestedSpaceIds || attachedKnowledge !== undefined);
 
   const knowledgeBySpaceId = useMemo(() => {
-    const knowledgeBySpace: Record<
-      string,
-      NonNullable<typeof attachedKnowledge>
-    > = {};
+    const knowledgeBySpace: Record<string, AttachedKnowledgeFormData[]> = {};
 
     for (const knowledge of attachedKnowledge ?? []) {
       knowledgeBySpace[knowledge.spaceId] = (
