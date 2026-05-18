@@ -19,8 +19,9 @@ export function SkillBuilderRequestedSpacesSection({
   initialRequestedSpaceIds,
 }: SkillBuilderRequestedSpacesSectionProps) {
   const {
+    resetField,
     setValue,
-    formState: { isDirty },
+    formState: { dirtyFields },
   } = useFormContext<SkillBuilderFormData>();
 
   const tools = useWatch<SkillBuilderFormData, "tools">({ name: "tools" });
@@ -96,19 +97,23 @@ export function SkillBuilderRequestedSpacesSection({
   ]);
 
   useEffect(() => {
-    if (!areSpaceRequirementsReady || !initialRequestedSpaceIds || isDirty) {
+    if (
+      !areSpaceRequirementsReady ||
+      !initialRequestedSpaceIds ||
+      dirtyFields.additionalSpaces
+    ) {
       return;
     }
 
-    setValue("additionalSpaces", initialAdditionalSpaces, {
-      shouldDirty: false,
+    resetField("additionalSpaces", {
+      defaultValue: initialAdditionalSpaces,
     });
   }, [
     areSpaceRequirementsReady,
+    dirtyFields.additionalSpaces,
     initialAdditionalSpaces,
     initialRequestedSpaceIds,
-    isDirty,
-    setValue,
+    resetField,
   ]);
 
   const additionalSpaceIds = useMemo(() => {
