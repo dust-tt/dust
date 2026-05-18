@@ -130,6 +130,35 @@ export function HeroOfficeSection() {
       <div className="relative mx-auto flex w-full max-w-[1600px] flex-col-reverse items-stretch gap-10 px-6 pt-16 lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:pt-24">
         <div className="z-10 flex w-full flex-col items-start gap-6 lg:w-[42%] lg:pr-8">
           <HomeReveal>
+            <Link
+              href="/landing/ebook"
+              onClick={withTracking(TRACKING_AREAS.HOME, "hero_ebook_pill")}
+              className="group inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 py-1 pl-1 pr-3 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+            >
+              <span className="inline-flex h-5 items-center rounded-full bg-blue-500 px-2 text-[10px] font-semibold uppercase leading-none tracking-[0.06em] text-white">
+                New ebook
+              </span>
+              <span className="truncate">
+                The AI Enterprise Playbook - Download it now
+              </span>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="flex-shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5 motion-reduce:transform-none motion-reduce:transition-none"
+                aria-hidden="true"
+              >
+                <line x1="3" y1="8" x2="13" y2="8" />
+                <polyline points="9 4 13 8 9 12" />
+              </svg>
+            </Link>
+          </HomeReveal>
+          <HomeReveal>
             <h1
               className="m-0 text-balance text-[clamp(40px,4.8vw,76px)] font-semibold leading-[90%] tracking-[-0.04em] text-foreground"
               style={{ fontFamily: "var(--font-sans, inherit)" }}

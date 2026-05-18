@@ -152,8 +152,8 @@ export function EbookForm() {
           Thank you! Your ebook is ready.
         </h3>
         <p className="text-muted-foreground">
-          Click the button below to download your copy of The Connected
-          Enterprise AI Playbook.
+          Click the button below to download your copy of The AI Enterprise
+          Playbook.
         </p>
         <Button
           label="Download Ebook"
