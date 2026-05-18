@@ -150,11 +150,7 @@ export function SkillBuilderFilesSection() {
       : undefined;
 
   const downloadFile = async (fileAttachment: SkillBuilderFileAttachment) => {
-    window.open(
-      getFileDownloadUrl(owner, fileAttachment.fileId),
-      "_blank",
-      "noopener,noreferrer"
-    );
+    window.open(getFileDownloadUrl(owner, fileAttachment.fileId), "_blank");
   };
 
   const removeFile = async ({
