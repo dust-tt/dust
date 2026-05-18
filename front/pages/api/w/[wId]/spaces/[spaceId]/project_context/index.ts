@@ -1,9 +1,5 @@
 /** @ignoreswagger */
-import {
-  type ConversationAttachmentType,
-  isContentNodeAttachmentType,
-  isFileAttachmentType,
-} from "@app/lib/api/assistant/conversation/attachments";
+import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   addContentNodeToProject,
@@ -46,7 +42,6 @@ export type PostProjectContextContentNodeResponseBody = {
 const ProjectContextQuerySchema = z.object({
   spaceId: z.string(),
   query: z.string().optional(),
-  type: z.enum(["file", "content-node"]).optional(),
 });
 
 /** Lowercase + strip separators so "Hello World 4" matches query "helloworld". */
@@ -85,12 +80,12 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message:
-          "Invalid query parameters. Expected `spaceId` (string), optional `query` (string), optional `type` (`file` | `content-node`).",
+          "Invalid query parameters. Expected `spaceId` (string), optional `query` (string).",
       },
     });
   }
 
-  const { spaceId, query, type } = queryValidation.data;
+  const { spaceId, query } = queryValidation.data;
 
   const space = await SpaceResource.fetchById(auth, spaceId);
   if (!space || !space.canRead(auth)) {
@@ -108,24 +103,10 @@ async function handler(
       const attachments = await listProjectContextAttachments(auth, space);
 
       const q = query?.trim().toLowerCase() ?? "";
-      const t = type ?? "";
 
-      const filtered = attachments.filter((a) => {
-        if (t) {
-          if (t === "file" && !isFileAttachmentType(a)) {
-            return false;
-          }
-          if (t === "content-node" && !isContentNodeAttachmentType(a)) {
-            return false;
-          }
-        }
-
-        if (!attachmentTitleMatchesQuery(a.title, q)) {
-          return false;
-        }
-
-        return true;
-      });
+      const filtered = attachments.filter((a) =>
+        attachmentTitleMatchesQuery(a.title, q)
+      );
 
       res.status(200).json({ attachments: filtered });
       return;

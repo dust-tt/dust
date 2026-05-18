@@ -14,6 +14,10 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
+  GCSMountEntry,
+  GetSpaceFilesResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/files";
+import type {
   GetProjectContextResponseBody,
   PostProjectContextContentNodeResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_context";
@@ -42,13 +46,11 @@ export function useProjectContextAttachments({
   owner,
   spaceId,
   query,
-  type,
   disabled,
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
   query?: string;
-  type?: "file" | "content-node";
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -62,12 +64,9 @@ export function useProjectContextAttachments({
     if (query && query.trim().length > 0) {
       params.set("query", query);
     }
-    if (type) {
-      params.set("type", type);
-    }
     const qs = params.toString();
     return `/api/w/${owner.sId}/spaces/${spaceId}/project_context${qs ? `?${qs}` : ""}`;
-  }, [disabled, owner.sId, spaceId, query, type]);
+  }, [disabled, owner.sId, spaceId, query]);
 
   const { data, error, mutate } = useSWRWithDefaults(
     key,
@@ -79,6 +78,31 @@ export function useProjectContextAttachments({
     isProjectContextAttachmentsLoading: !disabled && !error && !data,
     isProjectContextAttachmentsError: !!error,
     mutateProjectContextAttachments: mutate,
+  };
+}
+
+export function useProjectFiles({
+  owner,
+  spaceId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const projectFilesFetcher: Fetcher<GetSpaceFilesResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/spaces/${spaceId}/files`,
+    projectFilesFetcher
+  );
+
+  return {
+    files: data?.files ?? emptyArray<GCSMountEntry>(),
+    isProjectFilesLoading: !disabled && !error && !data,
+    isProjectFilesError: !!error,
+    mutateProjectFiles: mutate,
   };
 }
 
