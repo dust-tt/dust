@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -8,6 +9,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import { isString } from "@app/types/shared/utils/general";
 
 import { spaceResource } from "@front-api/middleware/space_resource";
 import { validate } from "@front-api/middleware/validator";
@@ -36,10 +38,26 @@ export const PostDatasetRequestBodySchema = z.object({
 // everybody for public spaces).
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanWrite: true }), async (c) => {
+// Shared prelude for GET and POST: resolves the app from `:aId`, verifies it
+// belongs to the current space, and enforces write access on it. Returns
+// either the loaded resources or the `Response` to short-circuit with.
+async function loadApp(
+  c: Context
+): Promise<{ appResource: AppResource; aId: string } | Response> {
   const auth = c.get("auth");
   const space = c.get("space");
-  const aId = c.req.param("aId") ?? "";
+  const { aId } = c.req.param();
+  if (!isString(aId)) {
+    return c.json(
+      {
+        error: {
+          type: "invalid_request_error",
+          message: "Invalid path parameters.",
+        },
+      },
+      400
+    );
+  }
 
   const appResource = await AppResource.fetchById(auth, aId);
   if (!appResource || appResource.space.sId !== space.sId) {
@@ -64,8 +82,18 @@ app.get("/", spaceResource({ requireCanWrite: true }), async (c) => {
     );
   }
 
-  const datasets = await getDatasets(auth, appResource.toJSON());
+  return { appResource, aId };
+}
 
+app.get("/", spaceResource({ requireCanWrite: true }), async (c) => {
+  const loaded = await loadApp(c);
+  if (loaded instanceof Response) {
+    return loaded;
+  }
+  const { appResource } = loaded;
+  const auth = c.get("auth");
+
+  const datasets = await getDatasets(auth, appResource.toJSON());
   return c.json({ datasets });
 });
 
@@ -74,34 +102,13 @@ app.post(
   spaceResource({ requireCanWrite: true }),
   validate("json", PostDatasetRequestBodySchema),
   async (c) => {
+    const loaded = await loadApp(c);
+    if (loaded instanceof Response) {
+      return loaded;
+    }
+    const { appResource } = loaded;
     const auth = c.get("auth");
-    const space = c.get("space");
-    const aId = c.req.param("aId") ?? "";
     const owner = auth.getNonNullableWorkspace();
-
-    const appResource = await AppResource.fetchById(auth, aId);
-    if (!appResource || appResource.space.sId !== space.sId) {
-      return c.json(
-        {
-          error: { type: "app_not_found", message: "The app was not found." },
-        },
-        404
-      );
-    }
-
-    if (!appResource.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "app_auth_error",
-            message:
-              "Interacting with datasets requires write access to the app's space.",
-          },
-        },
-        403
-      );
-    }
-
     const body = c.req.valid("json");
 
     // Check that dataset does not already exist.
@@ -113,13 +120,7 @@ app.post(
       attributes: ["name"],
     });
 
-    let exists = false;
-    existing.forEach((e) => {
-      if (e.name == body.dataset.name) {
-        exists = true;
-      }
-    });
-    if (exists) {
+    if (existing.some((e) => e.name === body.dataset.name)) {
       return c.json(
         {
           error: {
