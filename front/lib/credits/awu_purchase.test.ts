@@ -9,7 +9,9 @@ import {
 } from "@app/lib/metronome/plan_type";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -82,7 +84,9 @@ describe("getAwuPurchaseInfo", () => {
   });
 
   it("tracks prior EUR purchases using the invoice credit metadata rather than amount_paid", async () => {
-    const { workspace, user } = await createResourceTest({ role: "admin" });
+    const workspace = await WorkspaceFactory.metronome();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
 
     const updateResult = await WorkspaceResource.updateMetronomeCustomerId(
       workspace.id,
