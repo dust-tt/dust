@@ -669,6 +669,25 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  static async listModelIdsByAgentMessageIds(
+    auth: Authenticator,
+    agentMessageIds: ModelId[]
+  ): Promise<ModelId[]> {
+    if (agentMessageIds.length === 0) {
+      return [];
+    }
+
+    const actions = await AgentMCPActionModel.findAll({
+      attributes: ["id"],
+      where: {
+        agentMessageId: { [Op.in]: agentMessageIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return actions.map((action) => action.id);
+  }
+
   static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: ModelId }

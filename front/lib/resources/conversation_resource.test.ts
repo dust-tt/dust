@@ -1,6 +1,8 @@
 // biome-ignore-all lint/plugin/noRawSql: test file uses raw SQL for setup and verification
 import { loadAllModels } from "@app/admin/db";
+import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -514,6 +516,86 @@ describe("destroyConversation", () => {
       agentMessageDestroyCounts.reduce((sum, count) => sum + count, 0)
     ).toBe(30);
     expect(Math.max(...agentMessageDestroyCounts)).toBeLessThan(30);
+  });
+
+  it("should delete MCP actions with a missing step content link", async () => {
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationType.sId
+    );
+    if (!conversation) {
+      throw new Error("Conversation should exist");
+    }
+
+    const agentMessage = (
+      await MessageModel.findAll({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      })
+    ).find((message) => message.agentMessageId !== null);
+    if (!agentMessage?.agentMessageId) {
+      throw new Error("Agent message should exist");
+    }
+    const agentMessageId = agentMessage.agentMessageId;
+
+    const toolConfiguration: LightMCPToolConfigurationType = {
+      id: 1,
+      sId: generateRandomModelSId(),
+      type: "mcp_configuration",
+      name: "test_tool",
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: "test-server-view",
+      dustAppConfiguration: null,
+      secretName: null,
+      dustProject: null,
+      internalMCPServerId: null,
+      availability: "auto",
+      permission: "low",
+      toolServerId: "test-server",
+      retryPolicy: "no_retry",
+      originalName: "test_tool",
+      mcpServerName: "test_server",
+    };
+
+    await AgentMCPActionModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      agentMessageId,
+      mcpServerConfigurationId: generateRandomModelSId(),
+      status: "succeeded",
+      citationsAllocated: 0,
+      augmentedInputs: {},
+      toolConfiguration,
+      stepContext: {
+        citationsCount: 0,
+        citationsOffset: 0,
+        resumeState: null,
+        retrievalTopK: 10,
+        websearchResultCount: 5,
+      },
+    });
+
+    const result = await destroyConversation(auth, { conversation });
+
+    expect(result.isOk()).toBe(true);
+    await expect(
+      AgentMCPActionModel.count({
+        where: {
+          agentMessageId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      })
+    ).resolves.toBe(0);
   });
 });
 
