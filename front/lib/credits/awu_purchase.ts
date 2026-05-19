@@ -96,7 +96,7 @@ async function checkAwuPurchaseEligibility(
   if (
     !subscription ||
     !metronomeCustomerId ||
-    isSubscriptionMetronomeBilled(subscription)
+    !isSubscriptionMetronomeBilled(subscription)
   ) {
     return new Err({ code: "not_metronome_billed" });
   }
