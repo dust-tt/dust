@@ -203,12 +203,12 @@ mod tests {
 
     #[test]
     fn parse_float_args() {
-        let args = vec!["--ratio".to_string(), "3.14".to_string()];
+        let args = vec!["--ratio".to_string(), "3.125".to_string()];
         let result = parse_args(&args)
             .expect("should parse")
             .expect("should have value");
         let ratio = result["ratio"].as_f64().expect("should be f64");
-        assert!((ratio - 3.14).abs() < f64::EPSILON);
+        assert!((ratio - 3.125).abs() < f64::EPSILON);
     }
 
     #[test]

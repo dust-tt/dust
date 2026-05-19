@@ -1,11 +1,11 @@
 mod deny_log;
 mod handshake;
 mod http_host;
+mod http_rewriter;
 mod original_dst;
 mod sni;
 mod tls_mitm;
 
-use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -25,9 +25,12 @@ use tracing::{debug, info, warn};
 
 use crate::egress_secrets::SecretTable;
 
-use self::deny_log::{append_deny_log, DenyReason};
+use self::deny_log::{append_deny_log, DenyLogEntry, DenyReason};
 use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
 use self::http_host::parse_http_host;
+use self::http_rewriter::{
+    copy_responses_with_websocket_watch, forward_http1_requests, HttpRewriteError, HttpRewriteMode,
+};
 use self::original_dst::resolve_original_dst;
 use self::sni::parse_client_hello_sni;
 use self::tls_mitm::{MitmCa, HTTP_1_1_ALPN};
@@ -272,6 +275,15 @@ async fn handle_connection(
                 run_mitm_session(&runtime, sni, client_stream, proxy_stream)
                     .await
                     .context("MITM session failed")?;
+            } else if original_port == 80 {
+                run_plain_http_session(
+                    &runtime,
+                    &domain_extraction.domain,
+                    client_stream,
+                    proxy_stream,
+                )
+                .await
+                .context("plain HTTP guard session failed")?;
             } else {
                 tokio::io::copy_bidirectional(&mut client_stream, &mut proxy_stream)
                     .await
@@ -286,9 +298,7 @@ async fn handle_connection(
             };
             append_deny_log(
                 &runtime.deny_log,
-                &domain_extraction.domain,
-                original_port,
-                reason,
+                DenyLogEntry::proxy(&domain_extraction.domain, original_port, reason),
             )
             .await
             .context("failed to append deny log entry")?;
@@ -303,9 +313,11 @@ async fn handle_connection(
         ProxyDecision::ProtocolError => {
             append_deny_log(
                 &runtime.deny_log,
-                &domain_extraction.domain,
-                original_port,
-                DenyReason::ProxyProtocolError,
+                DenyLogEntry::proxy(
+                    &domain_extraction.domain,
+                    original_port,
+                    DenyReason::ProxyProtocolError,
+                ),
             )
             .await
             .context("failed to append protocol-error deny log entry")?;
@@ -340,12 +352,12 @@ async fn run_mitm_session<C, S>(
     proxy_stream: S,
 ) -> Result<()>
 where
-    C: AsyncRead + AsyncWrite + Unpin,
-    S: AsyncRead + AsyncWrite + Unpin,
+    C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     let upstream_server_name =
         ServerName::try_from(sni.to_string()).context("invalid upstream SNI for MITM TLS")?;
-    let mut upstream_tls = runtime
+    let upstream_tls = runtime
         .mitm_tls_connector
         .connect(upstream_server_name, proxy_stream)
         .await
@@ -357,29 +369,90 @@ where
         .await
         .context("failed to build MITM server config for SNI")?;
     let acceptor = TlsAcceptor::from(server_config);
-    let mut agent_tls = acceptor
+    let agent_tls = acceptor
         .accept(client_stream)
         .await
         .context("failed to accept agent TLS for MITM")?;
 
-    match tokio::io::copy_bidirectional(&mut agent_tls, &mut upstream_tls).await {
-        Ok(_) => {}
-        Err(error)
-            if matches!(
-                error.kind(),
-                ErrorKind::BrokenPipe | ErrorKind::ConnectionReset | ErrorKind::UnexpectedEof
-            ) =>
-        {
-            debug!(
-                sni,
-                error = %error,
-                "MITM bidirectional copy ended after peer closed the connection"
-            );
-        }
-        Err(error) => return Err(error).context("MITM bidirectional copy failed"),
-    }
+    run_rewritten_http_session(
+        runtime,
+        HttpRewriteMode::Tls { sni },
+        agent_tls,
+        upstream_tls,
+    )
+    .await
+}
 
-    Ok(())
+async fn run_plain_http_session<C, S>(
+    runtime: &ForwardRuntime,
+    domain: &str,
+    client_stream: C,
+    proxy_stream: S,
+) -> Result<()>
+where
+    C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    run_rewritten_http_session(
+        runtime,
+        HttpRewriteMode::PlainHttp { domain },
+        client_stream,
+        proxy_stream,
+    )
+    .await
+}
+
+async fn run_rewritten_http_session<C, S>(
+    runtime: &ForwardRuntime,
+    mode: HttpRewriteMode<'_>,
+    client_stream: C,
+    upstream_stream: S,
+) -> Result<()>
+where
+    C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let (mut client_read, mut client_write) = tokio::io::split(client_stream);
+    let (mut upstream_read, mut upstream_write) = tokio::io::split(upstream_stream);
+    let (websocket_watch_tx, websocket_watch_rx) = tokio::sync::mpsc::channel(1);
+    let mut response_task = tokio::spawn(async move {
+        copy_responses_with_websocket_watch(
+            &mut upstream_read,
+            &mut client_write,
+            websocket_watch_rx,
+        )
+        .await
+    });
+
+    tokio::select! {
+        request_result = forward_http1_requests(
+            &mut client_read,
+            &mut upstream_write,
+            &runtime.secret_table,
+            mode,
+            Some(&websocket_watch_tx),
+        ) => {
+            match request_result {
+                Ok(()) => {
+                    response_task.await.context("response copy task panicked")?
+                }
+                Err(HttpRewriteError::Denied(entry)) => {
+                    response_task.abort();
+                    append_deny_log(&runtime.deny_log, entry)
+                        .await
+                        .context("failed to append MITM deny log entry")?;
+                    Ok(())
+                }
+                Err(HttpRewriteError::Io(error)) => {
+                    response_task.abort();
+                    Err(error).context("HTTP rewrite failed")
+                }
+            }
+        }
+        response_result = &mut response_task => {
+            response_result.context("response copy task panicked")?
+        }
+    }
 }
 
 fn display_domain(domain: &str) -> &str {
