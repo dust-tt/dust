@@ -69,6 +69,7 @@
  *         - sId
  *         - name
  *         - role
+ *         - regionalModelsOnly
  *       properties:
  *         id:
  *           type: integer
@@ -93,6 +94,9 @@
  *           nullable: true
  *         ssoEnforced:
  *           type: boolean
+ *         regionalModelsOnly:
+ *           type: boolean
+ *           description: When true, only models whose regionalAvailability includes the workspace's region are usable.
  *         metadata:
  *           type: object
  *           nullable: true
