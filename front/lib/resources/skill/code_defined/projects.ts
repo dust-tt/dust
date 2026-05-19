@@ -25,6 +25,8 @@ The Pod provides:
 - Pod metadata (description, URLs, members, etc.) for organizational context
 - Collaborative context that persists beyond individual conversations
 
+Note: Pods were previously called "Projects". Some users may still refer to them as "Projects"; treat both terms as referring to the same feature.
+
 ## Persistent Knowledge
 
 Can be also referred to as the "Pod Context". Pod files live under \`project/<rel>\`
