@@ -172,15 +172,13 @@ export function useBlockedSkillSpaceRemovalConfirm({
     actions,
     knowledgeInInstructions,
   }: ConfirmBlockedSkillSpaceRemovalParams): Promise<boolean> => {
-    const spaceKind = space.kind === "project" ? "project" : "space";
-
     return confirm({
       title: `${getSpaceName(space)} can't be removed`,
       message: (
         <div className="space-y-3">
           <p className="text-sm">
-            This {spaceKind} can't be removed from the skill because the skill
-            uses knowledge or tools that belong to it.
+            This space can't be removed from the skill because the skill uses
+            knowledge or tools that belong to it.
           </p>
           <div className="flex flex-wrap gap-2">
             {knowledgeInInstructions.map((knowledge) => (
@@ -203,9 +201,8 @@ export function useBlockedSkillSpaceRemovalConfirm({
             ))}
           </div>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Update the skill to stop relying on these items, then remove
-            the&nbsp;
-            {spaceKind}.
+            Update the skill to stop relying on these items, then remove the
+            space.
           </p>
         </div>
       ),
