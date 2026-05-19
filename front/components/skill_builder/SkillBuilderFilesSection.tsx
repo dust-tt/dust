@@ -1,28 +1,48 @@
+import {
+  FileExplorerItem,
+  FileExplorerViewToggle,
+  fileExplorerCardGridClasses,
+  type ViewMode,
+} from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
+import { getSingularFileCategoryLabelForContentType } from "@app/components/assistant/conversation/files_panel/utils";
+import {
+  FilePreviewDialog,
+  needsFilePreviewTextContent,
+} from "@app/components/files/FilePreviewDialog";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import {
+  getFileDownloadUrl,
+  getSkillFileContentUrl,
+  useSkillFileContent,
+} from "@app/lib/swr/files";
 import {
   ArrowGoBackIcon,
   Button,
-  ContextItem,
-  cn,
-  DocumentIcon,
+  CardGrid,
   EmptyCTA,
   PlusIcon,
+  ScrollArea,
   Spinner,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
+
+type SkillBuilderFileAttachment =
+  SkillBuilderFormData["fileAttachments"][number];
 
 export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
-  const [canScrollFilesDown, setCanScrollFilesDown] = useState(false);
+  const [previewFileAttachment, setPreviewFileAttachment] =
+    useState<SkillBuilderFileAttachment | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   const { fields, append, remove } = useFieldArray<
     SkillBuilderFormData,
@@ -33,8 +53,6 @@ export function SkillBuilderFilesSection() {
   const hasFileAttachments = fields.length > 0;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const fileListRef = useRef<HTMLDivElement>(null);
-  const fileListBottomSentinelRef = useRef<HTMLDivElement>(null);
 
   const { handleFilesUpload, isProcessingFiles } = useFileUploaderService({
     hasSandboxTools: false,
@@ -74,30 +92,6 @@ export function SkillBuilderFilesSection() {
     (currentFileIds.size !== compareFileIds.size ||
       [...currentFileIds].some((id) => !compareFileIds.has(id)));
 
-  useEffect(() => {
-    const list = fileListRef.current;
-    const sentinel = fileListBottomSentinelRef.current;
-
-    if (
-      !hasFileAttachments ||
-      !list ||
-      !sentinel ||
-      typeof IntersectionObserver === "undefined"
-    ) {
-      setCanScrollFilesDown(false);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => setCanScrollFilesDown(!entry.isIntersecting),
-      { root: list, threshold: 0.1 }
-    );
-
-    observer.observe(sentinel);
-
-    return () => observer.disconnect();
-  }, [hasFileAttachments]);
-
   const restoreFiles = () => {
     if (!compareVersion) {
       return;
@@ -105,10 +99,71 @@ export function SkillBuilderFilesSection() {
     setValue("fileAttachments", compareVersion.fileAttachments, {
       shouldDirty: true,
     });
+    setPreviewFileAttachment(null);
   };
 
   const onUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const canPreviewFiles = !!skillId;
+  const isPreviewOpen = canPreviewFiles && previewFileAttachment !== null;
+
+  const { fileContent, isFileContentLoading, fileContentError } =
+    useSkillFileContent({
+      fileId: previewFileAttachment?.fileId ?? null,
+      owner,
+      skillId,
+      disabled:
+        !isPreviewOpen ||
+        !skillId ||
+        !needsFilePreviewTextContent(previewFileAttachment?.contentType ?? ""),
+    });
+
+  const openPreviewDialog = (fileAttachment: SkillBuilderFileAttachment) => {
+    if (!canPreviewFiles) {
+      return;
+    }
+
+    setPreviewFileAttachment(fileAttachment);
+  };
+
+  const previewIndex = previewFileAttachment
+    ? sortedFields.findIndex(
+        ({ field }) => field.fileId === previewFileAttachment.fileId
+      )
+    : -1;
+
+  const handlePreviewPrev =
+    previewIndex > 0
+      ? () =>
+          setPreviewFileAttachment(
+            sortedFields[previewIndex - 1]?.field ?? null
+          )
+      : undefined;
+  const handlePreviewNext =
+    previewIndex >= 0 && previewIndex < sortedFields.length - 1
+      ? () =>
+          setPreviewFileAttachment(
+            sortedFields[previewIndex + 1]?.field ?? null
+          )
+      : undefined;
+
+  const downloadFile = async (fileAttachment: SkillBuilderFileAttachment) => {
+    window.open(getFileDownloadUrl(owner, fileAttachment.fileId), "_blank");
+  };
+
+  const removeFile = async ({
+    fileAttachment,
+    originalIndex,
+  }: {
+    fileAttachment: SkillBuilderFileAttachment;
+    originalIndex: number;
+  }) => {
+    remove(originalIndex);
+    if (previewFileAttachment?.fileId === fileAttachment.fileId) {
+      setPreviewFileAttachment(null);
+    }
   };
 
   const onFileInputChange = useCallback(
@@ -135,7 +190,11 @@ export function SkillBuilderFilesSection() {
         if (uploaded) {
           for (const blob of uploaded) {
             if (blob.fileId) {
-              append({ fileId: blob.fileId, fileName: blob.filename });
+              append({
+                contentType: blob.contentType,
+                fileId: blob.fileId,
+                fileName: blob.filename,
+              });
             }
           }
         }
@@ -147,16 +206,48 @@ export function SkillBuilderFilesSection() {
     [handleFilesUpload, append, existingFileNames, sendNotification]
   );
 
-  const headerActions = !isDiffMode && hasFileAttachments && (
-    <Button
-      type="button"
-      onClick={onUploadClick}
-      label="Upload files"
-      icon={isProcessingFiles ? Spinner : PlusIcon}
-      variant="outline"
-      disabled={isProcessingFiles}
-    />
+  const headerActions = (
+    <>
+      {hasFileAttachments && (
+        <FileExplorerViewToggle value={viewMode} onValueChange={setViewMode} />
+      )}
+      {!isDiffMode && hasFileAttachments && (
+        <Button
+          type="button"
+          onClick={onUploadClick}
+          label="Upload files"
+          icon={isProcessingFiles ? Spinner : PlusIcon}
+          variant="outline"
+          disabled={isProcessingFiles}
+        />
+      )}
+    </>
   );
+
+  const fileItems = sortedFields.map(({ field, originalIndex }) => {
+    const diffStatus =
+      isDiffMode && !compareFileIds.has(field.fileId) ? "added" : undefined;
+    const FileIcon = getFileTypeIcon(field.contentType, field.fileName);
+
+    return (
+      <FileExplorerItem
+        key={field.id}
+        kind="icon"
+        visual={FileIcon}
+        viewMode={viewMode}
+        title={field.fileName}
+        diffStatus={diffStatus}
+        subtitle={getSingularFileCategoryLabelForContentType(field.contentType)}
+        onOpen={canPreviewFiles ? () => openPreviewDialog(field) : undefined}
+        onDownload={() => downloadFile(field)}
+        onRemove={
+          !isDiffMode
+            ? () => removeFile({ fileAttachment: field, originalIndex })
+            : undefined
+        }
+      />
+    );
+  });
 
   return (
     <div className="flex flex-col gap-3">
@@ -215,57 +306,47 @@ export function SkillBuilderFilesSection() {
           />
         )
       ) : (
-        <div className="relative">
-          <div
-            ref={fileListRef}
-            className="max-h-64 overflow-y-auto overflow-x-hidden"
-          >
-            <ContextItem.List>
-              {sortedFields.map(({ field, originalIndex }) => {
-                const isAdded = isDiffMode && !compareFileIds.has(field.fileId);
-                return (
-                  <ContextItem
-                    key={field.id}
-                    title={
-                      <span
-                        className={cn(
-                          "text-sm font-normal",
-                          isAdded && "text-success dark:text-success-night"
-                        )}
-                      >
-                        {field.fileName}
-                      </span>
-                    }
-                    visual={<ContextItem.Visual visual={DocumentIcon} />}
-                    hoverAction={!isDiffMode}
-                    action={
-                      !isDiffMode ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          icon={XMarkIcon}
-                          size="xs"
-                          onClick={() => remove(originalIndex)}
-                        />
-                      ) : undefined
-                    }
-                  />
-                );
-              })}
-            </ContextItem.List>
-            <div ref={fileListBottomSentinelRef} className="h-px" aria-hidden />
-          </div>
-          <div
-            className={cn(
-              "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t",
-              "from-background via-background/60 to-transparent transition-opacity duration-300",
-              "dark:from-background-night dark:via-background-night/60",
-              canScrollFilesDown ? "opacity-100" : "opacity-0"
-            )}
-            aria-hidden
-          />
-        </div>
+        <ScrollArea className="max-h-64">
+          {viewMode === "list" ? (
+            <div className="flex flex-col gap-0.5">{fileItems}</div>
+          ) : (
+            <CardGrid gridClassName={fileExplorerCardGridClasses}>
+              {fileItems}
+            </CardGrid>
+          )}
+        </ScrollArea>
       )}
+      <FilePreviewDialog
+        file={
+          previewFileAttachment && skillId
+            ? {
+                content: fileContent,
+                contentError: fileContentError,
+                contentType: previewFileAttachment.contentType,
+                fileName: previewFileAttachment.fileName,
+                isContentLoading: isFileContentLoading,
+                viewUrl: getSkillFileContentUrl(
+                  owner,
+                  skillId,
+                  previewFileAttachment.fileId
+                ),
+              }
+            : null
+        }
+        isOpen={isPreviewOpen}
+        onDownload={async () => {
+          if (previewFileAttachment) {
+            await downloadFile(previewFileAttachment);
+          }
+        }}
+        onPrev={handlePreviewPrev}
+        onNext={handlePreviewNext}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewFileAttachment(null);
+          }
+        }}
+      />
     </div>
   );
 }

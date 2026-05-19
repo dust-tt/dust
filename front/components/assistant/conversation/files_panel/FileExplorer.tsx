@@ -1,9 +1,9 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationFilePreviewDialog } from "@app/components/assistant/conversation/files_panel/ConversationFilePreviewDialog";
 import { FileExplorerContent } from "@app/components/assistant/conversation/files_panel/FileExplorerContent";
 import { FileExplorerFilters } from "@app/components/assistant/conversation/files_panel/FileExplorerFilters";
 import type { ViewMode } from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
 import { FileExplorerToolbar } from "@app/components/assistant/conversation/files_panel/FileExplorerToolbar";
-import { FilePreviewDialog } from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
 import { getFileExplorerPipeline } from "@app/components/assistant/conversation/files_panel/fileExplorerPipeline";
 import { SandboxStatusChip } from "@app/components/assistant/conversation/files_panel/SandboxStatusChip";
 import type {
@@ -154,7 +154,7 @@ export function NewFileExplorer({
             </div>
           </div>
         </AppLayoutTitle>
-        <div className="flex flex-1 min-h-0 flex-col gap-5 pt-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-5 pt-5">
           <div className="px-4">
             <FileExplorerToolbar
               searchQuery={searchQuery}
@@ -185,7 +185,7 @@ export function NewFileExplorer({
         </div>
       </div>
 
-      <FilePreviewDialog
+      <ConversationFilePreviewDialog
         owner={owner}
         entry={previewFile}
         conversationId={conversation.sId}

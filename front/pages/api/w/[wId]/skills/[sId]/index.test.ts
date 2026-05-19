@@ -686,6 +686,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(data.skill.fileAttachments).toHaveLength(1);
     expect(data.skill.fileAttachments[0].fileName).toBe("template.txt");
+    expect(data.skill.fileAttachments[0].contentType).toBe("text/plain");
 
     // Verify persistence.
     const updatedSkill = await SkillResource.fetchById(
