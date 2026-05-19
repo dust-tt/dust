@@ -1,9 +1,13 @@
 import { SpaceSelectionSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
+import { useBlockedSkillSpaceRemovalConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import type {
+  AttachedKnowledgeFormData,
+  SkillBuilderFormData,
+} from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
@@ -38,6 +42,9 @@ export function SkillBuilderRequestedSpacesSection({
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
   const { spaces, owner, isSpacesLoading } = useSpacesContext();
+  const confirmBlockedSpaceRemoval = useBlockedSkillSpaceRemovalConfirm({
+    mcpServerViews,
+  });
 
   const missingSpaceIds = useMemo(() => {
     if (isSpacesLoading || !initialRequestedSpaceIds?.length) {
@@ -62,7 +69,7 @@ export function SkillBuilderRequestedSpacesSection({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>([]);
 
-  const spaceIdToActions = useMemo(() => {
+  const actionsBySpaceId = useMemo(() => {
     return getSpaceIdToActionsMap(tools ?? [], mcpServerViews);
   }, [tools, mcpServerViews]);
 
@@ -71,16 +78,28 @@ export function SkillBuilderRequestedSpacesSection({
   }, [attachedKnowledge]);
 
   const spaceIdsUsedBySkill = useMemo(() => {
-    const actionRequestedSpaceIds = Object.keys(spaceIdToActions).filter(
-      (spaceId) => spaceIdToActions[spaceId]?.length > 0
+    const actionRequestedSpaceIds = Object.keys(actionsBySpaceId).filter(
+      (spaceId) => actionsBySpaceId[spaceId]?.length > 0
     );
 
     return new Set([...actionRequestedSpaceIds, ...spaceIdsFromKnowledge]);
-  }, [spaceIdToActions, spaceIdsFromKnowledge]);
+  }, [actionsBySpaceId, spaceIdsFromKnowledge]);
 
   const areSpaceRequirementsReady =
     !isMCPServerViewsLoading &&
     (!initialRequestedSpaceIds || attachedKnowledge !== undefined);
+
+  const knowledgeBySpaceId = useMemo(() => {
+    const knowledgeBySpace: Record<string, AttachedKnowledgeFormData[]> = {};
+
+    for (const knowledge of attachedKnowledge ?? []) {
+      knowledgeBySpace[knowledge.spaceId] = (
+        knowledgeBySpace[knowledge.spaceId] ?? []
+      ).concat(knowledge);
+    }
+
+    return knowledgeBySpace;
+  }, [attachedKnowledge]);
 
   const initialAdditionalSpaces = useMemo(() => {
     if (!areSpaceRequirementsReady || !initialRequestedSpaceIds?.length) {
@@ -129,17 +148,22 @@ export function SkillBuilderRequestedSpacesSection({
     );
   }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
 
-  const handleRemoveSpace = (space: SpaceType) => {
+  const handleRemoveSpace = async (space: SpaceType) => {
+    if (!areSpaceRequirementsReady) {
+      return;
+    }
+
+    if (spaceIdsUsedBySkill.has(space.sId)) {
+      await confirmBlockedSpaceRemoval({
+        space,
+        actions: actionsBySpaceId[space.sId] ?? [],
+        knowledge: knowledgeBySpaceId[space.sId] ?? [],
+      });
+      return;
+    }
+
     additionalSpacesField.onChange(
       selectedAdditionalSpaces.filter((spaceId) => spaceId !== space.sId)
-    );
-  };
-
-  const canRemoveSpace = (space: SpaceType) => {
-    return (
-      areSpaceRequirementsReady &&
-      additionalSpaceIds.has(space.sId) &&
-      !spaceIdsUsedBySkill.has(space.sId)
     );
   };
 
@@ -197,7 +221,7 @@ export function SkillBuilderRequestedSpacesSection({
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
             Based on your selection of spaces, knowledge, and tools, this skill
-            can only be used by users with access to:{" "}
+            can only be used by users with access to:&nbsp;
             <strong>
               {nonGlobalSpacesWithRestrictions
                 .map((space) => space.name)
@@ -207,11 +231,7 @@ export function SkillBuilderRequestedSpacesSection({
           </ContentMessage>
         </div>
       )}
-      <SpaceChips
-        spaces={spacesToDisplay}
-        onRemoveSpace={handleRemoveSpace}
-        canRemoveSpace={canRemoveSpace}
-      />
+      <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
 
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={spaceIdsUsedBySkill}

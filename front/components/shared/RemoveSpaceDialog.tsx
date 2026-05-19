@@ -1,4 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
+import { getIcon } from "@app/components/resources/resources_icons";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -6,7 +7,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types/space";
-import { DocumentIcon, Icon } from "@dust-tt/sparkle";
+import { Chip, DocumentIcon, Icon, ToolsIcon } from "@dust-tt/sparkle";
 import React, { useContext } from "react";
 
 function getActionDisplayName(
@@ -33,6 +34,20 @@ function getActionIcon(
     return getAvatar(mcpServerView.server, "xs");
   }
   return null;
+}
+
+function getActionChipIcon(
+  action: BuilderAction,
+  mcpServerViews: MCPServerViewType[]
+) {
+  const mcpServerView = mcpServerViews.find(
+    (view) => view.sId === action.configuration.mcpServerViewId
+  );
+  if (!mcpServerView?.server) {
+    return ToolsIcon;
+  }
+
+  return getIcon(mcpServerView.server.icon);
 }
 
 function getSkillIcon(skill: SkillToRemove): React.ReactNode {
@@ -64,8 +79,14 @@ interface UseRemoveSpaceConfirmParams {
 interface ConfirmRemoveSpaceParams {
   space: SpaceType;
   actions: BuilderAction[];
-  knowledgeInInstructions?: KnowledgeToRemove[];
+  knowledge?: KnowledgeToRemove[];
   skills?: SkillToRemove[];
+}
+
+interface ConfirmBlockedSkillSpaceRemovalParams {
+  space: SpaceType;
+  actions: BuilderAction[];
+  knowledge: KnowledgeToRemove[];
 }
 
 export function useRemoveSpaceConfirm({
@@ -74,14 +95,14 @@ export function useRemoveSpaceConfirm({
 }: UseRemoveSpaceConfirmParams) {
   const confirm = useContext(ConfirmContext);
 
-  return async ({
+  return ({
     space,
     actions,
-    knowledgeInInstructions = [],
+    knowledge = [],
     skills = [],
   }: ConfirmRemoveSpaceParams): Promise<boolean> => {
     const allItems: ItemToRemove[] = [
-      ...knowledgeInInstructions.map((k) => ({
+      ...knowledge.map((k) => ({
         id: k.nodeId,
         name: k.title,
         icon: <Icon visual={DocumentIcon} size="xs" />,
@@ -98,7 +119,7 @@ export function useRemoveSpaceConfirm({
       })),
     ];
 
-    const hasKnowledge = knowledgeInInstructions.length > 0;
+    const hasKnowledge = knowledge.length > 0;
 
     return confirm({
       title: `Remove ${getSpaceName(space)} ${space.kind === "project" ? "Pod" : "space"}`,
@@ -135,6 +156,60 @@ export function useRemoveSpaceConfirm({
       validateLabel: "OK",
       validateVariant: "warning",
       validateDisabled: hasKnowledge,
+    });
+  };
+}
+
+export function useBlockedSkillSpaceRemovalConfirm({
+  mcpServerViews,
+}: {
+  mcpServerViews: MCPServerViewType[];
+}) {
+  const confirm = useContext(ConfirmContext);
+
+  return ({
+    space,
+    actions,
+    knowledge,
+  }: ConfirmBlockedSkillSpaceRemovalParams): Promise<boolean> => {
+    return confirm({
+      title: `${getSpaceName(space)} can't be removed`,
+      message: (
+        <div className="space-y-3">
+          <p className="text-sm">
+            This space can't be removed from the skill because the skill uses
+            knowledge or tools that belong to it.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {knowledge.map((knowledgeItem) => (
+              <Chip
+                key={`knowledge-${knowledgeItem.nodeId}`}
+                size="xs"
+                color="primary"
+                icon={DocumentIcon}
+                label={knowledgeItem.title}
+              />
+            ))}
+            {actions.map((action) => (
+              <Chip
+                key={`action-${action.id}`}
+                size="xs"
+                color="primary"
+                icon={getActionChipIcon(action, mcpServerViews)}
+                label={getActionDisplayName(action, mcpServerViews)}
+              />
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Update the skill to stop relying on these items, then remove the
+            space.
+          </p>
+        </div>
+      ),
+      cancelLabel: "Close",
+      validateLabel: "Remove",
+      validateVariant: "warning",
+      validateDisabled: true,
     });
   };
 }

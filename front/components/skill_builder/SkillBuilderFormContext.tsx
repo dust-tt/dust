@@ -13,6 +13,7 @@ export const attachedKnowledgeSchema = z.object({
   spaceId: z.string(),
   title: z.string(),
 });
+export type AttachedKnowledgeFormData = z.infer<typeof attachedKnowledgeSchema>;
 
 const fileAttachmentSchema = z.object({
   fileId: z.string(),
