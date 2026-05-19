@@ -5,13 +5,13 @@ import {
   serializeProjectTaskDirective,
 } from "./format";
 
-describe("project task format", () => {
+describe("pod task format", () => {
   it("serializes and extracts round-trip", () => {
     const s = serializeProjectTaskDirective({
       label: "Fix bug",
       sId: "pt_123",
     });
-    expect(s).toBe(":project_task[Fix bug]{sId=pt_123}");
+    expect(s).toBe(":pod_task[Fix bug]{sId=pt_123}");
 
     const extracted = extractProjectTaskDirectivesFromString(
       `Before ${s} after`

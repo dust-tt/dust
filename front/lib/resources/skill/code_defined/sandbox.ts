@@ -97,18 +97,18 @@ or the standard csv module. For very large files prefer chunked reads
 function buildProjectFilesSection(): string {
   return `#### Sandbox Project File System
 
-This conversation belongs to a project, so the project's file system is also
+This conversation belongs to a Pod, so the Pod's file system is also
 mounted read-write inside the sandbox at \`/files/project\`. These files are
-shared across every conversation in the same project and **persist beyond
+shared across every conversation in the same Pod and **persist beyond
 this conversation** — anything you write or delete here is visible to other
-conversations in the same project.
+conversations in the same Pod.
 
-Use this surface for files that belong to the project as a whole (specs,
+Use this surface for files that belong to the Pod as a whole (specs,
 knowledge bases, shared scripts, recurring data sets), and use
 \`/files/conversation\` for ephemeral or per-conversation artifacts. When
 both are relevant, prefer reading from \`/files/project\` and writing
 deliverables to \`/files/conversation\` unless the user has asked you to
-update the project's files specifically.
+update the Pod's files specifically.
 
 The same files are also exposed by the \`files\` MCP server under scoped
 paths like \`project/<rel>\`. Sandbox writes and MCP writes are two views on

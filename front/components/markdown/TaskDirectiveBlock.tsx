@@ -418,15 +418,15 @@ export function getTaskDirectiveBlock(owner: LightWorkspaceType) {
 }
 
 /**
- * Remark plugin: `:project_task[label]{sId=…}` and legacy `:todo[label]{sId=…}`
- * → `project_task` (single ReactMarkdown component).
+ * Remark plugin: `:pod_task[label]{sId=…}` and legacy `:project_task[label]{sId=…}` /
+ * `:todo[label]{sId=…}` → `project_task` (single ReactMarkdown component).
  */
 export function taskDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       const name = node.name;
       if (
-        (name !== "project_task" && name !== "todo") ||
+        (name !== "pod_task" && name !== "project_task" && name !== "todo") ||
         !node.children?.[0] ||
         !node.attributes?.sId
       ) {
