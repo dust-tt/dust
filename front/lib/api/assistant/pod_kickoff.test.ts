@@ -1,4 +1,4 @@
-import { buildProjectKickoffPrompt } from "@app/lib/api/assistant/project_kickoff";
+import { buildProjectKickoffPrompt } from "@app/lib/api/assistant/pod_kickoff";
 import { describe, expect, it } from "vitest";
 
 describe("buildProjectKickoffPrompt", () => {
