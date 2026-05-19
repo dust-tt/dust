@@ -8,25 +8,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   rawBodyMock,
   formParseMock,
+  incomingFormMock,
   evaluateInboundAuthMock,
   parseSendgridDkimResultsMock,
-} = vi.hoisted(() => ({
-  rawBodyMock: vi.fn(),
-  formParseMock: vi.fn(),
-  evaluateInboundAuthMock: vi.fn(),
-  parseSendgridDkimResultsMock: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  const formParseMock = vi.fn();
+
+  return {
+    rawBodyMock: vi.fn(),
+    formParseMock,
+    incomingFormMock: vi.fn(function IncomingForm() {
+      return {
+        parse: formParseMock,
+      };
+    }),
+    evaluateInboundAuthMock: vi.fn(),
+    parseSendgridDkimResultsMock: vi.fn(),
+  };
+});
 
 vi.mock("raw-body", () => ({
   default: rawBodyMock,
 }));
 
 vi.mock("formidable", () => ({
-  IncomingForm: function IncomingForm() {
-    return {
-      parse: formParseMock,
-    };
-  },
+  IncomingForm: incomingFormMock,
 }));
 
 vi.mock("@app/lib/api/assistant/email/inbound_auth", () => ({
@@ -255,6 +261,56 @@ describe("POST /api/email/webhook", () => {
     expect(formParseMock).toHaveBeenCalledTimes(1);
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true });
+  });
+
+  it("ignores zero-byte attachments after parsing", async () => {
+    process.env.IS_DEVELOPMENT = "true";
+    formParseMock.mockResolvedValue([
+      PARSED_EMAIL_FIELDS,
+      {
+        attachment1: [
+          {
+            filepath: "/tmp/empty.txt",
+            originalFilename: "empty.txt",
+            mimetype: "text/plain",
+            size: 0,
+          },
+          {
+            filepath: "/tmp/body.txt",
+            originalFilename: "body.txt",
+            mimetype: "text/plain",
+            size: 12,
+          },
+        ],
+      },
+    ]);
+
+    const { req, res } = createMocks<
+      NextApiRequestWithContext,
+      NextApiResponse<WithAPIErrorResponse<PostResponseBody>>
+    >({
+      method: "POST",
+      headers: {
+        authorization: basicAuthHeader(process.env.EMAIL_WEBHOOK_SECRET ?? ""),
+        "content-type": "multipart/form-data; boundary=boundary",
+      },
+    });
+
+    await handler(req, res);
+
+    expect(evaluateInboundAuthMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attachments: [
+          {
+            filepath: "/tmp/body.txt",
+            filename: "body.txt",
+            contentType: "text/plain",
+            size: 12,
+          },
+        ],
+      })
+    );
+    expect(res._getStatusCode()).toBe(200);
   });
 
   it("accepts relayed requests without SendGrid signatures", async () => {

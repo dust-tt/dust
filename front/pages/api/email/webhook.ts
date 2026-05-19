@@ -207,7 +207,10 @@ const parseSendgridWebhookContent = async (
       new Error("Failed to recreate request body for multipart parsing")
     );
   }
-  const form = new IncomingForm();
+  const form = new IncomingForm({
+    allowEmptyFiles: true,
+    minFileSize: 0,
+  });
   const [fields, files] = await form.parse(req);
 
   try {
@@ -254,6 +257,9 @@ const parseSendgridWebhookContent = async (
         continue;
       }
       for (const file of fileArray) {
+        if (file.size === 0) {
+          continue;
+        }
         if (file.mimetype && isSupportedFileContentType(file.mimetype)) {
           attachments.push({
             filepath: file.filepath,
