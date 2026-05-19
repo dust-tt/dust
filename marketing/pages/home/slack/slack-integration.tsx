@@ -269,7 +269,7 @@ export default function SlackIntegration() {
         ogImage="https://dust.tt/static/landing/hero_dust.png"
       />
 
-      <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-24">
+      <div className="container flex w-full flex-col gap-16 px-2 py-2">
         <HeroSection />
         <InstallationSection />
         <PainPointsSection />
