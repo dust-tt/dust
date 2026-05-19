@@ -5,6 +5,7 @@ import {
   getMCPServerFormSchema,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { MCPServerDetailsSheet } from "@app/components/actions/mcp/MCPServerDetailsSheet";
+import { ConfirmContext } from "@app/components/Confirm";
 import { useSensitivityLabelsController } from "@app/components/shared/labels/useSensitivityLabelsController";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -27,7 +28,7 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 async function patchServer(serverUrl: string, body: object) {
@@ -100,6 +101,7 @@ export function MCPServerDetails({
   const { mutate: mutateMCPServersViewsForAdmin } =
     useMutateMCPServersViewsForAdmin(owner);
   const sendNotification = useSendNotification(true);
+  const confirm = useContext(ConfirmContext);
 
   const defaults = useMemo<MCPServerFormValues>(() => {
     if (mcpServerView) {
@@ -283,6 +285,58 @@ export function MCPServerDetails({
               mcpServerView.server
             ),
           });
+
+          // Promoting to the global space hard-deletes any regular-space
+          // copies of this tool. Require confirmation before mutating when
+          // that's about to happen, naming the spaces that will lose their
+          // copy.
+          const isPromotingToGlobal = diff.sharingChanges?.some((change) => {
+            if (change.action !== "add") {
+              return false;
+            }
+            const space = spaces.find((s) => s.sId === change.spaceId);
+            return space?.kind === "global";
+          });
+          const affectedSpaceNames = (mcpServerWithViews?.views ?? []).flatMap(
+            (view) => {
+              const space = spaces.find((s) => s.sId === view.spaceId);
+              return space?.kind === "regular" ? [space.name] : [];
+            }
+          );
+          if (isPromotingToGlobal && affectedSpaceNames.length > 0) {
+            const confirmed = await confirm({
+              title: "This action will delete the tool's existing copies",
+              message: (
+                <>
+                  <div>
+                    Making the tool available to all will delete its copies in
+                    these spaces:
+                  </div>
+                  <ul className="list-disc pl-6">
+                    {affectedSpaceNames.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                  <div>
+                    Any agents using the tool there will lose access until an
+                    admin manually re-adds the shared version to each one. If
+                    any agents are affected, you'll receive an email listing
+                    them.
+                  </div>
+                </>
+              ),
+              validateLabel: "Continue anyway",
+              validateVariant: "warning",
+            });
+            if (!confirmed) {
+              form.setValue("sharingSettings", defaults.sharingSettings, {
+                shouldDirty: false,
+                shouldTouch: false,
+              });
+              success = false;
+              return;
+            }
+          }
 
           // Apply tool changes if any.
           if (diff.toolChanges && diff.toolChanges.length > 0) {
