@@ -264,23 +264,15 @@ export async function listGCSMountFiles(
     return !name.includes(".processed.");
   });
 
-  // GCS files are listed under `pods/` but some FileResource rows still store the
-  // `projects/` form. Query both shapes so old rows still resolve.
   const mountPaths = regularFiles.map((f) => f.name);
-  const legacyMountPaths = mountPaths.map((p) =>
-    p.replace("/pods/", "/projects/")
+  const fileResources = await FileResource.fetchByMountFilePaths(
+    auth,
+    mountPaths
   );
-  const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    ...mountPaths,
-    ...legacyMountPaths,
-  ]);
   const fileResourceByMountPath = new Map<string, FileResource>();
   for (const r of fileResources) {
     if (r.mountFilePath) {
-      fileResourceByMountPath.set(
-        r.mountFilePath.replace("/projects/", "/pods/"),
-        r
-      );
+      fileResourceByMountPath.set(r.mountFilePath, r);
     }
   }
 
@@ -918,11 +910,8 @@ export async function moveFile(
 ): Promise<Result<void, Error>> {
   const destGcsPath = `${resolvePrefix(auth.getNonNullableWorkspace(), destScope)}${destRelativeFilePath}`;
 
-  // Normalize legacy `projects/` source paths to their `pods/` counterpart. The GSC migration guarantees the `pods/` copy exists for all files, so this ensures the move works regardless of whether the source path has been backfilled.
-  const normalizedSourceGcsPath = sourceGcsPath.replace("/projects/", "/pods/");
-
   const moveRes = await moveGCSMountFile({
-    sourceGcsPath: normalizedSourceGcsPath,
+    sourceGcsPath,
     destGcsPath,
   });
   if (moveRes.isErr()) {
@@ -946,7 +935,7 @@ export async function moveFile(
   }
 
   // Clean up the projects/ mirror of the source if the source was a pod mount path.
-  const sourceProjectsPath = toProjectMountFilePath(normalizedSourceGcsPath);
+  const sourceProjectsPath = toProjectMountFilePath(sourceGcsPath);
   if (sourceProjectsPath) {
     try {
       await bucket.delete(sourceProjectsPath, { ignoreNotFound: true });

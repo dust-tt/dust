@@ -1,5 +1,6 @@
 // Script for the /projects/ → /pods/ GCS mount path migration.
 //
+/*
 // GCS objects at w/{wId}/projects/{spaceId}/files/... were already copied to
 // w/{wId}/pods/{spaceId}/files/... by the backfill script backfill_project_mount_paths_to_pods.
 //
@@ -319,3 +320,4 @@ makeScript(
     );
   }
 );
+*/

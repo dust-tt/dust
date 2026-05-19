@@ -104,15 +104,12 @@ export async function resolveHandler(
       );
     }
 
-    // The file's mount path might still use the old "project" prefix
-    const gcsPath = file.mountFilePath.replace("/projects/", "/pods/");
-
     const scopedPath = getScopedPathFromGCSPath({
       prefix: getPodFilesBasePath({
         workspaceId: owner.sId,
         podId: spaceId,
       }),
-      gcsPath,
+      gcsPath: file.mountFilePath,
       useCase: "pod",
     });
     if (!scopedPath) {

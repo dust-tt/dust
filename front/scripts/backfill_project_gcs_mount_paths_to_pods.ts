@@ -1,3 +1,6 @@
+// Backfill script for the /projects/ → /pods/ GCS mount paths. Disabled after Phase 5 cleanup —
+// the backfill is complete and the helpers it depended on have been removed.
+/*
 import { toPodMountFilePath } from "@app/lib/api/files/mount_path";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -197,3 +200,4 @@ makeScript(
     logger.info("[backfill_project_gcs_mount_paths_to_pods] All done");
   }
 );
+*/

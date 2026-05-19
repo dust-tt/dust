@@ -714,11 +714,9 @@ export async function renameProjectFile(
     podId: space.sId,
   });
   const podsGcsPath = `${podsPrefix}${normalized}`;
-  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
 
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
     podsGcsPath,
-    legacyGcsPath,
   ]);
 
   const renameResult = await renameGCSMountFile(
@@ -804,12 +802,8 @@ export async function deleteProjectFile(
     }
   }
 
-  const podsGcsPath = `${mountBasePath}${normalized}`;
-  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
-
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    podsGcsPath,
-    legacyGcsPath,
+    gcsPath,
   ]);
   if (fileResources.length > 0) {
     return removeFileFromProject(auth, {
