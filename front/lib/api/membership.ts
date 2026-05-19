@@ -482,7 +482,15 @@ export async function updateMembershipSeatAndTrack({
   }
 
   const outcome = syncResult.value.change;
-  switch (outcome?.kind) {
+  if (!outcome || outcome.kind === "noop") {
+    return new Ok({
+      previousSeatType,
+      newSeatType,
+      scheduledSeatChangeAt: undefined,
+    });
+  }
+
+  switch (outcome.kind) {
     case "deferred":
       await membership.scheduleSeatChange({
         user,
@@ -515,12 +523,7 @@ export async function updateMembershipSeatAndTrack({
         newSeatType,
         scheduledSeatChangeAt: undefined,
       });
-    case "noop":
-    case undefined:
-      return new Ok({
-        previousSeatType,
-        newSeatType,
-        scheduledSeatChangeAt: undefined,
-      });
+    default:
+      return assertNever(outcome);
   }
 }
