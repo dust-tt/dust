@@ -1,8 +1,15 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import type { SeatTypeInfo } from "@app/lib/api/credits/seat_plan";
+import type {
+  SeatPlanResponseBody,
+  SeatTypeInfo,
+} from "@app/lib/api/credits/seat_plan";
 import { useUpdateMemberSeatType } from "@app/lib/swr/memberships";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
+import {
+  isMembershipSeatType,
+  type MembershipSeatType,
+} from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -12,19 +19,34 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  SeatFreeIcon,
   SeatMaxIcon,
   SeatProIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-const SEAT_DISPLAY_CONFIG = {
-  pro: { label: "Pro plan", icon: SeatProIcon },
-  max: { label: "Max plan", icon: SeatMaxIcon },
-} as const;
+// Per-seat-type display icon. The label / name comes from the API
+// (`SeatTypeInfo.name`) so adding a new seat tier only requires tagging the
+// product in Metronome — no code change here.
+const SEAT_TYPE_ICONS: Partial<
+  Record<MembershipSeatType, React.ComponentType>
+> = {
+  free: SeatFreeIcon,
+  pro: SeatProIcon,
+  max: SeatMaxIcon,
+};
 
-type VisibleSeatType = keyof typeof SEAT_DISPLAY_CONFIG;
+// Display order when multiple seat tiers are returned by the endpoint. Seat
+// types not in this list are appended in the order they came in.
+const SEAT_DISPLAY_ORDER: MembershipSeatType[] = ["free", "pro", "max"];
 
-const VISIBLE_SEAT_ORDER: VisibleSeatType[] = ["pro", "max"];
+function sortSeatTypes(seatTypes: MembershipSeatType[]): MembershipSeatType[] {
+  const indexOf = (s: MembershipSeatType) => {
+    const i = SEAT_DISPLAY_ORDER.indexOf(s);
+    return i === -1 ? SEAT_DISPLAY_ORDER.length : i;
+  };
+  return [...seatTypes].sort((a, b) => indexOf(a) - indexOf(b));
+}
 
 function formatPriceCents(cents: number, currency: SupportedCurrency): string {
   const symbol = CURRENCY_SYMBOLS[currency];
@@ -37,23 +59,23 @@ function formatAwuCredits(awuCredits: number): string {
 }
 
 interface SeatCardProps {
-  seatType: VisibleSeatType;
+  seatType: MembershipSeatType;
+  info: SeatTypeInfo;
   isSelected: boolean;
   isDisabled: boolean;
   badge: React.ReactNode;
-  creditsLabel: string | null;
   onClick: () => void;
 }
 
 function SeatCard({
   seatType,
+  info,
   isSelected,
   isDisabled,
   badge,
-  creditsLabel,
   onClick,
 }: SeatCardProps) {
-  const { label, icon: Icon } = SEAT_DISPLAY_CONFIG[seatType];
+  const Icon = SEAT_TYPE_ICONS[seatType];
 
   return (
     <button
@@ -68,14 +90,14 @@ function SeatCard({
         isDisabled ? "cursor-not-allowed opacity-40" : "cursor-pointer",
       ].join(" ")}
     >
-      <Icon />
+      {Icon && <Icon />}
       <div className="flex flex-1 flex-col">
         <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-          {label}
+          {info.name}
         </span>
-        {creditsLabel && (
+        {info.awuCredits > 0 && (
           <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {creditsLabel}
+            {formatAwuCredits(info.awuCredits)}
           </span>
         )}
       </div>
@@ -84,31 +106,12 @@ function SeatCard({
   );
 }
 
-interface StockedSeatCounts {
-  pro: number;
-  max: number;
-}
-
 interface ChangeSeatModalProps {
   isOpen: boolean;
   onClose: () => void;
   member: MemberUsageType;
   owner: WorkspaceType;
-  stockedSeatCounts?: StockedSeatCounts;
-  proSeatInfo: SeatTypeInfo | null;
-  maxSeatInfo: SeatTypeInfo | null;
-}
-
-function toVisibleSeatType(
-  seatType: MemberUsageType["seatType"]
-): VisibleSeatType | null {
-  if (seatType === "max") {
-    return "max";
-  }
-  if (seatType === "pro") {
-    return "pro";
-  }
-  return null;
+  seatPlans: SeatPlanResponseBody;
 }
 
 export function ChangeSeatModal({
@@ -116,42 +119,30 @@ export function ChangeSeatModal({
   onClose,
   member,
   owner,
-  stockedSeatCounts = { pro: 0, max: 0 },
-  proSeatInfo,
-  maxSeatInfo,
+  seatPlans,
 }: ChangeSeatModalProps) {
-  const currentSeatType = toVisibleSeatType(member.seatType);
-  const [selectedSeat, setSelectedSeat] = useState<VisibleSeatType>(
-    currentSeatType ?? "pro"
+  const seatTypes = sortSeatTypes(
+    Object.keys(seatPlans).filter(isMembershipSeatType)
+  );
+  const currentSeatType: MembershipSeatType | null = member.seatType;
+  const [selectedSeat, setSelectedSeat] = useState<MembershipSeatType | null>(
+    currentSeatType ?? seatTypes[0] ?? null
   );
   const [isSaving, setIsSaving] = useState(false);
   const { doUpdateSeatType } = useUpdateMemberSeatType({
     workspaceId: owner.sId,
   });
 
-  const hasStockedSeats =
-    stockedSeatCounts.pro > 0 || stockedSeatCounts.max > 0;
-
-  function getBadge(seatType: VisibleSeatType): React.ReactNode {
+  function getBadge(
+    seatType: MembershipSeatType,
+    info: SeatTypeInfo
+  ): React.ReactNode {
     if (seatType === currentSeatType) {
       return (
         <span className="rounded-full border border-blue-400 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400">
           Current
         </span>
       );
-    }
-    const stockedCount =
-      seatType === "pro" ? stockedSeatCounts.pro : stockedSeatCounts.max;
-    if (stockedCount > 0) {
-      return (
-        <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-foreground dark:border-border-night dark:text-foreground-night">
-          {stockedCount} available
-        </span>
-      );
-    }
-    const info = seatType === "pro" ? proSeatInfo : maxSeatInfo;
-    if (!info) {
-      return null;
     }
     return (
       <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
@@ -160,16 +151,14 @@ export function ChangeSeatModal({
     );
   }
 
-  function getCreditsLabel(seatType: VisibleSeatType): string | null {
-    const info = seatType === "pro" ? proSeatInfo : maxSeatInfo;
-    return info ? formatAwuCredits(info.awuCredits) : null;
-  }
-
   // Member has a scheduled seat change and is re-selecting their current seat to cancel it.
   const isCancellingScheduledChange =
     !!member.scheduledSeatType && selectedSeat === currentSeatType;
 
   async function handleValidate() {
+    if (!selectedSeat) {
+      return;
+    }
     if (selectedSeat === currentSeatType && !isCancellingScheduledChange) {
       onClose();
       return;
@@ -191,7 +180,7 @@ export function ChangeSeatModal({
     }
   }
 
-  // Max→Pro is deferred; show a note when that's the selection.
+  // Max → Pro is deferred (downgrade waits for next billing period).
   const isDeferredChange = currentSeatType === "max" && selectedSeat === "pro";
 
   return (
@@ -216,25 +205,29 @@ export function ChangeSeatModal({
         </DialogHeader>
         <DialogContainer>
           <div className="flex flex-col gap-2">
-            {!hasStockedSeats && (
-              <div className="mb-1 flex items-center gap-1">
-                <span className="rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-foreground dark:bg-muted-night dark:text-foreground-night">
-                  Monthly
-                </span>
-              </div>
-            )}
+            <div className="mb-1 flex items-center gap-1">
+              <span className="rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-foreground dark:bg-muted-night dark:text-foreground-night">
+                Monthly
+              </span>
+            </div>
 
-            {VISIBLE_SEAT_ORDER.map((seatType) => (
-              <SeatCard
-                key={seatType}
-                seatType={seatType}
-                isSelected={selectedSeat === seatType}
-                isDisabled={false}
-                badge={getBadge(seatType)}
-                creditsLabel={getCreditsLabel(seatType)}
-                onClick={() => setSelectedSeat(seatType)}
-              />
-            ))}
+            {seatTypes.map((seatType) => {
+              const info = seatPlans[seatType];
+              if (!info) {
+                return null;
+              }
+              return (
+                <SeatCard
+                  key={seatType}
+                  seatType={seatType}
+                  info={info}
+                  isSelected={selectedSeat === seatType}
+                  isDisabled={false}
+                  badge={getBadge(seatType, info)}
+                  onClick={() => setSelectedSeat(seatType)}
+                />
+              );
+            })}
 
             {isDeferredChange && (
               <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
@@ -261,6 +254,7 @@ export function ChangeSeatModal({
             variant: "primary",
             disabled:
               isSaving ||
+              !selectedSeat ||
               (selectedSeat === currentSeatType &&
                 !isCancellingScheduledChange),
             onClick: handleValidate,

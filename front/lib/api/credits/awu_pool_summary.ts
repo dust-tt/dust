@@ -9,8 +9,12 @@ import {
 import {
   getCreditTypeAwuId,
   getMetricLlmProviderCostAwuId,
-  getSeatProductIds,
 } from "@app/lib/metronome/constants";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
+import {
+  getProductSeatTypes,
+  getSeatTypesByProductIdFromContract,
+} from "@app/lib/metronome/seat_types";
 import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -107,9 +111,20 @@ export async function handleAwuPoolSummaryRequest(
         new Date(currentInvoice.end_timestamp)
       ).toISOString();
 
-      // Filter to active, non-seat AWU pool credits and commits.
+      // Filter to active, non-seat AWU pool credits and commits. The set of
+      // seat product IDs is derived from the contract's tagged subscriptions
+      // (via the `DUST_SEAT_TYPE` custom field) rather than a hardcoded list.
       const awuCreditTypeId = getCreditTypeAwuId();
-      const seatProductIds = getSeatProductIds();
+      const activeContract = await getActiveContract(workspace.sId);
+      const productSeatTypes = await getProductSeatTypes();
+      const seatProductIds = activeContract
+        ? new Set(
+            getSeatTypesByProductIdFromContract(
+              activeContract,
+              productSeatTypes
+            ).keys()
+          )
+        : new Set<string>();
       const awuBalances = balancesResult.value.filter(
         (entry) =>
           entry.access_schedule?.credit_type?.id === awuCreditTypeId &&

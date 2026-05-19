@@ -1298,7 +1298,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
   /**
    * Update the seatType of an active membership in place. Callers are
-   * responsible for calling handleSeatTransition before this returns.
+   * responsible for syncing seat state in Metronome before this returns
+   * (via `syncSeatCount`).
    */
   async updateMembershipSeat({
     user,

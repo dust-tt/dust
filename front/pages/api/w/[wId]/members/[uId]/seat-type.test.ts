@@ -108,23 +108,6 @@ describe("PATCH /api/w/[wId]/members/[uId]/seat-type", () => {
       expect(res._getStatusCode()).toBe(400);
       expect(res._getJSONData().error.type).toBe("invalid_request_error");
     });
-
-    it("returns 400 for seatType 'free'", async () => {
-      const workspace = await WorkspaceFactory.metronome();
-      const { req, res, user } = await createPrivateApiMockRequest({
-        method: "PATCH",
-        role: "admin",
-        workspace,
-      });
-
-      req.query.uId = user.sId;
-      req.body = { seatType: "free" };
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(400);
-      expect(res._getJSONData().error.type).toBe("invalid_request_error");
-    });
   });
 
   describe("seat type update", () => {

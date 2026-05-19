@@ -178,7 +178,7 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const { proSeatInfo, maxSeatInfo } = useSeatPlan({
+  const { seatPlans } = useSeatPlan({
     workspaceId: owner.sId,
   });
 
@@ -396,8 +396,7 @@ export function UsagePage() {
             onClose={() => setChangeSeatMember(null)}
             member={changeSeatMember}
             owner={owner}
-            proSeatInfo={proSeatInfo}
-            maxSeatInfo={maxSeatInfo}
+            seatPlans={seatPlans}
           />
         )}
 
