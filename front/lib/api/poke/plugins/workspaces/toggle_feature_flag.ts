@@ -96,23 +96,6 @@ export const toggleFeatureFlagPlugin = createPlugin({
       invalidateFeatureFlagsCache(auth);
     }
 
-    let createdMCPServerViewsCount: number | null = null;
-
-    if (toAdd.length > 0) {
-      const { createdViewsCount } =
-        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-      createdMCPServerViewsCount = createdViewsCount;
-
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          enabledFlags: toAdd,
-          createdViewsCount,
-        },
-        "Ensured MCP server views after enabling feature flags."
-      );
-    }
-
     const actions: string[] = [];
 
     for (const feature of toAdd) {
@@ -128,10 +111,23 @@ export const toggleFeatureFlagPlugin = createPlugin({
         );
       }
     }
-    if (createdMCPServerViewsCount !== null) {
-      const viewLabel = createdMCPServerViewsCount === 1 ? "view" : "views";
+
+    if (toAdd.length > 0) {
+      const { createdViewsCount } =
+        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          enabledFlags: toAdd,
+          createdViewsCount,
+        },
+        "Ensured MCP server views after enabling feature flags."
+      );
+
+      const viewLabel = createdViewsCount === 1 ? "view" : "views";
       actions.push(
-        `MCP server views ensured for all enabled auto tools (created ${createdMCPServerViewsCount} ${viewLabel}).`
+        `MCP server views ensured for all enabled auto tools (created ${createdViewsCount} ${viewLabel}).`
       );
     }
 

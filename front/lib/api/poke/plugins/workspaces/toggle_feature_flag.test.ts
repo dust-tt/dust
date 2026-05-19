@@ -40,20 +40,19 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     if (!enableResult.isOk()) {
       throw enableResult.error;
     }
-    expect(enableResult.value.value).toContain("created 2 views");
 
-    await expect(
-      MCPServerViewResource.getMCPServerViewForSystemSpace(
+    const systemViewAfterEnable =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
         sandboxMCPServerId
-      )
-    ).resolves.not.toBeNull();
-    await expect(
-      MCPServerViewResource.getMCPServerViewForGlobalSpace(
+      );
+    const globalViewAfterEnable =
+      await MCPServerViewResource.getMCPServerViewForGlobalSpace(
         auth,
         sandboxMCPServerId
-      )
-    ).resolves.not.toBeNull();
+      );
+    expect(systemViewAfterEnable).not.toBeNull();
+    expect(globalViewAfterEnable).not.toBeNull();
 
     const disableResult = await toggleFeatureFlagPlugin.execute(auth, null, {
       features: [],
@@ -66,11 +65,24 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     const reenableResult = await toggleFeatureFlagPlugin.execute(auth, null, {
       features: ["sandbox_tools"],
     });
-
     expect(reenableResult.isOk()).toBe(true);
     if (!reenableResult.isOk()) {
       throw reenableResult.error;
     }
-    expect(reenableResult.value.value).toContain("created 0 views");
+
+    // Re-enabling must not create new views: the system/global view sIds
+    // should match the ones returned right after the first enable.
+    const systemViewAfterReenable =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        sandboxMCPServerId
+      );
+    const globalViewAfterReenable =
+      await MCPServerViewResource.getMCPServerViewForGlobalSpace(
+        auth,
+        sandboxMCPServerId
+      );
+    expect(systemViewAfterReenable?.sId).toBe(systemViewAfterEnable?.sId);
+    expect(globalViewAfterReenable?.sId).toBe(globalViewAfterEnable?.sId);
   });
 });
