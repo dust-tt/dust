@@ -51,7 +51,9 @@ function FileExplorerBreadcrumb({
 interface FileExplorerProps {
   contentClassName?: string;
   contentNodes?: ContentNodeEntry[];
+  defaultViewMode?: ViewMode;
   emptyState?: React.ReactNode;
+  hideTitleBorder?: boolean;
   files: GCSMountEntry[];
   getFileUrl: (path: string) => string;
   headerActions?: React.ReactNode;
@@ -66,10 +68,12 @@ interface FileExplorerProps {
 export function FileExplorer({
   contentClassName,
   contentNodes = [],
+  defaultViewMode = "grid",
   emptyState,
   files,
   getFileUrl,
   headerActions,
+  hideTitleBorder = false,
   isLoading,
   onClose,
   onDelete,
@@ -78,7 +82,7 @@ export function FileExplorer({
   onRename,
 }: FileExplorerProps) {
   const [folderStack, setFolderStack] = useState<SandboxTreeNode[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FileExplorerFilter>("all");
   const [sortMode, setSortMode] =
@@ -181,7 +185,7 @@ export function FileExplorer({
   return (
     <>
       <div className="flex h-full w-full min-h-0 flex-1 flex-col">
-        <AppLayoutTitle>
+        <AppLayoutTitle className={hideTitleBorder ? "border-b-0" : undefined}>
           <div
             className={cn(
               "flex h-full items-center justify-between gap-2 px-4",

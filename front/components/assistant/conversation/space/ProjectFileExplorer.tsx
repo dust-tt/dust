@@ -574,9 +574,11 @@ function ProjectFileExplorerContent({
       <FileExplorer
         contentClassName="max-w-4xl mx-auto w-full"
         contentNodes={contentNodeEntries}
+        defaultViewMode="list"
         emptyState={hasFiles ? undefined : emptyState}
         files={projectGCSFiles}
         getFileUrl={getFileUrl}
+        hideTitleBorder
         onFileDownload={onFileDownload}
         onDelete={!isArchived ? onDelete : undefined}
         onRename={!isArchived ? onRename : undefined}
