@@ -399,7 +399,6 @@ AgentMCPActionOutputItemModel.init(
         concurrently: true,
       },
       { fields: ["workspaceId", "id"], concurrently: true },
-      // TODO(2025-11-24 fabien) Remove this useless index when the one on ("workspaceId", "agentMCPActionId") is created.
       {
         fields: ["agentMCPActionId"],
         concurrently: true,
@@ -407,11 +406,6 @@ AgentMCPActionOutputItemModel.init(
       {
         fields: ["fileId"],
         concurrently: true,
-      },
-      {
-        fields: ["workspaceId", "agentMCPActionId"],
-        concurrently: true,
-        name: "agent_mcp_action_output_items_workspace_id_agent_mcp_action_id",
       },
       {
         fields: ["workspaceId", "agentMCPActionId", "contentGcsPath"],
