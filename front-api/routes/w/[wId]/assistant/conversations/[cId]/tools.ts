@@ -1,12 +1,13 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
-import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { isString } from "@app/types/shared/utils/general";
 
-import { jsonApiError } from "@front-api/middleware/utils";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { validate } from "@front-api/middleware/validator";
 
 const ConversationToolActionRequestSchema = z.object({
@@ -27,7 +28,7 @@ app.get("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return jsonApiError(c, getConversationApiError(conversationRes.error));
+    return apiErrorForConversation(c, conversationRes.error);
   }
 
   const conversationWithoutContent = conversationRes.value;
@@ -69,7 +70,7 @@ app.post(
         conversationId
       );
     if (conversationRes.isErr()) {
-      return jsonApiError(c, getConversationApiError(conversationRes.error));
+      return apiErrorForConversation(c, conversationRes.error);
     }
 
     const conversationWithoutContent = conversationRes.value;
@@ -81,15 +82,13 @@ app.post(
     );
 
     if (!mcpServerView) {
-      return c.json(
-        {
-          error: {
-            type: "mcp_server_view_not_found",
-            message: "MCP server view not found",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "mcp_server_view_not_found",
+          message: "MCP server view not found",
         },
-        404
-      );
+      });
     }
 
     const upsertResult = await ConversationResource.upsertMCPServerViews(auth, {
@@ -100,15 +99,13 @@ app.post(
       agentConfigurationId: null,
     });
     if (upsertResult.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "Failed to add MCP server view to conversation",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to add MCP server view to conversation",
         },
-        500
-      );
+      });
     }
 
     return c.json({ success: true });

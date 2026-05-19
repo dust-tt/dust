@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
 
@@ -22,27 +24,23 @@ app.post(
     const dataSource = c.get("dataSource");
 
     if (!dataSource.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message: "You are not allowed to update data in this data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You are not allowed to update data in this data source.",
         },
-        403
-      );
+      });
     }
 
     if (dataSource.connectorId) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message: "You cannot upsert a document on a managed data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You cannot upsert a document on a managed data source.",
         },
-        403
-      );
+      });
     }
 
     const {
@@ -80,37 +78,31 @@ app.post(
     if (upsertResult.isErr()) {
       switch (upsertResult.error.code) {
         case "data_source_quota_error":
-          return c.json(
-            {
-              error: {
-                type: "data_source_quota_error",
-                message: upsertResult.error.message,
-              },
+          return apiError(c, {
+            status_code: 401,
+            api_error: {
+              type: "data_source_quota_error",
+              message: upsertResult.error.message,
             },
-            401
-          );
+          });
         case "invalid_url":
         case "text_or_section_required":
         case "invalid_parent_id":
-          return c.json(
-            {
-              error: {
-                type: "invalid_request_error",
-                message: upsertResult.error.message,
-              },
+          return apiError(c, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: upsertResult.error.message,
             },
-            400
-          );
+          });
         default:
-          return c.json(
-            {
-              error: {
-                type: "internal_server_error",
-                message: "There was an error upserting the document.",
-              },
+          return apiError(c, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "There was an error upserting the document.",
             },
-            500
-          );
+          });
       }
     }
 

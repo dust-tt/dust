@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
@@ -69,30 +71,26 @@ app.get("/", async (c) => {
   };
   const queryValidation = GetSkillSuggestionsQuerySchema.safeParse(queryInput);
   if (!queryValidation.success) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Invalid query parameters: ${queryValidation.error.message}`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid query parameters: ${queryValidation.error.message}`,
       },
-      400
-    );
+    });
   }
 
   const { states, kind, limit } = queryValidation.data;
 
   const parsedLimit = limit ? parseInt(limit, 10) : undefined;
   if (parsedLimit !== undefined && isNaN(parsedLimit)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid limit parameter: must be a number",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid limit parameter: must be a number",
       },
-      400
-    );
+    });
   }
 
   const suggestions = await SkillSuggestionResource.listBySkillConfigurationId(
@@ -117,16 +115,13 @@ app.patch(
     const skill = c.get("skill");
 
     if (!(await hasReinforcementEnabled(auth))) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Self-improving skills are not enabled for this workspace.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Self-improving skills are not enabled for this workspace.",
         },
-        400
-      );
+      });
     }
 
     const { suggestionIds, state } = c.req.valid("json");
@@ -137,29 +132,25 @@ app.patch(
     );
 
     if (suggestions.length !== suggestionIds.length) {
-      return c.json(
-        {
-          error: {
-            type: "agent_suggestion_not_found",
-            message: "One or more skill suggestions were not found.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "agent_suggestion_not_found",
+          message: "One or more skill suggestions were not found.",
         },
-        404
-      );
+      });
     }
 
     for (const suggestion of suggestions) {
       if (suggestion.skillConfigurationSId !== skill.sId) {
-        return c.json(
-          {
-            error: {
-              type: "invalid_request_error",
-              message:
-                "One or more skill suggestions do not belong to the specified skill configuration.",
-            },
+        return apiError(c, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "One or more skill suggestions do not belong to the specified skill configuration.",
           },
-          400
-        );
+        });
       }
     }
 

@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import apiConfig from "@app/lib/api/config";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
@@ -25,27 +27,23 @@ app.patch(
     const documentId = c.req.param("documentId") ?? "";
 
     if (!dataSource.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message: "You are not allowed to update data in this data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You are not allowed to update data in this data source.",
         },
-        403
-      );
+      });
     }
 
     if (isManaged(dataSource) || isWebsite(dataSource)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message: "You cannot upsert a document on a managed data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You cannot upsert a document on a managed data source.",
         },
-        403
-      );
+      });
     }
 
     const {
@@ -80,37 +78,31 @@ app.patch(
     if (upsertResult.isErr()) {
       switch (upsertResult.error.code) {
         case "data_source_quota_error":
-          return c.json(
-            {
-              error: {
-                type: "data_source_quota_error",
-                message: upsertResult.error.message,
-              },
+          return apiError(c, {
+            status_code: 401,
+            api_error: {
+              type: "data_source_quota_error",
+              message: upsertResult.error.message,
             },
-            401
-          );
+          });
         case "invalid_url":
         case "text_or_section_required":
         case "invalid_parent_id":
-          return c.json(
-            {
-              error: {
-                type: "invalid_request_error",
-                message: upsertResult.error.message,
-              },
+          return apiError(c, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: upsertResult.error.message,
             },
-            400
-          );
+          });
         default:
-          return c.json(
-            {
-              error: {
-                type: "internal_server_error",
-                message: "There was an error upserting the document.",
-              },
+          return apiError(c, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "There was an error upserting the document.",
             },
-            500
-          );
+          });
       }
     }
 
@@ -128,27 +120,23 @@ app.delete(
     const documentId = c.req.param("documentId") ?? "";
 
     if (!dataSource.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message: "You are not allowed to update data in this data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You are not allowed to update data in this data source.",
         },
-        403
-      );
+      });
     }
 
     if (dataSource.connectorId) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message: "You cannot delete a document from a managed data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You cannot delete a document from a managed data source.",
         },
-        403
-      );
+      });
     }
 
     const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
@@ -158,15 +146,13 @@ app.delete(
       documentId,
     });
     if (deleteRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "There was an error deleting the document.",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "There was an error deleting the document.",
         },
-        500
-      );
+      });
     }
 
     return c.body(null, 204);

@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import {
@@ -37,41 +39,35 @@ app.patch(
     const dataSource = c.get("dataSource");
 
     if (space.isSystem() && !space.canAdministrate(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Only the users that are `admins` for the current workspace can update a data source.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Only the users that are `admins` for the current workspace can update a data source.",
         },
-        400
-      );
+      });
     }
     if (space.isGlobal() && !space.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can update a data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Only the users that are `builders` for the current workspace can update a data source.",
         },
-        403
-      );
+      });
     }
 
     if (dataSource.connectorId) {
       // Patching a managed data source is not yet implemented.
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Managed data sources cannot be updated.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Managed data sources cannot be updated.",
         },
-        400
-      );
+      });
     }
 
     const { description } = c.req.valid("json");
@@ -105,28 +101,24 @@ app.delete(
     const dataSource = c.get("dataSource");
 
     if (space.isSystem() && !space.canAdministrate(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Only the users that are `admins` for the current workspace can update a data source.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Only the users that are `admins` for the current workspace can update a data source.",
         },
-        400
-      );
+      });
     }
     if (space.isGlobal() && !space.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can update a data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Only the users that are `builders` for the current workspace can update a data source.",
         },
-        403
-      );
+      });
     }
 
     const isAuthorized =
@@ -136,16 +128,14 @@ app.delete(
         space.canAdministrate(auth) &&
         isRemoteDatabase(dataSource));
     if (!isAuthorized) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that have `write` permission for the current space can delete a data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Only the users that have `write` permission for the current space can delete a data source.",
         },
-        403
-      );
+      });
     }
 
     if (
@@ -153,30 +143,26 @@ app.delete(
       dataSource.connectorProvider &&
       !CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable
     ) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Managed data sources cannot be deleted.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Managed data sources cannot be deleted.",
         },
-        400
-      );
+      });
     }
 
     const dRes = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, {
       dataSource,
     });
     if (dRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: dRes.error.message,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: dRes.error.message,
         },
-        500
-      );
+      });
     }
 
     void emitAuditLogEvent({

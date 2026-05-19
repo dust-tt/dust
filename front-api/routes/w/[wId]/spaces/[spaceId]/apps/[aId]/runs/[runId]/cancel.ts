@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
@@ -18,23 +20,19 @@ app.post("/", spaceResource({ requireCanWrite: true }), async (c) => {
 
   const found = await AppResource.fetchById(auth, aId);
   if (!found || found.space.sId !== space.sId) {
-    return c.json(
-      {
-        error: { type: "app_not_found", message: "The app was not found." },
-      },
-      404
-    );
+    return apiError(c, {
+      status_code: 404,
+      api_error: { type: "app_not_found", message: "The app was not found." },
+    });
   }
   if (!found.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message: "Canceling a run requires write access to the app's space.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Canceling a run requires write access to the app's space.",
       },
-      403
-    );
+    });
   }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -46,16 +44,14 @@ app.post("/", spaceResource({ requireCanWrite: true }), async (c) => {
     if (runStatus.error.code === "run_not_found") {
       return c.json({ success: true });
     }
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to fetch run status.",
-          app_error: runStatus.error,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to fetch run status.",
+        app_error: runStatus.error,
       },
-      500
-    );
+    });
   }
   if (runStatus.value.run.status.run !== "running") {
     return c.json({ success: true });
@@ -74,16 +70,14 @@ app.post("/", spaceResource({ requireCanWrite: true }), async (c) => {
       },
       "Failed to cancel run"
     );
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to cancel the run.",
-          app_error: cancelResult.error,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to cancel the run.",
+        app_error: cancelResult.error,
       },
-      500
-    );
+    });
   }
 
   logger.info(

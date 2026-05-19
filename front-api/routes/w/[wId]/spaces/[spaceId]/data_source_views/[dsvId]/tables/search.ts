@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
@@ -22,28 +24,24 @@ app.get(
     const dataSourceView = c.get("dataSourceView");
     const query = c.req.query("query");
     if (!query || query.length < MIN_SEARCH_QUERY_SIZE) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `Query must be at least ${MIN_SEARCH_QUERY_SIZE} characters long.`,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Query must be at least ${MIN_SEARCH_QUERY_SIZE} characters long.`,
         },
-        400
-      );
+      });
     }
 
     const paginationRes = getCursorPaginationParams(c.req.query());
     if (paginationRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_pagination_parameters",
-            message: "Invalid pagination parameters",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_pagination_parameters",
+          message: "Invalid pagination parameters",
         },
-        400
-      );
+      });
     }
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -64,15 +62,13 @@ app.get(
       },
     });
     if (searchRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: searchRes.error.message,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: searchRes.error.message,
         },
-        500
-      );
+      });
     }
     const tables = searchRes.value.nodes.map((node) => ({
       ...getContentNodeFromCoreNode(node, "table"),

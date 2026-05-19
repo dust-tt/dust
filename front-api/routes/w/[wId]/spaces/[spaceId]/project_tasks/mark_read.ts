@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 
 import { spaceResource } from "@front-api/middleware/space_resource";
@@ -12,15 +14,13 @@ app.post("/", spaceResource({ requireCanRead: true }), async (c) => {
   const space = c.get("space");
 
   if (!space.isProject()) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Todos are only available for project spaces.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Todos are only available for project spaces.",
       },
-      400
-    );
+    });
   }
 
   await ProjectTaskStateResource.upsertBySpace(auth, {

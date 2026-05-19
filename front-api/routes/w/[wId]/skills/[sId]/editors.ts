@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -49,38 +50,35 @@ async function loadSkillAndEditorGroup(
   const sId = c.req.param("sId");
 
   if (!isString(sId)) {
-    return c.json(
-      {
-        error: { type: "invalid_request_error", message: "Invalid skill id." },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid skill id.",
       },
-      400
-    );
+    });
   }
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
-    return c.json(
-      {
-        error: {
-          type: "skill_not_found",
-          message: "The skill was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "skill_not_found",
+        message: "The skill was not found.",
       },
-      404
-    );
+    });
   }
 
   const { editorGroup } = skill;
   if (!editorGroup) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "The skill does not have an editors group.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The skill does not have an editors group.",
       },
-      400
-    );
+    });
   }
 
   return { skill, editorGroup };
@@ -113,15 +111,13 @@ app.patch(
     const { skill: skillRes, editorGroup } = loaded;
 
     if (!skillRes.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message: "User is not authorized to edit the skill editors list.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "User is not authorized to edit the skill editors list.",
         },
-        403
-      );
+      });
     }
 
     const { addEditorIds = [], removeEditorIds = [] } = c.req.valid("json");
@@ -146,30 +142,25 @@ app.patch(
       const missingIds = [...missingAddIds, ...missingRemoveIds];
 
       if (missingIds.length > 0) {
-        return c.json(
-          {
-            error: {
-              type: "user_not_found",
-              message: `Some users were not found: ${missingIds.join(", ")}`,
-            },
+        return apiError(c, {
+          status_code: 404,
+          api_error: {
+            type: "user_not_found",
+            message: `Some users were not found: ${missingIds.join(", ")}`,
           },
-          404
-        );
+        });
       }
     }
 
     // Check authorization for modifying group members
     if (!editorGroup.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message:
-              "You are not authorized to modify the skill editors group.",
-          },
+      return apiError(c, {
+        status_code: 401,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You are not authorized to modify the skill editors group.",
         },
-        401
-      );
+      });
     }
 
     const addRes = await editorGroup.dangerouslyAddMembers(auth, {
@@ -178,58 +169,48 @@ app.patch(
     if (addRes.isErr()) {
       switch (addRes.error.code) {
         case "unauthorized":
-          return c.json(
-            {
-              error: {
-                type: "workspace_auth_error",
-                message:
-                  "You are not authorized to add members to the skill editors group.",
-              },
+          return apiError(c, {
+            status_code: 401,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "You are not authorized to add members to the skill editors group.",
             },
-            401
-          );
+          });
         case "group_requirements_not_met":
-          return c.json(
-            {
-              error: {
-                type: "workspace_auth_error",
-                message: "Only builders can be added to skill editors.",
-              },
+          return apiError(c, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "Only builders can be added to skill editors.",
             },
-            403
-          );
+          });
         case "system_or_global_group":
-          return c.json(
-            {
-              error: {
-                type: "workspace_auth_error",
-                message:
-                  "Users cannot be added to system or global groups for skills.",
-              },
+          return apiError(c, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "Users cannot be added to system or global groups for skills.",
             },
-            403
-          );
+          });
         case "user_not_found":
-          return c.json(
-            {
-              error: {
-                type: "user_not_found",
-                message: "The user was not found in the workspace.",
-              },
+          return apiError(c, {
+            status_code: 404,
+            api_error: {
+              type: "user_not_found",
+              message: "The user was not found in the workspace.",
             },
-            404
-          );
+          });
         case "user_already_member":
-          return c.json(
-            {
-              error: {
-                type: "invalid_request_error",
-                message:
-                  "The user is already a member of the skill editors group.",
-              },
+          return apiError(c, {
+            status_code: 409,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The user is already a member of the skill editors group.",
             },
-            409
-          );
+          });
         default:
           assertNever(addRes.error.code);
       }
@@ -241,47 +222,39 @@ app.patch(
     if (removeRes.isErr()) {
       switch (removeRes.error.code) {
         case "unauthorized":
-          return c.json(
-            {
-              error: {
-                type: "workspace_auth_error",
-                message:
-                  "You are not authorized to remove members from the skill editors group.",
-              },
+          return apiError(c, {
+            status_code: 401,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "You are not authorized to remove members from the skill editors group.",
             },
-            401
-          );
+          });
         case "system_or_global_group":
-          return c.json(
-            {
-              error: {
-                type: "workspace_auth_error",
-                message:
-                  "Users cannot be removed from system or global groups for skills.",
-              },
+          return apiError(c, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "Users cannot be removed from system or global groups for skills.",
             },
-            403
-          );
+          });
         case "user_not_found":
-          return c.json(
-            {
-              error: {
-                type: "user_not_found",
-                message: "The user was not found in the workspace.",
-              },
+          return apiError(c, {
+            status_code: 404,
+            api_error: {
+              type: "user_not_found",
+              message: "The user was not found in the workspace.",
             },
-            404
-          );
+          });
         case "user_not_member":
-          return c.json(
-            {
-              error: {
-                type: "invalid_request_error",
-                message: "The user is not a member of the skill editors group.",
-              },
+          return apiError(c, {
+            status_code: 409,
+            api_error: {
+              type: "invalid_request_error",
+              message: "The user is not a member of the skill editors group.",
             },
-            409
-          );
+          });
         default:
           assertNever(removeRes.error.code);
       }

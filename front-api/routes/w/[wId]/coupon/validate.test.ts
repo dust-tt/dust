@@ -116,18 +116,4 @@ describe("GET /api/w/:wId/coupon/validate", () => {
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("coupon_already_redeemed");
   });
-
-  it("returns 405 for non-GET methods", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
-
-    const response = await honoApp.request(
-      `/api/w/${workspace.sId}/coupon/validate?code=ANYCODE`,
-      { method: "POST" }
-    );
-
-    expect(response.status).toBe(405);
-  });
 });

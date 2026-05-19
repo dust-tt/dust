@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { MiddlewareHandler } from "hono";
 
 import {
@@ -68,15 +69,13 @@ export function spaceResource(
     const auth = c.get("auth");
     const spaceId = c.req.param("spaceId");
     if (!spaceId) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Invalid space id.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid space id.",
         },
-        400
-      );
+      });
     }
 
     const space = await SpaceResource.fetchById(auth, spaceId);
@@ -85,15 +84,13 @@ export function spaceResource(
       space.isConversations() ||
       !hasPermission(auth, space, options)
     ) {
-      return c.json(
-        {
-          error: {
-            type: "space_not_found",
-            message: "The space you requested was not found.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "The space you requested was not found.",
         },
-        404
-      );
+      });
     }
 
     const spaceJSON = space.toJSON();

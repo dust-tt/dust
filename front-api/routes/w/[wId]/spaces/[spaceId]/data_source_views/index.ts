@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import {
   getDataSourcesUsageByCategory,
@@ -46,15 +48,13 @@ app.get(
     }
 
     if (!category) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Cannot get details without specifying a category.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Cannot get details without specifying a category.",
         },
-        400
-      );
+      });
     }
 
     let usages: DataSourcesUsageByAgent = {};
@@ -112,45 +112,39 @@ app.post(
     const space = c.get("space");
 
     if (!space.canAdministrate(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message: "Only users that are `admins` can administrate spaces.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only users that are `admins` can administrate spaces.",
         },
-        403
-      );
+      });
     }
 
     const isSaveDataSourceViewsEnabled =
       await KillSwitchResource.isKillSwitchEnabled("save_data_source_views");
     if (isSaveDataSourceViewsEnabled) {
-      return c.json(
-        {
-          error: {
-            type: "app_auth_error",
-            message:
-              "Saving data source views is temporarily disabled, try again later.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "Saving data source views is temporarily disabled, try again later.",
         },
-        400
-      );
+      });
     }
 
     const { dataSourceId, parentsIn } = c.req.valid("json");
 
     const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
     if (!dataSource) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `Invalid data source: ${dataSourceId}`,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid data source: ${dataSourceId}`,
         },
-        400
-      );
+      });
     }
 
     const existing = await DataSourceViewResource.listForDataSourcesInSpace(
@@ -159,15 +153,13 @@ app.post(
       space
     );
     if (existing.length > 0) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `View already exists for data source: ${dataSourceId}`,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `View already exists for data source: ${dataSourceId}`,
         },
-        400
-      );
+      });
     }
 
     const dataSourceViewRes =
@@ -178,15 +170,13 @@ app.post(
         parentsIn
       );
     if (dataSourceViewRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message: dataSourceViewRes.error.message,
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: dataSourceViewRes.error.message,
         },
-        403
-      );
+      });
     }
 
     return c.json({ dataSourceView: dataSourceViewRes.value.toJSON() }, 201);

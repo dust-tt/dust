@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import {
@@ -47,28 +49,24 @@ app.patch(
     const sId = c.req.param("sId");
 
     if (!isString(sId)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Invalid skill ID.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid skill ID.",
         },
-        400
-      );
+      });
     }
 
     const skill = await SkillResource.fetchById(auth, sId);
     if (!skill) {
-      return c.json(
-        {
-          error: {
-            type: "skill_not_found",
-            message: "The skill you're trying to access was not found.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "skill_not_found",
+          message: "The skill you're trying to access was not found.",
         },
-        404
-      );
+      });
     }
 
     const {
@@ -82,43 +80,37 @@ app.patch(
       selfImprovementLock !== undefined ||
       selfImprovementCostsCapMicroUsd !== undefined;
     if (requiresAdmin && !auth.isAdmin()) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message:
-              "Only admins can change the lock state or per-skill cost cap.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "Only admins can change the lock state or per-skill cost cap.",
         },
-        403
-      );
+      });
     }
 
     // Toggling reinforcement requires editor access; if the skill is locked,
     // only admins can flip it.
     if (reinforcement !== undefined) {
       if (!skill.canWrite(auth)) {
-        return c.json(
-          {
-            error: {
-              type: "app_auth_error",
-              message: "Only editors can modify this skill.",
-            },
+        return apiError(c, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "Only editors can modify this skill.",
           },
-          403
-        );
+        });
       }
       if (skill.selfImprovementLock && !auth.isAdmin()) {
-        return c.json(
-          {
-            error: {
-              type: "workspace_auth_error",
-              message:
-                "This skill's self-improvement is locked; only admins can change it.",
-            },
+        return apiError(c, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "This skill's self-improvement is locked; only admins can change it.",
           },
-          403
-        );
+        });
       }
     }
 

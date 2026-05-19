@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -21,52 +23,44 @@ app.post(
     const space = c.get("space");
 
     if (!space.isProject()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "You can only join Pods, not regular spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "You can only join Pods, not regular spaces.",
         },
-        400
-      );
+      });
     }
 
     if (space.isProjectAndRestricted()) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message: "This Pod is restricted. You need to be invited to join.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "This Pod is restricted. You need to be invited to join.",
         },
-        403
-      );
+      });
     }
 
     if (space.managementMode !== "manual") {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "You cannot join this Pod, its members are not managed manually.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "You cannot join this Pod, its members are not managed manually.",
         },
-        403
-      );
+      });
     }
 
     if (space.isMember(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "You are already a member of this Pod.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "You are already a member of this Pod.",
         },
-        400
-      );
+      });
     }
 
     const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
@@ -75,15 +69,13 @@ app.post(
     });
 
     if (memberGroupSpaces.length !== 1) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "There should be exactly one member group for the Pod.",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "There should be exactly one member group for the Pod.",
         },
-        500
-      );
+      });
     }
 
     const memberGroupSpace = memberGroupSpaces[0];
@@ -92,15 +84,13 @@ app.post(
       users: [user.toJSON()],
     });
     if (result.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: result.error.message,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: result.error.message,
         },
-        500
-      );
+      });
     }
 
     void emitAuditLogEvent({

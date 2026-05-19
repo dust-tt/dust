@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import type { ProviderType } from "@app/types/provider";
 import { redactString } from "@app/types/shared/utils/string_utils";
@@ -24,16 +26,14 @@ app.get("/", async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isBuilder()) {
-    return c.json(
-      {
-        error: {
-          type: "provider_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can list providers.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "provider_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can list providers.",
       },
-      403
-    );
+    });
   }
 
   const owner = auth.getNonNullableWorkspace();

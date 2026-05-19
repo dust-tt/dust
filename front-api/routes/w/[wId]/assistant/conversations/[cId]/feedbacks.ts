@@ -1,10 +1,9 @@
 import { Hono } from "hono";
 
-import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationFeedbacksForUser } from "@app/lib/api/assistant/feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 
-import { jsonApiError } from "@front-api/middleware/utils";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/feedbacks.
 const app = new Hono();
@@ -19,7 +18,7 @@ app.get("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return jsonApiError(c, getConversationApiError(conversationRes.error));
+    return apiErrorForConversation(c, conversationRes.error);
   }
 
   const feedbacksRes = await getConversationFeedbacksForUser(
@@ -27,7 +26,7 @@ app.get("/", async (c) => {
     conversationRes.value
   );
   if (feedbacksRes.isErr()) {
-    return jsonApiError(c, getConversationApiError(feedbacksRes.error));
+    return apiErrorForConversation(c, feedbacksRes.error);
   }
 
   return c.json({ feedbacks: feedbacksRes.value });

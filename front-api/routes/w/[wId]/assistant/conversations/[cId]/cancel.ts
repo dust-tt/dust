@@ -1,13 +1,12 @@
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-import { jsonApiError } from "@front-api/middleware/utils";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { validate } from "@front-api/middleware/validator";
 
 const PostMessageEventBodySchema = z.object({
@@ -28,7 +27,7 @@ app.post("/", validate("json", PostMessageEventBodySchema), async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return jsonApiError(c, getConversationApiError(conversationRes.error));
+    return apiErrorForConversation(c, conversationRes.error);
   }
 
   const { action, messageIds } = c.req.valid("json");

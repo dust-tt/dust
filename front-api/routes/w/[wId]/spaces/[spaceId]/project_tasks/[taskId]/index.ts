@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { Authenticator } from "@app/lib/auth";
@@ -44,28 +46,24 @@ app.patch(
     const taskId = c.req.param("taskId") ?? "";
 
     if (!space.isProject()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Tasks are only available for project spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Tasks are only available for project spaces.",
         },
-        400
-      );
+      });
     }
 
     const task = await ProjectTaskResource.fetchBySId(auth, taskId);
     if (!task || task.spaceId !== space.id) {
-      return c.json(
-        {
-          error: {
-            type: "project_task_not_found",
-            message: "Task not found.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "project_task_not_found",
+          message: "Task not found.",
         },
-        404
-      );
+      });
     }
 
     const user = auth.getNonNullableUser();
@@ -104,26 +102,22 @@ app.patch(
         );
         const assigneeUser = assigneeAuth.user();
         if (!assigneeUser) {
-          return c.json(
-            {
-              error: {
-                type: "invalid_request_error",
-                message: "Assignee user not found.",
-              },
+          return apiError(c, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Assignee user not found.",
             },
-            400
-          );
+          });
         }
         if (!space.isMember(assigneeAuth)) {
-          return c.json(
-            {
-              error: {
-                type: "invalid_request_error",
-                message: "Assignee must be a member of this project.",
-              },
+          return apiError(c, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Assignee must be a member of this project.",
             },
-            400
-          );
+          });
         }
         updates.userId = assigneeUser.id;
       }
@@ -150,28 +144,24 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
   const taskId = c.req.param("taskId") ?? "";
 
   if (!space.isProject()) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Tasks are only available for project spaces.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Tasks are only available for project spaces.",
       },
-      400
-    );
+    });
   }
 
   const task = await ProjectTaskResource.fetchBySId(auth, taskId);
   if (!task || task.spaceId !== space.id) {
-    return c.json(
-      {
-        error: {
-          type: "project_task_not_found",
-          message: "Task not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "project_task_not_found",
+        message: "Task not found.",
       },
-      404
-    );
+    });
   }
 
   await task.softDelete(auth);

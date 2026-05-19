@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
@@ -20,24 +22,20 @@ app.get("/", spaceResource({ requireCanWrite: true }), async (c) => {
 
   const found = await AppResource.fetchById(auth, aId);
   if (!found || found.space.sId !== space.sId) {
-    return c.json(
-      {
-        error: { type: "app_not_found", message: "The app was not found." },
-      },
-      404
-    );
+    return apiError(c, {
+      status_code: 404,
+      api_error: { type: "app_not_found", message: "The app was not found." },
+    });
   }
   if (!found.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message:
-            "Retrieving content of runs requires write access to the app's space.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Retrieving content of runs requires write access to the app's space.",
       },
-      403
-    );
+    });
   }
   if (runId === "saved") runId = found.savedRun;
   if (!runId || runId.length === 0) {
@@ -51,16 +49,14 @@ app.get("/", spaceResource({ requireCanWrite: true }), async (c) => {
     blockName: c.req.param("name") ?? "",
   });
   if (run.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "The run block retrieval failed.",
-          app_error: run.error,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "The run block retrieval failed.",
+        app_error: run.error,
       },
-      500
-    );
+    });
   }
   return c.json({ run: run.value.run });
 });

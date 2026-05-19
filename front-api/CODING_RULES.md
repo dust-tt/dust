@@ -159,13 +159,46 @@ the wrapper exists to eliminate.
 
 ## ERRORS
 
-### [API7] Use the standard error shape
+### [API7] Always emit error responses through `apiError(c, ...)`
 
-All error responses follow `{ error: { type, message } }` to match what the
-Next handlers produce via `apiError`. For dynamic status codes carried in
-`APIErrorWithStatusCode` (e.g. when forwarding a `Result.Err`), use the
-`jsonApiError(c, err)` helper — it centralizes the
-`number → ContentfulStatusCode` cast in one place with a comment.
+All error responses must go through `apiError(c, err, error?)` from
+`@front-api/middleware/utils`. It is the Hono counterpart of
+`apiError(req, res, ...)` in `front/logger/withlogging.ts` and produces the
+same `{ error: { type, message } }` body plus the same logging, dd-trace
+span tags, and statsd `api_errors.count` increment. Calling `c.json({ error:
+... }, status)` directly skips that observability and is not allowed.
+
+```ts
+// BAD — bypasses logging / tracing / statsd
+return c.json(
+  {
+    error: {
+      type: "invalid_request_error",
+      message: `Too many ids provided. Maximum is ${MAX}.`,
+    },
+  },
+  400
+);
+
+// GOOD
+return apiError(c, {
+  status_code: 400,
+  api_error: {
+    type: "invalid_request_error",
+    message: `Too many ids provided. Maximum is ${MAX}.`,
+  },
+});
+```
+
+When forwarding an underlying exception, pass it as the third argument so
+its message and stack are captured in the log instead of the synthetic one.
+
+`apiError` also handles the case where a `Result.Err` carries an
+`APIErrorWithStatusCode` directly — pass it through verbatim. The
+`number → ContentfulStatusCode` cast is centralized in the helper.
+
+Reviewer: if you see `c.json({ error: ... }, status)` in a handler, require
+the author to switch to `apiError(c, ...)`.
 
 ## IMPORTS
 

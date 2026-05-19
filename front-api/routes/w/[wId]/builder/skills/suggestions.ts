@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { getSkillDescriptionSuggestion } from "@app/lib/api/skills/description_suggestion";
@@ -27,15 +29,13 @@ app.post(
 
     const suggestionRes = await getSkillDescriptionSuggestion(auth, inputs);
     if (suggestionRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: suggestionRes.error.message,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: suggestionRes.error.message,
         },
-        500
-      );
+      });
     }
 
     return c.json({ suggestion: suggestionRes.value });

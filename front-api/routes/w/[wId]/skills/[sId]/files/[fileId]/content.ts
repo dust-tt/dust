@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { Readable } from "node:stream";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 
@@ -15,37 +17,31 @@ app.get("/", async (c) => {
   const fileId = c.req.param("fileId");
 
   if (!isString(sId)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid skill ID.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid skill ID.",
       },
-      400
-    );
+    });
   }
 
   if (!isString(fileId)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid file ID.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid file ID.",
       },
-      400
-    );
+    });
   }
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
-    return c.json(
-      {
-        error: { type: "file_not_found", message: "File not found." },
-      },
-      404
-    );
+    return apiError(c, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
   }
 
   const file = await FileResource.fetchById(auth, fileId);
@@ -54,12 +50,10 @@ app.get("/", async (c) => {
     file.useCase !== "skill_attachment" ||
     file.useCaseMetadata?.skillId !== sId
   ) {
-    return c.json(
-      {
-        error: { type: "file_not_found", message: "File not found." },
-      },
-      404
-    );
+    return apiError(c, {
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
+    });
   }
 
   const readStream = file.getReadStream({ auth, version: "original" });

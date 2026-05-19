@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -18,29 +20,25 @@ app.post("/", async (c) => {
   const serverId = c.req.param("serverId") ?? "";
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can manage MCP servers.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can manage MCP servers.",
       },
-      403
-    );
+    });
   }
 
   const server = await RemoteMCPServerResource.fetchById(auth, serverId);
   if (!server) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "Remote MCP Server not found",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "Remote MCP Server not found",
       },
-      404
-    );
+    });
   }
 
   const r = await fetchRemoteServerMetaDataByServerId(auth, server.sId);
@@ -49,15 +47,13 @@ app.post("/", async (c) => {
       lastError: r.error.message,
       lastSyncAt: new Date(),
     });
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Error fetching remote server metadata: ${r.error.message}`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Error fetching remote server metadata: ${r.error.message}`,
       },
-      400
-    );
+    });
   }
 
   const metadata = r.value;

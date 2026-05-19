@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
@@ -36,15 +38,13 @@ app.post(
     const space = c.get("space");
 
     if (!space.isProject()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Tasks are only available for project spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Tasks are only available for project spaces.",
         },
-        400
-      );
+      });
     }
 
     const body = c.req.valid("json");
@@ -75,15 +75,13 @@ app.post(
         );
 
         if (result.isErr()) {
-          return c.json(
-            {
-              error: {
-                type: "invalid_request_error",
-                message: result.error.message,
-              },
+          return apiError(c, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: result.error.message,
             },
-            400
-          );
+          });
         }
 
         return c.json({ success: true });

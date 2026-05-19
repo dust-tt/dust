@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -26,24 +28,19 @@ app.post(
 
     const found = await AppResource.fetchById(auth, aId);
     if (!found || found.space.sId !== space.sId) {
-      return c.json(
-        {
-          error: { type: "app_not_found", message: "The app was not found." },
-        },
-        404
-      );
+      return apiError(c, {
+        status_code: 404,
+        api_error: { type: "app_not_found", message: "The app was not found." },
+      });
     }
     if (!found.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "app_auth_error",
-            message:
-              "Modifying an app requires write access to the app's space.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Modifying an app requires write access to the app's space.",
         },
-        403
-      );
+      });
     }
     const { specification, config: appConfig, run } = c.req.valid("json");
     const updateParams: {

@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 
-import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
+import { apiError } from "@front-api/middleware/utils";
+
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationError } from "@app/types/assistant/conversation";
 
-import { jsonApiError } from "@front-api/middleware/utils";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/participants.
 const app = new Hono();
@@ -20,7 +21,7 @@ app.get("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return jsonApiError(c, getConversationApiError(conversationRes.error));
+    return apiErrorForConversation(c, conversationRes.error);
   }
 
   const participantsRes = await fetchConversationParticipants(
@@ -28,15 +29,13 @@ app.get("/", async (c) => {
     conversationRes.value
   );
   if (participantsRes.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "conversation_not_found",
-          message: "Conversation not found",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found",
       },
-      404
-    );
+    });
   }
 
   return c.json({ participants: participantsRes.value });
@@ -52,21 +51,19 @@ app.post("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return jsonApiError(c, getConversationApiError(conversationRes.error));
+    return apiErrorForConversation(c, conversationRes.error);
   }
 
   const conversation = conversationRes.value;
   const u = auth.user();
   if (!u) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message: "User not authenticated",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: "app_auth_error",
+        message: "User not authenticated",
       },
-      401
-    );
+    });
   }
 
   const user = u.toJSON();
@@ -78,9 +75,9 @@ app.post("/", async (c) => {
     });
 
   if (isAlreadyParticipant) {
-    return jsonApiError(
+    return apiErrorForConversation(
       c,
-      getConversationApiError(new ConversationError("user_already_participant"))
+      new ConversationError("user_already_participant")
     );
   }
 

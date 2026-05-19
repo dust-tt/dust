@@ -3,11 +3,11 @@ import { z } from "zod";
 
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import { isProviderWhitelisted } from "@app/lib/assistant";
 import { isSupportedModel } from "@app/types/assistant/assistant";
 
-import { jsonApiError } from "@front-api/middleware/utils";
+import { apiError } from "@front-api/middleware/utils";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { validate } from "@front-api/middleware/validator";
 
 const PostConversationCompactionsBodySchema = z.object({
@@ -29,32 +29,28 @@ app.post(
 
     const conversationRes = await getConversation(auth, conversationId);
     if (conversationRes.isErr()) {
-      return jsonApiError(c, getConversationApiError(conversationRes.error));
+      return apiErrorForConversation(c, conversationRes.error);
     }
 
     const { model } = c.req.valid("json");
     if (!isSupportedModel(model)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `Unsupported model: ${model.providerId}/${model.modelId}.`,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Unsupported model: ${model.providerId}/${model.modelId}.`,
         },
-        400
-      );
+      });
     }
 
     if (!isProviderWhitelisted(auth, model.providerId)) {
-      return c.json(
-        {
-          error: {
-            type: "model_disabled",
-            message: `The model provider ${model.providerId} has been disabled by your workspace admin.`,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "model_disabled",
+          message: `The model provider ${model.providerId} has been disabled by your workspace admin.`,
         },
-        400
-      );
+      });
     }
 
     const result = await compactConversation(auth, {
@@ -62,7 +58,7 @@ app.post(
       model,
     });
     if (result.isErr()) {
-      return jsonApiError(c, result.error);
+      return apiError(c, result.error);
     }
 
     return c.json({ compactionMessage: result.value.compactionMessage });

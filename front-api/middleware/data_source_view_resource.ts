@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { MiddlewareHandler } from "hono";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -44,15 +45,13 @@ export function dataSourceViewResource(
     const space = c.get("space");
     const dsvId = c.req.param("dsvId");
     if (!dsvId) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Invalid path parameters.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid path parameters.",
         },
-        400
-      );
+      });
     }
     const view = await DataSourceViewResource.fetchById(auth, dsvId);
     if (
@@ -61,15 +60,13 @@ export function dataSourceViewResource(
       space.isConversations() ||
       !hasPermission(auth, view, options)
     ) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_view_not_found",
-            message: "The data source view you requested was not found.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_view_not_found",
+          message: "The data source view you requested was not found.",
         },
-        404
-      );
+      });
     }
     c.set("dataSourceView", view);
     await next();

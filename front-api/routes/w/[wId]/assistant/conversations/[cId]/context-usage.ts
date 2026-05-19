@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SupportedModel } from "@app/types/assistant/models/types";
@@ -28,15 +30,13 @@ app.get("/", async (c) => {
     conversationId
   );
   if (!conversation) {
-    return c.json(
-      {
-        error: {
-          type: "conversation_not_found",
-          message: "Conversation not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found.",
       },
-      404
-    );
+    });
   }
 
   const [lastAgentRun, lastCompactionRun] = await Promise.all([

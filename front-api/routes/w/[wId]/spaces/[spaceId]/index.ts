@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import uniqBy from "lodash/uniqBy";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
@@ -178,15 +180,13 @@ app.patch(
     const space = c.get("space");
 
     if (!space.canAdministrate(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message: "Only admins can administrate spaces.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only admins can administrate spaces.",
         },
-        403
-      );
+      });
     }
 
     const { content, name } = c.req.valid("json");
@@ -226,15 +226,13 @@ app.patch(
               );
 
             if (dataSourceViewRes.isErr()) {
-              return c.json(
-                {
-                  error: {
-                    type: "data_source_auth_error",
-                    message: dataSourceViewRes.error.message,
-                  },
+              return apiError(c, {
+                status_code: 403,
+                api_error: {
+                  type: "data_source_auth_error",
+                  message: dataSourceViewRes.error.message,
                 },
-                403
-              );
+              });
             }
           }
         }
@@ -264,15 +262,13 @@ app.delete(
     const space = c.get("space");
 
     if (!space.canAdministrate(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message: "Only users that are `admins` can administrate spaces.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only users that are `admins` can administrate spaces.",
         },
-        403
-      );
+      });
     }
 
     const shouldForce = c.req.query("force") === "true";
@@ -284,27 +280,22 @@ app.delete(
         shouldForce
       );
       if (deleteRes.isErr()) {
-        return c.json(
-          {
-            error: {
-              type: "invalid_request_error",
-              message: deleteRes.error.message,
-            },
+        return apiError(c, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: deleteRes.error.message,
           },
-          400
-        );
+        });
       }
     } catch (e) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message:
-              normalizeError(e).message ?? "The space cannot be deleted.",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: normalizeError(e).message ?? "The space cannot be deleted.",
         },
-        500
-      );
+      });
     }
 
     void emitAuditLogEvent({

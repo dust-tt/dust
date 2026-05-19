@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
@@ -20,27 +22,23 @@ app.post("/", async (c) => {
   const excludeSkillId = body?.excludeSkillId;
 
   if (!isString(naturalDescription)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "naturalDescription is required and must be a string.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "naturalDescription is required and must be a string.",
       },
-      400
-    );
+    });
   }
 
   if (excludeSkillId !== undefined && !isString(excludeSkillId)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "excludeSkillId must be a string if provided.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "excludeSkillId must be a string if provided.",
       },
-      400
-    );
+    });
   }
 
   const result = await getSimilarSkills(auth, {
@@ -53,15 +51,13 @@ app.post("/", async (c) => {
       { error: result.error, workspaceId: owner.sId },
       "Error fetching similar skills"
     );
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: result.error.message,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: result.error.message,
       },
-      500
-    );
+    });
   }
   const similarSkills = result.value.similar_skills;
   if (similarSkills.length > 0) {

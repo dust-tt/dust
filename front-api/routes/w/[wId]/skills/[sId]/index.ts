@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import uniq from "lodash/uniq";
@@ -81,28 +82,24 @@ async function loadSkill(
   const sId = c.req.param("sId");
 
   if (!isString(sId)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid skill ID.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid skill ID.",
       },
-      400
-    );
+    });
   }
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
-    return c.json(
-      {
-        error: {
-          type: "skill_not_found",
-          message: "The skill you're trying to access was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "skill_not_found",
+        message: "The skill you're trying to access was not found.",
       },
-      404
-    );
+    });
   }
 
   return { skill, sId };
@@ -164,57 +161,49 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
   const name = body.name.trim();
 
   if (!name) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Skill name cannot be empty.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Skill name cannot be empty.",
       },
-      400
-    );
+    });
   }
 
   // Check if user can write.
   if (!skill.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message: "Only editors can modify this skill.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Only editors can modify this skill.",
       },
-      403
-    );
+    });
   }
 
   // Check for existing active skill with the same name (excluding current skill).
   const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
   if (existingSkill && existingSkill.id !== skill.id) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `A skill with the name "${name}" already exists.`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `A skill with the name "${name}" already exists.`,
       },
-      400
-    );
+    });
   }
 
   // Validate MCP server view IDs.
   for (const tool of body.tools) {
     if (!isResourceSId("mcp_server_view", tool.mcpServerViewId)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `Invalid MCP server view ID: ${tool.mcpServerViewId}`,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid MCP server view ID: ${tool.mcpServerViewId}`,
         },
-        400
-      );
+      });
     }
   }
 
@@ -226,15 +215,13 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
   );
 
   if (mcpServerViewIds.length !== mcpServerViews.length) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
       },
-      404
-    );
+    });
   }
 
   const { attachedKnowledge, fileAttachments } = body;
@@ -249,15 +236,13 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
     dataSourceViewIds
   );
   if (dataSourceViews.length !== dataSourceViewIds.length) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
       },
-      404
-    );
+    });
   }
 
   const dataSourceViewIdMap = new Map(
@@ -287,15 +272,13 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
       );
 
     if (additionalRequestedSpaceIdsRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: additionalRequestedSpaceIdsRes.error.message,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: additionalRequestedSpaceIdsRes.error.message,
         },
-        400
-      );
+      });
     }
 
     additionalRequestedSpaceIds = additionalRequestedSpaceIdsRes.value;
@@ -325,42 +308,36 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
   if (fileAttachments) {
     const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("sandbox_tools") && fileAttachments.length > 0) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "File attachments are not supported.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "File attachments are not supported.",
         },
-        403
-      );
+      });
     }
 
     const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
     files = await FileResource.fetchByIds(auth, fileAttachmentIds);
     if (files.length !== fileAttachmentIds.length) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
         },
-        404
-      );
+      });
     }
 
     for (const file of files) {
       if (!file.isReady || file.useCase !== "skill_attachment") {
-        return c.json(
-          {
-            error: {
-              type: "invalid_request_error",
-              message: `File ${file.sId} is not ready or not a skill_attachment.`,
-            },
+        return apiError(c, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `File ${file.sId} is not ready or not a skill_attachment.`,
           },
-          400
-        );
+        });
       }
     }
   }
@@ -409,15 +386,13 @@ app.delete("/", async (c) => {
 
   // Check if user can write.
   if (!skill.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message: "Only editors can delete this skill.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Only editors can delete this skill.",
       },
-      403
-    );
+    });
   }
 
   if (skill.status === "suggested") {

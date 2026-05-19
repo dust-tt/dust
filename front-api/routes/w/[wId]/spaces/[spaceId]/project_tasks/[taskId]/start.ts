@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
@@ -26,15 +27,13 @@ app.post(
     const taskId = c.req.param("taskId") ?? "";
 
     if (!space.isProject()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Tasks are only available for project spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Tasks are only available for project spaces.",
         },
-        400
-      );
+      });
     }
 
     const { customMessage, agentConfigurationId } = c.req.valid("json");
@@ -45,15 +44,13 @@ app.post(
       agentConfigurationId,
     });
     if (startRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: startRes.error.type as APIErrorType,
-            message: startRes.error.message,
-          },
+      return apiError(c, {
+        status_code: startRes.error.statusCode,
+        api_error: {
+          type: startRes.error.type as APIErrorType,
+          message: startRes.error.message,
         },
-        startRes.error.statusCode as ContentfulStatusCode
-      );
+      });
     }
 
     return c.json({ task: startRes.value.task });

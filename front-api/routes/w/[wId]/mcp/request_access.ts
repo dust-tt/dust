@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import { escape } from "html-escaper";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -40,27 +41,23 @@ app.post(
     );
 
     if (!mcpServerView) {
-      return c.json(
-        {
-          error: {
-            type: "mcp_server_view_not_found",
-            message: "The MCP server view was not found",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "mcp_server_view_not_found",
+          message: "The MCP server view was not found",
         },
-        404
-      );
+      });
     }
 
     if (!mcpServerView.editedByUser?.sId) {
-      return c.json(
-        {
-          error: {
-            type: "user_not_found",
-            message: "No admin user found for this data source",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "user_not_found",
+          message: "No admin user found for this data source",
         },
-        403
-      );
+      });
     }
 
     const rateLimitKey = `access_requests:${user.sId}`;
@@ -72,17 +69,15 @@ app.post(
     });
 
     if (remaining === 0) {
-      return c.json(
-        {
-          error: {
-            type: "rate_limit_error",
-            message:
-              `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access requests ` +
-              "per day. Please try again tomorrow.",
-          },
+      return apiError(c, {
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message:
+            `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access requests ` +
+            "per day. Please try again tomorrow.",
         },
-        429
-      );
+      });
     }
 
     const body =
@@ -99,15 +94,13 @@ app.post(
     });
 
     if (result.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "Failed to send email",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to send email",
         },
-        500
-      );
+      });
     }
     return c.json({ success: true });
   }

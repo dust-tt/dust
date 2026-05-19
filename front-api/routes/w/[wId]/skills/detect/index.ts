@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import {
   detectSkillsFromGitHubRepo,
   isSkillFromGitHubRepo,
@@ -28,44 +30,38 @@ app.post("/", async (c) => {
   const owner = auth.getNonNullableWorkspace();
 
   if (!auth.isBuilder()) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message: "User is not a builder.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "User is not a builder.",
       },
-      403
-    );
+    });
   }
 
   const body = await c.req.json().catch(() => null);
   const repoUrl = body?.repoUrl;
 
   if (!isString(repoUrl)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "repoUrl is required and must be a string.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "repoUrl is required and must be a string.",
       },
-      400
-    );
+    });
   }
 
   const accessToken = await getWorkspaceLevelGitHubAccessToken(auth);
   const clientResult = initGitHubRepoClient({ repoUrl, accessToken });
   if (clientResult.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: clientResult.error.message,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: clientResult.error.message,
       },
-      400
-    );
+    });
   }
 
   const result = await detectSkillsFromGitHubRepo(clientResult.value);
@@ -75,44 +71,34 @@ app.post("/", async (c) => {
 
     switch (error.type) {
       case "invalid_url":
-        return c.json(
-          {
-            error: { type: "invalid_request_error", message: error.message },
-          },
-          400
-        );
+        return apiError(c, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
       case "not_found":
-        return c.json(
-          {
-            error: { type: "invalid_request_error", message: error.message },
-          },
-          404
-        );
+        return apiError(c, {
+          status_code: 404,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
       case "auth_error":
-        return c.json(
-          {
-            error: { type: "invalid_request_error", message: error.message },
-          },
-          401
-        );
+        return apiError(c, {
+          status_code: 401,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
       case "github_api_error":
         logger.error(
           { error, workspaceId: owner.sId },
           "Error detecting skills from GitHub repo"
         );
-        return c.json(
-          {
-            error: { type: "invalid_request_error", message: error.message },
-          },
-          500
-        );
+        return apiError(c, {
+          status_code: 500,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
       case "validation_error":
-        return c.json(
-          {
-            error: { type: "invalid_request_error", message: error.message },
-          },
-          400
-        );
+        return apiError(c, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
       default:
         assertNever(error);
     }
@@ -121,16 +107,14 @@ app.post("/", async (c) => {
   const detectedSkills = result.value;
 
   if (detectedSkills.length === 0) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message:
-            "No skills found in this repository. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification).",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "No skills found in this repository. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification).",
       },
-      400
-    );
+    });
   }
 
   const existingSkills = await SkillResource.fetchByNames(

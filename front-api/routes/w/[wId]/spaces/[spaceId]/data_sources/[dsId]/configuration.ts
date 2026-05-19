@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import config from "@app/lib/api/config";
 import { isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
@@ -24,16 +26,13 @@ app.get(
   async (c) => {
     const dataSource = c.get("dataSource");
     if (!dataSource.connectorId || !isWebsite(dataSource)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_not_managed",
-            message:
-              "Cannot read/update the configuration of this Data Source.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_managed",
+          message: "Cannot read/update the configuration of this Data Source.",
         },
-        404
-      );
+      });
     }
 
     const connectorsAPI = new ConnectorsAPI(
@@ -44,16 +43,14 @@ app.get(
       dataSource.connectorId
     );
     if (connectorRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "connector_not_found_error",
-            message:
-              "An error occurred while fetching the connector's configuration",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "connector_not_found_error",
+          message:
+            "An error occurred while fetching the connector's configuration",
         },
-        500
-      );
+      });
     }
     return c.json({ configuration: connectorRes.value.configuration });
   }
@@ -69,42 +66,35 @@ app.patch(
     const dataSource = c.get("dataSource");
 
     if (!dataSource.connectorId || !isWebsite(dataSource)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_not_managed",
-            message:
-              "Cannot read/update the configuration of this Data Source.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_managed",
+          message: "Cannot read/update the configuration of this Data Source.",
         },
-        404
-      );
+      });
     }
 
     if (!dataSource.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that have `write` permission for the current space can update a data source configuration.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Only the users that have `write` permission for the current space can update a data source configuration.",
         },
-        403
-      );
+      });
     }
 
     if (!auth.isBuilder()) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can update a data source configuration.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Only the users that are `builders` for the current workspace can update a data source configuration.",
         },
-        403
-      );
+      });
     }
 
     const { configuration } = c.req.valid("json");
@@ -118,16 +108,14 @@ app.patch(
       configuration: { configuration },
     });
     if (updateRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "connector_update_error",
-            message:
-              "An error occurred while updating the connector's configuration",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "connector_update_error",
+          message:
+            "An error occurred while updating the connector's configuration",
         },
-        500
-      );
+      });
     }
 
     return c.json({ configuration: updateRes.value.configuration });

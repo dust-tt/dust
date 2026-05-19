@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { importSkillsFromGitHub } from "@app/lib/api/skills/detection/github/import_skills";
@@ -35,12 +37,10 @@ app.post("/", validate("json", ImportSkillsRequestBodySchema), async (c) => {
   const owner = auth.getNonNullableWorkspace();
 
   if (!auth.isBuilder()) {
-    return c.json(
-      {
-        error: { type: "app_auth_error", message: "User is not a builder." },
-      },
-      403
-    );
+    return apiError(c, {
+      status_code: 403,
+      api_error: { type: "app_auth_error", message: "User is not a builder." },
+    });
   }
 
   const { repoUrl, names } = c.req.valid("json");
@@ -50,44 +50,34 @@ app.post("/", validate("json", ImportSkillsRequestBodySchema), async (c) => {
     const error = result.error;
     switch (error.type) {
       case "invalid_url":
-        return c.json(
-          {
-            error: { type: "invalid_request_error", message: error.message },
-          },
-          400
-        );
+        return apiError(c, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
       case "not_found":
-        return c.json(
-          {
-            error: { type: "invalid_request_error", message: error.message },
-          },
-          404
-        );
+        return apiError(c, {
+          status_code: 404,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
       case "auth_error":
-        return c.json(
-          {
-            error: { type: "invalid_request_error", message: error.message },
-          },
-          401
-        );
+        return apiError(c, {
+          status_code: 401,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
       case "github_api_error":
         logger.error(
           { error, workspaceId: owner.sId },
           "Error detecting skills from GitHub repo during import"
         );
-        return c.json(
-          {
-            error: { type: "invalid_request_error", message: error.message },
-          },
-          500
-        );
+        return apiError(c, {
+          status_code: 500,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
       case "validation_error":
-        return c.json(
-          {
-            error: { type: "invalid_request_error", message: error.message },
-          },
-          400
-        );
+        return apiError(c, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
       default:
         assertNever(error);
     }

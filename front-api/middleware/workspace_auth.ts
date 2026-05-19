@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { MiddlewareHandler } from "hono";
 
 import {
@@ -26,15 +27,13 @@ declare module "hono" {
 export const workspaceAuth: MiddlewareHandler = async (c, next) => {
   const wId = c.req.param("wId");
   if (!wId) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_not_found",
-          message: "The workspace was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
       },
-      404
-    );
+    });
   }
 
   const { req, res, setCookies } = buildNextLikeReqRes(c);
@@ -45,16 +44,13 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
     c.req.header("authorization")
   );
   if (bearerRes.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: bearerRes.error,
-          message:
-            "The request does not have valid authentication credentials.",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: bearerRes.error,
+        message: "The request does not have valid authentication credentials.",
       },
-      401
-    );
+    });
   }
   const session = bearerRes.value ?? (await getSession(req, res));
 
@@ -63,16 +59,14 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
   }
 
   if (!session) {
-    return c.json(
-      {
-        error: {
-          type: "not_authenticated",
-          message:
-            "The user does not have an active session or is not authenticated.",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: "not_authenticated",
+        message:
+          "The user does not have an active session or is not authenticated.",
       },
-      401
-    );
+    });
   }
 
   const auth = await Authenticator.fromSession(session, wId);
@@ -85,27 +79,23 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   if (!owner || !plan) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_not_found",
-          message: "The workspace was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
       },
-      404
-    );
+    });
   }
 
   if (!auth.isUser()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "Only users of the workspace can access this content.",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only users of the workspace can access this content.",
       },
-      401
-    );
+    });
   }
 
   c.set("auth", auth);

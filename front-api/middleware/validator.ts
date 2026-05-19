@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import { zValidator } from "@hono/zod-validator";
 import type { ValidationTargets } from "hono";
 import type { ZodType } from "zod";
@@ -22,15 +23,13 @@ export function validate<
 >(target: Target, schema: Schema) {
   return zValidator(target, schema, (result, c) => {
     if (!result.success) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `Invalid ${TARGET_LABEL[target]}: ${fromError(result.error).toString()}`,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid ${TARGET_LABEL[target]}: ${fromError(result.error).toString()}`,
         },
-        400
-      );
+      });
     }
   });
 }

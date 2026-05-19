@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { searchProjectConversations } from "@app/lib/api/projects/search";
@@ -50,15 +52,13 @@ app.get(
         },
         "Failed to search conversations in datasource"
       );
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "Failed to search conversations.",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to search conversations.",
         },
-        500
-      );
+      });
     }
 
     const filteredResults = searchRes.value.filter(

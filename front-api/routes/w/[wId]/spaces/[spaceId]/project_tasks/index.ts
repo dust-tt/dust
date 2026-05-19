@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { Authenticator } from "@app/lib/auth";
@@ -71,15 +73,13 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
   const space = c.get("space");
 
   if (!space.isProject()) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Tasks are only available for project spaces.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Tasks are only available for project spaces.",
       },
-      400
-    );
+    });
   }
 
   const currentUser = auth.getNonNullableUser();
@@ -167,15 +167,13 @@ app.post(
     const space = c.get("space");
 
     if (!space.isProject()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Tasks are only available for project spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Tasks are only available for project spaces.",
         },
-        400
-      );
+      });
     }
 
     const { text, assigneeUserId } = c.req.valid("json");
@@ -197,27 +195,23 @@ app.post(
       );
       const assigneeUser = assigneeAuth.user();
       if (!assigneeUser) {
-        return c.json(
-          {
-            error: {
-              type: "invalid_request_error",
-              message: "Assignee user not found.",
-            },
+        return apiError(c, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Assignee user not found.",
           },
-          400
-        );
+        });
       }
 
       if (!space.isMember(assigneeAuth)) {
-        return c.json(
-          {
-            error: {
-              type: "invalid_request_error",
-              message: "Assignee must be a member of this project.",
-            },
+        return apiError(c, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Assignee must be a member of this project.",
           },
-          400
-        );
+        });
       }
 
       taskUserModelId = assigneeUser.id;
@@ -244,15 +238,13 @@ app.post(
       newTodo.sId
     );
     if (!todoResource) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "Failed to load the new task.",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to load the new task.",
         },
-        500
-      );
+      });
     }
 
     // Manual creates are never linked to a conversation until someone uses "Start"

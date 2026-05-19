@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { searchMembers } from "@app/lib/api/workspace";
@@ -36,15 +38,13 @@ app.get("/", validate("query", SearchMembersQuerySchema), async (c) => {
 
   const emails = query.searchEmails?.split(",");
   if (emails?.length && emails.length > MAX_SEARCH_EMAILS) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Too many emails provided. Maximum is ${MAX_SEARCH_EMAILS}.`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Too many emails provided. Maximum is ${MAX_SEARCH_EMAILS}.`,
       },
-      400
-    );
+    });
   }
 
   const { members, total } = await searchMembers(

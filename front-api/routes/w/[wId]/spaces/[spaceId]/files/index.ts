@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
 
 import { spaceResource } from "@front-api/middleware/space_resource";
@@ -14,15 +16,13 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
   const space = c.get("space");
 
   if (!space.isProject()) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Files are only available for project spaces.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Files are only available for project spaces.",
       },
-      400
-    );
+    });
   }
 
   const files = await listGCSMountFiles(auth, {

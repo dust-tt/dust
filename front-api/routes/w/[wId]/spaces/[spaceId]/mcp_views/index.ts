@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -117,15 +119,13 @@ app.get(
     });
 
     if (!r.success) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Invalid query parameters.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid query parameters.",
         },
-        400
-      );
+      });
     }
 
     const { availability = "manual" } = r.data;
@@ -205,29 +205,25 @@ app.post(
     const { mcpServerId } = c.req.valid("json");
 
     if (!auth.isAdmin()) {
-      return c.json(
-        {
-          error: {
-            type: "mcp_auth_error",
-            message: "User is not authorized to add tools to a space.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "mcp_auth_error",
+          message: "User is not authorized to add tools to a space.",
         },
-        403
-      );
+      });
     }
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Can only create MCP Server Views from regular or global spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Can only create MCP Server Views from regular or global spaces.",
         },
-        400
-      );
+      });
     }
 
     const systemView =
@@ -237,16 +233,14 @@ app.post(
       );
 
     if (!systemView) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Missing system view for MCP server, it should have been created when adding the tool.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Missing system view for MCP server, it should have been created when adding the tool.",
         },
-        400
-      );
+      });
     }
 
     const { hasConflict, name } =
@@ -257,15 +251,13 @@ app.post(
       );
 
     if (hasConflict) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `An existing Tool is already using the name "${name}"`,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `An existing Tool is already using the name "${name}"`,
         },
-        400
-      );
+      });
     }
 
     const { view: serverView, affectedAgents } =

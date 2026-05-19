@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
 
@@ -16,15 +17,13 @@ async function loadConnection(c: Context) {
 app.get("/", async (c) => {
   const connectionRes = await loadConnection(c);
   if (connectionRes.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "mcp_server_connection_not_found",
-          message: "Connection not found",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "mcp_server_connection_not_found",
+        message: "Connection not found",
       },
-      404
-    );
+    });
   }
 
   const value: { connection: MCPServerConnectionType } = {
@@ -37,28 +36,24 @@ app.delete("/", async (c) => {
   const auth = c.get("auth");
   const connectionRes = await loadConnection(c);
   if (connectionRes.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "mcp_server_connection_not_found",
-          message: "Connection not found",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "mcp_server_connection_not_found",
+        message: "Connection not found",
       },
-      404
-    );
+    });
   }
 
   const result = await connectionRes.value.delete(auth);
   if (result.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to delete connection",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to delete connection",
       },
-      500
-    );
+    });
   }
 
   return c.json({ success: true });

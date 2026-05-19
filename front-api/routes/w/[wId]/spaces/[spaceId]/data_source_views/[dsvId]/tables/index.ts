@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { getFlattenedContentNodesOfViewTypeForDataSourceView } from "@app/lib/api/data_source_view";
 
@@ -21,15 +23,13 @@ app.get(
     const dataSourceView = c.get("dataSourceView");
     const paginationRes = getCursorPaginationParams(c.req.query());
     if (paginationRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_pagination_parameters",
-            message: "Invalid pagination parameters",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_pagination_parameters",
+          message: "Invalid pagination parameters",
         },
-        400
-      );
+      });
     }
     const contentNodes =
       await getFlattenedContentNodesOfViewTypeForDataSourceView(
@@ -40,15 +40,13 @@ app.get(
         }
       );
     if (contentNodes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: contentNodes.error.message,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: contentNodes.error.message,
         },
-        500
-      );
+      });
     }
     return c.json({
       tables: contentNodes.value.nodes,

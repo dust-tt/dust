@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import path from "path";
 
 import {
@@ -27,45 +29,39 @@ async function buildContext(c: any) {
 
   if (!space.isProject()) {
     return {
-      error: c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Files are only available for project spaces.",
-          },
+      error: apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Files are only available for project spaces.",
         },
-        400
-      ),
+      }),
     };
   }
 
   const rel = c.req.param("rel");
   if (!isString(rel) || rel.length === 0) {
     return {
-      error: c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Missing file path.",
-          },
+      error: apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Missing file path.",
         },
-        400
-      ),
+      }),
     };
   }
 
   const scopedPath = parseScopedFilePath(rel);
   if (!scopedPath || scopedPath.prefix !== "project") {
     return {
-      error: c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Path must start with the scope prefix `project/`.",
-          },
+      error: apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Path must start with the scope prefix `project/`.",
         },
-        400
-      ),
+      }),
     };
   }
 
@@ -79,15 +75,13 @@ async function buildContext(c: any) {
   );
   if (!normalizedGcsPath.startsWith(basePath)) {
     return {
-      error: c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message: "Access denied: path is outside project scope.",
-          },
+      error: apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Access denied: path is outside project scope.",
         },
-        403
-      ),
+      }),
     };
   }
 
@@ -109,15 +103,13 @@ app.get("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
   const bucket = getPrivateUploadBucket();
   const contentTypeResult = await bucket.getFileContentType(normalizedGcsPath);
   if (contentTypeResult.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
       },
-      404
-    );
+    });
   }
 
   const contentType = contentTypeResult.value ?? "application/octet-stream";
@@ -155,15 +147,13 @@ app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
   const { auth, space, normalizedRelative } = ctx;
 
   if (!space.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "You do not have write access to this project.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "You do not have write access to this project.",
       },
-      403
-    );
+    });
   }
 
   const body = await c.req.json().catch(() => ({}));
@@ -174,16 +164,14 @@ app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
     fileName.includes("/") ||
     fileName.includes("\\")
   ) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message:
-            "fileName is required and must be a non-empty string without path separators.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "fileName is required and must be a non-empty string without path separators.",
       },
-      400
-    );
+    });
   }
 
   const renameResult = await renameProjectFile(auth, {
@@ -192,15 +180,13 @@ app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
     newFileName: fileName.trim(),
   });
   if (renameResult.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: renameResult.error.message,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: renameResult.error.message,
       },
-      500
-    );
+    });
   }
 
   return c.json({});
@@ -214,15 +200,13 @@ app.delete("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
   const { auth, space, normalizedRelative } = ctx;
 
   if (!space.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "You do not have write access to this project.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "You do not have write access to this project.",
       },
-      403
-    );
+    });
   }
 
   const deleteResult = await deleteProjectFile(auth, {
@@ -230,15 +214,13 @@ app.delete("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
     relativeFilePath: normalizedRelative,
   });
   if (deleteResult.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: deleteResult.error.message,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: deleteResult.error.message,
       },
-      500
-    );
+    });
   }
 
   return c.json({});

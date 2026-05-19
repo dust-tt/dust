@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { fetchUserFromSession } from "@app/lib/iam/users";
 
@@ -15,30 +17,26 @@ authContextApp.get("/", async (c) => {
   if (session.workspaceId) {
     const redirect = await getWorkspaceRegionRedirect(session.workspaceId);
     if (redirect) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_in_different_region",
-            message: "Workspace is located in a different region",
-            redirect,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "workspace_in_different_region",
+          message: "Workspace is located in a different region",
+          redirect,
         },
-        400
-      );
+      });
     }
   }
 
   const user = await fetchUserFromSession(session);
   if (!user) {
-    return c.json(
-      {
-        error: {
-          type: "user_not_found",
-          message: "User not found.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "user_not_found",
+        message: "User not found.",
       },
-      403
-    );
+    });
   }
 
   return c.json({

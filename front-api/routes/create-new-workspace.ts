@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { createAndTrackMembership } from "@app/lib/api/membership";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
@@ -16,38 +18,32 @@ createNewWorkspaceApp.post("/", async (c) => {
 
   const user = await getUserFromSession(session);
   if (!user) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "The user is not found.",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The user is not found.",
       },
-      401
-    );
+    });
   }
 
   if (user.workspaces.length > 0) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "The user already has a workspace.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The user already has a workspace.",
       },
-      400
-    );
+    });
   }
 
   const workspace = await createWorkspace(session);
   const u = await UserResource.fetchByModelId(user.id);
   if (!u) {
-    return c.json(
-      {
-        error: { type: "user_not_found", message: "The user was not found." },
-      },
-      404
-    );
+    return apiError(c, {
+      status_code: 404,
+      api_error: { type: "user_not_found", message: "The user was not found." },
+    });
   }
 
   await createAndTrackMembership({

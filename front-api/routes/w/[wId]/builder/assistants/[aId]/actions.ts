@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import {
   buildInitialActions,
@@ -24,15 +26,13 @@ app.get("/", async (c) => {
       variant: "full",
     });
     if (!agentConfiguration) {
-      return c.json(
-        {
-          error: {
-            type: "agent_configuration_not_found",
-            message: "Agent configuration not found.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "Agent configuration not found.",
         },
-        404
-      );
+      });
     }
 
     const { dataSourceViews, mcpServerViews } =
@@ -54,15 +54,13 @@ app.get("/", async (c) => {
 
     return c.json({ actions });
   } catch {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to fetch builder state.",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to fetch builder state.",
       },
-      500
-    );
+    });
   }
 });
 

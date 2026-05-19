@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import uniq from "lodash/uniq";
 import { z } from "zod";
 
@@ -124,43 +126,37 @@ app.get("/", async (c) => {
   let skillView: SkillViewType = "full";
   if (viewType !== undefined) {
     if (!isString(viewType) || !isSkillViewType(viewType)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `Invalid viewType: ${viewType}. Expected "full" or "summary".`,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid viewType: ${viewType}. Expected "full" or "summary".`,
         },
-        400
-      );
+      });
     }
 
     skillView = viewType;
   }
 
   if (withRelations === "true" && skillView === "summary") {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "viewType=summary is incompatible with withRelations=true.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "viewType=summary is incompatible with withRelations=true.",
       },
-      400
-    );
+    });
   }
 
   const statusValidation = SkillStatusSchema.safeParse(status);
   if (!statusValidation.success) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Invalid status: ${status}. Expected "active", "archived", or "suggested".`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid status: ${status}. Expected "active", "archived", or "suggested".`,
       },
-      400
-    );
+    });
   }
   const skillStatus = statusValidation.data;
 
@@ -231,12 +227,10 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
   const owner = auth.getNonNullableWorkspace();
 
   if (!isBuilder(owner)) {
-    return c.json(
-      {
-        error: { type: "app_auth_error", message: "User is not a builder." },
-      },
-      403
-    );
+    return apiError(c, {
+      status_code: 403,
+      api_error: { type: "app_auth_error", message: "User is not a builder." },
+    });
   }
 
   const user = auth.getNonNullableUser();
@@ -245,29 +239,25 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
   const name = body.name.trim();
 
   if (!name) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Skill name cannot be empty.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Skill name cannot be empty.",
       },
-      400
-    );
+    });
   }
 
   const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
   if (existingSkill) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `A skill with the name "${name}" already exists.`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `A skill with the name "${name}" already exists.`,
       },
-      400
-    );
+    });
   }
 
   // Validate all MCP server views exist before creating anything.
@@ -278,15 +268,13 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
   );
 
   if (mcpServerViewIds.length !== mcpServerViews.length) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
       },
-      404
-    );
+    });
   }
 
   const { attachedKnowledge, fileAttachments } = body;
@@ -300,15 +288,13 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
     dataSourceViewIds
   );
   if (dataSourceViews.length !== dataSourceViewIds.length) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
       },
-      404
-    );
+    });
   }
 
   const dataSourceViewIdMap = new Map(
@@ -335,15 +321,13 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
     );
 
   if (additionalRequestedSpaceIdsRes.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: additionalRequestedSpaceIdsRes.error.message,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: additionalRequestedSpaceIdsRes.error.message,
       },
-      400
-    );
+    });
   }
 
   const requestedSpaceIds = uniq([
@@ -357,15 +341,13 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
 
   // Only global skills can be extended.
   if (extendedSkill !== null && !extendedSkill.isExtendable) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `The extended skill with id "${body.extendedSkillId}" cannot be extended.`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `The extended skill with id "${body.extendedSkillId}" cannot be extended.`,
       },
-      400
-    );
+    });
   }
 
   // Validate file attachments if provided (gated behind sandbox_tools).
@@ -373,42 +355,36 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
   if (fileAttachments) {
     const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("sandbox_tools") && fileAttachments.length > 0) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "File attachments are not supported.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "File attachments are not supported.",
         },
-        403
-      );
+      });
     }
 
     const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
     files = await FileResource.fetchByIds(auth, fileAttachmentIds);
     if (files.length !== fileAttachmentIds.length) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
         },
-        404
-      );
+      });
     }
 
     for (const file of files) {
       if (!file.isReady || file.useCase !== "skill_attachment") {
-        return c.json(
-          {
-            error: {
-              type: "invalid_request_error",
-              message: `File ${file.sId} is not ready or not a skill_attachment.`,
-            },
+        return apiError(c, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `File ${file.sId} is not ready or not a skill_attachment.`,
           },
-          400
-        );
+        });
       }
     }
   }

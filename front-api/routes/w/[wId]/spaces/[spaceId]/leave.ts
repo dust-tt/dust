@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -19,27 +21,23 @@ app.post(
     const space = c.get("space");
 
     if (!space.isProject()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "You can only leave Pods, not regular spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "You can only leave Pods, not regular spaces.",
         },
-        400
-      );
+      });
     }
 
     if (!space.isMember(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message: "You are not a member of this Pod.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You are not a member of this Pod.",
         },
-        403
-      );
+      });
     }
 
     const user = auth.getNonNullableUser();
@@ -51,16 +49,14 @@ app.post(
       const activeEditors = await editorGroup.getActiveMembers(auth);
       const isUserEditor = activeEditors.some((m) => m.sId === user.sId);
       if (isUserEditor && activeEditors.length === 1) {
-        return c.json(
-          {
-            error: {
-              type: "workspace_auth_error",
-              message:
-                "You cannot leave this Pod as you are the last editor. Please add another editor first.",
-            },
+        return apiError(c, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "You cannot leave this Pod as you are the last editor. Please add another editor first.",
           },
-          403
-        );
+        });
       }
     }
 
@@ -71,15 +67,13 @@ app.post(
     for (const group of groupsToLeave) {
       const result = await group.leaveGroup(auth);
       if (result.isErr() && result.error.code !== "user_not_member") {
-        return c.json(
-          {
-            error: {
-              type: "internal_server_error",
-              message: result.error.message,
-            },
+        return apiError(c, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: result.error.message,
           },
-          500
-        );
+        });
       }
     }
 
