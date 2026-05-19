@@ -31,6 +31,7 @@ import type {
   MembershipSeatType,
 } from "@app/types/memberships";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   ActiveRoleType,
   LightWorkspaceType,
@@ -112,11 +113,6 @@ async function resolveSeatTypeForNewMembership(
     contract,
     productSeatTypes
   );
-  if (!defaultSeatType) {
-    throw new Error(
-      `Cannot create membership in workspace ${workspace.sId}: rate card has no valid DUST_DEFAULT_SEAT_TYPE custom field for the seat tiers present on the contract.`
-    );
-  }
   return defaultSeatType;
 }
 

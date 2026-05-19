@@ -5,10 +5,8 @@ import {
 } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
-import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType } from "@app/types/memberships";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Subscription } from "@metronome/sdk/resources";
 
 /**
@@ -18,23 +16,22 @@ import type { Subscription } from "@metronome/sdk/resources";
  *
  * Products are global per-environment (not workspace-scoped) and rarely
  * change, so the response is cached in Redis for 6h.
+ *
+ * Errors are intentionally NOT caught here: an empty map would be cached
+ * for the full TTL, silently turning off seat sync for every workspace
+ * until the cache expires. Letting the error propagate prevents that
+ * stuck state — `cacheWithRedis` only memoizes successful results, so the
+ * next call will retry against Metronome.
  */
 async function fetchProductSeatTypes(): Promise<
   Record<string, MembershipSeatType>
 > {
   const result: Record<string, MembershipSeatType> = {};
-  try {
-    for await (const product of getMetronomeClient().v1.contracts.products.list()) {
-      const value = product.custom_fields?.[SEAT_TYPE_CUSTOM_FIELD_KEY];
-      if (value && isMembershipSeatType(value)) {
-        result[product.id] = value;
-      }
+  for await (const product of getMetronomeClient().v1.contracts.products.list()) {
+    const value = product.custom_fields?.[SEAT_TYPE_CUSTOM_FIELD_KEY];
+    if (value && isMembershipSeatType(value)) {
+      result[product.id] = value;
     }
-  } catch (err) {
-    logger.warn(
-      { err: normalizeError(err) },
-      "[Metronome] Failed to fetch product seat types — returning empty map"
-    );
   }
   return result;
 }
@@ -102,24 +99,21 @@ export function isMauContract(
  * is the template-level entity shared by all contracts on the same plan,
  * so tagging it once at `metronome_setup` time backfills every existing
  * and future contract — no per-contract setValues needed.
+ *
+ * Errors are intentionally NOT caught here: caching `null` on a transient
+ * Metronome error would stick for the full TTL and break new-member
+ * onboarding on every contract sharing this rate card. Let the error
+ * propagate so the cache stays empty and the next call retries.
  */
 async function fetchRateCardDefaultSeatType(
   rateCardId: string
 ): Promise<MembershipSeatType | null> {
-  try {
-    const response = await getMetronomeClient().v1.contracts.rateCards.retrieve(
-      { id: rateCardId }
-    );
-    const value =
-      response.data.custom_fields?.[DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY];
-    return value && isMembershipSeatType(value) ? value : null;
-  } catch (err) {
-    logger.warn(
-      { rateCardId, err: normalizeError(err) },
-      "[Metronome] Failed to fetch rate card default seat type"
-    );
-    return null;
-  }
+  const response = await getMetronomeClient().v1.contracts.rateCards.retrieve({
+    id: rateCardId,
+  });
+  const value =
+    response.data.custom_fields?.[DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY];
+  return value && isMembershipSeatType(value) ? value : null;
 }
 
 const RATE_CARD_DEFAULT_SEAT_TYPE_TTL_MS = 6 * 60 * 60 * 1000;

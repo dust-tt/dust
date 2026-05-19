@@ -6,7 +6,10 @@ import type {
 import { useUpdateMemberSeatType } from "@app/lib/swr/memberships";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
-import type { MembershipSeatType } from "@app/types/memberships";
+import {
+  isMembershipSeatType,
+  type MembershipSeatType,
+} from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
