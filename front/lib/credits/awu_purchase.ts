@@ -66,6 +66,24 @@ type AwuEligibilityOk = {
   stripe: Stripe;
 };
 
+function getAwuPurchasedCreditsFromInvoice(invoice: Stripe.Invoice): number {
+  if (invoice.metadata?.awu_purchase !== "true") {
+    return 0;
+  }
+
+  const amountCreditsString = invoice.metadata?.awu_amount_credits;
+  if (!amountCreditsString) {
+    return 0;
+  }
+
+  const amountCredits = Number.parseInt(amountCreditsString, 10);
+  if (!Number.isFinite(amountCredits)) {
+    return 0;
+  }
+
+  return amountCredits;
+}
+
 /**
  * Resolves the billing currency from the active Metronome contract's rate
  * card — the source of truth for Metronome-billed workspaces. The Stripe
@@ -170,9 +188,10 @@ export async function getAwuPurchaseInfo(
     status: "paid",
     created: { gte: cycleStartSeconds },
   });
-  const alreadyPurchasedThisCycleCredits = paidInvoices.data
-    .filter((inv) => inv.metadata?.awu_purchase === "true")
-    .reduce((sum, inv) => sum + (inv.amount_paid ?? 0), 0);
+  const alreadyPurchasedThisCycleCredits = paidInvoices.data.reduce(
+    (sum, inv) => sum + getAwuPurchasedCreditsFromInvoice(inv),
+    0
+  );
 
   return {
     canPurchase: true,
@@ -221,9 +240,10 @@ export async function purchaseAwuCredits(
     status: "paid",
     created: { gte: cycleStartSeconds },
   });
-  const alreadyPurchasedThisCycleCredits = paidInvoices.data
-    .filter((inv) => inv.metadata?.awu_purchase === "true")
-    .reduce((sum, inv) => sum + (inv.amount_paid ?? 0), 0);
+  const alreadyPurchasedThisCycleCredits = paidInvoices.data.reduce(
+    (sum, inv) => sum + getAwuPurchasedCreditsFromInvoice(inv),
+    0
+  );
 
   const remaining =
     MAX_AWU_PURCHASE_CREDITS_PER_CYCLE - alreadyPurchasedThisCycleCredits;
