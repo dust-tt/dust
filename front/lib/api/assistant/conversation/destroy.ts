@@ -41,22 +41,30 @@ async function destroyActionsRelatedResources(
   auth: Authenticator,
   agentMessageIds: Array<ModelId>
 ) {
-  // First, retrieve the MCP actions.
-  const mcpActions = await AgentMCPActionResource.listByAgentMessageIds(
-    auth,
-    agentMessageIds
-  );
+  if (agentMessageIds.length === 0) {
+    return;
+  }
+
+  const actionModelIds =
+    await AgentMCPActionResource.listModelIdsByAgentMessageIds(
+      auth,
+      agentMessageIds
+    );
 
   // Destroy MCP action output items (including GCS cleanup).
   await AgentMCPActionResource.destroyOutputItemsByActionIds(
     auth,
-    mcpActions.map((a) => a.id)
+    actionModelIds
   );
 
   // Destroy the actions.
-  await AgentMCPActionResource.deleteByAgentMessageId(auth, {
-    agentMessageIds,
-  });
+  const deleteActionsResult =
+    await AgentMCPActionResource.deleteByAgentMessageId(auth, {
+      agentMessageIds,
+    });
+  if (deleteActionsResult.isErr()) {
+    throw deleteActionsResult.error;
+  }
 }
 
 async function destroyMessageRelatedResources(
