@@ -376,7 +376,7 @@ export default function CustomerStoryPage({
       </article>
 
       {relatedStories.length > 0 && (
-        <section className="mt-20">
+        <section className="mt-20 pb-24">
           <Grid>
             <div className={WIDE_CLASSES}>
               <H2 className="mb-8">More Customer Stories</H2>
@@ -461,6 +461,7 @@ export default function CustomerStoryPage({
           </Grid>
         </section>
       )}
+      {relatedStories.length === 0 && <div className="pb-24" />}
     </>
   );
 }
