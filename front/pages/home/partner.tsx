@@ -39,7 +39,7 @@ export default function Partner() {
         description="Partner with Dust to help businesses deploy AI agents. Join our network of resellers, implementation partners, and technology partners."
         pathname={router.asPath}
       />
-      <div className="flex w-full flex-col justify-center gap-12">
+      <div className="flex w-full flex-col justify-center gap-12 pb-24">
         <PartnerHero />
         <Grid>
           <div className="col-span-12 sm:col-span-12 md:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">

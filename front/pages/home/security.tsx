@@ -92,7 +92,7 @@ export default function Security() {
         description="GDPR compliant, SOC2 Type II certified, HIPAA-ready. Dust prioritizes your data security with encryption, regional hosting, role-based access, and zero model training."
         pathname={router.asPath}
       />
-      <div className="container flex w-full flex-col gap-4 px-6 md:gap-0">
+      <div className="container flex w-full flex-col gap-4 px-6 pb-24 md:gap-0">
         <Grid>
           <div
             className={classNames(

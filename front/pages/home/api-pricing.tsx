@@ -252,7 +252,7 @@ export default function ApiPricingPage() {
         hasCTA={false}
         subtitle="Prices per million tokens. All prices are in USD."
       />
-      <Grid>
+      <Grid className="pb-24">
         <div className="col-span-12 flex flex-col gap-6 md:col-span-10 md:col-start-2">
           {/* Filters */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -33,7 +33,7 @@ export default function PlatformPrivacy() {
         description="Learn how Dust collects, uses, and protects your personal data. GDPR compliant with transparent data processing practices and your privacy rights."
         pathname={router.asPath}
       />
-      <div className="container flex w-full flex-col gap-16 px-6 md:gap-24">
+      <div className="container flex w-full flex-col gap-16 px-6 pb-24 md:gap-24">
         <Grid>
           <div
             className={classNames(
