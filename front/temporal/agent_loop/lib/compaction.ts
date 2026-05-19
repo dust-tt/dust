@@ -1,4 +1,4 @@
-import type { LLMConfig } from "@app/lib/api/assistant/call_llm";
+import type { LLMConfig, LLMOutput } from "@app/lib/api/assistant/call_llm";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation/compaction";
 import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
@@ -415,29 +415,49 @@ async function generateCompactionSummary(
     temperature: 0,
   };
 
-  const res = await runMultiActionsAgent(
-    auth,
-    config,
-    {
-      conversation: conv,
-      prompt: COMPACTION_PROMPT,
-      specifications: [],
-    },
-    {
-      context: {
-        operationType: "compaction",
-        conversationId: targetConversation.sId,
-        userId: auth.user()?.sId,
-        workspaceId: owner.sId,
+  const LLM_TIMEOUT_MS = 15 * 60 * 1000;
+  let timeoutHandle: NodeJS.Timeout | undefined;
+
+  const res = await Promise.race([
+    runMultiActionsAgent(
+      auth,
+      config,
+      {
+        conversation: conv,
+        prompt: COMPACTION_PROMPT,
+        specifications: [],
       },
-      onRunId: async (runId) => {
-        await ConversationResource.updateCompactionMessageRunIds(auth, {
-          compactionMessageModelId: compactionMessage.compactionMessageId,
-          runIds: [runId],
-        });
-      },
-    }
-  );
+      {
+        context: {
+          operationType: "compaction",
+          conversationId: targetConversation.sId,
+          userId: auth.user()?.sId,
+          workspaceId: owner.sId,
+        },
+        onRunId: async (runId) => {
+          await ConversationResource.updateCompactionMessageRunIds(auth, {
+            compactionMessageModelId: compactionMessage.compactionMessageId,
+            runIds: [runId],
+          });
+        },
+      }
+    ),
+    new Promise<Result<LLMOutput, Error>>((resolve) => {
+      timeoutHandle = setTimeout(() => {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            conversationId: conversationToSummarize.sId,
+            compactionMessageId: compactionMessage.sId,
+            timeoutMs: LLM_TIMEOUT_MS,
+          },
+          "Compaction LLM call timed out"
+        );
+        resolve(new Err(new Error("Compaction LLM call timed out after 15m")));
+      }, LLM_TIMEOUT_MS);
+    }),
+  ]);
+  clearTimeout(timeoutHandle);
 
   if (res.isErr()) {
     return res;
