@@ -255,11 +255,22 @@ async function runMatrixCase(c: MatrixCase): Promise<boolean> {
 
     if (c.expected === "DENY") {
       const log = await readDenyLogLines();
-      const expectedMarker = `DENIED ${c.domain}:443`;
-      const denyLine = log.find(
-        (line) =>
-          line.includes(expectedMarker) && line.includes("reason: proxy_denied")
-      );
+      const denyLine = log.find((line) => {
+        try {
+          const parsed = JSON.parse(line) as {
+            domain?: string;
+            port?: number;
+            reason?: string;
+          };
+          return (
+            parsed.domain === c.domain &&
+            parsed.port === 443 &&
+            parsed.reason === "proxy_denied"
+          );
+        } catch {
+          return false;
+        }
+      });
       if (denyLine) {
         details = "deny_log=ok";
       } else {
