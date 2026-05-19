@@ -65,7 +65,7 @@ import {
 } from "react";
 
 const PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP =
-  "Adding files to projects is disabled by your workspace admin.";
+  "Adding files to Pods is disabled by your workspace admin.";
 
 interface AttachKnowledgeDropdownProps {
   buttonLabel: string;
@@ -350,7 +350,7 @@ function ProjectFileExplorerContent({
       if (entry.kind === "node") {
         const confirmed = await confirm({
           title: "Remove content node?",
-          message: `Are you sure you want to remove "${entry.fileName}" from this project?`,
+          message: `Are you sure you want to remove "${entry.fileName}" from this Pod?`,
           validateLabel: "Remove",
           validateVariant: "warning",
         });
@@ -521,8 +521,8 @@ function ProjectFileExplorerContent({
     <EmptyCTA
       message={
         isArchived
-          ? "This project is archived. No files have been added."
-          : "No files have been added to this project yet."
+          ? "This Pod is archived. No files have been added."
+          : "No files have been added to this Pod yet."
       }
       action={addButton}
     />
