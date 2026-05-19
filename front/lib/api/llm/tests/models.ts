@@ -3,6 +3,7 @@ import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/firew
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import {
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -60,6 +61,7 @@ import {
   O4_MINI_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { GROK_4_MODEL_ID } from "@app/types/assistant/models/xai";
 
 type CustomModelId = (typeof CUSTOM_MODEL_IDS)[number];
 
@@ -68,7 +70,8 @@ export const MODELS: Record<
   | Exclude<AnthropicWhitelistedModelId, CustomModelId>
   | GoogleAIStudioWhitelistedModelId
   | MistralWhitelistedModelId
-  | FireworksWhitelistedModelId,
+  | FireworksWhitelistedModelId
+  | XaiWhitelistedModelId,
   { runTest: boolean; providerId: ModelProviderIdType }
 > = {
   // Anthropic models
@@ -174,5 +177,10 @@ export const MODELS: Record<
   [FIREWORKS_GLM_5_MODEL_ID]: {
     runTest: false,
     providerId: "fireworks",
+  },
+  // xAI
+  [GROK_4_MODEL_ID]: {
+    runTest: false,
+    providerId: "xai",
   },
 };

@@ -84,11 +84,11 @@ export const GROK_4_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 8_192,
-  supportsVision: false,
+  supportsVision: true,
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
-  supportsResponseFormat: false,
+  supportsResponseFormat: true,
   availableIfOneOf: {
     featureFlag: "xai_feature",
   },
