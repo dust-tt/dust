@@ -4,6 +4,7 @@ import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import { calculateTax, getStripeClient } from "@app/lib/plans/stripe";
+import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { apiError } from "@app/logger/withlogging";
 import { getStripeCheckoutSessionStatus } from "@app/pages/api/stripe/webhook";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -176,9 +177,23 @@ async function handler(
   const country = customer.address?.country ?? "US";
   const currency = getBillingCurrencyForCountry(country, true);
 
+  // Apply coupon discount to the tax base if a coupon was stored in session metadata.
+  // No validation here — enforcement happens in POST /payment.
+  const couponCode = setupSession.metadata?.couponCode;
+  let discountedSubtotalCents = subtotalCents;
+  if (couponCode) {
+    const coupon = await CouponResource.findByCode(couponCode);
+    if (coupon) {
+      discountedSubtotalCents = Math.max(
+        0,
+        subtotalCents - coupon.amount * 100
+      );
+    }
+  }
+
   const taxResult = await calculateTax({
     stripeCustomerId,
-    amountCents: subtotalCents,
+    amountCents: discountedSubtotalCents,
     currency,
   });
   if (taxResult.isErr()) {

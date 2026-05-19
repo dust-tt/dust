@@ -53,8 +53,6 @@ function getStripePromise() {
   return stripePromise;
 }
 
-const COUPONS_ENABLED = false;
-
 const couponFormSchema = z.object({
   couponCode: z.string().min(1, "Please enter a promotion code"),
 });
@@ -73,6 +71,7 @@ type PhaseError =
   | { kind: "payment_failed" }
   | { kind: "metronome_error" }
   | { kind: "internal_error" }
+  | { kind: "invalid_coupon" }
   | { kind: "generic" };
 
 function useBillingPeriodParam(): BillingPeriod {
@@ -249,6 +248,9 @@ export function CheckoutPage() {
         case "internal_error":
           setPhaseError({ kind: "internal_error" });
           break;
+        case "invalid_coupon":
+          setPhaseError({ kind: "invalid_coupon" });
+          break;
         default:
           assertNeverAndIgnore(result.error);
           setPhaseError({ kind: "generic" });
@@ -393,8 +395,8 @@ export function CheckoutPage() {
               </span>
             </div>
 
-            {COUPONS_ENABLED &&
-              !appliedCoupon &&
+            {!appliedCoupon &&
+              phase === "card_capture" &&
               (showCouponInput ? (
                 <div className="mt-4 flex flex-col gap-2">
                   <div className="flex gap-2">
@@ -430,19 +432,21 @@ export function CheckoutPage() {
                 </div>
               ))}
 
-            {COUPONS_ENABLED && appliedCoupon && (
+            {appliedCoupon && (
               <div className="mt-4 flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-sm text-muted-foreground">
                     <Icon visual={TagIcon} size="xs" />
                     <span className="font-medium">{appliedCoupon.code}</span>
-                    <button
-                      type="button"
-                      onClick={handleRemoveCoupon}
-                      className="ml-0.5 hover:text-foreground"
-                    >
-                      <Icon visual={XMarkIcon} size="xs" />
-                    </button>
+                    {phase === "card_capture" && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="ml-0.5 hover:text-foreground"
+                      >
+                        <Icon visual={XMarkIcon} size="xs" />
+                      </button>
+                    )}
                   </div>
                   <span className="text-sm text-success-500">
                     −
@@ -688,6 +692,27 @@ function RightPane({
                 and we&apos;ll get this sorted out right away.
               </p>
             </div>
+          </div>
+        );
+      }
+      if (phaseError?.kind === "invalid_coupon") {
+        return (
+          <div className="flex flex-col items-center gap-6 text-center">
+            <Icon
+              visual={ActionXCircleIcon}
+              size="2xl"
+              className="text-warning-500"
+            />
+            <div className="flex flex-col gap-3">
+              <h2 className="text-2xl font-semibold text-foreground">
+                Coupon no longer valid
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                This coupon is no longer valid. You have not been charged.
+                Please try again with a different code.
+              </p>
+            </div>
+            <Button label="Try again" onClick={onRestart} />
           </div>
         );
       }

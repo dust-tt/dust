@@ -389,18 +389,22 @@ async function makeFirstPeriodInvoiceForCustomer({
   stripeCustomerId,
   paymentMethodId,
   subtotalCents,
+  couponAmountCents,
   seatCount,
   setupSessionId,
   workspaceId,
   currency,
+  couponCode,
 }: {
   stripeCustomerId: string;
   paymentMethodId: string;
   subtotalCents: number;
+  couponAmountCents?: number;
   seatCount: number;
   setupSessionId: string;
   workspaceId: string;
   currency: SupportedCurrency;
+  couponCode?: string;
 }): Promise<Result<Stripe.Invoice, { error_message: string }>> {
   const stripe = getStripeClient();
   try {
@@ -416,6 +420,7 @@ async function makeFirstPeriodInvoiceForCustomer({
           metronome_first_period: "true",
           setup_session_id: setupSessionId,
           workspace_id: workspaceId,
+          ...(couponCode ? { coupon_code: couponCode } : {}),
         },
       },
       { idempotencyKey: `first-period-invoice-${setupSessionId}` }
@@ -428,6 +433,16 @@ async function makeFirstPeriodInvoiceForCustomer({
       description: `Workspace seat — ${seatCount} seat${seatCount > 1 ? "s" : ""}`,
       invoice: invoice.id,
     });
+
+    if (couponCode && couponAmountCents && couponAmountCents > 0) {
+      await stripe.invoiceItems.create({
+        customer: stripeCustomerId,
+        amount: -couponAmountCents,
+        currency,
+        description: `Coupon: ${couponCode}`,
+        invoice: invoice.id,
+      });
+    }
 
     return new Ok(invoice);
   } catch (error) {
@@ -449,27 +464,33 @@ export async function chargeFirstPeriodInvoice({
   stripeCustomerId,
   paymentMethodId,
   subtotalCents,
+  couponAmountCents,
   seatCount,
   setupSessionId,
   workspaceId,
   currency,
+  couponCode,
 }: {
   stripeCustomerId: string;
   paymentMethodId: string;
   subtotalCents: number;
+  couponAmountCents?: number;
   seatCount: number;
   setupSessionId: string;
   workspaceId: string;
   currency: SupportedCurrency;
+  couponCode?: string;
 }): Promise<Result<void, { error_message: string }>> {
   const invoiceResult = await makeFirstPeriodInvoiceForCustomer({
     stripeCustomerId,
     paymentMethodId,
     subtotalCents,
+    couponAmountCents,
     seatCount,
     setupSessionId,
     workspaceId,
     currency,
+    couponCode,
   });
   if (invoiceResult.isErr()) {
     logger.error(

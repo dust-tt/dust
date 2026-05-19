@@ -8,6 +8,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   CouponRedemptionStatus,
   CouponRedemptionType,
@@ -89,6 +90,27 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
       couponSId: coupon.sId,
       redeemedByUserSId: user ? user.sId : null,
     });
+  }
+
+  static async createPending(
+    auth: Authenticator,
+    { coupon }: { coupon: CouponResource }
+  ): Promise<Result<CouponRedemptionResource, Error>> {
+    try {
+      const redemption = await withTransaction(async (transaction) => {
+        const r = await this.makeNew(auth, { coupon }, { transaction });
+        await coupon.incrementRedemptionCount({ transaction });
+        return r;
+      });
+      return new Ok(redemption);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  }
+
+  async rollback(coupon: CouponResource): Promise<void> {
+    await this.markFailed();
+    await coupon.decrementRedemptionCount();
   }
 
   static async findActiveOrPendingByCouponAndWorkspace(
