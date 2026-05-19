@@ -9942,7 +9942,8 @@
           "id",
           "sId",
           "name",
-          "role"
+          "role",
+          "regionalModelsOnly"
         ],
         "properties": {
           "id": {
@@ -9981,6 +9982,10 @@
           },
           "ssoEnforced": {
             "type": "boolean"
+          },
+          "regionalModelsOnly": {
+            "type": "boolean",
+            "description": "When true, only models whose regionalAvailability includes the workspace's region are usable."
           },
           "metadata": {
             "type": "object",
@@ -12750,6 +12755,9 @@
       },
       "Workspace": {
         "type": "object",
+        "required": [
+          "regionalModelsOnly"
+        ],
         "properties": {
           "id": {
             "type": "integer",
@@ -12790,6 +12798,11 @@
           "ssoEnforced": {
             "type": "boolean",
             "example": true
+          },
+          "regionalModelsOnly": {
+            "type": "boolean",
+            "description": "When true, only models whose regionalAvailability includes the workspace's region are usable.",
+            "example": false
           },
           "whiteListedProviders": {
             "type": "array",
