@@ -7,6 +7,7 @@ import config from "@app/lib/api/config";
 import { GCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
 import {
   getConversationFilesBasePath,
+  getPodsFilesBasePath,
   getProjectFilesBasePath,
   TOOL_OUTPUTS_FOLDER_NAME,
 } from "@app/lib/api/files/mount_path";
@@ -355,6 +356,19 @@ export async function renameGCSMountFile(
   try {
     await bucket.copyFile(oldGcsPath, newGcsPath);
     await bucket.delete(oldGcsPath);
+
+    // Mirror the rename on the pods/ side for project files
+    if (scope.useCase === "project") {
+      const podsPrefix = getPodsFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: scope.projectId,
+      });
+      const oldPodsPath = `${podsPrefix}${relativeFilePath}`;
+      const newPodsPath = `${podsPrefix}${dir}${newFileName}`;
+      await bucket.copyFile(oldPodsPath, newPodsPath);
+      await bucket.delete(oldPodsPath);
+    }
+
     return new Ok({ newGcsPath });
   } catch (err) {
     return new Err(normalizeError(err));
@@ -409,6 +423,16 @@ export async function createGCSMountFile(
   const bucket = getPrivateUploadBucket();
   try {
     await bucket.file(gcsPath).save(content, { contentType });
+
+    // Mirror the write on the pods/ side for project files
+    if (scope.useCase === "project") {
+      const podsPrefix = getPodsFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: scope.projectId,
+      });
+      const podsGcsPath = `${podsPrefix}${relativeFilePath}`;
+      await bucket.file(podsGcsPath).save(content, { contentType });
+    }
   } catch (error) {
     return new Err(normalizeError(error));
   }
@@ -492,6 +516,17 @@ export async function deleteGCSMountFile(
   const bucket = getPrivateUploadBucket();
   try {
     await bucket.delete(gcsPath, { ignoreNotFound: true });
+
+    // Mirror delete on the pods/ side for project files
+    if (scope.useCase === "project") {
+      const podsPrefix = getPodsFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: scope.projectId,
+      });
+      const podsGcsPath = `${podsPrefix}${relativeFilePath}`;
+      await bucket.delete(podsGcsPath, { ignoreNotFound: true });
+    }
+
     return new Ok(undefined);
   } catch (err) {
     return new Err(normalizeError(err));
@@ -519,6 +554,17 @@ export async function copyMountFile(
 
   try {
     await bucket.copyFile(sourceGcsPath, destGcsPath);
+
+    // Mirror the destination write on the pods/ side for project files (double-write counterpart).
+    if (dest.scope.useCase === "project") {
+      const podsPrefix = getPodsFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: dest.scope.projectId,
+      });
+      const destPodsPath = `${podsPrefix}${dest.relativeFilePath}`;
+      await bucket.copyFile(sourceGcsPath, destPodsPath);
+    }
+
     return new Ok(undefined);
   } catch (err) {
     return new Err(normalizeError(err));

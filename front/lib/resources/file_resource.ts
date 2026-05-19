@@ -7,6 +7,7 @@ import {
   getConversationFilePath,
   getProjectFilesBasePath,
   makeProcessedMountFileName,
+  toPodsMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import {
   getProcessedContentType,
@@ -944,6 +945,16 @@ export class FileResource extends BaseResource<FileModel> {
         contentType: this.contentType,
         filePath: this.mountFilePath,
       });
+
+      // Double-write to the pods/ path for project mount paths.
+      const podsMountFilePath = toPodsMountFilePath(this.mountFilePath);
+      if (podsMountFilePath) {
+        await getPrivateUploadBucket().uploadRawContentToBucket({
+          content,
+          contentType: this.contentType,
+          filePath: podsMountFilePath,
+        });
+      }
     }
 
     // Increment version after successful upload and mark as ready
@@ -1077,6 +1088,12 @@ export class FileResource extends BaseResource<FileModel> {
     const srcOriginalPath = this.getCloudStoragePath(auth, "original");
     await bucket.copyFile(srcOriginalPath, mountFilePath);
 
+    // Double-write to the pods/ path for project mount paths.
+    const podsMountFilePath = toPodsMountFilePath(mountFilePath);
+    if (podsMountFilePath) {
+      await bucket.copyFile(srcOriginalPath, podsMountFilePath);
+    }
+
     // Copy processed version only if this file type has real processing.
     if (this.getContentVersion() === "processed") {
       const srcProcessedPath = this.getCloudStoragePath(auth, "processed");
@@ -1085,6 +1102,11 @@ export class FileResource extends BaseResource<FileModel> {
         processedContentType: getProcessedContentType(this.contentType),
       });
       await bucket.copyFile(srcProcessedPath, processedMountPath);
+
+      const processedPodsMountPath = toPodsMountFilePath(processedMountPath);
+      if (processedPodsMountPath) {
+        await bucket.copyFile(srcProcessedPath, processedPodsMountPath);
+      }
     }
 
     await this.update({ mountFilePath });
@@ -1110,6 +1132,12 @@ export class FileResource extends BaseResource<FileModel> {
     const bucket = getPrivateUploadBucket();
     await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
 
+    // Mirror delete on the pods/ side for project files (double-write counterpart).
+    const podsMountFilePath = toPodsMountFilePath(this.mountFilePath);
+    if (podsMountFilePath) {
+      await bucket.delete(podsMountFilePath, { ignoreNotFound: true });
+    }
+
     if (
       this.useCaseMetadata?.skipFileProcessing === true ||
       !hasProcessedVersion(this.contentType)
@@ -1123,6 +1151,11 @@ export class FileResource extends BaseResource<FileModel> {
       processedContentType: getProcessedContentType(this.contentType),
     });
     await bucket.delete(processedMountPath, { ignoreNotFound: true });
+
+    const processedPodsMountPath = toPodsMountFilePath(processedMountPath);
+    if (processedPodsMountPath) {
+      await bucket.delete(processedPodsMountPath, { ignoreNotFound: true });
+    }
   }
 
   static async bulkSetUseCaseMetadata(
