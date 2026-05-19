@@ -119,7 +119,7 @@ export function ChangeSeatModal({
   seatPlans,
 }: ChangeSeatModalProps) {
   const seatTypes = sortSeatTypes(
-    Object.keys(seatPlans) as MembershipSeatType[]
+    Object.keys(seatPlans).filter(isMembershipSeatType)
   );
   const currentSeatType: MembershipSeatType | null = member.seatType;
   const [selectedSeat, setSelectedSeat] = useState<MembershipSeatType | null>(
