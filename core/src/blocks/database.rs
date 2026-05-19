@@ -1,15 +1,12 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use pest::iterators::Pair;
-use serde_json::{json, Value};
+use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::warn;
 
 use crate::{
-    blocks::{
-        block::{parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env},
-        database_schema::load_tables_from_identifiers,
-    },
-    databases::database::{execute_query, QueryDatabaseError},
+    blocks::block::{parse_pair, Block, BlockResult, BlockType, Env},
     Rule,
 };
 
@@ -63,87 +60,16 @@ impl Block for Database {
 
     async fn execute(
         &self,
-        name: &str,
+        _name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<BlockResult> {
-        let config = env.config.config_for_block(name);
-
-        let err_msg = format!(
-            "Invalid or missing `tables` in configuration for \
-        `database` block `{}` expecting `{{ \"tables\": \
-        [ {{ \"workspace_id\": ..., \"data_source_id\": ..., \"table_id\": ... }}, ... ] }}`",
-            name
+        warn!(
+            project_id = env.project.project_id(),
+            method = "Database::execute",
+            "DEPRECATION"
         );
-
-        let table_identifiers = match config {
-            Some(v) => match v.get("tables") {
-                Some(Value::Array(a)) => a
-                    .iter()
-                    .map(|v| {
-                        let workspace_id = match v.get("workspace_id") {
-                            Some(Value::String(s)) => s,
-                            _ => Err(anyhow!(err_msg.clone()))?,
-                        };
-                        let data_source_id = match v.get("data_source_id") {
-                            Some(Value::String(s)) => s,
-                            _ => Err(anyhow!(err_msg.clone()))?,
-                        };
-                        let table_id = match v.get("table_id") {
-                            Some(Value::String(s)) => s,
-                            _ => Err(anyhow!(err_msg.clone()))?,
-                        };
-                        let remote_database_secret_id = match v.get("remote_database_secret_id") {
-                            Some(Value::String(s)) => Some(s),
-                            _ => None,
-                        };
-                        Ok((
-                            workspace_id,
-                            data_source_id,
-                            table_id,
-                            remote_database_secret_id,
-                        ))
-                    })
-                    .collect::<Result<Vec<_>>>()?,
-                _ => Err(anyhow!(err_msg.clone()))?,
-            },
-            _ => Err(anyhow!(err_msg.clone()))?,
-        };
-
-        let query = replace_variables_in_string(&self.query, "query", env)?;
-        let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
-
-        match execute_query(
-            tables,
-            &query,
-            env.store.clone(),
-            env.databases_store.clone(),
-        )
-        .await
-        {
-            Ok((results, schema, query)) => Ok(BlockResult {
-                value: json!({
-                    "results": results,
-                    "schema": schema,
-                    "query": query,
-                }),
-                meta: None,
-            }),
-            Err(e) => match &e {
-                // If the actual query failed, we don't fail the block, instead we return a block result with an error inside.
-                QueryDatabaseError::ExecutionError(s, q) => Ok(BlockResult {
-                    value: json!({
-                        "error": s,
-                        "query": q,
-                    }),
-                    meta: None,
-                }),
-                // We don't have a proper way to return a typed error from a block, so we just return a generic error with a string.
-                // We expect the frontend to match the error code.
-                QueryDatabaseError::TooManyResultRows => Err(anyhow!("too_many_result_rows")),
-                _ => Err(e.into()),
-            },
-        }
+        Err(anyhow!("`database` blocks are now longer supported."))?
     }
 
     fn clone_box(&self) -> Box<dyn Block + Sync + Send> {
