@@ -133,7 +133,8 @@ function assistantContentToParam(
 }
 
 async function toolResultToParam(
-  message: FunctionMessageTypeModel
+  message: FunctionMessageTypeModel,
+  { convertToBase64 }: { convertToBase64: boolean }
 ): Promise<ToolResultBlockParam> {
   return {
     type: "tool_result",
@@ -142,18 +143,19 @@ async function toolResultToParam(
       ? message.content
       : await concurrentExecutor(
           message.content,
-          (c) => userContentToParam(c),
+          (c) => userContentToParam(c, { convertToBase64 }),
           { concurrency: 10 }
         ),
   };
 }
 
 async function functionMessage(
-  message: FunctionMessageTypeModel
+  message: FunctionMessageTypeModel,
+  { convertToBase64 }: { convertToBase64: boolean }
 ): Promise<MessageParam> {
   return {
     role: "user",
-    content: [await toolResultToParam(message)],
+    content: [await toolResultToParam(message, { convertToBase64 })],
   };
 }
 
@@ -219,7 +221,9 @@ export async function toMessage(
         convertToBase64: convertToBase64 ?? false,
       });
     case "function":
-      return functionMessage(message);
+      return functionMessage(message, {
+        convertToBase64: convertToBase64 ?? false,
+      });
     case "assistant":
       return assistantMessage(message, omittedThinking);
     case "compaction":
