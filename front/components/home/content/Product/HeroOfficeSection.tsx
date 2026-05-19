@@ -133,13 +133,12 @@ export function HeroOfficeSection() {
             <Link
               href="/landing/ebook"
               onClick={withTracking(TRACKING_AREAS.HOME, "hero_ebook_pill")}
-              className="group inline-flex max-w-[calc(100%-1.5rem)] items-center gap-2 rounded-full border border-blue-200 bg-blue-50 py-1 pl-1 pr-3 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+              className="group inline-flex items-center gap-2 rounded-full border border-gray-100 bg-white py-1.5 pl-3 pr-3 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
-              <span className="inline-flex h-5 flex-shrink-0 items-center whitespace-nowrap rounded-full bg-blue-500 px-2 text-[10px] font-semibold uppercase leading-none tracking-[0.06em] text-white">
-                New ebook
-              </span>
-              <span className="min-w-0 truncate">
-                The AI Enterprise Playbook - Download it now
+              <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500" />
+              <span className="whitespace-nowrap">
+                <span className="font-semibold">New</span> · The AI Enterprise
+                Playbook
               </span>
               <svg
                 width="12"
