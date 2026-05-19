@@ -21,6 +21,7 @@ import {
   ChevronRightIcon,
   Chip,
   DataTable,
+  LinkWrapper,
   PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -178,7 +179,14 @@ const redemptionColumns: ColumnDef<CouponRedemptionRowData>[] = [
     accessorKey: "workspaceId",
     header: "Workspace",
     cell: ({ row }) => (
-      <DataTable.BasicCellContent label={row.original.workspaceId} />
+      <DataTable.CellContent>
+        <LinkWrapper
+          href={`/poke/${row.original.workspaceId}`}
+          className="text-highlight-500"
+        >
+          {row.original.workspaceId}
+        </LinkWrapper>
+      </DataTable.CellContent>
     ),
   },
   {
@@ -197,7 +205,7 @@ const redemptionColumns: ColumnDef<CouponRedemptionRowData>[] = [
       <DataTable.BasicCellContent
         label={formatTimestampToFriendlyDate(
           new Date(row.original.redeemedAt).getTime(),
-          "compactWithDay"
+          "long"
         )}
       />
     ),
