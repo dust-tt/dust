@@ -63,12 +63,14 @@ export default function SqAgentLandingPage() {
       />
 
       {/* CTA Section */}
-      <SqCtaSection
-        title={sqAgentConfig.cta.title}
-        subtitle={sqAgentConfig.cta.subtitle}
-        ctaText={sqAgentConfig.cta.ctaText}
-        ctaLink={sqAgentConfig.cta.ctaLink}
-      />
+      <div className="pb-24">
+        <SqCtaSection
+          title={sqAgentConfig.cta.title}
+          subtitle={sqAgentConfig.cta.subtitle}
+          ctaText={sqAgentConfig.cta.ctaText}
+          ctaLink={sqAgentConfig.cta.ctaLink}
+        />
+      </div>
     </>
   );
 }

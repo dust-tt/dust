@@ -125,7 +125,7 @@ export default function About() {
         description="Dust is building the AI operating system for the enterprise. Meet our team, learn our operating principles, and discover our vision for AI-driven companies."
         pathname={router.asPath}
       />
-      <div className="container flex w-full flex-col gap-16 px-6 md:gap-24">
+      <div className="container flex w-full flex-col gap-16 px-6 pb-24 md:gap-24">
         <div
           className={classNames("flex w-full flex-col justify-end gap-4 pt-24")}
         >

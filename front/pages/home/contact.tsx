@@ -54,7 +54,7 @@ export default function Contact() {
         description="Get in touch with the Dust team. Schedule a demo call to learn how AI agents can help address your team's challenges and improve productivity."
         pathname={router.asPath}
       />
-      <div className="flex w-full flex-col justify-center gap-12">
+      <div className="flex w-full flex-col justify-center gap-12 pb-24">
         <HeaderContentBlock
           title="Contact Dust"
           hasCTA={false}

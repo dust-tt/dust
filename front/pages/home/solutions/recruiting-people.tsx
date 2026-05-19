@@ -56,7 +56,7 @@ export default function People() {
         description={pageSettings.seo.description}
         pathname={router.asPath}
       />
-      <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
+      <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-24">
         <HeroSection
           {...Hero}
           accentColor={pageSettings.accentColor}

@@ -34,7 +34,7 @@ export default function BrandResources() {
         pathname={router.asPath}
       />
 
-      <div className="container flex w-full flex-col gap-16 px-6 md:gap-20">
+      <div className="container flex w-full flex-col gap-16 px-6 pb-24 md:gap-20">
         <Grid>
           <div className="col-span-12 col-start-1 flex flex-col gap-2 pt-24 md:col-span-10 md:col-start-2">
             <H1 mono className="text-5xl font-medium md:text-6xl lg:text-7xl">

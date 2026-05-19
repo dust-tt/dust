@@ -141,7 +141,7 @@ export default function DustPlatform() {
       />
       <div
         className={classNames(
-          "col-span-12 flex flex-col items-center",
+          "col-span-12 flex flex-col items-center pb-24",
           "lg:col-span-12 lg:col-start-1",
           "xl:col-span-10 xl:col-start-2"
         )}

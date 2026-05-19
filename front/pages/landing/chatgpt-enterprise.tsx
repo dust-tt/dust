@@ -67,10 +67,12 @@ export default function ChatGptEnterpriseLandingPage() {
       />
 
       {/* Comparison Table */}
-      <ChatGptEnterpriseComparisonTable
-        title={chatGptEnterpriseConfig.comparisonTable.title}
-        rows={chatGptEnterpriseConfig.comparisonTable.rows}
-      />
+      <div className="pb-24">
+        <ChatGptEnterpriseComparisonTable
+          title={chatGptEnterpriseConfig.comparisonTable.title}
+          rows={chatGptEnterpriseConfig.comparisonTable.rows}
+        />
+      </div>
     </>
   );
 }

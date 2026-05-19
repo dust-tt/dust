@@ -64,7 +64,7 @@ export default function Pricing() {
           </>
         }
       />
-      <Grid>
+      <Grid className="pb-24">
         <div className="dark col-span-12 flex flex-row justify-center md:col-span-10 md:col-start-2 lg:px-2 2xl:px-24">
           <PricePlans
             display="landing"
