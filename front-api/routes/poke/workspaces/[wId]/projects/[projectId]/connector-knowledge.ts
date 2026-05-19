@@ -1,20 +1,14 @@
-/** @ignoreswagger */
-// @migration-status: MIGRATED_TO_HONO
+import { Hono } from "hono";
 
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { listProjectContextAttachments } from "@app/lib/api/projects/context";
-import { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { apiError } from "@app/logger/withlogging";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
-import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
+
+import { apiError } from "@front-api/middleware/utils";
 
 export type PokeProjectKnowledgeFromConnectorItem = {
   contentFragmentId: string;
@@ -35,50 +29,25 @@ export type PokeListProjectKnowledgeFromConnectors = {
   items: PokeProjectKnowledgeFromConnectorItem[];
 };
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<PokeListProjectKnowledgeFromConnectors>
-  >,
-  session: SessionWithUser
-): Promise<void> {
-  const { wId, projectId } = req.query;
-  if (!isString(wId) || !isString(projectId)) {
-    return apiError(req, res, {
+// Mounted at /api/poke/workspaces/:wId/projects/:projectId/connector-knowledge.
+const app = new Hono();
+
+app.get("/", async (c) => {
+  const auth = c.get("auth");
+  const projectId = c.req.param("projectId");
+  if (!projectId) {
+    return apiError(c, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid workspace or project ID.",
-      },
-    });
-  }
-
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
-  const owner = auth.workspace();
-
-  if (!owner || !auth.isDustSuperUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "Workspace not found.",
-      },
-    });
-  }
-
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
+        message: "Invalid project ID.",
       },
     });
   }
 
   const space = await SpaceResource.fetchById(auth, projectId);
   if (!space || !space.isProject()) {
-    return apiError(req, res, {
+    return apiError(c, {
       status_code: 404,
       api_error: {
         type: "space_not_found",
@@ -137,7 +106,8 @@ async function handler(
     }
   );
 
-  return res.status(200).json({ items });
-}
+  const body: PokeListProjectKnowledgeFromConnectors = { items };
+  return c.json(body);
+});
 
-export default withSessionAuthenticationForPoke(handler);
+export default app;
