@@ -1,38 +1,23 @@
-// @migration-status: MIGRATED_TO_HONO
+import { Hono } from "hono";
 
-/** @ignoreswagger */
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
 
-export interface GetUserTriggersResponseBody {
+export type GetUserTriggersResponseBody = {
   triggers: (TriggerType & {
     isEditor: boolean;
     agentName: string;
     agentPictureUrl: string;
   })[];
-}
+};
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetUserTriggersResponseBody>>,
-  auth: Authenticator
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
-    });
-  }
+// Mounted at /api/w/:wId/me/triggers.
+const app = new Hono();
+
+app.get("/", async (c) => {
+  const auth = c.get("auth");
 
   const editorTriggers = await TriggerResource.listByUserEditor(
     auth,
@@ -65,7 +50,8 @@ async function handler(
     })
   );
 
-  return res.status(200).json({ triggers });
-}
+  const body: GetUserTriggersResponseBody = { triggers };
+  return c.json(body);
+});
 
-export default withLogging(withSessionAuthenticationForWorkspace(handler));
+export default app;
