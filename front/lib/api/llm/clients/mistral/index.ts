@@ -1,6 +1,9 @@
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import { MISTRAL_PROVIDER_ID } from "@app/lib/api/llm/clients/mistral/types";
-import { toToolChoiceParam } from "@app/lib/api/llm/clients/mistral/utils";
+import {
+  toResponseFormatParam,
+  toToolChoiceParam,
+} from "@app/lib/api/llm/clients/mistral/utils";
 import {
   toMessage,
   toTool,
@@ -93,6 +96,7 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
       model: this.modelId,
       messages,
       temperature: this.temperature ?? undefined,
+      responseFormat: toResponseFormatParam(this.responseFormat),
       toolChoice: toToolChoiceParam(specifications, forceToolCall),
       tools: specifications.map(toTool),
     };
