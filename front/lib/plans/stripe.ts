@@ -425,7 +425,7 @@ async function makeFirstPeriodInvoiceForCustomer({
       customer: stripeCustomerId,
       amount: subtotalCents,
       currency,
-      description: `Subscription first period — ${seatCount} seat${seatCount > 1 ? "s" : ""}`,
+      description: `Workspace seat — ${seatCount} seat${seatCount > 1 ? "s" : ""}`,
       invoice: invoice.id,
     });
 
