@@ -1,18 +1,15 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { type ExportedApp, exportAppWithDatasets } from "@app/lib/utils/apps";
 import { apiError } from "@app/logger/withlogging";
-import type { AppType } from "@app/types/app";
-import type { DatasetType } from "@app/types/dataset";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import omit from "lodash/omit";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type ExportAppResponseBody = {
-  app: Omit<AppType, "space" | "id"> & { datasets: DatasetType[] };
+  app: ExportedApp;
 };
 
 /**
@@ -63,25 +60,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const dataSetsToFetch = (await getDatasets(auth, app.toJSON())).map(
-        (ds) => ({ datasetId: ds.name, hash: "latest" })
-      );
-      const datasets = [];
-      for (const dataset of dataSetsToFetch) {
-        const fromCore = await getDatasetHash(
-          auth,
-          app,
-          dataset.datasetId,
-          dataset.hash,
-          { includeDeleted: true }
-        );
-        if (fromCore) {
-          datasets.push(fromCore);
-        }
-      }
-      const appJson = omit(app.toJSON(), "id", "space");
-
-      res.status(200).json({ app: { ...appJson, datasets } });
+      const exported = await exportAppWithDatasets(auth, app);
+      res.status(200).json({ app: exported });
       return;
 
     default:

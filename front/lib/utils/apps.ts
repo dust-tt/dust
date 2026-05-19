@@ -8,8 +8,10 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { AppType } from "@app/types/app";
 import type { CoreAPIError } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { DatasetType } from "@app/types/dataset";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
@@ -353,6 +355,40 @@ export const extractDatasetIdsAndHashes = (specification: string) => {
   }
   return dataSetsToFetch;
 };
+
+export type ExportedApp = Omit<AppType, "space" | "id"> & {
+  datasets: DatasetType[];
+};
+
+/**
+ * Returns the serialized app along with the latest version of each dataset
+ * it references (including soft-deleted ones). Used by the poke admin UI
+ * to export a single app for re-import elsewhere.
+ */
+export async function exportAppWithDatasets(
+  auth: Authenticator,
+  app: AppResource
+): Promise<ExportedApp> {
+  const dataSetsToFetch = (await getDatasets(auth, app.toJSON())).map((ds) => ({
+    datasetId: ds.name,
+    hash: "latest",
+  }));
+  const datasets: DatasetType[] = [];
+  for (const dataset of dataSetsToFetch) {
+    const fromCore = await getDatasetHash(
+      auth,
+      app,
+      dataset.datasetId,
+      dataset.hash,
+      { includeDeleted: true }
+    );
+    if (fromCore) {
+      datasets.push(fromCore);
+    }
+  }
+  const appJson = omit(app.toJSON(), "id", "space");
+  return { ...appJson, datasets };
+}
 
 export async function exportApps(
   auth: Authenticator,

@@ -1,20 +1,17 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import {
+  listAllProjectsWithAdminMetadata,
+  type ProjectWithAdminMetadata,
+} from "@app/lib/api/projects/list";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { SpaceType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type PokeProjectType = SpaceType & {
-  description: string | null;
-  archivedAt: number | null;
-  todoGenerationEnabled: boolean;
-};
+export type PokeProjectType = ProjectWithAdminMetadata;
 
 export type PokeListProjects = {
   projects: PokeProjectType[];
@@ -51,26 +48,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const projectSpaces = await SpaceResource.listProjectSpaces(auth);
-
-      const metadataResources = await ProjectMetadataResource.fetchBySpaceIds(
-        auth,
-        projectSpaces.map((s) => s.id)
-      );
-      const metadataBySpaceId = new Map(
-        metadataResources.map((m) => [m.spaceId, m])
-      );
-
-      const projects: PokeProjectType[] = projectSpaces.map((space) => {
-        const metadata = metadataBySpaceId.get(space.id);
-        return {
-          ...space.toJSON(),
-          description: metadata?.description ?? null,
-          archivedAt: metadata?.archivedAt?.getTime() ?? null,
-          todoGenerationEnabled: metadata?.todoGenerationEnabled ?? false,
-        };
-      });
-
+      const projects = await listAllProjectsWithAdminMetadata(auth);
       return res.status(200).json({ projects });
 
     default:

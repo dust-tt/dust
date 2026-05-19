@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ProjectType } from "@app/types/space";
+import type { ProjectType, SpaceType } from "@app/types/space";
 
 /**
  * Spaces the user is a member of, with project metadata loaded, excluding
@@ -51,4 +51,37 @@ export async function enrichProjectsWithMetadata(
     isMember: space.isMember(auth),
     archivedAt: metadataMap.get(space.id)?.archivedAt?.getTime() ?? null,
   }));
+}
+
+export type ProjectWithAdminMetadata = SpaceType & {
+  description: string | null;
+  archivedAt: number | null;
+  todoGenerationEnabled: boolean;
+};
+
+/**
+ * Every project space in the workspace, with the admin-relevant metadata
+ * (description, archived state, todo-generation flag) merged in. Used by the
+ * poke admin UI.
+ */
+export async function listAllProjectsWithAdminMetadata(
+  auth: Authenticator
+): Promise<ProjectWithAdminMetadata[]> {
+  const projectSpaces = await SpaceResource.listProjectSpaces(auth);
+
+  const metadatas = await ProjectMetadataResource.fetchBySpaceIds(
+    auth,
+    projectSpaces.map((s) => s.id)
+  );
+  const metadataMap = new Map(metadatas.map((m) => [m.spaceId, m]));
+
+  return projectSpaces.map((space) => {
+    const metadata = metadataMap.get(space.id);
+    return {
+      ...space.toJSON(),
+      description: metadata?.description ?? null,
+      archivedAt: metadata?.archivedAt?.getTime() ?? null,
+      todoGenerationEnabled: metadata?.todoGenerationEnabled ?? false,
+    };
+  });
 }

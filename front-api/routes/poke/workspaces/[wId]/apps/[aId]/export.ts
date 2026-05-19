@@ -1,15 +1,12 @@
 import { Hono } from "hono";
-import omit from "lodash/omit";
 
-import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";
 import { AppResource } from "@app/lib/resources/app_resource";
-import type { AppType } from "@app/types/app";
-import type { DatasetType } from "@app/types/dataset";
+import { exportAppWithDatasets, type ExportedApp } from "@app/lib/utils/apps";
 
 import { apiError } from "@front-api/middleware/utils";
 
 export type ExportAppResponseBody = {
-  app: Omit<AppType, "space" | "id"> & { datasets: DatasetType[] };
+  app: ExportedApp;
 };
 
 // Mounted at /api/poke/workspaces/:wId/apps/:aId/export.
@@ -39,25 +36,9 @@ app.get("/", async (c) => {
     });
   }
 
-  const dataSetsToFetch = (await getDatasets(auth, appResource.toJSON())).map(
-    (ds) => ({ datasetId: ds.name, hash: "latest" })
-  );
-  const datasets: DatasetType[] = [];
-  for (const dataset of dataSetsToFetch) {
-    const fromCore = await getDatasetHash(
-      auth,
-      appResource,
-      dataset.datasetId,
-      dataset.hash,
-      { includeDeleted: true }
-    );
-    if (fromCore) {
-      datasets.push(fromCore);
-    }
-  }
-  const appJson = omit(appResource.toJSON(), "id", "space");
+  const exported = await exportAppWithDatasets(auth, appResource);
 
-  const body: ExportAppResponseBody = { app: { ...appJson, datasets } };
+  const body: ExportAppResponseBody = { app: exported };
   return c.json(body);
 });
 

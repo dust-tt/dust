@@ -20,6 +20,7 @@ import {
   validateMountFolderName,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -28,6 +29,8 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { ContentNodeType } from "@app/types/core/content_node";
+import type { ConnectorProvider } from "@app/types/data_source";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -183,6 +186,79 @@ export async function listProjectContextAttachments(
       lastUpdatedByViewAndNode.get(a.nodeDataSourceViewId)?.get(a.nodeId) ??
       null;
     return { ...a, lastUpdatedAt: ts };
+  });
+}
+
+export type ProjectKnowledgeFromConnectorItem = {
+  contentFragmentId: string;
+  nodeId: string;
+  nodeType: ContentNodeType;
+  nodeDataSourceViewId: string;
+  title: string;
+  contentType: string;
+  sourceUrl: string | null;
+  lastUpdatedAt: number | null;
+  creator: string | null;
+  sourceDataSourceViewSpaceSId: string | null;
+  sourceDataSourceName: string | null;
+  sourceConnectorProvider: ConnectorProvider | null;
+};
+
+/**
+ * For a project space, return the connector-backed content nodes currently in
+ * the project context, enriched with the source data source view's space,
+ * display name and connector provider. Used by the poke admin UI.
+ */
+export async function listProjectKnowledgeFromConnectors(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<ProjectKnowledgeFromConnectorItem[]> {
+  const attachments = await listProjectContextAttachments(auth, space);
+  const contentNodes = attachments.filter(isContentNodeAttachmentType);
+
+  const dsvSIds = Array.from(
+    new Set(contentNodes.map((a) => a.nodeDataSourceViewId))
+  );
+
+  const dsvBySId = new Map<
+    string,
+    {
+      spaceSId: string;
+      dataSourceName: string;
+      connectorProvider: ConnectorProvider | null;
+    }
+  >();
+  if (dsvSIds.length > 0) {
+    const dsvs = await DataSourceViewResource.fetchByIds(auth, dsvSIds);
+    for (const dsv of dsvs) {
+      const json = dsv.toJSON();
+      dsvBySId.set(dsv.sId, {
+        spaceSId: json.spaceId,
+        dataSourceName: getDisplayNameForDataSource(json.dataSource),
+        connectorProvider: json.dataSource.connectorProvider,
+      });
+    }
+  }
+
+  return contentNodes.map((a) => {
+    const creator = a.creator
+      ? `${a.creator.type === "agent" ? "agent: " : ""}${a.creator.name}`
+      : null;
+    const dsv = dsvBySId.get(a.nodeDataSourceViewId);
+    return {
+      contentFragmentId: a.contentFragmentId,
+      nodeId: a.nodeId,
+      nodeType: a.nodeType,
+      nodeDataSourceViewId: a.nodeDataSourceViewId,
+      title: a.title,
+      contentType: a.contentType,
+      sourceUrl: a.sourceUrl,
+      lastUpdatedAt: a.lastUpdatedAt ?? null,
+      creator,
+      sourceDataSourceViewSpaceSId: dsv?.spaceSId ?? null,
+      sourceDataSourceName: dsv?.dataSourceName ?? null,
+      sourceConnectorProvider: dsv?.connectorProvider ?? null,
+    };
   });
 }
 
