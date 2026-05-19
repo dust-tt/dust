@@ -24,7 +24,6 @@ import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useCo
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
-import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
