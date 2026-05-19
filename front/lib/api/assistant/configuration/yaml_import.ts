@@ -82,7 +82,7 @@ async function importAgentConfiguration(
   let skippedActions: { action: { name?: string }; reason: string }[] = [];
 
   // When provided, these actions are used as-is instead of converting from the
-  // YAML toolset. 
+  // YAML toolset.
   if (resolvedActions) {
     const serverSideActions = resolvedActions.filter(
       isServerSideMCPServerConfiguration

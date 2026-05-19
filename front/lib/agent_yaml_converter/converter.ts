@@ -151,8 +151,7 @@ export class AgentYAMLConverter {
         type: "MCP",
         configuration: {
           mcp_server_name: mcpServerName,
-          mcp_server_view_id:
-            action.configuration.mcpServerViewId ?? undefined,
+          mcp_server_view_id: action.configuration.mcpServerViewId ?? undefined,
           data_sources: action.configuration.dataSourceConfigurations
             ? this.convertDataSourceConfigurations(
                 action.configuration.dataSourceConfigurations
@@ -332,9 +331,7 @@ export class AgentYAMLConverter {
 
         if (!mcpServerView) {
           return new Err(
-            new Error(
-              `MCP server view not found for id: ${mcp_server_view_id}`
-            )
+            new Error(`MCP server view not found for id: ${mcp_server_view_id}`)
           );
         }
 
