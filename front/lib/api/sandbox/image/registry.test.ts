@@ -49,10 +49,10 @@ function getCopiedContent(
 }
 
 describe("sandbox image registry", () => {
-  test("bumps the base image for the trust-matrix rollout", () => {
+  test("bumps the base image for the scoped MITM rollout", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.11",
+      tag: "0.8.12",
     });
   });
 
