@@ -65,7 +65,7 @@ makeScript(
     if (!space) {
       throw new Error(`Space not found: ${pId}`);
     }
-    if (space.kind !== "project") {
+    if (!space.isProject()) {
       throw new Error(
         `Space ${pId} is not a project space (kind=${space.kind}).`
       );

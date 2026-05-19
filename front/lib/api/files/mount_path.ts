@@ -9,6 +9,8 @@
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
+import { Err, Ok, type Result } from "@app/types/shared/result";
+import path from "path";
 import { z } from "zod";
 
 export function getBaseMountPathForWorkspace({
@@ -185,4 +187,65 @@ export function disambiguateFileName(file: FileResource): string {
   const basename = fileName.substring(0, lastDot);
   const ext = fileName.substring(lastDot);
   return `${basename}_${sId}${ext}`;
+}
+
+/**
+ * Validate a single folder segment name (no path separators).
+ */
+export function validateMountFolderName(
+  folderName: string
+): Result<string, Error> {
+  const trimmed = folderName.trim();
+  if (
+    trimmed === "" ||
+    trimmed.includes("/") ||
+    trimmed.includes("\\") ||
+    trimmed === "." ||
+    trimmed === ".."
+  ) {
+    return new Err(
+      new Error(
+        "folderName is required and must be a non-empty string without path separators."
+      )
+    );
+  }
+
+  return new Ok(trimmed);
+}
+
+/**
+ * Normalize a parent directory path within a mount (no `project/` prefix).
+ * Returns an empty string for the mount root.
+ */
+export function normalizeMountParentRelativePath(
+  parentRelativePath: string | undefined
+): Result<string, Error> {
+  if (parentRelativePath === undefined || parentRelativePath.trim() === "") {
+    return new Ok("");
+  }
+
+  const normalized = path.posix.normalize(
+    parentRelativePath.replace(/^\/+/, "")
+  );
+  if (normalized === "." || normalized === "") {
+    return new Ok("");
+  }
+
+  if (
+    normalized.startsWith("..") ||
+    normalized.split("/").some((part) => part === "..")
+  ) {
+    return new Err(new Error("parentRelativePath is outside mount scope."));
+  }
+
+  return new Ok(normalized);
+}
+
+export function joinMountRelativePath(
+  parentRelativePath: string,
+  folderName: string
+): string {
+  return parentRelativePath
+    ? `${parentRelativePath}/${folderName}`
+    : folderName;
 }

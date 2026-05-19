@@ -5,8 +5,10 @@ import {
   getConversationFilesBasePath,
   getProjectFilesBasePath,
   makeProcessedMountFileName,
+  normalizeMountParentRelativePath,
   parseProcessedFilename,
   parseScopedFilePath,
+  validateMountFolderName,
 } from "@app/lib/api/files/mount_path";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -179,6 +181,50 @@ describe("mount_path helpers", () => {
         isProcessed: false,
       });
       expect(parseProcessedFilename("")).toEqual({ isProcessed: false });
+    });
+  });
+
+  describe("validateMountFolderName", () => {
+    it("accepts a simple folder name", () => {
+      const result = validateMountFolderName("  Reports  ");
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe("Reports");
+      }
+    });
+
+    it("rejects path separators and empty names", () => {
+      expect(validateMountFolderName("").isErr()).toBe(true);
+      expect(validateMountFolderName("a/b").isErr()).toBe(true);
+      expect(validateMountFolderName("..").isErr()).toBe(true);
+    });
+  });
+
+  describe("normalizeMountParentRelativePath", () => {
+    it("normalizes empty to mount root", () => {
+      const undefinedResult = normalizeMountParentRelativePath(undefined);
+      expect(undefinedResult.isOk()).toBe(true);
+      if (undefinedResult.isOk()) {
+        expect(undefinedResult.value).toBe("");
+      }
+
+      const emptyResult = normalizeMountParentRelativePath("");
+      expect(emptyResult.isOk()).toBe(true);
+      if (emptyResult.isOk()) {
+        expect(emptyResult.value).toBe("");
+      }
+    });
+
+    it("rejects path traversal", () => {
+      expect(normalizeMountParentRelativePath("../evil").isErr()).toBe(true);
+    });
+
+    it("strips leading slashes", () => {
+      const result = normalizeMountParentRelativePath("/reports/q1");
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe("reports/q1");
+      }
     });
   });
 

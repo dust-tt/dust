@@ -6,11 +6,18 @@ import {
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import {
+  createGCSMountDirectory,
   deleteGCSMountFile,
+  type GCSMountDirectoryEntry,
   moveFile,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
-import { getProjectFilesBasePath } from "@app/lib/api/files/mount_path";
+import {
+  getProjectFilesBasePath,
+  joinMountRelativePath,
+  normalizeMountParentRelativePath,
+  validateMountFolderName,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { MessageModel } from "@app/lib/models/agent/conversation";
@@ -241,7 +248,7 @@ export async function addFileToProject(
     sourceConversationId?: string;
   }
 ): Promise<Result<ContentFragmentResource, DustError>> {
-  if (space.kind !== "project") {
+  if (!space.isProject()) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
@@ -249,30 +256,45 @@ export async function addFileToProject(
     });
   }
 
-  if (!file.mountFilePath) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "File has no mount path and cannot be moved to the project.",
-    });
-  }
-
-  const destFileName = file.fileName;
-  const moveRes = await moveFile(auth, {
-    file,
-    sourceGcsPath: file.mountFilePath,
-    destScope: { useCase: "project", projectId: space.sId },
-    destRelativeFilePath: destFileName,
-    destFileName,
-    destUseCase: "project_context",
-    destUseCaseMetadata: { spaceId: space.sId, sourceConversationId },
+  const owner = auth.getNonNullableWorkspace();
+  const projectFilesPrefix = getProjectFilesBasePath({
+    workspaceId: owner.sId,
+    projectId: space.sId,
   });
-  if (moveRes.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_error",
-      message: moveRes.error.message,
+
+  // Files already mounted under the project prefix only need content-fragment sync.
+  const isAlreadyOnProjectMount =
+    file.mountFilePath?.startsWith(projectFilesPrefix) ?? false;
+
+  if (!isAlreadyOnProjectMount) {
+    if (!file.mountFilePath) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: "File has no mount path and cannot be moved to the project.",
+      });
+    }
+
+    const destFileName = file.fileName;
+    const moveRes = await moveFile(auth, {
+      file,
+      sourceGcsPath: file.mountFilePath,
+      destScope: { useCase: "project", projectId: space.sId },
+      destRelativeFilePath: destFileName,
+      destFileName,
+      destUseCase: "project_context",
+      destUseCaseMetadata: {
+        spaceId: space.sId,
+        ...(sourceConversationId ? { sourceConversationId } : {}),
+      },
     });
+    if (moveRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: moveRes.error.message,
+      });
+    }
   }
 
   // TODO(projects) once the source of truth for the project's files is GCS, we can remove this.
@@ -309,7 +331,7 @@ export async function addContentNodeToProject(
     space: SpaceResource;
   }
 ): Promise<Result<ContentFragmentResource, DustError>> {
-  if (space.kind !== "project") {
+  if (!space.isProject()) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
@@ -442,6 +464,137 @@ export async function removeFileFromProject(
   const deleteRes = await file.delete(auth);
   if (deleteRes.isErr()) {
     return new Err(deleteRes.error);
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * Create an empty folder in a project GCS mount via a trailing-slash placeholder object.
+ */
+export async function createProjectFolder(
+  auth: Authenticator,
+  {
+    space,
+    folderName,
+    parentRelativePath,
+  }: {
+    space: SpaceResource;
+    folderName: string;
+    parentRelativePath?: string;
+  }
+): Promise<Result<GCSMountDirectoryEntry, Error>> {
+  if (!space.isProject()) {
+    return new Err(new Error("Space is not a project."));
+  }
+
+  const folderNameRes = validateMountFolderName(folderName);
+  if (folderNameRes.isErr()) {
+    return folderNameRes;
+  }
+
+  const parentRes = normalizeMountParentRelativePath(parentRelativePath);
+  if (parentRes.isErr()) {
+    return parentRes;
+  }
+
+  const relativeDirPath = joinMountRelativePath(
+    parentRes.value,
+    folderNameRes.value
+  );
+
+  return createGCSMountDirectory(
+    auth,
+    { useCase: "project", projectId: space.sId },
+    { relativeDirPath }
+  );
+}
+
+/**
+ * Move a project-context file within the project GCS mount (e.g. into a subfolder).
+ * Upload via the File API first; call this to place the file under `parentRelativePath`.
+ */
+export async function moveProjectContextFile(
+  auth: Authenticator,
+  {
+    space,
+    file,
+    parentRelativePath,
+  }: {
+    space: SpaceResource;
+    file: FileResource;
+    parentRelativePath?: string;
+  }
+): Promise<Result<void, DustError | Error>> {
+  if (!space.isProject()) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Space is not a project.",
+    });
+  }
+
+  if (file.useCase !== "project_context") {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message:
+        "Only project context files can be moved within a project mount.",
+    });
+  }
+
+  if (file.useCaseMetadata?.spaceId !== space.sId) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "File does not belong to this project.",
+    });
+  }
+
+  if (!file.mountFilePath) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "File has no mount path and cannot be moved.",
+    });
+  }
+
+  const parentRes = normalizeMountParentRelativePath(parentRelativePath);
+  if (parentRes.isErr()) {
+    return new Err(parentRes.error);
+  }
+
+  const destRelativeFilePath = joinMountRelativePath(
+    parentRes.value,
+    file.fileName
+  );
+
+  const owner = auth.getNonNullableWorkspace();
+  const projectFilesPrefix = getProjectFilesBasePath({
+    workspaceId: owner.sId,
+    projectId: space.sId,
+  });
+  const destGcsPath = `${projectFilesPrefix}${destRelativeFilePath}`;
+
+  if (file.mountFilePath === destGcsPath) {
+    return new Ok(undefined);
+  }
+
+  const moveRes = await moveFile(auth, {
+    file,
+    sourceGcsPath: file.mountFilePath,
+    destScope: { useCase: "project", projectId: space.sId },
+    destRelativeFilePath,
+    destFileName: file.fileName,
+    destUseCase: "project_context",
+    destUseCaseMetadata: file.useCaseMetadata ?? { spaceId: space.sId },
+  });
+  if (moveRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_error",
+      message: moveRes.error.message,
+    });
   }
 
   return new Ok(undefined);
