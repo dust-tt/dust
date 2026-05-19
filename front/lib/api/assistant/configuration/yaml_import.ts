@@ -1,6 +1,9 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
-import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
+import type {
+  AgentYAMLAction,
+  AgentYAMLConfig,
+} from "@app/lib/agent_yaml_converter/schemas";
 import {
   agentYAMLBasicInfoSchema,
   agentYAMLConfigSchema,
@@ -35,11 +38,70 @@ type ImportResult = Result<
   APIErrorWithStatusCode
 >;
 
+interface ResolvedActions {
+  configurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"];
+  skipped: { action: { name?: string }; reason: string }[];
+}
+
+type ActionSource =
+  | { type: "yaml"; toolset: AgentYAMLAction[] }
+  | { type: "config"; actions: AgentConfigurationType["actions"] };
+
+async function resolveActions(
+  auth: Authenticator,
+  source: ActionSource
+): Promise<Result<ResolvedActions, APIErrorWithStatusCode>> {
+  if (source.type === "config") {
+    const serverSideActions = source.actions.filter(
+      isServerSideMCPServerConfiguration
+    );
+
+    // Strip fields that exist on ServerSideMCPServerConfigurationType but not
+    // on the request body schema (MCPServerActionConfigurationSchema).
+    const configurations = [];
+    for (const action of serverSideActions) {
+      const parsed = MCPServerActionConfigurationSchema.safeParse(action);
+      if (!parsed.success) {
+        return new Err({
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid existing action configuration: ${parsed.error.message}`,
+          },
+        });
+      }
+      configurations.push(parsed.data);
+    }
+
+    return new Ok({
+      configurations,
+      skipped: [],
+    });
+  }
+
+  const result = await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
+    auth,
+    source.toolset
+  );
+
+  if (result.isErr()) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Error converting YAML actions: ${result.error.message}`,
+      },
+    });
+  }
+
+  return new Ok(result.value);
+}
+
 async function importAgentConfiguration(
   auth: Authenticator,
   yamlConfig: AgentYAMLConfig,
-  agentConfigurationId?: string,
-  resolvedActions?: AgentConfigurationType["actions"]
+  actionSource: ActionSource,
+  agentConfigurationId?: string
 ): Promise<ImportResult> {
   const isSaveAgentConfigurationsEnabled =
     await KillSwitchResource.isKillSwitchEnabled("save_agent_configurations");
@@ -52,6 +114,11 @@ async function importAgentConfiguration(
           "Saving agent configurations is temporarily disabled, try again later.",
       },
     });
+  }
+
+  const actionsResult = await resolveActions(auth, actionSource);
+  if (actionsResult.isErr()) {
+    return actionsResult;
   }
 
   const editorEmails = yamlConfig.editors;
@@ -78,41 +145,8 @@ async function importAgentConfiguration(
 
   const authorModelId = editorUsers[0].id;
 
-  let mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"];
-  let skippedActions: { action: { name?: string }; reason: string }[] = [];
-
-  // When provided, these actions are used as-is instead of converting from the
-  // YAML toolset.
-  if (resolvedActions) {
-    const serverSideActions = resolvedActions.filter(
-      isServerSideMCPServerConfiguration
-    );
-
-    // Strip fields that exist on ServerSideMCPServerConfigurationType but not
-    // on the request body schema (MCPServerActionConfigurationSchema).
-    mcpConfigurations = serverSideActions.map((action) =>
-      MCPServerActionConfigurationSchema.parse(action)
-    );
-  } else {
-    const mcpConfigurationsResult =
-      await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
-        auth,
-        yamlConfig.toolset
-      );
-
-    if (mcpConfigurationsResult.isErr()) {
-      return new Err({
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Error converting YAML actions: ${mcpConfigurationsResult.error.message}`,
-        },
-      });
-    }
-
-    mcpConfigurations = mcpConfigurationsResult.value.configurations;
-    skippedActions = mcpConfigurationsResult.value.skipped;
-  }
+  const { configurations: mcpConfigurations, skipped: skippedActions } =
+    actionsResult.value;
 
   const tagNames = yamlConfig.tags.map((t) => t.name);
   const resolvedTags = await TagResource.findByNames(auth, tagNames);
@@ -198,7 +232,12 @@ export async function importAgentConfigurationFromYAMLString(
     });
   }
 
-  return importAgentConfiguration(auth, yamlConfigResult.value);
+  const yamlConfig = yamlConfigResult.value;
+
+  return importAgentConfiguration(auth, yamlConfig, {
+    type: "yaml",
+    toolset: yamlConfig.toolset,
+  });
 }
 
 export async function importAgentConfigurationFromJSON(
@@ -216,7 +255,12 @@ export async function importAgentConfigurationFromJSON(
     });
   }
 
-  return importAgentConfiguration(auth, parsed.data);
+  const yamlConfig = parsed.data;
+
+  return importAgentConfiguration(auth, yamlConfig, {
+    type: "yaml",
+    toolset: yamlConfig.toolset,
+  });
 }
 
 const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
@@ -259,7 +303,7 @@ export async function patchAgentConfigurationFromJSON(
 
   const existing = yamlConfigResult.value;
 
-  const merged: AgentYAMLConfig = {
+  const mergedYamlConfig: AgentYAMLConfig = {
     ...existing,
     ...patch,
     agent: { ...existing.agent, ...patch.agent },
@@ -270,10 +314,15 @@ export async function patchAgentConfigurationFromJSON(
   };
 
   // When the patch does not include toolset, preserve the existing actions
-  // directly from the agent config to avoid the YAML round-trip
-  const resolvedActions = !patch.toolset
-    ? agentConfiguration.actions
-    : undefined;
+  // directly from the agent config to avoid the YAML round-trip.
+  const actionSource: ActionSource = patch.toolset
+    ? { type: "yaml", toolset: mergedYamlConfig.toolset }
+    : { type: "config", actions: agentConfiguration.actions };
 
-  return importAgentConfiguration(auth, merged, agentId, resolvedActions);
+  return importAgentConfiguration(
+    auth,
+    mergedYamlConfig,
+    actionSource,
+    agentId
+  );
 }
