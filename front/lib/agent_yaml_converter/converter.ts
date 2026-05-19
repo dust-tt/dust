@@ -1,7 +1,7 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { processAdditionalConfiguration } from "@app/components/agent_builder/submitAgentBuilderForm";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isAutoInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isAutoInternalMCPServer, isAutoInternalMCPServerName, isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   AgentYAMLAction,
   AgentYAMLConfig,
@@ -341,7 +341,7 @@ export class AgentYAMLConverter {
       } else {
         // if we cannot resolve by id, we fall back to name resolution
         unresolvedActions.push(action);
-        if (mcp_server_name && isAutoInternalMCPServer(mcp_server_name)) {
+        if (mcp_server_name && isInternalMCPServerName(mcp_server_name) && isAutoInternalMCPServerName(mcp_server_name)) {
           autoInternalNames.push(mcp_server_name);
         }
       }
@@ -362,7 +362,7 @@ export class AgentYAMLConverter {
       const { mcp_server_name } = action.configuration;
 
       const mcpServerViewId =
-        mcp_server_name && isAutoInternalMCPServer(mcp_server_name)
+        mcp_server_name && isInternalMCPServerName(mcp_server_name) && isAutoInternalMCPServerName(mcp_server_name)
           ? viewsByAutoInternalName?.get(mcp_server_name)?.sId
           : undefined;
 
