@@ -36,6 +36,7 @@ import {
 import {
   MISTRAL_CODESTRAL_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
+  MISTRAL_MEDIUM_3_5_MODEL_ID,
   MISTRAL_MEDIUM_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
 } from "@app/types/assistant/models/mistral";
@@ -130,6 +131,7 @@ export const MODELS: Record<
   [MISTRAL_CODESTRAL_MODEL_ID]: { runTest: false, providerId: "mistral" },
   [MISTRAL_LARGE_MODEL_ID]: { runTest: false, providerId: "mistral" },
   [MISTRAL_MEDIUM_MODEL_ID]: { runTest: false, providerId: "mistral" },
+  [MISTRAL_MEDIUM_3_5_MODEL_ID]: { runTest: false, providerId: "mistral" },
   [MISTRAL_SMALL_MODEL_ID]: { runTest: false, providerId: "mistral" },
   // OpenAI models
   [GPT_3_5_TURBO_MODEL_ID]: { runTest: false, providerId: "openai" },
