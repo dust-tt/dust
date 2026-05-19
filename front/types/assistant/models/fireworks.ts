@@ -33,6 +33,10 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
@@ -59,6 +63,10 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "fireworks_new_model_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
@@ -80,6 +88,10 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
@@ -99,6 +111,10 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
@@ -122,6 +138,10 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",
+  },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
   },
 };
 export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
@@ -147,6 +167,10 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",
   },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
@@ -170,5 +194,9 @@ export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",
+  },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
   },
 };

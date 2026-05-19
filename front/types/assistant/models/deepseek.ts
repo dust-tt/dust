@@ -23,6 +23,10 @@ export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "deepseek_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "deepseek",
@@ -45,4 +49,8 @@ export const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "deepseek_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };

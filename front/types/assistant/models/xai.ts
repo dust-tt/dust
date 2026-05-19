@@ -34,6 +34,10 @@ export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
@@ -57,6 +61,10 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 
 export const GROK_4_MODEL_CONFIG: ModelConfigurationType = {
@@ -81,6 +89,10 @@ export const GROK_4_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GROK_4_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
@@ -104,6 +116,10 @@ export const GROK_4_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GROK_4_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
@@ -127,6 +143,10 @@ export const GROK_4_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GROK_4_1_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
@@ -150,6 +170,10 @@ export const GROK_4_1_FAST_REASONING_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
 };
 export const GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType =
   {
@@ -175,4 +199,8 @@ export const GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG: ModelConfigurationType =
       featureFlag: "xai_feature",
     },
     tokenizer: { type: "tiktoken", base: "o200k_base" },
+    regionalAvailability: {
+      "us-central1": true,
+      "europe-west1": false,
+    },
   };
