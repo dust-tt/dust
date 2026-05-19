@@ -5,7 +5,10 @@ import {
   MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
   MIN_AWU_PURCHASE_CREDITS,
 } from "@app/lib/credits/awu_purchase_constants";
-import { AWU_PRICE_PER_CREDIT } from "@app/lib/metronome/types";
+import {
+  awuCreditsToCurrency,
+  currencyToAwuCredits,
+} from "@app/lib/metronome/amounts";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
@@ -123,15 +126,15 @@ export function BuyAwuCreditsDialog({
     ? awuPurchaseInfo.currency
     : "usd";
   const currencySymbol = CURRENCY_SYMBOLS[currency];
-  const pricePerCredit = AWU_PRICE_PER_CREDIT[currency];
-  const creditsPerCurrencyUnit = 1 / pricePerCredit;
 
   const maxAmountInCurrency = useMemo(() => {
     if (!awuPurchaseInfo?.canPurchase) {
       return null;
     }
-    return Math.floor(awuPurchaseInfo.remainingCycleCredits * pricePerCredit);
-  }, [awuPurchaseInfo, pricePerCredit]);
+    return Math.floor(
+      awuCreditsToCurrency(awuPurchaseInfo.remainingCycleCredits, currency)
+    );
+  }, [awuPurchaseInfo, currency]);
 
   const maxAmountFormatted = useMemo(() => {
     if (maxAmountInCurrency === null) {
@@ -142,7 +145,9 @@ export function BuyAwuCreditsDialog({
 
   const effectiveMaxAmount =
     maxAmountInCurrency ??
-    Math.floor(MAX_AWU_PURCHASE_CREDITS_PER_CYCLE * pricePerCredit);
+    Math.floor(
+      awuCreditsToCurrency(MAX_AWU_PURCHASE_CREDITS_PER_CYCLE, currency)
+    );
 
   const setAmountWithClamp = useCallback(
     (amount: number) => {
@@ -154,7 +159,7 @@ export function BuyAwuCreditsDialog({
   const parsedAmount = parseFloat(amountInput) || 0;
   const isValidAmount = parsedAmount > 0;
   const amountExceedsMax = parsedAmount > effectiveMaxAmount;
-  const addedCredits = parsedAmount * creditsPerCurrencyUnit;
+  const addedCredits = currencyToAwuCredits(parsedAmount, currency);
 
   const canPurchase = isValidAmount && !amountExceedsMax;
 

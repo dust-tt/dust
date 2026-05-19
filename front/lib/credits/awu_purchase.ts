@@ -1,6 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycle } from "@app/lib/client/subscription";
 import {
+  AWU_PRICE_PER_CREDIT,
+  metronomeAmount,
+} from "@app/lib/metronome/amounts";
+import {
   addPaymentGatedCommitToContract,
   getMetronomeCustomerStripeCustomerId,
 } from "@app/lib/metronome/client";
@@ -12,7 +16,6 @@ import {
 } from "@app/lib/metronome/constants";
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract, isLegacyPlan } from "@app/lib/metronome/plan_type";
-import { AWU_PRICE_PER_CREDIT } from "@app/lib/metronome/types";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -244,16 +247,13 @@ export async function purchaseAwuCredits(
   }
   const currency = currencyResult.value;
 
-  // Metronome wants invoice unit prices in the credit type's units: cents
-  // for USD, whole units for EUR (matches the rate-card convention; see
-  // `metronomeAmount`). AWU_PRICE_PER_CREDIT is per-credit in the
-  // currency's natural unit ($0.01 / €0.0087):
-  //   USD: 0.01 USD * 100 = 1 cent per credit
-  //   EUR: 0.0087 EUR per credit (Metronome allows decimal unit prices)
-  const invoiceUnitPrice =
-    currency === "usd"
-      ? AWU_PRICE_PER_CREDIT.usd * 100
-      : AWU_PRICE_PER_CREDIT.eur;
+  // Per-credit price expressed in Metronome's unit for this currency:
+  // cents for USD (1 cent), whole units for EUR (0.0087 EUR — Metronome
+  // accepts decimal unit prices for non-USD).
+  const invoiceUnitPrice = metronomeAmount(
+    AWU_PRICE_PER_CREDIT[currency] * 100,
+    currency
+  );
 
   const now = new Date();
   const oneYearFromNow = new Date(now);
