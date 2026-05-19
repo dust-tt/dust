@@ -7,20 +7,27 @@ use base64::{engine::general_purpose, Engine as _};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::egress_secrets::{Secret, SecretTable};
+use crate::egress_secrets::{
+    Secret, SecretTable, PLACEHOLDER_HEX_LEN, PLACEHOLDER_PREFIX as PLACEHOLDER_PREFIX_STR,
+    PLACEHOLDER_SUFFIX as PLACEHOLDER_SUFFIX_STR,
+};
 
 use super::deny_log::{DenyLogEntry, DenyReason};
 
+// Matches nginx's default large_client_header_buffers (4 x 8 KiB = 32 KiB).
 const MAX_HEADER_BLOCK_BYTES: usize = 32 * 1024;
 const MAX_HEADER_LINE_BYTES: usize = 16 * 1024;
+// httparse defaults to 100; we bump to 128 to leave headroom for instrumented
+// agents (cloud-trace, sentry, etc.) without paying a real cost.
 const MAX_HEADERS: usize = 128;
 const READ_CHUNK_BYTES: usize = 8 * 1024;
 const NON_HTTP_FALLBACK_BYTES: usize = 4 * 1024;
 const MAX_CHUNK_LINE_BYTES: usize = 8 * 1024;
 
-const PLACEHOLDER_PREFIX: &[u8] = b"__DSEC_";
-const PLACEHOLDER_SUFFIX: &[u8] = b"__";
-const PLACEHOLDER_LEN: usize = 7 + 32 + 2;
+const PLACEHOLDER_PREFIX: &[u8] = PLACEHOLDER_PREFIX_STR.as_bytes();
+const PLACEHOLDER_SUFFIX: &[u8] = PLACEHOLDER_SUFFIX_STR.as_bytes();
+const PLACEHOLDER_LEN: usize =
+    PLACEHOLDER_PREFIX_STR.len() + PLACEHOLDER_HEX_LEN + PLACEHOLDER_SUFFIX_STR.len();
 
 #[derive(Clone, Copy, Debug)]
 pub(super) enum HttpRewriteMode<'a> {
@@ -551,6 +558,8 @@ fn validate_absolute_uri_authority(
             Some(host),
         )
     })?;
+    // `host` was already verified to equal SNI by `normalized_single_host` in
+    // TLS mode, so comparing `normalized_authority == host` is sufficient.
     if normalized_authority != host {
         return Err(HttpRewriteError::denied(
             mode,
@@ -558,25 +567,6 @@ fn validate_absolute_uri_authority(
             None,
             Some(host),
         ));
-    }
-
-    if let HttpRewriteMode::Tls { sni } = mode {
-        let normalized_sni = normalize_host(sni, 443).map_err(|_| {
-            HttpRewriteError::denied(
-                mode,
-                DenyReason::AbsoluteUriAuthorityMismatch,
-                None,
-                Some(host),
-            )
-        })?;
-        if normalized_authority != normalized_sni {
-            return Err(HttpRewriteError::denied(
-                mode,
-                DenyReason::AbsoluteUriAuthorityMismatch,
-                None,
-                Some(host),
-            ));
-        }
     }
 
     Ok(())
@@ -637,8 +627,11 @@ fn rewrite_basic_auth(
         return Ok(None);
     };
 
+    // If base64 decode fails (malformed Basic auth value), fall back to the
+    // general substitution path so any placeholder in the raw header bytes
+    // still gets rewritten on TLS, or rejected by the plain-HTTP guard above.
     let Ok(decoded) = general_purpose::STANDARD.decode(rest.trim()) else {
-        return Ok(Some(value.to_vec()));
+        return Ok(None);
     };
 
     if matches!(mode, HttpRewriteMode::PlainHttp { .. }) && contains_placeholder(&decoded) {
@@ -860,6 +853,7 @@ where
     R: AsyncRead + Unpin,
     W: AsyncWrite + Unpin,
 {
+    let mut chunk = [0_u8; READ_CHUNK_BYTES];
     while remaining > 0 {
         if !reader.buffer.is_empty() {
             let to_write = remaining.min(reader.buffer.len());
@@ -872,10 +866,10 @@ where
             continue;
         }
 
-        let mut chunk = vec![0_u8; remaining.min(READ_CHUNK_BYTES)];
+        let to_read = remaining.min(chunk.len());
         let bytes_read = reader
             .inner
-            .read(&mut chunk)
+            .read(&mut chunk[..to_read])
             .await
             .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
         if bytes_read == 0 {
@@ -1469,6 +1463,27 @@ mod tests {
         .expect_err("plain HTTP literal placeholder should deny even in invalid Basic auth");
 
         assert_deny_reason(err, DenyReason::Port80Placeholder);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn substitutes_tls_literal_placeholder_in_invalid_basic_auth() -> Result<()> {
+        // Regression: when base64 decode of a `Basic` value fails we must still
+        // run the general substitution on the raw header bytes, otherwise a
+        // known placeholder silently ships to upstream un-rewritten on TLS.
+        let table = secret_table("API_KEY", PLACEHOLDER, "real", &["api.openai.com"])?;
+        let output = rewrite_once(
+            b"GET / HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: Basic __DSEC_0123456789abcdef0123456789abcdef__\r\n\r\n",
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(text.contains("Authorization: Basic real\r\n"));
+        assert!(!text.contains(PLACEHOLDER));
         Ok(())
     }
 

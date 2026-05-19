@@ -7,9 +7,9 @@ use anyhow::{anyhow, bail, ensure, Context, Result};
 use serde::Deserialize;
 use tracing::info;
 
-const PLACEHOLDER_PREFIX: &str = "__DSEC_";
-const PLACEHOLDER_SUFFIX: &str = "__";
-const PLACEHOLDER_HEX_LEN: usize = 32;
+pub(crate) const PLACEHOLDER_PREFIX: &str = "__DSEC_";
+pub(crate) const PLACEHOLDER_SUFFIX: &str = "__";
+pub(crate) const PLACEHOLDER_HEX_LEN: usize = 32;
 
 // Slice 6 will consume `name` and `value` from the request rewriter. Slice 4
 // only loads and plumbs the table so MITM scoping can key off the allowlist
