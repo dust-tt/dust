@@ -968,7 +968,11 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
           },
         }
       );
-    return new Ok(response.data[0]?.assigned_seat_ids ?? []);
+    // History is returned ascending by starting_at; take the last entry for the
+    // current live state (earlier entries are stale schedule segments).
+    return new Ok(
+      response.data[response.data.length - 1]?.assigned_seat_ids ?? []
+    );
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
@@ -980,69 +984,120 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
 }
 
 /**
- * Add and/or remove specific seat IDs on a SEAT_BASED subscription, balancing
- * unassigned seats so the total subscription quantity stays stable: every
- * removed assigned seat is replaced by an unassigned seat, and every new
- * assigned seat consumes an unassigned seat. Both arrays may be empty
- * (no-op). Pass `startingAt` to anchor the change to a specific hour
- * boundary; defaults to the current hour.
+ * Add and/or remove specific seat IDs on one or two SEAT_BASED subscriptions
+ * in a single contracts.edit call.
+ *
+ * When `toSubscriptionId` is omitted, all seat changes apply to
+ * `fromSubscriptionId`. When `toSubscriptionId` is provided, `removeSeatIds`
+ * are removed from `fromSubscriptionId` and `addSeatIds` are added to
+ * `toSubscriptionId` — enabling atomic cross-subscription transitions.
+ *
+ * Unassigned seat counts must be passed explicitly:
+ * - `addUnassignedSeats`: seats to add to `fromSubscriptionId` (annual
+ *   unassignment — keeps quantity stable)
+ * - `removeUnassignedSeats`: seats to remove from `fromSubscriptionId` (pool
+ *   reconciliation — consuming a pre-purchased slot)
  */
 export async function updateSubscriptionSeats({
   metronomeCustomerId,
   contractId,
-  subscriptionId,
-  addSeatIds,
-  removeSeatIds,
+  fromSubscriptionId,
+  toSubscriptionId,
+  addSeatIds = [],
+  removeSeatIds = [],
+  addUnassignedSeats = 0,
+  removeUnassignedSeats = 0,
   startingAt,
 }: {
   metronomeCustomerId: string;
   contractId: string;
-  subscriptionId: string;
-  addSeatIds: string[];
-  removeSeatIds: string[];
+  fromSubscriptionId: string;
+  toSubscriptionId?: string;
+  addSeatIds?: string[];
+  removeSeatIds?: string[];
+  addUnassignedSeats?: number;
+  removeUnassignedSeats?: number;
   startingAt?: string;
 }): Promise<Result<void, Error>> {
-  if (addSeatIds.length === 0 && removeSeatIds.length === 0) {
+  const hasFromSeatIds = !toSubscriptionId && addSeatIds.length > 0;
+  const isEmpty =
+    removeSeatIds.length === 0 &&
+    addUnassignedSeats === 0 &&
+    removeUnassignedSeats === 0 &&
+    !hasFromSeatIds &&
+    !(toSubscriptionId && addSeatIds.length > 0);
+  if (isEmpty) {
     return new Ok(undefined);
   }
-  const now = startingAt ?? floorToHourISO(new Date());
+
+  const scheduleTime = startingAt ?? floorToHourISO(new Date());
+
+  const fromSeatUpdates = {
+    ...(removeSeatIds.length > 0
+      ? {
+          remove_seat_ids: [
+            { seat_ids: removeSeatIds, starting_at: scheduleTime },
+          ],
+        }
+      : {}),
+    ...(addUnassignedSeats > 0
+      ? {
+          add_unassigned_seats: [
+            { quantity: addUnassignedSeats, starting_at: scheduleTime },
+          ],
+        }
+      : {}),
+    ...(removeUnassignedSeats > 0
+      ? {
+          remove_unassigned_seats: [
+            { quantity: removeUnassignedSeats, starting_at: scheduleTime },
+          ],
+        }
+      : {}),
+    ...(hasFromSeatIds
+      ? { add_seat_ids: [{ seat_ids: addSeatIds, starting_at: scheduleTime }] }
+      : {}),
+  };
+
+  const updateSubscriptions = [
+    ...(Object.keys(fromSeatUpdates).length > 0
+      ? [{ subscription_id: fromSubscriptionId, seat_updates: fromSeatUpdates }]
+      : []),
+    ...(toSubscriptionId && addSeatIds.length > 0
+      ? [
+          {
+            subscription_id: toSubscriptionId,
+            seat_updates: {
+              add_seat_ids: [
+                { seat_ids: addSeatIds, starting_at: scheduleTime },
+              ],
+            },
+          },
+        ]
+      : []),
+  ];
+
+  if (updateSubscriptions.length === 0) {
+    return new Ok(undefined);
+  }
 
   try {
     await getMetronomeClient().v2.contracts.edit({
       customer_id: metronomeCustomerId,
       contract_id: contractId,
-      update_subscriptions: [
-        {
-          subscription_id: subscriptionId,
-          seat_updates: {
-            ...(addSeatIds.length > 0
-              ? {
-                  add_seat_ids: [{ seat_ids: addSeatIds, starting_at: now }],
-                  remove_unassigned_seats: [
-                    { quantity: addSeatIds.length, starting_at: now },
-                  ],
-                }
-              : {}),
-            ...(removeSeatIds.length > 0
-              ? {
-                  remove_seat_ids: [
-                    { seat_ids: removeSeatIds, starting_at: now },
-                  ],
-                  add_unassigned_seats: [
-                    { quantity: removeSeatIds.length, starting_at: now },
-                  ],
-                }
-              : {}),
-          },
-        },
-      ],
+      update_subscriptions: updateSubscriptions,
     });
-
     return new Ok(undefined);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
-      { error, metronomeCustomerId, contractId, subscriptionId },
+      {
+        error,
+        metronomeCustomerId,
+        contractId,
+        fromSubscriptionId,
+        toSubscriptionId,
+      },
       "[Metronome] Failed to update subscription seats"
     );
     return new Err(error);

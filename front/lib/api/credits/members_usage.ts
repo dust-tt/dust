@@ -31,6 +31,9 @@ export type MemberUsageType = {
   consumedWorkplacePoolCredits: number;
   // Billing cadence for the seat subscription the user is assigned to; null when unknown.
   billingFrequency: BillingFrequency | null;
+  // Set when a future seat change is scheduled (e.g. at the next credit refresh).
+  scheduledSeatType: MembershipSeatType | null;
+  scheduledSeatChangeAt: string | null;
 };
 
 export type GetMembersUsageResponseBody = {
@@ -192,6 +195,12 @@ export async function handleGetMembersUsageRequest(
 
       const { memberships, total, nextPageParams } = membershipsResult;
 
+      const scheduledByUserId =
+        await MembershipResource.getScheduledMembershipsByUserIdInWorkspace({
+          workspace,
+          userIds: memberships.map((m) => m.userId),
+        });
+
       const membersUsage: MemberUsageType[] = memberships.flatMap((m) => {
         if (!m.user) {
           return [];
@@ -210,6 +219,8 @@ export async function handleGetMembersUsageRequest(
           poolConsumedCredits = Math.max(0, totalCredits - awuAllocation);
         }
 
+        const scheduled = scheduledByUserId.get(m.userId);
+
         return [
           {
             sId: userId,
@@ -220,6 +231,8 @@ export async function handleGetMembersUsageRequest(
             seatUsagePercent,
             consumedWorkplacePoolCredits: poolConsumedCredits,
             billingFrequency: seatData?.billingFrequency ?? null,
+            scheduledSeatType: scheduled?.seatType ?? null,
+            scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
           },
         ];
       });

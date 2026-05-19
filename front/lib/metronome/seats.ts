@@ -1,4 +1,5 @@
 import {
+  ceilToMidnightUTC,
   getMetronomeContractById,
   getMetronomeSubscriptionAssignedSeatIds,
   updateSubscriptionQuantity,
@@ -198,9 +199,11 @@ export async function syncSeatCount({
       const updateResult = await updateSubscriptionSeats({
         metronomeCustomerId,
         contractId,
-        subscriptionId,
+        fromSubscriptionId: subscriptionId,
         addSeatIds,
         removeSeatIds,
+        addUnassignedSeats: removeSeatIds.length,
+        removeUnassignedSeats: addSeatIds.length,
         startingAt,
       });
       if (updateResult.isErr()) {
@@ -324,4 +327,150 @@ export async function buildSeatDataByUserId({
   }
 
   return seatDataByUserId;
+}
+
+/**
+ * Extract the subscription ID for a given seat type from a contract.
+ */
+export function getSubscriptionIdForSeatTypeFromContract(
+  contract: CachedContract,
+  seatType: MembershipSeatType
+): string | undefined {
+  return (contract.subscriptions ?? []).find(
+    (s) => getSeatTypeForProductId(s.subscription_rate.product) === seatType
+  )?.id;
+}
+
+function getNextBillingPeriodStart(contract: CachedContract): Date | undefined {
+  const nextStartingAt = (contract.subscriptions ?? [])
+    .map((s) => s.billing_periods?.next?.starting_at)
+    .find((d) => d !== undefined);
+  // Ceil to midnight UTC to match how the invoice timestamp is displayed.
+  // Billing period boundaries are anchored to the contract's creation time, not
+  // midnight, so the raw timestamp needs the same normalization.
+  return nextStartingAt
+    ? ceilToMidnightUTC(new Date(nextStartingAt))
+    : undefined;
+}
+
+/**
+ * Handle a seat transition between two seat types.
+ * Returns the date of the next billing period start if the transition is deferred,
+ * otherwise undefined.
+ *
+ */
+export async function handleSeatTransition({
+  metronomeCustomerId,
+  contractId,
+  contract,
+  userId,
+  previousSeatType,
+  newSeatType,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  contract: CachedContract;
+  userId: string;
+  previousSeatType: MembershipSeatType;
+  newSeatType: MembershipSeatType;
+}): Promise<Result<{ scheduledAt: Date | undefined }, Error>> {
+  if (previousSeatType === newSeatType) {
+    return new Ok({ scheduledAt: undefined });
+  }
+
+  if (
+    (previousSeatType === "pro" || previousSeatType === "max") &&
+    newSeatType === "free"
+  ) {
+    return new Err(new Error(`Seat downgrade to free is not allowed`));
+  }
+
+  const fromSubId = getSubscriptionIdForSeatTypeFromContract(
+    contract,
+    previousSeatType
+  );
+  const toSubId = getSubscriptionIdForSeatTypeFromContract(
+    contract,
+    newSeatType
+  );
+
+  // Assign seat if user upgrades from free to paid seat type.
+  if (
+    previousSeatType === "free" &&
+    (newSeatType === "pro" || newSeatType === "max")
+  ) {
+    if (!toSubId) {
+      return new Err(
+        new Error(`No subscription found for seat type: ${newSeatType}`)
+      );
+    }
+    const result = await updateSubscriptionSeats({
+      metronomeCustomerId,
+      contractId,
+      fromSubscriptionId: toSubId,
+      addSeatIds: [userId],
+    });
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+    return new Ok({ scheduledAt: undefined });
+  }
+
+  // Pro → Max: immediate atomic transition.
+  if (previousSeatType === "pro" && newSeatType === "max") {
+    if (!fromSubId || !toSubId) {
+      return new Err(
+        new Error("Missing subscription ID for pro or max seat type")
+      );
+    }
+    const result = await updateSubscriptionSeats({
+      metronomeCustomerId,
+      contractId,
+      fromSubscriptionId: fromSubId,
+      toSubscriptionId: toSubId,
+      addSeatIds: [userId],
+      removeSeatIds: [userId],
+    });
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+    return new Ok({ scheduledAt: undefined });
+  }
+
+  // Max → Pro: deferred — schedule the transition at the next billing period
+  // start so the user keeps Max access through the current period.
+  if (previousSeatType === "max" && newSeatType === "pro") {
+    if (!fromSubId || !toSubId) {
+      return new Err(
+        new Error("Missing subscription ID for max or pro seat type")
+      );
+    }
+    const nextPeriodStart = getNextBillingPeriodStart(contract);
+    if (!nextPeriodStart) {
+      return new Err(
+        new Error(
+          "Cannot defer Max → Pro downgrade: no billing period found on contract"
+        )
+      );
+    }
+    const result = await updateSubscriptionSeats({
+      metronomeCustomerId,
+      contractId,
+      fromSubscriptionId: fromSubId,
+      toSubscriptionId: toSubId,
+      addSeatIds: [userId],
+      removeSeatIds: [userId],
+      startingAt: nextPeriodStart.toISOString(),
+    });
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+    return new Ok({ scheduledAt: nextPeriodStart });
+  }
+
+  logger.warn(
+    { previousSeatType, newSeatType, userId, contractId },
+    "[Metronome] Unhandled seat transition — no Metronome action taken"
+  );
+  return new Ok({ scheduledAt: undefined });
 }
