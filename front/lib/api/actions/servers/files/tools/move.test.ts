@@ -1,6 +1,6 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { copyHandler } from "@app/lib/api/actions/servers/files/tools/copy";
+import { moveHandler } from "@app/lib/api/actions/servers/files/tools/move";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -50,11 +50,11 @@ async function setupProjectConversation(
   };
 }
 
-describe("copyHandler", () => {
-  it("copies a file from conversation to project mount", async () => {
+describe("moveHandler", () => {
+  it("moves a file from conversation to project mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
-    const result = await copyHandler(
+    const result = await moveHandler(
       { source: "conversation/report.pdf", dest: "project/report.pdf" },
       makeExtra(auth, conversation)
     );
@@ -63,18 +63,16 @@ describe("copyHandler", () => {
     if (!result.isOk()) {
       return;
     }
-    expect(result.value).toEqual([
-      {
-        type: "text",
-        text: "Copied `conversation/report.pdf` to `project/report.pdf`.",
-      },
-    ]);
+    expect(result.value[0]).toEqual({
+      type: "text",
+      text: "Moved `conversation/report.pdf` to `project/report.pdf`.",
+    });
   });
 
-  it("copies a file from project to conversation mount", async () => {
+  it("moves a file from project to conversation mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
-    const result = await copyHandler(
+    const result = await moveHandler(
       { source: "project/spec.md", dest: "conversation/spec.md" },
       makeExtra(auth, conversation)
     );
@@ -85,18 +83,18 @@ describe("copyHandler", () => {
   it("returns Err when the source file does not exist", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
-    // Override the bucket so getMetadata rejects (simulates a missing GCS object).
     const mockBucket = {
       file: vi.fn(() => ({
         getMetadata: vi.fn().mockRejectedValue(new Error("Not Found")),
         copy: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
       })),
     };
     vi.mocked(getPrivateUploadBucket).mockReturnValueOnce(
       mockBucket as unknown as ReturnType<typeof getPrivateUploadBucket>
     );
 
-    const result = await copyHandler(
+    const result = await moveHandler(
       { source: "conversation/missing.pdf", dest: "project/missing.pdf" },
       makeExtra(auth, conversation)
     );
@@ -108,42 +106,10 @@ describe("copyHandler", () => {
     expect(result.error.message).toContain("Source file not found");
   });
 
-  it("returns Err when the source is a frame file", async () => {
-    const { auth, conversation } = await setupProjectConversation();
-
-    const mockBucket = {
-      file: vi.fn(() => ({
-        getMetadata: vi
-          .fn()
-          .mockResolvedValue([
-            { contentType: "application/vnd.dust.frame", size: "100" },
-          ]),
-        copy: vi.fn().mockResolvedValue(undefined),
-      })),
-    };
-    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce(
-      mockBucket as unknown as ReturnType<typeof getPrivateUploadBucket>
-    );
-
-    const result = await copyHandler(
-      {
-        source: "conversation/interactive.html",
-        dest: "project/interactive.html",
-      },
-      makeExtra(auth, conversation)
-    );
-
-    expect(result.isErr()).toBe(true);
-    if (!result.isErr()) {
-      return;
-    }
-    expect(result.error.message).toContain("files__move");
-  });
-
   it("returns Err when source and dest resolve to the same GCS path", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
-    const result = await copyHandler(
+    const result = await moveHandler(
       { source: "conversation/x.md", dest: "conversation/x.md" },
       makeExtra(auth, conversation)
     );
@@ -158,7 +124,7 @@ describe("copyHandler", () => {
   it("returns Err for an invalid source scope prefix", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
-    const result = await copyHandler(
+    const result = await moveHandler(
       { source: "other/foo.md", dest: "project/foo.md" },
       makeExtra(auth, conversation)
     );
@@ -175,7 +141,7 @@ describe("copyHandler", () => {
       spaceId: null,
     });
 
-    const result = await copyHandler(
+    const result = await moveHandler(
       { source: "conversation/x.md", dest: "project/x.md" },
       makeExtra(auth, conversation)
     );

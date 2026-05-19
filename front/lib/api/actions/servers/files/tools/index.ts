@@ -6,6 +6,7 @@ import {
   FILES_DELETE_ACTION_NAME,
   FILES_GREP_ACTION_NAME,
   FILES_LIST_ACTION_NAME,
+  FILES_MOVE_ACTION_NAME,
   FILES_RESOLVE_ACTION_NAME,
   FILES_TOOLS_METADATA,
   FILES_TOOLS_METADATA_WITH_PROJECT,
@@ -16,6 +17,7 @@ import { createHandler } from "@app/lib/api/actions/servers/files/tools/create";
 import { deleteHandler } from "@app/lib/api/actions/servers/files/tools/delete";
 import { grepHandler } from "@app/lib/api/actions/servers/files/tools/grep";
 import { listHandler } from "@app/lib/api/actions/servers/files/tools/list";
+import { moveHandler } from "@app/lib/api/actions/servers/files/tools/move";
 import { resolveHandler } from "@app/lib/api/actions/servers/files/tools/resolve";
 
 const HANDLERS = {
@@ -25,6 +27,7 @@ const HANDLERS = {
   [FILES_DELETE_ACTION_NAME]: deleteHandler,
   [FILES_GREP_ACTION_NAME]: grepHandler,
   [FILES_LIST_ACTION_NAME]: listHandler,
+  [FILES_MOVE_ACTION_NAME]: moveHandler,
   [FILES_RESOLVE_ACTION_NAME]: resolveHandler,
 };
 

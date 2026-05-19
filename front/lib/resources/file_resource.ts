@@ -1178,6 +1178,25 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
+  updateMount({
+    destFileName,
+    destMountFilePath,
+    destUseCase,
+    destUseCaseMetadata,
+  }: {
+    destFileName: string;
+    destMountFilePath: string;
+    destUseCase: FileUseCase;
+    destUseCaseMetadata?: FileUseCaseMetadata;
+  }) {
+    return this.update({
+      fileName: destFileName.normalize("NFC"),
+      mountFilePath: destMountFilePath,
+      useCase: destUseCase,
+      useCaseMetadata: destUseCaseMetadata ?? null,
+    });
+  }
+
   // Sharing logic.
 
   private getShareUrlForShareableFile({
