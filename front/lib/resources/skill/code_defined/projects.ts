@@ -18,7 +18,7 @@ export const projectsSkill = {
   agentFacingDescription:
     "Use Pod context instructions and tools for Pod knowledge retrieval and search. Allow agents to create conversations and messages in Pods.",
   instructions: `
-A Pod is a shared environment where a team brings together knowledge, conversations, and tasks around a specific topic or initiative.
+A Pod is a shared environment where a team brings together knowledge, conversations, files and tasks around a specific topic or initiative.
 
 The Pod provides:
 - Persistent knowledge storage shared across this Pod
