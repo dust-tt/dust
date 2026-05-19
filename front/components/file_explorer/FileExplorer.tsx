@@ -182,7 +182,12 @@ export function FileExplorer({
     <>
       <div className="flex h-full w-full min-h-0 flex-1 flex-col">
         <AppLayoutTitle>
-          <div className={cn("flex h-full items-center justify-between gap-2 px-4", contentClassName)}>
+          <div
+            className={cn(
+              "flex h-full items-center justify-between gap-2 px-4",
+              contentClassName
+            )}
+          >
             <FileExplorerBreadcrumb
               folderStack={folderStack}
               onNavigate={handleBreadcrumbNavigate}
@@ -200,7 +205,12 @@ export function FileExplorer({
             </div>
           </div>
         </AppLayoutTitle>
-        <div className={cn("flex flex-1 min-h-0 flex-col gap-5 pt-5", contentClassName)}>
+        <div
+          className={cn(
+            "flex flex-1 min-h-0 flex-col gap-5 pt-5",
+            contentClassName
+          )}
+        >
           <div className="px-4">
             <FileExplorerToolbar
               searchQuery={searchQuery}
