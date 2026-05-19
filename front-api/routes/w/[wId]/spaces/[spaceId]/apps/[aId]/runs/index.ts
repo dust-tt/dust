@@ -237,7 +237,7 @@ app.post("/", spaceResource({ requireCanWrite: true }), async (c) => {
   const flags = await getFeatureFlags(auth);
   const storeBlocksResults = !flags.includes("disable_run_logs");
 
-  const dustRun = await coreAPI.createRun(owner, flags, auth.groupIds(), {
+  const dustRun = await coreAPI.createRun(owner, flags, {
     projectId: appResource.dustAPIProjectId,
     runType: "local",
     specification: dumpSpecification(
