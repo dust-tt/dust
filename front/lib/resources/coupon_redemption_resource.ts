@@ -109,8 +109,10 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
   }
 
   async rollback(coupon: CouponResource): Promise<void> {
-    await this.markFailed();
-    await coupon.decrementRedemptionCount();
+    await withTransaction(async (transaction) => {
+      await this.markFailed({ transaction });
+      await coupon.decrementRedemptionCount({ transaction });
+    });
   }
 
   static async findActiveOrPendingByCouponAndWorkspace(
