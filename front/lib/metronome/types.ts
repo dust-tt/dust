@@ -114,13 +114,6 @@ export const MICRO_USD_PER_DOLLAR = 1_000_000;
 export const MIN_CREDIT_PURCHASE_AMOUNT_MICRO_USD = MICRO_USD_PER_DOLLAR;
 // Hard cap used by purchase UIs
 export const MAX_CREDIT_PURCHASE_AMOUNT_MICRO_USD = 1_000_000_000;
-// Price per AWU credit in each supported currency. Must stay in sync with
-// scripts/metronome_setup.ts (AWU_IN_USD_CENTS / AWU_IN_EUR).
-export const AWU_PRICE_PER_CREDIT: Record<SupportedCurrency, number> = {
-  usd: 0.01,
-  eur: 0.0087,
-};
-
 export interface MetronomeUsageListResponse {
   billableMetricId: string;
   billableMetricName: string;

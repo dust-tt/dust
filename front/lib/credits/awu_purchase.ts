@@ -1,6 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycle } from "@app/lib/client/subscription";
 import {
+  AWU_PRICE_PER_CREDIT,
+  metronomeAmount,
+} from "@app/lib/metronome/amounts";
+import {
   addPaymentGatedCommitToContract,
   getMetronomeCustomerStripeCustomerId,
 } from "@app/lib/metronome/client";
@@ -12,7 +16,6 @@ import {
 } from "@app/lib/metronome/constants";
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract, isLegacyPlan } from "@app/lib/metronome/plan_type";
-import { AWU_PRICE_PER_CREDIT } from "@app/lib/metronome/types";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -62,6 +65,24 @@ type AwuEligibilityOk = {
   stripeCustomerId: string;
   stripe: Stripe;
 };
+
+function getAwuPurchasedCreditsFromInvoice(invoice: Stripe.Invoice): number {
+  if (invoice.metadata?.awu_purchase !== "true") {
+    return 0;
+  }
+
+  const amountCreditsString = invoice.metadata?.awu_amount_credits;
+  if (!amountCreditsString) {
+    return 0;
+  }
+
+  const amountCredits = Number.parseInt(amountCreditsString, 10);
+  if (!Number.isFinite(amountCredits)) {
+    return 0;
+  }
+
+  return amountCredits;
+}
 
 /**
  * Resolves the billing currency from the active Metronome contract's rate
@@ -167,9 +188,10 @@ export async function getAwuPurchaseInfo(
     status: "paid",
     created: { gte: cycleStartSeconds },
   });
-  const alreadyPurchasedThisCycleCredits = paidInvoices.data
-    .filter((inv) => inv.metadata?.awu_purchase === "true")
-    .reduce((sum, inv) => sum + (inv.amount_paid ?? 0), 0);
+  const alreadyPurchasedThisCycleCredits = paidInvoices.data.reduce(
+    (sum, inv) => sum + getAwuPurchasedCreditsFromInvoice(inv),
+    0
+  );
 
   return {
     canPurchase: true,
@@ -218,9 +240,10 @@ export async function purchaseAwuCredits(
     status: "paid",
     created: { gte: cycleStartSeconds },
   });
-  const alreadyPurchasedThisCycleCredits = paidInvoices.data
-    .filter((inv) => inv.metadata?.awu_purchase === "true")
-    .reduce((sum, inv) => sum + (inv.amount_paid ?? 0), 0);
+  const alreadyPurchasedThisCycleCredits = paidInvoices.data.reduce(
+    (sum, inv) => sum + getAwuPurchasedCreditsFromInvoice(inv),
+    0
+  );
 
   const remaining =
     MAX_AWU_PURCHASE_CREDITS_PER_CYCLE - alreadyPurchasedThisCycleCredits;
@@ -244,16 +267,13 @@ export async function purchaseAwuCredits(
   }
   const currency = currencyResult.value;
 
-  // Metronome wants invoice unit prices in the credit type's units: cents
-  // for USD, whole units for EUR (matches the rate-card convention; see
-  // `metronomeAmount`). AWU_PRICE_PER_CREDIT is per-credit in the
-  // currency's natural unit ($0.01 / €0.0087):
-  //   USD: 0.01 USD * 100 = 1 cent per credit
-  //   EUR: 0.0087 EUR per credit (Metronome allows decimal unit prices)
-  const invoiceUnitPrice =
-    currency === "usd"
-      ? AWU_PRICE_PER_CREDIT.usd * 100
-      : AWU_PRICE_PER_CREDIT.eur;
+  // Per-credit price expressed in Metronome's unit for this currency:
+  // cents for USD (1 cent), whole units for EUR (0.0087 EUR — Metronome
+  // accepts decimal unit prices for non-USD).
+  const invoiceUnitPrice = metronomeAmount(
+    AWU_PRICE_PER_CREDIT[currency] * 100,
+    currency
+  );
 
   const now = new Date();
   const oneYearFromNow = new Date(now);
