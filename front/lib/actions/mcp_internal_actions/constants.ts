@@ -51,8 +51,8 @@ import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/m
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { PLAN_MODE_SERVER } from "@app/lib/api/actions/servers/plan_mode/metadata";
-import { PROJECT_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
-import { PROJECT_TASKS_SERVER } from "@app/lib/api/actions/servers/pod_tasks/metadata";
+import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
+import { POD_TASKS_SERVER } from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import { POKE_SERVER } from "@app/lib/api/actions/servers/poke/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
@@ -1019,7 +1019,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: PROJECT_MANAGER_SERVER,
+    metadata: POD_MANAGER_SERVER,
   },
   pod_tasks: {
     id: 1029,
@@ -1032,7 +1032,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: PROJECT_TASKS_SERVER,
+    metadata: POD_TASKS_SERVER,
   },
   agent_sidekick_context: {
     id: 1022,

@@ -6,9 +6,9 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const PROJECT_TASKS_SERVER_NAME = "pod_tasks" as const;
+export const POD_TASKS_SERVER_NAME = "pod_tasks" as const;
 
-export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
+export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
   list_tasks: {
     description:
       "List tasks in the Pod. " +
@@ -205,9 +205,9 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-export const PROJECT_TASKS_SERVER = {
+export const POD_TASKS_SERVER = {
   serverInfo: {
-    name: PROJECT_TASKS_SERVER_NAME,
+    name: POD_TASKS_SERVER_NAME,
     version: "1.0.0",
     description:
       "Manage Pod tasks: list, create, update, and complete action items.",
@@ -216,13 +216,13 @@ export const PROJECT_TASKS_SERVER = {
     documentationUrl: null,
     instructions: null,
   },
-  tools: Object.values(PROJECT_TASKS_TOOLS_METADATA).map((t) => ({
+  tools: Object.values(POD_TASKS_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(PROJECT_TASKS_TOOLS_METADATA).map((t) => [t.name, t.stake])
+    Object.values(POD_TASKS_TOOLS_METADATA).map((t) => [t.name, t.stake])
   ),
 } as const satisfies ServerMetadata;

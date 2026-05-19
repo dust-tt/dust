@@ -20,7 +20,7 @@ import {
   makeSuccessResponse,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
-import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/pod_manager/metadata";
+import { POD_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -86,7 +86,7 @@ export function createProjectManagerTools(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
-  const handlers: ToolHandlers<typeof PROJECT_MANAGER_TOOLS_METADATA> = {
+  const handlers: ToolHandlers<typeof POD_MANAGER_TOOLS_METADATA> = {
     add_content_node: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
@@ -1039,5 +1039,5 @@ export function createProjectManagerTools(
     },
   };
 
-  return buildTools(PROJECT_MANAGER_TOOLS_METADATA, handlers);
+  return buildTools(POD_MANAGER_TOOLS_METADATA, handlers);
 }

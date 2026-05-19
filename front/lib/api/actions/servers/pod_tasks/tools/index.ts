@@ -9,7 +9,7 @@ import {
   getProjectSpace,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
-import { PROJECT_TASKS_TOOLS_METADATA } from "@app/lib/api/actions/servers/pod_tasks/metadata";
+import { POD_TASKS_TOOLS_METADATA } from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -42,7 +42,7 @@ export function createProjectTasksTools(
   agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const owner = auth.getNonNullableWorkspace();
-  const handlers: ToolHandlers<typeof PROJECT_TASKS_TOOLS_METADATA> = {
+  const handlers: ToolHandlers<typeof POD_TASKS_TOOLS_METADATA> = {
     list_tasks: async ({
       assigneeFilter = "mine",
       statusFilter = "all",
@@ -393,5 +393,5 @@ export function createProjectTasksTools(
     },
   };
 
-  return buildTools(PROJECT_TASKS_TOOLS_METADATA, handlers);
+  return buildTools(POD_TASKS_TOOLS_METADATA, handlers);
 }

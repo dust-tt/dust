@@ -12,9 +12,9 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const PROJECT_MANAGER_SERVER_NAME = "pod_manager" as const;
+export const POD_MANAGER_SERVER_NAME = "pod_manager" as const;
 
-export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
+export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   add_content_node: {
     description:
       "Add a content node reference from Company Data to the Pod context. The node will be available to all conversations in this Pod.",
@@ -320,7 +320,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-const PROJECT_MANAGER_INSTRUCTIONS =
+const POD_MANAGER_INSTRUCTIONS =
   "Pod files and metadata are shared across all conversations in this Pod. " +
   `Pod files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`project/<rel>\` scoped paths ` +
   "(create, cat, grep, list, delete), not through this server. " +
@@ -331,7 +331,7 @@ const PROJECT_MANAGER_INSTRUCTIONS =
   "knowledge nodes in the Pod context. " +
   "Requires write permissions on the Pod for state-changing operations.";
 
-export const PROJECT_MANAGER_SERVER = {
+export const POD_MANAGER_SERVER = {
   // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
     name: "pod_manager",
@@ -343,15 +343,15 @@ export const PROJECT_MANAGER_SERVER = {
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: PROJECT_MANAGER_INSTRUCTIONS,
+    instructions: POD_MANAGER_INSTRUCTIONS,
   },
-  tools: Object.values(PROJECT_MANAGER_TOOLS_METADATA).map((t) => ({
+  tools: Object.values(POD_MANAGER_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(PROJECT_MANAGER_TOOLS_METADATA).map((t) => [t.name, t.stake])
+    Object.values(POD_MANAGER_TOOLS_METADATA).map((t) => [t.name, t.stake])
   ),
 } as const satisfies ServerMetadata;
