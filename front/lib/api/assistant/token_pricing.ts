@@ -329,24 +329,25 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 1.0,
   },
   "grok-4-latest": {
-    input: 2.0,
-    output: 15.0,
+    input: 1.25,
+    output: 2.5,
   },
+  // Retired May 15, 2026 — redirected to grok-4.3 by xAI at these rates.
   "grok-4-1-fast-reasoning-latest": {
-    input: 0.2,
-    output: 0.5,
+    input: 1.25,
+    output: 2.5,
   },
   "grok-4-1-fast-non-reasoning-latest": {
-    input: 0.2,
-    output: 0.5,
+    input: 1.25,
+    output: 2.5,
   },
   "grok-4-fast-non-reasoning-latest": {
-    input: 0.2,
-    output: 0.5,
+    input: 1.25,
+    output: 2.5,
   },
   "grok-4-fast-reasoning-latest": {
-    input: 0.2,
-    output: 0.5,
+    input: 1.25,
+    output: 2.5,
   },
   noop: {
     input: 0,

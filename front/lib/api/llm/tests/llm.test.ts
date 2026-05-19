@@ -149,7 +149,7 @@ const modelsToTest = Object.entries(MODELS)
  *    npx vitest --config lib/api/llm/tests/vite.config.js lib/api/llm/tests/llm.test.ts --run
  *
  * 2. Run tests (requires API keys):
- *    RUN_LLM_TEST=true npx vitest --config lib/api/llm/tests/vite.config.js lib/api/llm/tests/llm.test.ts --run
+ *    NODE_ENV=test RUN_LLM_TEST=true npx vitest --config lib/api/llm/tests/vite.config.js lib/api/llm/tests/llm.test.ts --run
  *
  * Some additional env variables can be set to filter the tests:
  * - FILTER_CONVERSATION_IDS: Comma-separated list of conversation IDs to run (e.g., "simple-math,image-description")

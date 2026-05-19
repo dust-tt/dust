@@ -209,13 +209,13 @@ export function toReasoning(
 export function toToolOption(
   specifications: AgentActionSpecification[],
   forceToolCall: string | undefined
-): ToolChoiceFunction | "auto" {
+): ToolChoiceFunction | undefined {
   return forceToolCall && specifications.some((s) => s.name === forceToolCall)
     ? {
         type: "function" as const,
         name: forceToolCall,
       }
-    : "auto";
+    : undefined;
 }
 
 export function toResponseFormat(
