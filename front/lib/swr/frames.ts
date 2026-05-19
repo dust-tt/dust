@@ -2,7 +2,11 @@
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { getErrorFromResponse, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  getErrorFromResponse,
+  useFetcher,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";

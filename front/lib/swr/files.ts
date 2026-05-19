@@ -433,4 +433,3 @@ export function useSharingGrants({
     doRevokeGrant,
   };
 }
-
