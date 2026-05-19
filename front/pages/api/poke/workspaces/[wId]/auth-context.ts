@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
