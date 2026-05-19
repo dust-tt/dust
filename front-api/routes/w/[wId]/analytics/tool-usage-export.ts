@@ -1,0 +1,116 @@
+import { stringify } from "csv-stringify/sync";
+import { Hono } from "hono";
+import { z } from "zod";
+
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import {
+  fetchAvailableTools,
+  fetchToolUsageMetrics,
+  resolveToolDisplayNames,
+} from "@app/lib/api/assistant/observability/tool_usage";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+
+import { validate } from "@front-api/middleware/validator";
+
+const QuerySchema = z.object({
+  days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
+});
+
+interface ToolUsageExportRow {
+  date: string;
+  toolName: string;
+  executions: number;
+  uniqueUsers: number;
+}
+
+// Mounted at /api/w/:wId/analytics/tool-usage-export.
+const app = new Hono();
+
+app.get("/", validate("query", QuerySchema), async (c) => {
+  const auth = c.get("auth");
+
+  if (!auth.isAdmin()) {
+    return c.json(
+      {
+        error: {
+          type: "workspace_auth_error",
+          message: "Only workspace admins can access workspace analytics.",
+        },
+      },
+      403
+    );
+  }
+
+  const { days } = c.req.valid("query");
+  const owner = auth.getNonNullableWorkspace();
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: owner.sId,
+    days,
+  });
+
+  const toolsResult = await fetchAvailableTools(baseQuery);
+  if (toolsResult.isErr()) {
+    return c.json(
+      {
+        error: {
+          type: "internal_server_error",
+          message: `Failed to retrieve available tools: ${toolsResult.error.message}`,
+        },
+      },
+      500
+    );
+  }
+
+  const tools = await resolveToolDisplayNames(auth, toolsResult.value);
+  const rows: ToolUsageExportRow[] = [];
+
+  for (const tool of tools) {
+    const usageResult = await fetchToolUsageMetrics(baseQuery, tool.serverName);
+    if (usageResult.isErr()) {
+      return c.json(
+        {
+          error: {
+            type: "internal_server_error",
+            message: `Failed to retrieve tool usage for ${tool.serverName}: ${usageResult.error.message}`,
+          },
+        },
+        500
+      );
+    }
+
+    for (const point of usageResult.value) {
+      rows.push({
+        date: point.date,
+        toolName: tool.displayName,
+        executions: point.executionCount,
+        uniqueUsers: point.uniqueUsers,
+      });
+    }
+  }
+
+  rows.sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) {
+      return dateCompare;
+    }
+    return a.toolName.localeCompare(b.toolName);
+  });
+
+  const headers: (keyof ToolUsageExportRow)[] = [
+    "date",
+    "toolName",
+    "executions",
+    "uniqueUsers",
+  ];
+  const csvData = rows.map((row) => headers.map((h) => row[h]));
+  const csv = stringify([headers, ...csvData], { header: false });
+
+  c.header("Content-Type", "text/csv");
+  c.header(
+    "Content-Disposition",
+    `attachment; filename="dust_tool_usage_last_${days}_days.csv"`
+  );
+  return c.body(csv);
+});
+
+export default app;
