@@ -164,6 +164,7 @@ export function mockConversation(
       defaultEmbeddingProvider: null,
       sharingPolicy: "workspace_only",
       metronomeCustomerId: null,
+      regionalModelsOnly: false,
     },
     visibility: "unlisted",
     content: messages,
