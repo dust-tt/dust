@@ -5,6 +5,7 @@ use itertools::Itertools;
 use pest::iterators::Pair;
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::warn;
 
 use crate::{
     blocks::{
@@ -42,6 +43,12 @@ impl Block for DatabaseSchema {
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<BlockResult> {
+        warn!(
+            project_id = env.project.project_id(),
+            method = "DatabaseSchema::execute",
+            "DEPRECATION"
+        );
+
         let config = env.config.config_for_block(name);
 
         let err_msg = format!(

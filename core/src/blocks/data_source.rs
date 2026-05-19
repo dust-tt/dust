@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use pest::iterators::Pair;
 use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::warn;
 
 #[derive(Clone)]
 pub struct DataSource {
@@ -68,9 +69,14 @@ impl Block for DataSource {
     async fn execute(
         &self,
         _name: &str,
-        _env: &Env,
+        env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<BlockResult> {
+        warn!(
+            project_id = env.project.project_id(),
+            method = "DataSource::execute",
+            "DEPRECATION"
+        );
         Err(anyhow!("`data_source` blocks are now longer supported."))?
     }
 
