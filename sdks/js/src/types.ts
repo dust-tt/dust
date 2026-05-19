@@ -778,6 +778,7 @@ const LightWorkspaceSchema = z.object({
   segmentation: WorkspaceSegmentationSchema,
   whiteListedProviders: ModelProviderIdSchema.array().nullable(),
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
+  regionalModelsOnly: z.boolean().default(false),
 });
 
 export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
