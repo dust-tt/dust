@@ -19,6 +19,7 @@ import {
 import type { StepContext } from "@app/lib/actions/types";
 import {
   isFileAuthorizationInfo,
+  isSandboxChildActionInfo,
   isUserQuestionResumeState,
 } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -621,7 +622,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    let agentStepContentToolExecutions =
+    const agentStepContentToolExecutions =
       await AgentStepContentToolExecutionModel.findAll({
         where: {
           workspaceId,
@@ -638,7 +639,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
 
-    return agentStepContentToolExecutions.map((row) => {
+    // Sandbox-child actions share their parent's stepContent and must not
+    // surface as separate executions in the conversation timeline.
+    const visibleExecutions = agentStepContentToolExecutions.filter(
+      (row) =>
+        !isSandboxChildActionInfo(
+          row.agentMCPAction.stepContext.sandboxChildActionInfo
+        )
+    );
+
+    return visibleExecutions.map((row) => {
       const a = row.agentMCPAction;
       const stepContent = stepContentsMap.get(row.stepContentId);
 
@@ -660,15 +670,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  static async listByAgentMessageIds(
-    auth: Authenticator,
-    agentMessageIds: ModelId[]
-  ): Promise<AgentMCPActionResource[]> {
-    return this.baseFetch(auth, {
-      where: { agentMessageId: { [Op.in]: agentMessageIds } },
-    });
-  }
-
   static async listModelIdsByAgentMessageIds(
     auth: Authenticator,
     agentMessageIds: ModelId[]
@@ -686,6 +687,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
 
     return actions.map((action) => action.id);
+  }
+
+  static async listByAgentMessageIds(
+    auth: Authenticator,
+    agentMessageIds: ModelId[]
+  ): Promise<AgentMCPActionResource[]> {
+    return this.baseFetch(auth, {
+      where: { agentMessageId: { [Op.in]: agentMessageIds } },
+    });
   }
 
   static async listBlockedActionsForAgentMessage(
