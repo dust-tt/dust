@@ -1,8 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { getMetronomeCheckoutError } from "@app/lib/metronome/checkout_error";
-
 import { validate } from "@front-api/middleware/validator";
 
 type CheckoutStatus =
@@ -17,7 +15,8 @@ const GetCheckoutStatusQuerySchema = z.object({
   plan_code: z.string(),
 });
 
-// Mounted at /api/w/:wId/subscriptions/checkout-status.
+// Mounted at /api/w/:wId/subscriptions/checkout-status. Endpoint used only
+// for the Stripe-only checkout flow (PaymentProcessingPage).
 const app = new Hono();
 
 app.get("/", validate("query", GetCheckoutStatusQuerySchema), async (c) => {
@@ -36,16 +35,7 @@ app.get("/", validate("query", GetCheckoutStatusQuerySchema), async (c) => {
     );
   }
 
-  const { session_id, plan_code } = c.req.valid("query");
-
-  const storedError = await getMetronomeCheckoutError(session_id);
-  if (storedError) {
-    const body: GetCheckoutStatusResponseBody = {
-      status: "error",
-      message: storedError.message,
-    };
-    return c.json(body);
-  }
+  const { plan_code } = c.req.valid("query");
 
   const subscription = auth.subscription();
   if (subscription?.plan.code === plan_code) {
