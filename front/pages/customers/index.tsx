@@ -349,7 +349,7 @@ export default function CustomerStoriesListing({
         <meta property="og:image" content="/static/og_image.png" />
       </Head>
 
-      <Grid className="pb-24">
+      <Grid>
         <div className="col-span-12 pt-12">
           <H1 className="text-5xl">Customer Stories</H1>
           <P size="lg" className="mt-4 text-muted-foreground">

@@ -151,7 +151,7 @@ export default function LessonPage({
         )}
       </Head>
 
-      <div className="flex min-h-screen pb-24">
+      <div className="flex min-h-screen">
         <AcademySidebar
           searchableItems={searchableItems}
           tocItems={tocItems}
