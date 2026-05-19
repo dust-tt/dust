@@ -61,14 +61,12 @@ async function fetchCachedContract({
  * against race conditions.
  *
  * For each subscription on the contract whose product matches a known seat
- * product (workspace / pro / max), we look up the membership seat type that
- * bills against it and:
+ * product (workspace / pro / max / free), we look up the membership seat type
+ * that bills against it and:
  * - QUANTITY_ONLY: send the count of active members with that seat type.
  * - SEAT_BASED: fetch the currently assigned seat IDs via
  *   `getSubscriptionSeatsHistory`, then send the add/remove delta to reconcile
  *   against the desired set of user sIds.
- *
- * Memberships with `seatType = "free"` never contribute to any quantity.
  *
  * Called from:
  * - membership create/revoke/update hooks
@@ -139,13 +137,12 @@ export async function syncSeatCount({
   }
 
   // Surface memberships whose seat type has no matching subscription on the
-  // contract — these will not be billed. "free" is intentionally excluded
-  // (free seats never contribute to any quantity, per the function contract).
+  // contract — these will not be billed.
   const coveredSeatTypes = new Set(
     seatSubscriptions.map(({ seatType }) => seatType)
   );
   for (const [seatType, sIds] of sIdsBySeatType) {
-    if (seatType === "free" || coveredSeatTypes.has(seatType)) {
+    if (coveredSeatTypes.has(seatType)) {
       continue;
     }
     logger.warn(
@@ -183,7 +180,7 @@ export async function syncSeatCount({
       );
 
       if (addSeatIds.length === 0 && removeSeatIds.length === 0) {
-        return new Ok(undefined);
+        continue;
       }
 
       logger.info(
