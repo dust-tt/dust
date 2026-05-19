@@ -6,6 +6,8 @@ export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
 // Pointing to mistral medium 3.1 as of 2025-12-05
 // https://docs.mistral.ai/models/mistral-medium-3-1-25-08
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
+// https://docs.mistral.ai/models/model-cards/mistral-medium-3-5-26-04
+export const MISTRAL_MEDIUM_3_5_MODEL_ID = "mistral-medium-3-5" as const;
 // Pointing to mistral small 3.2 as of 2025-12-05
 // https://docs.mistral.ai/models/mistral-small-3-2-25-06
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
@@ -45,6 +47,31 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   description: "Mistral's `medium` model (128k context).",
   shortDescription: "Mistral's legacy model.",
   isLegacy: true,
+  isLatest: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
+  tokenizer: { type: "sentence_piece", base: "model_v2" },
+  supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+export const MISTRAL_MEDIUM_3_5_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "mistral",
+  modelId: MISTRAL_MEDIUM_3_5_MODEL_ID,
+  displayName: "Mistral Medium 3.5",
+  contextSize: 256_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 56, // 28_672
+  largeModel: true,
+  description:
+    "Mistral's `medium 3.5` model, multimodal and optimized for agentic and coding use cases (256k context).",
+  shortDescription: "Mistral's latest flagship medium model.",
+  isLegacy: false,
   isLatest: true,
   generationTokensCount: 2048,
   supportsVision: true,
