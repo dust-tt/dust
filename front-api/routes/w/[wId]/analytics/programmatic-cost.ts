@@ -6,6 +6,11 @@ import {
   DAY_MS,
   getTimestampsForWindow,
 } from "@app/lib/api/analytics/time_utils";
+import {
+  buildAggregation,
+  calculateCreditTotalsPerTimestamp,
+  getSelectedFilterClauses,
+} from "@app/lib/api/analytics/programmatic_cost";
 import type { MetricsBucket } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   buildMetricAggregates,
@@ -27,12 +32,6 @@ import { validate } from "@front-api/middleware/validator";
 const GROUP_BY_KEYS = ["agent", "origin", "apiKey"] as const;
 
 export type GroupByType = (typeof GROUP_BY_KEYS)[number];
-
-const GROUP_BY_KEY_TO_ES_FIELD: Record<GroupByType, string> = {
-  agent: "agent_id",
-  origin: "context_origin",
-  apiKey: "api_key_name",
-};
 
 const FilterSchema = z.record(z.enum(GROUP_BY_KEYS), z.string().array());
 
@@ -92,160 +91,6 @@ type GroupedAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
   by_hour?: estypes.AggregationsMultiBucketAggregateBase<DailyBucket>;
 };
-
-function calculateCreditTotalsPerTimestamp(
-  credits: CreditResource[],
-  timestamps: number[]
-): Map<
-  number,
-  {
-    totalInitialCreditsMicroUsd: number;
-    totalConsumedCreditsMicroUsd: number;
-    totalRemainingCreditsMicroUsd: number;
-  }
-> {
-  const creditTotalsMap = new Map<
-    number,
-    {
-      totalInitialCreditsMicroUsd: number;
-      totalConsumedCreditsMicroUsd: number;
-      totalRemainingCreditsMicroUsd: number;
-    }
-  >();
-
-  const now = Date.now();
-
-  for (const timestamp of timestamps) {
-    const dayStart = new Date(timestamp);
-    dayStart.setUTCHours(0, 0, 0, 0);
-    const cutoffTime =
-      dayStart.getTime() === new Date().setUTCHours(0, 0, 0, 0)
-        ? now
-        : dayStart.getTime();
-
-    const activeCredits = credits.filter((credit) => {
-      if (!credit.startDate || credit.startDate.getTime() > cutoffTime) {
-        return false;
-      }
-
-      if (
-        credit.expirationDate &&
-        credit.expirationDate.getTime() <= cutoffTime
-      ) {
-        return false;
-      }
-
-      return true;
-    });
-
-    const {
-      totalInitialCreditsMicroUsd,
-      totalConsumedCreditsMicroUsd,
-      totalRemainingCreditsMicroUsd,
-    } = activeCredits.reduce(
-      (acc, credit) => {
-        acc.totalInitialCreditsMicroUsd += credit.initialAmountMicroUsd;
-        acc.totalConsumedCreditsMicroUsd += credit.consumedAmountMicroUsd;
-        acc.totalRemainingCreditsMicroUsd +=
-          credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd;
-        return acc;
-      },
-      {
-        totalInitialCreditsMicroUsd: 0,
-        totalConsumedCreditsMicroUsd: 0,
-        totalRemainingCreditsMicroUsd: 0,
-      }
-    );
-
-    creditTotalsMap.set(timestamp, {
-      totalInitialCreditsMicroUsd,
-      totalConsumedCreditsMicroUsd,
-      totalRemainingCreditsMicroUsd,
-    });
-  }
-
-  return creditTotalsMap;
-}
-
-function getSelectedFilterClauses(
-  filterParams: Partial<Record<GroupByType, string[]>> | undefined,
-  excluded?: GroupByType
-): estypes.QueryDslQueryContainer[] {
-  if (!filterParams) {
-    return [];
-  }
-
-  return GROUP_BY_KEYS.filter(
-    (key) => key !== excluded && filterParams[key]
-  ).flatMap((filterKey) => {
-    const filterValues = filterParams[filterKey] as string[];
-    const esField = GROUP_BY_KEY_TO_ES_FIELD[filterKey];
-
-    const hasNonApiProgrammatic = filterValues.includes("non_api_programmatic");
-    const otherValues = filterValues.filter(
-      (v) => v !== "non_api_programmatic"
-    );
-
-    const clauses: estypes.QueryDslQueryContainer[] = [];
-
-    if (hasNonApiProgrammatic && otherValues.length > 0) {
-      clauses.push({
-        bool: {
-          should: [
-            { bool: { must_not: { exists: { field: esField } } } },
-            { terms: { [esField]: otherValues } },
-          ],
-          minimum_should_match: 1,
-        },
-      });
-    } else if (hasNonApiProgrammatic) {
-      clauses.push({
-        bool: { must_not: { exists: { field: esField } } },
-      });
-    } else {
-      clauses.push({ terms: { [esField]: filterValues } });
-    }
-
-    return clauses;
-  });
-}
-
-function buildAggregation(
-  groupBy: GroupByType,
-  groupByCount: number,
-  includeDailyBreakdown: boolean
-): Record<string, estypes.AggregationsAggregationContainer> {
-  const groupField = GROUP_BY_KEY_TO_ES_FIELD[groupBy];
-  const missingValue =
-    groupBy === "apiKey" ? "non_api_programmatic" : "unknown";
-  return {
-    by_group: {
-      terms: {
-        field: groupField,
-        size: groupByCount,
-        missing: missingValue,
-        order: { total_cost: "desc" },
-      },
-      aggs: {
-        total_cost: {
-          sum: { field: "tokens.cost_micro_usd" },
-        },
-        ...(includeDailyBreakdown
-          ? {
-              by_hour: {
-                date_histogram: {
-                  field: "timestamp",
-                  fixed_interval: "4h",
-                  time_zone: "UTC",
-                },
-                aggs: buildMetricAggregates(["costMicroUsd"]),
-              },
-            }
-          : {}),
-      },
-    },
-  };
-}
 
 // Mounted at /api/w/:wId/analytics/programmatic-cost.
 const app = new Hono();

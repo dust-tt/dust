@@ -75,7 +75,9 @@ const GROUP_BY_TO_EVENT_PROPERTY: Record<MetronomeUsageGroupByType, string> = {
 
 type MetronomeWindowSize = "HOUR" | "DAY";
 
-function getMetronomeWindowSize(windowSize: WindowSize): MetronomeWindowSize {
+export function getMetronomeWindowSize(
+  windowSize: WindowSize
+): MetronomeWindowSize {
   switch (windowSize) {
     case "FOUR_HOURS":
     case "HOUR":
@@ -87,7 +89,7 @@ function getMetronomeWindowSize(windowSize: WindowSize): MetronomeWindowSize {
   }
 }
 
-function aggregateToFourHourBuckets(
+export function aggregateToFourHourBuckets(
   hourlyMap: Map<number, number>
 ): Map<number, number> {
   const aggregated = new Map<number, number>();
@@ -104,7 +106,7 @@ interface ParsedBalance {
   intervals: { start: number; end: number }[];
 }
 
-function calculateCreditTotalsFromBalances(
+export function calculateCreditTotalsFromBalances(
   balances: MetronomeBalance[],
   timestamps: number[]
 ): Map<
@@ -463,7 +465,7 @@ export async function handleMetronomeUsageRequest(
   }
 }
 
-async function resolveGroupLabels(
+export async function resolveGroupLabels(
   groupBy: MetronomeUsageGroupByType,
   groupKeys: string[]
 ): Promise<Map<string, string>> {

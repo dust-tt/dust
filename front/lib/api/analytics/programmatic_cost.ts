@@ -100,7 +100,7 @@ type GroupedAggs = {
  * - It has been started (startDate is not null and <= day start)
  * - It hasn't expired yet on that day (expirationDate is null or > day start)
  */
-function calculateCreditTotalsPerTimestamp(
+export function calculateCreditTotalsPerTimestamp(
   credits: CreditResource[],
   timestamps: number[]
 ): Map<
@@ -175,7 +175,7 @@ function calculateCreditTotalsPerTimestamp(
   return creditTotalsMap;
 }
 
-function getSelectedFilterClauses(
+export function getSelectedFilterClauses(
   filterParams: Partial<Record<GroupByType, string[]>> | undefined,
   excluded?: GroupByType
 ): estypes.QueryDslQueryContainer[] {
@@ -223,7 +223,7 @@ function getSelectedFilterClauses(
   });
 }
 
-function buildAggregation(
+export function buildAggregation(
   groupBy: GroupByType,
   groupByCount: number,
   includeDailyBreakdown: boolean

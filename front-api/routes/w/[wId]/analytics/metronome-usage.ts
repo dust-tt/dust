@@ -1,12 +1,16 @@
 import { Hono } from "hono";
 import { z } from "zod";
 
-import type { WindowSize } from "@app/lib/api/analytics/time_utils";
 import {
   DAY_MS,
-  FOUR_HOURS_MS,
   getTimestampsForWindow,
 } from "@app/lib/api/analytics/time_utils";
+import {
+  aggregateToFourHourBuckets,
+  calculateCreditTotalsFromBalances,
+  getMetronomeWindowSize,
+  resolveGroupLabels,
+} from "@app/lib/api/analytics/metronome_usage";
 import { MARKUP_MULTIPLIER } from "@app/lib/api/programmatic_usage/common";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import {
@@ -20,13 +24,8 @@ import {
   getCreditTypeProgrammaticUsdId,
   getMetricLlmProviderCostProgrammaticId,
 } from "@app/lib/metronome/constants";
-import type { MetronomeBalance } from "@app/lib/metronome/types";
-import {
-  isMetronomeExcessCredit,
-  METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD,
-} from "@app/lib/metronome/types";
+import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import logger from "@app/logger/logger";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { validate } from "@front-api/middleware/validator";
 
@@ -72,128 +71,6 @@ const GROUP_BY_TO_EVENT_PROPERTY: Record<MetronomeUsageGroupByType, string> = {
   model: "model_id",
   origin: "origin",
 };
-
-type MetronomeWindowSize = "HOUR" | "DAY";
-
-function getMetronomeWindowSize(windowSize: WindowSize): MetronomeWindowSize {
-  switch (windowSize) {
-    case "FOUR_HOURS":
-    case "HOUR":
-      return "HOUR";
-    case "DAY":
-      return "DAY";
-    default:
-      assertNever(windowSize);
-  }
-}
-
-function aggregateToFourHourBuckets(
-  hourlyMap: Map<number, number>
-): Map<number, number> {
-  const aggregated = new Map<number, number>();
-  for (const [ts, value] of hourlyMap) {
-    const bucket = ts - (ts % FOUR_HOURS_MS);
-    aggregated.set(bucket, (aggregated.get(bucket) ?? 0) + value);
-  }
-  return aggregated;
-}
-
-interface ParsedBalance {
-  initialAmountCredits: number;
-  balanceCredits: number;
-  intervals: { start: number; end: number }[];
-}
-
-function calculateCreditTotalsFromBalances(
-  balances: MetronomeBalance[],
-  timestamps: number[]
-): Map<
-  number,
-  {
-    totalInitialCreditsMicroUsd: number;
-    totalConsumedCreditsMicroUsd: number;
-    totalRemainingCreditsMicroUsd: number;
-  }
-> {
-  const parsed: ParsedBalance[] = balances.map((entry) => {
-    const items = entry.access_schedule?.schedule_items ?? [];
-    let initialAmountCredits = 0;
-    const intervals: { start: number; end: number }[] = [];
-
-    for (const item of items) {
-      initialAmountCredits += item.amount;
-      intervals.push({
-        start: new Date(item.starting_at).getTime(),
-        end: new Date(item.ending_before).getTime(),
-      });
-    }
-
-    return {
-      initialAmountCredits,
-      balanceCredits: entry.balance ?? 0,
-      intervals,
-    };
-  });
-
-  const result = new Map<
-    number,
-    {
-      totalInitialCreditsMicroUsd: number;
-      totalConsumedCreditsMicroUsd: number;
-      totalRemainingCreditsMicroUsd: number;
-    }
-  >();
-
-  for (const timestamp of timestamps) {
-    let totalInitialCredits = 0;
-    let totalBalanceCredits = 0;
-
-    for (const b of parsed) {
-      const isActive = b.intervals.some(
-        (iv) => timestamp >= iv.start && timestamp < iv.end
-      );
-      if (isActive) {
-        totalInitialCredits += b.initialAmountCredits;
-        totalBalanceCredits += b.balanceCredits;
-      }
-    }
-
-    const totalInitialMicroUsd =
-      totalInitialCredits * METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD;
-    const totalRemainingMicroUsd =
-      totalBalanceCredits * METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD;
-
-    result.set(timestamp, {
-      totalInitialCreditsMicroUsd: totalInitialMicroUsd,
-      totalConsumedCreditsMicroUsd:
-        totalInitialMicroUsd - totalRemainingMicroUsd,
-      totalRemainingCreditsMicroUsd: totalRemainingMicroUsd,
-    });
-  }
-
-  return result;
-}
-
-async function resolveGroupLabels(
-  groupBy: MetronomeUsageGroupByType,
-  groupKeys: string[]
-): Promise<Map<string, string>> {
-  const labelMap = new Map<string, string>();
-
-  switch (groupBy) {
-    case "api_key":
-    case "model":
-    case "origin":
-      for (const key of groupKeys) {
-        labelMap.set(key, key);
-      }
-      break;
-    default:
-      assertNever(groupBy);
-  }
-
-  return labelMap;
-}
 
 // Mounted at /api/w/:wId/analytics/metronome-usage.
 const app = new Hono();
