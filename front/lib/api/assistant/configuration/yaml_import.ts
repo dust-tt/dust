@@ -5,12 +5,12 @@ import {
   agentYAMLConfigSchema,
   agentYAMLGenerationSettingsSchema,
 } from "@app/lib/agent_yaml_converter/schemas";
+import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentConfigurationAsYAMLConfig } from "@app/lib/api/assistant/configuration/yaml_export";
 import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
