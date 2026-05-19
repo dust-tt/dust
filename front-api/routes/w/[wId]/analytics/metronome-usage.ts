@@ -27,6 +27,7 @@ import {
 import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import logger from "@app/logger/logger";
 
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 
 const METRONOME_USAGE_GROUP_BY_KEYS = ["api_key", "model", "origin"] as const;
@@ -80,15 +81,13 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   const workspace = auth.getNonNullableWorkspace();
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Workspace is not configured for Metronome billing.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Workspace is not configured for Metronome billing.",
       },
-      400
-    );
+    });
   }
 
   const llmMetricId = getMetricLlmProviderCostProgrammaticId();
@@ -138,15 +137,13 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     });
 
     if (result.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: `Failed to retrieve Metronome usage: ${result.error.message}`,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to retrieve Metronome usage: ${result.error.message}`,
         },
-        500
-      );
+      });
     }
 
     let totalMap = new Map<number, number>();
@@ -188,20 +185,18 @@ app.get("/", validate("query", QuerySchema), async (c) => {
       const msg = llmGroupedResult.error.message;
       const isGroupKeyError =
         msg.includes("group") || msg.includes("not found");
-      return c.json(
-        {
-          error: {
-            type: isGroupKeyError
-              ? "invalid_request_error"
-              : "internal_server_error",
-            message: isGroupKeyError
-              ? `Grouping by "${groupBy}" is not available. The billable metric ` +
-                `must have "${eventProperty}" configured as a group key in Metronome.`
-              : `Failed to retrieve Metronome grouped usage: ${msg}`,
-          },
+      return apiError(c, {
+        status_code: isGroupKeyError ? 400 : 500,
+        api_error: {
+          type: isGroupKeyError
+            ? "invalid_request_error"
+            : "internal_server_error",
+          message: isGroupKeyError
+            ? `Grouping by "${groupBy}" is not available. The billable metric ` +
+              `must have "${eventProperty}" configured as a group key in Metronome.`
+            : `Failed to retrieve Metronome grouped usage: ${msg}`,
         },
-        isGroupKeyError ? 400 : 500
-      );
+      });
     }
 
     for (const entry of llmGroupedResult.value) {

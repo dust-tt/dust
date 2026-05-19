@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import {
   ceilToMidnightUTC,
   floorToMidnightUTC,
@@ -28,31 +30,27 @@ app.get("/", async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can view credits.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can view credits.",
       },
-      403
-    );
+    });
   }
 
   const workspace = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId || !subscription?.metronomeContractId) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Workspace is not configured for Metronome billing.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Workspace is not configured for Metronome billing.",
       },
-      400
-    );
+    });
   }
   const { metronomeContractId } = subscription;
 
@@ -62,26 +60,22 @@ app.get("/", async (c) => {
   ]);
 
   if (balancesResult.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve Metronome balances: ${balancesResult.error.message}`,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve Metronome balances: ${balancesResult.error.message}`,
       },
-      500
-    );
+    });
   }
   if (invoicesResult.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve Metronome invoices: ${invoicesResult.error.message}`,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve Metronome invoices: ${invoicesResult.error.message}`,
       },
-      500
-    );
+    });
   }
 
   const now = Date.now();
@@ -157,15 +151,13 @@ app.get("/", async (c) => {
   ]);
 
   if (usageResult.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve Metronome usage: ${usageResult.error.message}`,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve Metronome usage: ${usageResult.error.message}`,
       },
-      500
-    );
+    });
   }
 
   const perUserCredits = new Map<string, number>();

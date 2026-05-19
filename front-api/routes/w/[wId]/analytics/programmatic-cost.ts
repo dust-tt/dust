@@ -27,6 +27,7 @@ import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 
 const GROUP_BY_KEYS = ["agent", "origin", "apiKey"] as const;
@@ -171,15 +172,13 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   });
 
   if (result.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve grouped programmatic cost: ${result.error.message}`,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve grouped programmatic cost: ${result.error.message}`,
       },
-      500
-    );
+    });
   }
 
   const totalBuckets = bucketsToArray<MetricsBucket>(
@@ -244,15 +243,13 @@ app.get("/", validate("query", QuerySchema), async (c) => {
       );
 
       if (availableGroupsResult.isErr()) {
-        return c.json(
-          {
-            error: {
-              type: "internal_server_error",
-              message: `Failed to retrieve grouped programmatic cost: ${availableGroupsResult.error.message}`,
-            },
+        return apiError(c, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Failed to retrieve grouped programmatic cost: ${availableGroupsResult.error.message}`,
           },
-          500
-        );
+        });
       }
 
       availableGroupBuckets = bucketsToArray(

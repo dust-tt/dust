@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
+
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { SkillUsagePoint } from "@app/lib/api/assistant/observability/skill_usage";
 import { fetchSkillUsageMetrics } from "@app/lib/api/assistant/observability/skill_usage";
@@ -8,8 +11,6 @@ import {
   buildAgentAnalyticsBaseQuery,
   timezoneSchema,
 } from "@app/lib/api/assistant/observability/utils";
-
-import { validate } from "@front-api/middleware/validator";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
@@ -28,15 +29,13 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "Only workspace admins can access workspace analytics.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access workspace analytics.",
       },
-      403
-    );
+    });
   }
 
   const { days, skillName, timezone } = c.req.valid("query");
@@ -54,15 +53,13 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   );
 
   if (usageResult.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve skill usage metrics: ${usageResult.error.message}`,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve skill usage metrics: ${usageResult.error.message}`,
       },
-      500
-    );
+    });
   }
 
   const body: GetWorkspaceSkillUsageResponse = { points: usageResult.value };

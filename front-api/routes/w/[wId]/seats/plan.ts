@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import type {
   SeatPlanResponseBody,
   SeatTypeInfo,
@@ -29,15 +31,13 @@ app.get("/", async (c) => {
   const contract = await getActiveContract(workspace.sId);
 
   if (!contract || !contract.rate_card_id) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Workspace is not configured for Metronome billing.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "internal_server_error",
+        message: "Workspace is not configured for Metronome billing.",
       },
-      400
-    );
+    });
   }
 
   const creditTypeResult = await getCreditTypeFromContract(contract);
@@ -50,15 +50,13 @@ app.get("/", async (c) => {
       },
       "[Metronome] Failed to resolve contract currency for seat plan"
     );
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to resolve currency for seat plan.",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to resolve currency for seat plan.",
       },
-      500
-    );
+    });
   }
   const { currency } = creditTypeResult.value;
 
@@ -106,22 +104,25 @@ app.get("/", async (c) => {
       nextPage = rateSchedule.next_page;
     } while (nextPage && monthlyPriceCentsMap.size < 2);
   } catch (err) {
+    const normalized = normalizeError(err);
     logger.warn(
       {
         workspaceId: workspace.sId,
         rateCardId: contract.rate_card_id,
-        err: normalizeError(err),
+        err: normalized,
       },
       "[Metronome] Failed to fetch rate schedule for seat products"
     );
-    return c.json(
+    return apiError(
+      c,
       {
-        error: {
+        status_code: 500,
+        api_error: {
           type: "internal_server_error",
           message: "Failed to fetch rate schedule for seat products.",
         },
       },
-      500
+      normalized
     );
   }
 

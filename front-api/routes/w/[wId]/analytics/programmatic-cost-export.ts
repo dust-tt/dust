@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
+
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
 
 import {
   ExportQuerySchema,
   getProgrammaticCostExport,
 } from "@app/lib/api/analytics/programmatic_cost_export";
-
-import { validate } from "@front-api/middleware/validator";
 
 // Mounted at /api/w/:wId/analytics/programmatic-cost-export.
 const app = new Hono();
@@ -18,10 +18,10 @@ app.get("/", validate("query", ExportQuerySchema), async (c) => {
   const result = await getProgrammaticCostExport(auth, query);
 
   if (result.isErr()) {
-    return c.json(
-      { error: result.error.error },
-      result.error.status as ContentfulStatusCode
-    );
+    return apiError(c, {
+      status_code: result.error.status,
+      api_error: result.error.error,
+    });
   }
 
   const { csv, filename } = result.value;

@@ -2,6 +2,9 @@ import { stringify } from "csv-stringify/sync";
 import { Hono } from "hono";
 import { z } from "zod";
 
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
+
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import {
   fetchUserExportRows,
@@ -12,8 +15,6 @@ import {
   daysToDateRange,
   timezoneSchema,
 } from "@app/lib/api/assistant/observability/utils";
-
-import { validate } from "@front-api/middleware/validator";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
@@ -27,15 +28,13 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "Only workspace admins can access workspace analytics.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access workspace analytics.",
       },
-      403
-    );
+    });
   }
 
   const { days, timezone } = c.req.valid("query");
@@ -57,15 +56,13 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   });
 
   if (result.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve user analytics: ${result.error.message}`,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve user analytics: ${result.error.message}`,
       },
-      500
-    );
+    });
   }
 
   const csvData = result.value.map((row) =>

@@ -3,12 +3,13 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
+
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
-
-import { validate } from "@front-api/middleware/validator";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
@@ -48,15 +49,13 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "Only workspace admins can access workspace analytics.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access workspace analytics.",
       },
-      403
-    );
+    });
   }
 
   const { days, limit } = c.req.valid("query");
@@ -94,15 +93,13 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   );
 
   if (result.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve top agents: ${fromError(result.error).toString()}`,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve top agents: ${fromError(result.error).toString()}`,
       },
-      500
-    );
+    });
   }
 
   const buckets = bucketsToArray<TopAgentBucket>(

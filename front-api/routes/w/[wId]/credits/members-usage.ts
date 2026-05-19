@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
+
 import {
   ceilToMidnightUTC,
   floorToMidnightUTC,
@@ -15,8 +18,6 @@ import {
   type MembershipsPaginationParams,
 } from "@app/lib/resources/membership_resource";
 import type { MembershipSeatType } from "@app/types/memberships";
-
-import { validate } from "@front-api/middleware/validator";
 
 export type MemberUsageType = {
   sId: string;
@@ -141,15 +142,13 @@ app.get("/", validate("query", MembersUsagePaginationSchema), async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "Only workspace admins can access the members usage list.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access the members usage list.",
       },
-      403
-    );
+    });
   }
 
   const paginationParams = c.req.valid("query");

@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getInvoicePaymentUrl } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -25,16 +27,14 @@ app.get("/", async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can view credits.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can view credits.",
       },
-      403
-    );
+    });
   }
 
   const credits = await CreditResource.listAll(auth, {
