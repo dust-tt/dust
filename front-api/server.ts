@@ -28,12 +28,12 @@ async function main() {
 
   const server = createServer((req, res) => {
     if (isHonoRoute(req.method, req.url)) {
-      logger.info(`Handling ${req.method} ${req.url} with Hono`);
+      logger.info(`Handling ${req.method} ${req.url} \x1b[32mwith Hono\x1b[0m`);
       void honoListener(req, res);
       return;
     }
 
-    logger.info(`Handling ${req.method} ${req.url} with Next.js`);
+    logger.info(`Handling ${req.method} ${req.url} \x1b[33mwith Next.js\x1b[0m`);
     const parsedUrl = parse(req.url ?? "/", true);
     void nextHandler(req, res, parsedUrl);
   });
