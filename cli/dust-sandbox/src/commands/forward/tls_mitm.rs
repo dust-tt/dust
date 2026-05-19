@@ -20,7 +20,7 @@ use tokio::sync::Mutex;
 
 const CA_COMMON_NAME: &str = "Dust Sandbox Egress MITM CA";
 const LEAF_CACHE_CAPACITY: usize = 256;
-const HTTP_1_1_ALPN: &[u8] = b"http/1.1";
+pub(super) const HTTP_1_1_ALPN: &[u8] = b"http/1.1";
 
 pub struct MitmCa {
     ca_cert: Certificate,
@@ -112,9 +112,7 @@ impl MitmCa {
         })
     }
 
-    pub async fn server_config_for(self: &Arc<Self>, sni: &str) -> Result<Arc<ServerConfig>> {
-        let _ = rustls::crypto::ring::default_provider().install_default();
-
+    pub async fn server_config_for(&self, sni: &str) -> Result<Arc<ServerConfig>> {
         let certified = self.get_or_mint_leaf(sni).await?;
         let resolver = SingleCertResolver { key: certified };
         let mut config = ServerConfig::builder()

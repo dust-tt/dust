@@ -30,7 +30,7 @@ use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
 use self::http_host::parse_http_host;
 use self::original_dst::resolve_original_dst;
 use self::sni::parse_client_hello_sni;
-use self::tls_mitm::MitmCa;
+use self::tls_mitm::{MitmCa, HTTP_1_1_ALPN};
 
 const DOMAIN_PEEK_TIMEOUT: Duration = Duration::from_secs(2);
 const DOMAIN_PEEK_RETRY_DELAY: Duration = Duration::from_millis(25);
@@ -41,7 +41,6 @@ const MITM_CA_CERT_PATH: &str = "/run/dust/egress-ca.pem";
 const MITM_CA_KEY_PATH: &str = "/run/dust/egress-ca.key";
 // Must match `front/lib/api/sandbox/egress_secrets.ts:EGRESS_SECRETS_PATH`.
 const EGRESS_SECRETS_PATH: &str = "/run/dust/egress-secrets.json";
-const HTTP_1_1_ALPN: &[u8] = b"http/1.1";
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct ForwardArgs {
@@ -260,7 +259,7 @@ async fn handle_connection(
             );
 
             if let Some(sni) = mitm_target {
-                run_mitm_session(&runtime, &sni, client_stream, proxy_stream)
+                run_mitm_session(&runtime, sni, client_stream, proxy_stream)
                     .await
                     .context("MITM session failed")?;
             } else {
@@ -312,12 +311,16 @@ async fn handle_connection(
     Ok(())
 }
 
-fn mitm_target_for(original_port: u16, domain: &str, secret_table: &SecretTable) -> Option<String> {
+fn mitm_target_for<'a>(
+    original_port: u16,
+    domain: &'a str,
+    secret_table: &SecretTable,
+) -> Option<&'a str> {
     if original_port != 443 || !secret_table.sni_match_set.matches(domain) {
         return None;
     }
 
-    Some(domain.to_string())
+    Some(domain)
 }
 
 async fn run_mitm_session<C, S>(
@@ -354,7 +357,7 @@ where
         Err(error)
             if matches!(
                 error.kind(),
-                ErrorKind::BrokenPipe | ErrorKind::ConnectionReset
+                ErrorKind::BrokenPipe | ErrorKind::ConnectionReset | ErrorKind::UnexpectedEof
             ) =>
         {
             debug!(
@@ -490,11 +493,11 @@ mod tests {
 
         assert_eq!(
             mitm_target_for(443, "api.openai.com", &table),
-            Some("api.openai.com".to_string())
+            Some("api.openai.com")
         );
         assert_eq!(
             mitm_target_for(443, "storage.googleapis.com", &table),
-            Some("storage.googleapis.com".to_string())
+            Some("storage.googleapis.com")
         );
         assert_eq!(mitm_target_for(443, "googleapis.com", &table), None);
         assert_eq!(mitm_target_for(80, "api.openai.com", &table), None);
