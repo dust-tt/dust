@@ -12,12 +12,12 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const PROJECT_MANAGER_SERVER_NAME = "project_manager" as const;
+export const PROJECT_MANAGER_SERVER_NAME = "pod_manager" as const;
 
 export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   add_content_node: {
     description:
-      "Add a content node reference from Company Data to the project context. The node will be available to all conversations in this project.",
+      "Add a content node reference from Company Data to the Pod context. The node will be available to all conversations in this Pod.",
     schema: {
       title: z.string().describe("Display title for the content node"),
       dataSourceNodeId: z
@@ -26,23 +26,23 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe("Internal data source node ID to attach"),
       nodeId: z.string().describe("Internal node ID to attach"),
       url: z.string().nullable().optional().describe("Optional source URL"),
-      dustProject: ConfigurableToolInputSchemas[
+      dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional project to add the content node to, will fallback to the conversation's project."
+          "Optional Pod to add the content node to, will fallback to the conversation's Pod."
         ),
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Adding content node to project",
-      done: "Add content node to project",
+      running: "Adding content node to Pod",
+      done: "Add content node to Pod",
     },
   },
   remove_content_node: {
     description:
-      "Remove a content node reference from the project context. The node will no longer be available to conversations in this project. " +
+      "Remove a content node reference from the Pod context. The node will no longer be available to conversations in this Pod. " +
       "Use nodeId with nodeDataSourceViewId from get_information attachments for this reference.",
     schema: {
       nodeId: z.string().describe("Internal node ID to remove"),
@@ -51,66 +51,66 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Internal data source view ID for the content node reference (from get_information attachments)"
         ),
-      dustProject: ConfigurableToolInputSchemas[
+      dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional project to remove the content node from, will fallback to the conversation's project."
+          "Optional Pod to remove the content node from, will fallback to the conversation's Pod."
         ),
     },
     stake: "medium",
     displayLabels: {
-      running: "Removing content node from project",
-      done: "Remove content node from project",
+      running: "Removing content node from Pod",
+      done: "Remove content node from Pod",
     },
   },
   edit_description: {
     description:
-      "Edit the project description. Only plain text is accepted (no markdown, HTML, or formatting). Descriptions should be brief and concise.",
+      "Edit the Pod description. Only plain text is accepted (no markdown, HTML, or formatting). Descriptions should be brief and concise.",
     schema: {
       description: z
         .string()
         .describe(
-          "New project description. Must be plain text only (no markdown, HTML, or other formatting). Keep it brief and concise: 1-2 short sentences max."
+          "New Pod description. Must be plain text only (no markdown, HTML, or other formatting). Keep it brief and concise: 1-2 short sentences max."
         ),
-      dustProject: ConfigurableToolInputSchemas[
+      dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional project to edit the description of, will fallback to the conversation's project."
+          "Optional Pod to edit the description of, will fallback to the conversation's Pod."
         ),
     },
     stake: "low",
     displayLabels: {
-      running: "Editing project description",
-      done: "Edit project description",
+      running: "Editing Pod description",
+      done: "Edit Pod description",
     },
   },
   get_information: {
     description:
-      "Get information about the project: URL, description, and linked content nodes " +
-      "attached to the project context. Does NOT list project files. Project files live under " +
+      "Get information about the Pod: URL, description, and linked content nodes " +
+      "attached to the Pod context. Does NOT list Pod files. Pod files live under " +
       `\`project/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {
-      dustProject: ConfigurableToolInputSchemas[
+      dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional project to get information from, will fallback to the conversation's project."
+          "Optional Pod to get information from, will fallback to the conversation's Pod."
         ),
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting project information",
-      done: "Get project information",
+      running: "Getting Pod information",
+      done: "Get Pod information",
     },
   },
   list_members: {
     description:
-      "List members of the project. Each entry includes user ID, name, email and status within the project.",
+      "List members of the Pod. Each entry includes user ID, name, email and status within the Pod.",
     schema: {
       limit: z
         .number()
@@ -127,85 +127,85 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Opaque cursor from nextPageCursor of a prior list_members call. Only for pagination."
         ),
-      dustProject: ConfigurableToolInputSchemas[
+      dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional project to list members of, will fallback to the conversation's project."
+          "Optional Pod to list members of, will fallback to the conversation's Pod."
         ),
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing project members",
-      done: "List project members",
+      running: "Listing Pod members",
+      done: "List Pod members",
     },
   },
-  list_projects: {
+  list_pods: {
     description:
-      "List non-archived projects where you are a space member (same scope as the workspace project sidebar source). Each entry includes spaceId, name, and dustProject (uri + mimeType) to pass as the dustProject argument to other project_manager tools.",
+      "List non-archived Pods where you are a space member (same scope as the workspace Pod sidebar source). Each entry includes spaceId, name, and dustPod (uri + mimeType) to pass as the dustPod argument to other pod_manager tools.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing projects",
-      done: "List projects",
+      running: "Listing Pods",
+      done: "List Pods",
     },
   },
-  create_project: {
+  create_pod: {
     description:
-      "Create a new project. By default the project is private. You can optionally set visibility to open and add members by user sId.",
+      "Create a new Pod. By default the Pod is private. You can optionally set visibility to open and add members by user sId.",
     schema: {
-      title: z.string().describe("Project title"),
+      title: z.string().describe("Pod title"),
       description: z
         .string()
         .optional()
-        .describe("Optional project description (plain text recommended)"),
+        .describe("Optional Pod description (plain text recommended)"),
       visibility: z
         .enum(["private", "open"])
         .optional()
         .default("private")
         .describe(
-          "Project visibility. Defaults to private. Open projects are subject to workspace policy."
+          "Pod visibility. Defaults to private. Open Pods are subject to workspace policy."
         ),
       memberIds: z
         .array(z.string())
         .optional()
         .describe(
-          "Optional list of user ids to add as project members after project creation."
+          "Optional list of user ids to add as Pod members after Pod creation."
         ),
       seedInitialTasks: z
         .boolean()
         .optional()
         .describe(
-          "Whether to seed the project with a set of starter tasks. Defaults to false when creating via the tool."
+          "Whether to seed the Pod with a set of starter tasks. Defaults to false when creating via the tool."
         ),
     },
     stake: "low",
     displayLabels: {
-      running: "Creating project",
-      done: "Create project",
+      running: "Creating Pod",
+      done: "Create Pod",
     },
   },
   retrieve_recent_documents: {
     description:
-      "Fetch the most recent documents from this project's knowledge data source and from any content nodes linked in the project context, in reverse chronological order up to the retrieval limit. Respects optional time window. Optionally restrict to subtrees using nodeIds.",
+      "Fetch the most recent documents from this Pod's knowledge data source and from any content nodes linked in the Pod context, in reverse chronological order up to the retrieval limit. Respects optional time window. Optionally restrict to subtrees using nodeIds.",
     schema: {
       timeFrame: IncludeInputSchema.shape.timeFrame,
       nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
-      dustProject:
+      dustPod:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
         ].optional(),
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving recent project documents",
-      done: "Retrieve recent project documents",
+      running: "Retrieving recent Pod documents",
+      done: "Retrieve recent Pod documents",
     },
   },
   create_conversation: {
     description:
-      "Create a new conversation in the project and post a user message. Default: always pass an agentName to delegate the task to an agent running inside the project. Do NOT do the work yourself. If work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output.",
+      "Create a new conversation in the Pod and post a user message. Default: always pass an agentName to delegate the task to an agent running inside the Pod. Do NOT do the work yourself. If work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output.",
     schema: {
       message: z
         .string()
@@ -217,9 +217,9 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "The name of the agent to trigger in the new conversation. The tool searches matching agent configurations and uses the best match. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result. Use this only to deposit a finished artifact you have already fully produced."
+          "The name of the agent to trigger in the new conversation. The tool searches matching agent configurations and uses the best match. Use this whenever the user asks for work to be done in a Pod (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result. Use this only to deposit a finished artifact you have already fully produced."
         ),
-      dustProject:
+      dustPod:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
         ].optional(),
@@ -232,7 +232,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   list_conversations: {
     description:
-      "List conversations in the project updated on or after a given time (updatedSince). " +
+      "List conversations in the Pod updated on or after a given time (updatedSince). " +
       "Use unreadOnly=true to return only conversations with unread messages (same as narrowing unread), " +
       "or false to include all that match the time filter. " +
       "When unreadOnly is false, results are paginated: pass pageCursor from nextPageCursor of the previous response to fetch the next page (efficient, one DB page per call). " +
@@ -274,21 +274,21 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "If true, fetch each conversation with messages and return formatted transcript text. If false (default), return metadata only (no getLightConversation calls)."
         ),
-      dustProject:
+      dustPod:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
         ].optional(),
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing project conversations",
+      running: "Listing Pod conversations",
       done: "List conversations",
     },
   },
   add_message_to_conversation: {
     description:
-      "Post a user message to an existing conversation in this project. Default: always pass an agentName to delegate the task to an agent running inside the conversation. Do NOT do the work yourself. If work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output." +
-      "The conversation must belong to the same project. If conversationId is omitted, the current agent conversation is used (when available).",
+      "Post a user message to an existing conversation in this Pod. Default: always pass an agentName to delegate the task to an agent running inside the conversation. Do NOT do the work yourself. If work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output." +
+      "The conversation must belong to the same Pod. If conversationId is omitted, the current agent conversation is used (when available).",
     schema: {
       conversationId: z
         .string()
@@ -305,9 +305,9 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "The name of the agent to trigger in the conversation. The tool searches matching agent configurations and uses the best match. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result. Use this only to deposit a finished artifact you have already fully produced."
+          "The name of the agent to trigger in the conversation. The tool searches matching agent configurations and uses the best match. Use this whenever the user asks for work to be done in a Pod (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result. Use this only to deposit a finished artifact you have already fully produced."
         ),
-      dustProject:
+      dustPod:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
         ].optional(),
@@ -321,24 +321,24 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
 });
 
 const PROJECT_MANAGER_INSTRUCTIONS =
-  "Project files and metadata are shared across all conversations in this project. " +
-  `Project files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`project/<rel>\` scoped paths ` +
+  "Pod files and metadata are shared across all conversations in this Pod. " +
+  `Pod files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`project/<rel>\` scoped paths ` +
   "(create, cat, grep, list, delete), not through this server. " +
-  "Use `add_content_node` to reference a Company Data node in the project context, and " +
+  "Use `add_content_node` to reference a Company Data node in the Pod context, and " +
   "`remove_content_node` to remove such a reference. " +
-  "Use `list_projects` to discover projects you can access and obtain the dustProject uri for other tools. " +
-  "Use `retrieve_recent_documents` to load recent content from the project data source and from " +
-  "knowledge nodes in the project context. " +
-  "Requires write permissions on the project space for state-changing operations.";
+  "Use `list_pods` to discover Pods you can access and obtain the dustPod uri for other tools. " +
+  "Use `retrieve_recent_documents` to load recent content from the Pod data source and from " +
+  "knowledge nodes in the Pod context. " +
+  "Requires write permissions on the Pod for state-changing operations.";
 
 export const PROJECT_MANAGER_SERVER = {
   // biome-ignore lint/plugin/noMcpServerInstructions: existing usage
   serverInfo: {
-    name: "project_manager",
+    name: "pod_manager",
     version: "1.0.0",
     description:
-      "Manage project metadata, members, conversations, and Company Data references. " +
-      `Raw project file operations (create, read, search, write, delete) live in the \`${FILES_SERVER_NAME}\` MCP ` +
+      "Manage Pod metadata, members, conversations, and Company Data references. " +
+      `Raw Pod file operations (create, read, search, write, delete) live in the \`${FILES_SERVER_NAME}\` MCP ` +
       "server under `project/<rel>` scoped paths.",
     icon: "ActionDocumentTextIcon",
     authorization: null,

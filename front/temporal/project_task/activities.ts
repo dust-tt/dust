@@ -1,6 +1,6 @@
 import { isIncludeResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
-import { buildProjectRetrieveDataSources } from "@app/lib/api/actions/servers/project_manager/helpers";
+import { buildProjectRetrieveDataSources } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import { Authenticator } from "@app/lib/auth";
 import { extractDocumentTakeaways } from "@app/lib/project_task/analyze_document";
 import { isInitialTaskSyncLookback } from "@app/lib/project_task/analyze_document/types";

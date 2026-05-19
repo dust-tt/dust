@@ -49,11 +49,11 @@ import { default as openaiUsageServer } from "@app/lib/api/actions/servers/opena
 import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
 import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlook/mail_server";
 import { default as planModeServer } from "@app/lib/api/actions/servers/plan_mode";
+import { default as projectManagerServer } from "@app/lib/api/actions/servers/pod_manager";
+import { default as projectTasksServer } from "@app/lib/api/actions/servers/pod_tasks";
 import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
-import { default as projectManagerServer } from "@app/lib/api/actions/servers/project_manager";
-import { default as projectTasksServer } from "@app/lib/api/actions/servers/project_tasks";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as runAgentServer } from "@app/lib/api/actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
@@ -250,9 +250,9 @@ export async function getInternalMCPServer(
       return schedulesManagementServer(auth, agentLoopContext);
     case "productboard":
       return productboardServer(auth, agentLoopContext);
-    case "project_manager":
+    case "pod_manager":
       return projectManagerServer(auth, agentLoopContext);
-    case "project_tasks":
+    case "pod_tasks":
       return projectTasksServer(auth, agentLoopContext);
     case "poke":
       return pokeServer(auth, agentLoopContext);

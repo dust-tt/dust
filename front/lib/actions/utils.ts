@@ -42,7 +42,7 @@ export function getRetrievalTopK({
   const includeActions = stepActions.filter(
     (tool) =>
       isServerSideMCPToolConfigurationWithName(tool, "include_data") ||
-      (isServerSideMCPToolConfigurationWithName(tool, "project_manager") &&
+      (isServerSideMCPToolConfigurationWithName(tool, "pod_manager") &&
         tool.originalName === "retrieve_recent_documents")
   );
   const dsFsActions = stepActions.filter((tool) =>

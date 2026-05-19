@@ -16,16 +16,16 @@ describe("getApprovalArgsLabel", () => {
     await expect(
       getApprovalArgsLabel({
         auth,
-        internalMCPServerName: "project_manager",
+        internalMCPServerName: "pod_manager",
         toolName: "create_conversation",
         agentName: "assistant",
         inputs: {
-          dustProject: {
+          dustPod: {
             uri: "project://dust/w/ws123/projects/prj456",
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
           },
         },
-        argumentsRequiringApproval: ["dustProject"],
+        argumentsRequiringApproval: ["dustPod"],
       })
     ).resolves.toBe(
       'Always allow @assistant to Create Conversation in "project://dust/w/ws123/projects/prj456".'
@@ -46,16 +46,16 @@ describe("getApprovalArgsLabel", () => {
     await expect(
       getApprovalArgsLabel({
         auth,
-        internalMCPServerName: "project_manager",
+        internalMCPServerName: "pod_manager",
         toolName: "create_conversation",
         agentName: "assistant",
         inputs: {
-          dustProject: {
+          dustPod: {
             uri: "project://dust/w/ws123/projects/prj456",
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
           },
         },
-        argumentsRequiringApproval: ["dustProject"],
+        argumentsRequiringApproval: ["dustPod"],
       })
     ).resolves.toBe(
       'Always allow @assistant to Create Conversation in "Revenue Ops".'

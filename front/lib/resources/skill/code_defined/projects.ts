@@ -1,6 +1,6 @@
 import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
-import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
+import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
@@ -57,7 +57,7 @@ When you need to find information, use this order (skip steps if the relevant to
 3. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` for broader company data sources.
 `,
 
-  mcpServers: [{ name: "project_manager" }, { name: "project_tasks" }],
+  mcpServers: [{ name: "pod_manager" }, { name: "pod_tasks" }],
   version: 3,
   icon: "ActionFolderIcon",
   isRestricted: async (auth: Authenticator) => {

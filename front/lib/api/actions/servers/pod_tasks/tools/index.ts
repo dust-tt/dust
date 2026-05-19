@@ -8,8 +8,8 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   getProjectSpace,
   withErrorHandling,
-} from "@app/lib/api/actions/servers/project_manager/helpers";
-import { PROJECT_TASKS_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_tasks/metadata";
+} from "@app/lib/api/actions/servers/pod_manager/helpers";
+import { PROJECT_TASKS_TOOLS_METADATA } from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -47,12 +47,12 @@ export function createProjectTasksTools(
       assigneeFilter = "mine",
       statusFilter = "all",
       daysAgo = 7,
-      dustProject,
+      dustPod,
     }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
-          dustProject,
+          dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
@@ -120,11 +120,11 @@ export function createProjectTasksTools(
       }, "Failed to list tasks");
     },
 
-    create_tasks: async ({ creatorType, tasks, dustProject }) => {
+    create_tasks: async ({ creatorType, tasks, dustPod }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
-          dustProject,
+          dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
@@ -151,7 +151,7 @@ export function createProjectTasksTools(
             );
             if (!contextRes.value.space.isMember(userAuth)) {
               errors.push(
-                `Could not create task ${item.text} for user ${item.userId} because they are not a member of the project.`
+                `Could not create task ${item.text} for user ${item.userId} because they are not a member of the Pod.`
               );
               continue;
             }
@@ -207,11 +207,11 @@ export function createProjectTasksTools(
       }, "Failed to create tasks");
     },
 
-    mark_task_done: async ({ actorType, taskIds, dustProject }) => {
+    mark_task_done: async ({ actorType, taskIds, dustPod }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
-          dustProject,
+          dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
@@ -281,12 +281,12 @@ export function createProjectTasksTools(
       userId,
       doneRationale,
       status,
-      dustProject,
+      dustPod,
     }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
-          dustProject,
+          dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;
@@ -308,7 +308,7 @@ export function createProjectTasksTools(
           );
           if (!contextRes.value.space.isMember(userAuth)) {
             return new Err(
-              new MCPError(`User is not a member of the project.`, {
+              new MCPError(`User is not a member of the Pod.`, {
                 tracked: false,
               })
             );
@@ -333,16 +333,11 @@ export function createProjectTasksTools(
       }, "Failed to update task");
     },
 
-    start_task_agent: async ({
-      taskId,
-      agentName,
-      customMessage,
-      dustProject,
-    }) => {
+    start_task_agent: async ({ taskId, agentName, customMessage, dustPod }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
-          dustProject,
+          dustPod,
         });
         if (contextRes.isErr()) {
           return contextRes;

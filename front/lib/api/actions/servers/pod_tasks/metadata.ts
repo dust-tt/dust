@@ -6,12 +6,12 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const PROJECT_TASKS_SERVER_NAME = "project_tasks" as const;
+export const PROJECT_TASKS_SERVER_NAME = "pod_tasks" as const;
 
 export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
   list_tasks: {
     description:
-      "List tasks in the project. " +
+      "List tasks in the Pod. " +
       "Defaults to the current user's tasks (assigneeFilter='mine') and open (statusFilter='open') items. ",
     schema: {
       assigneeFilter: z
@@ -36,12 +36,12 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
         .describe(
           "When status is 'done' or 'all', limit completed tasks to this many days back. Defaults to 7."
         ),
-      dustProject: ConfigurableToolInputSchemas[
+      dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional project to list tasks from; falls back to the conversation's project."
+          "Optional Pod to list tasks from; falls back to the conversation's Pod."
         ),
     },
     stake: "never_ask",
@@ -52,7 +52,7 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
   },
   create_tasks: {
     description:
-      "Create one or more new tasks at once in the project. Omitting userId (or null) creates an unassigned task unless the project has exactly one assignable member, in which case that member is assigned. Pass userId when a specific person should own the task.",
+      "Create one or more new tasks at once in the Pod. Omitting userId (or null) creates an unassigned task unless the Pod has exactly one assignable member, in which case that member is assigned. Pass userId when a specific person should own the task.",
     schema: {
       creatorType: z
         .enum(["user", "agent"])
@@ -75,7 +75,7 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
               .union([z.string(), z.null()])
               .optional()
               .describe(
-                "Project member's user sId to assign this task to. Omit userId entirely (or use null) for an unassigned task, unless the project has exactly one assignable member (then that member is assigned)."
+                "Pod member's user sId to assign this task to. Omit userId entirely (or use null) for an unassigned task, unless the Pod has exactly one assignable member (then that member is assigned)."
               ),
             doneRationale: z
               .string()
@@ -88,12 +88,12 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
         .min(1)
         .max(30)
         .describe("List of tasks to create (max 30)."),
-      dustProject: ConfigurableToolInputSchemas[
+      dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional project to create the tasks in; falls back to the conversation's project."
+          "Optional Pod to create the tasks in; falls back to the conversation's Pod."
         ),
     },
     stake: "low",
@@ -115,12 +115,12 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
         .min(1)
         .max(50)
         .describe("List of task sIds to mark as done."),
-      dustProject: ConfigurableToolInputSchemas[
+      dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional project to resolve tasks in; falls back to the conversation's project."
+          "Optional Pod to resolve tasks in; falls back to the conversation's Pod."
         ),
     },
     stake: "low",
@@ -143,7 +143,7 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "The sId of the user to assign the task to; must be a member of the project. Defaults to the current user."
+          "The sId of the user to assign the task to; must be a member of the Pod. Defaults to the current user."
         ),
       doneRationale: z
         .string()
@@ -156,12 +156,12 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("The new task status. Defaults to the current status."),
 
-      dustProject: ConfigurableToolInputSchemas[
+      dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional project to look up the task in; falls back to the conversation's project."
+          "Optional Pod to look up the task in; falls back to the conversation's Pod."
         ),
     },
     stake: "low",
@@ -189,12 +189,12 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional additional instructions appended to the kickoff message sent to the selected agent."
         ),
-      dustProject: ConfigurableToolInputSchemas[
+      dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional project to look up the task in; falls back to the conversation's project."
+          "Optional Pod to look up the task in; falls back to the conversation's Pod."
         ),
     },
     stake: "low",
@@ -210,7 +210,7 @@ export const PROJECT_TASKS_SERVER = {
     name: PROJECT_TASKS_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Manage project tasks: list, create, update, and complete action items.",
+      "Manage Pod tasks: list, create, update, and complete action items.",
     icon: "ActionListCheckIcon",
     authorization: null,
     documentationUrl: null,

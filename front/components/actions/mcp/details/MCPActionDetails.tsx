@@ -197,8 +197,7 @@ function MCPActionDetailsInner({
   if (
     internalMCPServerName === "search" ||
     internalMCPServerName === "data_sources_file_system" ||
-    (internalMCPServerName === "project_manager" &&
-      toolName === "semantic_search")
+    (internalMCPServerName === "pod_manager" && toolName === "semantic_search")
   ) {
     switch (toolName) {
       case SEARCH_TOOL_NAME:
@@ -251,7 +250,7 @@ function MCPActionDetailsInner({
   if (
     (internalMCPServerName === "include_data" &&
       toolName === INCLUDE_TOOL_NAME) ||
-    (internalMCPServerName === "project_manager" &&
+    (internalMCPServerName === "pod_manager" &&
       toolName === "retrieve_recent_documents")
   ) {
     return (
