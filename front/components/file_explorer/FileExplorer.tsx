@@ -20,6 +20,7 @@ import {
   type BreadcrumbItem,
   Breadcrumbs,
   Button,
+  cn,
   PencilSquareIcon,
   TrashIcon,
   XMarkIcon,
@@ -48,6 +49,7 @@ function FileExplorerBreadcrumb({
 }
 
 interface FileExplorerProps {
+  contentClassName?: string;
   contentNodes?: ContentNodeEntry[];
   emptyState?: React.ReactNode;
   files: GCSMountEntry[];
@@ -62,6 +64,7 @@ interface FileExplorerProps {
 }
 
 export function FileExplorer({
+  contentClassName,
   contentNodes = [],
   emptyState,
   files,
@@ -179,7 +182,7 @@ export function FileExplorer({
     <>
       <div className="flex h-full w-full min-h-0 flex-1 flex-col">
         <AppLayoutTitle>
-          <div className="flex h-full items-center justify-between gap-2">
+          <div className={cn("flex h-full items-center justify-between gap-2 px-4", contentClassName)}>
             <FileExplorerBreadcrumb
               folderStack={folderStack}
               onNavigate={handleBreadcrumbNavigate}
@@ -197,7 +200,7 @@ export function FileExplorer({
             </div>
           </div>
         </AppLayoutTitle>
-        <div className="flex flex-1 min-h-0 flex-col gap-5 pt-5 max-w-4xl mx-auto w-full">
+        <div className={cn("flex flex-1 min-h-0 flex-col gap-5 pt-5", contentClassName)}>
           <div className="px-4">
             <FileExplorerToolbar
               searchQuery={searchQuery}
