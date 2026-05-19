@@ -317,98 +317,96 @@ export class AgentYAMLConverter {
       Error
     >
   > {
-    const viewIds = actions
-      .map((a) => a.configuration.mcp_server_view_id)
-      .filter(isString);
+    try {
+      const viewIds = actions
+        .map((a) => a.configuration.mcp_server_view_id)
+        .filter(isString);
 
-    const viewsById = new Map<string, MCPServerViewResource>();
-    if (viewIds.length > 0) {
-      const views = await MCPServerViewResource.fetchByIds(auth, viewIds);
-      for (const view of views) {
-        viewsById.set(view.sId, view);
+      const viewsById = new Map<string, MCPServerViewResource>();
+      if (viewIds.length > 0) {
+        const views = await MCPServerViewResource.fetchByIds(auth, viewIds);
+        for (const view of views) {
+          viewsById.set(view.sId, view);
+        }
       }
-    }
 
-    const resolvedActions: {
-      action: AgentYAMLAction;
-      mcpServerViewId: string;
-    }[] = [];
-    const unresolvedActions: AgentYAMLAction[] = [];
-    const autoInternalNames: AutoInternalMCPServerNameType[] = [];
+      const resolvedActions: {
+        action: AgentYAMLAction;
+        mcpServerViewId: string;
+      }[] = [];
+      const unresolvedActions: AgentYAMLAction[] = [];
+      const autoInternalNames: AutoInternalMCPServerNameType[] = [];
 
-    for (const action of actions) {
-      const { mcp_server_view_id, mcp_server_name } = action.configuration;
-      const view = mcp_server_view_id
-        ? viewsById.get(mcp_server_view_id)
-        : undefined;
+      for (const action of actions) {
+        const { mcp_server_view_id, mcp_server_name } = action.configuration;
+        const view = mcp_server_view_id
+          ? viewsById.get(mcp_server_view_id)
+          : undefined;
 
-      if (view) {
-        resolvedActions.push({ action, mcpServerViewId: view.sId });
-      } else {
-        // if we cannot resolve by id, we fall back to name resolution
-        unresolvedActions.push(action);
-        if (
+        if (view) {
+          resolvedActions.push({ action, mcpServerViewId: view.sId });
+        } else {
+          // if we cannot resolve by id, we fall back to name resolution
+          unresolvedActions.push(action);
+          if (
+            mcp_server_name &&
+            isInternalMCPServerName(mcp_server_name) &&
+            isAutoInternalMCPServerName(mcp_server_name)
+          ) {
+            autoInternalNames.push(mcp_server_name);
+          }
+        }
+      }
+
+      const viewsByAutoInternalName =
+        autoInternalNames.length > 0
+          ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
+              auth,
+              autoInternalNames
+            )
+          : undefined;
+
+      const skippedActions: { action: AgentYAMLAction; reason: string }[] = [];
+
+      // Resolve view IDs for unresolved actions via auto internal name lookup.
+      for (const action of unresolvedActions) {
+        const { mcp_server_name } = action.configuration;
+
+        const mcpServerViewId =
           mcp_server_name &&
           isInternalMCPServerName(mcp_server_name) &&
           isAutoInternalMCPServerName(mcp_server_name)
-        ) {
-          autoInternalNames.push(mcp_server_name);
+            ? viewsByAutoInternalName?.get(mcp_server_name)?.sId
+            : undefined;
+
+        if (mcpServerViewId) {
+          resolvedActions.push({ action, mcpServerViewId });
+        } else {
+          skippedActions.push({
+            action,
+            reason: `MCP server view not found for: ${mcp_server_name}`,
+          });
         }
       }
+
+      const mcpConfigurations = resolvedActions.map(
+        ({ action, mcpServerViewId }) =>
+          this.getMCPActionConfigurationFromYaml(auth, action, mcpServerViewId)
+      );
+
+      return new Ok({
+        configurations: mcpConfigurations,
+        skipped: skippedActions,
+      });
+    } catch (error) {
+      return new Err(normalizeError(error));
     }
-
-    const viewsByAutoInternalName =
-      autoInternalNames.length > 0
-        ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
-            auth,
-            autoInternalNames
-          )
-        : undefined;
-
-    const skippedActions: { action: AgentYAMLAction; reason: string }[] = [];
-
-    // Resolve view IDs for unresolved actions via auto internal name lookup.
-    for (const action of unresolvedActions) {
-      const { mcp_server_name } = action.configuration;
-
-      const mcpServerViewId =
-        mcp_server_name &&
-        isInternalMCPServerName(mcp_server_name) &&
-        isAutoInternalMCPServerName(mcp_server_name)
-          ? viewsByAutoInternalName?.get(mcp_server_name)?.sId
-          : undefined;
-
-      if (mcpServerViewId) {
-        resolvedActions.push({ action, mcpServerViewId });
-      } else {
-        skippedActions.push({
-          action,
-          reason: `MCP server view not found for: ${mcp_server_name}`,
-        });
-      }
-    }
-
-    const mcpConfigurations = resolvedActions.map(
-      ({ action, mcpServerViewId }) =>
-        this.getMCPActionConfigurationFromYaml(
-          auth,
-          action,
-          mcpServerViewId,
-          action.configuration.mcp_server_name
-        )
-    );
-
-    return new Ok({
-      configurations: mcpConfigurations,
-      skipped: skippedActions,
-    });
   }
 
   private static getMCPActionConfigurationFromYaml(
     auth: Authenticator,
     action: AgentYAMLAction,
-    mcpServerViewId: string,
-    mcpServerName: string | undefined
+    mcpServerViewId: string
   ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
     const workspaceId = auth.getNonNullableWorkspace().sId;
     const { configuration } = action;
@@ -416,7 +414,7 @@ export class AgentYAMLConverter {
     return {
       type: "mcp_server_configuration",
       mcpServerViewId,
-      name: (mcpServerName || action.name) ?? "",
+      name: action.name ?? "",
       description: action.description ?? null,
       dataSources: configuration.data_sources
         ? this.convertDataSources(configuration.data_sources, workspaceId)
