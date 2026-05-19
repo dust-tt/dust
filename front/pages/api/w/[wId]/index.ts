@@ -35,6 +35,10 @@ const WorkspaceSsoEnforceUpdateBodySchema = z.object({
   ssoEnforced: z.boolean(),
 });
 
+const WorkspaceRegionalModelsOnlyUpdateBodySchema = z.object({
+  regionalModelsOnly: z.boolean(),
+});
+
 const WorkspaceAllowedDomainUpdateBodySchema = z.object({
   domain: z.string().optional(),
   domainAutoJoinEnabled: z.boolean(),
@@ -124,6 +128,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceBatchDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceSsoEnforceUpdateBodySchema,
+  WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
   WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
@@ -211,6 +216,12 @@ async function handler(
         });
 
         owner.ssoEnforced = body.ssoEnforced;
+      } else if ("regionalModelsOnly" in body) {
+        await workspace.updateWorkspaceSettings({
+          regionalModelsOnly: body.regionalModelsOnly,
+        });
+
+        owner.regionalModelsOnly = body.regionalModelsOnly;
       } else if (
         "whiteListedProviders" in body &&
         "defaultEmbeddingProvider" in body

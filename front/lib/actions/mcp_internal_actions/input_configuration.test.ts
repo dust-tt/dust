@@ -30,6 +30,7 @@ const mockWorkspace: WorkspaceType = {
   metadata: {},
   metronomeCustomerId: null,
   sharingPolicy: "all_scopes",
+  regionalModelsOnly: false,
 };
 
 // Helper function to create a basic MCP tool configuration

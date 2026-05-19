@@ -37,6 +37,7 @@ const mockOwner: WorkspaceType = {
   defaultEmbeddingProvider: null,
   sharingPolicy: "workspace_only",
   metronomeCustomerId: null,
+  regionalModelsOnly: false,
 };
 
 const mockAgentMessage: LightAgentMessageType = {

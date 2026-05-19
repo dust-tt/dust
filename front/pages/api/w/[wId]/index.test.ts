@@ -145,6 +145,27 @@ describe("POST /api/w/[wId]", () => {
     });
   });
 
+  it("updates regionalModelsOnly", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      regionalModelsOnly: true,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        regionalModelsOnly: true,
+      }),
+    });
+  });
+
   it("updates whitelisted providers and default embedding provider", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",

@@ -21,6 +21,7 @@ describe("buildEditorExtensions", () => {
     metadata: null,
     metronomeCustomerId: null,
     sharingPolicy: "all_scopes",
+    regionalModelsOnly: false,
   } satisfies WorkspaceType;
 
   function createSlashSuggestionEditor() {

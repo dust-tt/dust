@@ -48,6 +48,7 @@ const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
         "ssoEnforced" in targetWorkspace
           ? targetWorkspace.ssoEnforced
           : undefined,
+      regionalModelsOnly: targetWorkspace.regionalModelsOnly,
       plan: plan
         ? {
             code: plan.code,

@@ -51,6 +51,8 @@
  *           example: "https://example.com/profile/johndoe.jpg"
  *     Workspace:
  *       type: object
+ *       required:
+ *         - regionalModelsOnly
  *       properties:
  *         id:
  *           type: integer
@@ -81,6 +83,10 @@
  *         ssoEnforced:
  *           type: boolean
  *           example: true
+ *         regionalModelsOnly:
+ *           type: boolean
+ *           description: When true, only models whose regionalAvailability includes the workspace's region are usable.
+ *           example: false
  *         whiteListedProviders:
  *           type: array
  *           items:
