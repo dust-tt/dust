@@ -21,6 +21,8 @@ import discoverOAuthMetadata from "./discover_oauth_metadata";
 import heartbeat from "./heartbeat";
 import register from "./register";
 import requestAccess from "./request_access";
+import requests from "./requests";
+import results from "./results";
 import usage from "./usage";
 import views from "./views";
 
@@ -113,6 +115,8 @@ app.route("/discover_oauth_metadata", discoverOAuthMetadata);
 app.route("/heartbeat", heartbeat);
 app.route("/register", register);
 app.route("/request_access", requestAccess);
+app.route("/requests", requests);
+app.route("/results", results);
 app.route("/usage", usage);
 app.route("/views", views);
 
