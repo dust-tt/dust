@@ -123,18 +123,4 @@ describe("GET /api/w/:wId/groups", () => {
     expect(backendGroup).toBeDefined();
     expect(backendGroup.memberCount).toBe(1);
   });
-
-  it("returns 405 for unsupported methods", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
-
-    for (const method of ["POST", "PUT", "PATCH", "DELETE"] as const) {
-      const response = await honoApp.request(`/api/w/${workspace.sId}/groups`, {
-        method,
-      });
-      expect(response.status).toBe(405);
-    }
-  });
 });

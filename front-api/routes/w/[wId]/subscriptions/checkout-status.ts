@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { validate } from "@front-api/middleware/validator";
@@ -23,16 +25,14 @@ app.get("/", validate("query", GetCheckoutStatusQuerySchema), async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can access this endpoint.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can access this endpoint.",
       },
-      403
-    );
+    });
   }
 
   const { plan_code } = c.req.valid("query");

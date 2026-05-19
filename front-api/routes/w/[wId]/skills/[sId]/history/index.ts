@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { fromError } from "zod-validation-error";
 
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
@@ -19,30 +21,26 @@ app.get("/", async (c) => {
   const sId = c.req.param("sId");
 
   if (!isString(sId)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid skill ID provided.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid skill ID provided.",
       },
-      400
-    );
+    });
   }
 
   // Check that user has access to this skill.
   const skill = await SkillResource.fetchById(auth, sId);
 
   if (!skill || !skill.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "skill_not_found",
-          message: "The skill you're trying to access was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "skill_not_found",
+        message: "The skill you're trying to access was not found.",
       },
-      404
-    );
+    });
   }
 
   const rawLimit = c.req.query("limit");
@@ -51,15 +49,13 @@ app.get("/", async (c) => {
   });
   if (!queryValidation.success) {
     const pathError = fromError(queryValidation.error).toString();
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Invalid query parameters: ${pathError}`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid query parameters: ${pathError}`,
       },
-      400
-    );
+    });
   }
 
   const { limit } = queryValidation.data;

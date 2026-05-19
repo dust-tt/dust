@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -20,15 +22,13 @@ app.get("/", async (c) => {
   });
 
   if (paginationRes.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: paginationRes.error.reason,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: paginationRes.error.reason,
       },
-      400
-    );
+    });
   }
 
   const queryString = c.req.query("query");

@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { AppType } from "@app/types/app";
 
@@ -24,24 +26,20 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
 
   const found = await AppResource.fetchById(auth, aId);
   if (!found || !found.canRead(auth) || found.space.sId !== space.sId) {
-    return c.json(
-      {
-        error: {
-          type: "app_not_found",
-          message: "The app you're trying to access was not found",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "app_not_found",
+        message: "The app you're trying to access was not found",
       },
-      404
-    );
+    });
   }
   const result = await getRun(auth, found.toJSON() as AppType, runId);
   if (!result) {
-    return c.json(
-      {
-        error: { type: "run_not_found", message: "The run was not found" },
-      },
-      404
-    );
+    return apiError(c, {
+      status_code: 404,
+      api_error: { type: "run_not_found", message: "The run was not found" },
+    });
   }
   return c.json({ run: result.run, spec: result.spec });
 });

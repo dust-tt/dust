@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { removeFileFromProject } from "@app/lib/api/projects/context";
 
 import { spaceResource } from "@front-api/middleware/space_resource";
@@ -16,40 +18,34 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
   const fileId = c.req.param("fileId") ?? "";
 
   if (!space.isProject()) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message:
-            "Only project spaces support project context knowledge removal.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Only project spaces support project context knowledge removal.",
       },
-      400
-    );
+    });
   }
   if (!space.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "You do not have write access to this project.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "You do not have write access to this project.",
       },
-      403
-    );
+    });
   }
 
   const r = await removeFileFromProject(auth, { space, fileId });
   if (r.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: r.error.message,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: r.error.message,
       },
-      500
-    );
+    });
   }
   return c.json({});
 });

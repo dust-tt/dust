@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import config from "@app/lib/api/config";
@@ -44,45 +46,39 @@ app.post(
     const owner = auth.getNonNullableWorkspace();
 
     if (!space.canWrite(auth) || !auth.isBuilder()) {
-      return c.json(
-        {
-          error: {
-            type: "app_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can create an app.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "Only the users that are `builders` for the current workspace can create an app.",
         },
-        403
-      );
+      });
     }
 
     const { name, description } = c.req.valid("json");
     if (!APP_NAME_REGEXP.test(name)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "The app name is invalid, expects a string with a length of 1-64 characters, containing only alphanumeric characters, underscores, and dashes.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "The app name is invalid, expects a string with a length of 1-64 characters, containing only alphanumeric characters, underscores, and dashes.",
         },
-        400
-      );
+      });
     }
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const p = await coreAPI.createProject();
     if (p.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "Failed to create internal project for the app.",
-            data_source_error: p.error,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to create internal project for the app.",
+          data_source_error: p.error,
         },
-        500
-      );
+      });
     }
 
     const created = await AppResource.makeNew(

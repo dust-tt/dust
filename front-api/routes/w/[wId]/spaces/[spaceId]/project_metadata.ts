@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import {
   launchOrSignalProjectTodoWorkflow,
@@ -23,15 +25,13 @@ app.get(
     const space = c.get("space");
 
     if (!space.isProject()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Project metadata is only available for project spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Project metadata is only available for project spaces.",
         },
-        400
-      );
+      });
     }
 
     const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
@@ -50,27 +50,23 @@ app.patch(
     const space = c.get("space");
 
     if (!space.isProject()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Project metadata is only available for project spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Project metadata is only available for project spaces.",
         },
-        400
-      );
+      });
     }
 
     if (!space.canAdministrate(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message: "Only project editors can update project metadata.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only project editors can update project metadata.",
         },
-        403
-      );
+      });
     }
 
     const body = c.req.valid("json");

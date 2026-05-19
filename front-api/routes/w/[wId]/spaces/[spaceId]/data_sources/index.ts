@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -99,42 +100,36 @@ app.post(
 
     if (space.isSystem()) {
       if (!space.canAdministrate(auth)) {
-        return c.json(
-          {
-            error: {
-              type: "data_source_auth_error",
-              message:
-                "Only the users that are `admins` for the current workspace can update a data source.",
-            },
+        return apiError(c, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that are `admins` for the current workspace can update a data source.",
           },
-          403
-        );
+        });
       }
     } else {
       if (space.isGlobal() && !auth.isBuilder()) {
-        return c.json(
-          {
-            error: {
-              type: "data_source_auth_error",
-              message:
-                "Only the users that are `builders` for the current workspace can update a data source.",
-            },
+        return apiError(c, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that are `builders` for the current workspace can update a data source.",
           },
-          403
-        );
+        });
       }
 
       if (!space.canWrite(auth)) {
-        return c.json(
-          {
-            error: {
-              type: "data_source_auth_error",
-              message:
-                "Only the users that have `write` permission for the current space can update a data source.",
-            },
+        return apiError(c, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that have `write` permission for the current space can update a data source.",
           },
-          403
-        );
+        });
       }
     }
 
@@ -166,16 +161,14 @@ app.post(
           : r.error.code === "plan_limit_error"
             ? 401
             : 400;
-      return c.json(
-        {
-          error: {
-            type: r.error.code,
-            message: r.error.message,
-            data_source_error: r.error.dataSourceError,
-          },
+      return apiError(c, {
+        status_code: status,
+        api_error: {
+          type: r.error.code,
+          message: r.error.message,
+          data_source_error: r.error.dataSourceError,
         },
-        status
-      );
+      });
     }
 
     const dataSourceView = r.value;
@@ -230,15 +223,13 @@ async function handleDataSourceWithProvider({
 
   const isConnectionIdRequired = isConnectionIdRequiredForProvider(provider);
   if (isConnectionIdRequired && !connectionId) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Connection ID is required for this provider.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Connection ID is required for this provider.",
       },
-      400
-    );
+    });
   }
 
   const featureFlags = await getFeatureFlags(auth);
@@ -249,40 +240,33 @@ async function handleDataSourceWithProvider({
     featureFlags
   );
   if (!isDataSourceAllowedInPlan) {
-    return c.json(
-      {
-        error: {
-          type: "plan_limit_error",
-          message:
-            "Your plan does not allow you to create managed data sources.",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: "plan_limit_error",
+        message: "Your plan does not allow you to create managed data sources.",
       },
-      401
-    );
+    });
   }
 
   // System spaces only for managed data sources; webcrawler is regular-only.
   if (space.isSystem() && provider === "webcrawler") {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Cannot post a datasource for provider: ${provider} in system space.`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Cannot post a datasource for provider: ${provider} in system space.`,
       },
-      400
-    );
+    });
   }
   if (!space.isSystem() && provider !== "webcrawler") {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Cannot post a datasource for provider: ${provider} in regular space.`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Cannot post a datasource for provider: ${provider} in regular space.`,
       },
-      400
-    );
+    });
   }
 
   // The suffix is optional and used manually to allow multiple data sources
@@ -290,15 +274,13 @@ async function handleDataSourceWithProvider({
   // codebase.
   const suffix = c.req.query("suffix") ?? null;
   if (suffix && !isValidConnectorSuffix(suffix)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid suffix.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid suffix.",
       },
-      400
-    );
+    });
   }
   const dataSourceName = name ?? getDefaultDataSourceName(provider, suffix);
   let dataSourceDescription = getDefaultDataSourceDescription(provider, suffix);
@@ -333,17 +315,15 @@ async function handleDataSourceWithProvider({
     const configurationRes =
       WebCrawlerConfigurationTypeSchema.safeParse(configuration);
     if (!configurationRes.success) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Invalid configuration: " +
-              fromError(configurationRes.error).toString(),
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Invalid configuration: " +
+            fromError(configurationRes.error).toString(),
         },
-        400
-      );
+      });
     }
     dataSourceDescription = configurationRes.data.url;
   }
@@ -354,16 +334,14 @@ async function handleDataSourceWithProvider({
       { error: systemAPIKeyRes.error },
       "Could not create the system API key"
     );
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message:
-            "Could not create a system API key for the managed data source.",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message:
+          "Could not create a system API key for the managed data source.",
       },
-      500
-    );
+    });
   }
 
   const dataSourceEmbedder =
@@ -373,16 +351,14 @@ async function handleDataSourceWithProvider({
 
   const dustProject = await coreAPI.createProject();
   if (dustProject.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to create internal project for the data source.",
-          data_source_error: dustProject.error,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to create internal project for the data source.",
+        data_source_error: dustProject.error,
       },
-      500
-    );
+    });
   }
 
   let credentials: LLMCredentialsType;
@@ -393,15 +369,13 @@ async function handleDataSourceWithProvider({
       { error: normalizeError(err) },
       "Failed to get LLM credentials to create data source"
     );
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
       },
-      400
-    );
+    });
   }
 
   const dustDataSource = await coreAPI.createDataSource({
@@ -425,16 +399,14 @@ async function handleDataSourceWithProvider({
   });
 
   if (dustDataSource.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to create the data source.",
-          data_source_error: dustDataSource.error,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to create the data source.",
+        data_source_error: dustDataSource.error,
       },
-      500
-    );
+    });
   }
 
   const dustProjectId = dustProject.value.project.project_id.toString();
@@ -460,15 +432,13 @@ async function handleDataSourceWithProvider({
   );
   if (existingDataSource) {
     await rollbackCoreDataSource();
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "A data source with the same name already exists.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "A data source with the same name already exists.",
       },
-      400
-    );
+    });
   }
 
   // Create the front data source + view. If this throws, rollback the core
@@ -517,15 +487,13 @@ async function handleDataSourceWithProvider({
     );
     if (checkConnectionOwnershipRes.isErr()) {
       await rollbackManagedDataSource();
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Failed to get the access token for the connector.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Failed to get the access token for the connector.",
         },
-        400
-      );
+      });
     }
   }
 
@@ -549,27 +517,23 @@ async function handleDataSourceWithProvider({
     switch (connectorsRes.error.type) {
       case "authorization_error":
       case "invalid_request_error":
-        return c.json(
-          {
-            error: {
-              type: "invalid_request_error",
-              message: "Failed to create the connector.",
-              connectors_error: connectorsRes.error,
-            },
+        return apiError(c, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Failed to create the connector.",
+            connectors_error: connectorsRes.error,
           },
-          400
-        );
+        });
       default:
-        return c.json(
-          {
-            error: {
-              type: "internal_server_error",
-              message: "Failed to create the connector.",
-              connectors_error: connectorsRes.error,
-            },
+        return apiError(c, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to create the connector.",
+            connectors_error: connectorsRes.error,
           },
-          500
-        );
+        });
     }
   }
 
@@ -606,16 +570,14 @@ async function handleDataSourceWithProvider({
         );
       }
 
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message:
-              "Failed to register webhook router entry for Slack app. The connector has been rolled back.",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message:
+            "Failed to register webhook router entry for Slack app. The connector has been rolled back.",
         },
-        500
-      );
+      });
     }
   }
 

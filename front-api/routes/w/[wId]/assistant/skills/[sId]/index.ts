@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 
 import suggestions from "./suggestions";
@@ -21,28 +23,24 @@ app.use("*", async (c, next) => {
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
-    return c.json(
-      {
-        error: {
-          type: "skill_not_found",
-          message: "The skill configuration was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "skill_not_found",
+        message: "The skill configuration was not found.",
       },
-      404
-    );
+    });
   }
 
   if (!skill.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "agent_group_permission_error",
-          message:
-            "Only editors of the skill or workspace admins can view suggestions.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "agent_group_permission_error",
+        message:
+          "Only editors of the skill or workspace admins can view suggestions.",
       },
-      403
-    );
+    });
   }
 
   c.set("skill", skill);

@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
@@ -11,15 +13,13 @@ app.get("/", async (c) => {
   const ids = c.req.queries("ids");
 
   if (!ids || ids.length === 0) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "The query parameter `ids` is required.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The query parameter `ids` is required.",
       },
-      400
-    );
+    });
   }
 
   const uniqueIds = Array.from(new Set(ids));

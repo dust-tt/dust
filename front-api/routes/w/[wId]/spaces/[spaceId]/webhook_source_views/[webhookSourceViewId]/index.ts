@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
@@ -19,27 +21,23 @@ app.delete(
     const webhookSourceViewId = c.req.param("webhookSourceViewId") ?? "";
 
     if (!auth.isUser()) {
-      return c.json(
-        {
-          error: {
-            type: "webhook_source_view_auth_error",
-            message: "You are not authorized to access webhook source views.",
-          },
+      return apiError(c, {
+        status_code: 401,
+        api_error: {
+          type: "webhook_source_view_auth_error",
+          message: "You are not authorized to access webhook source views.",
         },
-        401
-      );
+      });
     }
     if (!auth.isAdmin()) {
-      return c.json(
-        {
-          error: {
-            type: "webhook_source_view_auth_error",
-            message:
-              "User is not authorized to remove webhook source views from a space.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "webhook_source_view_auth_error",
+          message:
+            "User is not authorized to remove webhook source views from a space.",
         },
-        403
-      );
+      });
     }
 
     const view = await WebhookSourcesViewResource.fetchById(
@@ -47,29 +45,25 @@ app.delete(
       webhookSourceViewId
     );
     if (!view || view.space.id !== space.id) {
-      return c.json(
-        {
-          error: {
-            type: "webhook_source_view_not_found",
-            message: "Webhook Source View not found",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "webhook_source_view_not_found",
+          message: "Webhook Source View not found",
         },
-        404
-      );
+      });
     }
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Can only delete Webhook Source Views from regular or global spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Can only delete Webhook Source Views from regular or global spaces.",
         },
-        400
-      );
+      });
     }
 
     try {
@@ -77,16 +71,14 @@ app.delete(
     } catch (err) {
       const e = normalizeError(err);
       if (e.name === "SequelizeForeignKeyConstraintError") {
-        return c.json(
-          {
-            error: {
-              type: "webhook_source_view_triggering_agent",
-              message:
-                "Cannot remove webhook source view while it is being used by active agents.",
-            },
+        return apiError(c, {
+          status_code: 409,
+          api_error: {
+            type: "webhook_source_view_triggering_agent",
+            message:
+              "Cannot remove webhook source view while it is being used by active agents.",
           },
-          409
-        );
+        });
       }
       throw e;
     }

@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { fetchInvitationsFromOtherRegion } from "@app/lib/api/regions/lookup";
 import { getUserFromSession } from "@app/lib/iam/session";
@@ -18,12 +20,10 @@ invitationsApp.get("/", async (c) => {
 
   const user = await getUserFromSession(session);
   if (!user) {
-    return c.json(
-      {
-        error: { type: "user_not_found", message: "User not found." },
-      },
-      404
-    );
+    return apiError(c, {
+      status_code: 404,
+      api_error: { type: "user_not_found", message: "User not found." },
+    });
   }
 
   const invitationResources =

@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
@@ -36,29 +38,25 @@ app.patch("/", validate("json", UpdateMCPToolSettingsBodySchema), async (c) => {
   const toolName = c.req.param("toolName") ?? "";
 
   if (!auth.isUser()) {
-    return c.json(
-      {
-        error: {
-          type: "mcp_auth_error",
-          message:
-            "You are not authorized to make request to inspect an MCP server.",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: "mcp_auth_error",
+        message:
+          "You are not authorized to make request to inspect an MCP server.",
       },
-      401
-    );
+    });
   }
 
   const { id } = getServerTypeAndIdFromSId(serverId);
   if (!id) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid server ID.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid server ID.",
       },
-      400
-    );
+    });
   }
 
   const { permission, enabled } = c.req.valid("json");

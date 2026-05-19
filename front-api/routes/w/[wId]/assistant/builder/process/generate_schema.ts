@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getBuilderJsonSchemaGenerator } from "@app/lib/api/assistant/json_schema_generator";
 import {
   getLargeWhitelistedModel,
@@ -23,15 +25,13 @@ app.post(
       ? await getSmallWhitelistedModel(auth)
       : await getLargeWhitelistedModel(auth);
     if (!model) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "No whitelisted models were found for the workspace.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "No whitelisted models were found for the workspace.",
         },
-        400
-      );
+      });
     }
 
     const schemaRes = await getBuilderJsonSchemaGenerator(auth, {
@@ -41,15 +41,13 @@ app.post(
     });
 
     if (schemaRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: `Error generating schema: ${JSON.stringify(schemaRes.error)}`,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Error generating schema: ${JSON.stringify(schemaRes.error)}`,
         },
-        500
-      );
+      });
     }
 
     return c.json({ schema: schemaRes.value.schema });

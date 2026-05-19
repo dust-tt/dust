@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import {
@@ -85,40 +87,33 @@ app.post(
 
     const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("projects")) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "Projects feature is not enabled for this workspace.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Projects feature is not enabled for this workspace.",
         },
-        403
-      );
+      });
     }
 
     if (!space.isProject()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Content node context can only be added to a project space.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Content node context can only be added to a project space.",
         },
-        400
-      );
+      });
     }
 
     if (!space.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message: "You do not have write access to this project.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have write access to this project.",
         },
-        403
-      );
+      });
     }
 
     const { items } = c.req.valid("json");

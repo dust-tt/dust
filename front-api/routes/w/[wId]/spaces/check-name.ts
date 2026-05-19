@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
 // Mounted under /api/w/:wId/spaces/check-name.
@@ -10,15 +12,13 @@ app.get("/", async (c) => {
   const name = c.req.query("name");
 
   if (!name || name.length === 0) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "The query parameter `name` is required.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The query parameter `name` is required.",
       },
-      400
-    );
+    });
   }
 
   // Find the space with this name (case-insensitive)

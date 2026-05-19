@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
@@ -40,30 +42,25 @@ app.post(
     const { webhookSourceId } = c.req.valid("json");
 
     if (!auth.isAdmin()) {
-      return c.json(
-        {
-          error: {
-            type: "webhook_source_view_auth_error",
-            message:
-              "User is not authorized to add webhook sources to a space.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "webhook_source_view_auth_error",
+          message: "User is not authorized to add webhook sources to a space.",
         },
-        403
-      );
+      });
     }
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Can only create webhook source views from regular or global spaces.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Can only create webhook source views from regular or global spaces.",
         },
-        400
-      );
+      });
     }
 
     const systemView =
@@ -72,16 +69,14 @@ app.post(
         webhookSourceId
       );
     if (!systemView) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Missing system view for webhook source, it should have been created when adding the webhook source.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Missing system view for webhook source, it should have been created when adding the webhook source.",
         },
-        400
-      );
+      });
     }
 
     const view = await WebhookSourcesViewResource.create(auth, {

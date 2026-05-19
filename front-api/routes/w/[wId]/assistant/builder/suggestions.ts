@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getBuilderSuggestions } from "@app/lib/api/assistant/suggestions";
 import { InternalPostBuilderSuggestionsRequestBodySchema } from "@app/types/api/internal/assistant";
 
@@ -17,15 +19,13 @@ app.post(
 
     const suggestionsRes = await getBuilderSuggestions(auth, type, inputs);
     if (suggestionsRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: suggestionsRes.error.message,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: suggestionsRes.error.message,
         },
-        500
-      );
+      });
     }
 
     return c.json(suggestionsRes.value);

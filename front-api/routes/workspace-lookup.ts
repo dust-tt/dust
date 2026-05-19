@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { fetchRevokedWorkspace } from "@app/lib/api/user";
@@ -25,12 +27,10 @@ workspaceLookupApp.get(
 
     const user = await getUserFromSession(session);
     if (!user) {
-      return c.json(
-        {
-          error: { type: "user_not_found", message: "User not found." },
-        },
-        404
-      );
+      return apiError(c, {
+        status_code: 404,
+        api_error: { type: "user_not_found", message: "User not found." },
+      });
     }
 
     const { flow } = c.req.valid("query");
@@ -43,15 +43,13 @@ workspaceLookupApp.get(
       const workspaceVerifiedDomain = result?.domainInfo.domain ?? null;
 
       if (!workspace || !workspaceVerifiedDomain) {
-        return c.json(
-          {
-            error: {
-              type: "workspace_not_found",
-              message: "Workspace not found.",
-            },
+        return apiError(c, {
+          status_code: 404,
+          api_error: {
+            type: "workspace_not_found",
+            message: "Workspace not found.",
           },
-          404
-        );
+        });
       }
 
       return c.json({
@@ -63,15 +61,13 @@ workspaceLookupApp.get(
 
     const result = await fetchRevokedWorkspace(user);
     if (result.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_not_found",
-            message: "Workspace not found.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "workspace_not_found",
+          message: "Workspace not found.",
         },
-        404
-      );
+      });
     }
 
     return c.json({

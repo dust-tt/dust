@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { MiddlewareHandler } from "hono";
 
 import { getSession, getSessionFromBearerToken } from "@app/lib/auth";
@@ -23,16 +24,13 @@ export const sessionAuth: MiddlewareHandler = async (c, next) => {
     c.req.header("authorization")
   );
   if (bearerRes.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: bearerRes.error,
-          message:
-            "The request does not have valid authentication credentials.",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: bearerRes.error,
+        message: "The request does not have valid authentication credentials.",
       },
-      401
-    );
+    });
   }
 
   const { req, res, setCookies } = buildNextLikeReqRes(c);
@@ -43,16 +41,14 @@ export const sessionAuth: MiddlewareHandler = async (c, next) => {
   }
 
   if (!session) {
-    return c.json(
-      {
-        error: {
-          type: "not_authenticated",
-          message:
-            "The user does not have an active session or is not authenticated.",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: "not_authenticated",
+        message:
+          "The user does not have an active session or is not authenticated.",
       },
-      401
-    );
+    });
   }
 
   c.set("session", session);

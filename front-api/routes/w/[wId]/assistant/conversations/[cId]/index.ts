@@ -1,8 +1,9 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
-import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
   buildAuditLogTarget,
@@ -17,7 +18,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-import { jsonApiError } from "@front-api/middleware/utils";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { validate } from "@front-api/middleware/validator";
 
 import attachments from "./attachments";
@@ -62,7 +63,7 @@ app.get("/", async (c) => {
       canAccess === "conversation_access_restricted"
         ? new ConversationError("conversation_access_restricted")
         : conversationRes.error;
-    return jsonApiError(c, getConversationApiError(error));
+    return apiErrorForConversation(c, error);
   }
 
   const conversation = conversationRes.value;
@@ -96,7 +97,7 @@ app.delete("/", async (c) => {
     forceDelete,
   });
   if (result.isErr()) {
-    return jsonApiError(c, getConversationApiError(result.error));
+    return apiErrorForConversation(c, result.error);
   }
 
   return c.body(null, 200);
@@ -112,7 +113,7 @@ app.patch(
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(auth, cId);
     if (conversationRes.isErr()) {
-      return jsonApiError(c, getConversationApiError(conversationRes.error));
+      return apiErrorForConversation(c, conversationRes.error);
     }
 
     const conversation = conversationRes.value;
@@ -126,7 +127,7 @@ app.patch(
       await ConversationResource.markAsReadForAuthUser(auth, { conversation });
 
       if (result.isErr()) {
-        return jsonApiError(c, getConversationApiError(result.error));
+        return apiErrorForConversation(c, result.error);
       }
       return c.json({ success: true });
     }
@@ -154,39 +155,31 @@ app.patch(
       }
       switch (r.error.code) {
         case "unauthorized":
-          return c.json(
-            {
-              error: { type: "user_not_found", message: r.error.message },
-            },
-            404
-          );
+          return apiError(c, {
+            status_code: 404,
+            api_error: { type: "user_not_found", message: r.error.message },
+          });
         case "space_not_found":
-          return c.json(
-            {
-              error: { type: "space_not_found", message: "Space not found" },
-            },
-            404
-          );
+          return apiError(c, {
+            status_code: 404,
+            api_error: { type: "space_not_found", message: "Space not found" },
+          });
         case "conversation_not_found":
-          return c.json(
-            {
-              error: {
-                type: "conversation_not_found",
-                message: "Conversation not found",
-              },
+          return apiError(c, {
+            status_code: 404,
+            api_error: {
+              type: "conversation_not_found",
+              message: "Conversation not found",
             },
-            404
-          );
+          });
         case "internal_error":
-          return c.json(
-            {
-              error: {
-                type: "internal_server_error",
-                message: "Internal server error",
-              },
+          return apiError(c, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Internal server error",
             },
-            500
-          );
+          });
         default:
           assertNever(r.error.code);
       }
@@ -199,7 +192,7 @@ app.patch(
         data.accessMode
       );
       if (result.isErr()) {
-        return jsonApiError(c, getConversationApiError(result.error));
+        return apiErrorForConversation(c, result.error);
       }
       return c.json({ success: true });
     }
@@ -211,53 +204,43 @@ app.patch(
       }
       switch (r.error.code) {
         case "unauthorized":
-          return c.json(
-            {
-              error: { type: "user_not_found", message: r.error.message },
-            },
-            404
-          );
+          return apiError(c, {
+            status_code: 404,
+            api_error: { type: "user_not_found", message: r.error.message },
+          });
         case "space_not_found":
-          return c.json(
-            {
-              error: { type: "space_not_found", message: "Space not found" },
-            },
-            404
-          );
+          return apiError(c, {
+            status_code: 404,
+            api_error: { type: "space_not_found", message: "Space not found" },
+          });
         case "conversation_not_found":
-          return c.json(
-            {
-              error: {
-                type: "conversation_not_found",
-                message: "Conversation not found",
-              },
+          return apiError(c, {
+            status_code: 404,
+            api_error: {
+              type: "conversation_not_found",
+              message: "Conversation not found",
             },
-            404
-          );
+          });
         case "internal_error":
-          return c.json(
-            {
-              error: {
-                type: "internal_server_error",
-                message: "Internal server error",
-              },
+          return apiError(c, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Internal server error",
             },
-            500
-          );
+          });
         default:
           assertNever(r.error.code);
       }
     }
 
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid request body",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid request body",
       },
-      400
-    );
+    });
   }
 );
 

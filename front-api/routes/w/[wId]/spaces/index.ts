@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import {
@@ -97,63 +99,52 @@ app.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
     !requestBody.isRestricted &&
     !areOpenProjectsAllowed(owner)
   ) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message:
-            "Open projects are disabled by your workspace admin. Create a private project instead.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Open projects are disabled by your workspace admin. Create a private project instead.",
       },
-      403
-    );
+    });
   }
 
   const spaceRes = await createSpaceAndGroup(auth, requestBody);
   if (spaceRes.isErr()) {
     switch (spaceRes.error.code) {
       case "limit_reached":
-        return c.json(
-          {
-            error: {
-              type: "plan_limit_error",
-              message:
-                "Limit of spaces allowed for your plan reached. Contact support to upgrade.",
-            },
+        return apiError(c, {
+          status_code: 403,
+          api_error: {
+            type: "plan_limit_error",
+            message:
+              "Limit of spaces allowed for your plan reached. Contact support to upgrade.",
           },
-          403
-        );
+        });
       case "space_already_exists":
-        return c.json(
-          {
-            error: {
-              type: "space_already_exists",
-              message: "Space with that name already exists.",
-            },
+        return apiError(c, {
+          status_code: 400,
+          api_error: {
+            type: "space_already_exists",
+            message: "Space with that name already exists.",
           },
-          400
-        );
+        });
       case "internal_error":
-        return c.json(
-          {
-            error: {
-              type: "internal_server_error",
-              message: spaceRes.error.message,
-            },
+        return apiError(c, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: spaceRes.error.message,
           },
-          500
-        );
+        });
       case "unauthorized":
-        return c.json(
-          {
-            error: {
-              type: "workspace_auth_error",
-              message:
-                "Only users that are `admins` can create regular spaces.",
-            },
+        return apiError(c, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only users that are `admins` can create regular spaces.",
           },
-          403
-        );
+        });
       default:
         assertNever(spaceRes.error.code);
     }

@@ -3,12 +3,12 @@ import { Hono } from "hono";
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import { buildOnboardingFollowUpPrompt } from "@app/lib/api/assistant/onboarding";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isString } from "@app/types/shared/utils/general";
 
-import { jsonApiError } from "@front-api/middleware/utils";
+import { apiError } from "@front-api/middleware/utils";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/onboarding-followup.
 const app = new Hono();
@@ -22,21 +22,18 @@ app.post("/", async (c) => {
   const { toolId } = body;
 
   if (!isString(toolId) || !isInternalMCPServerName(toolId)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message:
-            "Invalid request body, `toolId` (valid tool id) is required.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid request body, `toolId` (valid tool id) is required.",
       },
-      400
-    );
+    });
   }
 
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
-    return jsonApiError(c, getConversationApiError(conversationRes.error));
+    return apiErrorForConversation(c, conversationRes.error);
   }
 
   const conversation = conversationRes.value;
@@ -67,7 +64,7 @@ app.post("/", async (c) => {
   });
 
   if (messageRes.isErr()) {
-    return jsonApiError(c, messageRes.error);
+    return apiError(c, messageRes.error);
   }
 
   return c.json({ agentMessages: messageRes.value.agentMessages });

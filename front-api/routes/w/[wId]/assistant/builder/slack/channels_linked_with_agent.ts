@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -12,16 +14,14 @@ app.get("/", async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isBuilder()) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can modify linked Slack channels.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can modify linked Slack channels.",
       },
-      403
-    );
+    });
   }
 
   const [[dataSourceSlack], [dataSourceSlackBot]] = await Promise.all([
@@ -52,15 +52,13 @@ app.get("/", async (c) => {
   }
 
   if (!dataSource.connectorId) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_managed",
-          message: "The data source you requested is not managed.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "data_source_not_managed",
+        message: "The data source you requested is not managed.",
       },
-      400
-    );
+    });
   }
 
   if (
@@ -68,16 +66,14 @@ app.get("/", async (c) => {
     (dataSource.connectorProvider !== "slack_bot" &&
       dataSource.connectorProvider !== "slack")
   ) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_managed",
-          message:
-            "The data source you requested is not managed by a slack connector.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "data_source_not_managed",
+        message:
+          "The data source you requested is not managed by a slack connector.",
       },
-      400
-    );
+    });
   }
 
   const connectorsAPI = new ConnectorsAPI(
@@ -90,16 +86,13 @@ app.get("/", async (c) => {
     });
 
   if (linkedSlackChannelsRes.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message:
-            "An error occurred while fetching the linked Slack channels.",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "An error occurred while fetching the linked Slack channels.",
       },
-      500
-    );
+    });
   }
 
   return c.json({

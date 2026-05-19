@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -26,17 +28,15 @@ app.get(
       viewFilter: dataSourceView.toViewFilter(),
     });
     if (doc.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_error",
-            message:
-              "There was an error retrieving the data source view's document.",
-            data_source_error: doc.error,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "data_source_error",
+          message:
+            "There was an error retrieving the data source view's document.",
+          data_source_error: doc.error,
         },
-        400
-      );
+      });
     }
     return c.json({ document: doc.value.document });
   }

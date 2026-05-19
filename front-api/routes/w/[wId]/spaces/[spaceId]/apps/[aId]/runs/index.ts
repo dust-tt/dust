@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
 
@@ -31,37 +32,31 @@ async function loadApp(
   const space = c.get("space");
   const { aId } = c.req.param();
   if (!isString(aId)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid path parameters.",
       },
-      400
-    );
+    });
   }
 
   const appResource = await AppResource.fetchById(auth, aId);
   if (!appResource || appResource.space.sId !== space.sId) {
-    return c.json(
-      {
-        error: { type: "app_not_found", message: "The app was not found." },
-      },
-      404
-    );
+    return apiError(c, {
+      status_code: 404,
+      api_error: { type: "app_not_found", message: "The app was not found." },
+    });
   }
 
   if (!appResource.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message: "Creating a run requires write access to the app's space.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Creating a run requires write access to the app's space.",
       },
-      403
-    );
+    });
   }
 
   return { appResource };
@@ -91,28 +86,24 @@ app.get(
         wIdTarget
       );
       if (!target.isAdmin() || !auth.isDustSuperUser()) {
-        return c.json(
-          {
-            error: {
-              type: "workspace_auth_error",
-              message: "wIdTarget is only available to Dust super users.",
-            },
+        return apiError(c, {
+          status_code: 404,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "wIdTarget is only available to Dust super users.",
           },
-          404
-        );
+        });
       }
 
       const targetOwner = target.workspace();
       if (!targetOwner) {
-        return c.json(
-          {
-            error: {
-              type: "app_not_found",
-              message: "The app was not found.",
-            },
+        return apiError(c, {
+          status_code: 404,
+          api_error: {
+            type: "app_not_found",
+            message: "The app was not found.",
           },
-          404
-        );
+        });
       }
 
       logger.info(
@@ -153,15 +144,13 @@ app.get(
     });
 
     if (dustRuns.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "Runs retrieval failed.",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Runs retrieval failed.",
         },
-        500
-      );
+      });
     }
 
     return c.json({
@@ -195,16 +184,14 @@ app.post("/", spaceResource({ requireCanWrite: true }), async (c) => {
     !(typeof body.config == "string") ||
     !(typeof body.specification === "string")
   ) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message:
-            "The request body is invalid, expects { config: string, specificationHash: string }.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "The request body is invalid, expects { config: string, specificationHash: string }.",
       },
-      400
-    );
+    });
   }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -212,15 +199,13 @@ app.post("/", spaceResource({ requireCanWrite: true }), async (c) => {
     projectId: appResource.dustAPIProjectId,
   });
   if (datasets.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Datasets retrieval failed.",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Datasets retrieval failed.",
       },
-      500
-    );
+    });
   }
 
   const latestDatasets: { [key: string]: string } = {};
@@ -252,15 +237,13 @@ app.post("/", spaceResource({ requireCanWrite: true }), async (c) => {
   });
 
   if (dustRun.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "run_error",
-          message: "Run creation failed.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "run_error",
+        message: "Run creation failed.",
       },
-      400
-    );
+    });
   }
 
   await Promise.all([

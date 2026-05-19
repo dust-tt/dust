@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WorkspaceDomain } from "@app/types/workspace";
 
@@ -14,31 +16,27 @@ app.get("/", async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can access this endpoint.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can access this endpoint.",
       },
-      403
-    );
+    });
   }
 
   const workspace = auth.getNonNullableWorkspace();
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
 
   if (!workspaceResource) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to fetch the workspace.",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to fetch the workspace.",
       },
-      500
-    );
+    });
   }
 
   const verifiedDomains = await workspaceResource.getVerifiedDomains();

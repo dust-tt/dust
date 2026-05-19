@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -41,15 +43,13 @@ app.get("/", async (c) => {
   const availabilities = c.req.query("availabilities");
 
   if (!spaceIds || !availabilities) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid query parameters",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters",
       },
-      400
-    );
+    });
   }
 
   const queryValidation = GetMCPViewsRequestSchema.safeParse({
@@ -57,15 +57,13 @@ app.get("/", async (c) => {
     availabilities: availabilities.split(","),
   });
   if (!queryValidation.success) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: fromError(queryValidation.error).toString(),
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: fromError(queryValidation.error).toString(),
       },
-      400
-    );
+    });
   }
 
   const query = queryValidation.data;

@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -48,38 +49,32 @@ async function loadApp(
   const space = c.get("space");
   const { aId } = c.req.param();
   if (!isString(aId)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid path parameters.",
       },
-      400
-    );
+    });
   }
 
   const appResource = await AppResource.fetchById(auth, aId);
   if (!appResource || appResource.space.sId !== space.sId) {
-    return c.json(
-      {
-        error: { type: "app_not_found", message: "The app was not found." },
-      },
-      404
-    );
+    return apiError(c, {
+      status_code: 404,
+      api_error: { type: "app_not_found", message: "The app was not found." },
+    });
   }
 
   if (!appResource.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message:
-            "Interacting with datasets requires write access to the app's space.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Interacting with datasets requires write access to the app's space.",
       },
-      403
-    );
+    });
   }
 
   return { appResource, aId };
@@ -121,15 +116,13 @@ app.post(
     });
 
     if (existing.some((e) => e.name === body.dataset.name)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "The dataset name already exists in this app.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "The dataset name already exists in this app.",
         },
-        400
-      );
+      });
     }
 
     // Check name validity.
@@ -137,17 +130,15 @@ app.post(
       !body.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
       body.dataset.name.length === 0
     ) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "The dataset name must only contain alphanumeric characters and " +
-              "underscores and cannot be empty.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "The dataset name must only contain alphanumeric characters and " +
+            "underscores and cannot be empty.",
         },
-        400
-      );
+      });
     }
 
     // Check data validity.
@@ -157,15 +148,13 @@ app.post(
         schema: body.schema,
       });
     } catch {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "The data passed as request body is invalid.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "The data passed as request body is invalid.",
         },
-        400
-      );
+      });
     }
 
     // Reorder all keys as Dust API expects them ordered.
@@ -184,15 +173,13 @@ app.post(
       data,
     });
     if (dataset.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "The dataset creation failed.",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "The dataset creation failed.",
         },
-        500
-      );
+      });
     }
 
     const description = body.dataset.description

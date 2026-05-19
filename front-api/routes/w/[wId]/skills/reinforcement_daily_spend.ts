@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 
@@ -17,15 +19,13 @@ app.get("/", async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "Only admins can view self-improving skills daily spend.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only admins can view self-improving skills daily spend.",
       },
-      403
-    );
+    });
   }
 
   const period = await getCurrentPeriod(auth);

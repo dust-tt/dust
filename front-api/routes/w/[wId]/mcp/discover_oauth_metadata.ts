@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -42,15 +44,13 @@ app.post("/", validate("json", PostBodySchema), async (c) => {
   try {
     new URL(url);
   } catch {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid URL format. Please provide a valid URL.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid URL format. Please provide a valid URL.",
       },
-      400
-    );
+    });
   }
 
   const headers = headersArrayToRecord(customHeaders);
@@ -86,15 +86,13 @@ app.post("/", validate("json", PostBodySchema), async (c) => {
     });
   }
 
-  return c.json(
-    {
-      error: {
-        type: "internal_server_error",
-        message: discoveryRes.error.message,
-      },
+  return apiError(c, {
+    status_code: 500,
+    api_error: {
+      type: "internal_server_error",
+      message: discoveryRes.error.message,
     },
-    500
-  );
+  });
 });
 
 export default app;

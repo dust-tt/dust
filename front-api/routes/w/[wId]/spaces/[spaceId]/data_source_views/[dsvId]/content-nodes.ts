@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
@@ -33,29 +35,25 @@ app.post(
     const { internalIds, parentId, viewType, sorting } = c.req.valid("json");
 
     if (parentId && internalIds) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "Cannot fetch with parentId and internalIds at the same time.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Cannot fetch with parentId and internalIds at the same time.",
         },
-        400
-      );
+      });
     }
 
     const paginationRes = getCursorPaginationParams(c.req.query());
     if (paginationRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_pagination_parameters",
-            message: "Invalid pagination parameters",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_pagination_parameters",
+          message: "Invalid pagination parameters",
         },
-        400
-      );
+      });
     }
 
     const contentNodesRes = await getContentNodesForDataSourceView(
@@ -71,15 +69,13 @@ app.post(
       }
     );
     if (contentNodesRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: contentNodesRes.error.message,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: contentNodesRes.error.message,
         },
-        500
-      );
+      });
     }
     return c.json(contentNodesRes.value);
   }

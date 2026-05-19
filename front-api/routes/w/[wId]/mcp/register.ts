@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import {
@@ -41,19 +43,15 @@ app.post("/", validate("json", PostMCPRegisterRequestBodySchema), async (c) => {
   if (registration.isErr()) {
     const error = registration.error;
     if (error instanceof MCPServerInstanceLimitError) {
-      return c.json(
-        {
-          error: { type: "invalid_request_error", message: error.message },
-        },
-        400
-      );
+      return apiError(c, {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: error.message },
+      });
     }
-    return c.json(
-      {
-        error: { type: "internal_server_error", message: error.message },
-      },
-      500
-    );
+    return apiError(c, {
+      status_code: 500,
+      api_error: { type: "internal_server_error", message: error.message },
+    });
   }
 
   return c.json(registration.value);

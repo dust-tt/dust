@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
@@ -22,45 +24,39 @@ app.get("/", validate("query", GetCouponValidateQuerySchema), async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can access this endpoint.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can access this endpoint.",
       },
-      403
-    );
+    });
   }
 
   const { code } = c.req.valid("query");
 
   const coupon = await CouponResource.findByCode(code);
   if (!coupon) {
-    return c.json(
-      {
-        error: {
-          type: "coupon_not_found",
-          message: "Coupon not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "coupon_not_found",
+        message: "Coupon not found.",
       },
-      404
-    );
+    });
   }
 
   const validationResult = coupon.validateRedemption();
   if (validationResult.isErr()) {
     const { code: errorCode } = validationResult.error;
-    return c.json(
-      {
-        error: {
-          type: "coupon_not_redeemable",
-          message: `Coupon is not redeemable: ${errorCode}.`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "coupon_not_redeemable",
+        message: `Coupon is not redeemable: ${errorCode}.`,
       },
-      400
-    );
+    });
   }
 
   const existingRedemption =
@@ -69,15 +65,13 @@ app.get("/", validate("query", GetCouponValidateQuerySchema), async (c) => {
       { coupon }
     );
   if (existingRedemption) {
-    return c.json(
-      {
-        error: {
-          type: "coupon_already_redeemed",
-          message: "This coupon has already been redeemed by this workspace.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "coupon_already_redeemed",
+        message: "This coupon has already been redeemed by this workspace.",
       },
-      400
-    );
+    });
   }
 
   const body: GetCouponValidateResponseBody = { coupon: coupon.toJSON() };

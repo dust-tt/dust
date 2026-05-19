@@ -1,12 +1,13 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
-import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 
-import { jsonApiError } from "@front-api/middleware/utils";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { validate } from "@front-api/middleware/validator";
 
 const ConversationSkillActionRequestSchema = z.object({
@@ -27,7 +28,7 @@ app.get("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return jsonApiError(c, getConversationApiError(conversationRes.error));
+    return apiErrorForConversation(c, conversationRes.error);
   }
 
   const conversationSkills = await SkillResource.listEnabledByConversation(
@@ -51,7 +52,7 @@ app.post(
         conversationId
       );
     if (conversationRes.isErr()) {
-      return jsonApiError(c, getConversationApiError(conversationRes.error));
+      return apiErrorForConversation(c, conversationRes.error);
     }
 
     const conversationWithoutContent = conversationRes.value;
@@ -68,15 +69,13 @@ app.post(
         },
         "Skill not found"
       );
-      return c.json(
-        {
-          error: {
-            type: "skill_not_found",
-            message: "Skill not found",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "skill_not_found",
+          message: "Skill not found",
         },
-        404
-      );
+      });
     }
 
     const r = await SkillResource.upsertConversationSkills(auth, {
@@ -95,15 +94,13 @@ app.post(
         },
         "Failed to upsert skill to conversation"
       );
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "Failed to add skill to conversation",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to add skill to conversation",
         },
-        500
-      );
+      });
     }
 
     return c.json({ success: true });

@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
@@ -23,15 +25,13 @@ app.post(
     const { starred } = c.req.valid("json");
 
     if (!space.isProject()) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "You can only star Pods.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "You can only star Pods.",
         },
-        400
-      );
+      });
     }
 
     const pref = await UserProjectPreferencesResource.setStarred(auth, {

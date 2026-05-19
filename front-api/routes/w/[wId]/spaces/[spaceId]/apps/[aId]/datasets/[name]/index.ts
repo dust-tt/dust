@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
 
@@ -36,50 +37,41 @@ async function loadAppAndDataset(c: Context): Promise<
   const space = c.get("space");
   const { aId, name } = c.req.param();
   if (!isString(aId) || !isString(name)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid path parameters.",
       },
-      400
-    );
+    });
   }
   const owner = auth.workspace();
   if (!owner) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_not_found",
-          message: "The workspace was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
       },
-      404
-    );
+    });
   }
 
   const appResource = await AppResource.fetchById(auth, aId);
   if (!appResource || appResource.space.sId !== space.sId) {
-    return c.json(
-      {
-        error: { type: "app_not_found", message: "The app was not found." },
-      },
-      404
-    );
+    return apiError(c, {
+      status_code: 404,
+      api_error: { type: "app_not_found", message: "The app was not found." },
+    });
   }
 
   if (!appResource.canRead(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message:
-            "Querying a dataset requires read access to the app's space.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Querying a dataset requires read access to the app's space.",
       },
-      403
-    );
+    });
   }
 
   const dataset = await DatasetModel.findOne({
@@ -90,16 +82,14 @@ async function loadAppAndDataset(c: Context): Promise<
     },
   });
   if (!dataset) {
-    return c.json(
-      {
-        error: {
-          type: "dataset_not_found",
-          message:
-            "The dataset you're trying to view, modify or delete was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "dataset_not_found",
+        message:
+          "The dataset you're trying to view, modify or delete was not found.",
       },
-      404
-    );
+    });
   }
 
   return { appResource, dataset, aId, name };
@@ -140,16 +130,14 @@ app.post(
     const auth = c.get("auth");
 
     if (!appResource.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "app_auth_error",
-            message:
-              "Interacting with datasets requires write access to the app's space.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "Interacting with datasets requires write access to the app's space.",
         },
-        403
-      );
+      });
     }
 
     const body = c.req.valid("json");
@@ -159,29 +147,25 @@ app.post(
       !body.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
       body.dataset.name.length === 0
     ) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "The dataset name must only contain alphanumeric characters and " +
-              "underscores and cannot be empty.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "The dataset name must only contain alphanumeric characters and " +
+            "underscores and cannot be empty.",
         },
-        400
-      );
+      });
     }
     if (name !== body.dataset.name) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message:
-              "The dataset name in the request body does not match the one in the path.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "The dataset name in the request body does not match the one in the path.",
         },
-        400
-      );
+      });
     }
 
     // Check data validity.
@@ -191,15 +175,13 @@ app.post(
         schema: body.schema,
       });
     } catch {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: "The data passed as request body is invalid.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "The data passed as request body is invalid.",
         },
-        400
-      );
+      });
     }
 
     // Reorder all keys as Dust API expects them ordered.
@@ -219,15 +201,13 @@ app.post(
       data,
     });
     if (d.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "The dataset creation failed.",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "The dataset creation failed.",
         },
-        500
-      );
+      });
     }
 
     const description = body.dataset.description
@@ -260,16 +240,13 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
   const owner = auth.getNonNullableWorkspace();
 
   if (!appResource.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "app_auth_error",
-          message:
-            "Deleting a dataset requires write access to the app's space.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Deleting a dataset requires write access to the app's space.",
       },
-      403
-    );
+    });
   }
 
   await DatasetModel.destroy({

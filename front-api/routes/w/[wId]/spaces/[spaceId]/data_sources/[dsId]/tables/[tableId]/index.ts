@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { upsertTable } from "@app/lib/api/data_sources";
 import { deleteTable } from "@app/lib/api/tables";
 import { PatchDataSourceTableRequestBodySchema } from "@app/types/api/public/data_sources";
@@ -23,27 +25,23 @@ app.patch(
     const tableId = c.req.param("tableId") ?? "";
 
     if (!dataSource.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message: "You are not allowed to update data in this data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You are not allowed to update data in this data source.",
         },
-        403
-      );
+      });
     }
 
     if (dataSource.connectorId) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message: "You cannot upsert a document on a managed data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You cannot upsert a document on a managed data source.",
         },
-        403
-      );
+      });
     }
 
     const body = c.req.valid("json");
@@ -57,15 +55,13 @@ app.patch(
       dataSource,
     });
     if (upsertRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "There was an error upserting the document.",
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "There was an error upserting the document.",
         },
-        500
-      );
+      });
     }
 
     return c.json({ table: upsertRes.value?.table });
@@ -82,15 +78,13 @@ app.delete(
     const tableId = c.req.param("tableId") ?? "";
 
     if (!dataSource.canWrite(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message: "You are not allowed to delete data in this data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You are not allowed to delete data in this data source.",
         },
-        403
-      );
+      });
     }
 
     const delRes = await deleteTable({
@@ -101,26 +95,22 @@ app.delete(
     if (delRes.isErr()) {
       switch (delRes.error.type) {
         case "not_found_error":
-          return c.json(
-            {
-              error: {
-                type: delRes.error.notFoundError.type,
-                message: delRes.error.notFoundError.message,
-              },
+          return apiError(c, {
+            status_code: 404,
+            api_error: {
+              type: delRes.error.notFoundError.type,
+              message: delRes.error.notFoundError.message,
             },
-            404
-          );
+          });
         case "invalid_request_error":
         case "internal_server_error":
-          return c.json(
-            {
-              error: {
-                type: "internal_server_error",
-                message: "Failed to delete table.",
-              },
+          return apiError(c, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to delete table.",
             },
-            500
-          );
+          });
         default:
           assertNever(delRes.error);
       }

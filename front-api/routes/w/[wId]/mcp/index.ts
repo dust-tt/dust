@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
@@ -95,7 +97,10 @@ app.post("/", validate("json", PostBodySchema), async (c) => {
         400
       );
     }
-    return c.json({ error: { type: "invalid_request_error", message } }, 400);
+    return apiError(c, {
+      status_code: 400,
+      api_error: { type: "invalid_request_error", message },
+    });
   }
 
   return c.json({ success: true, server: result.value }, 201);

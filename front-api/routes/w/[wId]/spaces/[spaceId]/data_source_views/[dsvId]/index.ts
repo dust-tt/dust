@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import config from "@app/lib/api/config";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
@@ -56,16 +58,14 @@ app.patch(
     const isSaveDataSourceViewsEnabled =
       await KillSwitchResource.isKillSwitchEnabled("save_data_source_views");
     if (isSaveDataSourceViewsEnabled) {
-      return c.json(
-        {
-          error: {
-            type: "app_auth_error",
-            message:
-              "Saving data source views is temporarily disabled, try again later.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "Saving data source views is temporarily disabled, try again later.",
         },
-        400
-      );
+      });
     }
 
     const r = await handlePatchDataSourceView(
@@ -76,25 +76,21 @@ app.patch(
     if (r.isErr()) {
       switch (r.error.code) {
         case "unauthorized":
-          return c.json(
-            {
-              error: {
-                type: "workspace_auth_error",
-                message: r.error.message,
-              },
+          return apiError(c, {
+            status_code: 401,
+            api_error: {
+              type: "workspace_auth_error",
+              message: r.error.message,
             },
-            401
-          );
+          });
         case "internal_error":
-          return c.json(
-            {
-              error: {
-                type: "internal_server_error",
-                message: r.error.message,
-              },
+          return apiError(c, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: r.error.message,
             },
-            500
-          );
+          });
         default:
           assertNever(r.error.code);
       }
@@ -126,32 +122,28 @@ app.delete(
     const dataSourceView = c.get("dataSourceView");
 
     if (!dataSourceView.canAdministrate(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "workspace_auth_error",
-            message: "Only users that are `admins` can administrate spaces.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only users that are `admins` can administrate spaces.",
         },
-        403
-      );
+      });
     }
 
     const force = c.req.query("force") === "true";
     if (!force) {
       const usageRes = await dataSourceView.getUsagesByAgents(auth);
       if (usageRes.isErr() || usageRes.value.count > 0) {
-        return c.json(
-          {
-            error: {
-              type: "data_source_error",
-              message: usageRes.isOk()
-                ? `The data source view is in use by ${usageRes.value.agents.map((a) => a.name).join(", ")} and cannot be deleted.`
-                : "The data source view is in use and cannot be deleted.",
-            },
+        return apiError(c, {
+          status_code: 401,
+          api_error: {
+            type: "data_source_error",
+            message: usageRes.isOk()
+              ? `The data source view is in use by ${usageRes.value.agents.map((a) => a.name).join(", ")} and cannot be deleted.`
+              : "The data source view is in use and cannot be deleted.",
           },
-          401
-        );
+        });
       }
     }
 

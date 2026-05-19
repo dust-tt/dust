@@ -1,3 +1,4 @@
+import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import type { Country } from "react-phone-number-input";
@@ -43,15 +44,13 @@ app.get("/", async (c) => {
   const auth = c.get("auth");
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "Only admins can access this endpoint.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only admins can access this endpoint.",
       },
-      403
-    );
+    });
   }
 
   const isEligibleForTrial = await isWorkspaceEligibleForTrial(auth);

@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -35,15 +37,13 @@ app.get("/", validate("query", MembersLookupQuerySchema), async (c) => {
   }
 
   if (ids.length > MEMBERS_LOOKUP_MAX_IDS) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Too many ids provided. Maximum is ${MEMBERS_LOOKUP_MAX_IDS}.`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Too many ids provided. Maximum is ${MEMBERS_LOOKUP_MAX_IDS}.`,
       },
-      400
-    );
+    });
   }
 
   const uniqueIds = Array.from(new Set(ids));
