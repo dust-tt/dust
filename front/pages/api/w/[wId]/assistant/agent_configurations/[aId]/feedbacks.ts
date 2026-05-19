@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import {

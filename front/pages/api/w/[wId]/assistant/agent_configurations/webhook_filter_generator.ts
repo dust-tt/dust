@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

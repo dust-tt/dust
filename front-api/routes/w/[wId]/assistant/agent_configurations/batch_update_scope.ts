@@ -1,0 +1,50 @@
+import { Hono } from "hono";
+import { z } from "zod";
+
+import { updateAgentConfigurationsScope } from "@app/lib/api/assistant/configuration/agent";
+
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
+
+const BatchUpdateAgentScopeRequestBodySchema = z.object({
+  agentIds: z.array(z.string()),
+  scope: z.enum(["hidden", "visible"]),
+});
+
+// Mounted at /api/w/:wId/assistant/agent_configurations/batch_update_scope.
+const app = new Hono();
+
+app.post(
+  "/",
+  validate("json", BatchUpdateAgentScopeRequestBodySchema),
+  async (c) => {
+    const auth = c.get("auth");
+
+    if (!auth.isBuilder()) {
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "You do not have the required permissions.",
+        },
+      });
+    }
+
+    const { agentIds, scope } = c.req.valid("json");
+
+    const result = await updateAgentConfigurationsScope(auth, agentIds, scope);
+    if (result.isErr()) {
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: result.error.message,
+        },
+      });
+    }
+
+    return c.json({ success: true });
+  }
+);
+
+export default app;

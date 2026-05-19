@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
