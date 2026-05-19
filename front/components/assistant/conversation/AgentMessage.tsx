@@ -410,6 +410,11 @@ export function AgentMessage({
             }
             if (action.internalMCPServerName === "sandbox") {
               void mutateSandboxStatus();
+            }
+            if (
+              action.internalMCPServerName === "sandbox" ||
+              action.generatedFiles.length > 0
+            ) {
               void mutateSandboxFiles();
             }
             if (action.internalMCPServerName === "wakeups") {
