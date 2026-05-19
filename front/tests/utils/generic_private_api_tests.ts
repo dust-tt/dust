@@ -24,6 +24,18 @@ vi.mock(import("../../lib/auth"), async (importOriginal) => {
   };
 });
 
+// Hono middlewares bypass `getSession` and call `getWorkOSSessionWithSetCookies`
+// directly. Mock it here so tests using `createPrivateApiMockRequest` against
+// Hono routes resolve the same authenticated session as Next tests.
+vi.mock(import("../../lib/api/workos/user"), async (importOriginal) => {
+  const mod = await importOriginal();
+  return {
+    ...mod,
+    getWorkOSSessionWithSetCookies: vi.fn(),
+  };
+});
+
+import { getWorkOSSessionWithSetCookies } from "../../lib/api/workos/user";
 import { Authenticator, getSession } from "../../lib/auth";
 
 /**
@@ -69,25 +81,28 @@ export const createPrivateApiMockRequest = async ({
   });
 
   // Mock the getSession function to return the user without going through the workos session
-  vi.mocked(getSession).mockReturnValue(
-    Promise.resolve({
-      type: "workos",
-      sessionId: "test-session-id",
-      user: {
-        workOSUserId: user.workOSUserId!,
-        email: user.email!,
-        email_verified: true,
-        name: user.username!,
-        nickname: user.username!,
-        organizations: [],
-      },
-      authenticationMethod: "GoogleOAuth",
-      isSSO: false,
-      workspaceId: workspace.sId,
-      organizationId: workspace.workOSOrganizationId ?? undefined,
-      region: "us-central1",
-    })
-  );
+  const session = {
+    type: "workos" as const,
+    sessionId: "test-session-id",
+    user: {
+      workOSUserId: user.workOSUserId!,
+      email: user.email!,
+      email_verified: true,
+      name: user.username!,
+      nickname: user.username!,
+      organizations: [],
+    },
+    authenticationMethod: "GoogleOAuth",
+    isSSO: false,
+    workspaceId: workspace.sId,
+    organizationId: workspace.workOSOrganizationId ?? undefined,
+    region: "us-central1" as const,
+  };
+  vi.mocked(getSession).mockReturnValue(Promise.resolve(session));
+  vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
+    session,
+    setCookies: [],
+  });
 
   const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
     method: method,
