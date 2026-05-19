@@ -178,9 +178,9 @@ runs:
           LATEST_TAGS+=("-t" "${REGISTRY}/${COMPONENT}:latest")
         fi
 
-        # Special handling for front component, build both front and workers targets
+        # Special handling for front component, build front, workers and front-api targets
         if [[ "$BASE_COMPONENT" == "front" ]]; then
-          echo "🏗️ Building front component with dual targets (front + workers)"
+          echo "🏗️ Building front component with three targets (front + workers + front-api)"
 
           # Build front target
           depot build \
@@ -218,6 +218,29 @@ runs:
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
             -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}-workers:${{ inputs.commit_sha }} \
             "${LATEST_TAGS_WORKERS[@]}" \
+            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            ${build_args[@]} \
+            --push \
+            .
+
+          # Build front-api target
+          LATEST_TAGS_API=()
+          if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
+            LATEST_TAGS_API+=("-t" "${REGISTRY}/${COMPONENT}-api:latest")
+          fi
+          depot build \
+            --project $DEPOT_PROJECT_ID \
+            --platform linux/amd64 \
+            --provenance=false \
+            --target front-api \
+            --cache-from type=gha,scope=${{ inputs.component }}-deps \
+            --cache-from type=gha,scope=${{ inputs.component }}-front-api \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-front-api \
+            -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}-api:${{ inputs.commit_sha }} \
+            "${LATEST_TAGS_API[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \

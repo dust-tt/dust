@@ -24,7 +24,6 @@ on:
           - connectors
           - core
           - front-sse
-          - front-api
           - prodbox
           - oauth
           - viz
@@ -212,7 +211,7 @@ jobs:
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy:
-    needs: [ prepare, notify-start, build, deploy-app, deploy-poke, ensure-sandbox-images ]
+    needs: [ prepare, notify-start, build, deploy-app, deploy-poke, deploy-app-bleeding-edge, deploy-poke-bleeding-edge, ensure-sandbox-images ]
     if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
@@ -240,6 +239,8 @@ jobs:
           DEPLOY_SPA_POKE: ${{ inputs.deploy_spa_poke }}
           SPA_APP_VERSION_ID: ${{ needs.deploy-app.outputs.version_id }}
           SPA_POKE_VERSION_ID: ${{ needs.deploy-poke.outputs.version_id }}
+          SPA_APP_BLEEDING_EDGE_VERSION_ID: ${{ needs.deploy-app-bleeding-edge.outputs.version_id }}
+          SPA_POKE_BLEEDING_EDGE_VERSION_ID: ${{ needs.deploy-poke-bleeding-edge.outputs.version_id }}
           PLAYWRIGHT_SHA: ${{ github.sha }}
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
@@ -277,6 +278,8 @@ jobs:
                   slack_channel: process.env.SLACK_CHANNEL,
                   spa_app_version_id: process.env.SPA_APP_VERSION_ID,
                   spa_poke_version_id: process.env.SPA_POKE_VERSION_ID,
+                  spa_app_bleeding_edge_version_id: process.env.SPA_APP_BLEEDING_EDGE_VERSION_ID,
+                  spa_poke_bleeding_edge_version_id: process.env.SPA_POKE_BLEEDING_EDGE_VERSION_ID,
                 },
               });
             }
@@ -320,6 +323,28 @@ jobs:
     with:
       app: "poke"
       env: ${{ inputs.component == 'front-edge' && 'edge' || 'prod' }}
+      region: "us"
+      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+    secrets: inherit
+
+  deploy-app-bleeding-edge:
+    if: inputs.component == 'front' && inputs.deploy_spa_app
+    needs: [ notify-start ]
+    uses: ./.github/workflows/deploy-spa.yaml
+    with:
+      app: "app"
+      env: "bleeding-edge"
+      region: "us"
+      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
+    secrets: inherit
+
+  deploy-poke-bleeding-edge:
+    if: inputs.component == 'front' && inputs.deploy_spa_poke
+    needs: [ notify-start ]
+    uses: ./.github/workflows/deploy-spa.yaml
+    with:
+      app: "poke"
+      env: "bleeding-edge"
       region: "us"
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
     secrets: inherit
