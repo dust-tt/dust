@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import builder from "./builder";
+import conversations from "./conversations";
 import mentions from "./mentions";
 import skills from "./skills";
 
@@ -9,6 +10,7 @@ import skills from "./skills";
 const app = new Hono();
 
 app.route("/builder", builder);
+app.route("/conversations", conversations);
 app.route("/mentions", mentions);
 app.route("/skills", skills);
 
