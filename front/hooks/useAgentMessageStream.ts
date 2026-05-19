@@ -313,6 +313,17 @@ export function useAgentMessageStream({
   // and same-millisecond re-processing produces duplicate React keys.
   const seenEventIds = useRef<Set<string>>(new Set());
 
+  // Once a terminal event (agent_message_success, agent_error, etc.) is
+  // received, we must stop reconnecting entirely. Without this, a race between
+  // Virtuoso's deferred item re-render (which updates `agentMessage.status` and
+  // flips `shouldStream` to false) and the immediate React re-render triggered
+  // by the SSE `done` frame causes the effect to fire with `shouldStream` still
+  // true, reconnecting to the server. The server then replays history including
+  // `end-of-stream`, after which every subsequent reconnect gets an empty
+  // history and another immediate `done`, producing an infinite loop.
+  // Returning null from buildEventSourceURL breaks the loop at the source.
+  const isStreamTerminated = useRef(false);
+
   useEffect(() => {
     return () => {
       updateMessageThrottled.cancel();
@@ -341,6 +352,9 @@ export function useAgentMessageStream({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
+      if (isStreamTerminated.current) {
+        return null;
+      }
       const esURL = `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
@@ -374,6 +388,7 @@ export function useAgentMessageStream({
         case "end-of-stream":
           // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
           // end of the stream to the client. So we just return.
+          isStreamTerminated.current = true;
           return;
 
         case "tool_ask_user_question":
@@ -587,6 +602,7 @@ export function useAgentMessageStream({
 
         case "tool_error":
         case "agent_error":
+          isStreamTerminated.current = true;
           updateMessageThrottled.cancel();
           const error = eventPayload.data.error;
           methods.data.map((m) => {
@@ -627,6 +643,7 @@ export function useAgentMessageStream({
           break;
 
         case "agent_generation_cancelled": {
+          isStreamTerminated.current = true;
           updateMessageThrottled.cancel();
           const cancelData = eventPayload.data;
           if (cancelData.type !== "agent_generation_cancelled") {
@@ -660,6 +677,7 @@ export function useAgentMessageStream({
 
         case "agent_message_gracefully_stopped":
         case "agent_message_success": {
+          isStreamTerminated.current = true;
           updateMessageThrottled.cancel();
           const messageSuccess = eventPayload.data;
           // Flush any remaining CoT (but not content — the final text segment
