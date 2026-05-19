@@ -357,7 +357,9 @@ export async function renameGCSMountFile(
     await bucket.copyFile(oldGcsPath, newGcsPath);
     await bucket.delete(oldGcsPath);
 
-    // Mirror the rename on the pods/ side for project files
+    // Mirror the rename on the pods/ side for project files. We copy from the new canonical
+    // projects/ path (instead of an old pods/ path that may not exist for files predating the
+    // dual-write) — this also opportunistically backfills the pods/ side as files get renamed.
     if (scope.useCase === "project") {
       const podsPrefix = getPodsFilesBasePath({
         workspaceId: owner.sId,
@@ -365,8 +367,8 @@ export async function renameGCSMountFile(
       });
       const oldPodsPath = `${podsPrefix}${relativeFilePath}`;
       const newPodsPath = `${podsPrefix}${dir}${newFileName}`;
-      await bucket.copyFile(oldPodsPath, newPodsPath);
-      await bucket.delete(oldPodsPath);
+      await bucket.copyFile(newGcsPath, newPodsPath);
+      await bucket.delete(oldPodsPath, { ignoreNotFound: true });
     }
 
     return new Ok({ newGcsPath });
