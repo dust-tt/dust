@@ -113,6 +113,10 @@ impl MitmCa {
     }
 
     pub async fn server_config_for(&self, sni: &str) -> Result<Arc<ServerConfig>> {
+        // Idempotent. Keeps focused tests (e.g. `cargo test server_config_for`)
+        // from panicking when no other test installed the provider first.
+        let _ = rustls::crypto::ring::default_provider().install_default();
+
         let certified = self.get_or_mint_leaf(sni).await?;
         let resolver = SingleCertResolver { key: certified };
         let mut config = ServerConfig::builder()

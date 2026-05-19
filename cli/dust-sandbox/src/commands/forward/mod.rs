@@ -591,6 +591,94 @@ mod tests {
         Ok(())
     }
 
+    // SNI-miss path: dsbx does not terminate, just splices. The agent's TLS
+    // client must see the upstream's real cert chain (not the dsbx CA),
+    // which is the load-bearing property of the splice branch.
+    #[tokio::test]
+    async fn splice_session_preserves_upstream_chain() -> Result<()> {
+        let sni = "other.com";
+        let mitm_ca = Arc::new(MitmCa::generate()?);
+        let (upstream_server_config, upstream_ca_der) = test_upstream_server_config(sni)?;
+
+        // Empty allowlist union means the branch decision is splice for any SNI.
+        let secret_table = SecretTable::default();
+        assert_eq!(mitm_target_for(443, sni, &secret_table), None);
+
+        let (agent_client_io, mut agent_dsbx_io) = tokio::io::duplex(4096);
+        let (mut dsbx_proxy_io, upstream_server_io) = tokio::io::duplex(4096);
+
+        let upstream_task = tokio::spawn(async move {
+            let acceptor = TlsAcceptor::from(upstream_server_config);
+            let mut tls = acceptor
+                .accept(upstream_server_io)
+                .await
+                .context("test upstream failed to accept TLS")?;
+
+            let mut request = [0_u8; 4];
+            tls.read_exact(&mut request)
+                .await
+                .context("test upstream failed to read request bytes")?;
+            assert_eq!(&request, b"ping");
+            tls.write_all(b"pong")
+                .await
+                .context("test upstream failed to write response bytes")?;
+            let mut tail = Vec::new();
+            tls.read_to_end(&mut tail)
+                .await
+                .context("test upstream failed to read client close")?;
+            tls.shutdown()
+                .await
+                .context("test upstream failed to shut down TLS")?;
+            Ok::<(), anyhow::Error>(())
+        });
+
+        // Trust ONLY the upstream's real CA. If dsbx silently terminated and
+        // re-signed with its own CA, the agent connect would fail.
+        let agent_connector = test_tls_connector(upstream_ca_der, Vec::new())?;
+        let mitm_ca_subject = mitm_ca.ca_cert_der();
+        let agent_task = tokio::spawn(async move {
+            let server_name =
+                ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
+            let mut tls = agent_connector
+                .connect(server_name, agent_client_io)
+                .await
+                .context("test agent failed to connect through dsbx splice")?;
+
+            let observed_chain = tls.get_ref().1.peer_certificates().unwrap_or(&[]);
+            let observed_leaf = observed_chain.first().expect("expected leaf cert").to_vec();
+            assert_ne!(
+                observed_leaf,
+                mitm_ca_subject.to_vec(),
+                "splice path leaked the dsbx MITM CA into the agent's TLS view"
+            );
+
+            tls.write_all(b"ping")
+                .await
+                .context("test agent failed to write request bytes")?;
+            let mut response = [0_u8; 4];
+            tls.read_exact(&mut response)
+                .await
+                .context("test agent failed to read response bytes")?;
+            assert_eq!(&response, b"pong");
+            tls.shutdown()
+                .await
+                .context("test agent failed to shut down TLS")?;
+            Ok::<(), anyhow::Error>(())
+        });
+
+        tokio::io::copy_bidirectional(&mut agent_dsbx_io, &mut dsbx_proxy_io)
+            .await
+            .ok();
+        agent_task.await.context("test agent task panicked")??;
+        upstream_task
+            .await
+            .context("test upstream task panicked")??;
+
+        // Silence the dead variable warning when MitmCa stays unused on this path.
+        let _ = mitm_ca;
+        Ok(())
+    }
+
     fn secret_table(patterns: &[&str]) -> Result<SecretTable> {
         let allowed_domains = patterns
             .iter()
