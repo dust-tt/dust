@@ -206,7 +206,7 @@
     "redis": "^4.6.8",
     "remove-markdown": "^0.5.0",
     "sanitize-html": "^2.13.0",
-    "sequelize": "^6.31.0",
+    "sequelize": "6.37.8",
     "slackify-markdown": "^4.4.0",
     "snowflake-sdk": "^2.3.3",
     "sqids": "^0.3.0",
