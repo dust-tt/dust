@@ -239,6 +239,20 @@ function pad(value: string, width: number): string {
     : value + " ".repeat(width - value.length);
 }
 
+function isProxyDenyEntry(value: unknown, expectedDomain: string): boolean {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  if (!("domain" in value && "port" in value && "reason" in value)) {
+    return false;
+  }
+  return (
+    value.domain === expectedDomain &&
+    value.port === 443 &&
+    value.reason === "proxy_denied"
+  );
+}
+
 async function runMatrixCase(c: MatrixCase): Promise<boolean> {
   await writeTokenFile(mintJwt(c.overrides));
   await truncateDenyLog();
@@ -256,20 +270,13 @@ async function runMatrixCase(c: MatrixCase): Promise<boolean> {
     if (c.expected === "DENY") {
       const log = await readDenyLogLines();
       const denyLine = log.find((line) => {
+        let parsed: unknown;
         try {
-          const parsed = JSON.parse(line) as {
-            domain?: string;
-            port?: number;
-            reason?: string;
-          };
-          return (
-            parsed.domain === c.domain &&
-            parsed.port === 443 &&
-            parsed.reason === "proxy_denied"
-          );
+          parsed = JSON.parse(line);
         } catch {
           return false;
         }
+        return isProxyDenyEntry(parsed, c.domain);
       });
       if (denyLine) {
         details = "deny_log=ok";
