@@ -81,6 +81,7 @@ export const MISTRAL_MEDIUM_3_5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
   tokenizer: { type: "sentence_piece", base: "model_v2" },
   supportsBatchProcessing: true,
+  supportsResponseFormat: true,
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
