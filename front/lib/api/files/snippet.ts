@@ -16,6 +16,10 @@ import { Err, Ok } from "@app/types/shared/result";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
+export const PASTED_CONTENT_MAX_CHARACTERS = 128 * 1024;
+export const TRUNCATED_SUFFIX = "... (truncated)";
+const TRUNCATED_TEXT_SIZE = 256 - TRUNCATED_SUFFIX.length;
+
 export async function generateSnippet(
   auth: Authenticator,
   {
@@ -51,7 +55,7 @@ export async function generateSnippet(
 
     let snippet = `${file.contentType} file with headers: ${schemaRes.value.schema.map((c) => c.name).join(",")}`;
     if (snippet.length > 256) {
-      snippet = snippet.slice(0, 242) + "... (truncated)";
+      snippet = snippet.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX;
     }
 
     return new Ok(snippet);
@@ -64,13 +68,19 @@ export async function generateSnippet(
     }
 
     if (isPastedFile(file.contentType)) {
-      // Include all the text content, as if they were pasted directly in the conversation.
+      // Include the full pasted text up to 128K characters. Beyond that, truncate to 256
+      // characters like a regular text file to avoid blowing up the conversation context.
+      // We really want to avoid having a snippet which is both large and truncated,
+      // otherwise the model will pay the cost of the large snippet + read the file.
+      if (content.length > PASTED_CONTENT_MAX_CHARACTERS) {
+        return new Ok(content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX);
+      }
       return new Ok(content);
     }
 
     // Take the first 256 characters
     if (content.length > 256) {
-      return new Ok(content.slice(0, 242) + "... (truncated)");
+      return new Ok(content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX);
     } else {
       return new Ok(content);
     }
@@ -84,7 +94,7 @@ export async function generateSnippet(
 
     let snippet = `Audio file: ${content}`;
     if (snippet.length > 256) {
-      snippet = snippet.slice(0, 242) + "... (truncated)";
+      snippet = snippet.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX;
     }
 
     return new Ok(snippet);

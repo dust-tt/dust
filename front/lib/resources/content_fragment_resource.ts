@@ -1,19 +1,20 @@
 import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import type {
-  ConversationAttachmentType,
-  LargePasteType,
-} from "@app/lib/api/assistant/conversation/attachments";
+import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
   isContentNodeAttachmentType,
+  isFileAttachmentType,
   renderAttachmentXml,
   renderLargePasteXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
-
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import {
+  PASTED_CONTENT_MAX_CHARACTERS,
+  TRUNCATED_SUFFIX,
+} from "@app/lib/api/files/snippet";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -1160,9 +1161,10 @@ export async function getContentFragmentFromAttachmentFile(
 
     // Check if this is a pasted content (large paste) - use simplified XML format
     if (isPastedFile(attachment.contentType)) {
-      const largePaste: LargePasteType = {
-        title: attachment.title,
-      };
+      const truncated = content.length > PASTED_CONTENT_MAX_CHARACTERS;
+      const truncatedContent = truncated
+        ? content.slice(0, 256 - TRUNCATED_SUFFIX.length) + TRUNCATED_SUFFIX
+        : content;
 
       return new Ok({
         role: "content_fragment",
@@ -1171,8 +1173,15 @@ export async function getContentFragmentFromAttachmentFile(
           {
             type: "text",
             text: renderLargePasteXml({
-              largePaste,
-              content,
+              largePaste: { title: attachment.title },
+              content: truncatedContent,
+              truncated,
+              // Show path only when truncated so the model can read the full file.
+              path: truncated
+                ? ((isFileAttachmentType(attachment)
+                    ? attachment.path
+                    : null) ?? `conversation/${attachment.title}`)
+                : undefined,
             }),
           },
         ],
@@ -1271,6 +1280,9 @@ export async function renderLightContentFragmentForModel(
 
   // Pasted content is always inlined regardless of feature flags.
   if (fileStringId && isPastedFile(contentType)) {
+    const snippet = attachment.snippet ?? "";
+    const truncated =
+      snippet.length === 256 && snippet.endsWith(TRUNCATED_SUFFIX);
     return {
       role: "content_fragment",
       name: `attach_pasted_content`,
@@ -1279,7 +1291,13 @@ export async function renderLightContentFragmentForModel(
           type: "text",
           text: renderLargePasteXml({
             largePaste: { title: attachment.title },
-            content: attachment.snippet ?? "",
+            content: snippet,
+            truncated,
+            // Show path only when truncated so the model can read the full file.
+            path: truncated
+              ? ((isFileAttachmentType(attachment) ? attachment.path : null) ??
+                `conversation/${attachment.title}`)
+              : undefined,
           }),
         },
       ],

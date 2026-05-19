@@ -369,7 +369,7 @@ function constructAttachmentsSectionNewFileExplorer({
     "Some attachments remain visible in the conversation history as metadata tags:\n\n" +
     tabularFilesLine +
     "- Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags; use the available search and retrieval tools to access their full content.\n\n" +
-    "Pasted content appears inline in `<pastedContent>` tags and already contains the full text, no tool call needed.\n"
+    'Pasted content appears inline in `<pastedContent>` tags and already contains the full text, no tool call needed unless it has `truncated="true"`.\n'
   );
 }
 
@@ -377,7 +377,7 @@ function constructPastedContentSection(): string {
   return (
     "# PASTED CONTENT\n" +
     "The conversation history may contain large pasted contents, indicated by <pastedContent> tags. " +
-    "These tags contain the full content of the pasted content, so don't try to retrieve it with tools.\n"
+    'These tags contain the full content of the pasted content, so don\'t try to retrieve it with tools unless it has `truncated="true"`.\n'
   );
 }
 
