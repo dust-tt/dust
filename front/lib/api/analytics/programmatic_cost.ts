@@ -18,10 +18,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { CreditResource } from "@app/lib/resources/credit_resource";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
-import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 const GROUP_BY_KEYS = ["agent", "origin", "apiKey"] as const;
@@ -36,7 +37,7 @@ const GROUP_BY_KEY_TO_ES_FIELD: Record<GroupByType, string> = {
 
 const FilterSchema = z.record(z.enum(GROUP_BY_KEYS), z.string().array());
 
-export const QuerySchema = z.object({
+export const ProgrammaticCostQuerySchema = z.object({
   groupBy: z.enum(GROUP_BY_KEYS).optional(),
   groupByCount: z.coerce.number().optional().default(5),
   filter: z
@@ -56,6 +57,8 @@ export const QuerySchema = z.object({
   selectedPeriod: z.string().optional(),
   billingCycleStartDay: z.coerce.number().min(1).max(31),
 });
+
+export type ProgrammaticCostQuery = z.infer<typeof ProgrammaticCostQuerySchema>;
 
 export type WorkspaceProgrammaticCostPoint = {
   timestamp: number;
@@ -265,326 +268,313 @@ function buildAggregation(
   };
 }
 
+export class ProgrammaticCostError extends Error {
+  constructor(
+    readonly type: "search_failed" | "available_groups_search_failed",
+    readonly details: { cause?: string } = {}
+  ) {
+    super(type);
+  }
+}
+
 /**
- * Shared handler for programmatic cost API endpoints.
- * Used by both workspace and poke endpoints.
+ * Maps a programmatic cost error to the standard `{ status_code, api_error }`
+ * shape. Use this from any framework (Next or Hono) — only the response
+ * dispatch differs.
  */
-export async function handleProgrammaticCostRequest(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetWorkspaceProgrammaticCostResponse>
-  >,
-  auth: Authenticator
-): Promise<void> {
-  switch (req.method) {
-    case "GET": {
-      const q = QuerySchema.safeParse(req.query);
-      if (!q.success) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid query parameters: ${q.error.message}`,
-          },
-        });
-      }
-
-      const {
-        groupBy,
-        groupByCount,
-        selectedPeriod,
-        billingCycleStartDay,
-        filter: filterParams,
-      } = q.data;
-
-      // Get selected date range using shared billing cycle utility
-      // selectedPeriod is "YYYY-MM", so new Date(selectedPeriod) creates day 1 of that month.
-      // We need to set the day to billingCycleStartDay to get the correct billing cycle.
-      const referenceDate = selectedPeriod
-        ? new Date(selectedPeriod)
-        : new Date();
-      if (selectedPeriod) {
-        referenceDate.setUTCDate(billingCycleStartDay);
-      }
-      const { cycleStart: periodStart, cycleEnd: periodEnd } =
-        getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
-
-      // Cap periodEnd to 10 days in the future to avoid too big empty chart areas.
-      const TEN_DAYS_MS = 10 * DAY_MS;
-      const cappedPeriodEnd = new Date(
-        Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_MS)
-      );
-
-      const timestamps = getTimestampsForWindow(
-        periodStart,
-        cappedPeriodEnd,
-        "FOUR_HOURS"
-      );
-
-      // Fetch all credits for the workspace (including free credits and fully consumed ones)
-      // We'll filter them per timestamp in calculateCreditTotalsPerTimestamp
-      const credits = await CreditResource.listAll(auth);
-
-      // Calculate credit totals for each timestamp
-      const creditTotalsMap = calculateCreditTotalsPerTimestamp(
-        credits,
-        timestamps
-      );
-
-      // Build base filter clauses with date range
-      const baseFilterClauses: estypes.QueryDslQueryContainer[] = [
-        getShouldTrackTokenUsageCostsESFilter(auth),
-        {
-          range: {
-            timestamp: {
-              gte: periodStart.toISOString(),
-              lt: periodEnd.toISOString(),
-            },
-          },
-        },
-      ];
-
-      const baseQuery = {
-        bool: {
-          filter: [
-            ...baseFilterClauses,
-            ...getSelectedFilterClauses(filterParams),
-          ],
+export function getProgrammaticCostApiError(
+  err: ProgrammaticCostError
+): APIErrorWithStatusCode {
+  switch (err.type) {
+    case "search_failed":
+    case "available_groups_search_failed":
+      return {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to retrieve grouped programmatic cost: ${err.details.cause ?? ""}`,
         },
       };
+    default:
+      assertNever(err.type);
+  }
+}
 
-      const availableGroups: AvailableGroup[] = [];
-      const groupValues: Record<string, Map<number, number>> = {};
+export async function getProgrammaticCost(
+  auth: Authenticator,
+  query: ProgrammaticCostQuery
+): Promise<
+  Result<GetWorkspaceProgrammaticCostResponse, ProgrammaticCostError>
+> {
+  const {
+    groupBy,
+    groupByCount,
+    selectedPeriod,
+    billingCycleStartDay,
+    filter: filterParams,
+  } = query;
 
-      const result = await searchAnalytics<never, GroupedAggs>(baseQuery, {
-        aggregations: {
-          total_cost: {
-            sum: { field: "tokens.cost_micro_usd" },
-          },
-          by_hour: {
-            date_histogram: {
-              field: "timestamp",
-              fixed_interval: "4h",
-              time_zone: "UTC",
-            },
-            aggs: buildMetricAggregates(["costMicroUsd"]),
-          },
-          ...(groupBy ? buildAggregation(groupBy, groupByCount, true) : {}),
+  // Get selected date range using shared billing cycle utility
+  // selectedPeriod is "YYYY-MM", so new Date(selectedPeriod) creates day 1 of that month.
+  // We need to set the day to billingCycleStartDay to get the correct billing cycle.
+  const referenceDate = selectedPeriod ? new Date(selectedPeriod) : new Date();
+  if (selectedPeriod) {
+    referenceDate.setUTCDate(billingCycleStartDay);
+  }
+  const { cycleStart: periodStart, cycleEnd: periodEnd } =
+    getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
+
+  // Cap periodEnd to 10 days in the future to avoid too big empty chart areas.
+  const TEN_DAYS_MS = 10 * DAY_MS;
+  const cappedPeriodEnd = new Date(
+    Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_MS)
+  );
+
+  const timestamps = getTimestampsForWindow(
+    periodStart,
+    cappedPeriodEnd,
+    "FOUR_HOURS"
+  );
+
+  // Fetch all credits for the workspace (including free credits and fully consumed ones)
+  // We'll filter them per timestamp in calculateCreditTotalsPerTimestamp
+  const credits = await CreditResource.listAll(auth);
+
+  // Calculate credit totals for each timestamp
+  const creditTotalsMap = calculateCreditTotalsPerTimestamp(
+    credits,
+    timestamps
+  );
+
+  // Build base filter clauses with date range
+  const baseFilterClauses: estypes.QueryDslQueryContainer[] = [
+    getShouldTrackTokenUsageCostsESFilter(auth),
+    {
+      range: {
+        timestamp: {
+          gte: periodStart.toISOString(),
+          lt: periodEnd.toISOString(),
         },
+      },
+    },
+  ];
 
-        size: 0,
-      });
+  const baseQuery = {
+    bool: {
+      filter: [...baseFilterClauses, ...getSelectedFilterClauses(filterParams)],
+    },
+  };
 
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to retrieve grouped programmatic cost: ${result.error.message}`,
+  const availableGroups: AvailableGroup[] = [];
+  const groupValues: Record<string, Map<number, number>> = {};
+
+  const result = await searchAnalytics<never, GroupedAggs>(baseQuery, {
+    aggregations: {
+      total_cost: {
+        sum: { field: "tokens.cost_micro_usd" },
+      },
+      by_hour: {
+        date_histogram: {
+          field: "timestamp",
+          fixed_interval: "4h",
+          time_zone: "UTC",
+        },
+        aggs: buildMetricAggregates(["costMicroUsd"]),
+      },
+      ...(groupBy ? buildAggregation(groupBy, groupByCount, true) : {}),
+    },
+
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return new Err(
+      new ProgrammaticCostError("search_failed", {
+        cause: result.error.message,
+      })
+    );
+  }
+
+  const totalBuckets = bucketsToArray<MetricsBucket>(
+    result.value.aggregations?.by_hour?.buckets
+  );
+
+  // Apply the same markup to costs that is applied when consuming credits.
+  // This ensures the graph shows what users are actually billed.
+  const markupMultiplier = 1 + DUST_MARKUP_PERCENT / 100;
+
+  // Add total points to groupValues
+  groupValues["total"] = new Map<number, number>();
+  totalBuckets.forEach((bucket) => {
+    const point = parseMetricsFromBucket(bucket, ["costMicroUsd"]);
+    groupValues["total"]?.set(
+      point.timestamp,
+      point.costMicroUsd * markupMultiplier
+    );
+  });
+
+  if (result.value.aggregations?.by_group) {
+    const groupBuckets = bucketsToArray(
+      result.value.aggregations?.by_group?.buckets
+    );
+
+    // ES already sorted by total cost, just parse and split into top 5 vs others
+    const groupsWithParsedPoints = groupBuckets.map((groupBucket) => {
+      // Parse each bucket once and store the results
+      return {
+        groupKey: groupBucket.key,
+        points: bucketsToArray(groupBucket.by_hour?.buckets).map((bucket) =>
+          parseMetricsFromBucket(bucket, ["costMicroUsd"])
+        ),
+      };
+    });
+
+    const allGroupsToProcess = ensureAtMostNGroups(
+      groupsWithParsedPoints,
+      groupByCount,
+      "costMicroUsd"
+    );
+
+    // Process all groups (top 5 + "Others") with single loop
+    for (const { groupKey, points } of allGroupsToProcess) {
+      groupValues[groupKey] = new Map(
+        points.map((point) => [
+          point.timestamp,
+          point.costMicroUsd * markupMultiplier,
+        ])
+      );
+    }
+
+    let availableGroupBuckets = groupBuckets;
+    if (filterParams && groupBy) {
+      const availableGroupsResult = await searchAnalytics<never, GroupedAggs>(
+        {
+          bool: {
+            filter: [
+              ...baseFilterClauses,
+              ...getSelectedFilterClauses(filterParams, groupBy),
+            ],
           },
-        });
-      }
-
-      const totalBuckets = bucketsToArray<MetricsBucket>(
-        result.value.aggregations?.by_hour?.buckets
+        },
+        {
+          aggregations: buildAggregation(groupBy, groupByCount, false),
+          size: 0,
+        }
       );
 
-      // Apply the same markup to costs that is applied when consuming credits.
-      // This ensures the graph shows what users are actually billed.
-      const markupMultiplier = 1 + DUST_MARKUP_PERCENT / 100;
-
-      // Add total points to groupValues
-      groupValues["total"] = new Map<number, number>();
-      totalBuckets.forEach((bucket) => {
-        const point = parseMetricsFromBucket(bucket, ["costMicroUsd"]);
-        groupValues["total"]?.set(
-          point.timestamp,
-          point.costMicroUsd * markupMultiplier
+      if (availableGroupsResult.isErr()) {
+        return new Err(
+          new ProgrammaticCostError("available_groups_search_failed", {
+            cause: availableGroupsResult.error.message,
+          })
         );
-      });
-
-      if (result.value.aggregations?.by_group) {
-        const groupBuckets = bucketsToArray(
-          result.value.aggregations?.by_group?.buckets
-        );
-
-        // ES already sorted by total cost, just parse and split into top 5 vs others
-        const groupsWithParsedPoints = groupBuckets.map((groupBucket) => {
-          // Parse each bucket once and store the results
-          return {
-            groupKey: groupBucket.key,
-            points: bucketsToArray(groupBucket.by_hour?.buckets).map((bucket) =>
-              parseMetricsFromBucket(bucket, ["costMicroUsd"])
-            ),
-          };
-        });
-
-        const allGroupsToProcess = ensureAtMostNGroups(
-          groupsWithParsedPoints,
-          groupByCount,
-          "costMicroUsd"
-        );
-
-        // Process all groups (top 5 + "Others") with single loop
-        for (const { groupKey, points } of allGroupsToProcess) {
-          groupValues[groupKey] = new Map(
-            points.map((point) => [
-              point.timestamp,
-              point.costMicroUsd * markupMultiplier,
-            ])
-          );
-        }
-
-        let availableGroupBuckets = groupBuckets;
-        if (filterParams && groupBy) {
-          const availableGroupsResult = await searchAnalytics<
-            never,
-            GroupedAggs
-          >(
-            {
-              bool: {
-                filter: [
-                  ...baseFilterClauses,
-                  ...getSelectedFilterClauses(filterParams, groupBy),
-                ],
-              },
-            },
-            {
-              aggregations: buildAggregation(groupBy, groupByCount, false),
-              size: 0,
-            }
-          );
-
-          if (availableGroupsResult.isErr()) {
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: `Failed to retrieve grouped programmatic cost: ${availableGroupsResult.error.message}`,
-              },
-            });
-          }
-
-          availableGroupBuckets = bucketsToArray(
-            availableGroupsResult.value.aggregations?.by_group?.buckets
-          );
-        }
-
-        // Fetch agent names if grouping by agent
-        const agentNames: Record<string, string> = {};
-        if (groupBy === "agent") {
-          const agentIds = availableGroupBuckets.map((b) => b.key);
-          const agents = await AgentConfigurationModel.findAll({
-            where: {
-              sId: agentIds,
-              workspaceId: auth.getNonNullableWorkspace().id,
-            },
-            attributes: ["sId", "name"],
-          });
-          agents.forEach((agent) => {
-            agentNames[agent.sId] = agent.name;
-          });
-        }
-
-        availableGroupBuckets.forEach((bucket) => {
-          let groupLabel = bucket.key;
-          if (bucket.key === "non_api_programmatic") {
-            groupLabel = "Non-API programmatic usage";
-          } else if (bucket.key === "unknown") {
-            groupLabel = "Unknown";
-          } else if (groupBy === "agent" && agentNames[bucket.key]) {
-            groupLabel = agentNames[bucket.key];
-          }
-          availableGroups.push({
-            groupKey: bucket.key,
-            groupLabel,
-          });
-        });
       }
 
-      const cumulatedCostMicroUsd: Record<string, number> = {};
-      Object.keys(groupValues).forEach((group) => {
-        cumulatedCostMicroUsd[group] = 0;
+      availableGroupBuckets = bucketsToArray(
+        availableGroupsResult.value.aggregations?.by_group?.buckets
+      );
+    }
+
+    // Fetch agent names if grouping by agent
+    const agentNames: Record<string, string> = {};
+    if (groupBy === "agent") {
+      const agentIds = availableGroupBuckets.map((b) => b.key);
+      const agents = await AgentConfigurationModel.findAll({
+        where: {
+          sId: agentIds,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        attributes: ["sId", "name"],
       });
+      agents.forEach((agent) => {
+        agentNames[agent.sId] = agent.name;
+      });
+    }
 
-      const now = new Date();
+    availableGroupBuckets.forEach((bucket) => {
+      let groupLabel = bucket.key;
+      if (bucket.key === "non_api_programmatic") {
+        groupLabel = "Non-API programmatic usage";
+      } else if (bucket.key === "unknown") {
+        groupLabel = "Unknown";
+      } else if (groupBy === "agent" && agentNames[bucket.key]) {
+        groupLabel = agentNames[bucket.key];
+      }
+      availableGroups.push({
+        groupKey: bucket.key,
+        groupLabel,
+      });
+    });
+  }
 
-      const points = timestamps.map((timestamp) => {
-        const groups = Object.entries(groupValues)
-          .filter(([groupKey]) => !groupBy || groupKey !== "total")
-          .map(([groupKey, costMap]) => {
-            const cost = costMap?.get(timestamp);
-            const cumulatedCost =
-              (cumulatedCostMicroUsd[groupKey] ?? 0) + (cost ?? 0);
-            cumulatedCostMicroUsd[groupKey] = cumulatedCost;
-            return {
-              groupKey,
-              costMicroUsd: cost ?? 0,
-              cumulatedCostMicroUsd:
-                timestamp <= now.getTime() ? cumulatedCost : undefined,
-            };
-          });
+  const cumulatedCostMicroUsd: Record<string, number> = {};
+  Object.keys(groupValues).forEach((group) => {
+    cumulatedCostMicroUsd[group] = 0;
+  });
 
-        if (groupBy) {
-          const costForAll = groups.reduce(
-            (acc, group) => acc + group.costMicroUsd,
-            0
-          );
+  const now = new Date();
 
-          // Include "others" group
-          const totalCost = groupValues.total?.get(timestamp) ?? 0;
-          const otherCost = totalCost - costForAll;
-          const cumulatedOtherCost =
-            (cumulatedCostMicroUsd["others"] ?? 0) + (otherCost ?? 0);
-          cumulatedCostMicroUsd["others"] = cumulatedOtherCost;
-
-          groups.push({
-            groupKey: "others",
-            costMicroUsd: otherCost,
-            cumulatedCostMicroUsd:
-              timestamp <= now.getTime() ? cumulatedOtherCost : undefined,
-          });
-        }
-
-        const credit = creditTotalsMap.get(timestamp);
+  const points = timestamps.map((timestamp) => {
+    const groups = Object.entries(groupValues)
+      .filter(([groupKey]) => !groupBy || groupKey !== "total")
+      .map(([groupKey, costMap]) => {
+        const cost = costMap?.get(timestamp);
+        const cumulatedCost =
+          (cumulatedCostMicroUsd[groupKey] ?? 0) + (cost ?? 0);
+        cumulatedCostMicroUsd[groupKey] = cumulatedCost;
         return {
-          timestamp,
-          groups,
-          totalInitialCreditsMicroUsd: credit?.totalInitialCreditsMicroUsd ?? 0,
-          totalConsumedCreditsMicroUsd:
-            credit?.totalConsumedCreditsMicroUsd ?? 0,
-          totalRemainingCreditsMicroUsd:
-            credit?.totalRemainingCreditsMicroUsd ?? 0,
+          groupKey,
+          costMicroUsd: cost ?? 0,
+          cumulatedCostMicroUsd:
+            timestamp <= now.getTime() ? cumulatedCost : undefined,
         };
       });
 
-      if (cumulatedCostMicroUsd["others"] > 0) {
-        availableGroups.push({
-          groupKey: "others",
-          groupLabel: "Others",
-        });
-      }
+    if (groupBy) {
+      const costForAll = groups.reduce(
+        (acc, group) => acc + group.costMicroUsd,
+        0
+      );
 
-      if (!groupBy) {
-        // Add "total" to available groups
-        availableGroups.push({
-          groupKey: "total",
-          groupLabel: "Total cost consumed",
-        });
-      }
+      // Include "others" group
+      const totalCost = groupValues.total?.get(timestamp) ?? 0;
+      const otherCost = totalCost - costForAll;
+      const cumulatedOtherCost =
+        (cumulatedCostMicroUsd["others"] ?? 0) + (otherCost ?? 0);
+      cumulatedCostMicroUsd["others"] = cumulatedOtherCost;
 
-      return res.status(200).json({
-        points,
-        availableGroups,
+      groups.push({
+        groupKey: "others",
+        costMicroUsd: otherCost,
+        cumulatedCostMicroUsd:
+          timestamp <= now.getTime() ? cumulatedOtherCost : undefined,
       });
     }
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
+
+    const credit = creditTotalsMap.get(timestamp);
+    return {
+      timestamp,
+      groups,
+      totalInitialCreditsMicroUsd: credit?.totalInitialCreditsMicroUsd ?? 0,
+      totalConsumedCreditsMicroUsd: credit?.totalConsumedCreditsMicroUsd ?? 0,
+      totalRemainingCreditsMicroUsd: credit?.totalRemainingCreditsMicroUsd ?? 0,
+    };
+  });
+
+  if (cumulatedCostMicroUsd["others"] > 0) {
+    availableGroups.push({
+      groupKey: "others",
+      groupLabel: "Others",
+    });
   }
+
+  if (!groupBy) {
+    // Add "total" to available groups
+    availableGroups.push({
+      groupKey: "total",
+      groupLabel: "Total cost consumed",
+    });
+  }
+
+  return new Ok({ points, availableGroups });
 }

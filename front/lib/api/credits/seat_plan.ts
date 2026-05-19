@@ -8,10 +8,11 @@ import {
 } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
+import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface SeatTypeInfo {
   awuCredits: number;
@@ -23,32 +24,52 @@ type PriceKey = "pro" | "max";
 export interface SeatPlanResponseBody
   extends Record<PriceKey, SeatTypeInfo | null> {}
 
-export async function handleSeatPlanRequest(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<SeatPlanResponseBody>>,
-  auth: Authenticator
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "Only GET is supported.",
-      },
-    });
+export class SeatPlanError extends Error {
+  constructor(
+    readonly type: "metronome_not_configured" | "rate_schedule_fetch_failed"
+  ) {
+    super(type);
   }
+}
 
+/**
+ * Maps a seat plan error to the standard `{ status_code, api_error }` shape.
+ * Use this from any framework (Next or Hono) — only the response dispatch
+ * differs.
+ */
+export function getSeatPlanApiError(
+  err: SeatPlanError
+): APIErrorWithStatusCode {
+  switch (err.type) {
+    case "metronome_not_configured":
+      return {
+        status_code: 400,
+        api_error: {
+          type: "internal_server_error",
+          message: "Workspace is not configured for Metronome billing.",
+        },
+      };
+    case "rate_schedule_fetch_failed":
+      return {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to fetch rate schedule for seat products.",
+        },
+      };
+    default:
+      assertNever(err.type);
+  }
+}
+
+export async function getSeatPlan(
+  auth: Authenticator
+): Promise<Result<SeatPlanResponseBody, SeatPlanError>> {
   const workspace = auth.getNonNullableWorkspace();
   const contract = await getActiveContract(workspace.sId);
 
   if (!contract || !contract.rate_card_id) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "internal_server_error",
-        message: "Workspace is not configured for Metronome billing.",
-      },
-    });
+    return new Err(new SeatPlanError("metronome_not_configured"));
   }
 
   // Extract per-seat AWU credit amounts from recurring credits on the contract.
@@ -102,13 +123,7 @@ export async function handleSeatPlanRequest(
       },
       "[Metronome] Failed to fetch rate schedule for seat products"
     );
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to fetch rate schedule for seat products.",
-      },
-    });
+    return new Err(new SeatPlanError("rate_schedule_fetch_failed"));
   }
 
   const buildSeatInfo = (key: PriceKey): SeatTypeInfo | null => {
@@ -122,7 +137,7 @@ export async function handleSeatPlanRequest(
     };
   };
 
-  return res.status(200).json({
+  return new Ok({
     pro: buildSeatInfo("pro"),
     max: buildSeatInfo("max"),
   });

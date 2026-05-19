@@ -2,14 +2,17 @@ import { Hono } from "hono";
 
 import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
+import analytics from "./analytics";
 import assistant from "./assistant";
 import builder from "./builder";
+import credits from "./credits";
 import featureFlags from "./feature-flags";
 import mcp from "./mcp";
 import members from "./members";
 import models from "./models";
 import providers from "./providers";
 import provisioningStatus from "./provisioning-status";
+import seats from "./seats";
 import skills from "./skills";
 import spaces from "./spaces";
 import trialMessageUsage from "./trial-message-usage";
@@ -23,14 +26,17 @@ const app = new Hono();
 
 app.use("*", workspaceAuth);
 
+app.route("/analytics", analytics);
 app.route("/assistant", assistant);
 app.route("/builder", builder);
+app.route("/credits", credits);
 app.route("/feature-flags", featureFlags);
 app.route("/mcp", mcp);
 app.route("/members", members);
 app.route("/models", models);
 app.route("/providers", providers);
 app.route("/provisioning-status", provisioningStatus);
+app.route("/seats", seats);
 app.route("/skills", skills);
 app.route("/spaces", spaces);
 app.route("/trial-message-usage", trialMessageUsage);

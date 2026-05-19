@@ -1,6 +1,10 @@
 /** @ignoreswagger */
 import type { GetWorkspaceProgrammaticCostResponse } from "@app/lib/api/analytics/programmatic_cost";
-import { handleProgrammaticCostRequest } from "@app/lib/api/analytics/programmatic_cost";
+import {
+  getProgrammaticCost,
+  getProgrammaticCostApiError,
+  ProgrammaticCostQuerySchema,
+} from "@app/lib/api/analytics/programmatic_cost";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -8,6 +12,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 async function handler(
   req: NextApiRequest,
@@ -41,7 +46,33 @@ async function handler(
     });
   }
 
-  return handleProgrammaticCostRequest(req, res, auth);
+  if (req.method !== "GET") {
+    return apiError(req, res, {
+      status_code: 405,
+      api_error: {
+        type: "method_not_supported_error",
+        message: "The method passed is not supported, GET is expected.",
+      },
+    });
+  }
+
+  const q = ProgrammaticCostQuerySchema.safeParse(req.query);
+  if (!q.success) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid query parameters: ${fromError(q.error).toString()}`,
+      },
+    });
+  }
+
+  const result = await getProgrammaticCost(auth, q.data);
+  if (result.isErr()) {
+    return apiError(req, res, getProgrammaticCostApiError(result.error));
+  }
+
+  return res.status(200).json(result.value);
 }
 
 export default withSessionAuthenticationForPoke(handler);
