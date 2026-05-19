@@ -152,8 +152,11 @@ export function useFileUploaderService({
 
   const uploadFiles = useCallback(
     async (
-      newFileBlobs: FileBlob[]
+      newFileBlobs: FileBlob[],
+      options?: { useCaseMetadata?: FileUseCaseMetadata }
     ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
+      const effectiveUseCaseMetadata =
+        options?.useCaseMetadata ?? useCaseMetadata;
       // Browsers have a limit on the number of concurrent network operations.
       // We have a limit of the allowed time to upload the content of a file once the file object has been created.
       // If we start a large number of uploads at the same time and the network is somewhat slow, it's possible that we'll
@@ -174,7 +177,7 @@ export function useFileUploaderService({
                 fileName: fileBlob.filename,
                 fileSize: fileBlob.size,
                 useCase,
-                useCaseMetadata,
+                useCaseMetadata: effectiveUseCaseMetadata,
               }),
             });
           } catch (err) {
@@ -307,7 +310,10 @@ export function useFileUploaderService({
   );
 
   const handleFilesUpload = useCallback(
-    async (files: File[]) => {
+    async (
+      files: File[],
+      options?: { useCaseMetadata?: FileUseCaseMetadata }
+    ) => {
       setNumFilesProcessing((prev) => prev + files.length);
 
       const oversizedFiles = files
@@ -340,7 +346,7 @@ export function useFileUploaderService({
       const previewResults = processSelectedFiles(files);
       const newFileBlobs = processResults(previewResults, true);
 
-      const uploadResults = await uploadFiles(newFileBlobs);
+      const uploadResults = await uploadFiles(newFileBlobs, options);
       const finalFileBlobs = processResults(uploadResults);
 
       setNumFilesProcessing((prev) => prev - files.length);

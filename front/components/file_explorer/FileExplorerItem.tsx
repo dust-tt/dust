@@ -14,6 +14,7 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   ArrowDownOnSquareIcon,
+  ArrowLeftIcon,
   Button,
   CloudArrowLeftRightIcon,
   DropdownMenu,
@@ -38,6 +39,7 @@ export type FileExplorerItemProps = {
   onOpen: () => void;
   subtitle: string;
   title: string;
+  titleClassName?: string;
   viewMode: ViewMode;
   extraMenuItems?: FileExplorerMenuAction[];
 } & (
@@ -47,8 +49,15 @@ export type FileExplorerItemProps = {
 
 // TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
 export function FileExplorerItem(props: FileExplorerItemProps) {
-  const { onDownload, onOpen, subtitle, title, viewMode, extraMenuItems } =
-    props;
+  const {
+    onDownload,
+    onOpen,
+    subtitle,
+    title,
+    titleClassName,
+    viewMode,
+    extraMenuItems,
+  } = props;
 
   const thumbnailContent =
     props.kind === "icon" ? (
@@ -133,7 +142,8 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
           <span
             className={cn(
               "text-sm truncate text-foreground dark:text-foreground-night leading-5",
-              "justify-start"
+              "justify-start",
+              titleClassName
             )}
           >
             {title}
@@ -201,6 +211,29 @@ function getFileSubtitle(entry: GCSMountFileEntry, viewMode: ViewMode): string {
   return [typeLabel, timeLabel].filter(Boolean).join(" - ");
 }
 
+export interface FileExplorerGoUpCardProps {
+  parentLabel: string;
+  viewMode: ViewMode;
+  onGoUp: () => void;
+}
+
+export function FileExplorerGoUpCard({
+  parentLabel,
+  viewMode,
+  onGoUp,
+}: FileExplorerGoUpCardProps) {
+  return (
+    <FileExplorerItem
+      kind="icon"
+      visual={ArrowLeftIcon}
+      viewMode={viewMode}
+      title="Back"
+      subtitle={`Browse "${parentLabel}"`}
+      onOpen={onGoUp}
+    />
+  );
+}
+
 export interface FileExplorerFolderCardProps {
   node: SandboxTreeNode;
   viewMode: ViewMode;
@@ -226,6 +259,7 @@ export function FileExplorerFolderCard({
       visual={FolderIcon}
       viewMode={viewMode}
       title={node.name}
+      titleClassName="font-semibold"
       subtitle={subtitle}
       onOpen={() => onNavigate(node)}
     />

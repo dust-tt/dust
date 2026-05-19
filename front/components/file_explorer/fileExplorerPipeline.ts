@@ -9,6 +9,7 @@ import {
   buildSandboxTree,
   compareTreeNodesForSort,
   getFileExplorerBucket,
+  resolveFolderStackInTree,
 } from "@app/components/file_explorer/utils";
 import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
@@ -74,6 +75,11 @@ export function getFileExplorerPipeline({
   }
 
   const tree = buildSandboxTree(files);
+  // Navigation state holds node object references from an older tree; re-resolve by path
+  // on each render so the current folder lists fresh children after SWR refresh (without
+  // rewriting `folderStack` in state, which would jump the user to root — see
+  // `resolveFolderStackInTree`).
+  const resolvedFolderStack = resolveFolderStackInTree(tree, folderStack);
 
   // Synthetic tree nodes for content-node entries — always flat, at root level.
   const contentNodeTreeNodes: SandboxTreeNode[] = contentNodes.map((cn) => ({
@@ -86,9 +92,10 @@ export function getFileExplorerPipeline({
   }));
 
   const currentNodes =
-    folderStack.length === 0
+    resolvedFolderStack.length === 0
       ? [...tree, ...contentNodeTreeNodes]
-      : (folderStack.at(-1)?.children ?? []);
+      : // Fresh `children` from the latest tree, not from nodes captured at click time.
+        (resolvedFolderStack.at(-1)?.children ?? []);
 
   const q = searchQuery.trim().toLowerCase();
   const visibleNodes = currentNodes.filter((node) => {
@@ -128,7 +135,13 @@ export function getFileExplorerPipeline({
         });
 
   const sortedNodes = [...matchingNodes].sort((a, b) =>
-    compareTreeNodesForSort(a, b, sortMode, timestampsByPath)
+    compareTreeNodesForSort(
+      a,
+      b,
+      sortMode,
+      timestampsByPath,
+      entryByRelativePath
+    )
   );
 
   let folderCount = 0;

@@ -45,7 +45,7 @@ interface SpaceManagedDataSourcesViewsModalProps {
   onClose: () => void;
   onSave: (
     selectionConfigurations: DataSourceViewSelectionConfigurations
-  ) => void;
+  ) => void | Promise<void | boolean>;
   owner: WorkspaceType;
   systemSpaceDataSourceViews: DataSourceViewType[];
   space: SpaceType;
@@ -194,8 +194,12 @@ export default function SpaceManagedDataSourcesViewsModal({
           rightButtonProps={{
             label: "Save",
             onClick: () => {
-              onSave(selectionConfigurations);
-              onClose();
+              void (async () => {
+                const result = await onSave(selectionConfigurations);
+                if (result !== false) {
+                  onClose();
+                }
+              })();
             },
             disabled: !hasChanged,
           }}
