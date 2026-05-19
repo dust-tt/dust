@@ -200,7 +200,8 @@ export function BlockedActionsProvider({
       return blockedActionsQueue.some(
         (action) =>
           action.blockedAction.status === "blocked_validation_required" &&
-          action.blockedAction.userId === userId
+          action.blockedAction.userId === userId &&
+          action.blockedAction.metadata.toolName !== "request_plan_approval"
       );
     },
     [blockedActionsQueue]
@@ -208,17 +209,16 @@ export function BlockedActionsProvider({
 
   const getBlockedActions = useCallback(
     (userId: string) => {
-      return (
-        blockedActionsQueue
-          // Either actions associated to the user or actions created through the Public API and not
-          // associated to any user.
-          .filter(
-            (action) =>
-              action.blockedAction.userId === userId ||
-              !action.blockedAction.userId
-          )
-          .map((action) => action.blockedAction)
-      );
+      return blockedActionsQueue
+        .filter(
+          (action) =>
+            // Either actions associated to the user or actions created through the
+            // Public API and not associated to any user.
+            (action.blockedAction.userId === userId ||
+              !action.blockedAction.userId) &&
+            action.blockedAction.metadata.toolName !== "request_plan_approval"
+        )
+        .map((action) => action.blockedAction);
     },
     [blockedActionsQueue]
   );

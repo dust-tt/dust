@@ -1,8 +1,6 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  ApprovalStateChip,
-  extractPlanTitle,
-} from "@app/components/assistant/conversation/plan_mode/utils";
+import { ApprovalStateChip } from "@app/components/assistant/conversation/plan_mode/ApprovalStateChip";
+import { parsePlan } from "@app/components/assistant/conversation/plan_mode/utils";
 import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { ChevronRightIcon, cn, DocumentTextIcon, Icon } from "@dust-tt/sparkle";
@@ -44,7 +42,7 @@ export const PlanCard = React.memo(function PlanCard({
   });
   const { openPanel } = useConversationSidePanelContext();
 
-  const title = useMemo(() => extractPlanTitle(content), [content]);
+  const { title } = useMemo(() => parsePlan(content), [content]);
   const progress = useMemo(() => countProgress(content), [content]);
 
   // Hide the card until the plan has been edited at least once (version >= 2). The skeleton

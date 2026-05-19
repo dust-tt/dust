@@ -1,13 +1,12 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  ApprovalStateChip,
-  extractPlanTitle,
-} from "@app/components/assistant/conversation/plan_mode/utils";
+import { ApprovalStateChip } from "@app/components/assistant/conversation/plan_mode/ApprovalStateChip";
+import { PlanTaskBullet } from "@app/components/assistant/conversation/plan_mode/PlanTaskBullet";
+import { parsePlan } from "@app/components/assistant/conversation/plan_mode/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Markdown, Spinner, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, cn, Markdown, Spinner, XMarkIcon } from "@dust-tt/sparkle";
 
 interface ConversationPlanModePanelProps {
   conversation: ConversationWithoutContentType;
@@ -24,7 +23,7 @@ export function ConversationPlanModePanel({
     workspaceId: owner.sId,
   });
 
-  const title = extractPlanTitle(content);
+  const { title, preamble, tasks } = parsePlan(content);
 
   return (
     <div className="flex h-full flex-col">
@@ -57,7 +56,29 @@ export function ConversationPlanModePanel({
           // Key by planFile.version so React remounts on each edit. Sparkle's `Markdown`
           // memoizes AST nodes for streaming reveal, which can hold stale child nodes when the
           // full content prop changes between edits. Remounting forces a clean render.
-          content && <Markdown key={planFile.version} content={content} />
+          content && (
+            <div key={planFile.version}>
+              <Markdown content={preamble} />
+              {tasks.length > 0 && (
+                <ul
+                  className={cn(
+                    "copy-sm mt-3 flex flex-col gap-3 font-medium",
+                    "text-muted-foreground dark:text-muted-foreground-night"
+                  )}
+                >
+                  {tasks.map((task, idx) => (
+                    <li
+                      key={`${idx}-${task}`}
+                      className="flex items-start gap-2 py-1"
+                    >
+                      <PlanTaskBullet />
+                      <Markdown content={task} compactSpacing />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
         )}
       </div>
     </div>
