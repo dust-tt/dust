@@ -115,6 +115,7 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
+import { performLogin } from "@app/lib/api/login";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
   config as multiRegionsConfig,
@@ -124,11 +125,12 @@ import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
+import { getUserNicknameFromEmail } from "@app/lib/api/workos/user";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -443,20 +445,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       ttl: 0,
     });
 
-    // Record login activity at authentication time (covers SCIM/provisioned users
-    // who may bypass /api/login via returnTo redirects).
-    try {
-      const dustUser = await UserResource.fetchByWorkOSUserId(user.id);
-      if (dustUser) {
-        await dustUser.recordLoginActivity();
-      }
-    } catch (loginTrackingError) {
-      logger.error(
-        { error: loginTrackingError, workOSUserId: user.id },
-        "Failed to record login activity at authentication"
-      );
-    }
-
     const currentRegion = multiRegionsConfig.getCurrentRegion();
     let targetRegion: RegionType | null = "us-central1";
 
@@ -571,7 +559,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       ]);
     }
 
-    // Restore UTM params from state to the redirect URL for cross-domain tracking
+    // Restore UTM params from state for cross-domain tracking.
     const utmParams: Record<string, string> = stateObj.utm ?? {};
     const appendUtmToUrl = (url: string): string => {
       if (Object.keys(utmParams).length === 0) {
@@ -588,12 +576,60 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       return queryString ? `${baseUrl}?${queryString}` : baseUrl;
     };
 
-    if (sanitizedReturnTo) {
-      redirectTo(res, appendUtmToUrl(sanitizedReturnTo));
-      return;
-    }
+    // Build a SessionWithUser from what we already have so we can call
+    // performLogin directly instead of redirecting to /api/login. The
+    // Set-Cookie header above will reach the browser on the response we emit
+    // below (redirect from performLogin preserves the header).
+    const loginSession: SessionWithUser = {
+      type: "workos",
+      sessionId: decodedPayload.sid ?? "",
+      region: sessionCookie.region,
+      user: {
+        email: user.email,
+        email_verified: user.emailVerified,
+        name: user.email ?? "",
+        family_name: user.lastName ?? "",
+        given_name: user.firstName ?? "",
+        nickname: getUserNicknameFromEmail(user.email) ?? "",
+        workOSUserId: user.id,
+      },
+      organizationId,
+      workspaceId: sessionCookie.workspaceId,
+      isSSO: authenticationMethod?.toLowerCase() === "sso",
+      authenticationMethod,
+    };
 
-    redirectTo(res, appendUtmToUrl("/api/login"));
+    // If returnTo points at /api/login, extract its params (inviteToken, wId,
+    // join, cId) and treat them as if they were /api/login's own query. For
+    // any other returnTo we keep it as the final deep-link destination so the
+    // user lands where they were originally headed (e.g. /w/xxx/yyy).
+    const loginOptions = (() => {
+      const base = {
+        inviteToken: null as string | null,
+        wId: null as string | null,
+        join: false,
+        conversationId: null as string | null,
+        utmParams,
+        returnTo: null as string | null,
+      };
+      if (!sanitizedReturnTo) {
+        return base;
+      }
+      const parsed = new URL(sanitizedReturnTo, config.getApiBaseUrl());
+      if (parsed.pathname === "/api/login") {
+        return {
+          ...base,
+          inviteToken: parsed.searchParams.get("inviteToken"),
+          wId: parsed.searchParams.get("wId"),
+          join: parsed.searchParams.get("join") === "true",
+          conversationId: parsed.searchParams.get("cId"),
+        };
+      }
+      return { ...base, returnTo: appendUtmToUrl(sanitizedReturnTo) };
+    })();
+
+    await performLogin(req, res, loginSession, loginOptions);
+    return;
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
 
