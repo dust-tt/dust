@@ -1,4 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
+import { getIcon } from "@app/components/resources/resources_icons";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -6,7 +7,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types/space";
-import { Chip, DocumentIcon, Icon, ToolsIcon } from "@dust-tt/sparkle";
+import { BookOpenIcon, Chip, DocumentIcon, Icon } from "@dust-tt/sparkle";
 import React, { useContext } from "react";
 
 function getActionDisplayName(
@@ -33,6 +34,20 @@ function getActionIcon(
     return getAvatar(mcpServerView.server, "xs");
   }
   return null;
+}
+
+function getActionChipIcon(
+  action: BuilderAction,
+  mcpServerViews: MCPServerViewType[]
+) {
+  const mcpServerView = mcpServerViews.find(
+    (view) => view.sId === action.configuration.mcpServerViewId
+  );
+  if (!mcpServerView?.server) {
+    return BookOpenIcon;
+  }
+
+  return getIcon(mcpServerView.server.icon);
 }
 
 function getSkillIcon(skill: SkillToRemove): React.ReactNode {
@@ -182,7 +197,7 @@ export function useBlockedSkillSpaceRemovalConfirm({
                 key={`action-${action.id}`}
                 size="xs"
                 color="primary"
-                icon={ToolsIcon}
+                icon={getActionChipIcon(action, mcpServerViews)}
                 label={getActionDisplayName(action, mcpServerViews)}
               />
             ))}
