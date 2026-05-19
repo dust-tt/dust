@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -14,28 +16,24 @@ app.get("/", async (c) => {
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
-      404
-    );
+    });
   }
 
   if (!dataSource.connectorId || dataSource.connectorProvider !== "notion") {
-    return c.json(
-      {
-        error: {
-          type: "data_source_error",
-          message:
-            "The data source you requested is not a managed Notion data source.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "data_source_error",
+        message:
+          "The data source you requested is not a managed Notion data source.",
       },
-      400
-    );
+    });
   }
 
   const connectorAPIConfig = config.getConnectorsAPIConfig();
@@ -54,16 +52,14 @@ app.get("/", async (c) => {
       },
       "Failed to get Notion workspace ID"
     );
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to get Notion workspace ID",
-          connectors_error: workspaceIdRes.error,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to get Notion workspace ID",
+        connectors_error: workspaceIdRes.error,
       },
-      500
-    );
+    });
   }
 
   const notionWorkspaceId = workspaceIdRes.value.notionWorkspaceId;
@@ -92,16 +88,14 @@ app.get("/", async (c) => {
       },
       "Failed to get webhook router entry"
     );
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to get webhook router entry",
-          connectors_error: webhookRouterRes.error,
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to get webhook router entry",
+        connectors_error: webhookRouterRes.error,
       },
-      500
-    );
+    });
   }
 
   return c.json({

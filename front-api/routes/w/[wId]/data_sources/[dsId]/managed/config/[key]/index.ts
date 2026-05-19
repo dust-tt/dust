@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import config from "@app/lib/api/config";
@@ -47,37 +49,31 @@ app.get("/", async (c) => {
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
-      404
-    );
+    });
   }
   if (!dataSource.connectorId) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_error",
-          message: "The data source you requested is not managed.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_error",
+        message: "The data source you requested is not managed.",
       },
-      404
-    );
+    });
   }
   if (!ALLOWED_CONFIG_KEYS.has(configKey)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: `Invalid config key: ${configKey}`,
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid config key: ${configKey}`,
       },
-      400
-    );
+    });
   }
 
   const connectorsAPI = new ConnectorsAPI(
@@ -90,16 +86,14 @@ app.get("/", async (c) => {
   );
 
   if (configRes.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_error",
-          message: "Failed to retrieve config for data source.",
-          connectors_error: configRes.error,
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_error",
+        message: "Failed to retrieve config for data source.",
+        connectors_error: configRes.error,
       },
-      404
-    );
+    });
   }
 
   return c.json({ configValue: configRes.value.configValue });
@@ -115,51 +109,43 @@ app.post(
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
         },
-        404
-      );
+      });
     }
     if (!dataSource.connectorId) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_error",
-            message: "The data source you requested is not managed.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_error",
+          message: "The data source you requested is not managed.",
         },
-        404
-      );
+      });
     }
     if (!ALLOWED_CONFIG_KEYS.has(configKey)) {
-      return c.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `Invalid config key: ${configKey}`,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid config key: ${configKey}`,
         },
-        400
-      );
+      });
     }
 
     if (!auth.isAdmin() || !dataSource.canAdministrate(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `admins` for the current workspace " +
-              "can edit the configuration of a data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Only the users that are `admins` for the current workspace " +
+            "can edit the configuration of a data source.",
         },
-        403
-      );
+      });
     }
 
     const { configValue } = c.req.valid("json");
@@ -175,16 +161,14 @@ app.post(
     );
 
     if (setConfigRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_error",
-            message: "Failed to edit the configuration of the data source.",
-            connectors_error: setConfigRes.error,
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "data_source_error",
+          message: "Failed to edit the configuration of the data source.",
+          connectors_error: setConfigRes.error,
         },
-        400
-      );
+      });
     }
 
     return c.json({ configValue });

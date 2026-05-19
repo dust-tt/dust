@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import apiConfig from "@app/lib/api/config";
@@ -28,15 +30,13 @@ app.post("/", validate("json", PostTagSearchBodySchema), async (c) => {
     dataSourceViewIds
   );
   if (dataSourceViews.some((dsv) => !dsv.canRead(auth))) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_auth_error",
-          message: "You are not authorized to fetch tags.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message: "You are not authorized to fetch tags.",
       },
-      403
-    );
+    });
   }
 
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
@@ -47,15 +47,13 @@ app.post("/", validate("json", PostTagSearchBodySchema), async (c) => {
   });
 
   if (result.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to search tags",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to search tags",
       },
-      500
-    );
+    });
   }
 
   return c.json(result.value);

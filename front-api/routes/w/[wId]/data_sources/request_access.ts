@@ -1,5 +1,7 @@
 import { escape } from "html-escaper";
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import config from "@app/lib/api/config";
@@ -30,40 +32,34 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (c) => {
     includeEditedBy: true,
   });
   if (!dataSource) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "The data source was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source was not found.",
       },
-      404
-    );
+    });
   }
 
   // Prevent users from requesting access to data sources outside their workspace (e.g., public).
   if (dataSource.workspaceId !== auth.getNonNullableWorkspace().id) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "The data source was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source was not found.",
       },
-      404
-    );
+    });
   }
 
   if (!dataSource.editedByUser?.sId) {
-    return c.json(
-      {
-        error: {
-          type: "user_not_found",
-          message: "No admin user found for this data source",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "user_not_found",
+        message: "No admin user found for this data source",
       },
-      403
-    );
+    });
   }
 
   const rateLimitKey = `access_requests:${user.sId}`;
@@ -75,17 +71,15 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (c) => {
   });
 
   if (remaining === 0) {
-    return c.json(
-      {
-        error: {
-          type: "rate_limit_error",
-          message:
-            `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access ` +
-            "requests per day. Please try again tomorrow.",
-        },
+    return apiError(c, {
+      status_code: 429,
+      api_error: {
+        type: "rate_limit_error",
+        message:
+          `You have reached the limit of ${MAX_ACCESS_REQUESTS_PER_DAY} access ` +
+          "requests per day. Please try again tomorrow.",
       },
-      429
-    );
+    });
   }
 
   const body =
@@ -101,15 +95,13 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (c) => {
   });
 
   if (result.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to send email",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to send email",
       },
-      500
-    );
+    });
   }
 
   return c.json({ success: true });

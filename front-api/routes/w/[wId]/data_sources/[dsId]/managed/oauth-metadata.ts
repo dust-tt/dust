@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -15,40 +17,33 @@ app.get("/", async (c) => {
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
-      404
-    );
+    });
   }
 
   if (!dataSource.connectorId) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_managed",
-          message: "The data source you requested is not managed.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "data_source_not_managed",
+        message: "The data source you requested is not managed.",
       },
-      400
-    );
+    });
   }
 
   if (!dataSource.canAdministrate(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_auth_error",
-          message:
-            "Only workspace admins can access data source OAuth metadata.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message: "Only workspace admins can access data source OAuth metadata.",
       },
-      403
-    );
+    });
   }
 
   const connectorsAPI = new ConnectorsAPI(
@@ -68,28 +63,24 @@ app.get("/", async (c) => {
       },
       "Failed to fetch connector details"
     );
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to fetch connector details.",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to fetch connector details.",
       },
-      500
-    );
+    });
   }
 
   const connectionId = connectorRes.value.connectionId;
   if (!connectionId) {
-    return c.json(
-      {
-        error: {
-          type: "connector_oauth_connection_not_found",
-          message: "No OAuth connection found for this connector.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "connector_oauth_connection_not_found",
+        message: "No OAuth connection found for this connector.",
       },
-      404
-    );
+    });
   }
 
   const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -103,15 +94,13 @@ app.get("/", async (c) => {
       },
       "Failed to fetch OAuth connection metadata"
     );
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to fetch OAuth connection metadata.",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to fetch OAuth connection metadata.",
       },
-      500
-    );
+    });
   }
 
   // Extract relevant metadata fields, excluding sensitive system fields.

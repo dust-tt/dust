@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -18,15 +20,13 @@ app.post("/", async (c) => {
   // Get file and make sure that it is within the same workspace.
   const file = await FileResource.fetchById(auth, fileId);
   if (!file) {
-    return c.json(
-      {
-        error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
       },
-      404
-    );
+    });
   }
 
   // Only folder document and table upserts are supported on this endpoint.
@@ -35,41 +35,35 @@ app.post("/", async (c) => {
       file.useCase
     )
   ) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message:
-            "Only folder document and table upserts are supported on this endpoint.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Only folder document and table upserts are supported on this endpoint.",
       },
-      400
-    );
+    });
   }
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: `Could not find data source with id ${dsId}`,
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: `Could not find data source with id ${dsId}`,
       },
-      404
-    );
+    });
   }
 
   if (!dataSource.canWrite(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_auth_error",
-          message: "You are not authorized to upsert to this data source.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message: "You are not authorized to upsert to this data source.",
       },
-      403
-    );
+    });
   }
 
   const rUpsert = await processAndUpsertToDataSource(auth, dataSource, {

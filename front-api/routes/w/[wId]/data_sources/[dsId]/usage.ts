@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 
@@ -12,28 +14,24 @@ app.get("/", async (c) => {
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource || !dataSource.canRead(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
-      404
-    );
+    });
   }
 
   const usage = await getDataSourceUsage({ auth, dataSource });
   if (usage.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to get data source usage.",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to get data source usage.",
       },
-      500
-    );
+    });
   }
 
   return c.json({ usage: usage.value });

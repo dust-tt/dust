@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
 import { syncNotionUrls } from "@app/lib/api/poke/plugins/data_sources/notion_url_sync";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -23,7 +24,10 @@ type FetchResult =
   | {
       kind: "err";
       status: 400 | 403 | 404;
-      type: string;
+      type:
+        | "data_source_not_found"
+        | "data_source_not_managed"
+        | "data_source_auth_error";
       message: string;
     };
 
@@ -64,10 +68,10 @@ async function fetchManagedNotionDataSource(
 }
 
 function errorJson(c: Context, result: Extract<FetchResult, { kind: "err" }>) {
-  return c.json(
-    { error: { type: result.type, message: result.message } },
-    result.status
-  );
+  return apiError(c, {
+    status_code: result.status,
+    api_error: { type: result.type, message: result.message },
+  });
 }
 
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion_url_sync.

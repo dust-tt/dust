@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -25,28 +27,24 @@ app.post("/", validate("json", PostDataSourceBodySchema), async (c) => {
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
-      404
-    );
+    });
   }
 
   if (!dataSource.canAdministrate(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_auth_error",
-          message:
-            "You do not have permission to access this data source's settings.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "You do not have permission to access this data source's settings.",
       },
-      403
-    );
+    });
   }
 
   const { assistantDefaultSelected } = c.req.valid("json");

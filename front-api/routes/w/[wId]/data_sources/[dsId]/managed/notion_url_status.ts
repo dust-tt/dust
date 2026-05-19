@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import apiConfig from "@app/lib/api/config";
@@ -21,67 +23,57 @@ app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (c) => {
   const owner = auth.getNonNullableWorkspace();
 
   if (!auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "workspace_auth_error",
-          message: "Only admins can check Notion URL status",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only admins can check Notion URL status",
       },
-      403
-    );
+    });
   }
 
   const dsId = c.req.param("dsId") ?? "";
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "Data source not found",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "Data source not found",
       },
-      404
-    );
+    });
   }
 
   if (dataSource.connectorProvider !== "notion") {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Data source is not a Notion connector",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Data source is not a Notion connector",
       },
-      400
-    );
+    });
   }
 
   const flags = await getFeatureFlags(auth);
   if (!flags.includes("advanced_notion_management")) {
-    return c.json(
-      {
-        error: {
-          type: "feature_flag_not_found",
-          message: "Advanced Notion management feature is not enabled",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "feature_flag_not_found",
+        message: "Advanced Notion management feature is not enabled",
       },
-      403
-    );
+    });
   }
 
   if (!dataSource.connectorId) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Data source does not have a connector",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Data source does not have a connector",
       },
-      400
-    );
+    });
   }
 
   const { url } = c.req.valid("json");
@@ -104,15 +96,13 @@ app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (c) => {
       },
       "Failed to get Notion URL status"
     );
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Failed to check URL status",
-        },
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to check URL status",
       },
-      500
-    );
+    });
   }
 
   return c.json(statusRes.value);

@@ -2,6 +2,8 @@
 import { isConnectorsAPIError } from "@dust-tt/client";
 import { Hono } from "hono";
 
+import { apiError } from "@front-api/middleware/utils";
+
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -34,40 +36,34 @@ app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
-      404
-    );
+    });
   }
 
   if (!dataSource.connectorId) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_managed",
-          message: "The data source you requested is not managed.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "data_source_not_managed",
+        message: "The data source you requested is not managed.",
       },
-      400
-    );
+    });
   }
 
   if (!dataSource.canAdministrate(auth) || !auth.isAdmin()) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_auth_error",
-          message:
-            "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `admins` for the current workspace can edit the permissions of a data source.",
       },
-      403
-    );
+    });
   }
 
   const body = c.req.valid("json");
@@ -93,27 +89,23 @@ app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
 
   if (updateRes.isErr()) {
     if (isConnectorsAPIError(updateRes.error) && isAPIError(updateRes.error)) {
-      return c.json(
-        {
-          error: {
-            type: updateRes.error.type,
-            message: updateRes.error.message,
-            connectors_error: updateRes.error,
-          },
-        },
-        401
-      );
-    }
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
-          message: "Could not update the connector",
+      return apiError(c, {
+        status_code: 401,
+        api_error: {
+          type: updateRes.error.type,
+          message: updateRes.error.message,
           connectors_error: updateRes.error,
         },
+      });
+    }
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Could not update the connector",
+        connectors_error: updateRes.error,
       },
-      500
-    );
+    });
   }
 
   // For Slack connections, update the signing secret in the webhook router.
@@ -124,15 +116,13 @@ app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
     });
 
     if (webhookRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: webhookRes.error.message,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: webhookRes.error.message,
         },
-        500
-      );
+      });
     }
   }
 

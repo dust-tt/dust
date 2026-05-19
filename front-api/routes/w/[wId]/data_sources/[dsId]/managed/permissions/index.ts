@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
 import { z } from "zod";
 
 import config from "@app/lib/api/config";
@@ -28,38 +30,32 @@ app.get("/", async (c) => {
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
+    return apiError(c, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
-      404
-    );
+    });
   }
   if (!dataSource.connectorId) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_not_managed",
-          message: "The data source you requested is not managed.",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "data_source_not_managed",
+        message: "The data source you requested is not managed.",
       },
-      400
-    );
+    });
   }
   if (!dataSource.canAdministrate(auth)) {
-    return c.json(
-      {
-        error: {
-          type: "data_source_auth_error",
-          message:
-            "Only the users that are `admins` for the current workspace can administrate a data source.",
-        },
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "Only the users that are `admins` for the current workspace can administrate a data source.",
       },
-      403
-    );
+    });
   }
 
   const parentIdParam = c.req.query("parentId");
@@ -83,31 +79,27 @@ app.get("/", async (c) => {
       // We let builders get the write permissions of a connector.
       // `write` is used for selection of default slack channel in the workspace agent builder.
       if (!auth.isBuilder()) {
-        return c.json(
-          {
-            error: {
-              type: "data_source_auth_error",
-              message:
-                "Only builders of the current workspace can view 'write' permissions of a data source.",
-            },
+        return apiError(c, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only builders of the current workspace can view 'write' permissions of a data source.",
           },
-          403
-        );
+        });
       }
       break;
     case undefined:
       // Only admins can browse "all" the resources of a connector.
       if (!auth.isAdmin()) {
-        return c.json(
-          {
-            error: {
-              type: "data_source_auth_error",
-              message:
-                "Only admins of the current workspace can view all permissions of a data source.",
-            },
+        return apiError(c, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only admins of the current workspace can view all permissions of a data source.",
           },
-          403
-        );
+        });
       }
       break;
     default:
@@ -116,15 +108,13 @@ app.get("/", async (c) => {
 
   const viewType = c.req.query("viewType");
   if (!viewType || !isValidContentNodesViewType(viewType)) {
-    return c.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          message: "Invalid viewType. Required: table | document | all",
-        },
+    return apiError(c, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid viewType. Required: table | document | all",
       },
-      400
-    );
+    });
   }
 
   const connectorsAPI = new ConnectorsAPI(
@@ -140,39 +130,33 @@ app.get("/", async (c) => {
 
   if (permissionsRes.isErr()) {
     if (permissionsRes.error.type === "connector_rate_limit_error") {
-      return c.json(
-        {
-          error: {
-            type: "rate_limit_error",
-            message:
-              "Rate limit error while retrieving the data source permissions",
-          },
+      return apiError(c, {
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message:
+            "Rate limit error while retrieving the data source permissions",
         },
-        429
-      );
+      });
     }
     if (permissionsRes.error.type === "connector_authorization_error") {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message:
-              "Authorization error while retrieving the data source permissions.",
-          },
-        },
-        401
-      );
-    }
-    return c.json(
-      {
-        error: {
-          type: "internal_server_error",
+      return apiError(c, {
+        status_code: 401,
+        api_error: {
+          type: "data_source_auth_error",
           message:
-            "An error occurred while retrieving the data source permissions.",
+            "Authorization error while retrieving the data source permissions.",
         },
+      });
+    }
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message:
+          "An error occurred while retrieving the data source permissions.",
       },
-      500
-    );
+    });
   }
 
   return c.json({ resources: permissionsRes.value.resources });
@@ -187,38 +171,32 @@ app.post(
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
-          },
+      return apiError(c, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
         },
-        404
-      );
+      });
     }
     if (!dataSource.connectorId) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_not_managed",
-            message: "The data source you requested is not managed.",
-          },
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "data_source_not_managed",
+          message: "The data source you requested is not managed.",
         },
-        400
-      );
+      });
     }
     if (!dataSource.canAdministrate(auth)) {
-      return c.json(
-        {
-          error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that are `admins` for the current workspace can administrate a data source.",
-          },
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Only the users that are `admins` for the current workspace can administrate a data source.",
         },
-        403
-      );
+      });
     }
 
     const { resources } = c.req.valid("json");
@@ -236,16 +214,14 @@ app.post(
     });
 
     if (connectorsRes.isErr()) {
-      return c.json(
-        {
-          error: {
-            type: "internal_server_error",
-            message: "Failed to set the permissions of the data source.",
-            connectors_error: connectorsRes.error,
-          },
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to set the permissions of the data source.",
+          connectors_error: connectorsRes.error,
         },
-        500
-      );
+      });
     }
 
     return c.json({ success: true });
