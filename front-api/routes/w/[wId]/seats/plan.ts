@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 
-import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
+import type {
+  SeatPlanResponseBody,
+  SeatTypeInfo,
+} from "@app/lib/api/credits/seat_plan";
+import { amountCents } from "@app/lib/metronome/amounts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
   MAX_SEAT_CREDIT_NAME,
@@ -8,16 +12,12 @@ import {
   PRO_SEAT_CREDIT_NAME,
   PRO_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/constants";
+import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 type PriceKey = "pro" | "max";
-
-interface SeatTypeInfo {
-  awuCredits: number;
-  priceCents: number;
-}
 
 // Mounted at /api/w/:wId/seats/plan.
 const app = new Hono();
@@ -39,6 +39,28 @@ app.get("/", async (c) => {
       400
     );
   }
+
+  const creditTypeResult = await getCreditTypeFromContract(contract);
+  if (creditTypeResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        rateCardId: contract.rate_card_id,
+        err: creditTypeResult.error,
+      },
+      "[Metronome] Failed to resolve contract currency for seat plan"
+    );
+    return c.json(
+      {
+        error: {
+          type: "internal_server_error",
+          message: "Failed to resolve currency for seat plan.",
+        },
+      },
+      500
+    );
+  }
+  const { currency } = creditTypeResult.value;
 
   const awuCreditsMap = new Map<PriceKey, number>();
   for (const credit of contract.recurring_credits ?? []) {
@@ -75,8 +97,10 @@ app.get("/", async (c) => {
         if (!key) {
           continue;
         }
+        // Metronome quotes prices in its per-currency native unit (USD in
+        // cents, others in whole units); normalize to actual cents here.
         // TODO (https://github.com/dust-tt/tasks/issues/8072): Add annual pricing
-        monthlyPriceCentsMap.set(key, entry.rate.price);
+        monthlyPriceCentsMap.set(key, amountCents(entry.rate.price, currency));
       }
 
       nextPage = rateSchedule.next_page;
@@ -109,6 +133,7 @@ app.get("/", async (c) => {
     return {
       awuCredits: awuCreditsMap.get(key) ?? 0,
       priceCents: monthlyPriceCents,
+      currency,
     };
   };
 
