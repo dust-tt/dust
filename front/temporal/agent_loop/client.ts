@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -9,7 +10,6 @@ import {
   makeCompactionWorkflowId,
   makeSandboxChildToolWorkflowId,
 } from "@app/temporal/agent_loop/lib/workflow_ids";
-import type { AgentMCPActionType } from "@app/types/actions";
 import type {
   AgentLoopArgs,
   AgentLoopArgsWithTiming,
@@ -191,21 +191,22 @@ export async function launchCompactionWorkflow({
   return new Ok(undefined);
 }
 
-export async function launchSandboxChildToolWorkflow({
-  auth,
-  agentLoopArgs,
-  action,
-  step,
-  waitForCompletion,
-}: {
-  auth: Authenticator;
-  agentLoopArgs: AgentLoopArgsWithTiming;
-  action: AgentMCPActionType;
-  step: number;
-  // On resume paths, wait for any prior run for this action to finalize first
-  // — same mechanism as launchAgentLoopWorkflow.
-  waitForCompletion?: boolean;
-}): Promise<Result<undefined, Error>> {
+export async function launchSandboxChildToolWorkflow(
+  auth: Authenticator,
+  {
+    agentLoopArgs,
+    action,
+    step,
+    waitForCompletion,
+  }: {
+    agentLoopArgs: AgentLoopArgsWithTiming;
+    action: AgentMCPActionResource;
+    step: number;
+    // On resume paths, wait for any prior run for this action to finalize first
+    // — same mechanism as launchAgentLoopWorkflow.
+    waitForCompletion?: boolean;
+  }
+): Promise<Result<undefined, Error>> {
   const authType = auth.toJSON();
   const { workspaceId } = authType;
   const client = await getTemporalClientForAgentNamespace();
