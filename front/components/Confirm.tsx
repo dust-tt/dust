@@ -15,6 +15,7 @@ export type ConfirmDataType = {
   validateLabel?: string;
   validateVariant?: "primary" | "warning";
   validateDisabled?: boolean;
+  hideValidateButton?: boolean;
   cancelLabel?: string;
 };
 
@@ -95,12 +96,16 @@ export function ConfirmDialog({
             variant: "outline",
             onClick: () => resolveConfirm(false),
           }}
-          rightButtonProps={{
-            label: confirmData?.validateLabel ?? "OK",
-            variant: confirmData?.validateVariant ?? "warning",
-            disabled: confirmData?.validateDisabled ?? false,
-            onClick: () => resolveConfirm(true),
-          }}
+          rightButtonProps={
+            confirmData?.hideValidateButton
+              ? undefined
+              : {
+                  label: confirmData?.validateLabel ?? "OK",
+                  variant: confirmData?.validateVariant ?? "warning",
+                  disabled: confirmData?.validateDisabled ?? false,
+                  onClick: () => resolveConfirm(true),
+                }
+          }
         />
       </DialogContent>
     </Dialog>
