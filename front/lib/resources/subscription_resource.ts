@@ -1265,14 +1265,15 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
       const { clientSecret, sessionId } =
         await createEmbeddedMetronomeSetupCheckoutSession({
-          owner,
-          user,
-          planCode,
-          metronomePackageAlias,
           allowedPaymentMethods,
-          couponCode,
+          metronomePackageAlias,
+          owner,
+          planCode,
+          billingPeriod,
           seatCount,
           pricePerSeatCents,
+          couponCode,
+          user,
         });
       return {
         mode: "embedded",

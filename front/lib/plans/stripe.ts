@@ -278,21 +278,23 @@ export const createStripeSubscriptionCheckoutSession = async ({
  */
 export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   allowedPaymentMethods = ["card"],
-  couponCode,
   metronomePackageAlias,
   owner,
   planCode,
+  billingPeriod,
   seatCount,
   pricePerSeatCents,
+  couponCode,
   user,
 }: {
   allowedPaymentMethods?: SupportedPaymentMethod[];
-  couponCode?: string;
   metronomePackageAlias: string;
   owner: WorkspaceType;
   planCode: string;
+  billingPeriod: string;
   seatCount?: number;
   pricePerSeatCents?: number;
+  couponCode?: string;
   user: UserType;
 }): Promise<{ clientSecret: string; sessionId: string }> => {
   const stripe = getStripeClient();
@@ -301,15 +303,17 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
     planCode,
     userId: user.sId,
     metronomePackageAlias,
+    billingPeriod,
   };
-  if (couponCode) {
-    metadata.couponCode = couponCode;
-  }
+
   if (seatCount !== undefined) {
     metadata.seatCount = String(seatCount);
   }
   if (pricePerSeatCents !== undefined) {
     metadata.pricePerSeatCents = String(pricePerSeatCents);
+  }
+  if (couponCode) {
+    metadata.couponCode = couponCode;
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -325,7 +329,7 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
       enabled: true,
     },
     redirect_on_completion: "if_required",
-    return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/checkout?setup_session_id={CHECKOUT_SESSION_ID}`,
+    return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/checkout?billingPeriod=${billingPeriod}&setup_session_id={CHECKOUT_SESSION_ID}`,
     consent_collection: {
       terms_of_service: "required",
     },
