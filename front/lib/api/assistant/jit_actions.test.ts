@@ -205,7 +205,7 @@ describe("getJITServers", () => {
   });
 
   describe("projects feature", () => {
-    it("should not include legacy project_context_and_conversations JIT server (search is on project_manager)", async () => {
+    it("should not include legacy project_context_and_conversations JIT server (search is on pod_manager)", async () => {
       await FeatureFlagFactory.basic(auth, "projects");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
@@ -253,7 +253,7 @@ describe("getJITServers", () => {
         const json = c.view.toJSON();
         return json.name ?? json.server.name;
       });
-      expect(viewNames).toContain("project_manager");
+      expect(viewNames).toContain("pod_manager");
     });
 
     it("should not enable projects skill in listForAgentLoop when feature flag is disabled", async () => {

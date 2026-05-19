@@ -98,7 +98,7 @@ describe("hideInternalConfiguration", () => {
   });
 
   it("keeps optional internal properties so the model can see inferable configuration fields", () => {
-    const dustProject =
+    const dustPod =
       ConfigurableToolInputJSONSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ];
@@ -106,7 +106,7 @@ describe("hideInternalConfiguration", () => {
       type: "object",
       properties: {
         fileName: { type: "string" },
-        dustProject,
+        dustPod,
       },
       required: ["fileName"],
     } as JSONSchema;
@@ -114,7 +114,7 @@ describe("hideInternalConfiguration", () => {
     const result = hideInternalConfiguration(inputSchema);
 
     expect(result.properties?.fileName).toEqual({ type: "string" });
-    expect(result.properties?.dustProject).toEqual(dustProject);
+    expect(result.properties?.dustPod).toEqual(dustPod);
     expect(result.required).toEqual(["fileName"]);
   });
 
@@ -339,7 +339,7 @@ describe("augmentInputsWithConfiguration after hideInternalConfiguration", () =>
       ConfigurableToolInputJSONSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME
       ];
-    const dustProjectSchema =
+    const dustPodSchema =
       ConfigurableToolInputJSONSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ];
@@ -353,7 +353,7 @@ describe("augmentInputsWithConfiguration after hideInternalConfiguration", () =>
         query: { type: "string" },
         dataSources: dataSourcesSchema,
         timeFrame: timeFrameSchema,
-        dustProject: dustProjectSchema,
+        dustPod: dustPodSchema,
       },
       required: ["query", "dataSources"],
     } as JSONSchema;
@@ -361,7 +361,7 @@ describe("augmentInputsWithConfiguration after hideInternalConfiguration", () =>
     const hiddenForModel = hideInternalConfiguration(inputSchema);
     expect(hiddenForModel.properties).not.toHaveProperty("dataSources");
     expect(hiddenForModel.properties).toHaveProperty("timeFrame");
-    expect(hiddenForModel.properties).toHaveProperty("dustProject");
+    expect(hiddenForModel.properties).toHaveProperty("dustPod");
 
     const config = createBasicMCPConfiguration({
       dataSources: [
@@ -401,7 +401,7 @@ describe("augmentInputsWithConfiguration after hideInternalConfiguration", () =>
       unit: "day",
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.TIME_FRAME,
     });
-    expect(augmented.dustProject).toEqual({
+    expect(augmented.dustPod).toEqual({
       uri: `project://dust/w/${mockWorkspace.sId}/projects/project-sid-xyz`,
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
     });

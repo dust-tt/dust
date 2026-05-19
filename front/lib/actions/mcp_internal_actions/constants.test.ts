@@ -59,9 +59,9 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "common_utilities", id: 1017 },
       { name: "skill_management", id: 1019 },
       { name: "schedules_management", id: 1020 },
-      { name: "project_manager", id: 1021 },
+      { name: "pod_manager", id: 1021 },
       {
-        name: "project_tasks",
+        name: "pod_tasks",
         id: 1029,
       },
       { name: "agent_sidekick_context", id: 1022 },

@@ -666,7 +666,7 @@ describe("jsonSchemaHasRequiredDustToolInput", () => {
       type: "object",
       properties: {
         message: { type: "string" },
-        dustProject: {
+        dustPod: {
           type: "object",
           properties: {
             uri: { type: "string" },
@@ -684,7 +684,7 @@ describe("jsonSchemaHasRequiredDustToolInput", () => {
     const schema: JSONSchema = {
       type: "object",
       properties: {
-        dustProject: {
+        dustPod: {
           type: "object",
           properties: {
             uri: { type: "string" },
@@ -693,7 +693,7 @@ describe("jsonSchemaHasRequiredDustToolInput", () => {
           required: ["uri", "mimeType"],
         },
       },
-      required: ["dustProject"],
+      required: ["dustPod"],
     };
     expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(true);
   });
@@ -705,7 +705,7 @@ describe("jsonSchemaHasRequiredDustToolInput", () => {
         wrapper: {
           type: "object",
           properties: {
-            dustProject: {
+            dustPod: {
               type: "object",
               properties: {
                 uri: { type: "string" },
@@ -716,7 +716,7 @@ describe("jsonSchemaHasRequiredDustToolInput", () => {
               required: ["uri", "mimeType"],
             },
           },
-          required: ["dustProject"],
+          required: ["dustPod"],
         },
       },
       required: [],
@@ -901,7 +901,7 @@ describe("jsonSchemaHasRequiredDustToolInput", () => {
   it("accepts object-like schema without explicit type: object when properties carry Dust", () => {
     const schema = {
       properties: {
-        dustProject: {
+        dustPod: {
           type: "object",
           properties: {
             uri: { type: "string" },
@@ -910,7 +910,7 @@ describe("jsonSchemaHasRequiredDustToolInput", () => {
           required: ["uri", "mimeType"],
         },
       },
-      required: ["dustProject"],
+      required: ["dustPod"],
     };
     expect(jsonSchemaHasRequiredDustToolInput(schema, true)).toBe(true);
   });

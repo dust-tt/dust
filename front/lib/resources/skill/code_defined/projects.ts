@@ -1,6 +1,6 @@
 import { SEARCH_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
-import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
+import { POD_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
@@ -35,7 +35,7 @@ under \`conversation/<rel>\` and are visible to this conversation only. Both sur
 through the same file system; prefer the sandbox when it's available (see the sandbox skill for
 the mount layout), and fall back to the \`${FILES_SERVER_NAME}\` MCP tools when it isn't. The Pod also accepts
 references to connected data nodes (Company Data); those are managed through the
-\`${PROJECT_MANAGER_SERVER_NAME}\` server.
+\`${POD_MANAGER_SERVER_NAME}\` server.
 
 To keep something for later Pod-wide use, write it under a \`project/<rel>\` path. To duplicate
 binary content (PDFs, images, audio) between scopes, use the dedicated copy tool rather than
@@ -52,12 +52,12 @@ Use the \`sId\` from \`pod_tasks\` tools (e.g. \`list_tasks\`, \`create_tasks\`)
 ## Tool Usage Priority
 
 When you need to find information, use this order (skip steps if the relevant tools are not in your tool list):
-1. **Pod overview**: \`${PROJECT_MANAGER_SERVER_NAME}\` \`get_information\` returns the Pod URL, description, and what is attached to the Pod.
+1. **Pod overview**: \`${POD_MANAGER_SERVER_NAME}\` \`get_information\` returns the Pod URL, description, and what is attached to the Pod.
 2. **Pod files**: read and search \`project/<rel>\` files through the sandbox or the \`${FILES_SERVER_NAME}\` MCP tools.
 3. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` for broader company data sources.
 `,
 
-  mcpServers: [{ name: "project_manager" }, { name: "project_tasks" }],
+  mcpServers: [{ name: "pod_manager" }, { name: "pod_tasks" }],
   version: 3,
   icon: "ActionFolderIcon",
   isRestricted: async (auth: Authenticator) => {

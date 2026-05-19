@@ -49,14 +49,14 @@ const LIST_CONVERSATION_ONLY_TOOL = {
 const LIST_PROJECT_AWARE_TOOL = {
   description:
     `${LIST_DESCRIPTION_PREFIX} ` +
-    "Defaults to the conversation's files. Pass `scope: \"project\"` to list the project's " +
-    "shared files (visible to every conversation in the same project) instead.",
+    "Defaults to the conversation's files. Pass `scope: \"project\"` to list the Pod's " +
+    "shared files (visible to every conversation in the same Pod) instead.",
   schema: {
     scope: z
       .enum(["conversation", "project"])
       .optional()
       .describe(
-        "Which file system to list. Defaults to `conversation`. Pass `project` to list the project's shared files."
+        "Which file system to list. Defaults to `conversation`. Pass `project` to list the Pod's shared files."
       ),
   },
   stake: "never_ask" as const,
@@ -99,8 +99,8 @@ const COPY_CONVERSATION_ONLY_TOOL = {
 const COPY_PROJECT_AWARE_TOOL = {
   description:
     `${COPY_DESCRIPTION_BASE} ` +
-    "Since this conversation belongs to a project, you can also copy between scopes, " +
-    "e.g. `conversation/report.pdf` -> `project/report.pdf` to promote a file into the project, " +
+    "Since this conversation belongs to a Pod, you can also copy between scopes, " +
+    "e.g. `conversation/report.pdf` -> `project/report.pdf` to promote a file into the Pod, " +
     "or `project/spec.md` -> `conversation/spec.md` to pull it into the conversation.",
   schema: {
     source: z
