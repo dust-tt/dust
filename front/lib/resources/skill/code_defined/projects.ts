@@ -55,7 +55,7 @@ When you need to find information, use this order (skip steps if the relevant to
 3. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` for broader company data sources.
 `,
 
-  mcpServers: [{ name: "pod_manager" }, { name: "pod_tasks" }],
+  mcpServers: [{ name: "project_manager" }, { name: "project_tasks" }],
   version: 3,
   icon: "ActionFolderIcon",
   isRestricted: async (auth: Authenticator) => {
