@@ -44,8 +44,8 @@ export function ConversationFileExplorer({
       getFileUrl={getFileUrl}
       onFileDownload={onFileDownload}
       onClose={closePanel}
-      onOpenInteractive={(fileId) =>
-        openPanel({ type: "interactive_content", fileId })
+      onOpenInteractive={(entry) =>
+        openPanel({ type: "interactive_content", fileId: entry.fileId })
       }
     />
   );
