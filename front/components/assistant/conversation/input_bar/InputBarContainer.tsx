@@ -238,6 +238,33 @@ const InputBarContainer = ({
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
+  const removeDataSourceLinkChip = (nodeId: string) => {
+    editorRef.current?.commands.command(({ state, tr }) => {
+      const toDelete: { from: number; to: number }[] = [];
+      state.doc.descendants((node, pos) => {
+        if (
+          node.type.name === "dataSourceLink" &&
+          String(node.attrs?.nodeId) === nodeId
+        ) {
+          toDelete.push({ from: pos, to: pos + node.nodeSize });
+        }
+      });
+
+      for (let i = toDelete.length - 1; i >= 0; i--) {
+        tr.delete(toDelete[i].from, toDelete[i].to);
+      }
+
+      return toDelete.length > 0;
+    });
+  };
+
+  const handleNodeUnselectWithChipRemoval = (
+    node: DataSourceViewContentNode
+  ) => {
+    onNodeUnselect(node);
+    removeDataSourceLinkChip(node.internalId);
+  };
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
     (fileId: string) => {
@@ -538,38 +565,6 @@ const InputBarContainer = ({
     });
   }, [fileUploaderService.fileBlobs, removePastedAttachmentChip]);
 
-  // Sync: when an attachment card is removed, remove the corresponding
-  // dataSourceLink chip(s) from the editor in a single transaction.
-  useEffect(() => {
-    const editorInstance = editorRef.current;
-    if (!editorInstance) {
-      return;
-    }
-
-    const attachedNodeIds = new Set(attachedNodes.map((n) => n.internalId));
-
-    editorInstance.commands.command(({ state, tr }) => {
-      let removed = false;
-      // Collect positions in reverse order so deletions don't shift later positions.
-      const toDelete: { from: number; to: number }[] = [];
-      state.doc.descendants((node, pos) => {
-        if (
-          node.type.name === "dataSourceLink" &&
-          node.attrs?.nodeId &&
-          !attachedNodeIds.has(String(node.attrs.nodeId))
-        ) {
-          toDelete.push({ from: pos, to: pos + node.nodeSize });
-        }
-      });
-
-      for (let i = toDelete.length - 1; i >= 0; i--) {
-        tr.delete(toDelete[i].from, toDelete[i].to);
-        removed = true;
-      }
-
-      return removed;
-    });
-  }, [attachedNodes]);
 
   const voiceTranscriberService = useVoiceTranscriberService({
     owner,
@@ -642,75 +637,76 @@ const InputBarContainer = ({
     }
   };
 
-  // Update the editor ref when the editor is created and listen for updates to the editor.
-  useEffect(() => {
-    const handleUpdate = () => {
-      const editorIsEmpty = editorService.isEmpty();
-      setIsEmpty(editorIsEmpty);
+  const handleEditorUpdate = useCallback(() => {
+    if (!editor) {
+      return;
+    }
 
-      // Auto-save draft when content changes and track user mentions.
-      // Include the selected single agent so the debounced save doesn't
-      // overwrite the agent mention saved by the single-agent effect.
-      const { markdown, mentions: editorMentions } =
-        editorService.getMarkdownAndMentions();
-      saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
-      const userMentioned = editorMentions.some((m) => m.type === "user");
+    const editorIsEmpty = editorService.isEmpty();
+    setIsEmpty(editorIsEmpty);
 
-      // Check if the very first content node in the editor is a user mention.
-      let editorStartsWithUserMention = false;
-      if (userMentioned && editor) {
-        const firstChild = editor.state.doc.firstChild;
-        const firstNode = firstChild?.firstChild;
-        editorStartsWithUserMention =
-          firstNode?.type.name === "mention" && firstNode.attrs.type === "user";
+    // Auto-save draft when content changes and track user mentions.
+    // Include the selected single agent so the debounced save doesn't
+    // overwrite the agent mention saved by the single-agent effect.
+    const { markdown, mentions: editorMentions } =
+      editorService.getMarkdownAndMentions();
+    saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
+    const userMentioned = editorMentions.some((m) => m.type === "user");
+
+    // Check if the very first content node in the editor is a user mention.
+    let editorStartsWithUserMention = false;
+    if (userMentioned) {
+      const firstChild = editor.state.doc.firstChild;
+      const firstNode = firstChild?.firstChild;
+      editorStartsWithUserMention =
+        firstNode?.type.name === "mention" && firstNode.attrs.type === "user";
+    }
+    setStartsWithUserMention(editorStartsWithUserMention);
+    onEditorMentionsChangedRef.current(
+      userMentioned,
+      editorStartsWithUserMention
+    );
+
+    // Sync: when a dataSourceLink chip is deleted from the editor, remove
+    // the corresponding attached node so the attachment card disappears.
+    const chipNodeIds = new Set<string>();
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === "dataSourceLink" && node.attrs?.nodeId) {
+        chipNodeIds.add(String(node.attrs.nodeId));
       }
-      setStartsWithUserMention(editorStartsWithUserMention);
-      onEditorMentionsChangedRef.current(
-        userMentioned,
-        editorStartsWithUserMention
-      );
+    });
 
-      // Sync: when a dataSourceLink chip is deleted from the editor, remove
-      // the corresponding attached node so the attachment card disappears.
-      if (editor) {
-        const chipNodeIds = new Set<string>();
-        editor.state.doc.descendants((node) => {
-          if (node.type.name === "dataSourceLink" && node.attrs?.nodeId) {
-            chipNodeIds.add(String(node.attrs.nodeId));
-          }
-        });
-
-        // Update the tracked set and unselect nodes whose chip was removed.
-        const prevIds = dataSourceLinkNodeIdsRef.current;
-        for (const prevId of prevIds) {
-          if (!chipNodeIds.has(prevId)) {
-            const node = attachedNodesRef.current.find(
-              (n) => n.internalId === prevId
-            );
-            if (node) {
-              onNodeUnselectRef.current(node);
-            }
-          }
+    // Update the tracked set and unselect nodes whose chip was removed.
+    const prevIds = dataSourceLinkNodeIdsRef.current;
+    for (const prevId of prevIds) {
+      if (!chipNodeIds.has(prevId)) {
+        const node = attachedNodesRef.current.find(
+          (n) => n.internalId === prevId
+        );
+        if (node) {
+          onNodeUnselectRef.current(node);
         }
-        dataSourceLinkNodeIdsRef.current = chipNodeIds;
       }
-    };
+    }
+    dataSourceLinkNodeIdsRef.current = chipNodeIds;
+  }, [editor, editorService, saveDraft]);
 
+  useEffect(() => {
     if (editorRef.current) {
-      editorRef.current.off("update", handleUpdate);
+      editorRef.current.off("update", handleEditorUpdate);
     }
 
     if (editor) {
-      editor.on("update", handleUpdate);
+      editor.on("update", handleEditorUpdate);
     }
     editorRef.current = editor;
 
     return () => {
       if (editor) {
-        editor.off("update", handleUpdate);
+        editor.off("update", handleEditorUpdate);
       }
     };
-  }, [editor, editorService, saveDraft]);
+  }, [editor, handleEditorUpdate]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
@@ -1085,7 +1081,7 @@ const InputBarContainer = ({
                     onAgentRemove={() => setSelectedSingleAgent(null)}
                     onMCPServerViewSelect={onMCPServerViewSelect}
                     onNodeSelect={onNodeSelect}
-                    onNodeUnselect={onNodeUnselect}
+                    onNodeUnselect={handleNodeUnselectWithChipRemoval}
                     onSkillSelect={handleSkillSelect}
                     owner={owner}
                     selectedAgent={selectedSingleAgent}
@@ -1174,7 +1170,7 @@ const InputBarContainer = ({
                   owner={owner}
                   isLoading={false}
                   onNodeSelect={onNodeSelect}
-                  onNodeUnselect={onNodeUnselect}
+                  onNodeUnselect={handleNodeUnselectWithChipRemoval}
                   attachedNodes={attachedNodes}
                   buttonSize={buttonSize}
                   toolFileUpload={{
