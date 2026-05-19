@@ -225,7 +225,18 @@ export async function provisionMetronomeFirstPeriodSubscription({
     workspace.sId
   );
   await restoreWorkspaceAfterSubscription(authAdmin);
-  await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({ workspaceId });
+  const workosWorkflowResult =
+    await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({ workspaceId });
+  if (workosWorkflowResult.isErr()) {
+    logger.error(
+      {
+        panic: true,
+        workspaceId,
+        error: normalizeError(workosWorkflowResult.error).message,
+      },
+      "[Checkout] Failed to launch WorkOS workspace subscription created workflow"
+    );
+  }
 
   logger.info(
     { workspaceId, metronomeContractId, uniquenessKey },
