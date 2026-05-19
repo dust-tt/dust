@@ -1,0 +1,65 @@
+import { stringify } from "csv-stringify/sync";
+import { Hono } from "hono";
+import { z } from "zod";
+
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
+
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
+import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
+
+const QuerySchema = z.object({
+  days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
+});
+
+// Mounted at /api/w/:wId/analytics/active-users-export.
+const app = new Hono();
+
+app.get("/", validate("query", QuerySchema), async (c) => {
+  const auth = c.get("auth");
+
+  if (!auth.isAdmin()) {
+    return apiError(c, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access workspace analytics.",
+      },
+    });
+  }
+
+  const { days } = c.req.valid("query");
+  const owner = auth.getNonNullableWorkspace();
+
+  const { startDate, endDate } = daysToDateRange(days);
+  const result = await fetchActiveUsersMetrics(owner, startDate, endDate);
+
+  if (result.isErr()) {
+    return apiError(c, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to retrieve active users metrics: ${result.error.message}`,
+      },
+    });
+  }
+
+  const headers = ["date", "dau", "wau", "mau"];
+  const csvData = result.value.map((point) => [
+    point.date,
+    point.dau,
+    point.wau,
+    point.mau,
+  ]);
+  const csv = stringify([headers, ...csvData], { header: false });
+
+  c.header("Content-Type", "text/csv");
+  c.header(
+    "Content-Disposition",
+    `attachment; filename="dust_active_users_last_${days}_days.csv"`
+  );
+  return c.body(csv);
+});
+
+export default app;

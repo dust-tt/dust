@@ -2,6 +2,7 @@ import {
   DAY_MS,
   getTimestampsForWindow,
 } from "@app/lib/api/analytics/time_utils";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { MetricsBucket } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   buildMetricAggregates,
@@ -16,7 +17,6 @@ import {
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -100,7 +100,7 @@ type GroupedAggs = {
  * - It has been started (startDate is not null and <= day start)
  * - It hasn't expired yet on that day (expirationDate is null or > day start)
  */
-function calculateCreditTotalsPerTimestamp(
+export function calculateCreditTotalsPerTimestamp(
   credits: CreditResource[],
   timestamps: number[]
 ): Map<
@@ -175,7 +175,7 @@ function calculateCreditTotalsPerTimestamp(
   return creditTotalsMap;
 }
 
-function getSelectedFilterClauses(
+export function getSelectedFilterClauses(
   filterParams: Partial<Record<GroupByType, string[]>> | undefined,
   excluded?: GroupByType
 ): estypes.QueryDslQueryContainer[] {
@@ -223,7 +223,7 @@ function getSelectedFilterClauses(
   });
 }
 
-function buildAggregation(
+export function buildAggregation(
   groupBy: GroupByType,
   groupByCount: number,
   includeDailyBreakdown: boolean
@@ -474,12 +474,9 @@ export async function handleProgrammaticCostRequest(
         const agentNames: Record<string, string> = {};
         if (groupBy === "agent") {
           const agentIds = availableGroupBuckets.map((b) => b.key);
-          const agents = await AgentConfigurationModel.findAll({
-            where: {
-              sId: agentIds,
-              workspaceId: auth.getNonNullableWorkspace().id,
-            },
-            attributes: ["sId", "name"],
+          const agents = await getAgentConfigurations(auth, {
+            agentIds,
+            variant: "extra_light",
           });
           agents.forEach((agent) => {
             agentNames[agent.sId] = agent.name;

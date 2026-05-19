@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 /** @ignoreswagger */
 import type { GetMetronomeUsageResponse } from "@app/lib/api/analytics/metronome_usage";
 import { handleMetronomeUsageRequest } from "@app/lib/api/analytics/metronome_usage";
