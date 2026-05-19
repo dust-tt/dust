@@ -1,3 +1,4 @@
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
   buildAuditLogTarget,
@@ -198,6 +199,16 @@ async function executeToolStreaming(
     getShutdownSignal(),
   ]);
 
+  // Sandbox-child actions are observed by the CLI through polling; they must
+  // not surface in the conversation timeline, so progress events are dropped.
+  const isSandboxChildAction = isSandboxChildActionInfo(
+    action.stepContext.sandboxChildActionInfo
+  );
+
+  const handleNonDeferredEvents = !isSandboxChildAction
+    ? updateResourceAndPublishEvent
+    : () => {};
+
   const eventStream = runToolWithStreaming(
     auth,
     {
@@ -224,7 +235,7 @@ async function executeToolStreaming(
         );
 
         // For tool errors, send immediately.
-        await updateResourceAndPublishEvent(auth, {
+        await handleNonDeferredEvents(auth, {
           event: {
             type: "tool_error",
             created: event.created,
@@ -256,7 +267,12 @@ async function executeToolStreaming(
         );
 
         let updatedAgentMessage = agentMessage;
-        if (!event.isError && event.text && !agentMessage.content) {
+        if (
+          !event.isError &&
+          event.text &&
+          !agentMessage.content &&
+          !isSandboxChildAction
+        ) {
           // Save and post the tool's text content only if the execution stopped
           // before any text was generated.
           await AgentStepContentResource.createNewVersion({
@@ -287,7 +303,7 @@ async function executeToolStreaming(
           };
         }
 
-        await updateResourceAndPublishEvent(auth, {
+        await handleNonDeferredEvents(auth, {
           event: event.isError
             ? {
                 type: "tool_error",
@@ -398,7 +414,7 @@ async function executeToolStreaming(
           },
         });
 
-        await updateResourceAndPublishEvent(auth, {
+        await handleNonDeferredEvents(auth, {
           event: {
             type: "agent_action_success",
             created: event.created,
@@ -413,7 +429,7 @@ async function executeToolStreaming(
         break;
       case "tool_params":
       case "tool_notification":
-        await updateResourceAndPublishEvent(auth, {
+        await handleNonDeferredEvents(auth, {
           event,
           agentMessage,
           conversation,

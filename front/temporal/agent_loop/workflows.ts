@@ -113,7 +113,7 @@ const { ensureConversationTitleActivity } = proxyActivities<
 const { compactionActivity } = proxyActivities<typeof compactionActivities>({
   startToCloseTimeout: "20 minutes",
   retry: {
-    // Do not retry compaction, the message is marked as failed, not idempotent.
+    // Do not retry compaction, the message is marked as failed, not idempotent
     maximumAttempts: 1,
   },
 });
@@ -457,4 +457,26 @@ async function executeStepIteration({
     runId,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
   };
+}
+
+export async function runSandboxChildToolWorkflow({
+  authType,
+  agentLoopArgs,
+  actionModelId,
+  step,
+}: {
+  authType: AuthenticatorType;
+  agentLoopArgs: AgentLoopArgsWithTiming;
+  actionModelId: number;
+  step: number;
+}) {
+  const { deferredEvents } = await runToolActivity(authType, {
+    actionId: actionModelId,
+    runAgentArgs: agentLoopArgs,
+    step,
+  });
+
+  if (deferredEvents.length > 0) {
+    await publishDeferredEventsActivity(deferredEvents);
+  }
 }

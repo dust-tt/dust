@@ -32,3 +32,13 @@ export function makeAgentLoopConversationTitleWorkflowId(
 
   return `agent-loop-conversation-title-workflow-${workspaceId}-${conversationId}`;
 }
+
+export function makeSandboxChildToolWorkflowId({
+  workspaceId,
+  actionModelId,
+}: {
+  workspaceId: string;
+  actionModelId: number;
+}) {
+  return `sandbox-child-tool-workflow-${workspaceId}-${actionModelId}`;
+}
