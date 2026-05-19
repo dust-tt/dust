@@ -101,19 +101,44 @@ async function processWorkspace(
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const now = new Date();
 
+  // Only consider DB credits whose period covers NOW — the fix targets the
+  // currently-active credit. Historical/expired DB credits are intentionally
+  // skipped.
   const dbFreeCredits = (await CreditResource.listAll(auth)).filter(
     (c) =>
       c.type === "free" &&
       c.metronomeCreditId !== null &&
       c.startDate !== null &&
-      c.expirationDate !== null
+      c.expirationDate !== null &&
+      c.startDate <= now &&
+      c.expirationDate > now
   );
 
   if (dbFreeCredits.length === 0) {
-    logger.info({ workspaceId }, "No DB free credits with metronomeCreditId");
+    logger.info({ workspaceId }, "No active DB free credits to fix");
     return;
   }
+
+  const creditsResult = await listMetronomeCustomerCredits({
+    metronomeCustomerId,
+    includeContractCredits: true,
+    includeBalance: true,
+    coveringDate: now.toISOString(),
+  });
+  if (creditsResult.isErr()) {
+    logger.error(
+      { workspaceId, error: creditsResult.error.message },
+      "Failed to list Metronome credits"
+    );
+    return;
+  }
+
+  const metronomeFreeCredits = creditsResult.value.filter(
+    (e) =>
+      e.access_schedule?.credit_type?.id === PROGRAMMATIC_USD_CREDIT_TYPE_ID
+  );
 
   for (const dbCredit of dbFreeCredits) {
     const dbStart = dbCredit.startDate!;
@@ -121,38 +146,7 @@ async function processWorkspace(
     const currentMetronomeCreditId = dbCredit.metronomeCreditId!;
     const dbKey = getPeriodKey(dbStart.toISOString(), dbEnd.toISOString());
 
-    // Use a date inside the DB credit's own period so `covering_date` returns
-    // credits whose access window contains it — even when the period is in the
-    // past. Filtering with `new Date()` would skip historical periods.
-    const coveringDate = new Date(
-      (dbStart.getTime() + dbEnd.getTime()) / 2
-    ).toISOString();
-
-    const creditsResult = await listMetronomeCustomerCredits({
-      metronomeCustomerId,
-      includeContractCredits: true,
-      includeBalance: true,
-      coveringDate,
-    });
-    if (creditsResult.isErr()) {
-      logger.error(
-        {
-          workspaceId,
-          dbCreditId: dbCredit.sId,
-          error: creditsResult.error.message,
-        },
-        "Failed to list Metronome credits — skipping"
-      );
-      continue;
-    }
-
-    const candidates = creditsResult.value.filter((entry) => {
-      if (
-        entry.access_schedule?.credit_type?.id !==
-        PROGRAMMATIC_USD_CREDIT_TYPE_ID
-      ) {
-        return false;
-      }
+    const candidates = metronomeFreeCredits.filter((entry) => {
       if (entry.id === currentMetronomeCreditId) {
         return false;
       }
