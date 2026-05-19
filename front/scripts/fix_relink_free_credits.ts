@@ -84,7 +84,7 @@ function getScheduleItem(entry: MetronomeBalance) {
 // DB credit against a candidate Metronome credit. Wider than a strict
 // hour-floor match because the new credit on the regenerated contract can be
 // off by a few minutes from the DB credit's stored period.
-const PERIOD_MATCH_TOLERANCE_MS = 4 * 60 * 60 * 1000; // 4 hours
+const PERIOD_MATCH_TOLERANCE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 async function processWorkspace(
   workspaceId: string,
@@ -198,7 +198,7 @@ async function processWorkspace(
       logger.info(
         {
           workspaceId,
-          dbCreditId: dbCredit.sId,
+          dbCreditId: dbCredit.id,
           currentMetronomeCreditId,
           dbStart: dbStart.toISOString(),
           dbEnd: dbEnd.toISOString(),
@@ -215,12 +215,29 @@ async function processWorkspace(
       logger.warn(
         {
           workspaceId,
-          dbCreditId: dbCredit.sId,
+          dbCreditId: dbCredit.id,
           replacementCreditId: replacement.id,
           hasContract: Boolean(contractId),
           hasScheduleItem: Boolean(replacementItem),
         },
         "Replacement credit missing contract or schedule item — skipping"
+      );
+      continue;
+    }
+
+    // Guard: the replacement must be a fresh credit at 0 balance. If the
+    // webhook had missed the amount update, Metronome's default amount is 0
+    // and balance is 0. A non-zero balance means the credit was already
+    // (partially) used — relinking would clobber real consumption.
+    if ((replacement.balance ?? 0) !== 0) {
+      logger.warn(
+        {
+          workspaceId,
+          dbCreditId: dbCredit.id,
+          replacementCreditId: replacement.id,
+          balance: replacement.balance,
+        },
+        "Replacement credit balance is not 0 — skipping"
       );
       continue;
     }
@@ -234,7 +251,7 @@ async function processWorkspace(
     logger.info(
       {
         workspaceId,
-        dbCreditId: dbCredit.sId,
+        dbCreditId: dbCredit.id,
         dbInitialMicroUsd: dbCredit.initialAmountMicroUsd,
         oldMetronomeCreditId: currentMetronomeCreditId,
         newMetronomeCreditId: replacement.id,
@@ -265,7 +282,7 @@ async function processWorkspace(
         logger.error(
           {
             workspaceId,
-            dbCreditId: dbCredit.sId,
+            dbCreditId: dbCredit.id,
             newMetronomeCreditId: replacement.id,
             error: updateResult.error.message,
           },
@@ -279,7 +296,7 @@ async function processWorkspace(
     logger.info(
       {
         workspaceId,
-        dbCreditId: dbCredit.sId,
+        dbCreditId: dbCredit.id,
         newMetronomeCreditId: replacement.id,
       },
       "DB credit relinked"
