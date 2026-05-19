@@ -1,4 +1,8 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import {
+  dispatchPaygDisabled,
+  dispatchPaygEnabled,
+} from "@app/lib/api/metronome/credit_state_dispatcher";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getDefaultDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,10 +15,20 @@ import {
   stopEnterprisePAYG,
 } from "@app/lib/credits/payg";
 import {
+  clearMetronomePaygCapAlert,
+  syncMetronomePaygCapAlert,
+} from "@app/lib/metronome/payg_alerts";
+import { PAYG_ELIGIBLE_TIERS } from "@app/lib/metronome/types";
+import {
+  isEntreprisePlanPrefix,
+  PRO_PLAN_SEAT_39_CODE,
+} from "@app/lib/plans/plan_codes";
+import {
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -174,7 +188,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         variant: "toggle",
         label: "Pay-as-you-go",
         description:
-          "Enable pay-as-you-go billing (enterprise only). When enabled, programmatic usage will still be possible after free and committed credits are exhausted. Requires a spending cap.",
+          "Enable pay-as-you-go billing. When enabled, programmatic usage will still be possible after free and committed credits are exhausted. Requires a spending cap. Available for enterprise (Stripe or Metronome) and business (Metronome only).",
         async: true,
       },
       paygCapDollars: {
@@ -290,13 +304,28 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
     }
 
     if (paygEnabled) {
-      if (
-        !stripeSubscription ||
-        !isEnterpriseSubscription(stripeSubscription)
-      ) {
-        return new Err(
-          new Error("PAYG can only be enabled for enterprise subscriptions.")
-        );
+      if (stripeSubscription) {
+        if (!isEnterpriseSubscription(stripeSubscription)) {
+          return new Err(
+            new Error(
+              "PAYG can only be enabled for enterprise Stripe subscriptions."
+            )
+          );
+        }
+      } else {
+        const planCode = subscription?.plan.code ?? "";
+        const isEligible =
+          isEntreprisePlanPrefix(planCode) ||
+          planCode === PRO_PLAN_SEAT_39_CODE;
+        if (!isEligible) {
+          return new Err(
+            new Error(
+              `PAYG can only be enabled for ${PAYG_ELIGIBLE_TIERS.join(
+                " or "
+              )} plans.`
+            )
+          );
+        }
       }
     }
 
@@ -340,32 +369,84 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       }
     }
 
-    // Handle PAYG enable/disable
-    if (paygEnabled && stripeSubscription) {
+    const workspace = auth.getNonNullableWorkspace();
+    if (paygEnabled) {
       assert(
         paygCapDollars !== undefined,
         "[Unreachable] PaygEnabled but paygCapDollars undefined"
       );
       const paygCapMicroUsd = Math.round(paygCapDollars * 1_000_000);
-      const paygResult = await startOrResumeEnterprisePAYG({
-        auth,
-        stripeSubscription,
-        paygCapMicroUsd,
-      });
-      if (paygResult.isErr()) {
-        return paygResult;
-      }
-    } else {
-      // Check if PAYG was previously enabled and needs to be stopped
-      const refreshedConfig =
-        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-      if (refreshedConfig?.paygCapMicroUsd !== null && stripeSubscription) {
-        const stopResult = await stopEnterprisePAYG({
+      if (stripeSubscription) {
+        const paygResult = await startOrResumeEnterprisePAYG({
           auth,
           stripeSubscription,
+          paygCapMicroUsd,
         });
-        if (stopResult.isErr()) {
-          return stopResult;
+        if (paygResult.isErr()) {
+          return paygResult;
+        }
+      } else {
+        const refreshedConfig =
+          await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+        if (refreshedConfig) {
+          const updateResult = await refreshedConfig.updateConfiguration(auth, {
+            paygCapMicroUsd,
+          });
+          if (updateResult.isErr()) {
+            return updateResult;
+          }
+        }
+        if (workspace.metronomeCustomerId) {
+          const alertResult = await syncMetronomePaygCapAlert({
+            metronomeCustomerId: workspace.metronomeCustomerId,
+            paygCapDollars,
+            workspaceSId: workspace.sId,
+          });
+          if (alertResult.isErr()) {
+            return alertResult;
+          }
+        }
+        const workspaceResource = await WorkspaceResource.fetchById(
+          workspace.sId
+        );
+        if (workspaceResource) {
+          await dispatchPaygEnabled({ workspace: workspaceResource });
+        }
+      }
+    } else {
+      const refreshedConfig =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      if (refreshedConfig?.paygCapMicroUsd !== null) {
+        if (stripeSubscription) {
+          const stopResult = await stopEnterprisePAYG({
+            auth,
+            stripeSubscription,
+          });
+          if (stopResult.isErr()) {
+            return stopResult;
+          }
+        } else if (refreshedConfig) {
+          const clearResult = await refreshedConfig.updateConfiguration(auth, {
+            paygCapMicroUsd: null,
+          });
+          if (clearResult.isErr()) {
+            return clearResult;
+          }
+          if (workspace.metronomeCustomerId) {
+            const alertResult = await clearMetronomePaygCapAlert({
+              metronomeCustomerId: workspace.metronomeCustomerId,
+              workspaceSId: workspace.sId,
+            });
+            if (alertResult.isErr()) {
+              return alertResult;
+            }
+          }
+          const workspaceResource = await WorkspaceResource.fetchById(
+            workspace.sId
+          );
+          if (workspaceResource) {
+            await dispatchPaygDisabled({ workspace: workspaceResource });
+          }
         }
       }
     }

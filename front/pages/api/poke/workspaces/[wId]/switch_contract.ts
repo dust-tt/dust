@@ -1,6 +1,11 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import {
+  dispatchPaygDisabled,
+  dispatchPaygEnabled,
+} from "@app/lib/api/metronome/credit_state_dispatcher";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
+import { MAX_PAYG_CAP_DOLLARS } from "@app/lib/api/poke/plugins/workspaces/manage_programmatic_usage_configuration";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -13,7 +18,15 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
-import type { MetronomePackageTier } from "@app/lib/metronome/types";
+import {
+  clearMetronomePaygCapAlert,
+  syncMetronomePaygCapAlert,
+} from "@app/lib/metronome/payg_alerts";
+import {
+  isPaygEligibleTier,
+  type MetronomePackageTier,
+  PAYG_ELIGIBLE_TIERS,
+} from "@app/lib/metronome/types";
 import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
 import {
   isEntreprisePlanPrefix,
@@ -24,6 +37,7 @@ import { getStripeCustomer } from "@app/lib/plans/stripe";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -37,15 +51,29 @@ export interface SwitchContractSuccessResponseBody {
   success: boolean;
 }
 
-const SwitchContractBodySchema = z.object({
-  planCode: z.string().min(1),
-  metronomePackageId: z.string().min(1),
-  // ISO timestamp. Required and validated to be ≥1h in the future when the
-  // selected package is enterprise-tier; forbidden otherwise (Pro/Business
-  // swap at the current hour).
-  startingAt: z.string().optional(),
-  stripeCustomerId: z.string().min(1),
-});
+const SwitchContractBodySchema = z
+  .object({
+    planCode: z.string().min(1),
+    metronomePackageId: z.string().min(1),
+    // ISO timestamp. Required and validated to be ≥1h in the future when the
+    // selected package is enterprise-tier; forbidden otherwise (Pro/Business
+    // swap at the current hour).
+    startingAt: z.string().optional(),
+    stripeCustomerId: z.string().min(1),
+    paygEnabled: z.boolean().default(false),
+    paygCapDollars: z
+      .number()
+      .min(1, "PAYG cap must be at least $1")
+      .max(
+        MAX_PAYG_CAP_DOLLARS,
+        `PAYG cap cannot exceed $${MAX_PAYG_CAP_DOLLARS.toLocaleString()}`
+      )
+      .optional(),
+  })
+  .refine((data) => !data.paygEnabled || data.paygCapDollars !== undefined, {
+    message: "PAYG cap is required when Pay-as-you-go is enabled.",
+    path: ["paygCapDollars"],
+  });
 
 type PlanTier = MetronomePackageTier | "free";
 
@@ -166,20 +194,8 @@ async function handler(
     });
   }
 
-  // PAYG on the Metronome path is not yet wired up — reject before touching
-  // any state.
   const programmaticConfig =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-  if (programmaticConfig?.paygCapMicroUsd != null) {
-    const errorMessage =
-      "Pay-as-you-go is not yet supported for Metronome-billed subscriptions. " +
-      "Disable PAYG via the 'Manage Programmatic Usage Configuration' plugin first.";
-    await pluginRun.recordError(errorMessage);
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: { type: "invalid_request_error", message: errorMessage },
-    });
-  }
 
   // Validate the Stripe customer exists before we touch Metronome.
   const stripeCustomer = await getStripeCustomer(body.stripeCustomerId);
@@ -253,6 +269,17 @@ async function handler(
         type: "invalid_request_error",
         message: compatResult.error.message,
       },
+    });
+  }
+
+  if (body.paygEnabled && !isPaygEligibleTier(pkg.tier)) {
+    const errorMessage = `Pay-as-you-go can only be enabled for ${PAYG_ELIGIBLE_TIERS.join(
+      " or "
+    )} contracts.`;
+    await pluginRun.recordError(errorMessage);
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: { type: "invalid_request_error", message: errorMessage },
     });
   }
 
@@ -359,12 +386,82 @@ async function handler(
     });
   }
 
+  const paygCapMicroUsd =
+    body.paygEnabled && body.paygCapDollars !== undefined
+      ? Math.round(body.paygCapDollars * 1_000_000)
+      : null;
+  if (programmaticConfig) {
+    const updateResult = await programmaticConfig.updateConfiguration(auth, {
+      paygCapMicroUsd,
+    });
+    if (updateResult.isErr()) {
+      const errorMessage = `Failed to update PAYG configuration: ${updateResult.error.message}`;
+      await pluginRun.recordError(errorMessage);
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: errorMessage },
+      });
+    }
+  } else if (paygCapMicroUsd !== null) {
+    const createResult = await ProgrammaticUsageConfigurationResource.makeNew(
+      auth,
+      {
+        freeCreditMicroUsd: null,
+        defaultDiscountPercent: 0,
+        paygCapMicroUsd,
+        dailyCapMicroUsd: null,
+      }
+    );
+    if (createResult.isErr()) {
+      const errorMessage = `Failed to create PAYG configuration: ${createResult.error.message}`;
+      await pluginRun.recordError(errorMessage);
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: errorMessage },
+      });
+    }
+  }
+
+  if (owner.metronomeCustomerId) {
+    const alertResult =
+      body.paygEnabled && body.paygCapDollars !== undefined
+        ? await syncMetronomePaygCapAlert({
+            metronomeCustomerId: owner.metronomeCustomerId,
+            paygCapDollars: body.paygCapDollars,
+            workspaceSId: owner.sId,
+          })
+        : await clearMetronomePaygCapAlert({
+            metronomeCustomerId: owner.metronomeCustomerId,
+            workspaceSId: owner.sId,
+          });
+    if (alertResult.isErr()) {
+      const errorMessage = `Failed to sync Metronome PAYG cap alert: ${alertResult.error.message}`;
+      await pluginRun.recordError(errorMessage);
+      return apiError(req, res, {
+        status_code: 502,
+        api_error: { type: "internal_server_error", message: errorMessage },
+      });
+    }
+  }
+
+  const workspaceResource = await WorkspaceResource.fetchById(owner.sId);
+  if (workspaceResource) {
+    if (body.paygEnabled) {
+      await dispatchPaygEnabled({ workspace: workspaceResource });
+    } else {
+      await dispatchPaygDisabled({ workspace: workspaceResource });
+    }
+  }
+
+  const paygStatus = body.paygEnabled
+    ? ` PAYG enabled with $${body.paygCapDollars} cap.`
+    : "";
   await pluginRun.recordResult({
     display: "text",
     value:
       `Workspace ${owner.name} scheduled to switch to plan ${body.planCode} ` +
       `(Metronome contract ${metronomeContractId}). Subscription will flip ` +
-      "when the contract.start webhook fires.",
+      `when the contract.start webhook fires.${paygStatus}`,
   });
   res.status(200).json({ success: true });
 }

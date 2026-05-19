@@ -1,3 +1,5 @@
+import { Authenticator } from "@app/lib/auth";
+import { isPAYGEnabled } from "@app/lib/credits/payg";
 import {
   clearUserCapBlocked,
   setUserCapBlocked,
@@ -11,11 +13,9 @@ import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
-// TODO(remy): replace stub with real contract lookup once the PAYG
-// flag location on the Metronome contract is settled. Until then we treat
-// every workspace as non-PAYG: `pool_exhausted` always routes to `depleted`.
-async function isPaygEnabled(_workspace: WorkspaceResource): Promise<boolean> {
-  return false;
+async function isPaygEnabled(workspace: WorkspaceResource): Promise<boolean> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  return isPAYGEnabled(auth);
 }
 
 export async function dispatchPerUserCapReached({
@@ -127,6 +127,22 @@ export async function dispatchCreditsAdded({
   workspace: WorkspaceResource;
 }): Promise<void> {
   await transitionWorkspacePool(workspace, { type: "credits_added" });
+}
+
+export async function dispatchPaygDisabled({
+  workspace,
+}: {
+  workspace: WorkspaceResource;
+}): Promise<void> {
+  await transitionWorkspacePool(workspace, { type: "payg_disabled" });
+}
+
+export async function dispatchPaygEnabled({
+  workspace,
+}: {
+  workspace: WorkspaceResource;
+}): Promise<void> {
+  await transitionWorkspacePool(workspace, { type: "payg_enabled" });
 }
 
 async function transitionWorkspacePool(

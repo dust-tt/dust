@@ -185,6 +185,78 @@ describe("WorkspaceCreditStateMachine — transitions", () => {
     expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
     expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
   });
+
+  it("overage + payg_disabled → depleted (marks pool depleted)", async () => {
+    const workspace = makeWorkspace("overage");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "payg_disabled" },
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("depleted");
+    }
+    expect(workspace.updatePoolCreditState).toHaveBeenCalledWith(
+      "depleted",
+      undefined
+    );
+    expect(mockSetWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
+  });
+
+  it("depleted + payg_enabled → overage (clears depleted cache)", async () => {
+    const workspace = makeWorkspace("depleted");
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      { type: "payg_enabled" },
+      baseCtxPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("overage");
+    }
+    expect(workspace.updatePoolCreditState).toHaveBeenCalledWith(
+      "overage",
+      undefined
+    );
+    expect(mockClearWorkspacePoolDepleted).toHaveBeenCalledWith("ws_test");
+    expect(mockSetWorkspacePoolDepleted).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: "active + payg_enabled → active (no-op)",
+      from: "active" as const,
+      event: { type: "payg_enabled" } as WorkspaceCreditEvent,
+    },
+    {
+      label: "active + payg_disabled → active (no-op)",
+      from: "active" as const,
+      event: { type: "payg_disabled" } as WorkspaceCreditEvent,
+    },
+    {
+      label: "overage + payg_enabled → overage (no-op)",
+      from: "overage" as const,
+      event: { type: "payg_enabled" } as WorkspaceCreditEvent,
+    },
+    {
+      label: "depleted + payg_disabled → depleted (no-op)",
+      from: "depleted" as const,
+      event: { type: "payg_disabled" } as WorkspaceCreditEvent,
+    },
+  ])("$label", async ({ from, event }) => {
+    const workspace = makeWorkspace(from);
+    const result = await transitionWorkspaceCreditState(
+      workspace,
+      event,
+      baseCtxNoPayg
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe(from);
+    }
+    expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------

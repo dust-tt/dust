@@ -4,6 +4,7 @@ import {
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
+import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   isEntreprisePlanPrefix,
   PRO_PLAN_SEAT_29_CODE,
@@ -27,6 +28,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  Label,
+  SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,12 +37,29 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-const SwitchContractFormSchema = z.object({
-  metronomePackageId: z.string().min(1, "Required"),
-  planCode: z.string().min(1, "Required"),
-  startingAt: z.string().optional(),
-  stripeCustomerId: z.string().min(1, "Required"),
-});
+const MICRO_USD_PER_DOLLAR = 1_000_000;
+const MAX_PAYG_CAP_DOLLARS = 20_000;
+
+const SwitchContractFormSchema = z
+  .object({
+    metronomePackageId: z.string().min(1, "Required"),
+    planCode: z.string().min(1, "Required"),
+    startingAt: z.string().optional(),
+    stripeCustomerId: z.string().min(1, "Required"),
+    paygEnabled: z.boolean().default(false),
+    paygCapDollars: z
+      .number()
+      .min(1, "PAYG cap must be at least $1")
+      .max(
+        MAX_PAYG_CAP_DOLLARS,
+        `PAYG cap cannot exceed $${MAX_PAYG_CAP_DOLLARS.toLocaleString()}`
+      )
+      .optional(),
+  })
+  .refine((data) => !data.paygEnabled || data.paygCapDollars !== undefined, {
+    message: "PAYG cap is required when Pay-as-you-go is enabled.",
+    path: ["paygCapDollars"],
+  });
 type SwitchContractFormValues = z.infer<typeof SwitchContractFormSchema>;
 
 function snapDatetimeLocalToHour(value: string): string {
@@ -99,6 +119,8 @@ export default function SwitchContractDialog({
     );
   }, []);
 
+  const initialPaygCapMicroUsd =
+    programmaticUsageConfig?.paygCapMicroUsd ?? null;
   const form = useForm<SwitchContractFormValues>({
     resolver: zodResolver(SwitchContractFormSchema),
     defaultValues: {
@@ -106,6 +128,11 @@ export default function SwitchContractDialog({
       planCode: "",
       startingAt: "",
       stripeCustomerId: stripeCustomerId ?? "",
+      paygEnabled: initialPaygCapMicroUsd !== null,
+      paygCapDollars:
+        initialPaygCapMicroUsd !== null
+          ? initialPaygCapMicroUsd / MICRO_USD_PER_DOLLAR
+          : undefined,
     },
   });
 
@@ -164,7 +191,8 @@ export default function SwitchContractDialog({
 
   // When the operator picks a package, derive (Pro/Business) or reset
   // (Enterprise) the plan code. The full list of ENT_* plans is offered for
-  // enterprise; pro/business map to a single plan code.
+  // enterprise; pro/business map to a single plan code. PAYG is force-disabled
+  // for tiers that don't support it (currently: pro).
   useEffect(() => {
     if (selectedTier === "pro") {
       form.setValue("planCode", PRO_PLAN_SEAT_29_CODE);
@@ -175,6 +203,10 @@ export default function SwitchContractDialog({
     } else if (selectedTier === "enterprise") {
       form.setValue("planCode", "");
       form.setValue("startingAt", minStartingAtLocal);
+    }
+    if (selectedTier && !isPaygEligibleTier(selectedTier)) {
+      form.setValue("paygEnabled", false);
+      form.setValue("paygCapDollars", undefined);
     }
   }, [selectedTier, form, minStartingAtLocal]);
 
@@ -189,7 +221,9 @@ export default function SwitchContractDialog({
     [plans]
   );
 
-  const paygDisabled = !!programmaticUsageConfig?.paygCapMicroUsd;
+  const paygEnabled = form.watch("paygEnabled");
+  const paygEligible =
+    selectedTier !== null && isPaygEligibleTier(selectedTier);
 
   const onSubmit = useCallback(
     (values: SwitchContractFormValues) => {
@@ -197,7 +231,11 @@ export default function SwitchContractDialog({
         metronomePackageId: values.metronomePackageId.trim(),
         planCode: values.planCode.trim(),
         stripeCustomerId: values.stripeCustomerId.trim(),
+        paygEnabled: values.paygEnabled,
       };
+      if (values.paygEnabled && values.paygCapDollars !== undefined) {
+        cleaned.paygCapDollars = values.paygCapDollars;
+      }
       if (selectedTier === "enterprise" && values.startingAt) {
         // datetime-local strings have no timezone — convert to ISO so the
         // server's Date.parse is unambiguous.
@@ -239,11 +277,7 @@ export default function SwitchContractDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          label="🔁 Switch contract"
-          disabled={paygDisabled}
-        />
+        <Button variant="outline" label="🔁 Switch contract" />
       </DialogTrigger>
       <DialogContent className="bg-primary-50 dark:bg-primary-50-night sm:max-w-[600px]">
         <DialogHeader>
@@ -255,20 +289,13 @@ export default function SwitchContractDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          {paygDisabled && (
-            <div className="text-warning text-sm">
-              Cannot switch contract while Pay-as-you-go is enabled. Disable
-              PAYG via the "Manage Programmatic Usage Configuration" plugin
-              first.
-            </div>
-          )}
           {error && <div className="text-warning">{error}</div>}
           {isSubmitting && (
             <div className="flex justify-center">
               <Spinner size="lg" />
             </div>
           )}
-          {!isSubmitting && !paygDisabled && (
+          {!isSubmitting && (
             <PokeForm {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
@@ -342,6 +369,30 @@ export default function SwitchContractDialog({
                     <span className="font-mono">{form.watch("planCode")}</span>{" "}
                     — swap at the current hour, subscription flips
                     synchronously.
+                  </div>
+                )}
+                {paygEligible && (
+                  <div className="border-t pt-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <SliderToggle
+                        selected={paygEnabled}
+                        onClick={() =>
+                          form.setValue("paygEnabled", !paygEnabled)
+                        }
+                      />
+                      <Label className="text-sm">Pay-as-you-go</Label>
+                    </div>
+                    {paygEnabled && (
+                      <div className="ml-6">
+                        <InputField
+                          control={form.control}
+                          name="paygCapDollars"
+                          title="PAYG Spending Cap (USD)"
+                          type="number"
+                          placeholder="e.g., 1000"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
                 <DialogFooter>
