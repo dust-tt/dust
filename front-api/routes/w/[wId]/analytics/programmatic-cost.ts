@@ -11,6 +11,7 @@ import {
   DAY_MS,
   getTimestampsForWindow,
 } from "@app/lib/api/analytics/time_utils";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { MetricsBucket } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   buildMetricAggregates,
@@ -24,7 +25,6 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage/common";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 
 import { validate } from "@front-api/middleware/validator";
@@ -263,12 +263,9 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     const agentNames: Record<string, string> = {};
     if (groupBy === "agent") {
       const agentIds = availableGroupBuckets.map((b) => b.key);
-      const agents = await AgentConfigurationModel.findAll({
-        where: {
-          sId: agentIds,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-        attributes: ["sId", "name"],
+      const agents = await getAgentConfigurations(auth, {
+        agentIds,
+        variant: "extra_light",
       });
       agents.forEach((agent) => {
         agentNames[agent.sId] = agent.name;
