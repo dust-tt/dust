@@ -1,0 +1,54 @@
+import type { KillSwitchType } from "@app/lib/poke/types";
+import { isKillSwitchType } from "@app/lib/poke/types";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
+
+export type GetKillSwitchesResponseBody = {
+  killSwitches: KillSwitchType[];
+};
+
+export type PostKillSwitchResponseBody = {
+  success: true;
+};
+
+const KillSwitchTypeSchema = z.object({
+  enabled: z.boolean(),
+  type: z.string(),
+});
+
+// Mounted at /api/poke/kill. pokeAuth is applied by the parent poke sub-app.
+const app = new Hono();
+
+app.get("/", async (ctx): HandlerResult<GetKillSwitchesResponseBody> => {
+  const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+  return ctx.json({ killSwitches });
+});
+
+app.post(
+  "/",
+  validate("json", KillSwitchTypeSchema),
+  async (ctx): HandlerResult<PostKillSwitchResponseBody> => {
+    const { enabled, type } = ctx.req.valid("json");
+    if (!isKillSwitchType(type)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `The request body is invalid: ${type} is not a valid kill switch type`,
+        },
+      });
+    }
+    if (enabled) {
+      await KillSwitchResource.enableKillSwitch(type);
+    } else {
+      await KillSwitchResource.disableKillSwitch(type);
+    }
+    return ctx.json({ success: true });
+  }
+);
+
+export default app;

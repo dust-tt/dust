@@ -1,9 +1,7 @@
-/** @ignoreswagger */
-// @migration-status: MIGRATED_TO_HONO
+import { Hono } from "hono";
+import { Op } from "sequelize";
+
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import {
   AgentMessageFeedbackModel,
   ConversationModel,
@@ -12,12 +10,8 @@ import {
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { apiError } from "@app/logger/withlogging";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 const PAGE_SIZE = 500;
 
@@ -46,41 +40,13 @@ export interface GlobalAgentFeedbackItem {
   messageId: string | null;
 }
 
-export interface GetGlobalAgentFeedbacksResponseBody {
-  feedbacks: GlobalAgentFeedbackItem[];
-  hasMore: boolean;
-}
+// Mounted at /api/poke/global-agent-feedbacks. pokeAuth is applied by the
+// parent poke sub-app.
+const app = new Hono();
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetGlobalAgentFeedbacksResponseBody>
-  >,
-  session: SessionWithUser
-): Promise<void> {
-  const auth = await Authenticator.fromSuperUserSession(session, null);
-
-  if (!auth.isDustSuperUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "Could not find the user.",
-      },
-    });
-  }
-
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
-    });
-  }
-
-  const { includeEmpty, lastId } = req.query;
+app.get("/", async (c) => {
+  const includeEmpty = c.req.query("includeEmpty");
+  const lastId = c.req.query("lastId");
 
   const where: Record<string, unknown> = {
     agentConfigurationId: { [Op.in]: GLOBAL_AGENT_IDS },
@@ -118,7 +84,7 @@ async function handler(
   const rows = feedbackRows.slice(0, PAGE_SIZE);
 
   if (rows.length === 0) {
-    return res.status(200).json({ feedbacks: [], hasMore: false });
+    return c.json({ feedbacks: [], hasMore: false });
   }
 
   // Batch-fetch workspace info.
@@ -137,7 +103,7 @@ async function handler(
     attributes: ["id", "sId"],
     where: { id: conversationIds },
   });
-  const conversationById = new Map(conversations.map((c) => [c.id, c.sId]));
+  const conversationById = new Map(conversations.map((cv) => [cv.id, cv.sId]));
 
   // Batch-fetch message sIds.
   const agentMessageIds = rows.map((r) => r.agentMessageId);
@@ -169,7 +135,7 @@ async function handler(
     };
   });
 
-  return res.status(200).json({ feedbacks, hasMore });
-}
+  return c.json({ feedbacks, hasMore });
+});
 
-export default withSessionAuthenticationForPoke(handler);
+export default app;
