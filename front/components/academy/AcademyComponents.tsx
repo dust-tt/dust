@@ -724,5 +724,5 @@ interface AcademyLayoutProps {
 }
 
 export function AcademyLayout({ children }: AcademyLayoutProps) {
-  return <Grid>{children}</Grid>;
+  return <Grid className="pb-24">{children}</Grid>;
 }

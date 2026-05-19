@@ -91,7 +91,7 @@ export default function ChatGPTLandingPage() {
       </div>
 
       {/* Bottom CTA */}
-      <div className="mt-8">
+      <div className="mt-8 pb-24">
         <EmailCTASection
           title={chatgptConfig.cta.title}
           subtitle={chatgptConfig.cta.subtitle}

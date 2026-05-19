@@ -84,7 +84,7 @@ export default function GleanLandingPage() {
       />
 
       {/* FAQ */}
-      <div className="mt-8">
+      <div className="mt-8 pb-24">
         <FAQ
           items={gleanLandingConfig.faq}
           title="Frequently asked questions"

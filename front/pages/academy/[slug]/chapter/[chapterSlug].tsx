@@ -235,7 +235,7 @@ export default function ChapterPage({
         <meta name="twitter:image" content={ogImageUrl} />
       </Head>
 
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen pb-24">
         <ChapterSidebar
           searchableItems={searchableItems}
           courseSlug={courseSlug}

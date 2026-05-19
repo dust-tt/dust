@@ -67,12 +67,14 @@ export default function SkipLandingPage() {
       />
 
       {/* CTA Section */}
-      <SqCtaSection
-        title={skipConfig.cta.title}
-        subtitle={skipConfig.cta.subtitle}
-        ctaText={skipConfig.cta.ctaText}
-        ctaLink={skipConfig.cta.ctaLink}
-      />
+      <div className="pb-24">
+        <SqCtaSection
+          title={skipConfig.cta.title}
+          subtitle={skipConfig.cta.subtitle}
+          ctaText={skipConfig.cta.ctaText}
+          ctaLink={skipConfig.cta.ctaLink}
+        />
+      </div>
     </>
   );
 }
