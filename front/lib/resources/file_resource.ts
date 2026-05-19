@@ -7,6 +7,7 @@ import {
   getConversationFilePath,
   getProjectFilesBasePath,
   makeProcessedMountFileName,
+  normalizeMountParentRelativePath,
 } from "@app/lib/api/files/mount_path";
 import {
   getProcessedContentType,
@@ -1040,10 +1041,27 @@ export class FileResource extends BaseResource<FileModel> {
       projectId,
     });
 
-    const desiredPath = `${basePath}${this.fileName}`;
+    const mountDirMetadata = this.useCaseMetadata?.mountRelativeDir;
+    let mountDir = "";
+    if (mountDirMetadata) {
+      const parentRes = normalizeMountParentRelativePath(mountDirMetadata);
+      mountDir = parentRes.isOk() ? parentRes.value : "";
+    }
+    const relativeFileName = mountDir
+      ? `${mountDir}/${this.fileName}`
+      : this.fileName;
+
+    const desiredPath = `${basePath}${relativeFileName}`;
     const isTaken = await this.isMountFilePathTaken(desiredPath);
 
-    return isTaken ? `${basePath}${disambiguateFileName(this)}` : desiredPath;
+    if (isTaken) {
+      const disambiguated = disambiguateFileName(this);
+      return mountDir
+        ? `${basePath}${mountDir}/${disambiguated}`
+        : `${basePath}${disambiguated}`;
+    }
+
+    return desiredPath;
   }
 
   /**

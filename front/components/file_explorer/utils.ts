@@ -7,6 +7,7 @@ import {
 
 import type {
   FileExplorerBucket,
+  FileExplorerEntry,
   FileExplorerSortMode,
   FilePanelCategory,
   SandboxTreeNode,
@@ -78,16 +79,38 @@ export function getFileExplorerBucket(
   }
 }
 
+/** Display order: Company Data refs, then folders, then GCS files. */
+function getExplorerNodeSortRank(
+  node: SandboxTreeNode,
+  entryByRelativePath: Map<string, FileExplorerEntry>
+): number {
+  if (entryByRelativePath.get(node.path)?.kind === "node") {
+    return 0;
+  }
+  if (node.isDirectory) {
+    return 1;
+  }
+  return 2;
+}
+
 /**
- * Returns a node's sort key for the explorer sort modes. Falls back to 0 / empty string when
- * the underlying entry isn't available (e.g. inferred directory).
+ * Compare nodes for the explorer sort modes. Always groups entries as: connected data (content
+ * nodes), then folders, then files; within each group the selected sort mode applies.
  */
 export function compareTreeNodesForSort(
   a: SandboxTreeNode,
   b: SandboxTreeNode,
   sortMode: FileExplorerSortMode,
-  timestampsByPath: Map<string, number>
+  timestampsByPath: Map<string, number>,
+  entryByRelativePath: Map<string, FileExplorerEntry>
 ): number {
+  const rankDiff =
+    getExplorerNodeSortRank(a, entryByRelativePath) -
+    getExplorerNodeSortRank(b, entryByRelativePath);
+  if (rankDiff !== 0) {
+    return rankDiff;
+  }
+
   switch (sortMode) {
     case "name-asc":
       return a.name.localeCompare(b.name);
@@ -96,8 +119,8 @@ export function compareTreeNodesForSort(
       return b.name.localeCompare(a.name);
 
     case "last-modified": {
-      // Folders have no timestamp on the tree (they're inferred from file paths). Fall through
-      // to alphabetical so they group at the top in a stable order.
+      // Folders have no timestamp on the tree (they're inferred from file paths). Among files,
+      // sort by recency; tie-break by name.
       const ta = timestampsByPath.get(a.path) ?? 0;
       const tb = timestampsByPath.get(b.path) ?? 0;
       if (tb !== ta) {
@@ -226,5 +249,81 @@ export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
     }
   }
 
+  for (const entry of entries.filter((e) => e.isDirectory)) {
+    const slashIdx = entry.path.indexOf("/");
+    const relativePath =
+      slashIdx >= 0 ? entry.path.slice(slashIdx + 1) : entry.path;
+
+    if (!relativePath || nodeMap.has(relativePath)) {
+      continue;
+    }
+
+    const parts = relativePath.split("/");
+    let currentPath = "";
+    for (let i = 0; i < parts.length; i++) {
+      currentPath = currentPath ? `${currentPath}/${parts[i]!}` : parts[i]!;
+      if (nodeMap.has(currentPath)) {
+        continue;
+      }
+
+      const dirNode: SandboxTreeNode = {
+        name: parts[i]!,
+        path: currentPath,
+        isDirectory: true,
+        contentType: null,
+        fileId: null,
+        children: [],
+      };
+      nodeMap.set(currentPath, dirNode);
+
+      const parentPath = currentPath.substring(0, currentPath.lastIndexOf("/"));
+      const parent = parentPath ? nodeMap.get(parentPath) : undefined;
+      if (parent) {
+        parent.children.push(dirNode);
+      } else {
+        root.push(dirNode);
+      }
+    }
+  }
+
   return root;
+}
+
+/**
+ * Re-resolve breadcrumb navigation against a freshly built tree.
+ *
+ * Folder navigation stores `SandboxTreeNode` object references in `folderStack`
+ * (see `handleFolderNavigate`). The explorer tree is derived from `files` via
+ * `buildSandboxTree` on every SWR refresh — each refresh allocates new node objects
+ * with new `children` arrays.
+ *
+ * If we read `folderStack.at(-1).children` after an upload/rename/delete, we still
+ * point at the *previous* tree: the list revalidates but the current folder looks
+ * unchanged until the user leaves and re-enters the folder.
+ *
+ * We keep navigation stable by path (e.g. `reports/q1`) and look up the matching
+ * directory nodes in the latest tree so `children` always reflects current `files`.
+ */
+export function resolveFolderStackInTree(
+  tree: SandboxTreeNode[],
+  folderStack: SandboxTreeNode[]
+): SandboxTreeNode[] {
+  const resolved: SandboxTreeNode[] = [];
+  let currentLevel = tree;
+
+  for (const stackNode of folderStack) {
+    if (!stackNode.isDirectory) {
+      break;
+    }
+
+    const fresh = currentLevel.find((n) => n.path === stackNode.path);
+    if (!fresh?.isDirectory) {
+      break;
+    }
+
+    resolved.push(fresh);
+    currentLevel = fresh.children;
+  }
+
+  return resolved;
 }

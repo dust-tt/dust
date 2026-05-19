@@ -404,6 +404,52 @@ export async function createGCSMountFile(
 }
 
 /**
+ * Create an empty folder in a GCS mount point via a zero-byte object whose name ends with "/".
+ * Returns the entry as it would appear in listGCSMountFiles.
+ */
+export async function createGCSMountDirectory(
+  auth: Authenticator,
+  scope: GCSMountPoint,
+  { relativeDirPath }: { relativeDirPath: string }
+): Promise<Result<GCSMountDirectoryEntry, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const prefix = resolvePrefix(owner, scope);
+
+  const normalized = relativeDirPath.replace(/^\/+|\/+$/g, "");
+  if (!normalized) {
+    return new Err(new Error("relativeDirPath is required."));
+  }
+
+  const gcsPath = `${prefix}${normalized}/`;
+  const bucket = getPrivateUploadBucket();
+  try {
+    const [exists] = await bucket.file(gcsPath).exists();
+    if (exists) {
+      return new Err(new Error("Folder already exists."));
+    }
+
+    await bucket.file(gcsPath).save(Buffer.alloc(0), {
+      contentType: "application/x-directory",
+    });
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+
+  const fileName = normalized.split("/").pop() ?? normalized;
+  return new Ok(
+    makeDirectoryEntry(
+      {
+        fileName,
+        relativeFilePath: normalized,
+        sizeBytes: 0,
+        lastModifiedMs: Date.now(),
+      },
+      scope
+    )
+  );
+}
+
+/**
  * Delete a file from a GCS mount point — pure GCS primitive.
  * Does not touch FileResource records; callers are responsible for any DB cleanup.
  */

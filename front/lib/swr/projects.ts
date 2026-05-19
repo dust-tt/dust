@@ -68,16 +68,19 @@ export function useProjectContextAttachments({
     return `/api/w/${owner.sId}/spaces/${spaceId}/project_context${qs ? `?${qs}` : ""}`;
   }, [disabled, owner.sId, spaceId, query]);
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    key,
-    projectContextFetcher
-  );
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(key, projectContextFetcher);
+
+  const refreshProjectContextAttachments = useCallback(async () => {
+    await mutateRegardlessOfQueryParams(undefined, { revalidate: true });
+  }, [mutateRegardlessOfQueryParams]);
 
   return {
     attachments: data?.attachments ?? [],
     isProjectContextAttachmentsLoading: !disabled && !error && !data,
     isProjectContextAttachmentsError: !!error,
     mutateProjectContextAttachments: mutate,
+    refreshProjectContextAttachments,
   };
 }
 
@@ -93,16 +96,24 @@ export function useProjectFiles({
   const { fetcher } = useFetcher();
   const projectFilesFetcher: Fetcher<GetSpaceFilesResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    disabled || !spaceId ? null : `/api/w/${owner.sId}/spaces/${spaceId}/files`,
-    projectFilesFetcher
-  );
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      disabled || !spaceId
+        ? null
+        : `/api/w/${owner.sId}/spaces/${spaceId}/files`,
+      projectFilesFetcher
+    );
+
+  const refreshProjectFiles = useCallback(async () => {
+    await mutateRegardlessOfQueryParams(undefined, { revalidate: true });
+  }, [mutateRegardlessOfQueryParams]);
 
   return {
     files: data?.files ?? emptyArray<GCSMountEntry>(),
     isProjectFilesLoading: !disabled && !error && !data,
     isProjectFilesError: !!error,
     mutateProjectFiles: mutate,
+    refreshProjectFiles,
   };
 }
 
@@ -323,6 +334,60 @@ export function useRenameProjectFile({
       sendNotification({
         type: "error",
         title: "Failed to rename file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useCreateProjectFolder({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async ({
+    folderName,
+    parentRelativePath = "",
+  }: {
+    folderName: string;
+    parentRelativePath?: string;
+  }): Promise<Result<void, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/files`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folderName, parentRelativePath }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to create folder",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: `Folder "${folderName}" created`,
+      });
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to create folder",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));

@@ -43,6 +43,8 @@ export type FileUseCaseMetadata = {
   conversationId?: string;
   skillId?: string;
   spaceId?: string;
+  /** Parent directory within the project mount (e.g. `reports/q1`), without `project/` prefix. */
+  mountRelativeDir?: string;
   sourceConversationId?: string;
   generatedTables?: string[];
   lastEditedByAgentConfigurationId?: string;

@@ -1,6 +1,7 @@
 import {
   copyConversationGCSMount,
   copyMountFile,
+  createGCSMountDirectory,
   createGCSMountFile,
   deleteGCSMountFile,
   type GCSMountFileEntry,
@@ -121,6 +122,73 @@ describe("createGCSMountFile", () => {
 
     assert(entryRes.isOk());
     expect(entryRes.value.thumbnailUrl).toBeNull();
+  });
+});
+
+describe("createGCSMountDirectory", () => {
+  let auth: Authenticator;
+  let conversationId: string;
+  let workspaceId: string;
+  let saveMock: ReturnType<typeof vi.fn>;
+  let existsMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    existsMock = vi.fn().mockResolvedValue([false]);
+    saveMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      file: vi.fn(() => ({ save: saveMock, exists: existsMock })),
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const { authenticator, conversationsSpace } = await createResourceTest({});
+    auth = authenticator;
+    workspaceId = auth.getNonNullableWorkspace().sId;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: conversationsSpace.id,
+    });
+    conversationId = conversation.sId;
+  });
+
+  it("writes a trailing-slash placeholder to the correct GCS path", async () => {
+    const entryRes = await createGCSMountDirectory(
+      auth,
+      { useCase: "conversation", conversationId },
+      { relativeDirPath: "reports/q1" }
+    );
+
+    assert(entryRes.isOk());
+    expect(entryRes.value).toMatchObject({
+      isDirectory: true,
+      fileName: "q1",
+      path: "conversation/reports/q1",
+      sizeBytes: 0,
+    });
+    const bucket = vi.mocked(getPrivateUploadBucket)();
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${workspaceId}/conversations/${conversationId}/files/reports/q1/`
+    );
+    expect(saveMock).toHaveBeenCalledWith(Buffer.alloc(0), {
+      contentType: "application/x-directory",
+    });
+  });
+
+  it("returns Err when the folder already exists", async () => {
+    existsMock.mockResolvedValue([true]);
+
+    const entryRes = await createGCSMountDirectory(
+      auth,
+      { useCase: "conversation", conversationId },
+      { relativeDirPath: "reports" }
+    );
+
+    expect(entryRes.isErr()).toBe(true);
+    expect(saveMock).not.toHaveBeenCalled();
   });
 });
 

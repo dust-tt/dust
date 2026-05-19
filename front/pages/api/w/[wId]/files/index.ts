@@ -124,6 +124,7 @@ const FileUploadUrlRequestSchema = z.discriminatedUnion("useCase", [
     useCase: z.literal("project_context"),
     useCaseMetadata: z.object({
       spaceId: z.string(),
+      mountRelativeDir: z.string().optional(),
     }),
   }),
   z.object({
