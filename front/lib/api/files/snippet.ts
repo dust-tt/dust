@@ -18,7 +18,9 @@ import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
 export const PASTED_CONTENT_MAX_CHARACTERS = 128 * 1024;
 export const TRUNCATED_SUFFIX = "... (truncated)";
-const TRUNCATED_TEXT_SIZE = 256 - TRUNCATED_SUFFIX.length;
+export const TRUNCATED_SNIPPET_SIZE = 256;
+export const TRUNCATED_TEXT_SIZE =
+  TRUNCATED_SNIPPET_SIZE - TRUNCATED_SUFFIX.length;
 
 export async function generateSnippet(
   auth: Authenticator,
@@ -54,7 +56,7 @@ export async function generateSnippet(
     }
 
     let snippet = `${file.contentType} file with headers: ${schemaRes.value.schema.map((c) => c.name).join(",")}`;
-    if (snippet.length > 256) {
+    if (snippet.length > TRUNCATED_SNIPPET_SIZE) {
       snippet = snippet.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX;
     }
 
@@ -79,7 +81,7 @@ export async function generateSnippet(
     }
 
     // Take the first 256 characters
-    if (content.length > 256) {
+    if (content.length > TRUNCATED_SNIPPET_SIZE) {
       return new Ok(content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX);
     } else {
       return new Ok(content);
@@ -93,7 +95,7 @@ export async function generateSnippet(
     }
 
     let snippet = `Audio file: ${content}`;
-    if (snippet.length > 256) {
+    if (snippet.length > TRUNCATED_SNIPPET_SIZE) {
       snippet = snippet.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX;
     }
 

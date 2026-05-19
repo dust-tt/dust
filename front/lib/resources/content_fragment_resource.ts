@@ -13,7 +13,9 @@ import config from "@app/lib/api/config";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import {
   PASTED_CONTENT_MAX_CHARACTERS,
+  TRUNCATED_SNIPPET_SIZE,
   TRUNCATED_SUFFIX,
+  TRUNCATED_TEXT_SIZE,
 } from "@app/lib/api/files/snippet";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -1163,7 +1165,7 @@ export async function getContentFragmentFromAttachmentFile(
     if (isPastedFile(attachment.contentType)) {
       const truncated = content.length > PASTED_CONTENT_MAX_CHARACTERS;
       const truncatedContent = truncated
-        ? content.slice(0, 256 - TRUNCATED_SUFFIX.length) + TRUNCATED_SUFFIX
+        ? content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX
         : content;
 
       return new Ok({
@@ -1282,7 +1284,8 @@ export async function renderLightContentFragmentForModel(
   if (fileStringId && isPastedFile(contentType)) {
     const snippet = attachment.snippet ?? "";
     const truncated =
-      snippet.length === 256 && snippet.endsWith(TRUNCATED_SUFFIX);
+      snippet.length === TRUNCATED_SNIPPET_SIZE &&
+      snippet.endsWith(TRUNCATED_SUFFIX);
     return {
       role: "content_fragment",
       name: `attach_pasted_content`,
