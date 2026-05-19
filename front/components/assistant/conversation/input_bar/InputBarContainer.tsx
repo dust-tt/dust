@@ -519,6 +519,11 @@ const InputBarContainer = ({
     },
   });
 
+  const editorServiceRef = useRef(editorService);
+  editorServiceRef.current = editorService;
+  const saveDraftRef = useRef(saveDraft);
+  saveDraftRef.current = saveDraft;
+
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
     const currentPastedIds = new Set(
@@ -642,75 +647,80 @@ const InputBarContainer = ({
     }
   };
 
-  // Update the editor ref when the editor is created and listen for updates to the editor.
-  useEffect(() => {
-    const handleUpdate = () => {
-      const editorIsEmpty = editorService.isEmpty();
-      setIsEmpty(editorIsEmpty);
+  const handleEditorUpdate = useCallback(() => {
+    const currentEditor = editorRef.current;
+    const currentEditorService = editorServiceRef.current;
+    const editorIsEmpty = currentEditorService.isEmpty();
+    setIsEmpty(editorIsEmpty);
 
-      // Auto-save draft when content changes and track user mentions.
-      // Include the selected single agent so the debounced save doesn't
-      // overwrite the agent mention saved by the single-agent effect.
-      const { markdown, mentions: editorMentions } =
-        editorService.getMarkdownAndMentions();
-      saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
-      const userMentioned = editorMentions.some((m) => m.type === "user");
+    // Auto-save draft when content changes and track user mentions.
+    // Include the selected single agent so the debounced save doesn't
+    // overwrite the agent mention saved by the single-agent effect.
+    const { markdown, mentions: editorMentions } =
+      currentEditorService.getMarkdownAndMentions();
+    saveDraftRef.current(
+      editorIsEmpty ? "" : markdown,
+      selectedSingleAgentRef.current
+    );
+    const userMentioned = editorMentions.some((m) => m.type === "user");
 
-      // Check if the very first content node in the editor is a user mention.
-      let editorStartsWithUserMention = false;
-      if (userMentioned && editor) {
-        const firstChild = editor.state.doc.firstChild;
-        const firstNode = firstChild?.firstChild;
-        editorStartsWithUserMention =
-          firstNode?.type.name === "mention" && firstNode.attrs.type === "user";
-      }
-      setStartsWithUserMention(editorStartsWithUserMention);
-      onEditorMentionsChangedRef.current(
-        userMentioned,
-        editorStartsWithUserMention
-      );
+    // Check if the very first content node in the editor is a user mention.
+    let editorStartsWithUserMention = false;
+    if (userMentioned && currentEditor) {
+      const firstChild = currentEditor.state.doc.firstChild;
+      const firstNode = firstChild?.firstChild;
+      editorStartsWithUserMention =
+        firstNode?.type.name === "mention" && firstNode.attrs.type === "user";
+    }
+    setStartsWithUserMention(editorStartsWithUserMention);
+    onEditorMentionsChangedRef.current(
+      userMentioned,
+      editorStartsWithUserMention
+    );
 
-      // Sync: when a dataSourceLink chip is deleted from the editor, remove
-      // the corresponding attached node so the attachment card disappears.
-      if (editor) {
-        const chipNodeIds = new Set<string>();
-        editor.state.doc.descendants((node) => {
-          if (node.type.name === "dataSourceLink" && node.attrs?.nodeId) {
-            chipNodeIds.add(String(node.attrs.nodeId));
-          }
-        });
+    // Sync: when a dataSourceLink chip is deleted from the editor, remove
+    // the corresponding attached node so the attachment card disappears.
+    if (currentEditor) {
+      const chipNodeIds = new Set<string>();
+      currentEditor.state.doc.descendants((node) => {
+        if (node.type.name === "dataSourceLink" && node.attrs?.nodeId) {
+          chipNodeIds.add(String(node.attrs.nodeId));
+        }
+      });
 
-        // Update the tracked set and unselect nodes whose chip was removed.
-        const prevIds = dataSourceLinkNodeIdsRef.current;
-        for (const prevId of prevIds) {
-          if (!chipNodeIds.has(prevId)) {
-            const node = attachedNodesRef.current.find(
-              (n) => n.internalId === prevId
-            );
-            if (node) {
-              onNodeUnselectRef.current(node);
-            }
+      // Update the tracked set and unselect nodes whose chip was removed.
+      const prevIds = dataSourceLinkNodeIdsRef.current;
+      for (const prevId of prevIds) {
+        if (!chipNodeIds.has(prevId)) {
+          const node = attachedNodesRef.current.find(
+            (n) => n.internalId === prevId
+          );
+          if (node) {
+            onNodeUnselectRef.current(node);
           }
         }
-        dataSourceLinkNodeIdsRef.current = chipNodeIds;
       }
-    };
+      dataSourceLinkNodeIdsRef.current = chipNodeIds;
+    }
+  }, []);
 
+  // Update the editor ref when the editor is created and listen for updates to the editor.
+  useEffect(() => {
     if (editorRef.current) {
-      editorRef.current.off("update", handleUpdate);
+      editorRef.current.off("update", handleEditorUpdate);
     }
 
     if (editor) {
-      editor.on("update", handleUpdate);
+      editor.on("update", handleEditorUpdate);
     }
     editorRef.current = editor;
 
     return () => {
       if (editor) {
-        editor.off("update", handleUpdate);
+        editor.off("update", handleEditorUpdate);
       }
     };
-  }, [editor, editorService, saveDraft]);
+  }, [editor, handleEditorUpdate]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
