@@ -12,6 +12,7 @@ export const FILES_GREP_ACTION_NAME = "grep" as const;
 export const FILES_CREATE_ACTION_NAME = "create" as const;
 export const FILES_DELETE_ACTION_NAME = "delete" as const;
 export const FILES_COPY_ACTION_NAME = "copy" as const;
+export const FILES_MOVE_ACTION_NAME = "move" as const;
 export const FILES_RESOLVE_ACTION_NAME = "resolve" as const;
 
 export const CAT_LINES_DEFAULT = 200;
@@ -70,10 +71,17 @@ const LIST_PROJECT_AWARE_TOOL = {
 // conversation use cases. The project-aware build is registered only in project conversations
 // and adds an example of the cross-scope promotion the agent can perform there.
 const COPY_DESCRIPTION_BASE =
-  "Copy a file between scoped paths, preserving its bytes and content type. " +
-  "Useful for duplicating a file without round-tripping the content through the agent, " +
-  "which keeps binary files (PDFs, images, audio) intact. " +
+  "Copy a file between scoped paths, keeping the source intact. " +
+  `Does not support frame files (\`application/vnd.dust.frame\`); use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_MOVE_ACTION_NAME)}\` for those. ` +
+  "Useful for duplicating a file without round-tripping content through the agent. " +
   "Overwrites `dest` if it already exists.";
+
+// `move` tool variants. Move atomically transfers a file (copy + delete source).
+// Frame files must be moved rather than copied: copying produces a raw GCS object
+// with no FileResource record, breaking interactive rendering.
+const MOVE_DESCRIPTION_BASE =
+  "Move a file from one scoped path to another, removing the source after a successful transfer. " +
+  "Frame files (`application/vnd.dust.frame`) must be moved rather than copied.";
 
 const COPY_CONVERSATION_ONLY_TOOL = {
   description: COPY_DESCRIPTION_BASE,
@@ -118,6 +126,51 @@ const COPY_PROJECT_AWARE_TOOL = {
   displayLabels: {
     running: "Copying file",
     done: "Copied file",
+  },
+};
+
+const MOVE_SCHEMA = {
+  source: z
+    .string()
+    .describe(
+      "Scoped path of the file to move (e.g. `conversation/report.pdf`)."
+    ),
+  dest: z
+    .string()
+    .describe("Scoped path of the destination (e.g. `project/report.pdf`)."),
+};
+
+const MOVE_CONVERSATION_ONLY_TOOL = {
+  description: MOVE_DESCRIPTION_BASE,
+  schema: MOVE_SCHEMA,
+  stake: "never_ask" as const,
+  displayLabels: {
+    running: "Moving file",
+    done: "Moved file",
+  },
+};
+
+const MOVE_PROJECT_AWARE_TOOL = {
+  description:
+    `${MOVE_DESCRIPTION_BASE} ` +
+    "Since this conversation belongs to a Pod, you can also move between scopes, " +
+    "e.g. `conversation/frame.html` -> `project/frame.html` to promote a frame into the Pod.",
+  schema: {
+    source: z
+      .string()
+      .describe(
+        "Scoped path of the file to move (e.g. `conversation/frame.html` or `project/data.csv`)."
+      ),
+    dest: z
+      .string()
+      .describe(
+        "Scoped path of the destination (e.g. `project/frame.html` or `conversation/archive/data.csv`)."
+      ),
+  },
+  stake: "never_ask" as const,
+  displayLabels: {
+    running: "Moving file",
+    done: "Moved file",
   },
 };
 
@@ -188,7 +241,7 @@ const FILES_TOOLS_COMMON_METADATA = {
     description:
       "Search a text file for lines matching a regular expression. " +
       "Returns matching lines with their line numbers. " +
-      "Use the line numbers with `files__cat` to read surrounding context. " +
+      `Use the line numbers with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to read surrounding context. ` +
       `Results are capped at ${GREP_MATCHES_MAX} matches.`,
     schema: {
       path: z
@@ -257,12 +310,14 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
   [FILES_LIST_ACTION_NAME]: LIST_CONVERSATION_ONLY_TOOL,
   ...FILES_TOOLS_COMMON_METADATA,
   [FILES_COPY_ACTION_NAME]: COPY_CONVERSATION_ONLY_TOOL,
+  [FILES_MOVE_ACTION_NAME]: MOVE_CONVERSATION_ONLY_TOOL,
 });
 
 export const FILES_TOOLS_METADATA_WITH_PROJECT = createToolsRecord({
   [FILES_LIST_ACTION_NAME]: LIST_PROJECT_AWARE_TOOL,
   ...FILES_TOOLS_COMMON_METADATA,
   [FILES_COPY_ACTION_NAME]: COPY_PROJECT_AWARE_TOOL,
+  [FILES_MOVE_ACTION_NAME]: MOVE_PROJECT_AWARE_TOOL,
 });
 
 export const FILES_SERVER = {

@@ -10,6 +10,7 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
   isSupportedImageContentType,
   stripMimeParameters,
@@ -513,4 +514,74 @@ export async function copyConversationGCSMount(
   } catch (err) {
     return new Err(normalizeError(err));
   }
+}
+
+// GCS has no native rename/move, so we copy then delete. This is not atomic: if the delete
+// fails the source survives alongside the copy. The destination is already the authoritative
+// copy at that point, so we log and move on rather than surfacing an error.
+async function moveGCSMountFile({
+  sourceGcsPath,
+  destGcsPath,
+}: {
+  sourceGcsPath: string;
+  destGcsPath: string;
+}): Promise<Result<void, Error>> {
+  const bucket = getPrivateUploadBucket();
+  try {
+    await bucket.copyFile(sourceGcsPath, destGcsPath);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+  try {
+    await bucket.delete(sourceGcsPath);
+  } catch (err) {
+    logger.error(
+      { sourceGcsPath, destGcsPath, err: normalizeError(err) },
+      "moveGCSMountFile: source delete failed after successful copy"
+    );
+  }
+  return new Ok(undefined);
+}
+
+/**
+ * Move a file in GCS and, when a FileResource is provided, keep its DB record in sync.
+ * The DB update is skipped for plain GCS objects that have no FileResource record.
+ */
+export async function moveFile(
+  auth: Authenticator,
+  {
+    file,
+    sourceGcsPath,
+    destScope,
+    destRelativeFilePath,
+    destFileName,
+    destUseCase,
+    destUseCaseMetadata,
+  }: {
+    file?: FileResource;
+    sourceGcsPath: string;
+    destScope: GCSMountPoint;
+    destRelativeFilePath: string;
+    destFileName: string;
+    destUseCase: FileUseCase;
+    destUseCaseMetadata?: FileUseCaseMetadata;
+  }
+): Promise<Result<void, Error>> {
+  const destGcsPath = `${resolvePrefix(auth.getNonNullableWorkspace(), destScope)}${destRelativeFilePath}`;
+
+  const moveRes = await moveGCSMountFile({ sourceGcsPath, destGcsPath });
+  if (moveRes.isErr()) {
+    return moveRes;
+  }
+
+  if (file) {
+    await file.updateMount({
+      destFileName,
+      destMountFilePath: destGcsPath,
+      destUseCase,
+      destUseCaseMetadata,
+    });
+  }
+
+  return new Ok(undefined);
 }

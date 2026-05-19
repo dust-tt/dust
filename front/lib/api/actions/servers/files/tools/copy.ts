@@ -3,11 +3,21 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_MOVE_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
 import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import {
+  isInteractiveContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 
 export async function copyHandler(
   { source, dest }: { source: string; dest: string },
@@ -66,10 +76,26 @@ export async function copyHandler(
   const bucket = getPrivateUploadBucket();
   const sourceFile = bucket.file(sourceGcsPath);
 
-  const [exists] = await sourceFile.exists();
-  if (!exists) {
+  let mimeType: string;
+  try {
+    const [metadata] = await sourceFile.getMetadata();
+    mimeType = stripMimeParameters(
+      isString(metadata.contentType)
+        ? metadata.contentType
+        : "application/octet-stream"
+    );
+  } catch {
     return new Err(
       new MCPError(`Source file not found: \`${source}\`.`, { tracked: false })
+    );
+  }
+
+  if (isInteractiveContentType(mimeType)) {
+    return new Err(
+      new MCPError(
+        `Frame files cannot be copied. Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_MOVE_ACTION_NAME)}\` to move \`${source}\` instead.`,
+        { tracked: false }
+      )
     );
   }
 

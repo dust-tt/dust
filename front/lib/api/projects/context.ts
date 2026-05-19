@@ -7,6 +7,7 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import {
   deleteGCSMountFile,
+  moveFile,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import { getProjectFilesBasePath } from "@app/lib/api/files/mount_path";
@@ -248,12 +249,31 @@ export async function addFileToProject(
     });
   }
 
-  // TODO(projects) this is not sufficient, the file mountpoint is not updated on GCS.
-  await file.updateUseCase(auth, "project_context", {
-    spaceId: space.sId,
-    conversationId: undefined,
-    sourceConversationId,
+  if (!file.mountFilePath) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "File has no mount path and cannot be moved to the project.",
+    });
+  }
+
+  const destFileName = file.fileName;
+  const moveRes = await moveFile(auth, {
+    file,
+    sourceGcsPath: file.mountFilePath,
+    destScope: { useCase: "project", projectId: space.sId },
+    destRelativeFilePath: destFileName,
+    destFileName,
+    destUseCase: "project_context",
+    destUseCaseMetadata: { spaceId: space.sId, sourceConversationId },
   });
+  if (moveRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_error",
+      message: moveRes.error.message,
+    });
+  }
 
   // TODO(projects) once the source of truth for the project's files is GCS, we can remove this.
   const fragmentRes =
