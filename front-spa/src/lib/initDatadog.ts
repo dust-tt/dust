@@ -42,6 +42,8 @@ export function initDatadogRUM() {
       allowedTracingUrls: [
         "https://dust.tt",
         "https://eu.dust.tt",
+        "https://us-api.dust.tt",
+        "https://eu-api.dust.tt",
         "https://front-edge.dust.tt",
         "https://eu.front-edge.dust.tt",
       ],
