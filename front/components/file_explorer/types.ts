@@ -3,6 +3,7 @@ import type { ConnectorProvider } from "@app/types/data_source";
 import type React from "react";
 
 export type FileEntry = GCSMountFileEntry & { kind: "file" };
+export type FileEntryWithId = FileEntry & { fileId: string };
 
 export type ContentNodeEntry = {
   kind: "node";

@@ -7,6 +7,7 @@ import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplo
 import type {
   ContentNodeEntry,
   FileEntry,
+  FileEntryWithId,
   FileExplorerEntry,
   FileExplorerFilter,
   FileExplorerMenuAction,
@@ -61,7 +62,7 @@ interface FileExplorerProps {
   onClose?: () => void;
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
   onFileDownload: (entry: FileEntry) => Promise<void>;
-  onOpenInteractive?: (fileId: string) => void;
+  onOpenInteractive?: (entry: FileEntryWithId) => void;
   onRename?: (entry: FileEntry) => void;
 }
 
@@ -153,7 +154,7 @@ export function FileExplorer({
       isInteractiveContentType(entry.contentType) &&
       entry.fileId
     ) {
-      onOpenInteractive(entry.fileId);
+      onOpenInteractive({ ...entry, fileId: entry.fileId });
       return;
     }
     setPreviewFile(entry);

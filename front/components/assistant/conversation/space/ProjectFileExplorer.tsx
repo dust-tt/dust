@@ -1,3 +1,4 @@
+import { ProjectFrameSheet } from "@app/components/assistant/conversation/space/ProjectFrameSheet";
 import {
   FileDropProvider,
   useFileDrop,
@@ -215,6 +216,7 @@ function ProjectFileExplorerContent({
   owner,
   space,
 }: ProjectFileExplorerProps) {
+  const [frameFileId, setFrameFileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [fileToRename, setFileToRename] = useState<{
@@ -530,6 +532,13 @@ function ProjectFileExplorerContent({
 
   return (
     <>
+      <ProjectFrameSheet
+        owner={owner}
+        fileId={frameFileId}
+        isOpen={frameFileId !== null}
+        onClose={() => setFrameFileId(null)}
+      />
+
       <RenameFileDialog
         isOpen={showRenameDialog}
         onClose={() => setShowRenameDialog(false)}
@@ -582,6 +591,7 @@ function ProjectFileExplorerContent({
         onFileDownload={onFileDownload}
         onDelete={!isArchived ? onDelete : undefined}
         onRename={!isArchived ? onRename : undefined}
+        onOpenInteractive={(entry) => setFrameFileId(entry.fileId)}
         headerActions={addButton}
         isLoading={isLoading}
       />
