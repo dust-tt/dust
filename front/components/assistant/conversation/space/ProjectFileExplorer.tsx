@@ -18,7 +18,7 @@ import type { ContentNodeAttachmentType } from "@app/lib/api/assistant/conversat
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
 import { useAppRouter } from "@app/lib/platform";
-import { downloadProjectFile } from "@app/lib/swr/files";
+import { downloadPodFile } from "@app/lib/swr/files";
 import {
   useAddProjectContextContentNodes,
   useDeleteProjectFile,
@@ -401,7 +401,7 @@ function ProjectFileExplorerContent({
   );
 
   const getFileResponse = useCallback(
-    (path: string) => downloadProjectFile(owner, space.sId, path),
+    (path: string) => downloadPodFile(owner, space.sId, path),
     [owner, space.sId]
   );
 

@@ -44,7 +44,7 @@ export const getFileViewUrl = (
   fileId: string | null | undefined
 ) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
 
-export async function downloadProjectFile(
+export async function downloadPodFile(
   owner: LightWorkspaceType,
   spaceId: string,
   relPath: string
