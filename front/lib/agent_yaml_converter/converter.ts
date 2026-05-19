@@ -326,117 +326,116 @@ export class AgentYAMLConverter {
       }
     }
 
-    // Collect auto internal server names for actions that need name-based
-    // resolution (no view ID, or view ID not found in this workspace).
+    const resolvedActions: { action: AgentYAMLAction; mcpServerViewId: string }[] = [];
+    const unresolvedActions: AgentYAMLAction[] = [];
     const autoInternalNames: AutoInternalMCPServerNameType[] = [];
+
     for (const action of actions) {
       const { mcp_server_view_id, mcp_server_name } = action.configuration;
-      const resolvedById =
-        mcp_server_view_id && viewsById.has(mcp_server_view_id);
+      const view = mcp_server_view_id
+        ? viewsById.get(mcp_server_view_id)
+        : undefined;
 
-      if (
-        !resolvedById &&
-        mcp_server_name &&
-        isAutoInternalMCPServer(mcp_server_name)
-      ) {
-        autoInternalNames.push(mcp_server_name);
+      if (view) {
+        resolvedActions.push({ action, mcpServerViewId: view.sId });
+      } else {
+        // if we cannot resolve by id, we fall back to name resolution
+        unresolvedActions.push(action);
+        if (mcp_server_name && isAutoInternalMCPServer(mcp_server_name)) {
+          autoInternalNames.push(mcp_server_name);
+        }
       }
     }
 
-    const autoInternalViewsMap =
+    const viewsByAutoInternalName =
       autoInternalNames.length > 0
         ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
             auth,
             autoInternalNames
           )
-        : new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
+        : undefined;
 
-    const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
-      [];
     const skippedActions: { action: AgentYAMLAction; reason: string }[] = [];
 
-    for (const action of actions) {
-      const mcpServerName = action.configuration.mcp_server_name;
-      if (!mcpServerName) {
+    // Resolve view IDs for unresolved actions via auto internal name lookup.
+    for (const action of unresolvedActions) {
+      const { mcp_server_name } = action.configuration;
+
+      const mcpServerViewId =
+        mcp_server_name && isAutoInternalMCPServer(mcp_server_name)
+          ? viewsByAutoInternalName?.get(mcp_server_name)?.sId
+          : undefined;
+
+      if (mcpServerViewId) {
+        resolvedActions.push({ action, mcpServerViewId });
+      } else {
         skippedActions.push({
           action,
-          reason: "MCP server name is required",
+          reason: `MCP server view not found for: ${mcp_server_name}`,
         });
-        continue;
       }
-
-      let mcpServerViewId: string | undefined;
-      const { mcp_server_view_id } = action.configuration;
-
-      // Try resolving by view ID first.
-      if (mcp_server_view_id) {
-        const view = viewsById.get(mcp_server_view_id);
-        if (view) {
-          mcpServerViewId = view.sId;
-        }
-      }
-
-      // Fall back to name-based resolution for cross-workspace compatibility.
-      if (!mcpServerViewId && isAutoInternalMCPServer(mcpServerName)) {
-        const view = autoInternalViewsMap.get(mcpServerName);
-        if (view) {
-          mcpServerViewId = view.sId;
-        }
-      }
-
-      if (!mcpServerViewId) {
-        skippedActions.push({
-          action,
-          reason: `MCP server view not found for: ${mcpServerName}`,
-        });
-        continue;
-      }
-
-      const workspaceId = auth.getNonNullableWorkspace().sId;
-
-      const { configuration } = action;
-
-      mcpConfigurations.push({
-        type: "mcp_server_configuration",
-        mcpServerViewId,
-        name: (mcpServerName || action.name) ?? "",
-        description: action.description ?? null,
-        dataSources: configuration.data_sources
-          ? this.convertDataSources(configuration.data_sources, workspaceId)
-          : null,
-        tables: configuration.tables
-          ? this.convertTables(configuration.tables, workspaceId)
-          : null,
-        childAgentId: configuration.child_agent_id ?? null,
-        jsonSchema: configuration.json_schema ?? null,
-        additionalConfiguration: configuration.additional_configuration
-          ? processAdditionalConfiguration(
-              configuration.additional_configuration
-            )
-          : {},
-        dustAppConfiguration: configuration.dust_app_configuration
-          ? {
-              type: "dust_app_run_configuration",
-              appWorkspaceId:
-                configuration.dust_app_configuration.app_workspace_id,
-              appId: configuration.dust_app_configuration.app_id,
-            }
-          : null,
-        secretName: configuration.secret_name ?? null,
-        dustProject: configuration.dust_project
-          ? {
-              workspaceId: configuration.dust_project.workspace_id,
-              projectId: configuration.dust_project.project_id,
-            }
-          : null,
-        timeFrame: configuration.time_frame ?? null,
-      });
     }
+
+    const mcpConfigurations = resolvedActions.map(
+      ({ action, mcpServerViewId }) =>
+        this.getMCPActionConfigurationFromYaml(
+          auth,
+          action,
+          mcpServerViewId,
+          action.configuration.mcp_server_name
+        )
+    );
 
     return new Ok({
       configurations: mcpConfigurations,
       skipped: skippedActions,
     });
+  }
+
+  private static getMCPActionConfigurationFromYaml(
+    auth: Authenticator,
+    action: AgentYAMLAction,
+    mcpServerViewId: string,
+    mcpServerName: string | undefined
+  ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    const { configuration } = action;
+
+    return {
+      type: "mcp_server_configuration",
+      mcpServerViewId,
+      name: (mcpServerName || action.name) ?? "",
+      description: action.description ?? null,
+      dataSources: configuration.data_sources
+        ? this.convertDataSources(configuration.data_sources, workspaceId)
+        : null,
+      tables: configuration.tables
+        ? this.convertTables(configuration.tables, workspaceId)
+        : null,
+      childAgentId: configuration.child_agent_id ?? null,
+      jsonSchema: configuration.json_schema ?? null,
+      additionalConfiguration: configuration.additional_configuration
+        ? processAdditionalConfiguration(
+            configuration.additional_configuration
+          )
+        : {},
+      dustAppConfiguration: configuration.dust_app_configuration
+        ? {
+            type: "dust_app_run_configuration",
+            appWorkspaceId:
+              configuration.dust_app_configuration.app_workspace_id,
+            appId: configuration.dust_app_configuration.app_id,
+          }
+        : null,
+      secretName: configuration.secret_name ?? null,
+      dustProject: configuration.dust_project
+        ? {
+            workspaceId: configuration.dust_project.workspace_id,
+            projectId: configuration.dust_project.project_id,
+          }
+        : null,
+      timeFrame: configuration.time_frame ?? null,
+    };
   }
 
   static fromYAMLString(yamlString: string): Result<AgentYAMLConfig, Error> {
