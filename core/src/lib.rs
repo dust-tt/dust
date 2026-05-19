@@ -105,7 +105,6 @@ pub mod blocks {
     pub mod database;
     pub mod database_schema;
     pub mod end;
-    pub mod helpers;
     pub mod input;
     pub mod llm;
     pub mod map;
