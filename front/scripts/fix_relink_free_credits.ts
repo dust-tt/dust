@@ -20,14 +20,15 @@
 
 import { Authenticator } from "@app/lib/auth";
 import {
-  floorToHourISO,
   getMetronomeClient,
   listMetronomeCustomerCredits,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
-import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
 import type { MetronomeBalance } from "@app/lib/metronome/types";
-import { METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
+import {
+  isMetronomeFreeCredit,
+  METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD,
+} from "@app/lib/metronome/types";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
@@ -75,15 +76,15 @@ const WORKSPACE_IDS: string[] = [
   "GS4hsmJeMr",
 ];
 
-const PROGRAMMATIC_USD_CREDIT_TYPE_ID = getCreditTypeProgrammaticUsdId();
-
 function getScheduleItem(entry: MetronomeBalance) {
   return entry.access_schedule?.schedule_items?.[0] ?? null;
 }
 
-function getPeriodKey(startingAt: string, endingBefore: string): string {
-  return `${floorToHourISO(new Date(startingAt))}:${floorToHourISO(new Date(endingBefore))}`;
-}
+// Maximum distance (on either the start or end date) allowed when matching a
+// DB credit against a candidate Metronome credit. Wider than a strict
+// hour-floor match because the new credit on the regenerated contract can be
+// off by a few minutes from the DB credit's stored period.
+const PERIOD_MATCH_TOLERANCE_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 async function processWorkspace(
   workspaceId: string,
@@ -148,8 +149,11 @@ async function processWorkspace(
       .map((c) => c.id)
   );
 
+  // Restrict to the "Free Monthly Credits" product (priority 1, programmatic
+  // USD). This excludes the "Excess Credits" recurring credit, which has its
+  // own product and would otherwise be a near-period match.
   const metronomeFreeCredits = creditsResult.value.filter((e) => {
-    if (e.access_schedule?.credit_type?.id !== PROGRAMMATIC_USD_CREDIT_TYPE_ID) {
+    if (!isMetronomeFreeCredit(e)) {
       return false;
     }
     const contractId = e.contract?.id;
@@ -163,20 +167,32 @@ async function processWorkspace(
     const dbStart = dbCredit.startDate!;
     const dbEnd = dbCredit.expirationDate!;
     const currentMetronomeCreditId = dbCredit.metronomeCreditId!;
-    const dbKey = getPeriodKey(dbStart.toISOString(), dbEnd.toISOString());
 
-    const candidates = metronomeFreeCredits.filter((entry) => {
+    // Score candidates by max(|startDiff|, |endDiff|) — pick the closest
+    // period, as long as it's within tolerance on both ends.
+    const ranked: Array<{ entry: MetronomeBalance; score: number }> = [];
+    for (const entry of metronomeFreeCredits) {
       if (entry.id === currentMetronomeCreditId) {
-        return false;
+        continue;
       }
       const item = getScheduleItem(entry);
       if (!item) {
-        return false;
+        continue;
       }
-      return getPeriodKey(item.starting_at, item.ending_before) === dbKey;
-    });
+      const startDiffMs = Math.abs(
+        new Date(item.starting_at).getTime() - dbStart.getTime()
+      );
+      const endDiffMs = Math.abs(
+        new Date(item.ending_before).getTime() - dbEnd.getTime()
+      );
+      const score = Math.max(startDiffMs, endDiffMs);
+      if (score <= PERIOD_MATCH_TOLERANCE_MS) {
+        ranked.push({ entry, score });
+      }
+    }
+    ranked.sort((a, b) => a.score - b.score);
 
-    const replacement = candidates[0];
+    const replacement = ranked[0]?.entry;
 
     if (!replacement) {
       logger.info(
@@ -184,9 +200,11 @@ async function processWorkspace(
           workspaceId,
           dbCreditId: dbCredit.sId,
           currentMetronomeCreditId,
-          period: dbKey,
+          dbStart: dbStart.toISOString(),
+          dbEnd: dbEnd.toISOString(),
+          activeFreeCreditCount: metronomeFreeCredits.length,
         },
-        "No replacement Metronome credit found for this period — skipping"
+        "No replacement Metronome credit within tolerance — skipping"
       );
       continue;
     }
