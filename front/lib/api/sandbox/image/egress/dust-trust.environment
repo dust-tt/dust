@@ -1,9 +1,0 @@
-SSL_CERT_FILE=/etc/dust/ca-bundle.pem
-SSL_CERT_DIR=/etc/ssl/certs
-CURL_CA_BUNDLE=/etc/dust/ca-bundle.pem
-REQUESTS_CA_BUNDLE=/etc/dust/ca-bundle.pem
-AWS_CA_BUNDLE=/etc/dust/ca-bundle.pem
-GIT_SSL_CAINFO=/etc/dust/ca-bundle.pem
-NODE_EXTRA_CA_CERTS=/run/dust/egress-ca.pem
-DENO_CERT=/run/dust/egress-ca.pem
-DENO_TLS_CA_STORE=system,mozilla

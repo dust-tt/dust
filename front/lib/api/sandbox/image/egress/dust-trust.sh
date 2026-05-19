@@ -1,9 +1,0 @@
-export SSL_CERT_FILE=/etc/dust/ca-bundle.pem
-export SSL_CERT_DIR=/etc/ssl/certs
-export CURL_CA_BUNDLE=/etc/dust/ca-bundle.pem
-export REQUESTS_CA_BUNDLE=/etc/dust/ca-bundle.pem
-export AWS_CA_BUNDLE=/etc/dust/ca-bundle.pem
-export GIT_SSL_CAINFO=/etc/dust/ca-bundle.pem
-export NODE_EXTRA_CA_CERTS=/run/dust/egress-ca.pem
-export DENO_CERT=/run/dust/egress-ca.pem
-export DENO_TLS_CA_STORE=system,mozilla

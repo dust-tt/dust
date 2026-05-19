@@ -1,6 +1,7 @@
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import {
   DSBX_TOOL_NAME,
   PROXY_ONLY_NETWORK_POLICY,
@@ -102,6 +103,22 @@ function getPythonInstallCmd(): string {
 
 function getLocalContent(dir: string, filename: string): () => string {
   return () => fs.readFileSync(path.join(dir, filename), "utf-8");
+}
+
+function buildTrustEnvironmentFile(): string {
+  return (
+    Object.entries(SANDBOX_TRUST_ENV_VARS)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n") + "\n"
+  );
+}
+
+function buildTrustProfileScript(): string {
+  return (
+    Object.entries(SANDBOX_TRUST_ENV_VARS)
+      .map(([k, v]) => `export ${k}=${v}`)
+      .join("\n") + "\n"
+  );
 }
 
 function getLocalDirContent(
@@ -338,21 +355,17 @@ SHELLEOF`,
       "install -m 644 /etc/ssl/certs/ca-certificates.crt /etc/dust/ca-bundle.pem",
     { user: "root" }
   )
-  .copy(
-    getLocalContent(EGRESS_LOCAL_DIR, "dust-trust.environment"),
-    "/etc/dust/dust-trust.environment",
-    { user: "root" }
-  )
+  .copy(buildTrustEnvironmentFile, "/etc/dust/dust-trust.environment", {
+    user: "root",
+  })
   .runCmd(
     "printf '\\n' >> /etc/environment && " +
       "cat /etc/dust/dust-trust.environment >> /etc/environment",
     { user: "root" }
   )
-  .copy(
-    getLocalContent(EGRESS_LOCAL_DIR, "dust-trust.sh"),
-    "/etc/profile.d/dust-trust.sh",
-    { user: "root" }
-  )
+  .copy(buildTrustProfileScript, "/etc/profile.d/dust-trust.sh", {
+    user: "root",
+  })
   .runCmd("chmod 644 /etc/profile.d/dust-trust.sh", { user: "root" })
   // tmpfiles.d entry; systemd-tmpfiles-setup.service recreates /run/dust on
   // every boot. No build-time --create: /run is tmpfs and any image-time
