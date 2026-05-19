@@ -97,11 +97,6 @@ WakeUpModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["workspaceId", "conversationId", "status"],
-        name: "wake_ups_workspace_id_conversation_id_status_idx",
-        concurrently: true,
-      },
-      {
         fields: ["conversationId"],
         name: "wake_ups_conversation_id",
         concurrently: true,

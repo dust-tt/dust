@@ -191,9 +191,6 @@ ConversationParticipantModel.init(
         unique: true,
       },
       {
-        fields: ["workspaceId", "conversationId"],
-      },
-      {
         fields: ["workspaceId", "userId", "action"],
       },
       {
@@ -242,9 +239,6 @@ UserConversationReadsModel.init(
       {
         fields: ["workspaceId", "userId", "conversationId"],
         unique: true,
-      },
-      {
-        fields: ["workspaceId", "conversationId"],
       },
       {
         fields: ["conversationId"],
@@ -644,7 +638,6 @@ AgentMessageFeedbackModel.init(
         name: "agent_message_feedbacks_conversation_id",
         concurrently: true,
       },
-      { fields: ["workspaceId", "conversationId"], concurrently: true },
     ],
   }
 );
