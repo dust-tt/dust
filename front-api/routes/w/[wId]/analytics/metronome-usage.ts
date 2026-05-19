@@ -2,15 +2,15 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import {
-  DAY_MS,
-  getTimestampsForWindow,
-} from "@app/lib/api/analytics/time_utils";
-import {
   aggregateToFourHourBuckets,
   calculateCreditTotalsFromBalances,
   getMetronomeWindowSize,
   resolveGroupLabels,
 } from "@app/lib/api/analytics/metronome_usage";
+import {
+  DAY_MS,
+  getTimestampsForWindow,
+} from "@app/lib/api/analytics/time_utils";
 import { MARKUP_MULTIPLIER } from "@app/lib/api/programmatic_usage/common";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import {

@@ -3,14 +3,14 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import {
-  DAY_MS,
-  getTimestampsForWindow,
-} from "@app/lib/api/analytics/time_utils";
-import {
   buildAggregation,
   calculateCreditTotalsPerTimestamp,
   getSelectedFilterClauses,
 } from "@app/lib/api/analytics/programmatic_cost";
+import {
+  DAY_MS,
+  getTimestampsForWindow,
+} from "@app/lib/api/analytics/time_utils";
 import type { MetricsBucket } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   buildMetricAggregates,
