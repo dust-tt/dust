@@ -111,9 +111,9 @@ const { ensureConversationTitleActivity } = proxyActivities<
 });
 
 const { compactionActivity } = proxyActivities<typeof compactionActivities>({
-  startToCloseTimeout: "10 minutes",
+  startToCloseTimeout: "20 minutes",
   retry: {
-    // Do not retry compaction, the mesage is marked as failed, not idempotent
+    // Do not retry compaction, the message is marked as failed, not idempotent.
     maximumAttempts: 1,
   },
 });
