@@ -41,31 +41,33 @@ async function handler(
     });
   }
 
-  if (req.method !== "POST") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, POST is expected.",
-      },
-    });
-  }
+  switch (req.method) {
+    case "POST":
+      const result = await pullTemplatesFromMainRegion();
+      if (result.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to fetch templates from main region.",
+          },
+        });
+      }
 
-  const result = await pullTemplatesFromMainRegion();
-  if (result.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to fetch templates from main region.",
-      },
-    });
-  }
+      return res.status(200).json({
+        success: true,
+        count: result.value.count,
+      });
 
-  return res.status(200).json({
-    success: true,
-    count: result.value.count,
-  });
+    default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, POST is expected.",
+        },
+      });
+  }
 }
 
 export default withSessionAuthenticationForPoke(handler);
