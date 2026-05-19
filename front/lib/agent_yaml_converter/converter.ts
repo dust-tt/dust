@@ -151,6 +151,8 @@ export class AgentYAMLConverter {
         type: "MCP",
         configuration: {
           mcp_server_name: mcpServerName,
+          mcp_server_view_id:
+            action.configuration.mcpServerViewId ?? undefined,
           data_sources: action.configuration.dataSourceConfigurations
             ? this.convertDataSourceConfigurations(
                 action.configuration.dataSourceConfigurations
@@ -318,31 +320,56 @@ export class AgentYAMLConverter {
       return new Err(new Error("MCP server name is required"));
     }
 
-    if (!isInternalMCPServerName(mcpServerName)) {
-      return new Err(
-        new Error(`Invalid internal MCP server name: ${mcpServerName}`)
-      );
-    }
-
-    if (!isAutoInternalMCPServerName(mcpServerName)) {
-      return new Err(
-        new Error(
-          `MCP server ${mcpServerName} is not available for auto configuration`
-        )
-      );
-    }
-
+    let mcpServerViewId;
     try {
-      const mcpServerView =
-        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      const { mcp_server_view_id } = action.configuration;
+
+      if (mcp_server_view_id) {
+        const mcpServerView = await MCPServerViewResource.fetchById(
           auth,
-          mcpServerName
+          mcp_server_view_id
         );
 
-      if (!mcpServerView) {
-        return new Err(
-          new Error(`MCP server view not found for: ${mcpServerName}`)
-        );
+        if (!mcpServerView) {
+          return new Err(
+            new Error(
+              `MCP server view not found for id: ${mcp_server_view_id}`
+            )
+          );
+        }
+
+        mcpServerViewId = mcpServerView.sId;
+      } else {
+        // No view ID: fall back to resolving by internal server name.
+        if (!isInternalMCPServerName(mcpServerName)) {
+          return new Err(
+            new Error(
+              `MCP server "${mcpServerName}" requires mcp_server_view_id`
+            )
+          );
+        }
+
+        if (!isAutoInternalMCPServerName(mcpServerName)) {
+          return new Err(
+            new Error(
+              `MCP server ${mcpServerName} is not available for auto configuration`
+            )
+          );
+        }
+
+        const mcpServerView =
+          await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+            auth,
+            mcpServerName
+          );
+
+        if (!mcpServerView) {
+          return new Err(
+            new Error(`MCP server view not found for: ${mcpServerName}`)
+          );
+        }
+
+        mcpServerViewId = mcpServerView.sId;
       }
 
       const workspaceId = auth.getNonNullableWorkspace().sId;
@@ -351,7 +378,7 @@ export class AgentYAMLConverter {
 
       return new Ok({
         type: "mcp_server_configuration",
-        mcpServerViewId: mcpServerView.sId,
+        mcpServerViewId,
         name: action.name ?? "",
         description: action.description ?? null,
         dataSources: configuration.data_sources

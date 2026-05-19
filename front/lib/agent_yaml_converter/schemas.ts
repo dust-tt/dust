@@ -70,6 +70,7 @@ export const agentYAMLMCPActionSchema = z.object({
   type: z.literal("MCP"),
   configuration: z.object({
     mcp_server_name: z.string(),
+    mcp_server_view_id: z.string().optional(),
     data_sources: z
       .record(z.string(), agentYAMLDataSourceConfigurationSchema)
       .optional(),
