@@ -153,8 +153,8 @@ export function useAddProjectContextContentNodes({
           type: "success",
           title:
             addedCount === 1
-              ? "Added to Pod context"
-              : `Added ${addedCount} items to Pod context`,
+              ? "Added to Pod files"
+              : `Added ${addedCount} items to Pod files`,
         });
       } else {
         sendNotification({
@@ -207,7 +207,7 @@ export function useRemoveProjectContextFile({
 
       sendNotification({
         type: "success",
-        title: "Removed from Pod knowledge",
+        title: "Removed from Pod files",
       });
 
       return new Ok(undefined);
@@ -262,8 +262,8 @@ export function useRemoveProjectContextContentNodes({
         type: "success",
         title:
           items.length === 1
-            ? "Removed from Pod knowledge"
-            : `Removed ${items.length} items from Pod knowledge`,
+            ? "Removed from Pod files"
+            : `Removed ${items.length} items from Pod files`,
       });
 
       return new Ok(undefined);
