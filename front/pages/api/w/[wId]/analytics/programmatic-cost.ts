@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 /** @ignoreswagger */
 import type { GetWorkspaceProgrammaticCostResponse } from "@app/lib/api/analytics/programmatic_cost";
 import { handleProgrammaticCostRequest } from "@app/lib/api/analytics/programmatic_cost";

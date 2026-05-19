@@ -1,0 +1,80 @@
+import { Hono } from "hono";
+
+import { getInvoicePaymentUrl } from "@app/lib/plans/stripe";
+import { CreditResource } from "@app/lib/resources/credit_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type {
+  CreditDisplayData,
+  GetCreditsResponseBody,
+  PendingCreditData,
+} from "@app/types/credits";
+
+import awuPoolSummary from "./awu-pool-summary";
+import membersUsage from "./members-usage";
+import metronomeBalances from "./metronome-balances";
+
+// Mounted at /api/w/:wId/credits. workspaceAuth is applied by the parent
+// workspace sub-app.
+const app = new Hono();
+
+app.route("/awu-pool-summary", awuPoolSummary);
+app.route("/members-usage", membersUsage);
+app.route("/metronome-balances", metronomeBalances);
+
+app.get("/", async (c) => {
+  const auth = c.get("auth");
+
+  if (!auth.isAdmin()) {
+    return c.json(
+      {
+        error: {
+          type: "workspace_auth_error",
+          message:
+            "Only users that are `admins` for the current workspace can view credits.",
+        },
+      },
+      403
+    );
+  }
+
+  const credits = await CreditResource.listAll(auth, {
+    includeBuyer: true,
+  });
+
+  const creditsData: CreditDisplayData[] = credits
+    .filter((credit) => credit.startDate !== null && credit.type !== "excess")
+    .map((credit) => credit.toJSON());
+
+  const pendingCommittedCredits = credits.filter(
+    (credit) =>
+      credit.startDate === null &&
+      credit.type === "committed" &&
+      credit.invoiceOrLineItemId !== null
+  );
+
+  const pendingCreditsData: PendingCreditData[] = await concurrentExecutor(
+    pendingCommittedCredits,
+    async (credit) => {
+      const paymentUrl = credit.invoiceOrLineItemId
+        ? await getInvoicePaymentUrl(credit.invoiceOrLineItemId)
+        : null;
+      return {
+        sId: credit.sId,
+        type: credit.type,
+        initialAmountMicroUsd: credit.initialAmountMicroUsd,
+        paymentUrl,
+        createdAt: credit.createdAt.getTime(),
+      };
+    },
+    { concurrency: 8 }
+  );
+
+  const body: GetCreditsResponseBody = {
+    credits: creditsData,
+    pendingCredits:
+      pendingCreditsData.length > 0 ? pendingCreditsData : undefined,
+  };
+  return c.json(body);
+});
+
+export default app;

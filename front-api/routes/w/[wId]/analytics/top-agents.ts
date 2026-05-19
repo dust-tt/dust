@@ -1,0 +1,138 @@
+import type { estypes } from "@elastic/elasticsearch";
+import { Hono } from "hono";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
+
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+
+import { validate } from "@front-api/middleware/validator";
+
+const QuerySchema = z.object({
+  days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
+  limit: z.coerce.number().positive().max(100).optional().default(25),
+});
+
+export type WorkspaceTopAgentRow = {
+  agentId: string;
+  name: string;
+  pictureUrl: string | null;
+  messageCount: number;
+  userCount: number;
+};
+
+export type GetWorkspaceTopAgentsResponse = {
+  agents: WorkspaceTopAgentRow[];
+};
+
+type TopAgentsAggs = {
+  by_agent?: estypes.AggregationsMultiBucketAggregateBase<{
+    key: string;
+    doc_count: number;
+    unique_users?: estypes.AggregationsCardinalityAggregate;
+  }>;
+};
+
+type TopAgentBucket = {
+  key: string;
+  doc_count: number;
+  unique_users?: estypes.AggregationsCardinalityAggregate;
+};
+
+// Mounted at /api/w/:wId/analytics/top-agents.
+const app = new Hono();
+
+app.get("/", validate("query", QuerySchema), async (c) => {
+  const auth = c.get("auth");
+
+  if (!auth.isAdmin()) {
+    return c.json(
+      {
+        error: {
+          type: "workspace_auth_error",
+          message: "Only workspace admins can access workspace analytics.",
+        },
+      },
+      403
+    );
+  }
+
+  const { days, limit } = c.req.valid("query");
+  const owner = auth.getNonNullableWorkspace();
+
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: owner.sId,
+    days,
+  });
+
+  const result = await searchAnalytics<never, TopAgentsAggs>(
+    {
+      bool: {
+        filter: [baseQuery, { exists: { field: "agent_id" } }],
+      },
+    },
+    {
+      aggregations: {
+        by_agent: {
+          terms: {
+            field: "agent_id",
+            size: limit,
+          },
+          aggs: {
+            unique_users: {
+              cardinality: {
+                field: "user_id",
+              },
+            },
+          },
+        },
+      },
+      size: 0,
+    }
+  );
+
+  if (result.isErr()) {
+    return c.json(
+      {
+        error: {
+          type: "internal_server_error",
+          message: `Failed to retrieve top agents: ${fromError(result.error).toString()}`,
+        },
+      },
+      500
+    );
+  }
+
+  const buckets = bucketsToArray<TopAgentBucket>(
+    result.value.aggregations?.by_agent?.buckets
+  );
+
+  const agentIds = buckets.map((bucket) => String(bucket.key));
+  const agents =
+    agentIds.length > 0
+      ? await getAgentConfigurations(auth, {
+          agentIds,
+          variant: "extra_light",
+        })
+      : [];
+  const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
+
+  const rows = buckets.map((bucket) => {
+    const agentId = String(bucket.key);
+    const agent = agentsById.get(agentId);
+    return {
+      agentId,
+      name: agent?.name ?? "Unknown agent",
+      pictureUrl: agent?.pictureUrl ?? null,
+      messageCount: bucket.doc_count ?? 0,
+      userCount: Math.round(bucket.unique_users?.value ?? 0),
+    };
+  });
+
+  const body: GetWorkspaceTopAgentsResponse = { agents: rows };
+  return c.json(body);
+});
+
+export default app;
