@@ -38,41 +38,11 @@ import { makeScript } from "./helpers";
 // Workspaces with the inconsistency to fix. Paste sIds here.
 const WORKSPACE_IDS: string[] = [
   "49f9ef0520",
-  "WUuX9VBqwF",
   "2WJ4Akk9tx",
-  "atT2TeOqa4",
-  "PegKTAv4cg",
-  "sqYRp9mFBN",
-  "5sV32qY0CX",
-  "0Vgu5dAnjG",
-  "men44ZH3kn",
-  "Gj56uy9w6U",
-  "lP3KgC0BLA",
-  "u9nmAQUb1E",
   "yS7wSqtRaJ",
-  "gSa1x8RAO3",
-  "Uo09m7SiSn",
-  "eAbL8aWJ5l",
-  "UUQVDrWpp6",
-  "dbg2mtkdoz",
-  "5I1GcnAiKP",
-  "AS5yQ8VlxB",
-  "PdFEWfJvCe",
-  "uS45PeA7V6",
-  "YO0dpaDq8V",
-  "nywZdQhpcD",
-  "g2rz4uIq72",
-  "AirVtQzd2U",
   "hjBiyjJhfT",
-  "cbKRJijTjP",
-  "j4Y4ODxZoC",
-  "xkxSt22yJq",
-  "QDvlW37GDZ",
   "ORTQpNleHb",
-  "TKnpzhPefR",
-  "vKPuYMo37z",
   "vodkRTZeBn",
-  "FF780bKHpd",
   "GS4hsmJeMr",
 ];
 
@@ -84,7 +54,7 @@ function getScheduleItem(entry: MetronomeBalance) {
 // DB credit against a candidate Metronome credit. Wider than a strict
 // hour-floor match because the new credit on the regenerated contract can be
 // off by a few minutes from the DB credit's stored period.
-const PERIOD_MATCH_TOLERANCE_MS = 24 * 60 * 60 * 1000; // 24 hours
+const PERIOD_MATCH_TOLERANCE_MS = 25 * 60 * 60 * 1000; // 24 hours
 
 async function processWorkspace(
   workspaceId: string,
