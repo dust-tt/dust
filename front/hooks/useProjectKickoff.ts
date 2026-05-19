@@ -3,7 +3,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import {
   buildProjectKickoffPrompt,
   PROJECT_KICKOFF_AGENT,
-} from "@app/lib/api/assistant/project_kickoff";
+} from "@app/lib/api/assistant/pod_kickoff";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";

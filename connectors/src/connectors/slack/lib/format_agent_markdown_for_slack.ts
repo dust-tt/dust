@@ -4,7 +4,7 @@ import logger from "@connectors/logger/logger";
 const AGENT_MENTION_REGEX = /:mention\[([^\]]+)]\{sId=([^}]+?)}/g;
 const USER_MENTION_REGEX = /:mention_user\[([^\]]+)]\{sId=([^}]+?)}/g;
 const PROJECT_TASK_DIRECTIVE_REGEX =
-  /(?::project_task|:todo)\[([^\]]+)]\{sId=([^}]+?)}/g;
+  /(?::pod_task|:project_task|:todo)\[([^\]]+)]\{sId=([^}]+?)}/g;
 const TOOL_SETUP_REGEX = /:toolSetup\[([^\]]+)]\{sId=([^}]+?)}/g;
 const QUICK_REPLY_REGEX = /:quickReply\[([^\]]+)]\{([^}]*)\}/g;
 const CONTENT_NODE_REGEX = /:content_node_mention\[([^\]]+)](?:\{([^}]*)\})?/g;

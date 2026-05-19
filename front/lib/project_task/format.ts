@@ -1,12 +1,13 @@
 /**
- * Serialization and parsing for project task references in plain text / markdown.
+ * Serialization and parsing for pod task references in plain text / markdown.
  *
- * Canonical format: `:project_task[label]{sId=projectTaskSid}`
- * Legacy `:todo[...]` is still parsed for backwards compatibility with existing content.
+ * Canonical format: `:pod_task[label]{sId=projectTaskSid}`
+ * Legacy `:project_task[...]` and `:todo[...]` are still parsed for backwards
+ * compatibility with existing content.
  */
 
 export const PROJECT_TASK_DIRECTIVE_REGEX =
-  /(?::project_task|:todo)\[([^\]]+)]\{sId=([^}]+?)}/g;
+  /(?::pod_task|:project_task|:todo)\[([^\]]+)]\{sId=([^}]+?)}/g;
 
 export const PROJECT_TASK_DIRECTIVE_REGEX_BEGINNING = new RegExp(
   "^" + PROJECT_TASK_DIRECTIVE_REGEX.source,
@@ -17,7 +18,7 @@ export function serializeProjectTaskDirective(mention: {
   label: string;
   sId: string;
 }): string {
-  return `:project_task[${mention.label}]{sId=${mention.sId}}`;
+  return `:pod_task[${mention.label}]{sId=${mention.sId}}`;
 }
 
 export function extractProjectTaskDirectivesFromString(
