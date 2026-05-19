@@ -249,7 +249,10 @@ export function FileExplorerFileCard({
 }: FileExplorerFileCardProps) {
   const subtitle = getFileSubtitle(entry, viewMode);
 
-  if (getCategoryFromContentType(entry.contentType) === "image") {
+  if (
+    getCategoryFromContentType(entry.contentType) === "image" &&
+    entry.thumbnailUrl
+  ) {
     return (
       <FileExplorerItem
         kind="thumbnail"
