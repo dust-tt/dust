@@ -269,27 +269,6 @@ pub async fn runs_create(
         None => (),
     };
 
-    match headers.get("X-Dust-Group-Ids") {
-        Some(v) => match v.to_str() {
-            Ok(v) => {
-                credentials.insert("DUST_GROUP_IDS".to_string(), v.to_string());
-            }
-            _ => (),
-        },
-        None => (),
-    };
-
-    // If the run is made by a system key, it's a system run
-    match headers.get("X-Dust-IsSystemRun") {
-        Some(v) => match v.to_str() {
-            Ok(v) => {
-                credentials.insert("DUST_IS_SYSTEM_RUN".to_string(), v.to_string());
-            }
-            _ => (),
-        },
-        None => (),
-    };
-
     match run_helper(project_id, payload.clone(), state.clone()).await {
         Ok(app) => {
             // The run is empty for now, we can clone it for the response.
@@ -346,27 +325,6 @@ pub async fn runs_create_stream(
         Some(v) => match v.to_str() {
             Ok(v) => {
                 credentials.insert("DUST_FEATURE_FLAGS".to_string(), v.to_string());
-            }
-            _ => (),
-        },
-        None => (),
-    };
-
-    match headers.get("X-Dust-Group-Ids") {
-        Some(v) => match v.to_str() {
-            Ok(v) => {
-                credentials.insert("DUST_GROUP_IDS".to_string(), v.to_string());
-            }
-            _ => (),
-        },
-        None => (),
-    };
-
-    // If the run is made by a system key, it's a system run
-    match headers.get("X-Dust-IsSystemRun") {
-        Some(v) => match v.to_str() {
-            Ok(v) => {
-                credentials.insert("DUST_IS_SYSTEM_RUN".to_string(), v.to_string());
             }
             _ => (),
         },
