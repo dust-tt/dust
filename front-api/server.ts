@@ -33,7 +33,9 @@ async function main() {
       return;
     }
 
-    logger.info(`Handling ${req.method} ${req.url} \x1b[33mwith Next.js\x1b[0m`);
+    logger.info(
+      `Handling ${req.method} ${req.url} \x1b[33mwith Next.js\x1b[0m`
+    );
     const parsedUrl = parse(req.url ?? "/", true);
     void nextHandler(req, res, parsedUrl);
   });
