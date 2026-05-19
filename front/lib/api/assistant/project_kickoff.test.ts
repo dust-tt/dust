@@ -40,10 +40,10 @@ describe("buildProjectKickoffPrompt", () => {
       "- Quick replies MUST be the last lines of the message"
     );
     expect(prompt).toContain(
-      ':quickReply[Update project description]{message="Update the description."}'
+      ':quickReply[Update Pod description]{message="Update the description."}'
     );
     expect(prompt).toContain(
-      ':quickReply[Create project document]{message="Create an initial project document."}'
+      ':quickReply[Create Pod document]{message="Create an initial Pod document."}'
     );
   });
 });
