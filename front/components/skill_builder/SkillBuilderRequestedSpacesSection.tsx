@@ -157,7 +157,7 @@ export function SkillBuilderRequestedSpacesSection({
       await confirmBlockedSpaceRemoval({
         space,
         actions: actionsBySpaceId[space.sId] ?? [],
-        knowledgeInInstructions: knowledgeBySpaceId[space.sId] ?? [],
+        knowledge: knowledgeBySpaceId[space.sId] ?? [],
       });
       return;
     }

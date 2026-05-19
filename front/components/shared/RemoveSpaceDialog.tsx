@@ -79,14 +79,14 @@ interface UseRemoveSpaceConfirmParams {
 interface ConfirmRemoveSpaceParams {
   space: SpaceType;
   actions: BuilderAction[];
-  knowledgeInInstructions?: KnowledgeToRemove[];
+  knowledge?: KnowledgeToRemove[];
   skills?: SkillToRemove[];
 }
 
 interface ConfirmBlockedSkillSpaceRemovalParams {
   space: SpaceType;
   actions: BuilderAction[];
-  knowledgeInInstructions: KnowledgeToRemove[];
+  knowledge: KnowledgeToRemove[];
 }
 
 export function useRemoveSpaceConfirm({
@@ -98,11 +98,11 @@ export function useRemoveSpaceConfirm({
   return ({
     space,
     actions,
-    knowledgeInInstructions = [],
+    knowledge = [],
     skills = [],
   }: ConfirmRemoveSpaceParams): Promise<boolean> => {
     const allItems: ItemToRemove[] = [
-      ...knowledgeInInstructions.map((k) => ({
+      ...knowledge.map((k) => ({
         id: k.nodeId,
         name: k.title,
         icon: <Icon visual={DocumentIcon} size="xs" />,
@@ -119,7 +119,7 @@ export function useRemoveSpaceConfirm({
       })),
     ];
 
-    const hasKnowledge = knowledgeInInstructions.length > 0;
+    const hasKnowledge = knowledge.length > 0;
 
     return confirm({
       title: `Remove ${getSpaceName(space)} ${space.kind === "project" ? "project" : "space"}`,
@@ -170,7 +170,7 @@ export function useBlockedSkillSpaceRemovalConfirm({
   return ({
     space,
     actions,
-    knowledgeInInstructions,
+    knowledge,
   }: ConfirmBlockedSkillSpaceRemovalParams): Promise<boolean> => {
     return confirm({
       title: `${getSpaceName(space)} can't be removed`,
@@ -181,13 +181,13 @@ export function useBlockedSkillSpaceRemovalConfirm({
             knowledge or tools that belong to it.
           </p>
           <div className="flex flex-wrap gap-2">
-            {knowledgeInInstructions.map((knowledge) => (
+            {knowledge.map((knowledgeItem) => (
               <Chip
-                key={`knowledge-${knowledge.nodeId}`}
+                key={`knowledge-${knowledgeItem.nodeId}`}
                 size="xs"
                 color="primary"
                 icon={DocumentIcon}
-                label={knowledge.title}
+                label={knowledgeItem.title}
               />
             ))}
             {actions.map((action) => (
