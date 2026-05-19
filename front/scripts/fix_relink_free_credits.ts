@@ -115,49 +115,55 @@ async function processWorkspace(
     return;
   }
 
-  const creditsResult = await listMetronomeCustomerCredits({
-    metronomeCustomerId,
-    includeContractCredits: true,
-    includeBalance: true,
-    coveringDate: new Date().toISOString(),
-  });
-  if (creditsResult.isErr()) {
-    logger.error(
-      { workspaceId, error: creditsResult.error.message },
-      "Failed to list Metronome credits"
-    );
-    return;
-  }
-
-  const metronomeFreeCredits = creditsResult.value.filter(
-    (e) =>
-      e.access_schedule?.credit_type?.id === PROGRAMMATIC_USD_CREDIT_TYPE_ID
-  );
-
-  // Index Metronome credits by period (floored to hour). The new credit and
-  // the old expired credit share the same period in this pattern.
-  const byPeriod = new Map<string, MetronomeBalance[]>();
-  for (const entry of metronomeFreeCredits) {
-    const item = getScheduleItem(entry);
-    if (!item) {
-      continue;
-    }
-    const key = getPeriodKey(item.starting_at, item.ending_before);
-    const list = byPeriod.get(key) ?? [];
-    list.push(entry);
-    byPeriod.set(key, list);
-  }
-
   for (const dbCredit of dbFreeCredits) {
     const dbStart = dbCredit.startDate!;
     const dbEnd = dbCredit.expirationDate!;
     const currentMetronomeCreditId = dbCredit.metronomeCreditId!;
     const dbKey = getPeriodKey(dbStart.toISOString(), dbEnd.toISOString());
 
-    const candidates = byPeriod.get(dbKey) ?? [];
-    const replacement = candidates.find(
-      (c) => c.id !== currentMetronomeCreditId
-    );
+    // Use a date inside the DB credit's own period so `covering_date` returns
+    // credits whose access window contains it — even when the period is in the
+    // past. Filtering with `new Date()` would skip historical periods.
+    const coveringDate = new Date(
+      (dbStart.getTime() + dbEnd.getTime()) / 2
+    ).toISOString();
+
+    const creditsResult = await listMetronomeCustomerCredits({
+      metronomeCustomerId,
+      includeContractCredits: true,
+      includeBalance: true,
+      coveringDate,
+    });
+    if (creditsResult.isErr()) {
+      logger.error(
+        {
+          workspaceId,
+          dbCreditId: dbCredit.sId,
+          error: creditsResult.error.message,
+        },
+        "Failed to list Metronome credits — skipping"
+      );
+      continue;
+    }
+
+    const candidates = creditsResult.value.filter((entry) => {
+      if (
+        entry.access_schedule?.credit_type?.id !==
+        PROGRAMMATIC_USD_CREDIT_TYPE_ID
+      ) {
+        return false;
+      }
+      if (entry.id === currentMetronomeCreditId) {
+        return false;
+      }
+      const item = getScheduleItem(entry);
+      if (!item) {
+        return false;
+      }
+      return getPeriodKey(item.starting_at, item.ending_before) === dbKey;
+    });
+
+    const replacement = candidates[0];
 
     if (!replacement) {
       logger.info(
