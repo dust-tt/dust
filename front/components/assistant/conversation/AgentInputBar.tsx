@@ -143,7 +143,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const isActiveWakeUpOwner = activeWakeUp?.user.sId === context.user.sId;
   const wakeUpBlockMessage =
     activeWakeUp && !isActiveWakeUpOwner
-      ? `Conversation paused - a wake-up is scheduled ${describeWakeUpSchedule(activeWakeUp)}`
+      ? `You cannot send a message to an agent awaiting a wake-up set by another user`
       : null;
 
   const autoMentions = useMemo(() => {
@@ -577,7 +577,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         actions={agentBuilderContext?.actionsToShow}
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
-        disableInput={wakeUpBlockMessage !== null}
         submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
       />
     </div>
