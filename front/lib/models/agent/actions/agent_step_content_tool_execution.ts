@@ -71,6 +71,12 @@ AgentStepContentToolExecutionModel.init(
         name: "agent_sc_te_workspace_action",
       },
       {
+        unique: true,
+        fields: ["agentMCPActionId"],
+        concurrently: true,
+        name: "agent_step_content_tool_executions_agent_mcp_action_id",
+      },
+      {
         fields: ["workspaceId", "stepContentId"],
         concurrently: true,
         name: "agent_sc_te_workspace_step_content",
