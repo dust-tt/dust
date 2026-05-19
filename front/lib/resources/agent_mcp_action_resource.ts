@@ -212,11 +212,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { transaction }
     );
 
-    assert(
-      stepContent.isFunctionCallContent(),
-      "Step content is not a function call."
-    );
-
     await AgentStepContentToolExecutionModel.create({
       workspaceId: workspace.id,
       agentMessageId: blob.agentMessageId,
@@ -224,6 +219,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       agentMCPActionId: action.id,
       stepContentId: stepContent.id,
     });
+
+    assert(
+      stepContent.isFunctionCallContent(),
+      "Step content is not a function call."
+    );
 
     return new this(this.model, action.get(), stepContent, {
       internalMCPServerName,
