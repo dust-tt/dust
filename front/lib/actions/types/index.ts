@@ -27,6 +27,20 @@ export function isFileAuthorizationInfo(
   return FileAuthorizationInfoSchema.safeParse(value).success;
 }
 
+const SandboxChildActionInfoSchema = z.object({
+  parentActionId: z.string(),
+});
+
+export type SandboxChildActionInfo = z.infer<
+  typeof SandboxChildActionInfoSchema
+>;
+
+export function isSandboxChildActionInfo(
+  value: unknown
+): value is SandboxChildActionInfo {
+  return SandboxChildActionInfoSchema.safeParse(value).success;
+}
+
 const UserQuestionOptionSchema = z.object({
   label: z
     .string()
@@ -80,6 +94,7 @@ export type StepContext = {
   citationsCount: number;
   citationsOffset: number;
   fileAuthorizationInfo?: FileAuthorizationInfo;
+  sandboxChildActionInfo?: SandboxChildActionInfo;
   resumeState: Record<string, unknown> | null;
   retrievalTopK: number;
   websearchResultCount: number;

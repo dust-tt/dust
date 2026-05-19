@@ -778,7 +778,6 @@ const LightWorkspaceSchema = z.object({
   segmentation: WorkspaceSegmentationSchema,
   whiteListedProviders: ModelProviderIdSchema.array().nullable(),
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
-  regionalModelsOnly: z.boolean(),
 });
 
 export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
@@ -3514,6 +3513,7 @@ export type GetMCPServerViewsQueryType = z.infer<
 >;
 
 export const CallMCPToolRequestBodySchema = z.object({
+  serverViewId: z.string(),
   toolName: z.string(),
   arguments: z.record(z.unknown()).optional(),
 });
