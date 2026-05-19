@@ -220,9 +220,10 @@ makeScript(
                 destPath: destMountFilePath,
               });
 
-              const processedContentType = getProcessedContentType(
-                file.contentType
-              );
+              const processedContentType =
+                file.useCaseMetadata?.skipFileProcessing === true
+                  ? undefined
+                  : getProcessedContentType(file.contentType);
               if (processedContentType) {
                 await runCopy({
                   fileId: file.sId,
@@ -239,6 +240,22 @@ makeScript(
               }
             },
             { concurrency }
+          );
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              lastId,
+              totalProcessed,
+              totalCopied,
+              totalWouldCopy,
+              totalSkippedExisting,
+              totalSkippedMissing,
+              totalErrors,
+              execute,
+            },
+            execute
+              ? "[backfill_project_gcs_mount_paths_to_pods] Batch processed"
+              : "[backfill_project_gcs_mount_paths_to_pods] Dry-run batch processed"
           );
         }
 
