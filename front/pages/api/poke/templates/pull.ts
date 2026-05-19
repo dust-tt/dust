@@ -1,14 +1,11 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { pullTemplatesFromMainRegion } from "@app/lib/api/poke/templates";
 import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { TemplateResource } from "@app/lib/resources/template_resource";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -44,66 +41,31 @@ async function handler(
     });
   }
 
-  switch (req.method) {
-    case "POST":
-      const mainRegionUrl = config.getDustRegionSyncMasterUrl();
-      // eslint-disable-next-line no-restricted-globals
-      const response = await fetch(`${mainRegionUrl}/api/templates`, {
-        method: "GET",
-      });
-
-      if (!response.ok) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to fetch templates from main region.",
-          },
-        });
-      }
-
-      const templatesResponse: FetchAssistantTemplatesResponse =
-        await response.json();
-      let count = 0;
-
-      for (const templateFromList of templatesResponse.templates) {
-        // eslint-disable-next-line no-restricted-globals
-        const templateResponse = await fetch(
-          `${mainRegionUrl}/api/templates/${templateFromList.sId}`,
-          {
-            method: "GET",
-          }
-        );
-
-        if (!templateResponse.ok) {
-          logger.error(
-            `Failed to fetch template ${templateFromList.sId}: ${templateResponse.status}`
-          );
-          continue;
-        }
-
-        const template: FetchAgentTemplateResponse =
-          await templateResponse.json();
-
-        await TemplateResource.upsertByHandle(template);
-
-        count++;
-      }
-
-      return res.status(200).json({
-        success: true,
-        count,
-      });
-
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
-        },
-      });
+  if (req.method !== "POST") {
+    return apiError(req, res, {
+      status_code: 405,
+      api_error: {
+        type: "method_not_supported_error",
+        message: "The method passed is not supported, POST is expected.",
+      },
+    });
   }
+
+  const result = await pullTemplatesFromMainRegion();
+  if (result.isErr()) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to fetch templates from main region.",
+      },
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    count: result.value.count,
+  });
 }
 
 export default withSessionAuthenticationForPoke(handler);

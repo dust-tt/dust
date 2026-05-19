@@ -1,8 +1,14 @@
+import { config } from "@app/lib/api/regions/config";
+import { TemplateResource } from "@app/lib/resources/template_resource";
+import logger from "@app/logger/logger";
+import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { ModelConfig } from "@app/types/assistant/models/types";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
 } from "@app/types/assistant/templates";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 
 /**
  * Shared subset of `TemplateModel` attributes that the poke create and
@@ -31,4 +37,53 @@ export function buildSharedTemplateAttributes(
     tags: body.tags,
     visibility: body.visibility,
   };
+}
+
+export type PullTemplatesError = "main_region_fetch_failed";
+
+/**
+ * Pulls every published template from the main region and upserts it
+ * locally by handle. Used by the poke "sync templates" tool in non-main
+ * regions; individual per-template fetch failures are logged but do not
+ * fail the overall pull (the count reflects only successful upserts).
+ */
+export async function pullTemplatesFromMainRegion(): Promise<
+  Result<{ count: number }, PullTemplatesError>
+> {
+  const mainRegionUrl = config.getDustRegionSyncMasterUrl();
+  // eslint-disable-next-line no-restricted-globals
+  const response = await fetch(`${mainRegionUrl}/api/templates`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    return new Err("main_region_fetch_failed");
+  }
+
+  const templatesResponse: FetchAssistantTemplatesResponse =
+    await response.json();
+  let count = 0;
+
+  for (const templateFromList of templatesResponse.templates) {
+    // eslint-disable-next-line no-restricted-globals
+    const templateResponse = await fetch(
+      `${mainRegionUrl}/api/templates/${templateFromList.sId}`,
+      { method: "GET" }
+    );
+
+    if (!templateResponse.ok) {
+      logger.error(
+        `Failed to fetch template ${templateFromList.sId}: ${templateResponse.status}`
+      );
+      continue;
+    }
+
+    const template: FetchAgentTemplateResponse = await templateResponse.json();
+
+    await TemplateResource.upsertByHandle(template);
+
+    count++;
+  }
+
+  return new Ok({ count });
 }
