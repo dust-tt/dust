@@ -490,7 +490,6 @@ export class CoreAPI {
   async createRun(
     workspace: LightWorkspaceType,
     featureFlags: WhitelistableFeature[],
-    groupIds: string[],
     {
       projectId,
       runType,
@@ -501,7 +500,6 @@ export class CoreAPI {
       config,
       credentials,
       secrets,
-      isSystemKey,
       storeBlocksResults = true,
     }: CoreAPICreateRunParams
   ): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
@@ -512,8 +510,6 @@ export class CoreAPI {
         headers: {
           "Content-Type": "application/json",
           "X-Dust-Feature-Flags": featureFlags.join(","),
-          "X-Dust-Group-Ids": groupIds.join(","),
-          "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
         },
         body: JSON.stringify({
@@ -536,7 +532,6 @@ export class CoreAPI {
   async createRunStream(
     workspace: LightWorkspaceType,
     featureFlags: WhitelistableFeature[],
-    groupIds: string[],
     {
       projectId,
       runType,
@@ -547,7 +542,6 @@ export class CoreAPI {
       config,
       credentials,
       secrets,
-      isSystemKey,
       storeBlocksResults = true,
     }: CoreAPICreateRunParams
   ): Promise<
@@ -563,8 +557,6 @@ export class CoreAPI {
         headers: {
           "Content-Type": "application/json",
           "X-Dust-Feature-Flags": featureFlags.join(","),
-          "X-Dust-Group-Ids": groupIds.join(","),
-          "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
         },
         body: JSON.stringify({

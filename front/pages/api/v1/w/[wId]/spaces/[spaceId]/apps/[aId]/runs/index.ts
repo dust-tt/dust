@@ -332,22 +332,16 @@ async function handler(
         "App run creation"
       );
 
-      const runRes = await coreAPI.createRunStream(
-        owner,
-        keyWorkspaceFlags,
-        auth.groupIds(),
-        {
-          projectId: app.dustAPIProjectId,
-          runType: "deploy",
-          specificationHash: specificationHash,
-          config: { blocks: config },
-          inputs,
-          credentials,
-          secrets,
-          isSystemKey: auth.isSystemKey(),
-          storeBlocksResults,
-        }
-      );
+      const runRes = await coreAPI.createRunStream(owner, keyWorkspaceFlags, {
+        projectId: app.dustAPIProjectId,
+        runType: "deploy",
+        specificationHash: specificationHash,
+        config: { blocks: config },
+        inputs,
+        credentials,
+        secrets,
+        storeBlocksResults,
+      });
 
       if (runRes.isErr()) {
         return apiError(req, res, {

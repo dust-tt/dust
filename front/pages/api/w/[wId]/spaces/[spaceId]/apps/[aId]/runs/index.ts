@@ -134,7 +134,6 @@ async function handler(
       const dustRun = await coreAPI.createRun(
         owner,
         keyWorkspaceFlags,
-        auth.groupIds(),
         {
           projectId: app.dustAPIProjectId,
           runType: "local",
