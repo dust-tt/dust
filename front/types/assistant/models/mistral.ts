@@ -6,6 +6,7 @@ export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
 // Pointing to mistral medium 3.1 as of 2025-12-05
 // https://docs.mistral.ai/models/mistral-medium-3-1-25-08
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
+// Pointing to mistral medium 3.5 as of 2026-05-19
 // https://docs.mistral.ai/models/model-cards/mistral-medium-3-5-26-04
 export const MISTRAL_MEDIUM_3_5_MODEL_ID = "mistral-medium-3-5" as const;
 // Pointing to mistral small 3.2 as of 2025-12-05
@@ -70,7 +71,7 @@ export const MISTRAL_MEDIUM_3_5_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "Mistral's `medium 3.5` model, multimodal and optimized for agentic and coding use cases (256k context).",
-  shortDescription: "Mistral's latest flagship medium model.",
+  shortDescription: "Mistral's flagship medium model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 2048,
