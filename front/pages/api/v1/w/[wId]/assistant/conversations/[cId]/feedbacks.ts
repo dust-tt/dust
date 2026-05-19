@@ -117,6 +117,16 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      if (!auth.isUser()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "user_authentication_required",
+            message: "You must be logged in as a user to access this resource.",
+          },
+        });
+      }
+
       const feedbacksRes = await getConversationFeedbacksForUser(
         auth,
         conversation
