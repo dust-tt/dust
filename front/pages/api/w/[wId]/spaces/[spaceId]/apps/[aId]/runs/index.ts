@@ -131,23 +131,19 @@ async function handler(
       // Fetch the feature flags of the app's workspace.
       const keyWorkspaceFlags = await getFeatureFlags(auth);
 
-      const dustRun = await coreAPI.createRun(
-        owner,
-        keyWorkspaceFlags,
-        {
-          projectId: app.dustAPIProjectId,
-          runType: "local",
-          specification: dumpSpecification(
-            JSON.parse(req.body.specification),
-            latestDatasets
-          ),
-          datasetId: inputDataset,
-          config: { blocks: config },
-          credentials: credentialsFromProviders(providers),
-          secrets,
-          storeBlocksResults,
-        }
-      );
+      const dustRun = await coreAPI.createRun(owner, keyWorkspaceFlags, {
+        projectId: app.dustAPIProjectId,
+        runType: "local",
+        specification: dumpSpecification(
+          JSON.parse(req.body.specification),
+          latestDatasets
+        ),
+        datasetId: inputDataset,
+        config: { blocks: config },
+        credentials: credentialsFromProviders(providers),
+        secrets,
+        storeBlocksResults,
+      });
 
       if (dustRun.isErr()) {
         return apiError(req, res, {
