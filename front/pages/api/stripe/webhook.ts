@@ -20,8 +20,6 @@ import {
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
-import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
-import { storeMetronomeCheckoutError } from "@app/lib/metronome/checkout_error";
 import {
   floorToHourISO,
   reactivateMetronomeContract,
@@ -514,43 +512,6 @@ async function notifyAdminsOfPaymentFailure({
  *
  * Does not write a response — the caller acks Stripe via the trailing 200.
  */
-async function handleMetronomeCheckoutCompleted({
-  session,
-  workspaceId,
-  planCode,
-  now,
-}: {
-  session: Stripe.Checkout.Session;
-  workspaceId: string | null;
-  planCode: string | null;
-  now: Date;
-}): Promise<void> {
-  const result = await handleMetronomeSetupCheckout({ session, now });
-  if (result.isErr()) {
-    await storeMetronomeCheckoutError({
-      sessionId: session.id,
-      message: result.error.message,
-    });
-
-    switch (result.error.code) {
-      case "workspace_not_found":
-        break;
-      case "subscription_already_exists":
-        logger.warn(
-          { error: result.error, workspaceId, planCode },
-          `[Stripe Webhook] Metronome setup: ${result.error.message}`
-        );
-        break;
-      default:
-        logger.error(
-          { error: result.error, workspaceId, planCode },
-          `[Stripe Webhook] Metronome setup: ${result.error.message}`
-        );
-        break;
-    }
-  }
-}
-
 /**
  * Handles a completed Stripe Checkout session in `subscription` mode (the
  * legacy Stripe-billed path). Creates the local Subscription row, ends any
@@ -812,11 +773,9 @@ async function handler(
           // Branch on session mode: "setup" for Metronome, "subscription"
           // for the legacy Stripe-billed path.
           if (session.mode === "setup") {
-            await handleMetronomeCheckoutCompleted({
-              session,
-              workspaceId,
-              planCode,
-              now,
+            await storeStripeCheckoutSessionStatus({
+              sessionId: session.id,
+              status: session.status,
             });
           } else {
             await handleStripeCheckoutCompleted({
@@ -897,6 +856,12 @@ async function handler(
           // First-invoice failures during subscription creation are handled
           // by Stripe's own dunning retries — nothing to do.
           if (invoice.billing_reason === "subscription_create") {
+            break;
+          }
+
+          // First-invoice failures during metronomone checkout are handled
+          // directly in return to failure of pay API — nothing to do.
+          if (isFirstPeriodInvoice(invoice)) {
             break;
           }
 

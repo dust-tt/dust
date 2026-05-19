@@ -200,6 +200,7 @@
     "react-markdown": "^8.0.7",
     "react-phone-number-input": "^3.4.14",
     "react-resizable-panels": "^2.1.7",
+    "react-svg-credit-card-payment-icons": "^5.1.2",
     "react-textarea-autosize": "^8.4.0",
     "recharts": "3.2.1",
     "redis": "^4.6.8",

@@ -3,7 +3,6 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getMetronomeCheckoutError } from "@app/lib/metronome/checkout_error";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -54,13 +53,7 @@ async function handler(
     });
   }
 
-  const storedError = await getMetronomeCheckoutError(session_id);
-  if (storedError) {
-    return res
-      .status(200)
-      .json({ status: "error", message: storedError.message });
-  }
-
+  // Endpoint used only for the Stripe-only checkout flow (PaymentProcessingPage).
   const subscription = auth.subscription();
   if (subscription?.plan.code === plan_code) {
     return res.status(200).json({ status: "success" });

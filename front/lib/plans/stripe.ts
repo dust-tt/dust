@@ -324,7 +324,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
     tax_id_collection: {
       enabled: true,
     },
-    return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${planCode}`,
+    redirect_on_completion: "if_required",
+    return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/checkout?setup_session_id={CHECKOUT_SESSION_ID}`,
     consent_collection: {
       terms_of_service: "required",
     },
