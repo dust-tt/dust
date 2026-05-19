@@ -219,6 +219,13 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
+  const attachedNodesRef = useRef(attachedNodes);
+  attachedNodesRef.current = attachedNodes;
+  const onNodeUnselectRef = useRef(onNodeUnselect);
+  onNodeUnselectRef.current = onNodeUnselect;
+  // Tracks internalIds of nodes that have a dataSourceLink chip in the editor,
+  // so we only sync removal for nodes that were created via URL paste.
+  const dataSourceLinkNodeIdsRef = useRef<Set<string>>(new Set());
   const selectedMCPServerViewIds = useMemo(
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
@@ -531,6 +538,39 @@ const InputBarContainer = ({
     });
   }, [fileUploaderService.fileBlobs, removePastedAttachmentChip]);
 
+  // Sync: when an attachment card is removed, remove the corresponding
+  // dataSourceLink chip(s) from the editor in a single transaction.
+  useEffect(() => {
+    const editorInstance = editorRef.current;
+    if (!editorInstance) {
+      return;
+    }
+
+    const attachedNodeIds = new Set(attachedNodes.map((n) => n.internalId));
+
+    editorInstance.commands.command(({ state, tr }) => {
+      let removed = false;
+      // Collect positions in reverse order so deletions don't shift later positions.
+      const toDelete: { from: number; to: number }[] = [];
+      state.doc.descendants((node, pos) => {
+        if (
+          node.type.name === "dataSourceLink" &&
+          node.attrs?.nodeId &&
+          !attachedNodeIds.has(String(node.attrs.nodeId))
+        ) {
+          toDelete.push({ from: pos, to: pos + node.nodeSize });
+        }
+      });
+
+      for (let i = toDelete.length - 1; i >= 0; i--) {
+        tr.delete(toDelete[i].from, toDelete[i].to);
+        removed = true;
+      }
+
+      return removed;
+    });
+  }, [attachedNodes]);
+
   const voiceTranscriberService = useVoiceTranscriberService({
     owner,
     fileUploaderService,
@@ -629,6 +669,31 @@ const InputBarContainer = ({
         userMentioned,
         editorStartsWithUserMention
       );
+
+      // Sync: when a dataSourceLink chip is deleted from the editor, remove
+      // the corresponding attached node so the attachment card disappears.
+      if (editor) {
+        const chipNodeIds = new Set<string>();
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === "dataSourceLink" && node.attrs?.nodeId) {
+            chipNodeIds.add(String(node.attrs.nodeId));
+          }
+        });
+
+        // Update the tracked set and unselect nodes whose chip was removed.
+        const prevIds = dataSourceLinkNodeIdsRef.current;
+        for (const prevId of prevIds) {
+          if (!chipNodeIds.has(prevId)) {
+            const node = attachedNodesRef.current.find(
+              (n) => n.internalId === prevId
+            );
+            if (node) {
+              onNodeUnselectRef.current(node);
+            }
+          }
+        }
+        dataSourceLinkNodeIdsRef.current = chipNodeIds;
+      }
     };
 
     if (editorRef.current) {
