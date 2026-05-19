@@ -1,0 +1,179 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+
+import { honoApp } from "@front-api/app";
+
+vi.mock("@app/lib/api/assistant/recent_authors", () => ({
+  agentConfigurationWasUpdatedBy: vi.fn(),
+  getAgentRecentAuthors: vi.fn().mockResolvedValue([]),
+}));
+
+function patch(workspace: { sId: string }, aId: string, body: unknown) {
+  return honoApp.request(
+    `/api/w/${workspace.sId}/assistant/agent_configurations/${aId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - Skills with restricted spaces", () => {
+  it("should include skill's requestedSpaceIds when updating agent with skill", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [user.sId] });
+    const skill = await SkillFactory.create(auth, {
+      name: "Skill with restricted space",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: "Updated instructions",
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [{ sId: skill.sId }],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data).toHaveProperty("agentConfiguration");
+    expect(data.agentConfiguration.requestedSpaceIds).toContain(
+      restrictedSpace.sId
+    );
+  });
+});
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - additionalRequestedSpaceIds", () => {
+  it("should include additionalRequestedSpaceIds when updating agent", async () => {
+    const { workspace, user, auth, globalGroup } =
+      await createPrivateApiMockRequest({
+        role: "admin",
+        method: "PATCH",
+      });
+
+    await SpaceFactory.defaults(auth);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const openSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(openSpace, globalGroup);
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: "Updated instructions",
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [openSpace.sId],
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data).toHaveProperty("agentConfiguration");
+    expect(data.agentConfiguration.requestedSpaceIds).toContain(openSpace.sId);
+
+    const agentConfigurationModel = await AgentConfigurationModel.findOne({
+      where: {
+        sId: data.agentConfiguration.sId,
+        version: data.agentConfiguration.version,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(agentConfigurationModel).not.toBeNull();
+    const openSpaceModelId = getResourceIdFromSId(openSpace.sId);
+    expect(agentConfigurationModel?.requestedSpaceIds).toContain(
+      openSpaceModelId
+    );
+  });
+});
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - pending agent", () => {
+  it("should convert a pending agent to active with version 0", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const { sId: pendingId } = await createPendingAgentConfiguration(auth);
+
+    const response = await patch(workspace, pendingId, {
+      assistant: {
+        name: "My New Agent",
+        description: "A test agent converted from pending",
+        instructions: "Test instructions",
+        pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+        status: "active",
+        scope: "hidden",
+        model: {
+          providerId: "anthropic",
+          modelId: "claude-sonnet-4-5-20250929",
+          temperature: 0.5,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data).toHaveProperty("agentConfiguration");
+    expect(data.agentConfiguration.sId).toBe(pendingId);
+    expect(data.agentConfiguration.status).toBe("active");
+    expect(data.agentConfiguration.name).toBe("My New Agent");
+    expect(data.agentConfiguration.version).toBe(0);
+
+    const agents = await AgentConfigurationModel.findAll({
+      where: { sId: pendingId, workspaceId: workspace.id },
+    });
+    expect(agents).toHaveLength(1);
+    expect(agents[0].status).toBe("active");
+  });
+});

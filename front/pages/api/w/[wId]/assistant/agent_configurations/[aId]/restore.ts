@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import {
   getAgentConfiguration,
   restoreAgentConfiguration,

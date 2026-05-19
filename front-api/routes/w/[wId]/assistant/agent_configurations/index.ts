@@ -17,6 +17,17 @@ import {
 
 import { apiError } from "@front-api/middleware/utils";
 
+import agent from "./[aId]";
+import batchUpdateScope from "./batch_update_scope";
+import batchUpdateTags from "./batch_update_tags";
+import createPending from "./create-pending";
+import deleteRoute from "./delete";
+import lookup from "./lookup";
+import nameAvailable from "./name_available";
+import newRoutes from "./new";
+import textAsCronRule from "./text_as_cron_rule";
+import webhookFilterGenerator from "./webhook_filter_generator";
+
 // Mounted at /api/w/:wId/assistant/agent_configurations. workspaceAuth is
 // applied by the parent workspace sub-app.
 const app = new Hono();
@@ -201,5 +212,18 @@ app.post("/", async (c) => {
 
   return c.json({ agentConfiguration: agentConfigurationRes.value });
 });
+
+// Register static paths BEFORE `/:aId` so the param route does not swallow
+// these names as agent ids.
+app.route("/batch_update_scope", batchUpdateScope);
+app.route("/batch_update_tags", batchUpdateTags);
+app.route("/create-pending", createPending);
+app.route("/delete", deleteRoute);
+app.route("/lookup", lookup);
+app.route("/name_available", nameAvailable);
+app.route("/new", newRoutes);
+app.route("/text_as_cron_rule", textAsCronRule);
+app.route("/webhook_filter_generator", webhookFilterGenerator);
+app.route("/:aId", agent);
 
 export default app;
