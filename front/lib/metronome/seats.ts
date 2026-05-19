@@ -423,10 +423,7 @@ async function applySingleSeatChange({
 
   // If a pending change is being superseded, cancel it first so the contract
   // ends up with exactly one scheduled state.
-  if (
-    pendingScheduledChange &&
-    pendingScheduledChange.seatType !== newSeatType
-  ) {
+  if (pendingScheduledChange) {
     const cancelResult = await cancelPendingInMetronome(pendingScheduledChange);
     if (cancelResult.isErr()) {
       logger.error(
