@@ -257,7 +257,7 @@ export default function Support() {
         ogImage="https://dust.tt/static/landing/hero_dust.png"
       />
 
-      <div className="container flex w-full flex-col gap-4 px-2 py-2">
+      <div className="container flex w-full flex-col gap-4 px-2 py-2 pb-24">
         <HeroSection />
         <SupportOptionsSection />
         <DocumentationSection />
