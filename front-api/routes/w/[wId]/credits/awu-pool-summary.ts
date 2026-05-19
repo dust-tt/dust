@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { apiError } from "@front-api/middleware/utils";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import {
   ceilToMidnightUTC,
@@ -25,6 +26,8 @@ export type AwuPoolSummaryResponseBody = {
 
 // Mounted at /api/w/:wId/credits/awu-pool-summary.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

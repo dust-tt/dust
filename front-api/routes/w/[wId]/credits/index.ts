@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { apiError } from "@front-api/middleware/utils";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import { getInvoicePaymentUrl } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -15,13 +16,18 @@ import awuPoolSummary from "./awu-pool-summary";
 import membersUsage from "./members-usage";
 import metronomeBalances from "./metronome-balances";
 
-// Mounted at /api/w/:wId/credits. workspaceAuth is applied by the parent
-// workspace sub-app.
+// Mounted at /api/w/:wId/credits.
+//
+// Mixed auth: children are mounted BEFORE the `app.use(...)` so they're
+// untouched by the workspaceAuth declared here (each child declares its
+// own). The root GET handler (registered after) gets the loose variant.
 const app = new Hono();
 
 app.route("/awu-pool-summary", awuPoolSummary);
 app.route("/members-usage", membersUsage);
 app.route("/metronome-balances", metronomeBalances);
+
+app.use("*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

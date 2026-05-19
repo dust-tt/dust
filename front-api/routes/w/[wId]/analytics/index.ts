@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
+
 import activeUsersExport from "./active-users-export";
 import activeUsers from "./active-users";
 import agentsExport from "./agents-export";
@@ -21,9 +23,10 @@ import usageMetricsExport from "./usage-metrics-export";
 import usageMetrics from "./usage-metrics";
 import usersExport from "./users-export";
 
-// Mounted at /api/w/:wId/analytics. workspaceAuth is applied by the parent
-// workspace sub-app.
+// Mounted at /api/w/:wId/analytics.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.route("/active-users-export", activeUsersExport);
 app.route("/active-users", activeUsers);

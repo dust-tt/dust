@@ -78,7 +78,7 @@ function getConversationKillSwitchError(): APIErrorWithStatusCode {
   };
 }
 
-const ASSISTANT_CONVERSATION_ROUTE_FRAGMENT = "/assistant/conversations/";
+export const ASSISTANT_CONVERSATION_ROUTE_FRAGMENT = "/assistant/conversations/";
 
 function getAssistantConversationIdFromRequest(
   req: NextApiRequest
@@ -89,31 +89,21 @@ function getAssistantConversationIdFromRequest(
   return isString(req.query.cId) ? req.query.cId : null;
 }
 
-function getConversationKillSwitchErrorForRequest(
-  req: NextApiRequest,
-  killSwitched: unknown
-): APIErrorWithStatusCode | null {
-  const conversationId = getAssistantConversationIdFromRequest(req);
-  if (!conversationId) {
-    return null;
-  }
-
-  return WorkspaceResource.isWorkspaceConversationKillSwitched(
-    killSwitched,
-    conversationId
-  )
-    ? getConversationKillSwitchError()
-    : null;
-}
-
 /**
- * Checks workspace-level guards: owner/plan existence, canUseProduct, maintenance, and kill switches.
- * Returns an APIErrorWithStatusCode if any check fails, or null if all pass.
+ * Checks workspace-level guards: owner/plan existence, canUseProduct,
+ * maintenance, and kill switches. Returns an APIErrorWithStatusCode if any
+ * check fails, or null if all pass.
+ *
+ * Framework-agnostic: callers compute `conversationId` themselves (Next via
+ * `req.url` + `req.query.cId`, Hono via `c.req.path` + `c.req.param("cId")`)
+ * so this function does not need to know about the request type.
  */
-function validateWorkspace(
-  req: NextApiRequest,
+export function validateWorkspace(
   auth: Authenticator,
-  opts: { doesNotRequireCanUseProduct?: boolean } = {}
+  opts: {
+    doesNotRequireCanUseProduct?: boolean;
+    conversationId?: string | null;
+  } = {}
 ): APIErrorWithStatusCode | null {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -149,12 +139,14 @@ function validateWorkspace(
   ) {
     return getWorkspaceKillSwitchError();
   }
-  const conversationKillSwitchError = getConversationKillSwitchErrorForRequest(
-    req,
-    owner.metadata?.killSwitched
-  );
-  if (conversationKillSwitchError) {
-    return conversationKillSwitchError;
+  if (
+    opts.conversationId &&
+    WorkspaceResource.isWorkspaceConversationKillSwitched(
+      owner.metadata?.killSwitched,
+      opts.conversationId
+    )
+  ) {
+    return getConversationKillSwitchError();
   }
 
   return null;
@@ -288,8 +280,9 @@ export function withSessionAuthenticationForWorkspace<T>(
         return handler(req, res, auth, session);
       }
 
-      const workspaceError = validateWorkspace(req, auth, {
+      const workspaceError = validateWorkspace(auth, {
         doesNotRequireCanUseProduct: opts.doesNotRequireCanUseProduct,
+        conversationId: getAssistantConversationIdFromRequest(req),
       });
       if (workspaceError) {
         return apiError(req, res, workspaceError);
@@ -422,7 +415,9 @@ export function withPublicAPIAuthentication<T>(
           });
         }
 
-        const workspaceError = validateWorkspace(req, auth);
+        const workspaceError = validateWorkspace(auth, {
+          conversationId: getAssistantConversationIdFromRequest(req),
+        });
         if (workspaceError) {
           return apiError(req, res, workspaceError);
         }
@@ -447,7 +442,9 @@ export function withPublicAPIAuthentication<T>(
       );
       let { workspaceAuth } = keyAndWorkspaceAuth;
 
-      const workspaceError = validateWorkspace(req, workspaceAuth);
+      const workspaceError = validateWorkspace(workspaceAuth, {
+        conversationId: getAssistantConversationIdFromRequest(req),
+      });
       if (workspaceError) {
         return apiError(req, res, workspaceError);
       }

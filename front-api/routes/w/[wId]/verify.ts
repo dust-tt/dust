@@ -1,4 +1,5 @@
 import { apiError } from "@front-api/middleware/utils";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import type { Country } from "react-phone-number-input";
@@ -39,6 +40,8 @@ async function detectCountryFromIP(c: Context): Promise<Country> {
 
 // Mounted at /api/w/:wId/verify.
 const app = new Hono();
+
+app.use("*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

@@ -6,6 +6,8 @@ import {
   GroupResource,
 } from "@app/lib/resources/group_resource";
 
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
+
 export type GetProvisioningStatusResponseBody = {
   hasAdminGroup: boolean;
   hasBuilderGroup: boolean;
@@ -13,6 +15,8 @@ export type GetProvisioningStatusResponseBody = {
 
 // Mounted at /api/w/:wId/provisioning-status.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

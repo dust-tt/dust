@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { apiError } from "@front-api/middleware/utils";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 import { z } from "zod";
 
 import { validate } from "@front-api/middleware/validator";
@@ -20,6 +21,8 @@ const GetCheckoutStatusQuerySchema = z.object({
 // Mounted at /api/w/:wId/subscriptions/checkout-status. Endpoint used only
 // for the Stripe-only checkout flow (PaymentProcessingPage).
 const app = new Hono();
+
+app.use("*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 
 app.get("/", validate("query", GetCheckoutStatusQuerySchema), async (c) => {
   const auth = c.get("auth");

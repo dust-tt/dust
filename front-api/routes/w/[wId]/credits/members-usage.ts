@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import {
   ceilToMidnightUTC,
@@ -137,6 +138,8 @@ async function fetchPerUserUsageCredits({
 
 // Mounted at /api/w/:wId/credits/members-usage.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.get("/", validate("query", MembersUsagePaginationSchema), async (c) => {
   const auth = c.get("auth");

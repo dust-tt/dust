@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { apiError } from "@front-api/middleware/utils";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 
@@ -10,6 +11,8 @@ export type GetSubscriptionPricingResponseBody = {
 
 // Mounted at /api/w/:wId/subscriptions/pricing.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

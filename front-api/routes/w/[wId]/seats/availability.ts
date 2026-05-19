@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { apiError } from "@front-api/middleware/utils";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
 
@@ -10,6 +11,8 @@ export type GetSeatAvailabilityResponseBody = {
 
 // Mounted at /api/w/:wId/seats/availability.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

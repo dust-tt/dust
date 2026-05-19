@@ -14,6 +14,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import checkoutStatus from "./checkout-status";
 import pricing from "./pricing";
@@ -31,7 +32,18 @@ const PatchSubscriptionRequestBody = z.object({
 
 // Mounted under /api/w/:wId/subscriptions. The bare `/` handles GET, POST,
 // and PATCH on the workspace's subscription itself; admin-only.
+//
+// Mixed auth: children are mounted BEFORE the `app.use(...)` so they're
+// untouched by the workspaceAuth declared here (each child declares its
+// own). The root handlers (registered after) get the loose variant.
 const app = new Hono();
+
+app.route("/checkout-status", checkoutStatus);
+app.route("/pricing", pricing);
+app.route("/status", status);
+app.route("/trial-info", trialInfo);
+
+app.use("*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 
 function requireAdmin(c: Context) {
   const auth = c.get("auth");
@@ -228,10 +240,5 @@ app.patch("/", validate("json", PatchSubscriptionRequestBody), async (c) => {
 
   return c.json({ success: true });
 });
-
-app.route("/checkout-status", checkoutStatus);
-app.route("/pricing", pricing);
-app.route("/status", status);
-app.route("/trial-info", trialInfo);
 
 export default app;

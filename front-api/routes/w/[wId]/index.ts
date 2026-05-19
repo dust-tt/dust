@@ -1,7 +1,5 @@
 import { Hono } from "hono";
 
-import { workspaceAuth } from "@front-api/middleware/workspace_auth";
-
 import analytics from "./analytics";
 import assistant from "./assistant";
 import builder from "./builder";
@@ -28,11 +26,14 @@ import verifiedDomains from "./verified-domains";
 import verify from "./verify";
 import welcome from "./welcome";
 
-// Mounted at /api/w/:wId. Every route below inherits workspaceAuth, which
-// resolves the Authenticator and stashes it on the context.
+// Mounted at /api/w/:wId. There is intentionally NO parent-level
+// `workspaceAuth` here: each sub-app (or leaf) declares its own
+// `app.use("*", workspaceAuth(opts))` so the auth options (e.g.
+// `doesNotRequireCanUseProduct`) live next to the routes they apply to,
+// mirroring how each Next handler passes its own opts to
+// `withSessionAuthenticationForWorkspace`. New migrations: add the
+// declaration inside your sub-app's `index.ts`, not here.
 const app = new Hono();
-
-app.use("*", workspaceAuth);
 
 app.route("/analytics", analytics);
 app.route("/assistant", assistant);

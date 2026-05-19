@@ -6,6 +6,7 @@ import type { GroupKind, GroupType } from "@app/types/groups";
 import { GroupKindCodec } from "@app/types/groups";
 
 import { validate } from "@front-api/middleware/validator";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 export type GetGroupsResponseBody = {
   groups: (GroupType & { memberCount: number })[];
@@ -18,6 +19,8 @@ const GetGroupsQuerySchema = z.object({
 
 // Mounted at /api/w/:wId/groups.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.get("/", validate("query", GetGroupsQuerySchema), async (c) => {
   const auth = c.get("auth");

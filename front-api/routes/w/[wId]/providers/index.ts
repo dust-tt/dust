@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { apiError } from "@front-api/middleware/utils";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import type { ProviderType } from "@app/types/provider";
@@ -21,6 +22,8 @@ function redactConfig(config: string) {
 
 // Mounted at /api/w/:wId/providers.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

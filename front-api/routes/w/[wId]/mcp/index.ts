@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/mcp/servers";
 
 import { validate } from "@front-api/middleware/validator";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import server from "./[serverId]";
 import available from "./available";
@@ -68,9 +69,10 @@ const PostBodySchema = z.discriminatedUnion("serverType", [
   }),
 ]);
 
-// Mounted at /api/w/:wId/mcp. workspaceAuth is applied by the parent
-// workspace sub-app.
+// Mounted at /api/w/:wId/mcp.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

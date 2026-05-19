@@ -24,6 +24,7 @@ import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
 
 import { validate } from "@front-api/middleware/validator";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import detect from "./detect";
 import importRoute from "./import";
@@ -105,6 +106,8 @@ const PostSkillRequestBodySchema = z.intersection(
 
 // Mounted at /api/w/:wId/skills.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 // Static sub-paths must be registered before the param sub-app.
 app.route("/detect", detect);

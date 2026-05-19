@@ -16,6 +16,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ProjectType, SpaceType } from "@app/types/space";
 
 import { validate } from "@front-api/middleware/validator";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import checkName from "./check-name";
 import projectsLookup from "./projects-lookup";
@@ -52,9 +53,10 @@ export type PostSpacesResponseBody = {
   space: SpaceType;
 };
 
-// Mounted under /api/w/:wId/spaces. workspaceAuth is applied by the parent
-// workspace sub-app, so c.get("auth") is always available here.
+// Mounted under /api/w/:wId/spaces.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

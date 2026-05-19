@@ -1,11 +1,15 @@
 import { Hono } from "hono";
 
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
+
 import dsId from "./[dsId]";
 import botDataSources from "./bot-data-sources";
 import requestAccess from "./request_access";
 
 // Mounted under /api/w/:wId/data_sources.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 // Register static paths BEFORE `/:dsId` so the param route does not swallow
 // these names as ids.

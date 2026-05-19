@@ -4,6 +4,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
+
 export type GetWelcomeResponseBody = {
   isFirstAdmin: boolean;
   emailProvider: EmailProviderType;
@@ -11,6 +13,8 @@ export type GetWelcomeResponseBody = {
 
 // Mounted at /api/w/:wId/welcome.
 const app = new Hono();
+
+app.use("*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

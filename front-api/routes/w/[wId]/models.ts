@@ -9,6 +9,8 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
+
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];
   reasoningModels: ModelConfigurationType[];
@@ -16,6 +18,8 @@ export type GetAvailableModelsResponseType = {
 
 // Mounted at /api/w/:wId/models.
 const app = new Hono();
+
+app.use("*", workspaceAuth());
 
 app.get("/", async (c) => {
   const auth = c.get("auth");

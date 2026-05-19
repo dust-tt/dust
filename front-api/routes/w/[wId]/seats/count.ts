@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import { apiError } from "@front-api/middleware/utils";
+import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 
@@ -10,6 +11,8 @@ export type GetWorkspaceSeatsCountResponseBody = {
 
 // Mounted at /api/w/:wId/seats/count.
 const app = new Hono();
+
+app.use("*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 
 app.get("/", async (c) => {
   const auth = c.get("auth");
