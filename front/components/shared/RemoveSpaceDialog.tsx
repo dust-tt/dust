@@ -195,7 +195,9 @@ export function useBlockedSkillSpaceRemovalConfirm({
         </div>
       ),
       cancelLabel: "Close",
-      hideValidateButton: true,
+      validateLabel: "Remove",
+      validateVariant: "warning",
+      validateDisabled: true,
     });
   };
 }
