@@ -229,9 +229,14 @@ should use the alias.
 middleware reads what it needs from Hono's `Context` directly
 (`c.req.header(...)`, `c.req.param(...)`, `c.req.raw.headers`).
 
-Known exception: the bridge in `workspace_auth.ts`, which still constructs
-a Next-shaped `req`/`res` to call the legacy `getSession(req, res)`. That
-will go away when `getSession` is refactored to take an I/O abstraction.
+For cookie-based session resolution, call
+`getWorkOSSessionWithSetCookies(workOSSessionCookie)` from
+`@app/lib/api/workos/user`. It returns `{ session, setCookies }` — emit
+each `setCookies` value with
+`c.header("Set-Cookie", cookie, { append: true })`. The Next-flavored
+`getSession(req, res)` / `getWorkOSSession(req, res)` helpers remain the
+entry point for Next code paths and must not be called from Hono
+middleware.
 
 The strangler entry in `server.ts` keeps `import next from "next"` — that
 disappears when Next is fully retired.

@@ -1,14 +1,10 @@
-import { apiError } from "@front-api/middleware/utils";
 import type { MiddlewareHandler } from "hono";
 
-import {
-  Authenticator,
-  getSession,
-  getSessionFromBearerToken,
-} from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { getClientIp } from "@app/lib/utils/request";
 
-import { buildNextLikeReqRes } from "./utils";
+import { resolveSession } from "@front-api/middleware/session_resolution";
+import { apiError } from "@front-api/middleware/utils";
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -36,42 +32,18 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
     });
   }
 
-  const { req, res, setCookies } = buildNextLikeReqRes(c);
-
-  // Try bearer token first, then fall back to cookie-based session.
-  // Mirrors withLogging in front/logger/withlogging.ts.
-  const bearerRes = await getSessionFromBearerToken(
-    c.req.header("authorization")
-  );
-  if (bearerRes.isErr()) {
-    return apiError(c, {
-      status_code: 401,
-      api_error: {
-        type: bearerRes.error,
-        message: "The request does not have valid authentication credentials.",
-      },
-    });
-  }
-  const session = bearerRes.value ?? (await getSession(req, res));
-
-  for (const cookie of setCookies) {
-    c.header("Set-Cookie", cookie, { append: true });
+  const sessionResult = await resolveSession(c);
+  if (sessionResult instanceof Response) {
+    return sessionResult;
   }
 
-  if (!session) {
-    return apiError(c, {
-      status_code: 401,
-      api_error: {
-        type: "not_authenticated",
-        message:
-          "The user does not have an active session or is not authenticated.",
-      },
-    });
-  }
+  const auth = await Authenticator.fromSession(sessionResult, wId);
 
-  const auth = await Authenticator.fromSession(session, wId);
-
-  const ip = getClientIp(req);
+  const headers: Record<string, string | string[] | undefined> = {};
+  c.req.raw.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+  const ip = getClientIp({ headers });
   if (ip !== "internal") {
     auth.setClientIp(ip);
   }

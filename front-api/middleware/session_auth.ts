@@ -1,10 +1,8 @@
-import { apiError } from "@front-api/middleware/utils";
 import type { MiddlewareHandler } from "hono";
 
-import { getSession, getSessionFromBearerToken } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 
-import { buildNextLikeReqRes } from "./utils";
+import { resolveSession } from "@front-api/middleware/session_resolution";
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -20,37 +18,11 @@ declare module "hono" {
  * Apply to routes that need a logged-in user but no workspace scoping.
  */
 export const sessionAuth: MiddlewareHandler = async (c, next) => {
-  const bearerRes = await getSessionFromBearerToken(
-    c.req.header("authorization")
-  );
-  if (bearerRes.isErr()) {
-    return apiError(c, {
-      status_code: 401,
-      api_error: {
-        type: bearerRes.error,
-        message: "The request does not have valid authentication credentials.",
-      },
-    });
+  const result = await resolveSession(c);
+  if (result instanceof Response) {
+    return result;
   }
 
-  const { req, res, setCookies } = buildNextLikeReqRes(c);
-  const session = bearerRes.value ?? (await getSession(req, res));
-
-  for (const cookie of setCookies) {
-    c.header("Set-Cookie", cookie, { append: true });
-  }
-
-  if (!session) {
-    return apiError(c, {
-      status_code: 401,
-      api_error: {
-        type: "not_authenticated",
-        message:
-          "The user does not have an active session or is not authenticated.",
-      },
-    });
-  }
-
-  c.set("session", session);
+  c.set("session", result);
   await next();
 };
