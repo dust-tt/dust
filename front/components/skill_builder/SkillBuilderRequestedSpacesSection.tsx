@@ -167,13 +167,6 @@ export function SkillBuilderRequestedSpacesSection({
     );
   };
 
-  const canRemoveSpace = (space: SpaceType) => {
-    return (
-      areSpaceRequirementsReady &&
-      (additionalSpaceIds.has(space.sId) || spaceIdsUsedBySkill.has(space.sId))
-    );
-  };
-
   const handleOpenSheet = () => {
     if (!areSpaceRequirementsReady) {
       return;
@@ -238,11 +231,7 @@ export function SkillBuilderRequestedSpacesSection({
           </ContentMessage>
         </div>
       )}
-      <SpaceChips
-        spaces={spacesToDisplay}
-        onRemoveSpace={handleRemoveSpace}
-        canRemoveSpace={canRemoveSpace}
-      />
+      <SpaceChips spaces={spacesToDisplay} onRemoveSpace={handleRemoveSpace} />
 
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
