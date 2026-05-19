@@ -28,10 +28,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_draft: {
-    description: `Create a new email draft in Gmail.
+    description: `Create a new email draft in Gmail, or a reply draft to an existing thread.
 - The draft will be saved in the user's Gmail account and can be reviewed and sent later.
-- The user can review and send the draft later
-- The draft will include proper email headers and formatting`,
+- If replyToMessageId is provided, the draft will be created as a reply in the existing thread, with the original message quoted.
+- The draft will include proper email headers and formatting.`,
     schema: {
       to: z.array(z.string()).describe("The email addresses of the recipients"),
       cc: z.array(z.string()).optional().describe("The email addresses to CC"),
@@ -44,6 +44,12 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .enum(["text/plain", "text/html"])
         .describe("The content type of the email (text/plain or text/html)."),
       body: z.string().describe("The body of the email"),
+      replyToMessageId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. The ID of the message to reply to. If provided, the draft will be created as a reply in the existing thread, with proper threading headers and the original message quoted."
+        ),
     },
     stake: "medium",
     displayLabels: {
@@ -132,39 +138,6 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Getting Gmail attachment",
       done: "Get Gmail attachment",
-    },
-  },
-  create_reply_draft: {
-    description: `Create a reply draft to an existing email thread in Gmail.
-- The draft will be saved in the user's Gmail account and can be reviewed and sent later.
-- The reply will be properly formatted with the original message quoted.
-- The draft will include proper email headers and threading information.`,
-    schema: {
-      messageId: z.string().describe("The ID of the message to reply to"),
-      body: z.string().describe("The body of the reply email"),
-      contentType: z
-        .enum(["text/plain", "text/html"])
-        .optional()
-        .describe(
-          "The content type of the email (text/plain or text/html). Defaults to text/plain."
-        ),
-      to: z
-        .array(z.string())
-        .optional()
-        .describe("Override the To recipients for the reply."),
-      cc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the CC recipients for the reply."),
-      bcc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the BCC recipients for the reply."),
-    },
-    stake: "medium",
-    displayLabels: {
-      running: "Creating Gmail reply draft",
-      done: "Create Gmail reply draft",
     },
   },
   get_labels: {

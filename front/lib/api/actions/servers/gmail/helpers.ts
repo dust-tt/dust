@@ -238,7 +238,7 @@ export function createThreadingHeaders(
     headers.push(`In-Reply-To: ${originalMessageId}`);
 
     if (originalReferences) {
-      headers.push(`References: ${originalReferences}`);
+      headers.push(`References: ${originalReferences} ${originalMessageId}`);
     } else {
       headers.push(`References: ${originalMessageId}`);
     }

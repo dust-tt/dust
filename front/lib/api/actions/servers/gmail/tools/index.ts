@@ -82,7 +82,7 @@ function buildAndEncodeEmail(params: {
     params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
     params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
     `Subject: ${encodedSubject}`,
-    `Content-Type: ${params.contentType}; charset=UTF-8`,
+    `Content-Type: text/html; charset=UTF-8`,
     "MIME-Version: 1.0",
     ...(params.threadingHeaders ?? []),
     "",
@@ -157,12 +157,65 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   },
 
   create_draft: async (
-    { to, cc, bcc, subject, contentType, body },
+    { to, cc, bcc, subject, contentType, body, replyToMessageId },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
+    }
+    let threadingHeaders: string[] = [];
+    let threadId: string | undefined = undefined;
+    let fullBody: string | undefined = undefined;
+
+    if (replyToMessageId) {
+      const messageResponse = await fetchFromGmail(
+        `/gmail/v1/users/me/messages/${replyToMessageId}?format=full`,
+        accessToken,
+        { method: "GET" }
+      );
+      if (!messageResponse.ok) {
+        const errorText = await getErrorText(messageResponse);
+        if (messageResponse.status === 404) {
+          return new Err(
+            new MCPError(`Message not found: ${replyToMessageId}`, {
+              tracked: false,
+            })
+          );
+        }
+        return new Err(
+          new MCPError(
+            `Failed to get original message: ${messageResponse.status} ${messageResponse.statusText} - ${errorText}`
+          )
+        );
+      }
+
+      const originalMessage: GmailMessage = await messageResponse.json();
+      threadId = originalMessage.threadId;
+
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      const headers = originalMessage.payload?.headers || [];
+      const originalFrom = getHeaderValue(headers, "From");
+      const originalDate = getHeaderValue(headers, "Date");
+      const originalBody = decodeMessageBody(originalMessage.payload);
+
+      fullBody = buildReplyBody(
+        body,
+        contentType,
+        originalBody,
+        originalDate,
+        originalFrom
+      );
+
+      // Extract header values
+      const originalMessageIdHeader = getHeaderValue(headers, "Message-ID");
+      const originalReferences = getHeaderValue(headers, "References");
+
+      // Create subject and headers
+      threadingHeaders = createThreadingHeaders(
+        originalMessageIdHeader,
+        originalReferences
+      );
     }
 
     // Build and encode the email message
@@ -171,8 +224,9 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       cc,
       bcc,
       subject,
-      contentType,
-      body,
+      contentType: replyToMessageId ? "text/html" : contentType,
+      body: fullBody ?? body,
+      threadingHeaders,
     });
 
     if (encodedMessageResult.isErr()) {
@@ -193,6 +247,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         body: JSON.stringify({
           message: {
             raw: encodedMessage,
+            ...(threadId ? { threadId: threadId } : {}),
           },
         }),
       }
@@ -597,158 +652,6 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     return result;
   },
 
-  create_reply_draft: async (
-    { messageId, body, contentType = "text/plain" as const, to, cc, bcc },
-    { authInfo }
-  ) => {
-    const accessToken = authInfo?.token;
-    if (!accessToken) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    // Fetch the original message
-    const messageResponse = await fetchFromGmail(
-      `/gmail/v1/users/me/messages/${messageId}?format=full`,
-      accessToken,
-      { method: "GET" }
-    );
-
-    if (!messageResponse.ok) {
-      const errorText = await getErrorText(messageResponse);
-      if (messageResponse.status === 404) {
-        return new Err(
-          new MCPError(`Message not found: ${messageId}`, {
-            tracked: false,
-          })
-        );
-      }
-      return new Err(
-        new MCPError(
-          `Failed to get original message: ${messageResponse.status} ${messageResponse.statusText} - ${errorText}`
-        )
-      );
-    }
-
-    const originalMessage: GmailMessage = await messageResponse.json();
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    const headers = originalMessage.payload?.headers || [];
-
-    // Extract header values
-    const originalFrom = getHeaderValue(headers, "From");
-    const originalTo = getHeaderValue(headers, "To");
-    const originalCc = getHeaderValue(headers, "Cc");
-    const originalBcc = getHeaderValue(headers, "Bcc");
-    const originalSubject = getHeaderValue(headers, "Subject");
-    const originalMessageIdHeader = getHeaderValue(headers, "Message-ID");
-    const originalReferences = getHeaderValue(headers, "References");
-    const originalDate = getHeaderValue(headers, "Date");
-
-    // Validate user-provided email addresses to prevent header injection
-    if (to?.length || cc?.length || bcc?.length) {
-      const validationError = validateEmailAddresses(to ?? [], cc, bcc);
-      if (validationError) {
-        return validationError;
-      }
-    }
-
-    // Determine recipients
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    const replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
-    const replyCc = cc?.length ? cc.join(", ") : originalCc;
-    const replyBcc = bcc?.length ? bcc.join(", ") : originalBcc;
-
-    if (!replyTo?.trim()) {
-      return new Err(
-        new MCPError("Cannot determine reply-to address from original message")
-      );
-    }
-
-    // Create subject and headers
-    const replySubject = originalSubject?.startsWith("Re:")
-      ? originalSubject
-      : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        `Re: ${originalSubject || "No Subject"}`;
-    const encodedSubject = encodeSubject(replySubject);
-    const threadingHeaders = createThreadingHeaders(
-      originalMessageIdHeader,
-      originalReferences
-    );
-
-    // Build reply body
-    const originalBody = decodeMessageBody(originalMessage.payload);
-    const fullBody = buildReplyBody(
-      body,
-      contentType,
-      originalBody,
-      originalDate,
-      originalFrom
-    );
-
-    // Construct the reply message
-    const messageLines = [
-      `To: ${replyTo}`,
-      replyCc ? `Cc: ${replyCc}` : null,
-      replyBcc ? `Bcc: ${replyBcc}` : null,
-      `Subject: ${encodedSubject}`,
-      "Content-Type: text/html; charset=UTF-8",
-      "MIME-Version: 1.0",
-      ...threadingHeaders,
-      "",
-      fullBody,
-    ].filter((line): line is string => line !== null);
-
-    const message = messageLines.join("\r\n");
-
-    // Encode the message in base64 as required by the Gmail API
-    const encodedMessage = encodeMessageForGmail(message);
-
-    const response = await fetchFromGmail(
-      "/gmail/v1/users/me/drafts",
-      accessToken,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: {
-            raw: encodedMessage,
-            threadId: originalMessage.threadId,
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await getErrorText(response);
-      return new Err(
-        new MCPError(
-          `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
-        )
-      );
-    }
-
-    const result = await response.json();
-
-    return new Ok([
-      { type: "text" as const, text: "Reply draft created successfully" },
-      {
-        type: "text" as const,
-        text: JSON.stringify(
-          {
-            draftId: result.id,
-            messageId: result.message.id,
-            originalMessageId: messageId,
-            replyTo,
-            subject: replySubject,
-          },
-          null,
-          2
-        ),
-      },
-    ]);
-  },
-
   send_mail: async (
     { to, cc, bcc, from, subject, contentType, body, replyToMessageId },
     { authInfo }
@@ -785,6 +688,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
 
     let threadingHeaders: string[] = [];
     let threadId: string | undefined = undefined;
+    let fullBody: string | undefined = undefined;
 
     if (replyToMessageId) {
       const messageResponse = await fetchFromGmail(
@@ -813,7 +717,17 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       threadId = originalMessage.threadId;
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const headers = originalMessage.payload?.headers || [];
+      const originalFrom = getHeaderValue(headers, "From");
+      const originalDate = getHeaderValue(headers, "Date");
+      const originalBody = decodeMessageBody(originalMessage.payload);
 
+      fullBody = buildReplyBody(
+        body,
+        contentType,
+        originalBody,
+        originalDate,
+        originalFrom
+      );
       // Extract header values
       const originalMessageIdHeader = getHeaderValue(headers, "Message-ID");
       const originalReferences = getHeaderValue(headers, "References");
@@ -831,8 +745,8 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       bcc,
       from,
       subject,
-      contentType,
-      body,
+      contentType: replyToMessageId ? "text/html" : contentType,
+      body: fullBody ?? body,
       threadingHeaders,
     });
 
