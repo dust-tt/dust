@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /**
  * @swagger
  * /api/w/{wId}/assistant/agent_configurations:
@@ -355,4 +356,3 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
-
