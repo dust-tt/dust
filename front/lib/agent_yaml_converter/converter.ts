@@ -1,9 +1,7 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { processAdditionalConfiguration } from "@app/components/agent_builder/submitAgentBuilderForm";
-import {
-  isAutoInternalMCPServerName,
-  isInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isAutoInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   AgentYAMLAction,
   AgentYAMLConfig,
@@ -17,11 +15,11 @@ import type {
 import { agentYAMLConfigSchema } from "@app/lib/agent_yaml_converter/schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import * as yaml from "js-yaml";
 
 export class AgentYAMLConverter {
@@ -304,79 +302,104 @@ export class AgentYAMLConverter {
     }));
   }
 
-  static async convertYAMLActionToMCPConfiguration(
+  static async convertYAMLActionsToMCPConfigurations(
     auth: Authenticator,
-    action: AgentYAMLAction
+    actions: AgentYAMLAction[]
   ): Promise<
     Result<
-      | PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number]
-      | null,
+      {
+        configurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][];
+        skipped: { action: AgentYAMLAction; reason: string }[];
+      },
       Error
     >
   > {
-    const mcpServerName = action.configuration.mcp_server_name;
-    if (!mcpServerName) {
-      return new Err(new Error("MCP server name is required"));
+    const viewIds = actions
+      .map((a) => a.configuration.mcp_server_view_id)
+      .filter(isString);
+
+    const viewsById = new Map<string, MCPServerViewResource>();
+    if (viewIds.length > 0) {
+      const views = await MCPServerViewResource.fetchByIds(auth, viewIds);
+      for (const view of views) {
+        viewsById.set(view.sId, view);
+      }
     }
 
-    let mcpServerViewId;
-    try {
+    // Collect auto internal server names for actions that need name-based
+    // resolution (no view ID, or view ID not found in this workspace).
+    const autoInternalNames: AutoInternalMCPServerNameType[] = [];
+    for (const action of actions) {
+      const { mcp_server_view_id, mcp_server_name } = action.configuration;
+      const resolvedById =
+        mcp_server_view_id && viewsById.has(mcp_server_view_id);
+
+      if (
+        !resolvedById &&
+        mcp_server_name &&
+        isAutoInternalMCPServer(mcp_server_name)
+      ) {
+        autoInternalNames.push(mcp_server_name);
+      }
+    }
+
+    const autoInternalViewsMap =
+      autoInternalNames.length > 0
+        ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
+            auth,
+            autoInternalNames
+          )
+        : new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
+
+    const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
+      [];
+    const skippedActions: { action: AgentYAMLAction; reason: string }[] = [];
+
+    for (const action of actions) {
+      const mcpServerName = action.configuration.mcp_server_name;
+      if (!mcpServerName) {
+        skippedActions.push({
+          action,
+          reason: "MCP server name is required",
+        });
+        continue;
+      }
+
+      let mcpServerViewId: string | undefined;
       const { mcp_server_view_id } = action.configuration;
 
+      // Try resolving by view ID first.
       if (mcp_server_view_id) {
-        const mcpServerView = await MCPServerViewResource.fetchById(
-          auth,
-          mcp_server_view_id
-        );
-
-        if (!mcpServerView) {
-          return new Err(
-            new Error(`MCP server view not found for id: ${mcp_server_view_id}`)
-          );
+        const view = viewsById.get(mcp_server_view_id);
+        if (view) {
+          mcpServerViewId = view.sId;
         }
+      }
 
-        mcpServerViewId = mcpServerView.sId;
-      } else {
-        // No view ID: fall back to resolving by internal server name.
-        if (!isInternalMCPServerName(mcpServerName)) {
-          return new Err(
-            new Error(
-              `MCP server "${mcpServerName}" requires mcp_server_view_id`
-            )
-          );
+      // Fall back to name-based resolution for cross-workspace compatibility.
+      if (!mcpServerViewId && isAutoInternalMCPServer(mcpServerName)) {
+        const view = autoInternalViewsMap.get(mcpServerName);
+        if (view) {
+          mcpServerViewId = view.sId;
         }
+      }
 
-        if (!isAutoInternalMCPServerName(mcpServerName)) {
-          return new Err(
-            new Error(
-              `MCP server ${mcpServerName} is not available for auto configuration`
-            )
-          );
-        }
-
-        const mcpServerView =
-          await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-            auth,
-            mcpServerName
-          );
-
-        if (!mcpServerView) {
-          return new Err(
-            new Error(`MCP server view not found for: ${mcpServerName}`)
-          );
-        }
-
-        mcpServerViewId = mcpServerView.sId;
+      if (!mcpServerViewId) {
+        skippedActions.push({
+          action,
+          reason: `MCP server view not found for: ${mcpServerName}`,
+        });
+        continue;
       }
 
       const workspaceId = auth.getNonNullableWorkspace().sId;
 
       const { configuration } = action;
 
-      return new Ok({
+      mcpConfigurations.push({
         type: "mcp_server_configuration",
         mcpServerViewId,
-        name: action.name ?? "",
+        name: (mcpServerName || action.name) ?? "",
         description: action.description ?? null,
         dataSources: configuration.data_sources
           ? this.convertDataSources(configuration.data_sources, workspaceId)
@@ -408,55 +431,12 @@ export class AgentYAMLConverter {
           : null,
         timeFrame: configuration.time_frame ?? null,
       });
-    } catch (error) {
-      return new Err(normalizeError(error));
     }
-  }
 
-  static async convertYAMLActionsToMCPConfigurations(
-    auth: Authenticator,
-    yamlActions: AgentYAMLAction[]
-  ): Promise<
-    Result<
-      {
-        configurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][];
-        skipped: { action: AgentYAMLAction; reason: string }[];
-      },
-      Error
-    >
-  > {
-    try {
-      const results = await concurrentExecutor(
-        yamlActions,
-        (action) => this.convertYAMLActionToMCPConfiguration(auth, action),
-        { concurrency: 5 }
-      );
-
-      const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
-        [];
-      const skippedActions: { action: AgentYAMLAction; reason: string }[] = [];
-
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i];
-        const originalAction = yamlActions[i];
-
-        if (result.isErr()) {
-          skippedActions.push({
-            action: originalAction,
-            reason: result.error.message,
-          });
-        } else if (result.value) {
-          mcpConfigurations.push(result.value);
-        }
-      }
-
-      return new Ok({
-        configurations: mcpConfigurations,
-        skipped: skippedActions,
-      });
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+    return new Ok({
+      configurations: mcpConfigurations,
+      skipped: skippedActions,
+    });
   }
 
   static fromYAMLString(yamlString: string): Result<AgentYAMLConfig, Error> {

@@ -1239,6 +1239,12 @@ export function isAutoInternalMCPServerName(
   );
 }
 
+export function isAutoInternalMCPServer(
+  name: string
+): name is AutoInternalMCPServerNameType {
+  return isInternalMCPServerName(name) && isAutoInternalMCPServerName(name);
+}
+
 export function getAvailabilityOfInternalMCPServerByName(
   name: InternalMCPServerNameType
 ): MCPServerAvailability {

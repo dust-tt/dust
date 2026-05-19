@@ -117,6 +117,7 @@ async function importAgentConfiguration(
   }
 
   const actionsResult = await resolveActions(auth, actionSource);
+
   if (actionsResult.isErr()) {
     return actionsResult;
   }
