@@ -18,6 +18,7 @@ export class LightWorkspaceFactory {
       segmentation: null,
       whiteListedProviders: null,
       defaultEmbeddingProvider: null,
+      regionalModelsOnly: false,
       metadata: {},
       sharingPolicy: "workspace_only",
       metronomeCustomerId: null,

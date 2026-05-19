@@ -963,6 +963,7 @@ export class Authenticator {
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           segmentation: this._workspace.segmentation || null,
           ssoEnforced: this._workspace.ssoEnforced,
+          regionalModelsOnly: this._workspace.regionalModelsOnly,
           workOSOrganizationId: this._workspace.workOSOrganizationId,
           whiteListedProviders: this._workspace.whiteListedProviders,
           defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
