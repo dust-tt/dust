@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 // Public API types are okay to use here because it's front/connectors communication.
 
 import {

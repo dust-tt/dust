@@ -1,66 +1,38 @@
-/** @ignoreswagger */
-// @migration-status: MIGRATED_TO_HONO
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { escape } from "html-escaper";
+import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
+import { z } from "zod";
+
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
-import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
-import { escape } from "html-escaper";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
-export const PostRequestAccessBodySchema = z.object({
+import { validate } from "@front-api/middleware/validator";
+
+const PostRequestAccessBodySchema = z.object({
   emailMessage: z.string(),
   dataSourceId: z.string(),
 });
 
-export type PostRequestAccessBody = z.infer<typeof PostRequestAccessBodySchema>;
-
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-  auth: Authenticator
-) {
+// Mounted at /api/w/:wId/data_sources/request_access.
+const app = new Hono();
+
+app.post("/", validate("json", PostRequestAccessBodySchema), async (c) => {
+  const auth = c.get("auth");
   const user = auth.getNonNullableUser();
-
-  const { method } = req;
-  if (method !== "POST") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, POST is expected.",
-      },
-    });
-  }
-
-  const bodyValidation = PostRequestAccessBodySchema.safeParse(req.body);
-  if (!bodyValidation.success) {
-    const pathError = fromError(bodyValidation.error).toString();
-
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
-      },
-    });
-  }
-
   const emailRequester = user.email;
-  const { emailMessage, dataSourceId } = bodyValidation.data;
+  const { emailMessage, dataSourceId } = c.req.valid("json");
 
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId, {
     includeEditedBy: true,
   });
   if (!dataSource) {
-    return apiError(req, res, {
+    return apiError(c, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -69,9 +41,9 @@ async function handler(
     });
   }
 
-  // Prevent users from requesting access to data sources outside their workspace (e,g: public).
+  // Prevent users from requesting access to data sources outside their workspace (e.g., public).
   if (dataSource.workspaceId !== auth.getNonNullableWorkspace().id) {
-    return apiError(req, res, {
+    return apiError(c, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -81,7 +53,7 @@ async function handler(
   }
 
   if (!dataSource.editedByUser?.sId) {
-    return apiError(req, res, {
+    return apiError(c, {
       status_code: 403,
       api_error: {
         type: "user_not_found",
@@ -94,12 +66,12 @@ async function handler(
   const remaining = await rateLimiter({
     key: rateLimitKey,
     maxPerTimeframe: MAX_ACCESS_REQUESTS_PER_DAY,
-    timeframeSeconds: 24 * 60 * 60, // 1 day
+    timeframeSeconds: 24 * 60 * 60,
     logger,
   });
 
   if (remaining === 0) {
-    return apiError(req, res, {
+    return apiError(c, {
       status_code: 429,
       api_error: {
         type: "rate_limit_error",
@@ -123,7 +95,7 @@ async function handler(
   });
 
   if (result.isErr()) {
-    return apiError(req, res, {
+    return apiError(c, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -132,7 +104,7 @@ async function handler(
     });
   }
 
-  return res.status(200).json({ success: true });
-}
+  return c.json({ success: true });
+});
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default app;

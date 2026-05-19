@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { syncNotionUrls } from "@app/lib/api/poke/plugins/data_sources/notion_url_sync";
 import { runOnRedis } from "@app/lib/api/redis";

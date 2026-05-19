@@ -1,51 +1,22 @@
-/** @ignoreswagger */
-// @migration-status: MIGRATED_TO_HONO
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { Hono } from "hono";
+
+import { apiError } from "@front-api/middleware/utils";
+
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { WithAPIErrorResponse } from "@app/types/error";
-import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetNotionWebhookConfigResponseBody = {
-  webhookUrl: string;
-  verificationToken: string | null;
-};
+// Mounted at /api/w/:wId/data_sources/:dsId/managed/notion/webhook_config.
+const app = new Hono();
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetNotionWebhookConfigResponseBody>
-  >,
-  auth: Authenticator
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
-    });
-  }
-
-  const { dsId } = req.query;
-  if (typeof dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
+app.get("/", async (c) => {
+  const auth = c.get("auth");
+  const dsId = c.req.param("dsId") ?? "";
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(req, res, {
+    return apiError(c, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -55,7 +26,7 @@ async function handler(
   }
 
   if (!dataSource.connectorId || dataSource.connectorProvider !== "notion") {
-    return apiError(req, res, {
+    return apiError(c, {
       status_code: 400,
       api_error: {
         type: "data_source_error",
@@ -68,7 +39,7 @@ async function handler(
   const connectorAPIConfig = config.getConnectorsAPIConfig();
   const connectorsAPI = new ConnectorsAPI(connectorAPIConfig, logger);
 
-  // Get the Notion workspace ID
+  // Get the Notion workspace ID.
   const workspaceIdRes = await connectorsAPI.getNotionWorkspaceId(
     dataSource.connectorId
   );
@@ -81,7 +52,7 @@ async function handler(
       },
       "Failed to get Notion workspace ID"
     );
-    return apiError(req, res, {
+    return apiError(c, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -94,7 +65,7 @@ async function handler(
   const notionWorkspaceId = workspaceIdRes.value.notionWorkspaceId;
   const webhookUrl = `https://webhook-router.dust.tt/notion/${notionWorkspaceId}`;
 
-  // Try to get the verification token from the webhooks router
+  // Try to get the verification token from the webhooks router.
   const webhookRouterRes = await connectorsAPI.getWebhookRouterEntry({
     provider: "notion",
     providerWorkspaceId: notionWorkspaceId,
@@ -102,15 +73,12 @@ async function handler(
   });
 
   if (webhookRouterRes.isErr()) {
-    // 404 is expected when the webhook hasn't been set up yet
+    // 404 is expected when the webhook hasn't been set up yet.
     if (
       webhookRouterRes.error.type === "not_found" ||
       webhookRouterRes.error.type === "connector_not_found"
     ) {
-      return res.status(200).json({
-        webhookUrl,
-        verificationToken: null,
-      });
+      return c.json({ webhookUrl, verificationToken: null });
     }
 
     logger.error(
@@ -120,7 +88,7 @@ async function handler(
       },
       "Failed to get webhook router entry"
     );
-    return apiError(req, res, {
+    return apiError(c, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -130,10 +98,10 @@ async function handler(
     });
   }
 
-  return res.status(200).json({
+  return c.json({
     webhookUrl,
     verificationToken: webhookRouterRes.value.signingSecret,
   });
-}
+});
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default app;
