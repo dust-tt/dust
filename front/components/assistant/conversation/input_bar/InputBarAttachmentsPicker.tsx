@@ -1,4 +1,4 @@
-import { getSingularFileCategoryLabelForContentType } from "@app/components/assistant/conversation/files_panel/utils";
+import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
 import { getIcon } from "@app/components/resources/resources_icons";

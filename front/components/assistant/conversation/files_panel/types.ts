@@ -1,19 +1,9 @@
+import type { FilePanelCategory } from "@app/components/file_explorer/types";
 import type { AttachmentCreator } from "@app/lib/api/assistant/conversation/attachments";
 import type { GetConversationAttachmentsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/attachments";
 
 export type ConversationAttachmentItem =
   GetConversationAttachmentsResponseBody["attachments"][number];
-
-export type FilePanelCategory =
-  | "frame"
-  | "slideshow"
-  | "document"
-  | "pdf"
-  | "table"
-  | "image"
-  | "audio"
-  | "knowledge"
-  | "other";
 
 export type ConversationAttachmentRow = {
   title: string;
@@ -26,24 +16,3 @@ export type ConversationAttachmentRow = {
   date: number | null;
   onClick?: () => void;
 };
-
-export type SandboxTreeNode = {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  contentType: string | null;
-  fileId: string | null;
-  children: SandboxTreeNode[];
-};
-
-export type FileExplorerBucket =
-  | "tables"
-  | "frames"
-  | "texts"
-  | "folders"
-  | "images"
-  | "code";
-
-export type FileExplorerFilter = "all" | FileExplorerBucket;
-
-export type FileExplorerSortMode = "last-modified" | "name-asc" | "name-desc";

@@ -1,13 +1,11 @@
+import type { FileEntry } from "@app/components/file_explorer/types";
 import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
-import { useConversationFileContent } from "@app/hooks/conversations/useConversationFileContent";
-import config from "@app/lib/api/config";
+import { useFileContent } from "@app/hooks/useFileContent";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
   Button,
@@ -31,19 +29,6 @@ import { useEffect, useState } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
-
-function getConversationFileUrl(
-  owner: LightWorkspaceType,
-  {
-    conversationId,
-    filePath,
-  }: {
-    conversationId: string;
-    filePath: string;
-  }
-): string {
-  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${filePath}`;
-}
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   py: "python",
@@ -158,28 +143,21 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
 
 interface FilePreviewDialogContentProps {
   category: ReturnType<typeof getFilePreviewConfig>["category"];
-  conversationId: string;
-  entry: GCSMountFileEntry;
+  entry: FileEntry;
   fileContent: string | null;
+  fileUrl: string;
   isContentLoading: boolean;
-  owner: LightWorkspaceType;
   processedContent: ProcessedContent | null;
 }
 
 function FilePreviewDialogContent({
   category,
-  conversationId,
   entry,
   fileContent,
+  fileUrl,
   isContentLoading,
-  owner,
   processedContent,
 }: FilePreviewDialogContentProps) {
-  const fileUrl = getConversationFileUrl(owner, {
-    conversationId,
-    filePath: entry.path,
-  });
-
   if (isContentLoading) {
     return (
       <div className="flex h-48 items-center justify-center">
@@ -278,22 +256,20 @@ function FilePreviewDialogContent({
 }
 
 interface FilePreviewDialogProps {
-  conversationId: string;
-  entry: GCSMountFileEntry | null;
+  entry: FileEntry | null;
+  getFileUrl: (path: string) => string;
   isOpen: boolean;
-  onDownload: (entry: GCSMountFileEntry) => Promise<void>;
+  onDownload: (entry: FileEntry) => Promise<void>;
   onNext?: () => void;
   onOpenChange: (open: boolean) => void;
   onPrev?: () => void;
-  owner: LightWorkspaceType;
 }
 
 export function FilePreviewDialog({
   entry,
-  conversationId,
+  getFileUrl,
   isOpen,
   onOpenChange,
-  owner,
   onDownload,
   onPrev,
   onNext,
@@ -346,11 +322,11 @@ export function FilePreviewDialog({
     category === "text" ||
     category === "delimited";
 
+  const fileUrl = entry ? getFileUrl(entry.path) : null;
+
   const { fileContent, isFileContentLoading, fileContentError } =
-    useConversationFileContent({
-      owner,
-      conversationId,
-      filePath: entry?.path ?? null,
+    useFileContent({
+      url: fileUrl,
       disabled: !isOpen || !entry || !needsTextContent,
     });
 
@@ -421,11 +397,10 @@ export function FilePreviewDialog({
             {entry && (
               <FilePreviewDialogContent
                 category={category}
-                conversationId={conversationId}
                 entry={entry}
                 fileContent={truncatedContent}
+                fileUrl={fileUrl ?? ""}
                 isContentLoading={isContentLoading}
-                owner={owner}
                 processedContent={processedContent}
               />
             )}
@@ -435,11 +410,10 @@ export function FilePreviewDialog({
             {entry && (
               <FilePreviewDialogContent
                 category={category}
-                conversationId={conversationId}
                 entry={entry}
                 fileContent={truncatedContent}
+                fileUrl={fileUrl ?? ""}
                 isContentLoading={isContentLoading}
-                owner={owner}
                 processedContent={processedContent}
               />
             )}

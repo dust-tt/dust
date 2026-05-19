@@ -1,14 +1,14 @@
-import type { FilePanelCategory } from "@app/components/assistant/conversation/files_panel/types";
+import type { FilePanelCategory } from "@app/components/file_explorer/types";
 import {
   CATEGORY_CONFIG,
   getCategoryFromContentType,
   MIN_FILES_FOR_SEARCH,
-} from "@app/components/assistant/conversation/files_panel/utils";
+} from "@app/components/file_explorer/utils";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useDebounce } from "@app/hooks/useDebounce";
+import type { GCSMountFileEntry } from "@app/lib/api/files/gcs_mount/files";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { downloadSandboxFile, getFileProcessedUrl } from "@app/lib/swr/files";
-import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Card,

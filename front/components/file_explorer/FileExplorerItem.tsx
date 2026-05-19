@@ -1,14 +1,21 @@
-import type { SandboxTreeNode } from "@app/components/assistant/conversation/files_panel/types";
+import type {
+  ContentNodeEntry,
+  FileEntry,
+  FileExplorerMenuAction,
+  SandboxTreeNode,
+} from "@app/components/file_explorer/types";
 import {
   getCategoryFromContentType,
   getSingularFileCategoryLabelForContentType,
-} from "@app/components/assistant/conversation/files_panel/utils";
+} from "@app/components/file_explorer/utils";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
+import type { GCSMountFileEntry } from "@app/lib/api/files/gcs_mount/files";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import {
   ArrowDownOnSquareIcon,
   Button,
+  CloudArrowLeftRightIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -21,6 +28,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { intlFormatDistance } from "date-fns";
+import type React from "react";
 import { useState } from "react";
 
 export type ViewMode = "grid" | "list";
@@ -31,6 +39,7 @@ export type FileExplorerItemProps = {
   subtitle: string;
   title: string;
   viewMode: ViewMode;
+  extraMenuItems?: FileExplorerMenuAction[];
 } & (
   | { kind: "icon"; visual: React.ComponentType }
   | { kind: "thumbnail"; thumbnailSrc: string | null }
@@ -38,7 +47,8 @@ export type FileExplorerItemProps = {
 
 // TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
 export function FileExplorerItem(props: FileExplorerItemProps) {
-  const { onDownload, onOpen, subtitle, title, viewMode } = props;
+  const { onDownload, onOpen, subtitle, title, viewMode, extraMenuItems } =
+    props;
 
   const thumbnailContent =
     props.kind === "icon" ? (
@@ -72,7 +82,9 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
     }
   };
 
-  const menu = onDownload && (
+  const hasMenu = onDownload || (extraMenuItems && extraMenuItems.length > 0);
+
+  const menu = hasMenu ? (
     <DropdownMenu
       open={menuOpen}
       onOpenChange={(open) => {
@@ -91,15 +103,26 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          label={isDownloading ? "Downloading…" : "Download"}
-          icon={ArrowDownOnSquareIcon}
-          disabled={isDownloading}
-          onClick={handleDownload}
-        />
+        {onDownload && (
+          <DropdownMenuItem
+            label={isDownloading ? "Downloading…" : "Download"}
+            icon={ArrowDownOnSquareIcon}
+            disabled={isDownloading}
+            onClick={handleDownload}
+          />
+        )}
+        {extraMenuItems?.map((item, i) => (
+          <DropdownMenuItem
+            key={i}
+            label={item.label}
+            icon={item.icon}
+            variant={item.variant}
+            onClick={item.onClick}
+          />
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  ) : null;
 
   const info = (
     <div className="flex min-w-0 flex-1 flex-col">
@@ -210,10 +233,11 @@ export function FileExplorerFolderCard({
 }
 
 export interface FileExplorerFileCardProps {
-  entry: GCSMountFileEntry;
+  entry: FileEntry;
   viewMode: ViewMode;
-  onOpen: (entry: GCSMountFileEntry) => void;
-  onDownload: (entry: GCSMountFileEntry) => Promise<void>;
+  onOpen: (entry: FileEntry) => void;
+  onDownload: (entry: FileEntry) => Promise<void>;
+  extraMenuItems?: FileExplorerMenuAction[];
 }
 
 export function FileExplorerFileCard({
@@ -221,6 +245,7 @@ export function FileExplorerFileCard({
   viewMode,
   onOpen,
   onDownload,
+  extraMenuItems,
 }: FileExplorerFileCardProps) {
   const subtitle = getFileSubtitle(entry, viewMode);
 
@@ -234,6 +259,7 @@ export function FileExplorerFileCard({
         subtitle={subtitle}
         onOpen={() => onOpen(entry)}
         onDownload={() => onDownload(entry)}
+        extraMenuItems={extraMenuItems}
       />
     );
   }
@@ -248,6 +274,38 @@ export function FileExplorerFileCard({
       subtitle={subtitle}
       onOpen={() => onOpen(entry)}
       onDownload={() => onDownload(entry)}
+      extraMenuItems={extraMenuItems}
+    />
+  );
+}
+
+export interface ContentNodeCardProps {
+  entry: ContentNodeEntry;
+  viewMode: ViewMode;
+  onOpen: (entry: ContentNodeEntry) => void;
+  extraMenuItems?: FileExplorerMenuAction[];
+}
+
+export function ContentNodeCard({
+  entry,
+  viewMode,
+  onOpen,
+  extraMenuItems,
+}: ContentNodeCardProps) {
+  const ProviderIcon = getConnectorProviderLogoWithFallback({
+    provider: entry.connectorProvider,
+    fallback: CloudArrowLeftRightIcon,
+  });
+
+  return (
+    <FileExplorerItem
+      kind="icon"
+      visual={ProviderIcon}
+      viewMode={viewMode}
+      title={entry.fileName}
+      subtitle="Knowledge"
+      onOpen={() => onOpen(entry)}
+      extraMenuItems={extraMenuItems}
     />
   );
 }

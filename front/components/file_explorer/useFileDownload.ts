@@ -1,33 +1,21 @@
+import type { FileEntry } from "@app/components/file_explorer/types";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { downloadSandboxFile } from "@app/lib/swr/files";
 import logger from "@app/logger/logger";
-import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useRef } from "react";
 
-/**
- * Returns a stable `download(entry)` callback that fetches the file, triggers a browser download,
- * and surfaces failures as a toast.
- */
 export function useFileDownload({
-  owner,
-  conversationId,
+  getFileResponse,
 }: {
-  owner: LightWorkspaceType;
-  conversationId: string;
-}): (entry: GCSMountFileEntry) => Promise<void> {
+  getFileResponse: (path: string) => Promise<Response>;
+}): (entry: FileEntry) => Promise<void> {
   const sendNotification = useSendNotification();
   const blobUrlRef = useRef<string | null>(null);
 
   return useCallback(
-    async (entry: GCSMountFileEntry) => {
+    async (entry: FileEntry) => {
       try {
-        const res = await downloadSandboxFile(
-          owner,
-          conversationId,
-          entry.path
-        );
+        const res = await getFileResponse(entry.path);
 
         const blob = await res.blob();
 
@@ -54,6 +42,6 @@ export function useFileDownload({
         });
       }
     },
-    [owner, conversationId, sendNotification]
+    [getFileResponse, sendNotification]
   );
 }
