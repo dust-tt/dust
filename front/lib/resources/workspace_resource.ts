@@ -64,6 +64,7 @@ type CachedWorkspaceData = {
   description: string | null;
   segmentation: WorkspaceSegmentationType | null;
   ssoEnforced: boolean;
+  regionalModelsOnly: boolean;
   workOSOrganizationId: string | null;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
@@ -194,6 +195,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       description: workspace.description,
       segmentation: workspace.segmentation,
       ssoEnforced: workspace.ssoEnforced ?? false,
+      regionalModelsOnly: workspace.regionalModelsOnly,
       workOSOrganizationId: workspace.workOSOrganizationId,
       whiteListedProviders: whiteListedProviders,
       defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
@@ -235,6 +237,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       description: data.description,
       segmentation: data.segmentation,
       ssoEnforced: data.ssoEnforced,
+      regionalModelsOnly: data.regionalModelsOnly,
       workOSOrganizationId: data.workOSOrganizationId,
       whiteListedProviders: data.whiteListedProviders,
       defaultEmbeddingProvider: data.defaultEmbeddingProvider,
@@ -466,6 +469,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         CreationAttributes<WorkspaceModel>,
         | "name"
         | "ssoEnforced"
+        | "regionalModelsOnly"
         | "whiteListedProviders"
         | "defaultEmbeddingProvider"
         | "workOSOrganizationId"
