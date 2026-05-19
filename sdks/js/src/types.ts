@@ -62,6 +62,7 @@ type KnownModelLLMId =
   | "claude-sonnet-4-6"
   | "mistral-large-latest"
   | "mistral-medium"
+  | "mistral-medium-3-5"
   | "mistral-small-latest"
   | "codestral-latest"
   | "gemini-2.5-pro"

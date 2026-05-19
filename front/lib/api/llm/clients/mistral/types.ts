@@ -2,6 +2,7 @@ import type { LLMParameterOverwrites } from "@app/lib/api/llm/types/options";
 import {
   MISTRAL_CODESTRAL_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
+  MISTRAL_MEDIUM_3_5_MODEL_ID,
   MISTRAL_MEDIUM_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
 } from "@app/types/assistant/models/mistral";
@@ -16,6 +17,7 @@ export const MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT = [
 export const MISTRAL_GENERIC_WHITELISTED_MODEL_IDS = [
   MISTRAL_SMALL_MODEL_ID,
   MISTRAL_MEDIUM_MODEL_ID,
+  MISTRAL_MEDIUM_3_5_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
 ];
 

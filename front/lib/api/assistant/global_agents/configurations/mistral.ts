@@ -12,7 +12,7 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   MISTRAL_LARGE_MODEL_CONFIG,
-  MISTRAL_MEDIUM_MODEL_CONFIG,
+  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@app/types/assistant/models/mistral";
 
@@ -110,10 +110,10 @@ export function _getMistralMediumGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: MISTRAL_MEDIUM_MODEL_CONFIG.providerId,
-      modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
+      providerId: MISTRAL_MEDIUM_3_5_MODEL_CONFIG.providerId,
+      modelId: MISTRAL_MEDIUM_3_5_MODEL_CONFIG.modelId,
       temperature: 0.7,
-      reasoningEffort: MISTRAL_MEDIUM_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort: MISTRAL_MEDIUM_3_5_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({

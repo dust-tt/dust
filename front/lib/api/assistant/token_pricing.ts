@@ -204,6 +204,11 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 2.5,
     output: 7.5,
   },
+  // No cache pricing published by Mistral for medium 3.5 as of 2026-05-19.
+  "mistral-medium-3-5": {
+    input: 1.5,
+    output: 7.5,
+  },
   "mistral-small-latest": {
     input: 0.9,
     output: 2.8,
