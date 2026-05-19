@@ -183,10 +183,20 @@ fn build_http1_tls_connector() -> Result<TlsConnector> {
 
 fn build_tls_connector_with_alpn(alpn_protocols: Vec<Vec<u8>>) -> Result<TlsConnector> {
     // rustls 0.23 requires an explicit process-level CryptoProvider.
-    // install_default returns Err if one is already installed — we just want to
+    // install_default returns Err if one is already installed; we just want to
     // guarantee some provider is present before ClientConfig::builder().
     let _ = rustls::crypto::ring::default_provider().install_default();
 
+    // Outbound trust set comes from the OS root store via rustls_native_certs.
+    // On a wake/restart the trust-bundle installer has already added dsbx's
+    // own CA at /etc/ssl/certs/dust-egress.pem, so the restarted dsbx will
+    // load its own CA into this outbound trust set. The "dsbx must not trust
+    // its own CA on outbound" invariant therefore depends on the threat
+    // model: forging a cert signed by that CA requires the private key at
+    // /run/dust/egress-ca.key (mode 0600 root-owned). We assume an attacker
+    // does not get root in the sandbox, so this is accepted as-is rather
+    // than filtered out here. If that assumption ever weakens, switch dsbx
+    // outbound to webpki-roots (vendored Mozilla bundle) instead of native.
     let mut roots = RootCertStore::empty();
     let certs = rustls_native_certs::load_native_certs();
 
