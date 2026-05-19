@@ -135,7 +135,7 @@ function getSlackPendingUserMessageFallbackText(
   return `:hourglass_flowing_sand: _Dust is still finishing the previous request, so this Slack reply could not start in time.${urlPart}_`;
 }
 
-function isUserMessageReadyToStream(
+function hasAgentMessageForUserMessage(
   conversation: ConversationPublicType,
   userMessageId: string
 ): boolean {
@@ -143,14 +143,6 @@ function isUserMessageReadyToStream(
     const message = messageVersions[messageVersions.length - 1];
     if (!message) {
       continue;
-    }
-
-    if (
-      message.type === "user_message" &&
-      message.sId === userMessageId &&
-      message.visibility === "visible"
-    ) {
-      return true;
     }
 
     if (
@@ -322,17 +314,9 @@ export async function resolveSlackPendingUserMessage({
     conversationId: conversation.sId,
   });
 
-  if (waitRes.value === "promoted") {
-    if (conversationRes.isErr()) {
-      return conversationRes;
-    }
-
-    return new Ok(conversationRes.value);
-  }
-
   if (
     conversationRes.isOk() &&
-    isUserMessageReadyToStream(conversationRes.value, userMessage.sId)
+    hasAgentMessageForUserMessage(conversationRes.value, userMessage.sId)
   ) {
     return new Ok(conversationRes.value);
   }

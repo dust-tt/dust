@@ -162,4 +162,69 @@ describe("resolveSlackPendingUserMessage", () => {
     expect(streamHandler.stop).not.toHaveBeenCalled();
     expect(slackClient.chat.postMessage).not.toHaveBeenCalled();
   });
+
+  it("posts the controlled fallback when promotion has no agent message", async () => {
+    async function* promotedEventStream() {
+      yield {
+        type: "user_message_promoted",
+        created: Date.now(),
+        messageId: "user_msg_1",
+      } as const;
+    }
+
+    const pendingUserMessage = makeUserMessage("pending");
+    const dustAPI = {
+      streamConversationEvents: vi.fn(async () => {
+        return new Ok({ eventStream: promotedEventStream() });
+      }),
+      getConversation: vi.fn(async () => {
+        return new Ok(
+          makeConversation([
+            [
+              {
+                ...pendingUserMessage,
+                visibility: "visible",
+              } as UserMessageType,
+            ],
+          ])
+        );
+      }),
+    };
+    const slackClient = {
+      chat: {
+        postMessage: vi.fn(async () => ({ ts: "fallback_ts" })),
+      },
+    } as unknown as WebClient;
+    const streamHandler = {
+      stop: vi.fn(async () => undefined),
+    } as Pick<SlackStreamHandler, "stop">;
+
+    const res = await resolveSlackPendingUserMessage({
+      connector,
+      conversation: makeConversation([[pendingUserMessage]]),
+      dustAPI,
+      slack: {
+        slackChannelId: "C123",
+        slackClient,
+        slackMessageTs: "1700000000.000001",
+      },
+      streamHandler,
+      timeoutMs: 100,
+      userMessage: pendingUserMessage,
+    });
+
+    expect(res.isOk()).toBe(true);
+    if (res.isErr()) {
+      throw res.error;
+    }
+    expect(res.value).toBeNull();
+    expect(streamHandler.stop).toHaveBeenCalledTimes(1);
+    expect(slackClient.chat.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: "C123",
+        thread_ts: "1700000000.000001",
+        text: expect.stringContaining("Continue on Dust"),
+      })
+    );
+  });
 });
