@@ -6,7 +6,7 @@ import {
   getSessionFromBearerToken,
 } from "@app/lib/auth";
 
-import { buildNextLikeReqRes } from "./utils";
+import { apiError, buildNextLikeReqRes } from "./utils";
 
 /**
  * Authenticates a Poke (super-user) request and stores the resolved
@@ -23,16 +23,13 @@ export const pokeAuth: MiddlewareHandler = async (c, next) => {
     c.req.header("authorization")
   );
   if (bearerRes.isErr()) {
-    return c.json(
-      {
-        error: {
-          type: bearerRes.error,
-          message:
-            "The request does not have valid authentication credentials.",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: bearerRes.error,
+        message: "The request does not have valid authentication credentials.",
       },
-      401
-    );
+    });
   }
   const session = bearerRes.value ?? (await getSession(req, res));
 
@@ -41,30 +38,26 @@ export const pokeAuth: MiddlewareHandler = async (c, next) => {
   }
 
   if (!session) {
-    return c.json(
-      {
-        error: {
-          type: "not_authenticated",
-          message:
-            "The user does not have an active session or is not authenticated.",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: "not_authenticated",
+        message:
+          "The user does not have an active session or is not authenticated.",
       },
-      401
-    );
+    });
   }
 
   const auth = await Authenticator.fromSuperUserSession(session, null);
 
   if (!auth.isDustSuperUser()) {
-    return c.json(
-      {
-        error: {
-          type: "not_authenticated",
-          message: "The user does not have permission",
-        },
+    return apiError(c, {
+      status_code: 401,
+      api_error: {
+        type: "not_authenticated",
+        message: "The user does not have permission",
       },
-      401
-    );
+    });
   }
 
   c.set("auth", auth);
