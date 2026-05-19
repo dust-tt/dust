@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { searchProjectConversations } from "@app/lib/api/projects/search";
 import type { Authenticator } from "@app/lib/auth";
