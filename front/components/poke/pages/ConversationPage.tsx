@@ -8,6 +8,7 @@ import { usePokeConversation } from "@app/poke/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
 import { useCopyReinforcementTestCase } from "@app/poke/swr/reinforcement_test_case";
+import { usePokeSpaceDetails } from "@app/poke/swr/space_details";
 import type {
   AgentMessageStatus,
   CompactionMessageStatus,
@@ -414,6 +415,15 @@ export function ConversationPage() {
     workspaceId: owner.sId,
     conversationId,
   });
+
+  const { data: spaceDetails } = usePokeSpaceDetails({
+    owner,
+    spaceId: conversation?.spaceId ?? "",
+    disabled: !conversation?.spaceId,
+  });
+  const pod =
+    spaceDetails?.space.kind === "project" ? spaceDetails.space : null;
+
   const [useMarkdown, setUseMarkdown] = useState(false);
   const { data: agents } = usePokeAgentConfigurations({
     owner,
@@ -535,6 +545,18 @@ export function ConversationPage() {
           >
             {owner.name}
           </LinkWrapper>
+          {pod && (
+            <>
+              {" "}
+              in pod{" "}
+              <LinkWrapper
+                href={`/poke/${owner.sId}/spaces/${pod.sId}`}
+                className="text-highlight-500"
+              >
+                {pod.name}
+              </LinkWrapper>
+            </>
+          )}
         </h3>
         <Page.Vertical align="stretch">
           <PluginList
