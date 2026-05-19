@@ -7,6 +7,7 @@ import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { isString } from "@app/types/shared/utils/general";
 import type { GetStaticProps } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
@@ -34,16 +35,32 @@ export default function Contact() {
     ? headquarters_region
     : undefined;
 
+  const partnerNotice = (
+    <span className="mt-3 block">
+      If you're looking to sell implementation services based on Dust or partner
+      with us, please contact us{" "}
+      <Link
+        href="https://dust.tt/home/partner"
+        className="underline underline-offset-2"
+      >
+        here
+      </Link>
+      .
+    </span>
+  );
+
   const subtitle = companyName ? (
     <>
       We're excited to show you how Dust can help <strong>{companyName}</strong>
       . To prepare for our demo call, please share a bit about yourself and the
       challenges you're hoping to address.
+      {partnerNotice}
     </>
   ) : (
     <>
       To prepare for our demo call, please share a bit about yourself and the
       challenges you're hoping to address with Dust.
+      {partnerNotice}
     </>
   );
 
