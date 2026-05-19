@@ -316,7 +316,9 @@ name = "dust-sandbox"
 version = "0.1.9"
 dependencies = [
  "anyhow",
+ "base64",
  "clap",
+ "httparse",
  "libc",
  "lru",
  "rcgen",

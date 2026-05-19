@@ -6,10 +6,6 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
 
-// MITM-specific reasons are constructed by the request rewriter, which lands in
-// a follow-up PR. They are wired through the deny log shape now so the JSON
-// format does not have to change again.
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DenyReason {
     ProxyDenied,
@@ -69,8 +65,6 @@ impl DenyLogEntry {
         }
     }
 
-    // Constructed by the request rewriter (follow-up PR).
-    #[allow(dead_code)]
     pub fn mitm(
         reason: DenyReason,
         domain: Option<&str>,
