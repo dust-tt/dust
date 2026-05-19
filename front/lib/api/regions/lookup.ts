@@ -245,7 +245,7 @@ export async function handleLookupInvitations(
 export async function fetchInvitationsFromOtherRegion(
   email: string
 ): Promise<Result<PendingInvitationOption[], Error>> {
-  const { url } = config.getOtherRegionInfo();
+  const { name, url } = config.getOtherRegionInfo();
 
   const body: InvitationsLookupRequestBodyType = { email };
 
@@ -265,10 +265,9 @@ export async function fetchInvitationsFromOtherRegion(
       return new Err(new Error(data.error.message));
     }
 
-    // Tag each invitation with the other region's URL so the client can redirect there.
     const invitations = data.pendingInvitations.map((inv) => ({
       ...inv,
-      regionUrl: url,
+      region: name,
     }));
 
     return new Ok(invitations);

@@ -20,7 +20,7 @@ const DEFAULT_URL = import.meta.env?.VITE_DUST_API_URL ?? "";
 const DEFAULT_REGION: RegionType =
   (import.meta.env?.VITE_DUST_REGION as RegionType) ?? "us-central1";
 
-function getRegionUrl(region: RegionType): string {
+export function getRegionUrl(region: RegionType): string {
   return (
     (region === "europe-west1"
       ? import.meta.env?.VITE_DUST_API_URL_EU
@@ -95,7 +95,6 @@ export function RegionProvider({ children }: { children: React.ReactNode }) {
 
       // Clean region params from URL once consumed.
       params.delete("region");
-      params.delete("regionUrl");
       const qs = params.toString();
       const newUrl =
         window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;

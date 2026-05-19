@@ -33,9 +33,9 @@ export async function setupOAuthConnection({
     if (extraConfig) {
       url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
     }
-    // Pass region info so the OAuth popup's RegionContext initializes with the correct region.
+    // Pass region so the OAuth popup's RegionContext initializes with the correct API URL.
     if (regionInfo) {
-      url += `&region=${encodeURIComponent(regionInfo.name)}&regionUrl=${encodeURIComponent(regionInfo.url)}`;
+      url += `&region=${encodeURIComponent(regionInfo.name)}`;
     }
     const oauthPopup = window.open(url);
     let authComplete = false;

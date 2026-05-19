@@ -1,4 +1,6 @@
 import config from "@app/lib/api/config";
+import type { RegionType } from "@app/lib/api/regions/config";
+import { getRegionUrl } from "@app/lib/auth/RegionContext";
 import { useUser } from "@app/lib/swr/user";
 import { usePendingInvitations } from "@app/lib/swr/workspaces";
 import {
@@ -18,8 +20,8 @@ export function InviteChoosePage() {
     usePendingInvitations();
 
   const handleInvitationSelection = useCallback(
-    (token: string, regionUrl?: string) => {
-      const baseUrl = regionUrl ?? config.getApiBaseUrl();
+    (token: string, region?: RegionType) => {
+      const baseUrl = region ? getRegionUrl(region) : config.getApiBaseUrl();
       window.location.assign(
         `${baseUrl}/api/login?inviteToken=${encodeURIComponent(token)}`
       );
@@ -84,7 +86,7 @@ export function InviteChoosePage() {
                       onClick={() =>
                         handleInvitationSelection(
                           invitation.token,
-                          invitation.regionUrl
+                          invitation.region
                         )
                       }
                     />

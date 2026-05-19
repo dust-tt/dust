@@ -1,3 +1,4 @@
+import type { RegionType } from "@app/lib/api/regions/config";
 import { z } from "zod";
 
 import type { ModelId } from "./shared/model_id";
@@ -24,7 +25,7 @@ export interface PendingInvitationOption {
   initialRole: ActiveRoleType;
   createdAt: number;
   isExpired: boolean;
-  regionUrl?: string;
+  region?: RegionType;
 }
 
 // Types for the invite form in Poke.
