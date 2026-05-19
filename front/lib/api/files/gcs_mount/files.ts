@@ -8,9 +8,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
   isSupportedImageContentType,
   stripMimeParameters,
@@ -516,6 +516,9 @@ export async function copyConversationGCSMount(
   }
 }
 
+// GCS has no native rename/move, so we copy then delete. This is not atomic: if the delete
+// fails the source survives alongside the copy. The destination is already the authoritative
+// copy at that point, so we log and move on rather than surfacing an error.
 async function moveGCSMountFile({
   sourceGcsPath,
   destGcsPath,

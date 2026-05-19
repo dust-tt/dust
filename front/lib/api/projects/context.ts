@@ -7,9 +7,9 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import {
   deleteGCSMountFile,
+  moveFile,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
-import { moveFile } from "@app/lib/api/files/gcs_mount/files";
 import { getProjectFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";

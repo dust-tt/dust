@@ -11,7 +11,10 @@ import {
 import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
 import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { isInteractiveContentType, stripMimeParameters } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";

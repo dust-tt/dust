@@ -11,11 +11,11 @@ import {
 } from "@app/lib/api/files/gcs_mount/files";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
+import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
   isAllSupportedFileContentType,
   stripMimeParameters,
 } from "@app/types/files";
-import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";

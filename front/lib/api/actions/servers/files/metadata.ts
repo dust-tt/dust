@@ -78,6 +78,7 @@ const COPY_DESCRIPTION_BASE =
 
 // `move` tool variants. Move atomically transfers a file (copy + delete source).
 // Frame files must be moved rather than copied: copying produces a raw GCS object
+// with no FileResource record, breaking interactive rendering.
 const MOVE_DESCRIPTION_BASE =
   "Move a file from one scoped path to another, removing the source after a successful transfer. " +
   "Frame files (`application/vnd.dust.frame`) must be moved rather than copied.";
