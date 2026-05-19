@@ -114,7 +114,6 @@ export async function provisionMetronomeFirstPeriodSubscription({
     if (creditTypeResult.isErr()) {
       logger.error(
         {
-          panic: true,
           workspaceId,
           couponCode: coupon.code,
           redemptionId: pendingRedemption.sId,
@@ -138,7 +137,6 @@ export async function provisionMetronomeFirstPeriodSubscription({
     if (creditResult.isErr()) {
       logger.error(
         {
-          panic: true,
           workspaceId,
           couponCode: coupon.code,
           redemptionId: pendingRedemption.sId,
@@ -150,7 +148,23 @@ export async function provisionMetronomeFirstPeriodSubscription({
         new DustError("metronome_error", creditResult.error.message)
       );
     }
-    await pendingRedemption.markActive(creditResult.value);
+    const markActiveResult = await pendingRedemption.markActive(
+      creditResult.value
+    );
+    if (markActiveResult.isErr()) {
+      logger.error(
+        {
+          workspaceId,
+          couponCode: coupon.code,
+          redemptionId: pendingRedemption.sId,
+          error: normalizeError(markActiveResult.error).message,
+        },
+        "[Checkout] Failed to mark coupon redemption as active"
+      );
+      return new Err(
+        new DustError("metronome_error", markActiveResult.error.message)
+      );
+    }
   }
 
   if (firstPeriodPaymentEnforced) {
