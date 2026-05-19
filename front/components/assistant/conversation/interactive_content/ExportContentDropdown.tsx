@@ -1,6 +1,5 @@
-import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
-import { clientFetch } from "@app/lib/egress/client";
+import { useExportFrameAsPdf } from "@app/lib/swr/frames";
 import type { LightWorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
@@ -14,7 +13,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 
 interface ExportContentDropdownProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
@@ -31,20 +31,13 @@ export function ExportContentDropdown({
   fileContent,
   fileName,
 }: ExportContentDropdownProps) {
-  const sendNotification = useSendNotification();
+  const exportAsPdf = useExportFrameAsPdf({ owner });
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  const exportAsPng = () => {
+  const handleExportAsPng = () => {
     if (fileContent) {
       const imgRegex = /<img[^>]+src=["'](https?:\/\/[^"']+)["']/gi;
       if (imgRegex.test(fileContent)) {
-        sendNotification({
-          type: "error",
-          title: "Cannot export as PNG",
-          description:
-            "Content contains images with external URLs, which are blocked for " +
-            "security purposes. Please use images uploaded to the conversation instead.",
-        });
         return;
       }
     }
@@ -58,51 +51,16 @@ export function ExportContentDropdown({
     }
   };
 
-  const exportAsPdf = async (orientation: "portrait" | "landscape") => {
+  const handleExportAsPdf = async (orientation: "portrait" | "landscape") => {
     if (isExportingPdf) {
       return;
     }
-
     setIsExportingPdf(true);
-    try {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/files/${fileId}/export/pdf`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orientation }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF");
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName?.replace(/\.[^.]+$/, ".pdf") ?? "frame.pdf";
-      link.click();
-      URL.revokeObjectURL(url);
-
-      sendNotification({
-        title: "PDF exported",
-        type: "success",
-        description: "Your PDF has been downloaded.",
-      });
-    } catch {
-      sendNotification({
-        title: "PDF Export Failed",
-        type: "error",
-        description: "An error occurred while generating the PDF.",
-      });
-    } finally {
-      setIsExportingPdf(false);
-    }
+    await exportAsPdf({ fileId, fileName, orientation });
+    setIsExportingPdf(false);
   };
 
-  const downloadAsCode = () => {
+  const handleDownloadAsCode = () => {
     const downloadUrl = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
     window.open(downloadUrl, "_blank");
   };
@@ -122,16 +80,18 @@ export function ExportContentDropdown({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger disabled={isExportingPdf} label="PDF" />
           <DropdownMenuSubContent>
-            <DropdownMenuItem onClick={() => exportAsPdf("portrait")}>
+            <DropdownMenuItem onClick={() => handleExportAsPdf("portrait")}>
               Portrait
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportAsPdf("landscape")}>
+            <DropdownMenuItem onClick={() => handleExportAsPdf("landscape")}>
               Landscape
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
-        <DropdownMenuItem onClick={exportAsPng}>PNG</DropdownMenuItem>
-        <DropdownMenuItem onClick={downloadAsCode}>Template</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleExportAsPng}>PNG</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleDownloadAsCode}>
+          Template
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

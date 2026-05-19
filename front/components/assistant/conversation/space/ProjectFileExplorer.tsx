@@ -1,8 +1,8 @@
-import { ProjectFrameSheet } from "@app/components/assistant/conversation/space/ProjectFrameSheet";
 import {
   FileDropProvider,
   useFileDrop,
 } from "@app/components/assistant/conversation/FileUploaderContext";
+import { ProjectFrameSheet } from "@app/components/assistant/conversation/space/ProjectFrameSheet";
 import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
 import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
