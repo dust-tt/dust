@@ -21,6 +21,7 @@
 import { Authenticator } from "@app/lib/auth";
 import {
   floorToHourISO,
+  getMetronomeClient,
   listMetronomeCustomerCredits,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
@@ -135,10 +136,28 @@ async function processWorkspace(
     return;
   }
 
-  const metronomeFreeCredits = creditsResult.value.filter(
-    (e) =>
-      e.access_schedule?.credit_type?.id === PROGRAMMATIC_USD_CREDIT_TYPE_ID
+  // List contracts to identify archived ones — credits on archived contracts
+  // still have access_schedule covering NOW and so are returned by the credits
+  // list, but they are effectively dead and must be excluded.
+  const contractsResponse = await getMetronomeClient().v2.contracts.list({
+    customer_id: metronomeCustomerId,
+  });
+  const archivedContractIds = new Set(
+    contractsResponse.data
+      .filter((c) => c.archived_at)
+      .map((c) => c.id)
   );
+
+  const metronomeFreeCredits = creditsResult.value.filter((e) => {
+    if (e.access_schedule?.credit_type?.id !== PROGRAMMATIC_USD_CREDIT_TYPE_ID) {
+      return false;
+    }
+    const contractId = e.contract?.id;
+    if (contractId && archivedContractIds.has(contractId)) {
+      return false;
+    }
+    return true;
+  });
 
   for (const dbCredit of dbFreeCredits) {
     const dbStart = dbCredit.startDate!;
