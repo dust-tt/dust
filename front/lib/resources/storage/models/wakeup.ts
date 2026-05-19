@@ -102,6 +102,11 @@ WakeUpModel.init(
         concurrently: true,
       },
       {
+        fields: ["conversationId"],
+        name: "wake_ups_conversation_id",
+        concurrently: true,
+      },
+      {
         fields: ["workspaceId", "userId"],
         name: "wake_ups_workspace_id_user_id_idx",
         concurrently: true,

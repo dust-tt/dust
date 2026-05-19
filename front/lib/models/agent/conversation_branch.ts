@@ -52,6 +52,11 @@ ConversationBranchModel.init(
         fields: ["workspaceId", "conversationId", "userId"],
       },
       {
+        fields: ["conversationId"],
+        name: "conversation_branches_conversation_id",
+        concurrently: true,
+      },
+      {
         fields: ["previousMessageId"],
       },
     ],

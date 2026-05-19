@@ -247,6 +247,11 @@ UserConversationReadsModel.init(
         fields: ["workspaceId", "conversationId"],
       },
       {
+        fields: ["conversationId"],
+        name: "user_conversation_reads_conversation_id",
+        concurrently: true,
+      },
+      {
         fields: ["workspaceId", "userId"],
       },
     ],
@@ -634,6 +639,11 @@ AgentMessageFeedbackModel.init(
         name: "agent_message_feedbacks_agent_configuration_id_agent_message_id",
       },
       { fields: ["workspaceId"], concurrently: true },
+      {
+        fields: ["conversationId"],
+        name: "agent_message_feedbacks_conversation_id",
+        concurrently: true,
+      },
       { fields: ["workspaceId", "conversationId"], concurrently: true },
     ],
   }
@@ -835,6 +845,11 @@ MessageModel.init(
       },
       {
         fields: ["branchId"],
+        concurrently: true,
+      },
+      {
+        fields: ["conversationId"],
+        name: "messages_conversation_id",
         concurrently: true,
       },
       {
