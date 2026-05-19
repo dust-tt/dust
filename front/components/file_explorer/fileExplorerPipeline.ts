@@ -1,18 +1,17 @@
 import type {
+  ContentNodeEntry,
+  FileExplorerEntry,
   FileExplorerFilter,
   FileExplorerSortMode,
   SandboxTreeNode,
-} from "@app/components/assistant/conversation/files_panel/types";
+} from "@app/components/file_explorer/types";
 import {
   buildSandboxTree,
   compareTreeNodesForSort,
   getFileExplorerBucket,
-} from "@app/components/assistant/conversation/files_panel/utils";
+} from "@app/components/file_explorer/utils";
+import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
-import type {
-  GCSMountEntry,
-  GCSMountFileEntry,
-} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 
 export interface FileExplorerPipeline {
   /** Tree nodes at the current folder level, filtered + sorted. */
@@ -22,13 +21,14 @@ export interface FileExplorerPipeline {
   folderCount: number;
   fileCount: number;
   /** Files at the current level in their rendering order (used by preview prev/next). */
-  filesAtLevel: GCSMountFileEntry[];
+  filesAtLevel: FileExplorerEntry[];
   /** Tree-relative path → original entry. Used when rendering file cards. */
-  entryByRelativePath: Map<string, GCSMountFileEntry>;
+  entryByRelativePath: Map<string, FileExplorerEntry>;
 }
 
 interface GetFileExplorerPipelineParams {
   activeFilter: FileExplorerFilter;
+  contentNodes: ContentNodeEntry[];
   files: GCSMountEntry[];
   folderStack: SandboxTreeNode[];
   searchQuery: string;
@@ -46,12 +46,13 @@ function toRelativePath(entry: GCSMountEntry): string {
  */
 export function getFileExplorerPipeline({
   activeFilter,
+  contentNodes,
   files,
   folderStack,
   searchQuery,
   sortMode,
 }: GetFileExplorerPipelineParams): FileExplorerPipeline {
-  const entryByRelativePath = new Map<string, GCSMountFileEntry>();
+  const entryByRelativePath = new Map<string, FileExplorerEntry>();
   const timestampsByPath = new Map<string, number>();
   for (const f of files) {
     if (f.isDirectory) {
@@ -59,13 +60,35 @@ export function getFileExplorerPipeline({
     }
 
     const relativePath = toRelativePath(f);
-    entryByRelativePath.set(relativePath, f);
+    entryByRelativePath.set(relativePath, { ...f, kind: "file" });
     timestampsByPath.set(relativePath, f.lastModifiedMs);
   }
 
+  // Content nodes are always flat (no folder structure). They appear only at
+  // the root level and are keyed by their synthetic path.
+  for (const node of contentNodes) {
+    entryByRelativePath.set(node.path, node);
+    if (node.lastModifiedMs !== null) {
+      timestampsByPath.set(node.path, node.lastModifiedMs);
+    }
+  }
+
   const tree = buildSandboxTree(files);
+
+  // Synthetic tree nodes for content-node entries — always flat, at root level.
+  const contentNodeTreeNodes: SandboxTreeNode[] = contentNodes.map((cn) => ({
+    name: cn.fileName,
+    path: cn.path,
+    isDirectory: false,
+    contentType: null,
+    fileId: null,
+    children: [],
+  }));
+
   const currentNodes =
-    folderStack.length === 0 ? tree : (folderStack.at(-1)?.children ?? []);
+    folderStack.length === 0
+      ? [...tree, ...contentNodeTreeNodes]
+      : (folderStack.at(-1)?.children ?? []);
 
   const q = searchQuery.trim().toLowerCase();
   const visibleNodes = currentNodes.filter((node) => {
@@ -82,25 +105,34 @@ export function getFileExplorerPipeline({
 
   const filterCounts: Partial<Record<FileExplorerFilter, number>> = {};
   for (const node of visibleNodes) {
+    const entry = entryByRelativePath.get(node.path);
+    if (entry?.kind === "node") {
+      filterCounts["nodes"] = (filterCounts["nodes"] ?? 0) + 1;
+      continue;
+    }
     const bucket = getFileExplorerBucket(node);
     if (!bucket) {
       continue;
     }
-
     filterCounts[bucket] = (filterCounts[bucket] ?? 0) + 1;
   }
 
   const matchingNodes =
     activeFilter === "all"
       ? visibleNodes
-      : visibleNodes.filter((n) => getFileExplorerBucket(n) === activeFilter);
+      : visibleNodes.filter((n) => {
+          if (activeFilter === "nodes") {
+            return entryByRelativePath.get(n.path)?.kind === "node";
+          }
+          return getFileExplorerBucket(n) === activeFilter;
+        });
 
   const sortedNodes = [...matchingNodes].sort((a, b) =>
     compareTreeNodesForSort(a, b, sortMode, timestampsByPath)
   );
 
   let folderCount = 0;
-  const filesAtLevel: GCSMountFileEntry[] = [];
+  const filesAtLevel: FileExplorerEntry[] = [];
   for (const node of sortedNodes) {
     if (node.isDirectory) {
       folderCount += 1;

@@ -44,6 +44,23 @@ export const getFileViewUrl = (
   fileId: string | null | undefined
 ) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
 
+export async function downloadPodFile(
+  owner: LightWorkspaceType,
+  spaceId: string,
+  relPath: string
+): Promise<Response> {
+  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/spaces/${spaceId}/files/${relPath}`;
+
+  const res = await clientFetch(url);
+  if (!res.ok) {
+    const errorData = await getErrorFromResponse(res);
+
+    throw new Error(errorData.message);
+  }
+
+  return res;
+}
+
 export async function downloadSandboxFile(
   owner: LightWorkspaceType,
   conversationId: string,

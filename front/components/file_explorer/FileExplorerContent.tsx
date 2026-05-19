@@ -1,12 +1,20 @@
 import {
+  ContentNodeCard,
   FileExplorerEmptyState,
   FileExplorerFileCard,
   FileExplorerFolderCard,
   type ViewMode,
-} from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
-import type { SandboxTreeNode } from "@app/components/assistant/conversation/files_panel/types";
-import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
+} from "@app/components/file_explorer/FileExplorerItem";
+import type {
+  ContentNodeEntry,
+  FileEntry,
+  FileExplorerEntry,
+  FileExplorerMenuAction,
+  SandboxTreeNode,
+} from "@app/components/file_explorer/types";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { CardGrid, ScrollArea, Spinner } from "@dust-tt/sparkle";
+import type React from "react";
 
 const cardGridClasses =
   "grid-cols-2 @xxs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5 @lg:grid-cols-6";
@@ -14,12 +22,15 @@ const cardGridClasses =
 interface FileExplorerContentProps {
   isLoading: boolean;
   sortedNodes: SandboxTreeNode[];
-  entryByRelativePath: Map<string, GCSMountFileEntry>;
+  entryByRelativePath: Map<string, FileExplorerEntry>;
   viewMode: ViewMode;
   isEmpty: boolean;
+  emptyState?: React.ReactNode;
   onFolderNavigate: (node: SandboxTreeNode) => void;
-  onFileOpen: (entry: GCSMountFileEntry) => void;
-  onFileDownload: (entry: GCSMountFileEntry) => Promise<void>;
+  onFileOpen: (entry: FileEntry) => void;
+  onFileDownload: (entry: FileEntry) => Promise<void>;
+  onNodeOpen: (entry: ContentNodeEntry) => void;
+  getFileMenuItems?: (entry: FileExplorerEntry) => FileExplorerMenuAction[];
 }
 
 export function FileExplorerContent({
@@ -28,9 +39,12 @@ export function FileExplorerContent({
   entryByRelativePath,
   viewMode,
   isEmpty,
+  emptyState,
   onFolderNavigate,
   onFileOpen,
   onFileDownload,
+  onNodeOpen,
+  getFileMenuItems,
 }: FileExplorerContentProps) {
   const items = sortedNodes.map((node) => {
     if (node.isDirectory) {
@@ -49,15 +63,34 @@ export function FileExplorerContent({
       return null;
     }
 
-    return (
-      <FileExplorerFileCard
-        key={`file:${entry.path}`}
-        entry={entry}
-        viewMode={viewMode}
-        onOpen={onFileOpen}
-        onDownload={onFileDownload}
-      />
-    );
+    switch (entry.kind) {
+      case "node":
+        return (
+          <ContentNodeCard
+            key={`node:${entry.path}`}
+            entry={entry}
+            viewMode={viewMode}
+            onOpen={onNodeOpen}
+            extraMenuItems={getFileMenuItems?.(entry)}
+          />
+        );
+
+      case "file":
+        return (
+          <FileExplorerFileCard
+            key={`file:${entry.path}`}
+            entry={entry}
+            viewMode={viewMode}
+            onOpen={onFileOpen}
+            onDownload={onFileDownload}
+            extraMenuItems={getFileMenuItems?.(entry)}
+          />
+        );
+
+      default:
+        assertNeverAndIgnore(entry);
+        return null;
+    }
   });
 
   if (isLoading) {
@@ -71,7 +104,7 @@ export function FileExplorerContent({
   if (isEmpty) {
     return (
       <div className="flex flex-1 items-center justify-center px-4">
-        <FileExplorerEmptyState />
+        {emptyState ?? <FileExplorerEmptyState />}
       </div>
     );
   }

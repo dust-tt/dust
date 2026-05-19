@@ -1,5 +1,5 @@
-import type { ViewMode } from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
-import type { FileExplorerSortMode } from "@app/components/assistant/conversation/files_panel/types";
+import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
+import type { FileExplorerSortMode } from "@app/components/file_explorer/types";
 import {
   ActionTimeIcon,
   ArrowDownIcon,

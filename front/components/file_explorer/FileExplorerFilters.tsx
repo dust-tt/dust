@@ -1,4 +1,4 @@
-import type { FileExplorerFilter } from "@app/components/assistant/conversation/files_panel/types";
+import type { FileExplorerFilter } from "@app/components/file_explorer/types";
 import { Button } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -7,6 +7,7 @@ const FILTER_CHIPS: {
   label: string;
 }[] = [
   { value: "all", label: "All" },
+  { value: "nodes", label: "Knowledge" },
   { value: "tables", label: "Tables" },
   { value: "frames", label: "Frames" },
   { value: "texts", label: "Texts" },
