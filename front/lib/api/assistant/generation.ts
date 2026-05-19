@@ -22,6 +22,10 @@ import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
+import {
+  PASTED_CONTENT_MAX_CHARACTERS,
+  TRUNCATED_SNIPPET_SIZE,
+} from "@app/lib/api/files/snippet";
 import type {
   StructuredSystemPrompt,
   SystemPromptContext,
@@ -368,8 +372,7 @@ function constructAttachmentsSectionNewFileExplorer({
     `Files attached to the conversation are accessible via the \`${FILES_SERVER_NAME}\` server.\n\n` +
     "Some attachments remain visible in the conversation history as metadata tags:\n\n" +
     tabularFilesLine +
-    "- Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags; use the available search and retrieval tools to access their full content.\n\n" +
-    "Pasted content appears inline in `<pastedContent>` tags and already contains the full text, no tool call needed.\n"
+    "- Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags; use the available search and retrieval tools to access their full content.\n"
   );
 }
 
@@ -377,7 +380,8 @@ function constructPastedContentSection(): string {
   return (
     "# PASTED CONTENT\n" +
     "The conversation history may contain large pasted contents, indicated by <pastedContent> tags. " +
-    "These tags contain the full content of the pasted content, so don't try to retrieve it with tools.\n"
+    `Pasted content below ${PASTED_CONTENT_MAX_CHARACTERS} chars contains the full text (no tool call needed). ` +
+    `Above ${PASTED_CONTENT_MAX_CHARACTERS} chars, the attribute \`truncated="true"\` is set, only a ${TRUNCATED_SNIPPET_SIZE}-char snippet is shown, and the full pasted content can be accessed through file utilities on the associated file.\n`
   );
 }
 

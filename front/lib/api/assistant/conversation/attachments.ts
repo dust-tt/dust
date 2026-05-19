@@ -321,11 +321,22 @@ export function makeFileAttachment({
 export function renderLargePasteXml({
   largePaste,
   content,
+  truncated = false,
+  path,
 }: {
   largePaste: LargePasteType;
   content: string;
+  truncated?: boolean;
+  path?: string;
 }): string {
-  return `<pastedContent name="${largePaste.title}">${content}</pastedContent>`;
+  const attrs = [`name="${largePaste.title}"`];
+  if (truncated) {
+    attrs.push('truncated="true"');
+  }
+  if (path) {
+    attrs.push(`path="${path}"`);
+  }
+  return `<pastedContent ${attrs.join(" ")}>${content}</pastedContent>`;
 }
 
 export function renderAttachmentXml({
