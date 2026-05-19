@@ -5,7 +5,10 @@ import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { MembershipSeatType } from "@app/types/memberships";
+import {
+  MEMBERSHIP_SEAT_TYPES,
+  type MembershipSeatType,
+} from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -13,7 +16,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const UpdateMemberSeatTypeBodySchema = z.object({
-  seatType: z.enum(["pro", "max"]),
+  seatType: z.enum(MEMBERSHIP_SEAT_TYPES),
 });
 
 type PatchMemberSeatTypeResponseBody = {

@@ -288,6 +288,8 @@ export function useAwuPurchaseInfo({
   };
 }
 
+const EMPTY_SEAT_PLANS: SeatPlanResponseBody = {};
+
 export function useSeatPlan({
   workspaceId,
   disabled,
@@ -305,8 +307,7 @@ export function useSeatPlan({
   );
 
   return {
-    proSeatInfo: data?.pro ?? null,
-    maxSeatInfo: data?.max ?? null,
+    seatPlans: data ?? EMPTY_SEAT_PLANS,
     isSeatPlanLoading: !error && !data && !disabled,
     isSeatPlanError: error,
   };

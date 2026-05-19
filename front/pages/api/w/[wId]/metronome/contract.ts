@@ -133,7 +133,7 @@ async function handleGet(
       planFamily,
       mauTiers,
       contractEndingAtMs,
-      hasSeatSubscription: hasContractSeatSubscription(contract),
+      hasSeatSubscription: await hasContractSeatSubscription(contract),
     },
   });
 }

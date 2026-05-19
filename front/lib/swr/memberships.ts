@@ -9,6 +9,7 @@ import type { MembersLookupResponseBody } from "@app/pages/api/w/[wId]/members/l
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
@@ -234,7 +235,7 @@ export function useUpdateMemberSeatType({
     }: {
       memberId: string;
       memberName: string;
-      seatType: "pro" | "max";
+      seatType: MembershipSeatType;
       isCancellingScheduledChange: boolean;
     }): Promise<boolean> => {
       const res = await clientFetch(

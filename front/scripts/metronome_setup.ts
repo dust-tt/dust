@@ -17,26 +17,22 @@ import {
   AWU_PRIORITY_SEAT_ALLOCATION,
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_USD_ID,
+  DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY,
   DEV_CREDIT_TYPE_AWU_ID,
   DEV_CREDIT_TYPE_PROG_USD_ID,
-  FREE_SEAT_CREDIT_NAME,
-  FREE_SEAT_LIFETIME_AWU_CREDITS,
-  FREE_SEAT_PRODUCT_NAME,
-  MAX_SEAT_CREDIT_NAME,
-  MAX_SEAT_PRODUCT_NAME,
   PLAN_CODE_CUSTOM_FIELD_KEY,
-  PRO_SEAT_CREDIT_NAME,
-  PRO_SEAT_PRODUCT_NAME,
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
-  WORKSPACE_SEAT_PRODUCT_NAME,
+  SEAT_TYPE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
+import { invalidateProductSeatTypesCache } from "@app/lib/metronome/seat_types";
 import {
   EXCESS_CREDIT_NAME,
   FREE_ANNUAL_CREDIT_NAME,
   FREE_MONTHLY_CREDIT_NAME,
 } from "@app/lib/metronome/types";
+import type { MembershipSeatType } from "@app/types/memberships";
 
 // Number of pricing tiers for any tiered seat-style product (MAU, future).
 // Tier products and rates are derived from the prefix.
@@ -47,6 +43,27 @@ const PROGRAMMATIC_USAGE_CREDITS_IN_EUR = 0.87;
 
 const AWU_IN_USD_CENTS = 1;
 const AWU_IN_EUR = 0.0087;
+
+// Setup-only display names. Runtime code identifies seat-style subscriptions
+// via the `DUST_SEAT_TYPE` custom field on the product (see
+// SEAT_TYPE_CUSTOM_FIELD_KEY), not by name comparison.
+const WORKSPACE_SEAT_PRODUCT_NAME = "Workspace Seat";
+const PRO_SEAT_PRODUCT_NAME = "Pro Seat";
+const MAX_SEAT_PRODUCT_NAME = "Max Seat";
+const FREE_SEAT_PRODUCT_NAME = "Free Seat";
+const PRO_SEAT_CREDIT_NAME = "Pro Seat Credits";
+const MAX_SEAT_CREDIT_NAME = "Max Seat Credits";
+const FREE_SEAT_CREDIT_NAME = "Free Seat Credits";
+
+// Per-seat AWU allocations stamped onto recurring credits at package creation.
+// Runtime code reads the allocation from the contract's `recurring_credits`,
+// so these values aren't referenced anywhere else.
+const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
+const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
+// One-shot per-seat AWU grant carried by the Free Seat subscription. Modeled
+// as a long-duration recurring credit (commit_duration of 1200 PERIODS) so it
+// behaves like a lifetime grant for each free user.
+const FREE_SEAT_LIFETIME_AWU_CREDITS = 300;
 
 if (!process.env.METRONOME_API_KEY) {
   console.error("METRONOME_API_KEY env var required");
@@ -125,6 +142,11 @@ interface ProductDef {
   pricing_group_key?: string[];
   presentation_group_key?: string[];
   tags?: string[];
+  /**
+   * Custom fields stamped on the product. Reconciled via `setValues` so a
+   * field change does NOT trigger a product recreate.
+   */
+  custom_fields?: Record<string, string>;
 }
 
 interface RateDef {
@@ -148,6 +170,12 @@ interface RateCardDef {
     fiat_per_custom_credit: number;
   }>;
   rates: RateDef[];
+  // Default seat type for new memberships on any contract using this rate
+  // card. Stamped on the rate card as the `DUST_DEFAULT_SEAT_TYPE` custom
+  // field — runtime reads this via the Redis-cached rate-card map (see
+  // `seat_types.ts`). Must reference one of the seat tiers actually billed
+  // by this rate card.
+  defaultSeatType?: MembershipSeatType;
 }
 
 interface PackageSubscription {
@@ -350,6 +378,7 @@ const PRODUCTS: ProductDef[] = [
   {
     name: WORKSPACE_SEAT_PRODUCT_NAME,
     type: "SUBSCRIPTION",
+    custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "workspace" },
   },
   // Pro Seat / Max Seat — SUBSCRIPTION products for the new Business / Enterprise
   // seat-based plans. Used as SEAT_BASED subscriptions in packages with per-seat
@@ -357,10 +386,12 @@ const PRODUCTS: ProductDef[] = [
   {
     name: PRO_SEAT_PRODUCT_NAME,
     type: "SUBSCRIPTION",
+    custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "pro" },
   },
   {
     name: MAX_SEAT_PRODUCT_NAME,
     type: "SUBSCRIPTION",
+    custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "max" },
   },
   // Free Seat — SUBSCRIPTION product priced at $0/seat. Carries a one-shot
   // lifetime AWU credit (300 AWU per seat) so free users have a small drawdown
@@ -368,6 +399,7 @@ const PRODUCTS: ProductDef[] = [
   {
     name: FREE_SEAT_PRODUCT_NAME,
     type: "SUBSCRIPTION",
+    custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "free" },
   },
   // MAU product — single subscription for simple (non-tiered) enterprise contracts.
   // Used when no MAU_TIERS custom field is set on the contract.
@@ -802,6 +834,7 @@ function getRateCards(): RateCardDef[] {
       description:
         "Enterprise plan (USD). Per-seat billing + AWU-based AI/Tool usage.",
       aliases: [{ name: "enterprise-usd" }],
+      defaultSeatType: "workspace",
       fiat_credit_type_id: CREDIT_TYPE_USD_ID,
       credit_type_conversions: [
         {
@@ -832,6 +865,7 @@ function getRateCards(): RateCardDef[] {
       description:
         "Enterprise plan (EUR). Per-seat billing + AWU-based AI/Tool usage.",
       aliases: [{ name: "enterprise-eur" }],
+      defaultSeatType: "workspace",
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
       credit_type_conversions: [
         {
@@ -862,6 +896,7 @@ function getRateCards(): RateCardDef[] {
       description:
         "Business plan (USD). Pro/Max seats with per-seat AWU credit allocation.",
       aliases: [{ name: "business-usd" }],
+      defaultSeatType: "free",
       fiat_credit_type_id: CREDIT_TYPE_USD_ID,
       credit_type_conversions: [
         {
@@ -905,6 +940,7 @@ function getRateCards(): RateCardDef[] {
       description:
         "Business plan (EUR). Pro/Max seats with per-seat AWU credit allocation.",
       aliases: [{ name: "business-eur" }],
+      defaultSeatType: "free",
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
       credit_type_conversions: [
         {
@@ -1138,10 +1174,6 @@ function getPerSeatIndividualAwuCredits({
     },
   };
 }
-
-// Per-seat credit amounts (AWU/month) per the new pricing design.
-const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
-const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
 
 // Per-seat INDIVIDUAL AWU credit attached to the Free Seat SEAT_BASED
 // subscription. The credit recurs annually with a very long `commit_duration`
@@ -1654,6 +1686,7 @@ async function syncProducts(): Promise<void> {
         rounding_method: string;
       } | null;
     };
+    custom_fields?: Record<string, string>;
   }
 
   const existing: ExistingProduct[] = [];
@@ -1688,6 +1721,7 @@ async function syncProducts(): Promise<void> {
     if (isUpToDate) {
       console.log(`  ✓ ${desired.name} — up to date (${ex.id})`);
       ids.products[desired.name] = ex.id;
+      await reconcileProductCustomFields(ex, desired);
     } else {
       if (ex) {
         console.log(
@@ -1720,6 +1754,7 @@ async function syncProducts(): Promise<void> {
           pricing_group_key: desired.pricing_group_key,
           presentation_group_key: desired.presentation_group_key,
           tags: desired.tags,
+          custom_fields: desired.custom_fields,
         });
         const id = (created as { data: { id: string } }).data.id;
         console.log(`    → ${id}`);
@@ -1730,6 +1765,41 @@ async function syncProducts(): Promise<void> {
       }
       recreated.products.add(desired.name);
     }
+  }
+}
+
+/**
+ * Reconcile `custom_fields` on an existing product via `setValues` — drift on
+ * custom fields alone never triggers a product recreate (and the matching
+ * predicate above intentionally ignores them).
+ */
+async function reconcileProductCustomFields(
+  ex: { id: string; custom_fields?: Record<string, string> },
+  desired: ProductDef
+): Promise<void> {
+  const desiredCfs = desired.custom_fields;
+  if (!desiredCfs || Object.keys(desiredCfs).length === 0) {
+    return;
+  }
+  const existingCfs = ex.custom_fields ?? {};
+  const drift: Record<string, string> = {};
+  for (const [key, value] of Object.entries(desiredCfs)) {
+    if (existingCfs[key] !== value) {
+      drift[key] = value;
+    }
+  }
+  if (Object.keys(drift).length === 0) {
+    return;
+  }
+  console.log(
+    `  ✎ ${EXECUTE ? "Updating" : "[DRYRUN] Would update"} ${desired.name} custom_fields ${JSON.stringify(drift)}`
+  );
+  if (EXECUTE) {
+    await client.v1.customFields.setValues({
+      entity: "contract_product",
+      entity_id: ex.id,
+      custom_fields: drift,
+    });
   }
 }
 
@@ -1882,6 +1952,7 @@ interface ExistingRateCard {
     custom_credit_type?: { id: string; name: string };
     fiat_per_custom_credit: string;
   }>;
+  custom_fields?: Record<string, string>;
 }
 
 async function syncRateCards(): Promise<void> {
@@ -1918,6 +1989,7 @@ async function syncRateCards(): Promise<void> {
     if (ex && (await rateCardMatches(ex, desired))) {
       console.log(`  ✓ ${desired.name} — up to date (${ex.id})`);
       ids.rateCards[desired.name] = ex.id;
+      await reconcileRateCardCustomFields(ex, desired);
     } else {
       if (ex) {
         console.log(
@@ -1940,6 +2012,9 @@ async function syncRateCards(): Promise<void> {
           aliases: desired.aliases,
           fiat_credit_type_id: desired.fiat_credit_type_id,
           credit_type_conversions: desired.credit_type_conversions,
+          custom_fields: desired.defaultSeatType
+            ? { [DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY]: desired.defaultSeatType }
+            : undefined,
         });
         const id = (created as { data: { id: string } }).data.id;
         console.log(`    → ${id}`);
@@ -1978,6 +2053,46 @@ async function syncRateCards(): Promise<void> {
 
       recreated.rateCards.add(desired.name);
     }
+  }
+}
+
+/**
+ * Reconcile `custom_fields` on an existing rate card via `setValues` —
+ * drift on custom fields alone never triggers a rate-card recreate (and
+ * `rateCardMatches` intentionally ignores them). One pass per setup run is
+ * enough to backfill `DUST_DEFAULT_SEAT_TYPE` across every contract on the
+ * rate card — no per-contract iteration needed.
+ */
+async function reconcileRateCardCustomFields(
+  ex: { id: string; custom_fields?: Record<string, string> },
+  desired: RateCardDef
+): Promise<void> {
+  const desiredCfs: Record<string, string> = {};
+  if (desired.defaultSeatType) {
+    desiredCfs[DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY] = desired.defaultSeatType;
+  }
+  if (Object.keys(desiredCfs).length === 0) {
+    return;
+  }
+  const existingCfs = ex.custom_fields ?? {};
+  const drift: Record<string, string> = {};
+  for (const [key, value] of Object.entries(desiredCfs)) {
+    if (existingCfs[key] !== value) {
+      drift[key] = value;
+    }
+  }
+  if (Object.keys(drift).length === 0) {
+    return;
+  }
+  console.log(
+    `  ✎ ${EXECUTE ? "Updating" : "[DRYRUN] Would update"} ${desired.name} custom_fields ${JSON.stringify(drift)}`
+  );
+  if (EXECUTE) {
+    await client.v1.customFields.setValues({
+      entity: "rate_card",
+      entity_id: ex.id,
+      custom_fields: drift,
+    });
   }
 }
 
@@ -2377,27 +2492,53 @@ async function syncPackages(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 const CUSTOM_FIELD_KEYS: Array<{
-  entity: "contract";
+  entity: "contract" | "contract_product" | "rate_card";
   key: string;
 }> = [
   { entity: "contract", key: "MAU_TIERS" },
   { entity: "contract", key: "MAU_THRESHOLD" },
   { entity: "contract", key: PLAN_CODE_CUSTOM_FIELD_KEY },
+  // Stamped on each rate card: which seat type new memberships should be
+  // assigned to on contracts using this rate card. Set once at the
+  // template level so every existing contract on the rate card inherits
+  // the value without per-contract backfill. Read by
+  // `createAndTrackMembership` (see seat_types.ts:
+  // `getDefaultSeatTypeForContract`).
+  { entity: "rate_card", key: DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY },
+  // Stamped on each seat-style product (Workspace / Pro / Max / Free).
+  // Runtime code reads `product.custom_fields.DUST_SEAT_TYPE` (cached in
+  // Redis) instead of comparing product names/IDs, which change on every
+  // redeploy. Setting it on the product (vs. on every subscription
+  // instance) means existing contracts pick up new tags for free, with no
+  // per-contract backfill needed.
+  //
+  // Note: Metronome's custom-fields API uses `contract_product` for the
+  // entity type returned by `v1.contracts.products.list()` — `product` is a
+  // legacy plan-product type and 404s on these IDs.
+  { entity: "contract_product", key: SEAT_TYPE_CUSTOM_FIELD_KEY },
 ];
 
 async function syncCustomFields(): Promise<void> {
   console.log("\n=== Syncing Custom Fields ===");
 
-  // List existing keys for contract entity.
-  const existingKeys = new Set<string>();
-  for await (const entry of client.v1.customFields.listKeys({
-    entities: ["contract"],
-  })) {
-    existingKeys.add(entry.key);
+  const entities = Array.from(new Set(CUSTOM_FIELD_KEYS.map((f) => f.entity)));
+
+  // Track existing keys per entity — the same key can be registered for
+  // multiple entities and each registration is independent.
+  const existingKeysByEntity = new Map<string, Set<string>>();
+  for (const entity of entities) {
+    const keys = new Set<string>();
+    for await (const entry of client.v1.customFields.listKeys({
+      entities: [entity],
+    })) {
+      keys.add(entry.key);
+    }
+    existingKeysByEntity.set(entity, keys);
   }
 
   for (const field of CUSTOM_FIELD_KEYS) {
-    if (existingKeys.has(field.key)) {
+    const existing = existingKeysByEntity.get(field.entity) ?? new Set();
+    if (existing.has(field.key)) {
       console.log(`  ✓ ${field.entity}.${field.key} — already exists`);
     } else {
       console.log(
@@ -2512,6 +2653,17 @@ async function main(): Promise<void> {
   await syncRateCards();
   await syncPackages();
   await syncAlerts();
+
+  // Drop the cached `productId → seatType` map so live processes pick up
+  // tag changes immediately rather than waiting for the 6h TTL.
+  if (EXECUTE) {
+    try {
+      await invalidateProductSeatTypesCache();
+      console.log("\n✓ Cleared product seat-type cache");
+    } catch (err) {
+      console.warn("Failed to invalidate product seat-type cache:", err);
+    }
+  }
 
   if (!EXECUTE) {
     console.log("\n✓ Dry-run complete. Pass --execute to apply changes.");

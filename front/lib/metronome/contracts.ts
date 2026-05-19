@@ -359,10 +359,10 @@ export async function syncContractQuantities(
 
   const contract = contractResult.value;
 
-  const shouldSyncSeats = hasContractSeatSubscription(contract);
+  const shouldSyncSeats = await hasContractSeatSubscription(contract);
   const shouldSyncMau = hasMauSubscriptionInContract(contract);
 
-  const syncFns = [
+  const syncFns: Array<() => Promise<Result<unknown, Error>>> = [
     ...(shouldSyncSeats
       ? [
           () =>
