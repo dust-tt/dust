@@ -1,14 +1,19 @@
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
 import type { Operation } from "@app/lib/api/sandbox/image/types";
+import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import { describe, expect, test } from "vitest";
 
-function getDustBaseImageOperations(): readonly Operation[] {
+function getDustBaseImage() {
   const imageResult = getSandboxImageFromRegistry({ name: "dust-base" });
   if (imageResult.isErr()) {
     throw imageResult.error;
   }
 
-  return imageResult.value.operations;
+  return imageResult.value;
+}
+
+function getDustBaseImageOperations(): readonly Operation[] {
+  return getDustBaseImage().operations;
 }
 
 function getRunCommands(operations: readonly Operation[]): string[] {
@@ -44,6 +49,13 @@ function getCopiedContent(
 }
 
 describe("sandbox image registry", () => {
+  test("bumps the base image for the trust-matrix rollout", () => {
+    expect(getDustBaseImage().imageId).toEqual({
+      imageName: "dust-base",
+      tag: "0.8.11",
+    });
+  });
+
   test("creates the dormant proxied user and shared-path permissions", () => {
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);
@@ -120,5 +132,59 @@ describe("sandbox image registry", () => {
     expect(nftablesScript).toContain(
       "nft add rule ip6 dust-egress filter_output meta skuid $PROXIED_UID drop"
     );
+  });
+
+  test("installs trust env defaults and the runtime trust helper", () => {
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+    const copyOperations = getCopyOperations(operations);
+    const environment = getCopiedContent(
+      copyOperations,
+      "/etc/dust/dust-trust.environment"
+    );
+    const profileScript = getCopiedContent(
+      copyOperations,
+      "/etc/profile.d/dust-trust.sh"
+    );
+    const tmpfilesConfig = getCopiedContent(
+      copyOperations,
+      "/etc/tmpfiles.d/dust-run-dust.conf"
+    );
+    const installer = getCopiedContent(
+      copyOperations,
+      "/usr/local/bin/dust-install-trust-bundle"
+    );
+
+    expect(runCommands).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          "cat /etc/dust/dust-trust.environment >> /etc/environment"
+        ),
+        "chmod 644 /etc/profile.d/dust-trust.sh",
+        "chmod 755 /usr/local/bin/dust-install-trust-bundle",
+      ])
+    );
+
+    // Derive expected contents directly from SANDBOX_TRUST_ENV_VARS so any
+    // future drift between the const and the image-baked files fails this
+    // test rather than silently shipping a stale env file.
+    const expectedEnvironment =
+      Object.entries(SANDBOX_TRUST_ENV_VARS)
+        .map(([k, v]) => `${k}=${v}`)
+        .join("\n") + "\n";
+    const expectedProfile =
+      Object.entries(SANDBOX_TRUST_ENV_VARS)
+        .map(([k, v]) => `export ${k}=${v}`)
+        .join("\n") + "\n";
+
+    expect(environment).toBe(expectedEnvironment);
+    expect(profileScript).toBe(expectedProfile);
+
+    expect(tmpfilesConfig).toBe("d /run/dust 0755 root root -\n");
+    expect(installer).toContain("update-ca-certificates");
+    expect(installer).toContain('cat "$SYSTEM_CA_BUNDLE"');
+    expect(installer).toContain('cat "$CA_PATH"');
+    expect(installer).toContain("keytool -importcert -noprompt -trustcacerts");
+    expect(installer).toContain("already exists");
   });
 });

@@ -6,6 +6,7 @@ import {
   PROXY_ONLY_NETWORK_POLICY,
   type ToolEntry,
 } from "@app/lib/api/sandbox/image/types";
+import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -13,7 +14,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.10";
+const DUST_BASE_IMAGE_VERSION = "0.8.11";
 const DSBX_CLI_VERSION = "0.1.7";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
@@ -102,6 +103,22 @@ function getPythonInstallCmd(): string {
 
 function getLocalContent(dir: string, filename: string): () => string {
   return () => fs.readFileSync(path.join(dir, filename), "utf-8");
+}
+
+function buildTrustEnvironmentFile(): string {
+  return (
+    Object.entries(SANDBOX_TRUST_ENV_VARS)
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n") + "\n"
+  );
+}
+
+function buildTrustProfileScript(): string {
+  return (
+    Object.entries(SANDBOX_TRUST_ENV_VARS)
+      .map(([k, v]) => `export ${k}=${v}`)
+      .join("\n") + "\n"
+  );
 }
 
 function getLocalDirContent(
@@ -328,16 +345,44 @@ SHELLEOF`,
     "/etc/systemd/system/fluent-bit.service",
     { user: "root" }
   )
-  // Seed /etc/dust/ca-bundle.pem with the system roots so the SSL_CERT_FILE /
-  // CURL_CA_BUNDLE env vars (set unconditionally on the sandbox process) point
-  // at a valid file from the moment the sandbox boots. installMitmTrustBundle
-  // overwrites this atomically with (system roots + dsbx CA) once the egress
-  // forwarder is up; in dev-unrestricted mode it stays the system-only copy.
+  // Seed /etc/dust/ca-bundle.pem with the system roots so replace-style trust
+  // env vars (set unconditionally on the sandbox process) point at a valid
+  // file from the moment the sandbox boots. installMitmTrustBundle overwrites
+  // this atomically with (system roots + dsbx CA) once the egress forwarder is
+  // up; in dev-unrestricted mode it stays the system-only copy.
   .runCmd(
     "mkdir -p /etc/dust && " +
       "install -m 644 /etc/ssl/certs/ca-certificates.crt /etc/dust/ca-bundle.pem",
     { user: "root" }
   )
+  .copy(buildTrustEnvironmentFile, "/etc/dust/dust-trust.environment", {
+    user: "root",
+  })
+  .runCmd(
+    "printf '\\n' >> /etc/environment && " +
+      "cat /etc/dust/dust-trust.environment >> /etc/environment",
+    { user: "root" }
+  )
+  .copy(buildTrustProfileScript, "/etc/profile.d/dust-trust.sh", {
+    user: "root",
+  })
+  .runCmd("chmod 644 /etc/profile.d/dust-trust.sh", { user: "root" })
+  // tmpfiles.d entry; systemd-tmpfiles-setup.service recreates /run/dust on
+  // every boot. No build-time --create: /run is tmpfs and any image-time
+  // state under /run is discarded at boot anyway.
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "dust-run-dust.tmpfiles"),
+    "/etc/tmpfiles.d/dust-run-dust.conf",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "dust-install-trust-bundle.sh"),
+    "/usr/local/bin/dust-install-trust-bundle",
+    { user: "root" }
+  )
+  .runCmd("chmod 755 /usr/local/bin/dust-install-trust-bundle", {
+    user: "root",
+  })
   .copy(
     getLocalContent(EGRESS_LOCAL_DIR, "egress-nftables.sh"),
     "/etc/dust/egress-nftables.sh",

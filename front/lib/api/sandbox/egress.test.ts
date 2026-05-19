@@ -68,6 +68,7 @@ import {
   setupEgressForwarder,
   teardownInSandboxEgressRedirect,
 } from "./egress";
+import { SANDBOX_TRUST_ENV_VARS } from "./trust_env";
 
 describe("sandbox egress helpers", () => {
   const auth = {
@@ -154,6 +155,13 @@ describe("sandbox egress helpers", () => {
       expect.stringContaining("--secrets-file '/run/dust/egress-secrets.json'"),
       { user: "root" }
     );
+    // The dsbx spawn must strip every trust env var that buildSandboxEnvVars
+    // exports on the agent process. Pinning the strip list to the canonical
+    // SANDBOX_TRUST_ENV_VARS keys here catches drift between the two sites.
+    const spawnCall = sandbox.exec.mock.calls[1][1] as string;
+    for (const key of Object.keys(SANDBOX_TRUST_ENV_VARS)) {
+      expect(spawnCall).toContain(`-u ${key}`);
+    }
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       5,
       auth,
@@ -161,7 +169,19 @@ describe("sandbox egress helpers", () => {
       { user: "root" }
     );
     const installCall = sandbox.exec.mock.calls[4][1] as string;
+    expect(installCall).toContain("/usr/local/bin/dust-install-trust-bundle");
     expect(installCall).toContain("/etc/dust/.ca-bundle.merged");
+    expect(
+      installCall.indexOf("/usr/local/bin/dust-install-trust-bundle")
+    ).toBeLessThan(installCall.indexOf("/etc/dust/.ca-bundle.merged"));
+    // Pre-0.8.8 sandbox fallback: when the helper script is missing, the
+    // exec must inline the system-store + merged-bundle install so old
+    // sandboxes don't fail on wake. Remove with the fallback in egress.ts.
+    expect(installCall).toContain(
+      "if [ -x '/usr/local/bin/dust-install-trust-bundle' ]"
+    );
+    expect(installCall).toContain("update-ca-certificates");
+    expect(installCall).toContain("/etc/ssl/certs/ca-certificates.crt");
     expect(mockLoggerInfo).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "egress.setup",
@@ -392,7 +412,8 @@ describe("sandbox egress helpers", () => {
     expect(result).toEqual(new Ok(undefined));
     expect(sandbox.exec).toHaveBeenCalledTimes(2);
     const installCall = sandbox.exec.mock.calls[1][1] as string;
-    expect(installCall).toContain("/etc/dust/ca-bundle.pem");
+    expect(installCall).toContain("/usr/local/bin/dust-install-trust-bundle");
+    expect(installCall).toContain("/etc/dust/.ca-bundle.merged");
     expect(installCall).not.toContain("pkill");
     expect(installCall).not.toContain("/opt/bin/dsbx forward");
     expect(mockLoggerWarn).toHaveBeenCalledWith(

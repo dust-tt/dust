@@ -28,12 +28,11 @@ export async function ensureSandboxReady(
 
   const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
 
-  // Egress prep must run BEFORE GCS mounts. When the MITM experiment is
-  // enabled, sandbox_resource.buildSandboxEnvVars exports SSL_CERT_FILE /
-  // CURL_CA_BUNDLE pointing at /etc/dust/ca-bundle.pem, which the forwarder
-  // setup is responsible for creating. Mounting (gcsfuse and friends) makes
-  // HTTPS calls that read the trust bundle via those env vars, so the bundle
-  // has to exist first.
+  // Egress prep must run BEFORE GCS mounts. sandbox_resource.buildSandboxEnvVars
+  // exports replace-style trust env vars pointing at /etc/dust/ca-bundle.pem.
+  // The image seeds that path with system roots; forwarder setup later merges
+  // in the dsbx CA. Mounting (gcsfuse and friends) can make HTTPS calls that
+  // read the trust bundle, so the path has to be valid first.
   if (freshlyCreated) {
     const prepResult = await prepareSandboxEgressBeforeMount(auth, sandbox);
     if (prepResult.isErr()) {
