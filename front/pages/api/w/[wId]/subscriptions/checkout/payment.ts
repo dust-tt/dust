@@ -7,6 +7,7 @@ import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import {
   chargeFirstPeriodInvoice,
   getStripeClient,
+  setStripeCustomerDefaultPaymentMethod,
 } from "@app/lib/plans/stripe";
 import type { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { CouponRedemptionResource as CouponRedemptionResourceClass } from "@app/lib/resources/coupon_redemption_resource";
@@ -252,9 +253,18 @@ async function handler(
 
       // Set the payment method as the customer's Stripe default
       // for future Metronome-generated invoices (month 2+).
-      await stripe.customers.update(stripeCustomerId, {
-        invoice_settings: { default_payment_method: paymentMethodId },
-      });
+      const setDefaultPaymentMethodResult =
+        await setStripeCustomerDefaultPaymentMethod({
+          stripeCustomerId,
+          paymentMethodId,
+          workspaceId: owner.sId,
+        });
+      if (setDefaultPaymentMethodResult.isErr()) {
+        if (pendingRedemption && coupon) {
+          await pendingRedemption.rollback(coupon);
+        }
+        return res.status(200).json({ error: "payment_failed" });
+      }
 
       if (shouldEnforceFirstPeriodPayment) {
         const chargeResult = await chargeFirstPeriodInvoice({

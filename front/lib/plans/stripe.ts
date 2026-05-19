@@ -460,6 +460,37 @@ async function makeFirstPeriodInvoiceForCustomer({
   }
 }
 
+export async function setStripeCustomerDefaultPaymentMethod({
+  stripeCustomerId,
+  paymentMethodId,
+  workspaceId,
+}: {
+  stripeCustomerId: string;
+  paymentMethodId: string;
+  workspaceId: string;
+}): Promise<Result<void, { error_message: string }>> {
+  const stripe = getStripeClient();
+  try {
+    await stripe.customers.update(stripeCustomerId, {
+      invoice_settings: { default_payment_method: paymentMethodId },
+    });
+    return new Ok(undefined);
+  } catch (error) {
+    logger.error(
+      {
+        workspaceId,
+        stripeCustomerId,
+        stripeError: true,
+        error: normalizeError(error).message,
+      },
+      "[Stripe] Failed to set default payment method on Stripe customer"
+    );
+    return new Err({
+      error_message: normalizeError(error).message,
+    });
+  }
+}
+
 export async function chargeFirstPeriodInvoice({
   stripeCustomerId,
   paymentMethodId,
