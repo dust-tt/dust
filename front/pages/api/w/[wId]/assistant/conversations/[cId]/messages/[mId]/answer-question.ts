@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { UserQuestionAnswerSchema } from "@app/lib/actions/types";
 import { registerUserAnswer } from "@app/lib/api/assistant/conversation/answer_user_question";

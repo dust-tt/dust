@@ -193,7 +193,7 @@ export async function resolveAuthentication(
   });
 }
 
-const ResolveAuthenticationSchema = z.object({
+export const ResolveAuthenticationSchema = z.object({
   actionId: z.string(),
   outcome: z.enum(["completed", "denied"]),
   resumeAncestorConversations: z.boolean().optional(),
