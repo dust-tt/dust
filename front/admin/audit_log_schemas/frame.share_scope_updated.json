@@ -1,0 +1,11 @@
+{
+  "action": "frame.share_scope_updated",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "frame" }
+  ],
+  "metadata": {
+    "frame_name": "string",
+    "share_scope": "string"
+  }
+}
