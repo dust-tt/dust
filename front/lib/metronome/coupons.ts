@@ -241,15 +241,25 @@ export async function redeemCoupon(
   });
 
   if (creditResult.isErr()) {
-    await redemption.rollback(coupon);
     logger.error(
       {
         err: creditResult.error,
         couponId: coupon.sId,
         workspaceId: workspace.sId,
       },
-      "[Metronome] Failed to create coupon credit — redemption marked failed"
+      "[Metronome] Failed to create coupon credit — rolling back redemption"
     );
+    const rollbackResult = await redemption.rollback(coupon);
+    if (rollbackResult.isErr()) {
+      logger.error(
+        {
+          err: rollbackResult.error,
+          couponId: coupon.sId,
+          workspaceId: workspace.sId,
+        },
+        "[Metronome] Failed to create coupon credit - failed to rollback coupon redemption"
+      );
+    }
     return new Err(creditResult.error);
   }
 

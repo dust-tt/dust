@@ -9,10 +9,8 @@ import {
   getStripeClient,
   setStripeCustomerDefaultPaymentMethod,
 } from "@app/lib/plans/stripe";
-import type { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
-import { CouponRedemptionResource as CouponRedemptionResourceClass } from "@app/lib/resources/coupon_redemption_resource";
-import type { CouponResource } from "@app/lib/resources/coupon_resource";
-import { CouponResource as CouponResourceClass } from "@app/lib/resources/coupon_resource";
+import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
+import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { wakeLock } from "@app/lib/wake_lock";
@@ -205,7 +203,7 @@ async function handler(
       let pendingRedemption: CouponRedemptionResource | undefined;
 
       if (couponCode) {
-        const found = await CouponResourceClass.findByCode(couponCode);
+        const found = await CouponResource.findByCode(couponCode);
         if (!found) {
           return res.status(200).json({ error: "invalid_coupon" });
         }
@@ -214,14 +212,14 @@ async function handler(
           return res.status(200).json({ error: "invalid_coupon" });
         }
         const existing =
-          await CouponRedemptionResourceClass.findActiveOrPendingByCouponAndWorkspace(
+          await CouponRedemptionResource.findActiveOrPendingByCouponAndWorkspace(
             auth,
             { coupon: found }
           );
         if (existing) {
           return res.status(200).json({ error: "invalid_coupon" });
         }
-        const pendingResult = await CouponRedemptionResourceClass.createPending(
+        const pendingResult = await CouponRedemptionResource.createPending(
           auth,
           { coupon: found }
         );
@@ -261,7 +259,16 @@ async function handler(
         });
       if (setDefaultPaymentMethodResult.isErr()) {
         if (pendingRedemption && coupon) {
-          await pendingRedemption.rollback(coupon);
+          const rollbackResult = await pendingRedemption.rollback(coupon);
+          if (rollbackResult.isErr()) {
+            logger.error(
+              {
+                err: rollbackResult.error,
+                workspaceId: owner.sId,
+              },
+              "[Checkout] Failed to rollback coupon redemption after setDefaultPaymentMethod failure"
+            );
+          }
         }
         return res.status(200).json({ error: "payment_failed" });
       }
@@ -280,7 +287,13 @@ async function handler(
         });
         if (chargeResult.isErr()) {
           if (pendingRedemption && coupon) {
-            await pendingRedemption.rollback(coupon);
+            const rollbackResult = await pendingRedemption.rollback(coupon);
+            if (rollbackResult.isErr()) {
+              logger.error(
+                { err: rollbackResult.error, workspaceId: owner.sId },
+                "[Checkout] Failed to rollback coupon redemption after chargeFirstPeriodInvoice failure"
+              );
+            }
           }
           return res.status(200).json({ error: "payment_failed" });
         }

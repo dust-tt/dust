@@ -203,7 +203,8 @@ describe("CouponRedemptionResource.rollback", () => {
     }
     const redemption = pendingResult.value;
 
-    await redemption.rollback(coupon);
+    const rollbackResult = await redemption.rollback(coupon);
+    expect(rollbackResult.isOk()).toBe(true);
 
     expect(redemption.status).toBe("failed");
     const updated = await CouponResource.fetchByCouponId(coupon.sId);
