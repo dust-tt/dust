@@ -49,25 +49,24 @@ export const getMcpServerViewConnectionMetadataPlugin = createPlugin({
     const connections = connectionsRes.value;
     const oauthConnections = connections.filter((c) => c.connectionId);
 
-    let connection: (typeof oauthConnections)[0] | null = null;
+    let matchingConnections: MCPServerConnectionResource[];
 
     if (connectionType === "workspace") {
-      connection =
-        oauthConnections.find((c) => c.connectionType === "workspace") ?? null;
+      matchingConnections = oauthConnections.filter(
+        (c) => c.connectionType === "workspace"
+      );
     } else {
       if (!userId.trim()) {
         return new Err(
           new Error("User ID cannot be empty for personal connections.")
         );
       }
-      connection =
-        oauthConnections.find(
-          (c) =>
-            c.connectionType === "personal" && c.user?.sId === userId.trim()
-        ) ?? null;
+      matchingConnections = oauthConnections.filter(
+        (c) => c.connectionType === "personal" && c.user?.sId === userId.trim()
+      );
     }
 
-    if (!connection) {
+    if (matchingConnections.length === 0) {
       return new Err(
         new Error(
           `No ${connectionType} OAuth connection found${connectionType === "personal" ? ` for user ${userId}` : ""}.`
@@ -75,30 +74,34 @@ export const getMcpServerViewConnectionMetadataPlugin = createPlugin({
       );
     }
 
-    if (!connection.connectionId) {
-      return new Err(
-        new Error(
-          `Connection found but has no OAuth connection ID${connectionType === "personal" ? ` for user ${userId}` : ""}.`
-        )
-      );
-    }
-
     const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-    const metadataRes = await oauthApi.getConnectionMetadata({
-      connectionId: connection.connectionId,
-    });
+    const results = [];
 
-    if (metadataRes.isErr()) {
-      return new Err(
-        new Error(
-          `Failed to fetch connection metadata: ${metadataRes.error.message}`
-        )
-      );
+    for (const connection of matchingConnections) {
+      if (!connection.connectionId) {
+        continue;
+      }
+
+      const metadataRes = await oauthApi.getConnectionMetadata({
+        connectionId: connection.connectionId,
+      });
+
+      if (metadataRes.isErr()) {
+        results.push({
+          connectionId: connection.connectionId,
+          error: metadataRes.error.message,
+        });
+      } else {
+        results.push({
+          connectionId: connection.connectionId,
+          metadata: metadataRes.value.connection.metadata,
+        });
+      }
     }
 
     return new Ok({
       display: "json",
-      value: metadataRes.value.connection.metadata,
+      value: { connections: results },
     });
   },
 });
