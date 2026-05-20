@@ -18,6 +18,8 @@ import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 
+import message from "./[mId]";
+
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages.
 const app = new Hono();
 
@@ -206,5 +208,7 @@ app.post(
     });
   }
 );
+
+app.route("/:mId", message);
 
 export default app;

@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
