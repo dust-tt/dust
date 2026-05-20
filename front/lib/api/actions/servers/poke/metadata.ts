@@ -37,6 +37,13 @@ export const LIST_WORKSPACE_GROUPS_TOOL_NAME = "list_workspace_groups";
 export const FIND_WORKSPACE_BY_CONNECTOR_ID_TOOL_NAME =
   "find_workspace_by_connector_id";
 
+// ─── Agents & Skills ─────────────────────────────────────────────────────────
+
+export const LIST_WORKSPACE_AGENTS_TOOL_NAME = "list_workspace_agents";
+export const GET_WORKSPACE_AGENT_TOOL_NAME = "get_workspace_agent";
+export const LIST_WORKSPACE_SKILLS_TOOL_NAME = "list_workspace_skills";
+export const GET_WORKSPACE_SKILL_TOOL_NAME = "get_workspace_skill";
+
 // ─── Shared schema fragments ─────────────────────────────────────────────────
 
 const workspaceIdSchema = {
@@ -256,6 +263,88 @@ export const POKE_TOOLS_METADATA = createToolsRecord({
       running: "Looking up workspace",
       done: "Found workspace",
     },
+  },
+
+  // ── Agents & Skills ──────────────────────────────────────────────────────
+
+  [LIST_WORKSPACE_AGENTS_TOOL_NAME]: {
+    description:
+      "List agents in a workspace sorted by version creation date (most recent first). " +
+      "Returns instructionsLength and requestedSpaceCount per agent. " +
+      "Use get_workspace_agent for full details on a single agent.",
+    schema: {
+      ...workspaceIdSchema,
+      status: z
+        .enum(["active", "archived"])
+        .optional()
+        .describe("Filter by status. Defaults to 'active'."),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe("Max agents per page (default: 50, max: 200)."),
+      next_page_cursor: z
+        .string()
+        .optional()
+        .describe(
+          "Opaque cursor from the previous response to fetch the next page."
+        ),
+    },
+    stake: "high" as const,
+    displayLabels: { running: "Listing agents", done: "Listed agents" },
+  },
+
+  [GET_WORKSPACE_AGENT_TOOL_NAME]: {
+    description:
+      "Get full details for a single agent: instructions, tools, author, and editors.",
+    schema: {
+      ...workspaceIdSchema,
+      agent_id: z.string().describe("The sId of the agent."),
+    },
+    stake: "high" as const,
+    displayLabels: { running: "Fetching agent", done: "Fetched agent" },
+  },
+
+  [LIST_WORKSPACE_SKILLS_TOOL_NAME]: {
+    description:
+      "List custom skills in a workspace sorted by last update (most recent first). " +
+      "Returns instructionsLength per skill. " +
+      "Use get_workspace_skill for full details on a single skill.",
+    schema: {
+      ...workspaceIdSchema,
+      status: z
+        .enum(["active", "archived"])
+        .optional()
+        .describe("Filter by status. Defaults to 'active'."),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(200)
+        .optional()
+        .describe("Max skills per page (default: 50, max: 200)."),
+      next_page_cursor: z
+        .string()
+        .optional()
+        .describe(
+          "Opaque cursor from the previous response to fetch the next page."
+        ),
+    },
+    stake: "high" as const,
+    displayLabels: { running: "Listing skills", done: "Listed skills" },
+  },
+
+  [GET_WORKSPACE_SKILL_TOOL_NAME]: {
+    description:
+      "Get full details for a single skill: instructions, MCP server count, and editors.",
+    schema: {
+      ...workspaceIdSchema,
+      skill_id: z.string().describe("The sId of the skill."),
+    },
+    stake: "high" as const,
+    displayLabels: { running: "Fetching skill", done: "Fetched skill" },
   },
 });
 
