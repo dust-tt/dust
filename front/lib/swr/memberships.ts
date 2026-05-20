@@ -28,7 +28,7 @@ const SpendLimitResponseSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-const PytUserSpendLimitResponseSchema = z.object({
+const PutUserSpendLimitResponseSchema = z.object({
   limit: SpendLimitResponseSchema,
   transitionedTo: z.union([
     z.literal("reached"),
@@ -362,7 +362,7 @@ export function useUpdateUserSpendLimit({
         return null;
       }
 
-      const body = PytUserSpendLimitResponseSchema.parse(await res.json());
+      const body = PutUserSpendLimitResponseSchema.parse(await res.json());
       sendNotification({
         type: "success",
         title: "Spend limit updated",
