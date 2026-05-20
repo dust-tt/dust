@@ -18,17 +18,21 @@ import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
 
+import actions from "./actions";
 import attachments from "./attachments";
+import branches from "./branches";
 import cancel from "./cancel";
 import compactions from "./compactions";
 import contextUsage from "./context-usage";
 import feedbacks from "./feedbacks";
+import messages from "./messages";
 import onboardingFollowup from "./onboarding-followup";
 import participants from "./participants";
 import planMode from "./plan_mode";
 import skills from "./skills";
 import suggest from "./suggest";
 import tools from "./tools";
+import wakeups from "./wakeups";
 
 const PatchConversationsRequestBodySchema = z.union([
   z.object({ title: z.string() }),
@@ -241,16 +245,20 @@ app.patch(
   }
 );
 
+app.route("/actions", actions);
 app.route("/attachments", attachments);
+app.route("/branches", branches);
 app.route("/cancel", cancel);
 app.route("/compactions", compactions);
 app.route("/context-usage", contextUsage);
 app.route("/feedbacks", feedbacks);
+app.route("/messages", messages);
 app.route("/onboarding-followup", onboardingFollowup);
 app.route("/participants", participants);
 app.route("/plan_mode", planMode);
 app.route("/skills", skills);
 app.route("/suggest", suggest);
 app.route("/tools", tools);
+app.route("/wakeups", wakeups);
 
 export default app;
