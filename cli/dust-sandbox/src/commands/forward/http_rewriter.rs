@@ -10,16 +10,18 @@ use crate::egress_secrets::SecretTable;
 
 use super::deny_log::{DenyLogEntry, DenyReason};
 
-// Matches nginx's default large_client_header_buffers (4 x 8 KiB = 32 KiB).
-const MAX_HEADER_BLOCK_BYTES: usize = 32 * 1024;
+// Limits are intentionally generous compared to nginx/Apache defaults
+// (~8-32 KiB / ~100 headers). We are a transparent egress proxy in front of
+// LLM and SaaS APIs that ship large JWT/cookie/trace headers; the upstream
+// APIs cap requests themselves, so the role of these limits is to bound
+// memory and reject obviously-malformed traffic, not to be the gatekeeper.
+const MAX_HEADER_BLOCK_BYTES: usize = 64 * 1024;
 const MAX_HEADER_LINE_BYTES: usize = 16 * 1024;
-// httparse defaults to 100; we bump to 128 to leave headroom for instrumented
-// agents (cloud-trace, sentry, etc.) without paying a real cost.
-const MAX_HEADERS: usize = 128;
+const MAX_HEADERS: usize = 256;
 const READ_CHUNK_BYTES: usize = 8 * 1024;
 const NON_HTTP_FALLBACK_BYTES: usize = 4 * 1024;
 const MAX_CHUNK_LINE_BYTES: usize = 8 * 1024;
-const MAX_TRAILER_BLOCK_BYTES: usize = 32 * 1024;
+const MAX_TRAILER_BLOCK_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Copy, Debug)]
 pub(super) enum HttpRewriteMode<'a> {
