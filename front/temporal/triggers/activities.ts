@@ -95,7 +95,7 @@ async function createConversationForAgentConfiguration({
       conversation: newConversation,
       contentFragment: {
         contentType: "application/json",
-        content: JSON.stringify(payloadRes.value.body),
+        content: JSON.stringify(payloadRes.value.body, null, 2),
         title: `Webhook body (source id: ${webhookRequest.webhookSourceId}, date: ${new Date().toISOString()})`,
       },
       fileName: `webhook_body_${webhookRequest.webhookSourceId}_${Date.now()}.json`,

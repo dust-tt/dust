@@ -55,7 +55,8 @@ async function catText(
   file: GCSFile,
   path: string,
   startLine: number,
-  maxLines: number
+  maxLines: number,
+  fileSizeBytes: number
 ): Promise<ToolHandlerResult> {
   const lines: string[] = [];
   let lineNumber = 0;
@@ -80,6 +81,13 @@ async function catText(
       const lineBytes = Buffer.byteLength(lineWithNumber + "\n", "utf8");
 
       if (byteCount + lineBytes > FILE_OFFLOAD_TEXT_SIZE_BYTES) {
+        if (lines.length === 0) {
+          // Truncate the oversized line to the byte limit so we don't send huge payloads.
+          const truncated = Buffer.from(lineWithNumber, "utf8")
+            .slice(0, FILE_OFFLOAD_TEXT_SIZE_BYTES)
+            .toString("utf8");
+          lines.push(truncated);
+        }
         byteCapped = true;
         break;
       }
@@ -114,12 +122,15 @@ async function catText(
   }
 
   const endLine = startLine + lines.length - 1;
-
   let text = lines.join("\n");
+
+  const kb = FILE_OFFLOAD_TEXT_SIZE_BYTES / 1024;
+  const fileSizeKb = Math.ceil(fileSizeBytes / 1024);
+
   if (byteCapped) {
-    const kb = FILE_OFFLOAD_TEXT_SIZE_BYTES / 1024;
     text +=
-      `\n\n[Truncated at ${kb}KB. Showing lines ${startLine}-${endLine}.` +
+      `\n\n[Truncated at ${kb}KB. File is ${fileSizeKb}KB.` +
+      ` Showing lines ${startLine}-${endLine}.` +
       ` Use offset=${endLine + 1} to read more.]`;
   } else if (totalLines >= maxLines) {
     text += `\n\n[Showing lines ${startLine}-${endLine}. Use offset=${endLine + 1} to read more.]`;
@@ -158,5 +169,11 @@ export async function catHandler(
     ]);
   }
 
-  return catText(file, path, offset ?? 1, limit ?? CAT_LINES_DEFAULT);
+  return catText(
+    file,
+    path,
+    offset ?? 1,
+    limit ?? CAT_LINES_DEFAULT,
+    sizeBytes
+  );
 }
