@@ -63,14 +63,14 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "report.pdf"],
+        ["pod", "report.pdf"],
         { method: "GET" }
       );
       expect(response.status).toBe(200);
       expect(response.headers.get("Content-Type")).toBe("text/plain");
     });
 
-    it("returns 400 when path lacks the project/ prefix", async () => {
+    it("returns 400 when path lacks the pod/ prefix", async () => {
       const { workspace, project } = await setupProject();
       const response = await fileRequest(workspace, project.sId, [
         "report.pdf",
@@ -82,7 +82,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
     it("returns 403 for path traversal attempts", async () => {
       const { workspace, project } = await setupProject();
       const response = await fileRequest(workspace, project.sId, [
-        "project",
+        "pod",
         "..",
         "..",
         "etc",
@@ -100,7 +100,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
 
       const { workspace, project } = await setupProject();
       const response = await fileRequest(workspace, project.sId, [
-        "project",
+        "pod",
         "missing.txt",
       ]);
       expect(response.status).toBe(404);
@@ -120,7 +120,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "old.txt"],
+        ["pod", "old.txt"],
         { method: "PATCH", body: { fileName: "new.txt" } }
       );
       expect(response.status).toBe(200);
@@ -139,7 +139,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { method: "PATCH", body: {} }
       );
       expect(response.status).toBe(400);
@@ -150,13 +150,13 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { method: "PATCH", body: { fileName: "sub/name.txt" } }
       );
       expect(response.status).toBe(400);
     });
 
-    it("returns 400 when path lacks the project/ prefix", async () => {
+    it("returns 400 when path lacks the pod/ prefix", async () => {
       const { workspace, project } = await setupProject();
       const response = await fileRequest(workspace, project.sId, ["file.txt"], {
         method: "PATCH",
@@ -170,7 +170,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "..", "evil.txt"],
+        ["pod", "..", "evil.txt"],
         { method: "PATCH", body: { fileName: "new.txt" } }
       );
       expect(response.status).toBe(403);
@@ -182,7 +182,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { method: "PATCH", body: { fileName: "new.txt" } }
       );
       expect(response.status).toBe(403);
@@ -196,7 +196,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { method: "PATCH", body: { fileName: "new.txt" } }
       );
       expect(response.status).toBe(500);
@@ -215,7 +215,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { method: "DELETE" }
       );
       expect(response.status).toBe(200);
@@ -228,7 +228,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       );
     });
 
-    it("returns 400 when path lacks the project/ prefix", async () => {
+    it("returns 400 when path lacks the pod/ prefix", async () => {
       const { workspace, project } = await setupProject();
       const response = await fileRequest(workspace, project.sId, ["file.txt"], {
         method: "DELETE",
@@ -241,7 +241,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "..", "evil.txt"],
+        ["pod", "..", "evil.txt"],
         { method: "DELETE" }
       );
       expect(response.status).toBe(403);
@@ -253,7 +253,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { method: "DELETE" }
       );
       expect(response.status).toBe(403);
@@ -267,7 +267,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
       const response = await fileRequest(
         workspace,
         project.sId,
-        ["project", "file.txt"],
+        ["pod", "file.txt"],
         { method: "DELETE" }
       );
       expect(response.status).toBe(500);

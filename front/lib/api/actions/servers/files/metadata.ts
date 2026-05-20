@@ -137,7 +137,7 @@ const MOVE_SCHEMA = {
     ),
   dest: z
     .string()
-    .describe("Scoped path of the destination (e.g. `project/report.pdf`)."),
+    .describe("Scoped path of the destination (e.g. `pod/report.pdf`)."),
 };
 
 const MOVE_CONVERSATION_ONLY_TOOL = {
@@ -154,17 +154,17 @@ const MOVE_PROJECT_AWARE_TOOL = {
   description:
     `${MOVE_DESCRIPTION_BASE} ` +
     "Since this conversation belongs to a Pod, you can also move between scopes, " +
-    "e.g. `conversation/frame.html` -> `project/frame.html` to promote a frame into the Pod.",
+    "e.g. `conversation/frame.html` -> `pod/frame.html` to promote a frame into the Pod.",
   schema: {
     source: z
       .string()
       .describe(
-        "Scoped path of the file to move (e.g. `conversation/frame.html` or `project/data.csv`)."
+        "Scoped path of the file to move (e.g. `conversation/frame.html` or `pod/data.csv`)."
       ),
     dest: z
       .string()
       .describe(
-        "Scoped path of the destination (e.g. `project/frame.html` or `conversation/archive/data.csv`)."
+        "Scoped path of the destination (e.g. `pod/frame.html` or `conversation/archive/data.csv`)."
       ),
   },
   stake: "never_ask" as const,

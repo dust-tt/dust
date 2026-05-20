@@ -114,8 +114,8 @@ export async function getOrCreateConversation(
   }
 
   // Resolve scoped file paths in the parent's auth/conversation scope. Any failure here surfaces
-  // cleanly before the sub-conversation is created. `project/<rel>` paths are validated but not
-  // copied (the project mount is shared across the project's conversations).
+  // cleanly before the sub-conversation is created. `pod/<rel>` paths are validated but not
+  // copied (the Pod mount is shared across the Pod's conversations).
   // `conversation/<rel>` paths are copied to the sub-conversation's mount once the sub exists.
   // A short hint is appended to the sub's first message so it knows which paths were forwarded;
   // the sub reads them through the files MCP server.
