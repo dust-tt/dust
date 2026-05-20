@@ -26,7 +26,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "noop"
 >();
 
-type KnownModelLLMId =
+export type KnownModelLLMId =
   | "gpt-3.5-turbo"
   | "gpt-4-turbo"
   | "gpt-4o-2024-08-06"
