@@ -1,5 +1,6 @@
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
   withWorkspaceConnectionRequirement,
@@ -21,6 +22,16 @@ import { Hono } from "hono";
 import { z } from "zod";
 import svId from "./[svId]";
 import notActivated from "./not_activated";
+
+export type GetMCPServerViewsResponseBody = {
+  success: boolean;
+  serverViews: MCPServerViewType[];
+};
+
+export type PostMCPServerViewResponseBody = {
+  success: boolean;
+  serverView: MCPServerViewType;
+};
 
 const GetQueryParamsSchema = z.object({
   availability: z
@@ -150,10 +161,11 @@ app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
   ];
 
   if (mcpServerIdsRequiringWorkspaceConnection.length === 0) {
-    return ctx.json({
+    const body: GetMCPServerViewsResponseBody = {
       success: true,
       serverViews: filteredServerViews,
-    });
+    };
+    return ctx.json(body);
   }
 
   const workspaceConnections =
@@ -167,7 +179,7 @@ app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
     workspaceConnections.map((connection) => connection.mcpServerId)
   );
 
-  return ctx.json({
+  const body: GetMCPServerViewsResponseBody = {
     success: true,
     serverViews: filteredServerViews.map((serverView) => ({
       ...serverView,
@@ -183,7 +195,8 @@ app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
         ),
       },
     })),
-  });
+  };
+  return ctx.json(body);
 });
 
 app.post(
@@ -268,10 +281,11 @@ app.post(
       });
     }
 
-    return ctx.json({
+    const body: PostMCPServerViewResponseBody = {
       success: true,
       serverView: serverView.toJSON(),
-    });
+    };
+    return ctx.json(body);
   }
 );
 
