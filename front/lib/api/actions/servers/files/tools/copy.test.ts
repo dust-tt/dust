@@ -128,7 +128,7 @@ describe("copyHandler", () => {
     const result = await copyHandler(
       {
         source: "conversation/interactive.html",
-        dest: "project/interactive.html",
+        dest: "pod/interactive.html",
       },
       makeExtra(auth, conversation)
     );
