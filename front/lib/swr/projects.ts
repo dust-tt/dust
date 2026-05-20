@@ -72,7 +72,8 @@ export function useProjectContextAttachments({
     useSWRWithDefaults(key, projectContextFetcher);
 
   const refreshProjectContextAttachments = useCallback(async () => {
-    await mutateRegardlessOfQueryParams(undefined, { revalidate: true });
+    // Do not pass `undefined` as data — it clears the cache and causes UI flicker.
+    await mutateRegardlessOfQueryParams();
   }, [mutateRegardlessOfQueryParams]);
 
   return {
@@ -101,11 +102,13 @@ export function useProjectFiles({
       disabled || !spaceId
         ? null
         : `/api/w/${owner.sId}/spaces/${spaceId}/files`,
-      projectFilesFetcher
+      projectFilesFetcher,
+      { keepPreviousData: true }
     );
 
   const refreshProjectFiles = useCallback(async () => {
-    await mutateRegardlessOfQueryParams(undefined, { revalidate: true });
+    // Do not pass `undefined` as data — it clears the cache and causes UI flicker.
+    await mutateRegardlessOfQueryParams();
   }, [mutateRegardlessOfQueryParams]);
 
   return {

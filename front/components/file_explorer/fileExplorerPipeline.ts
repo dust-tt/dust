@@ -92,10 +92,13 @@ export function getFileExplorerPipeline({
   }));
 
   const currentNodes =
-    resolvedFolderStack.length === 0
-      ? [...tree, ...contentNodeTreeNodes]
-      : // Fresh `children` from the latest tree, not from nodes captured at click time.
-        (resolvedFolderStack.at(-1)?.children ?? []);
+    resolvedFolderStack.length > 0
+      ? // Fresh `children` from the latest tree, not from nodes captured at click time.
+        (resolvedFolderStack.at(-1)?.children ?? [])
+      : folderStack.length > 0
+        ? // Tree is rebuilding (e.g. during SWR revalidate); avoid flashing the root listing.
+          []
+        : [...tree, ...contentNodeTreeNodes];
 
   const q = searchQuery.trim().toLowerCase();
   const visibleNodes = currentNodes.filter((node) => {
