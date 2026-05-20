@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 const metadata: LLMClientMetadata = {
   clientId: "mistral" as const,
+  inferenceProvider: "mistral",
   modelId: MISTRAL_LARGE_MODEL_ID,
 };
 

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const metadata: LLMClientMetadata = {
   clientId: "anthropic" as const,
+  inferenceProvider: "anthropic",
   modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
 };
 

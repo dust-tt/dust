@@ -51,6 +51,7 @@ async function contentToPart(
           },
           {
             clientId: "google_ai_studio",
+            inferenceProvider: "google_ai_studio",
             modelId,
           }
         );

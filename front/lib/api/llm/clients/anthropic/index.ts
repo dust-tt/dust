@@ -124,6 +124,12 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
     this.omittedThinking = params.omittedThinking ?? false;
 
     this.useVertex = llmParameters.useVertex ?? false;
+    if (this.useVertex) {
+      this.metadata = {
+        ...this.metadata,
+        inferenceProvider: "google_vertex_ai",
+      };
+    }
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });

@@ -83,6 +83,7 @@ export abstract class LLM<TPayload = unknown> {
     this.bypassFeatureFlag = bypassFeatureFlag;
     this.metadata = {
       clientId: providerId,
+      inferenceProvider: providerId,
       modelId: this.modelId,
     };
 
@@ -199,6 +200,7 @@ export abstract class LLM<TPayload = unknown> {
     const metricTags = [
       `model_id:${this.modelId}`,
       `client_id:${this.metadata.clientId}`,
+      `inference_provider:${this.metadata.inferenceProvider}`,
       `operation_type:${this.context.operationType}`,
     ];
 
@@ -245,6 +247,7 @@ export abstract class LLM<TPayload = unknown> {
               llmEventType: "error",
               errorContent: currentEvent.content,
               modelId: this.modelId,
+              inferenceProvider: this.metadata.inferenceProvider,
               context: this.context,
               traceId: this.traceId,
             },
@@ -260,6 +263,7 @@ export abstract class LLM<TPayload = unknown> {
             {
               llmEventType: "success",
               modelId: this.modelId,
+              inferenceProvider: this.metadata.inferenceProvider,
               context: this.context,
               traceId: this.traceId,
             },
@@ -571,6 +575,7 @@ export abstract class LLM<TPayload = unknown> {
       const metricTags = [
         `model_id:${this.modelId}`,
         `client_id:${this.metadata.clientId}`,
+        `inference_provider:${this.metadata.inferenceProvider}`,
         `operation_type:${this.context!.operationType}`,
       ];
 

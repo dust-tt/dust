@@ -114,6 +114,7 @@ export type LLMParameterOverwrites = Partial<
 
 export type LLMClientMetadata = {
   clientId: ModelProviderIdType;
+  inferenceProvider: string;
   modelId: ModelIdType;
 };
 
