@@ -60,7 +60,7 @@
     "@mendable/firecrawl-js": "^1.29.1",
     "@metronome/sdk": "^3.4.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
-    "@mistralai/mistralai": "^1.10.0",
+    "@mistralai/mistralai": "^2.2.1",
     "@modelcontextprotocol/sdk": "^1.27.0",
     "@napi-rs/blake-hash": "^1.3.6",
     "@notionhq/client": "^5.13.0",

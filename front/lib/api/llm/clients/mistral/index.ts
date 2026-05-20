@@ -1,6 +1,9 @@
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import { MISTRAL_PROVIDER_ID } from "@app/lib/api/llm/clients/mistral/types";
-import { toToolChoiceParam } from "@app/lib/api/llm/clients/mistral/utils";
+import {
+  toResponseFormatParam,
+  toToolChoiceParam,
+} from "@app/lib/api/llm/clients/mistral/utils";
 import {
   toMessage,
   toTool,
@@ -94,6 +97,7 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
       model: this.modelId,
       messages,
       temperature: this.temperature ?? undefined,
+      responseFormat: toResponseFormatParam(this.responseFormat),
       toolChoice: toToolChoiceParam(specifications, forceToolCall),
       tools: specifications.map(toTool),
     };
@@ -166,7 +170,11 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {
     const job = await this.client.batch.jobs.get({ jobId: batchId });
 
-    switch (job.status) {
+    // Narrow OpenEnum to known values for exhaustive switching.
+    const jobStatus =
+      job.status as (typeof BatchJobStatus)[keyof typeof BatchJobStatus];
+
+    switch (jobStatus) {
       case BatchJobStatus.Success:
         return "ready";
       case BatchJobStatus.Failed:
@@ -182,7 +190,7 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
       case BatchJobStatus.CancellationRequested:
         return "computing";
       default:
-        assertNever(job.status);
+        assertNever(jobStatus);
     }
   }
 

@@ -33,7 +33,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "sentence_piece", base: "model_v2" },
   supportsBatchProcessing: true,
   regionalAvailability: {
-    "us-central1": true,
+    "us-central1": false,
     "europe-west1": true,
   },
 };
@@ -57,7 +57,7 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "sentence_piece", base: "model_v2" },
   supportsBatchProcessing: true,
   regionalAvailability: {
-    "us-central1": true,
+    "us-central1": false,
     "europe-west1": true,
   },
 };
@@ -81,8 +81,9 @@ export const MISTRAL_MEDIUM_3_5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
   tokenizer: { type: "sentence_piece", base: "model_v2" },
   supportsBatchProcessing: true,
+  supportsResponseFormat: true,
   regionalAvailability: {
-    "us-central1": true,
+    "us-central1": false,
     "europe-west1": true,
   },
 };
@@ -106,7 +107,7 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "sentence_piece", base: "model_v2" },
   supportsBatchProcessing: true,
   regionalAvailability: {
-    "us-central1": true,
+    "us-central1": false,
     "europe-west1": true,
   },
 };
@@ -131,7 +132,7 @@ export const MISTRAL_CODESTRAL_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "sentence_piece", base: "model_v2" },
   supportsBatchProcessing: true,
   regionalAvailability: {
-    "us-central1": true,
+    "us-central1": false,
     "europe-west1": true,
   },
 };
