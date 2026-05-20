@@ -1,0 +1,20 @@
+{
+  "action": "file.moved",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "space"
+    },
+    {
+      "type": "conversation"
+    }
+  ],
+  "metadata": {
+    "relative_file_path": "string",
+    "parent_relative_path": "string",
+    "space_id": "string",
+    "conversation_id": "string"
+  }
+}
