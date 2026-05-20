@@ -547,6 +547,12 @@ export async function chargeFirstPeriodInvoice({
     return finalizeResult;
   }
 
+  // If invoice corresponds to a zero amount (for example with coupon applied)
+  // then it is automatically set as paid by Stripe and we do not need to pay it.
+  if (finalizeResult.value.status == "paid") {
+    return new Ok(undefined);
+  }
+
   const stripe = getStripeClient();
   try {
     const payResult = await stripe.invoices.pay(finalizeResult.value.id, {
