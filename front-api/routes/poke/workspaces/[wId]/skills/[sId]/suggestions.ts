@@ -1,12 +1,10 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { SKILL_SUGGESTION_SOURCES } from "@app/types/suggestions/skill_suggestion";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 export type PokeListSkillSuggestions = {
   suggestions: SkillSuggestionType[];
@@ -19,11 +17,11 @@ const DeleteSuggestionQuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/skills/:sId/suggestions.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const sId = c.req.param("sId");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const sId = ctx.req.param("sId");
   if (!sId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -44,19 +42,19 @@ app.get("/", async (c) => {
   const body: PokeListSkillSuggestions = {
     suggestions: suggestions.map((s) => s.toJSON()),
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
-app.delete("/", validate("query", DeleteSuggestionQuerySchema), async (c) => {
-  const auth = c.get("auth");
-  const { suggestionSId } = c.req.valid("query");
+app.delete("/", validate("query", DeleteSuggestionQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { suggestionSId } = ctx.req.valid("query");
 
   const suggestion = await SkillSuggestionResource.fetchById(
     auth,
     suggestionSId
   );
   if (!suggestion) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "skill_not_found",
@@ -67,7 +65,7 @@ app.delete("/", validate("query", DeleteSuggestionQuerySchema), async (c) => {
 
   const deleteResult = await suggestion.delete(auth);
   if (deleteResult.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -76,7 +74,7 @@ app.delete("/", validate("query", DeleteSuggestionQuerySchema), async (c) => {
     });
   }
 
-  return c.body(null, 204);
+  return ctx.body(null, 204);
 });
 
 export default app;

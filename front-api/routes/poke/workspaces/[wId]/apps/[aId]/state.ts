@@ -1,22 +1,20 @@
-import { Hono } from "hono";
-
 import { AppResource } from "@app/lib/resources/app_resource";
 import {
   PostStateRequestBodySchema,
   type PostStateResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/state";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
 
 // Mounted at /api/poke/workspaces/:wId/apps/:aId/state.
 const app = new Hono();
 
-app.post("/", validate("json", PostStateRequestBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId");
+app.post("/", validate("json", PostStateRequestBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId");
   if (!aId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -27,7 +25,7 @@ app.post("/", validate("json", PostStateRequestBodySchema), async (c) => {
 
   const appResource = await AppResource.fetchById(auth, aId);
   if (!appResource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
@@ -36,7 +34,7 @@ app.post("/", validate("json", PostStateRequestBodySchema), async (c) => {
     });
   }
 
-  const body = c.req.valid("json");
+  const body = ctx.req.valid("json");
 
   const updateParams: {
     savedSpecification: string;
@@ -54,7 +52,7 @@ app.post("/", validate("json", PostStateRequestBodySchema), async (c) => {
   await appResource.updateState(auth, updateParams);
 
   const responseBody: PostStateResponseBody = { app: appResource.toJSON() };
-  return c.json(responseBody);
+  return ctx.json(responseBody);
 });
 
 export default app;

@@ -1,13 +1,11 @@
-import { Hono } from "hono";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { UserType } from "@app/types/user";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export type PokeGetTriggerDetails = {
   trigger: TriggerType;
@@ -18,11 +16,11 @@ export type PokeGetTriggerDetails = {
 // Mounted at /api/poke/workspaces/:wId/triggers/:tId/details.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const tId = c.req.param("tId");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const tId = ctx.req.param("tId");
   if (!tId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -33,7 +31,7 @@ app.get("/", async (c) => {
 
   const trigger = await TriggerResource.fetchById(auth, tId);
   if (!trigger) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "trigger_not_found",
@@ -47,7 +45,7 @@ app.get("/", async (c) => {
     variant: "full",
   });
   if (!agentConfiguration) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -66,7 +64,7 @@ app.get("/", async (c) => {
     agent: agentConfiguration,
     editorUser,
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

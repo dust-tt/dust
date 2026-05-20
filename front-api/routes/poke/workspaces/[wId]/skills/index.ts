@@ -1,7 +1,6 @@
-import { Hono } from "hono";
-
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { Hono } from "hono";
 
 import sId from "./[sId]";
 import suggestions from "./suggestions";
@@ -13,8 +12,8 @@ export type GetPokeSkillsResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/skills.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const skills = await SkillResource.listByWorkspace(auth, {
     status: ["active", "archived", "suggested"],
@@ -23,7 +22,7 @@ app.get("/", async (c) => {
   const body: GetPokeSkillsResponseBody = {
     skills: skills.map((skill) => skill.toJSON(auth)),
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 // Literal segments before param segments.

@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
-const PostSkillSuggestionBodySchema = z.object({
+export const PostSkillSuggestionBodySchema = z.object({
   name: z.string().min(1, "Name is required."),
   userFacingDescription: z.string().min(1, "Description is required."),
   agentFacingDescription: z
@@ -19,10 +17,6 @@ const PostSkillSuggestionBodySchema = z.object({
   mcpServerViewIds: z.array(z.string()),
 });
 
-export type PostSkillSuggestionBodyType = z.infer<
-  typeof PostSkillSuggestionBodySchema
->;
-
 export type PostPokeSkillSuggestionResponseBody = {
   skill: SkillType;
 };
@@ -30,8 +24,8 @@ export type PostPokeSkillSuggestionResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/skills/suggestions.
 const app = new Hono();
 
-app.post("/", validate("json", PostSkillSuggestionBodySchema), async (c) => {
-  const auth = c.get("auth");
+app.post("/", validate("json", PostSkillSuggestionBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
   const {
     name,
     userFacingDescription,
@@ -39,7 +33,7 @@ app.post("/", validate("json", PostSkillSuggestionBodySchema), async (c) => {
     instructions,
     icon,
     mcpServerViewIds,
-  } = c.req.valid("json");
+  } = ctx.req.valid("json");
 
   let skillIcon = icon;
 
@@ -71,7 +65,7 @@ app.post("/", validate("json", PostSkillSuggestionBodySchema), async (c) => {
   );
 
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -83,7 +77,7 @@ app.post("/", validate("json", PostSkillSuggestionBodySchema), async (c) => {
   const body: PostPokeSkillSuggestionResponseBody = {
     skill: result.value.toJSON(auth),
   };
-  return c.json(body, 201);
+  return ctx.json(body, 201);
 });
 
 export default app;

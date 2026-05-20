@@ -1,12 +1,10 @@
-import { Hono } from "hono";
-
 import {
   listProjectKnowledgeFromConnectors,
   type ProjectKnowledgeFromConnectorItem,
 } from "@app/lib/api/projects/context";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export type PokeProjectKnowledgeFromConnectorItem =
   ProjectKnowledgeFromConnectorItem;
@@ -18,11 +16,11 @@ export type PokeListProjectKnowledgeFromConnectors = {
 // Mounted at /api/poke/workspaces/:wId/projects/:projectId/connector-knowledge.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const projectId = c.req.param("projectId");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const projectId = ctx.req.param("projectId");
   if (!projectId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -33,7 +31,7 @@ app.get("/", async (c) => {
 
   const space = await SpaceResource.fetchById(auth, projectId);
   if (!space || !space.isProject()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "space_not_found",
@@ -45,7 +43,7 @@ app.get("/", async (c) => {
   const items = await listProjectKnowledgeFromConnectors(auth, space);
 
   const body: PokeListProjectKnowledgeFromConnectors = { items };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

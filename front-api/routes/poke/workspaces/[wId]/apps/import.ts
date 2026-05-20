@@ -1,12 +1,10 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApp } from "@app/lib/utils/apps";
 import type { AppType } from "@app/types/app";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 export const AppTypeSchema = z.object({
   sId: z.string(),
@@ -52,14 +50,14 @@ app.post(
   "/",
   validate("query", ImportQuerySchema),
   validate("json", ImportAppBody),
-  async (c) => {
-    const auth = c.get("auth");
-    const { spaceId } = c.req.valid("query");
-    const body = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { spaceId } = ctx.req.valid("query");
+    const body = ctx.req.valid("json");
 
     const space = await SpaceResource.fetchById(auth, spaceId);
     if (!space) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -70,7 +68,7 @@ app.post(
 
     const result = await importApp(auth, space, body.app);
     if (result.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -80,7 +78,7 @@ app.post(
     }
 
     const responseBody: { app: AppType } = { app: result.value.app.toJSON() };
-    return c.json(responseBody);
+    return ctx.json(responseBody);
   }
 );
 

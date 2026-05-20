@@ -1,13 +1,11 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/triggers/webhook";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import { WEBHOOK_REQUEST_TRIGGER_STATUSES } from "@app/types/assistant/triggers";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 export interface PokeGetWebhookRequestsResponseBody {
   requests: {
@@ -29,11 +27,11 @@ const WebhookRequestsQuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/triggers/:tId/webhook_requests.
 const app = new Hono();
 
-app.get("/", validate("query", WebhookRequestsQuerySchema), async (c) => {
-  const auth = c.get("auth");
-  const tId = c.req.param("tId");
+app.get("/", validate("query", WebhookRequestsQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const tId = ctx.req.param("tId");
   if (!tId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -44,7 +42,7 @@ app.get("/", validate("query", WebhookRequestsQuerySchema), async (c) => {
 
   const trigger = await TriggerResource.fetchById(auth, tId);
   if (!trigger) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "trigger_not_found",
@@ -53,7 +51,7 @@ app.get("/", validate("query", WebhookRequestsQuerySchema), async (c) => {
     });
   }
 
-  const { limit, status } = c.req.valid("query");
+  const { limit, status } = ctx.req.valid("query");
 
   const requests = await fetchRecentWebhookRequestTriggersWithPayload(auth, {
     trigger: trigger.toJSON(),
@@ -62,7 +60,7 @@ app.get("/", validate("query", WebhookRequestsQuerySchema), async (c) => {
   });
 
   const body: PokeGetWebhookRequestsResponseBody = { requests };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

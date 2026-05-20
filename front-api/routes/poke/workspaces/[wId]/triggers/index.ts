@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import {
   listTriggersWithProviderAndEditor,
   type TriggerWithProviderAndEditor,
 } from "@app/lib/triggers/admin/list_with_metadata";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 import tId from "./[tId]";
 
@@ -25,22 +23,22 @@ const DeleteTriggerQuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/triggers.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const triggers = await listTriggersWithProviderAndEditor(auth);
 
   const body: PokeListTriggers = { triggers };
-  return c.json(body);
+  return ctx.json(body);
 });
 
-app.delete("/", validate("query", DeleteTriggerQuerySchema), async (c) => {
-  const auth = c.get("auth");
-  const { tId } = c.req.valid("query");
+app.delete("/", validate("query", DeleteTriggerQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { tId } = ctx.req.valid("query");
 
   const trigger = await TriggerResource.fetchById(auth, tId);
   if (!trigger) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "trigger_not_found",
@@ -51,7 +49,7 @@ app.delete("/", validate("query", DeleteTriggerQuerySchema), async (c) => {
 
   const deleteResult = await trigger.delete(auth);
   if (deleteResult.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -60,7 +58,7 @@ app.delete("/", validate("query", DeleteTriggerQuerySchema), async (c) => {
     });
   }
 
-  return c.body(null, 204);
+  return ctx.body(null, 204);
 });
 
 app.route("/:tId", tId);

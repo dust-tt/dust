@@ -1,9 +1,8 @@
-import { Hono } from "hono";
-
 import {
   listAllProjectsWithAdminMetadata,
   type ProjectWithAdminMetadata,
 } from "@app/lib/api/projects/list";
+import { Hono } from "hono";
 
 import projectId from "./[projectId]";
 
@@ -16,13 +15,13 @@ export type PokeListProjects = {
 // Mounted at /api/poke/workspaces/:wId/projects.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const projects = await listAllProjectsWithAdminMetadata(auth);
 
   const body: PokeListProjects = { projects };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 app.route("/:projectId", projectId);

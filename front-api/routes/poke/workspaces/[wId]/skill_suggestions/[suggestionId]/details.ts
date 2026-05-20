@@ -1,10 +1,8 @@
-import { Hono } from "hono";
-
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export type PokeGetSkillSuggestionDetails = {
   suggestion: SkillSuggestionType;
@@ -15,11 +13,11 @@ export type PokeGetSkillSuggestionDetails = {
 // Mounted at /api/poke/workspaces/:wId/skill_suggestions/:suggestionId/details.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const suggestionId = c.req.param("suggestionId");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const suggestionId = ctx.req.param("suggestionId");
   if (!suggestionId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -34,7 +32,7 @@ app.get("/", async (c) => {
     { dangerouslyBypassConversationsVisibilityCheck: true }
   );
   if (!suggestion) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "skill_not_found",
@@ -54,7 +52,7 @@ app.get("/", async (c) => {
     skillInstructionsHtml: skillJson?.instructionsHtml ?? null,
     skillAgentFacingDescription: skillJson?.agentFacingDescription ?? null,
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;
