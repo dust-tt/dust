@@ -19,9 +19,16 @@ import type {
 import { isMembershipRoleType } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
+import { z } from "zod";
 
 import seatType from "./seat-type";
+
+const PostMemberBodySchema = z.object({
+  role: z.string(),
+  force: z.string().optional(),
+});
 
 // Mounted at /api/w/:wId/members/:uId.
 const app = new Hono();
@@ -79,13 +86,13 @@ app.get("/", async (ctx) => {
   return ctx.json(response);
 });
 
-app.post("/", async (ctx) => {
+app.post("/", validate("json", PostMemberBodySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
   const uId = ctx.req.param("uId") ?? "";
 
   const featureFlags = await getFeatureFlags(auth);
-  const body = await ctx.req.json();
+  const body = ctx.req.valid("json");
   const isAdmin = auth.isAdmin();
 
   // Allow Dust Super User to force role for testing
