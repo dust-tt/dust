@@ -508,15 +508,13 @@ async function extractRetrievalDocuments(
     .map((id) => parseInt(id, 10))
     .filter((id) => !isNaN(id) && id > 0);
 
+  const outputItemsByActionId = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+    actionIds: retrievalDocumentActions.map(({ action }) => action.id),
+    ignoreContent: false,
+  });
   // Fetch MCP server configurations for analytics tracking.
   // Using standalone resource allows independent querying for reporting purposes.
-  const [outputItemsByActionId, serverConfigs] = await Promise.all([
-    AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-      actionIds: retrievalDocumentActions.map(({ action }) => action.id),
-      ignoreContent: false,
-    }),
-    AgentMCPServerConfigurationResource.fetchByModelIds(auth, configModelIds),
-  ]);
+  const serverConfigs = await AgentMCPServerConfigurationResource.fetchByModelIds(auth, configModelIds);
 
   const configMap = new Map(serverConfigs.map((c) => [c.id.toString(), c]));
 
