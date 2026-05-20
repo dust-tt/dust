@@ -1,8 +1,13 @@
 import {
+  getAttachmentFromContentNodeContentFragment,
   getAttachmentFromFileContentFragment,
   makeFileAttachment,
+  renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
-import type { FileContentFragmentType } from "@app/types/content_fragment";
+import type {
+  ContentNodeContentFragmentType,
+  FileContentFragmentType,
+} from "@app/types/content_fragment";
 import { describe, expect, it } from "vitest";
 
 describe("makeFileAttachment", () => {
@@ -100,6 +105,70 @@ function makeFileContentFragment({
     hidden: false,
   };
 }
+
+function makeContentNodeContentFragment({
+  sourceUrl = null,
+}: {
+  sourceUrl?: string | null;
+}): ContentNodeContentFragmentType & { expiredReason: null } {
+  return {
+    type: "content_fragment",
+    id: 1,
+    sId: "cf_node_123",
+    created: Date.now(),
+    visibility: "visible",
+    version: 1,
+    rank: 0,
+    branchId: null,
+    sourceUrl,
+    title: "dashboard.tsx",
+    contentType: "text/plain",
+    context: {
+      username: null,
+      fullName: null,
+      email: null,
+      profilePictureUrl: null,
+    },
+    contentFragmentId: "cf_node_123",
+    contentFragmentVersion: "latest",
+    expiredReason: null,
+    contentFragmentType: "content_node",
+    nodeId: "node_abc",
+    nodeDataSourceViewId: "dsv_xyz",
+    nodeType: "document",
+    contentNodeData: {
+      nodeId: "node_abc",
+      nodeDataSourceViewId: "dsv_xyz",
+      nodeType: "document",
+      provider: null,
+      spaceName: "My Space",
+    },
+  };
+}
+
+describe("renderAttachmentXml", () => {
+  it("always includes nodeId for content node attachments even when sourceUrl is null", () => {
+    const attachment = getAttachmentFromContentNodeContentFragment(
+      makeContentNodeContentFragment({ sourceUrl: null })
+    );
+
+    const xml = renderAttachmentXml({ attachment });
+
+    expect(xml).toContain('nodeId="node_abc"');
+    expect(xml).not.toContain("sourceUrl");
+  });
+
+  it("includes both nodeId and sourceUrl for content node attachments with a source URL", () => {
+    const attachment = getAttachmentFromContentNodeContentFragment(
+      makeContentNodeContentFragment({ sourceUrl: "https://example.com/doc" })
+    );
+
+    const xml = renderAttachmentXml({ attachment });
+
+    expect(xml).toContain('nodeId="node_abc"');
+    expect(xml).toContain('sourceUrl="https://example.com/doc"');
+  });
+});
 
 describe("getAttachmentFromFileContentFragment", () => {
   it("suppresses queryable and includable hints for raw sandbox delimited files", () => {
