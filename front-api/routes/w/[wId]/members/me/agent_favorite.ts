@@ -36,7 +36,7 @@ app.post(
       agentId,
       userFavorite,
     });
-    
+
     if (result.isErr()) {
       return apiError(ctx, {
         status_code: 500,

@@ -51,7 +51,6 @@ app.patch("/", async (ctx) => {
     });
   }
 
-
   const bodyValidation = UpdateMemberSeatTypeBodySchema.safeParse(
     await ctx.req.json()
   );
