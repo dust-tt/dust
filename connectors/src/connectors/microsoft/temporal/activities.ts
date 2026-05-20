@@ -861,13 +861,36 @@ export async function reconcileSensitivityLabelsForParent({
   const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const client = await getMicrosoftClient(connector.connectionId);
-  const childrenResult = await getFilesAndFolders(
-    logger,
-    client,
-    parentInternalId,
-    nextPageLink,
-    allowedLabels.length > 0
-  );
+
+  let childrenResult: {
+    results: DriveItem[];
+    nextLink?: string;
+  };
+  try {
+    childrenResult = await getFilesAndFolders(
+      logger,
+      client,
+      parentInternalId,
+      nextPageLink,
+      allowedLabels.length > 0
+    );
+  } catch (error) {
+    if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
+      logger.info(
+        {
+          connectorId,
+          parentInternalId,
+          error: normalizeError(error).message,
+        },
+        "[ReconcileSensitivityLabels] Parent not found or malformed, skipping subtree"
+      );
+      return {
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
+    throw error;
+  }
 
   const mimeTypesToSync = await getMimeTypesToSync({
     pdfEnabled: providerConfig.pdfEnabled || false,
