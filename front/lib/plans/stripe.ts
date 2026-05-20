@@ -388,9 +388,10 @@ export async function calculateTax({
 async function makeFirstPeriodInvoiceForCustomer({
   stripeCustomerId,
   paymentMethodId,
-  subtotalCents,
-  couponAmountCents,
+  billingPeriod,
+  pricePerSeatCents,
   seatCount,
+  couponAmountCents,
   setupSessionId,
   workspaceId,
   currency,
@@ -398,9 +399,10 @@ async function makeFirstPeriodInvoiceForCustomer({
 }: {
   stripeCustomerId: string;
   paymentMethodId: string;
-  subtotalCents: number;
-  couponAmountCents?: number;
+  billingPeriod: string;
+  pricePerSeatCents: number;
   seatCount: number;
+  couponAmountCents?: number;
   setupSessionId: string;
   workspaceId: string;
   currency: SupportedCurrency;
@@ -428,16 +430,21 @@ async function makeFirstPeriodInvoiceForCustomer({
 
     await stripe.invoiceItems.create({
       customer: stripeCustomerId,
-      amount: subtotalCents,
+      unit_amount: pricePerSeatCents,
+      quantity: seatCount,
       currency,
-      description: `Workspace seat — ${seatCount} seat${seatCount > 1 ? "s" : ""}`,
+      description: `Workspace seat (${billingPeriod})`,
       invoice: invoice.id,
     });
 
     if (couponCode && couponAmountCents && couponAmountCents > 0) {
+      const effectiveCouponAmountCents = Math.min(
+        pricePerSeatCents * seatCount,
+        couponAmountCents
+      );
       await stripe.invoiceItems.create({
         customer: stripeCustomerId,
-        amount: -couponAmountCents,
+        amount: -effectiveCouponAmountCents,
         currency,
         description: `Coupon: ${couponCode}`,
         invoice: invoice.id,
@@ -494,9 +501,10 @@ export async function setStripeCustomerDefaultPaymentMethod({
 export async function chargeFirstPeriodInvoice({
   stripeCustomerId,
   paymentMethodId,
-  subtotalCents,
-  couponAmountCents,
+  billingPeriod,
+  pricePerSeatCents,
   seatCount,
+  couponAmountCents,
   setupSessionId,
   workspaceId,
   currency,
@@ -504,9 +512,10 @@ export async function chargeFirstPeriodInvoice({
 }: {
   stripeCustomerId: string;
   paymentMethodId: string;
-  subtotalCents: number;
-  couponAmountCents?: number;
+  billingPeriod: string;
+  pricePerSeatCents: number;
   seatCount: number;
+  couponAmountCents?: number;
   setupSessionId: string;
   workspaceId: string;
   currency: SupportedCurrency;
@@ -515,9 +524,10 @@ export async function chargeFirstPeriodInvoice({
   const invoiceResult = await makeFirstPeriodInvoiceForCustomer({
     stripeCustomerId,
     paymentMethodId,
-    subtotalCents,
-    couponAmountCents,
+    billingPeriod,
+    pricePerSeatCents,
     seatCount,
+    couponAmountCents,
     setupSessionId,
     workspaceId,
     currency,

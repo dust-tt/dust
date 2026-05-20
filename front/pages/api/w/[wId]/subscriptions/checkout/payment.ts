@@ -131,17 +131,22 @@ async function handler(
       }
 
       const {
+        billingPeriod,
         seatCount: seatCountStr,
         pricePerSeatCents: pricePerSeatCentsStr,
       } = setupSession.metadata ?? {};
 
-      if (!isString(seatCountStr) || !isString(pricePerSeatCentsStr)) {
+      if (
+        !billingPeriod ||
+        !isString(seatCountStr) ||
+        !isString(pricePerSeatCentsStr)
+      ) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
             message:
-              "Setup session metadata is missing seatCount or pricePerSeatCents.",
+              "Setup session metadata is missing billingPeriod, seatCount or pricePerSeatCents.",
           },
         });
       }
@@ -273,11 +278,12 @@ async function handler(
         return res.status(200).json({ error: "payment_failed" });
       }
 
-      if (shouldEnforceFirstPeriodPayment) {
+      if (shouldEnforceFirstPeriodPayment && effectiveSubtotalCents > 0) {
         const chargeResult = await chargeFirstPeriodInvoice({
           stripeCustomerId,
           paymentMethodId,
-          subtotalCents,
+          billingPeriod,
+          pricePerSeatCents,
           couponAmountCents,
           seatCount,
           setupSessionId,
