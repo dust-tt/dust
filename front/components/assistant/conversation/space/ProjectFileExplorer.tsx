@@ -2,6 +2,7 @@ import {
   FileDropProvider,
   useFileDrop,
 } from "@app/components/assistant/conversation/FileUploaderContext";
+import { CreateFolderDialog } from "@app/components/assistant/conversation/space/CreateFolderDialog";
 import { ProjectFrameSheet } from "@app/components/assistant/conversation/space/ProjectFrameSheet";
 import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -10,6 +11,7 @@ import type {
   ContentNodeEntry,
   FileEntry,
   FileExplorerEntry,
+  SandboxTreeNode,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
@@ -23,6 +25,7 @@ import { downloadPodFile } from "@app/lib/swr/files";
 import {
   useAddProjectContextContentNodes,
   useDeleteProjectFile,
+  useMovePodContextFile,
   useProjectContextAttachments,
   useProjectFiles,
   useRemoveProjectContextContentNodes,
@@ -52,6 +55,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyCTA,
+  FolderIcon,
   PlusIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -71,6 +75,7 @@ const PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP =
 interface AttachKnowledgeDropdownProps {
   buttonLabel: string;
   isDisabled: boolean;
+  onCreateFolderClick: () => void;
   onUploadFileClick: () => void;
   onShowCompanyDataClick: () => void;
 }
@@ -78,6 +83,7 @@ interface AttachKnowledgeDropdownProps {
 function AttachKnowledgeDropdown({
   buttonLabel,
   isDisabled,
+  onCreateFolderClick,
   onUploadFileClick,
   onShowCompanyDataClick,
 }: AttachKnowledgeDropdownProps) {
@@ -91,6 +97,11 @@ function AttachKnowledgeDropdown({
           icon={CloudArrowLeftRightIcon}
           label="From Company Data"
           onClick={onShowCompanyDataClick}
+        />
+        <DropdownMenuItem
+          icon={FolderIcon}
+          label="New folder"
+          onClick={onCreateFolderClick}
         />
         <DropdownMenuItem
           icon={CloudArrowUpIcon}
@@ -110,6 +121,7 @@ function AttachKnowledgeButton({
   buttonLabel,
   canManuallyManageProjectKnowledge,
   isDisabled,
+  onCreateFolderClick,
   onShowCompanyDataClick,
   onUploadFileClick,
 }: AttachKnowledgeButtonProps) {
@@ -118,6 +130,7 @@ function AttachKnowledgeButton({
       <AttachKnowledgeDropdown
         buttonLabel={buttonLabel}
         isDisabled={isDisabled}
+        onCreateFolderClick={onCreateFolderClick}
         onShowCompanyDataClick={onShowCompanyDataClick}
         onUploadFileClick={onUploadFileClick}
       />
@@ -131,6 +144,7 @@ function AttachKnowledgeButton({
           <AttachKnowledgeDropdown
             buttonLabel={buttonLabel}
             isDisabled={isDisabled}
+            onCreateFolderClick={onCreateFolderClick}
             onShowCompanyDataClick={onShowCompanyDataClick}
             onUploadFileClick={onUploadFileClick}
           />
@@ -218,7 +232,9 @@ function ProjectFileExplorerContent({
 }: ProjectFileExplorerProps) {
   const [frameFileId, setFrameFileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [folderStack, setFolderStack] = useState<SandboxTreeNode[]>([]);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [fileToRename, setFileToRename] = useState<{
     path: string;
     fileName: string;
@@ -226,6 +242,11 @@ function ProjectFileExplorerContent({
   const [activeOverlay, setActiveOverlay] = useState<
     "companyData" | "noCompanyData" | null
   >(null);
+
+  const podMountParentRelativePath = useMemo(
+    () => (folderStack.length > 0 ? (folderStack.at(-1)?.path ?? "") : ""),
+    [folderStack]
+  );
   const isArchived = !!space.archivedAt;
   const canManuallyManageProjectKnowledge =
     isManualProjectKnowledgeManagementAllowed(owner);
@@ -248,7 +269,7 @@ function ProjectFileExplorerContent({
   const {
     attachments: contextAttachments,
     isProjectContextAttachmentsLoading,
-    mutateProjectContextAttachments,
+    refreshProjectContextAttachments,
   } = useProjectContextAttachments({
     owner,
     spaceId: space.sId,
@@ -257,11 +278,18 @@ function ProjectFileExplorerContent({
   const {
     files: projectGCSFiles,
     isProjectFilesLoading,
-    mutateProjectFiles,
+    refreshProjectFiles,
   } = useProjectFiles({
     owner,
     spaceId: space.sId,
   });
+
+  const refreshProjectKnowledge = useCallback(async () => {
+    await Promise.all([
+      refreshProjectFiles(),
+      refreshProjectContextAttachments(),
+    ]);
+  }, [refreshProjectContextAttachments, refreshProjectFiles]);
 
   const contentNodeAttachments = useMemo<ContentNodeAttachmentType[]>(
     () => contextAttachments.filter(isContentNodeAttachmentType),
@@ -316,36 +344,68 @@ function ProjectFileExplorerContent({
     },
   });
 
+  const movePodContextFile = useMovePodContextFile({
+    owner,
+    spaceId: space.sId,
+  });
+
+  const uploadFilesToProject = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0) {
+        return;
+      }
+
+      const uploadedBlobs = await projectFileUpload.handleFilesUpload(files);
+      if (!uploadedBlobs) {
+        return;
+      }
+
+      if (podMountParentRelativePath) {
+        for (const blob of uploadedBlobs) {
+          if (!blob.fileId) {
+            continue;
+          }
+          const moveResult = await movePodContextFile({
+            fileId: blob.fileId,
+            parentRelativePath: podMountParentRelativePath,
+          });
+          if (moveResult.isErr()) {
+            break;
+          }
+        }
+      }
+
+      await refreshProjectFiles();
+    },
+    [
+      movePodContextFile,
+      podMountParentRelativePath,
+      projectFileUpload,
+      refreshProjectFiles,
+    ]
+  );
+
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      await projectFileUpload.handleFileChange(e);
+      const files = Array.from(e.target.files ?? []);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-      void mutateProjectFiles();
+      await uploadFilesToProject(files);
     },
-    [projectFileUpload, mutateProjectFiles]
-  );
-
-  const handleDroppedFiles = useCallback(
-    async (files: File[]) => {
-      await projectFileUpload.handleFilesUpload(files);
-      void mutateProjectFiles();
-    },
-    [projectFileUpload, mutateProjectFiles]
+    [uploadFilesToProject]
   );
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
   useEffect(() => {
-    const processDroppedFiles = async () => {
-      const files = [...droppedFiles];
-      if (files.length > 0) {
-        setDroppedFiles([]);
-        await handleDroppedFiles(files);
-      }
-    };
-    void processDroppedFiles();
-  }, [droppedFiles, setDroppedFiles, handleDroppedFiles]);
+    if (droppedFiles.length === 0) {
+      return;
+    }
+
+    const files = [...droppedFiles];
+    setDroppedFiles([]);
+    void uploadFilesToProject(files);
+  }, [droppedFiles, setDroppedFiles, uploadFilesToProject]);
 
   const onDelete = useCallback(
     async (entry: FileExplorerEntry) => {
@@ -364,7 +424,7 @@ function ProjectFileExplorerContent({
             },
           ]);
           if (result.isOk()) {
-            void mutateProjectContextAttachments();
+            await refreshProjectContextAttachments();
           }
         }
       } else {
@@ -377,7 +437,7 @@ function ProjectFileExplorerContent({
         if (confirmed) {
           const result = await deleteProjectFile(entry.path);
           if (result.isOk()) {
-            void mutateProjectFiles();
+            await refreshProjectFiles();
           }
         }
       }
@@ -385,8 +445,8 @@ function ProjectFileExplorerContent({
     [
       confirm,
       deleteProjectFile,
-      mutateProjectContextAttachments,
-      mutateProjectFiles,
+      refreshProjectContextAttachments,
+      refreshProjectFiles,
       removeProjectContextContentNodes,
     ]
   );
@@ -424,6 +484,10 @@ function ProjectFileExplorerContent({
     fileInputRef.current?.click();
   }, []);
 
+  const handleCreateFolderClick = useCallback(() => {
+    setShowCreateFolderDialog(true);
+  }, []);
+
   const handleShowCompanyDataClick = useCallback(() => {
     setActiveOverlay(
       globalSpaceDSVs.length === 0 ? "noCompanyData" : "companyData"
@@ -435,9 +499,7 @@ function ProjectFileExplorerContent({
   const isAddKnowledgeDisabled =
     !canManuallyManageProjectKnowledge || isUploading;
 
-  const hasFiles =
-    projectGCSFiles.some((f) => !f.isDirectory) ||
-    contentNodeEntries.length > 0;
+  const hasFiles = projectGCSFiles.length > 0 || contentNodeEntries.length > 0;
   const isLoading = isProjectContextAttachmentsLoading || isProjectFilesLoading;
 
   const initialSelectedDataSources = useMemo<DataSourceViewType[]>(() => {
@@ -462,7 +524,9 @@ function ProjectFileExplorerContent({
   }, [contentNodeAttachments, globalSpaceDSVs]);
 
   const handleCompanyDataSave = useCallback(
-    async (selectionConfigurations: DataSourceViewSelectionConfigurations) => {
+    async (
+      selectionConfigurations: DataSourceViewSelectionConfigurations
+    ): Promise<boolean> => {
       const selectedNodes = Object.values(selectionConfigurations).flatMap(
         ({ dataSourceView, selectedResources }) =>
           selectedResources.map((node) => ({
@@ -483,28 +547,40 @@ function ProjectFileExplorerContent({
         (n) => !selectedKeys.has(keyOf(n))
       );
 
-      await addProjectContextContentNodes(
-        toAdd.map((n) => ({
-          title: n.title,
-          nodeId: n.nodeId,
-          nodeDataSourceViewId: n.nodeDataSourceViewId,
-          ...(n.sourceUrl ? { url: n.sourceUrl } : {}),
-        }))
-      );
+      if (toAdd.length > 0) {
+        const addResult = await addProjectContextContentNodes(
+          toAdd.map((n) => ({
+            title: n.title,
+            nodeId: n.nodeId,
+            nodeDataSourceViewId: n.nodeDataSourceViewId,
+            ...(n.sourceUrl ? { url: n.sourceUrl } : {}),
+          }))
+        );
+        if (addResult.isErr()) {
+          return false;
+        }
+      }
 
-      await removeProjectContextContentNodes(
-        toRemove.map((n) => ({
-          nodeId: n.nodeId,
-          nodeDataSourceViewId: n.nodeDataSourceViewId,
-        }))
-      );
+      if (toRemove.length > 0) {
+        const removeResult = await removeProjectContextContentNodes(
+          toRemove.map((n) => ({
+            nodeId: n.nodeId,
+            nodeDataSourceViewId: n.nodeDataSourceViewId,
+          }))
+        );
+        if (removeResult.isErr()) {
+          return false;
+        }
+      }
 
-      void mutateProjectContextAttachments();
+      await refreshProjectKnowledge();
+      setFolderStack([]);
+      return true;
     },
     [
       addProjectContextContentNodes,
       contentNodeAttachments,
-      mutateProjectContextAttachments,
+      refreshProjectKnowledge,
       removeProjectContextContentNodes,
     ]
   );
@@ -514,6 +590,7 @@ function ProjectFileExplorerContent({
       buttonLabel={uploadButtonLabel}
       canManuallyManageProjectKnowledge={canManuallyManageProjectKnowledge}
       isDisabled={isAddKnowledgeDisabled}
+      onCreateFolderClick={handleCreateFolderClick}
       onShowCompanyDataClick={handleShowCompanyDataClick}
       onUploadFileClick={handleUploadFileClick}
     />
@@ -542,10 +619,19 @@ function ProjectFileExplorerContent({
       <RenameFileDialog
         isOpen={showRenameDialog}
         onClose={() => setShowRenameDialog(false)}
-        onRenamed={() => void mutateProjectFiles()}
+        onRenamed={() => void refreshProjectFiles()}
         owner={owner}
         spaceId={space.sId}
         file={fileToRename}
+      />
+
+      <CreateFolderDialog
+        isOpen={showCreateFolderDialog}
+        onClose={() => setShowCreateFolderDialog(false)}
+        onCreated={() => void refreshProjectFiles()}
+        owner={owner}
+        parentRelativePath={podMountParentRelativePath}
+        spaceId={space.sId}
       />
 
       {globalSpace && (
@@ -586,10 +672,12 @@ function ProjectFileExplorerContent({
         defaultViewMode="list"
         emptyState={hasFiles ? undefined : emptyState}
         files={projectGCSFiles}
+        folderStack={folderStack}
         getFileUrl={getFileUrl}
         hideTitleBorder
         onFileDownload={onFileDownload}
         onDelete={!isArchived ? onDelete : undefined}
+        onFolderStackChange={setFolderStack}
         onRename={!isArchived ? onRename : undefined}
         onOpenInteractive={(entry) => setFrameFileId(entry.fileId)}
         headerActions={addButton}

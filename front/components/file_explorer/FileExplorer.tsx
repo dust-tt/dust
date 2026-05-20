@@ -27,7 +27,13 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 
 interface FileExplorerBreadcrumbProps {
   folderStack: SandboxTreeNode[];
@@ -54,6 +60,7 @@ interface FileExplorerProps {
   contentNodes?: ContentNodeEntry[];
   defaultViewMode?: ViewMode;
   emptyState?: React.ReactNode;
+  folderStack?: SandboxTreeNode[];
   hideTitleBorder?: boolean;
   files: GCSMountEntry[];
   getFileUrl: (path: string) => string;
@@ -62,6 +69,7 @@ interface FileExplorerProps {
   onClose?: () => void;
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
   onFileDownload: (entry: FileEntry) => Promise<void>;
+  onFolderStackChange?: Dispatch<SetStateAction<SandboxTreeNode[]>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
   onRename?: (entry: FileEntry) => void;
 }
@@ -71,6 +79,7 @@ export function FileExplorer({
   contentNodes = [],
   defaultViewMode = "grid",
   emptyState,
+  folderStack: folderStackProp,
   files,
   getFileUrl,
   headerActions,
@@ -79,10 +88,27 @@ export function FileExplorer({
   onClose,
   onDelete,
   onFileDownload,
+  onFolderStackChange,
   onOpenInteractive,
   onRename,
 }: FileExplorerProps) {
-  const [folderStack, setFolderStack] = useState<SandboxTreeNode[]>([]);
+  const [internalFolderStack, setInternalFolderStack] = useState<
+    SandboxTreeNode[]
+  >([]);
+  const folderStack = folderStackProp ?? internalFolderStack;
+  // Pass functional updates through to the parent setter. Applying `update(folderStack)`
+  // here would use a stale prop and can clear the stack (jump to root) on list refresh.
+  const setFolderStack = useCallback(
+    (update: SetStateAction<SandboxTreeNode[]>) => {
+      if (onFolderStackChange) {
+        onFolderStackChange(update);
+      } else {
+        setInternalFolderStack(update);
+      }
+    },
+    [onFolderStackChange]
+  );
+
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FileExplorerFilter>("all");
@@ -147,6 +173,15 @@ export function FileExplorer({
   const handleFolderNavigate = (node: SandboxTreeNode) => {
     setFolderStack((prev) => [...prev, node]);
   };
+
+  const handleGoUp = () => {
+    setFolderStack((prev) => prev.slice(0, -1));
+  };
+
+  const parentFolderLabel =
+    folderStack.length <= 1
+      ? "All files"
+      : (folderStack.at(-2)?.name ?? "All files");
 
   const handleFileOpen = (entry: FileEntry) => {
     if (
@@ -240,6 +275,10 @@ export function FileExplorer({
             viewMode={viewMode}
             isEmpty={fileCount === 0 && folderCount === 0}
             emptyState={emptyState}
+            parentFolderLabel={
+              folderStack.length > 0 ? parentFolderLabel : undefined
+            }
+            onGoUp={folderStack.length > 0 ? handleGoUp : undefined}
             onFolderNavigate={handleFolderNavigate}
             onFileOpen={handleFileOpen}
             onFileDownload={onFileDownload}
