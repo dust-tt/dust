@@ -2,8 +2,21 @@ import {
   getParentFolderRelativePath,
   getScopedRelativePath,
 } from "@app/components/file_explorer/utils";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
+
+/** Drop-target highlight for folder / go-up cards (owned by card wrappers, not FileExplorerItem). */
+export const fileExplorerDropActiveClasses = cn(
+  "ring-2 ring-primary-400 ring-inset dark:ring-primary-400-night",
+  "bg-primary-100 dark:bg-primary-100-night"
+);
+
+export function getFileExplorerDropSurfaceClassName(
+  isDragOver: boolean
+): string | undefined {
+  return isDragOver ? fileExplorerDropActiveClasses : undefined;
+}
 
 /** Drag payload MIME type for file explorer file moves. */
 export const FILE_EXPLORER_DRAG_MIME = "application/x-dust-file-explorer-file";
