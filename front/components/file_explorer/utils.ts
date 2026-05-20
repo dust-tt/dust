@@ -196,19 +196,48 @@ export function getCategoryFromContentType(
   }
 }
 
+function ensureDirectoryNode(
+  nodeMap: Map<string, FileSystemTreeNode>,
+  root: FileSystemTreeNode[],
+  path: string,
+  name: string
+): void {
+  if (nodeMap.has(path)) {
+    return;
+  }
+
+  const dirNode: FileSystemTreeNode = {
+    name,
+    path,
+    isDirectory: true,
+    contentType: null,
+    fileId: null,
+    children: [],
+  };
+  nodeMap.set(path, dirNode);
+
+  const parentPath = path.substring(0, path.lastIndexOf("/"));
+  const parent = parentPath ? nodeMap.get(parentPath) : undefined;
+  if (parent) {
+    parent.children.push(dirNode);
+  } else {
+    root.push(dirNode);
+  }
+}
+
 /**
  * Build a tree from flat file entries by inferring directories from paths.
  * entry.path is a scoped path (e.g. "conversation/subdir/file.png"); the
  * use-case prefix (first segment) is stripped so tree paths start at the
  * sandbox working directory root.
  */
-export function buildSandboxTree(
+export function buildFileSystemTree(
   entries: GCSMountEntry[]
 ): FileSystemTreeNode[] {
   const root: FileSystemTreeNode[] = [];
   const nodeMap = new Map<string, FileSystemTreeNode>();
 
-  for (const entry of entries.filter((e) => !e.isDirectory)) {
+  for (const entry of entries) {
     const slashIdx = entry.path.indexOf("/");
     const relativePath =
       slashIdx >= 0 ? entry.path.slice(slashIdx + 1) : entry.path;
@@ -219,35 +248,25 @@ export function buildSandboxTree(
 
     const parts = relativePath.split("/");
 
-    // Ensure all ancestor directories exist as nodes.
-    let currentPath = "";
-    for (let i = 0; i < parts.length - 1; i++) {
-      currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i]!;
-      if (!nodeMap.has(currentPath)) {
-        const dirNode: FileSystemTreeNode = {
-          name: parts[i]!,
-          path: currentPath,
-          isDirectory: true,
-          contentType: null,
-          fileId: null,
-          children: [],
-        };
-        nodeMap.set(currentPath, dirNode);
-
-        const parentPath = currentPath.substring(
-          0,
-          currentPath.lastIndexOf("/")
-        );
-        const parent = parentPath ? nodeMap.get(parentPath) : undefined;
-        if (parent) {
-          parent.children.push(dirNode);
-        } else {
-          root.push(dirNode);
-        }
+    if (entry.isDirectory) {
+      if (nodeMap.has(relativePath)) {
+        continue;
       }
+
+      let currentPath = "";
+      for (let i = 0; i < parts.length; i++) {
+        currentPath = currentPath ? `${currentPath}/${parts[i]!}` : parts[i]!;
+        ensureDirectoryNode(nodeMap, root, currentPath, parts[i]!);
+      }
+      continue;
     }
 
-    // Add the file node.
+    let currentPath = "";
+    for (let i = 0; i < parts.length - 1; i++) {
+      currentPath = currentPath ? `${currentPath}/${parts[i]!}` : parts[i]!;
+      ensureDirectoryNode(nodeMap, root, currentPath, parts[i]!);
+    }
+
     const fileNode: FileSystemTreeNode = {
       name: parts[parts.length - 1]!,
       path: relativePath,
@@ -264,43 +283,6 @@ export function buildSandboxTree(
       parent.children.push(fileNode);
     } else {
       root.push(fileNode);
-    }
-  }
-
-  for (const entry of entries.filter((e) => e.isDirectory)) {
-    const slashIdx = entry.path.indexOf("/");
-    const relativePath =
-      slashIdx >= 0 ? entry.path.slice(slashIdx + 1) : entry.path;
-
-    if (!relativePath || nodeMap.has(relativePath)) {
-      continue;
-    }
-
-    const parts = relativePath.split("/");
-    let currentPath = "";
-    for (let i = 0; i < parts.length; i++) {
-      currentPath = currentPath ? `${currentPath}/${parts[i]!}` : parts[i]!;
-      if (nodeMap.has(currentPath)) {
-        continue;
-      }
-
-      const dirNode: FileSystemTreeNode = {
-        name: parts[i]!,
-        path: currentPath,
-        isDirectory: true,
-        contentType: null,
-        fileId: null,
-        children: [],
-      };
-      nodeMap.set(currentPath, dirNode);
-
-      const parentPath = currentPath.substring(0, currentPath.lastIndexOf("/"));
-      const parent = parentPath ? nodeMap.get(parentPath) : undefined;
-      if (parent) {
-        parent.children.push(dirNode);
-      } else {
-        root.push(dirNode);
-      }
     }
   }
 
@@ -342,7 +324,7 @@ function filterDirectoryNodes(
 export function buildFolderTree(
   entries: GCSMountEntry[]
 ): FileSystemTreeNode[] {
-  return filterDirectoryNodes(buildSandboxTree(entries));
+  return filterDirectoryNodes(buildFileSystemTree(entries));
 }
 
 export function countFoldersInTree(nodes: FileSystemTreeNode[]): number {

@@ -6,7 +6,7 @@ import type {
   FileSystemTreeNode,
 } from "@app/components/file_explorer/types";
 import {
-  buildSandboxTree,
+  buildFileSystemTree,
   compareTreeNodesForSort,
   getChildrenAtFolderPath,
   getFileExplorerBucket,
@@ -69,7 +69,7 @@ export function getFileExplorerPipeline({
     entryByRelativePath.set(node.path, node);
   }
 
-  const tree = buildSandboxTree(files);
+  const tree = buildFileSystemTree(files);
 
   // Synthetic tree nodes for content-node entries — always flat, at root level.
   const contentNodeTreeNodes: FileSystemTreeNode[] = contentNodes.map((cn) => ({
