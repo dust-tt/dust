@@ -239,7 +239,16 @@ function pad(value: string, width: number): string {
     : value + " ".repeat(width - value.length);
 }
 
-function isProxyDenyEntry(value: unknown, expectedDomain: string): boolean {
+interface ProxyDenyEntry {
+  domain: string;
+  port: number;
+  reason: string;
+}
+
+function isProxyDenyEntry(
+  value: unknown,
+  expectedDomain: string
+): value is ProxyDenyEntry {
   if (!value || typeof value !== "object") {
     return false;
   }
