@@ -31,6 +31,7 @@ import {
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
+  GEMINI_3_5_FLASH_MODEL_ID,
   GEMINI_3_FLASH_MODEL_ID,
   GEMINI_3_PRO_MODEL_ID,
 } from "@app/types/assistant/models/google_ai_studio";
@@ -130,6 +131,10 @@ export const MODELS: Record<
   [GEMINI_3_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
   [GEMINI_3_1_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
   [GEMINI_3_FLASH_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
+  [GEMINI_3_5_FLASH_MODEL_ID]: {
+    runTest: false,
+    providerId: "google_ai_studio",
+  },
   // Mistral models
   [MISTRAL_CODESTRAL_MODEL_ID]: { runTest: false, providerId: "mistral" },
   [MISTRAL_LARGE_MODEL_ID]: { runTest: false, providerId: "mistral" },
