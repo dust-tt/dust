@@ -96,6 +96,9 @@ const config = {
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
   },
+  getMigrationApiSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_MIGRATION_API_SECRET");
+  },
   getIPInfoApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("IPINFO_API_TOKEN");
   },

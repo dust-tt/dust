@@ -40,6 +40,9 @@ export const apiConfig = {
   getDustConnectorsWebhooksSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_CONNECTORS_WEBHOOKS_SECRET");
   },
+  getMigrationApiSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_MIGRATION_API_SECRET");
+  },
   getConnectorsPublicURL: (): string => {
     return EnvironmentConfig.getEnvVariable("CONNECTORS_PUBLIC_URL");
   },

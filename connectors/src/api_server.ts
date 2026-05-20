@@ -7,6 +7,7 @@ import {
   getConnectorsAPIHandler,
 } from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
+import { getAppliedMigrationsHandler } from "@connectors/api/migrations";
 import { getNotionUrlStatusHandler } from "@connectors/api/notion_url_status";
 import { pauseConnectorAPIHandler } from "@connectors/api/pause_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
@@ -56,6 +57,10 @@ export function startServer(port: number) {
   app.get("/", (_req, res) => {
     res.status(200).send("OK");
   });
+
+  // Migration deploy gate -- gated by its own pre-shared secret, bypasses
+  // authMiddleware so the dust repo's CI can call it without DUST_CONNECTORS_SECRET.
+  app.get("/migration/applied/:phase", getAppliedMigrationsHandler);
 
   app.use(
     bodyParser.json({
