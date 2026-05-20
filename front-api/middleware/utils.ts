@@ -22,7 +22,7 @@ import type { APIErrorWithStatusCode } from "@app/types/error";
  */
 export function apiError(
   c: Context,
-  err: APIErrorWithStatusCode,
+  err: APIErrorWithStatusCode<ContentfulStatusCode>,
   error?: Error
 ) {
   const callstack = new Error().stack;
@@ -55,10 +55,7 @@ export function apiError(
     `error_type:${err.api_error.type}`,
   ]);
 
-  return c.json(
-    { error: err.api_error },
-    err.status_code as ContentfulStatusCode
-  );
+  return c.json({ error: err.api_error }, err.status_code);
 }
 
 export function parseCookieHeader(
