@@ -8,6 +8,7 @@ describe("getConversationDisplayTitle", () => {
     parentConversationTitle: "Quarterly review",
     sourceMessageId: "msg_source",
     branchedAt: now.getTime(),
+    fileCopyStatus: "done" as const,
     user: {
       sId: "user_1",
       id: 1,

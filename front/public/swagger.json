@@ -10122,7 +10122,8 @@
           "parentConversationTitle",
           "sourceMessageId",
           "branchedAt",
-          "user"
+          "user",
+          "fileCopyStatus"
         ],
         "properties": {
           "parentConversationId": {
@@ -10140,6 +10141,13 @@
           },
           "user": {
             "$ref": "#/components/schemas/PrivateConversationForkUser"
+          },
+          "fileCopyStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "done"
+            ]
           }
         }
       },

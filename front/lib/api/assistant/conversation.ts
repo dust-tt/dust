@@ -611,6 +611,18 @@ export async function postUserMessage(
     return limitResult;
   }
 
+  // Block posting until GCS files have been copied into the child conversation.
+  if (conversation.forkingData?.forkedFrom?.fileCopyStatus === "pending") {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "User messages cannot be posted while the forked conversation is being prepared.",
+      },
+    });
+  }
+
   // Block posting while compaction is in progress, for now. It's not too hard to add support for
   // pending messages on top of compaction. We start without support for it to simplify. Note that
   // we don't currently re-check the existence of a compaction message inside the critical section

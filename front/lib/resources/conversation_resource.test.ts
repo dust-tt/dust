@@ -210,6 +210,7 @@ describe("ConversationResource", () => {
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
           user: auth.getNonNullableUser().toJSON(),
+          fileCopyStatus: "pending",
         },
       });
 
@@ -242,6 +243,7 @@ describe("ConversationResource", () => {
             sourceMessageId: sourceMessage.sId,
             branchedAt: branchedAt.getTime(),
             user: auth.getNonNullableUser().toJSON(),
+            fileCopyStatus: "pending",
           },
         });
       }
@@ -341,6 +343,7 @@ describe("ConversationResource", () => {
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
           user: adminAuth.getNonNullableUser().toJSON(),
+          fileCopyStatus: "pending",
         },
       });
     });

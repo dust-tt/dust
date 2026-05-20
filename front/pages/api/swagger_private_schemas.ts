@@ -191,6 +191,7 @@
  *         - sourceMessageId
  *         - branchedAt
  *         - user
+ *         - fileCopyStatus
  *       properties:
  *         parentConversationId:
  *           type: string
@@ -203,6 +204,9 @@
  *           type: integer
  *         user:
  *           $ref: '#/components/schemas/PrivateConversationForkUser'
+ *         fileCopyStatus:
+ *           type: string
+ *           enum: [pending, done]
  *     PrivateConversationForkedChild:
  *       type: object
  *       properties:

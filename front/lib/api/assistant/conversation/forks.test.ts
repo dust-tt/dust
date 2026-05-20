@@ -514,6 +514,7 @@ describe("createConversationFork", () => {
         sourceMessageId: sourceMessage.sId,
         branchedAt: expect.any(Number),
         user: user.toJSON(),
+        fileCopyStatus: "pending",
       },
     });
     expect(childConversation.content).toHaveLength(1);

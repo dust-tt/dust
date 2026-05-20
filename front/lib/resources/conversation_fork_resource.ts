@@ -200,6 +200,7 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
         createdByUserId: user.id,
         sourceMessageId: blob.sourceMessageModelId,
         branchedAt: blob.branchedAt,
+        fileCopyStatus: "pending",
       },
       { transaction }
     );
@@ -209,6 +210,23 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     });
     assert(resource, "Created conversation fork must be fetchable.");
     return resource;
+  }
+
+  static async markFileCopied(
+    auth: Authenticator,
+    { childConversationModelId }: { childConversationModelId: ModelId }
+  ): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+
+    await this.model.update(
+      { fileCopyStatus: "done" },
+      {
+        where: {
+          childConversationId: childConversationModelId,
+          workspaceId: owner.id,
+        },
+      }
+    );
   }
 
   static async fetchByModelIds(
