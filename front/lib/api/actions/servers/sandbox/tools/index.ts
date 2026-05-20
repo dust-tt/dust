@@ -115,6 +115,8 @@ async function redactSandboxEnvVarsFromOutput(
   auth: Authenticator,
   output: string
 ): Promise<Result<string, Error>> {
+  // loadEnv is intentionally config-only. HTTPS secrets are injected as DSEC
+  // placeholders and their real values should never be materialized here.
   const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(auth);
   if (envResult.isErr()) {
     return envResult;

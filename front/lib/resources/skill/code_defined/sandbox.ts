@@ -199,23 +199,61 @@ function buildEnvironmentVariablesSection(): string {
   return `#### Sandbox Environment Variables
 
 The sandbox may have workspace-configured environment variables available
-in the bash shell and to any code you run. All workspace-configured names
-are prefixed with \`DST_\` (e.g. \`DST_API_TOKEN\`, \`DST_SERVICE_KEY\`).
-If a tool, CLI, or SDK expects a specific unprefixed name, you must read
-the \`DST_\`-prefixed variable and re-export it under the expected name
-yourself before invoking the tool — for example
-\`SOMETOOL_TOKEN=\$DST_SOMETOOL_TOKEN some-cli ...\`. You may use these
-variables to authenticate with APIs or pass them into code paths that
-consume them, but you must never print, echo, \`cat\`, or otherwise
-disclose an environment variable value. Do not include a value in output,
-logs, error messages, or final answers. Do not re-encode, transform, or
-split a value to bypass this rule. Do not list available environment
-variable names just to enumerate what is configured.
+in the bash shell and to any code you run. Treat all of them as sensitive.
 
-If a user asks for a secret value, refuse and say it is not viewable. If you
-need to confirm a variable is set, check whether it is non-empty without
-printing its content (e.g. \`[ -n "\$DST_FOO" ]\` in bash) — do not read or
-print the value.
+There are two prefixes:
+
+- \`DST_*\`: configuration values injected as normal environment variables.
+  Use them for local configuration and API clients, but never print them.
+- \`DSEC_*\`: HTTPS secret placeholders. The value in the environment is
+  intentionally not the real secret. Send it as an HTTPS request header to
+  the domain approved for that secret; the egress proxy substitutes the real
+  value on the wire.
+
+Hard rules for environment variables:
+
+- Never print, echo, \`cat\`, log, summarize, or otherwise disclose a
+  configured value. If a user asks for a secret value, refuse and say it is
+  not viewable.
+- Do not try to extract, decode, recover, or inspect the real value behind a
+  \`DSEC_*\` placeholder. The placeholder is all your process is supposed to
+  see.
+- Do not transform a \`DSEC_*\` placeholder before sending it. Do not URL
+  encode it, split it across fields, put it in a request body, write it to a
+  file and re-read it, sign with it, or use it in HMAC/SigV4 flows. The
+  exception is standard HTTP Basic auth: it is OK to let a client encode
+  \`user:$DSEC_SECRET\` or \`$DSEC_SECRET:\` into
+  \`Authorization: Basic ...\`.
+- Use a \`DSEC_*\` secret only with its approved HTTPS destination. Cross-
+  domain use will not substitute and the request will fail.
+- Do not pass custom TLS trust settings such as Python \`verify=\`, Node
+  \`ca\`, Go \`RootCAs\`/\`tls.Config\`, Rust custom root stores, Java custom
+  trust managers, or \`-Djavax.net.ssl.trustStore\`. They can bypass the
+  sandbox trust bundle and break TLS to substituted domains.
+
+If a tool, CLI, or SDK expects a specific unprefixed name, re-export the
+prefixed variable under the expected name in the same process before using
+the tool. For example:
+
+\`\`\`python
+import os
+os.environ["OPENAI_API_KEY"] = os.environ["DSEC_OPENAI_API_KEY"]
+\`\`\`
+
+Then use the SDK normally. This only aliases the placeholder; the real value
+is still substituted by the egress proxy when the SDK sends HTTPS headers.
+
+For Rust HTTP clients, prefer \`reqwest\` default features or
+\`rustls-tls-native-roots\`. Do not use \`rustls-tls\` with webpki-roots for
+\`DSEC_*\` traffic because it ignores the system trust store. For Java/JVM,
+use the JDK that came with the sandbox image; do not install another JDK or
+override the trust store mid-session. If you ignore this, the usual symptom
+is a TLS error such as \`PKIX path building failed\`.
+
+If you need to confirm a variable is set, check whether it is non-empty
+without printing its content (e.g. \`[ -n "\$DST_FOO" ]\` or
+\`[ -n "\$DSEC_FOO" ]\` in bash). Do not list available environment variable
+names just to enumerate what is configured.
 
 Bash tool output that contains a configured environment variable value is
 post-processed and replaced with a marker like \`«redacted: $FOO»\`. If you
