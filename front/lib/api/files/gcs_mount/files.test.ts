@@ -7,6 +7,8 @@ import {
   deleteGCSMountFile,
   type GCSMountFileEntry,
   getConversationFileMountSignedUrl,
+  getGCSPathFromScopedPath,
+  getScopedPathFromGCSPath,
   listGCSMountFiles,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
@@ -724,5 +726,37 @@ describe("deleteGCSMountFile", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("delete failed");
     }
+  });
+});
+
+describe("scoped path ↔ GCS path", () => {
+  const prefix = "w/ws1/projects/proj1/files/";
+
+  it("getScopedPathFromGCSPath is the inverse of getGCSPathFromScopedPath", () => {
+    const scopedPath = "project/reports/report_fil_abc.pdf";
+    const gcsPath = getGCSPathFromScopedPath({
+      prefix,
+      scopedPath,
+      useCase: "project",
+    });
+    expect(gcsPath).toBe(`${prefix}reports/report_fil_abc.pdf`);
+
+    expect(
+      getScopedPathFromGCSPath({
+        prefix,
+        gcsPath: gcsPath!,
+        useCase: "project",
+      })
+    ).toBe(scopedPath);
+  });
+
+  it("getScopedPathFromGCSPath returns null when the path is outside the prefix", () => {
+    expect(
+      getScopedPathFromGCSPath({
+        prefix,
+        gcsPath: "w/ws1/projects/other/files/file.txt",
+        useCase: "project",
+      })
+    ).toBeNull();
   });
 });

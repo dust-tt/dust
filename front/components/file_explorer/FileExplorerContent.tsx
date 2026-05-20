@@ -11,7 +11,7 @@ import type {
   FileEntry,
   FileExplorerEntry,
   FileExplorerMenuAction,
-  SandboxTreeNode,
+  FileSystemTreeNode,
 } from "@app/components/file_explorer/types";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { CardGrid, ScrollArea, Spinner } from "@dust-tt/sparkle";
@@ -22,7 +22,7 @@ const cardGridClasses =
 
 interface FileExplorerContentProps {
   isLoading: boolean;
-  sortedNodes: SandboxTreeNode[];
+  sortedNodes: FileSystemTreeNode[];
   entryByRelativePath: Map<string, FileExplorerEntry>;
   viewMode: ViewMode;
   isEmpty: boolean;
@@ -31,7 +31,7 @@ interface FileExplorerContentProps {
   parentFolderDropPath?: string;
   parentFolderLabel?: string;
   onGoUp?: () => void;
-  onFolderNavigate: (node: SandboxTreeNode) => void;
+  onFolderNavigate: (node: FileSystemTreeNode) => void;
   onFileOpen: (entry: FileEntry) => void;
   onFileDownload: (entry: FileEntry) => Promise<void>;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;

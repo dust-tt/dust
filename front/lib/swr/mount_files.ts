@@ -5,6 +5,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+function sourcePathToUrlPath(sourcePath: string): string {
+  return sourcePath.split("/").map(encodeURIComponent).join("/");
+}
+
 /**
  * Move a file within a GCS mount listing API.
  *
@@ -19,21 +23,22 @@ export function useMoveMountFile({
   const sendNotification = useSendNotification();
 
   return async ({
-    scopedPath,
-    parentRelativePath,
+    relativeFilePath,
+    destRelativeFilePath,
   }: {
-    /** Scoped mount path, e.g. `project/reports/q1/file.pdf`. */
-    scopedPath: string;
-    parentRelativePath?: string;
+    /** Source path relative to the mount root (no scope prefix). */
+    relativeFilePath: string;
+    destRelativeFilePath: string;
   }): Promise<Result<void, Error>> => {
     try {
-      const res = await clientFetch(`${filesApiBasePath}/${scopedPath}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...(parentRelativePath ? { parentRelativePath } : {}),
-        }),
-      });
+      const res = await clientFetch(
+        `${filesApiBasePath}/${sourcePathToUrlPath(relativeFilePath)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ destRelativeFilePath }),
+        }
+      );
 
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);

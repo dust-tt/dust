@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getScopedPathFromGCSPath } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
   getProjectFilesBasePath,
@@ -53,13 +54,24 @@ export async function resolveHandler(
       );
     }
 
-    const prefix = getConversationFilesBasePath({
-      workspaceId: owner.sId,
-      conversationId: conversation.sId,
+    const scopedPath = getScopedPathFromGCSPath({
+      prefix: getConversationFilesBasePath({
+        workspaceId: owner.sId,
+        conversationId: conversation.sId,
+      }),
+      gcsPath: file.mountFilePath,
+      useCase: "conversation",
     });
-    const relPath = file.mountFilePath.slice(prefix.length);
+    if (!scopedPath) {
+      return new Err(
+        new MCPError(
+          `File \`${file_id}\` does not belong to this conversation.`,
+          { tracked: false }
+        )
+      );
+    }
 
-    return new Ok([{ type: "text", text: `conversation/${relPath}` }]);
+    return new Ok([{ type: "text", text: scopedPath }]);
   }
 
   if (useCase === "project_context") {
@@ -92,13 +104,24 @@ export async function resolveHandler(
       );
     }
 
-    const prefix = getProjectFilesBasePath({
-      workspaceId: owner.sId,
-      projectId: spaceId,
+    const scopedPath = getScopedPathFromGCSPath({
+      prefix: getProjectFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: spaceId,
+      }),
+      gcsPath: file.mountFilePath,
+      useCase: "project",
     });
-    const relPath = file.mountFilePath.slice(prefix.length);
+    if (!scopedPath) {
+      return new Err(
+        new MCPError(
+          `File \`${file_id}\` does not belong to the project of this conversation.`,
+          { tracked: false }
+        )
+      );
+    }
 
-    return new Ok([{ type: "text", text: `project/${relPath}` }]);
+    return new Ok([{ type: "text", text: scopedPath }]);
   }
 
   return new Err(

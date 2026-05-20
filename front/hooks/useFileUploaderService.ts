@@ -37,6 +37,8 @@ export interface FileBlob {
   publicUrl?: string;
   iconName?: string;
   provider?: string;
+  /** Scoped mount path from upload (same as `GCSMountEntryBase.path`). */
+  path?: string | null;
 }
 export type FileBlobWithFileId = FileBlob & { fileId: string };
 
@@ -251,6 +253,7 @@ export function useFileUploaderService({
             isUploading: false,
             sourceUrl: fileUploaded.downloadUrl,
             publicUrl: file.publicUrl,
+            path: fileUploaded.path,
           });
         },
         { concurrency: 4 }

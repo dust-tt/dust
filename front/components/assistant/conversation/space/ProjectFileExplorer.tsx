@@ -13,6 +13,10 @@ import type {
   FileExplorerEntry,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
+import {
+  getScopedRelativePath,
+  joinMountRelativePath,
+} from "@app/components/file_explorer/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -358,11 +362,27 @@ function ProjectFileExplorerContent({
 
       if (podMountParentRelativePath) {
         for (const blob of uploadedBlobs) {
+          if (!blob.path) {
+            console.error(
+              "File has no scoped mount path and cannot be moved within pod.",
+              blob
+            );
+            continue;
+          }
+          const fileName = blob.path.split("/").pop() ?? blob.filename;
           const moveResult = await moveMountFile({
-            scopedPath: `project/${blob.filename}`,
-            parentRelativePath: podMountParentRelativePath,
+            relativeFilePath: getScopedRelativePath(blob.path),
+            destRelativeFilePath: joinMountRelativePath(
+              podMountParentRelativePath,
+              fileName
+            ),
           });
           if (moveResult.isErr()) {
+            console.error(
+              "Failed to move file within pod.",
+              moveResult.error,
+              blob
+            );
             break;
           }
         }
@@ -452,8 +472,11 @@ function ProjectFileExplorerContent({
   const onMoveFile = useCallback(
     async (entry: FileEntry, parentRelativePath: string) => {
       const result = await moveMountFile({
-        scopedPath: entry.path,
-        parentRelativePath: parentRelativePath || undefined,
+        relativeFilePath: getScopedRelativePath(entry.path),
+        destRelativeFilePath: joinMountRelativePath(
+          parentRelativePath,
+          entry.fileName
+        ),
       });
       if (result.isOk()) {
         await refreshProjectFiles();

@@ -10,6 +10,7 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
+import { getScopedPathFromGCSPath } from "@app/lib/api/files/gcs_mount/files";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import {
   PASTED_CONTENT_MAX_CHARACTERS,
@@ -93,16 +94,11 @@ function getConversationFilePath({
     return null;
   }
 
-  const prefix = getConversationFilesBasePath({
-    workspaceId,
-    conversationId,
+  return getScopedPathFromGCSPath({
+    prefix: getConversationFilesBasePath({ workspaceId, conversationId }),
+    gcsPath: mountFilePath,
+    useCase: "conversation",
   });
-
-  if (!mountFilePath.startsWith(prefix)) {
-    return null;
-  }
-
-  return `conversation/${mountFilePath.slice(prefix.length)}`;
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.

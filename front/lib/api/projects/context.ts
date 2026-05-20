@@ -12,7 +12,8 @@ import {
   moveFile,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
-import { moveMountFile } from "@app/lib/api/files/mount_file_ops";
+import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
+import type { ResolveMountFilePathError } from "@app/lib/api/files/mount_path";
 import {
   getProjectFilesBasePath,
   joinMountRelativePath,
@@ -519,14 +520,14 @@ export async function moveProjectFile(
   auth: Authenticator,
   {
     space,
-    relativeFilePath,
-    parentRelativePath,
+    sourcePath,
+    destRelativeFilePath,
   }: {
     space: SpaceResource;
-    relativeFilePath: string;
-    parentRelativePath?: string;
+    sourcePath: string;
+    destRelativeFilePath: string;
   }
-): Promise<Result<void, DustError | Error>> {
+): Promise<Result<void, DustError | ResolveMountFilePathError | Error>> {
   if (!space.isProject()) {
     return new Err({
       name: "dust_error",
@@ -535,10 +536,10 @@ export async function moveProjectFile(
     });
   }
 
-  return moveMountFile(
+  return moveMountFileWithinScope(
     auth,
     { useCase: "project", projectId: space.sId },
-    { relativeFilePath, parentRelativePath }
+    { sourcePath, destRelativeFilePath }
   );
 }
 

@@ -83,7 +83,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
       const { req, res } = await makeProjectRequest("GET", ["report.pdf"]);
       await handler(req, res);
       expect(res._getStatusCode()).toBe(400);
-      expect(res._getJSONData().error.message).toMatch(/project\//);
+      expect(res._getJSONData().error.message).toMatch(/scope prefix/i);
     });
 
     it("returns 403 for path traversal attempts", async () => {
@@ -275,8 +275,8 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
     it("returns 200 and calls moveProjectFile with the right args", async () => {
       const { req, res, project } = await makeProjectRequest(
         "POST",
-        ["project", "reports", "file.txt"],
-        { body: { parentRelativePath: "archive" } }
+        ["reports", "file.txt"],
+        { body: { destRelativeFilePath: "archive/file.txt" } }
       );
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -284,8 +284,8 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
         expect.anything(),
         {
           space: expect.objectContaining({ sId: project.sId }),
-          relativeFilePath: "reports/file.txt",
-          parentRelativePath: "archive",
+          sourcePath: "reports/file.txt",
+          destRelativeFilePath: "archive/file.txt",
         }
       );
     });
@@ -294,11 +294,9 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
       vi.spyOn(projectsContext, "moveProjectFile").mockResolvedValue(
         new Err(new Error("GCS error"))
       );
-      const { req, res } = await makeProjectRequest(
-        "POST",
-        ["project", "file.txt"],
-        { body: {} }
-      );
+      const { req, res } = await makeProjectRequest("POST", ["file.txt"], {
+        body: { destRelativeFilePath: "file.txt" },
+      });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(500);
     });

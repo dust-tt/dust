@@ -36,13 +36,13 @@ export type FilePanelCategory =
   | "knowledge"
   | "other";
 
-export type SandboxTreeNode = {
+export type FileSystemTreeNode = {
   name: string;
   path: string;
   isDirectory: boolean;
   contentType: string | null;
   fileId: string | null;
-  children: SandboxTreeNode[];
+  children: FileSystemTreeNode[];
 };
 
 export type FileExplorerBucket =

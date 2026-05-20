@@ -3,7 +3,7 @@ import type {
   FileExplorerEntry,
   FileExplorerFilter,
   FileExplorerSortMode,
-  SandboxTreeNode,
+  FileSystemTreeNode,
 } from "@app/components/file_explorer/types";
 import {
   buildSandboxTree,
@@ -16,7 +16,7 @@ import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 
 export interface FileExplorerPipeline {
   /** Tree nodes at the current folder level, filtered + sorted. */
-  sortedNodes: SandboxTreeNode[];
+  sortedNodes: FileSystemTreeNode[];
   /** Count of items per filter bucket (post-search). Used by the chip row. */
   filterCounts: Partial<Record<FileExplorerFilter, number>>;
   folderCount: number;
@@ -72,7 +72,7 @@ export function getFileExplorerPipeline({
   const tree = buildSandboxTree(files);
 
   // Synthetic tree nodes for content-node entries — always flat, at root level.
-  const contentNodeTreeNodes: SandboxTreeNode[] = contentNodes.map((cn) => ({
+  const contentNodeTreeNodes: FileSystemTreeNode[] = contentNodes.map((cn) => ({
     name: cn.fileName,
     path: cn.path,
     isDirectory: false,

@@ -5,8 +5,9 @@ import {
 import {
   getConversationFilesBasePath,
   getProjectFilesBasePath,
-  joinMountRelativePath,
-  normalizeMountParentRelativePath,
+  normalizeAndValidateMountRelativeFilePath,
+  type ResolveMountFilePathError,
+  resolveMoveSourcePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -48,38 +49,49 @@ function defaultDestUseCaseMetadata(scope: GCSMountPoint): FileUseCaseMetadata {
 }
 
 /**
- * Move a file within a GCS mount by its path relative to the mount root (no scope prefix).
- * Updates the linked FileResource when one exists at the source path; otherwise GCS only.
+ * Move a file within a GCS mount. Source accepts a scoped listing path
+ * (`project/foo.pdf`), a mount-relative path (`foo.pdf`), or a full GCS path (`w/...`).
+ * Destination is relative to the mount root (no scope prefix).
  */
-export async function moveMountFile(
+export async function moveMountFileWithinScope(
   auth: Authenticator,
   scope: GCSMountPoint,
   {
-    relativeFilePath,
-    parentRelativePath,
+    sourcePath,
+    destRelativeFilePath,
   }: {
-    relativeFilePath: string;
-    parentRelativePath?: string;
+    sourcePath: string;
+    destRelativeFilePath: string;
   }
-): Promise<Result<void, Error>> {
-  const parentRes = normalizeMountParentRelativePath(parentRelativePath);
-  if (parentRes.isErr()) {
-    return parentRes;
-  }
-
-  const fileName = relativeFilePath.split("/").pop();
-  if (!fileName) {
-    return new Err(new Error("Invalid file path."));
-  }
-
-  const destRelativeFilePath = joinMountRelativePath(parentRes.value, fileName);
-
+): Promise<Result<void, ResolveMountFilePathError | Error>> {
   const prefix = resolveMountPrefix(auth, scope);
-  const sourceGcsPath = `${prefix}${relativeFilePath}`;
-  const destGcsPath = `${prefix}${destRelativeFilePath}`;
 
+  const sourceRes = resolveMoveSourcePath({
+    sourcePath,
+    expectedPrefix: scope.useCase,
+    mountBasePath: prefix,
+  });
+  if (sourceRes.isErr()) {
+    return sourceRes;
+  }
+
+  const destRes =
+    normalizeAndValidateMountRelativeFilePath(destRelativeFilePath);
+  if (destRes.isErr()) {
+    return destRes;
+  }
+
+  const sourceGcsPath = sourceRes.value.normalizedMountFilePath;
+  const dest = destRes.value;
+
+  const destGcsPath = `${prefix}${dest}`;
   if (sourceGcsPath === destGcsPath) {
     return new Ok(undefined);
+  }
+
+  const destFileName = dest.split("/").pop();
+  if (!destFileName) {
+    return new Err(new Error("Invalid destination file path."));
   }
 
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
@@ -91,8 +103,8 @@ export async function moveMountFile(
     file,
     sourceGcsPath,
     destScope: scope,
-    destRelativeFilePath,
-    destFileName: fileName,
+    destRelativeFilePath: dest,
+    destFileName,
     destUseCase: file?.useCase ?? defaultDestUseCase(scope),
     destUseCaseMetadata:
       file?.useCaseMetadata ?? defaultDestUseCaseMetadata(scope),

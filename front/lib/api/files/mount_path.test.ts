@@ -5,9 +5,15 @@ import {
   getConversationFilesBasePath,
   getProjectFilesBasePath,
   makeProcessedMountFileName,
+  normalizeAndValidateMountRelativeFilePath,
   normalizeMountParentRelativePath,
   parseProcessedFilename,
   parseScopedFilePath,
+  ResolveScopedMountFilePathError,
+  resolveMountFilePath,
+  resolveMountFileSourcePath,
+  resolveMoveSourcePath,
+  resolveScopedMountFilePath,
   validateMountFolderName,
 } from "@app/lib/api/files/mount_path";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -197,6 +203,185 @@ describe("mount_path helpers", () => {
       expect(validateMountFolderName("").isErr()).toBe(true);
       expect(validateMountFolderName("a/b").isErr()).toBe(true);
       expect(validateMountFolderName("..").isErr()).toBe(true);
+    });
+  });
+
+  describe("resolveScopedMountFilePath", () => {
+    const mountBasePath = "w/ws123/projects/proj456/files/";
+
+    it("rejects invalid scope prefix", () => {
+      const result = resolveScopedMountFilePath({
+        relPath: "conversation/file.txt",
+        expectedPrefix: "project",
+        mountBasePath,
+      });
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(
+          ResolveScopedMountFilePathError.isResolveScopedMountFilePathError(
+            result.error
+          )
+        ).toBe(true);
+        if (
+          ResolveScopedMountFilePathError.isResolveScopedMountFilePathError(
+            result.error
+          )
+        ) {
+          expect(result.error.code).toBe("invalid_prefix");
+        }
+      }
+    });
+
+    it("rejects path traversal", () => {
+      const result = resolveScopedMountFilePath({
+        relPath: "project/../other/file.txt",
+        expectedPrefix: "project",
+        mountBasePath,
+      });
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(
+          ResolveScopedMountFilePathError.isResolveScopedMountFilePathError(
+            result.error
+          )
+        ).toBe(true);
+        if (
+          ResolveScopedMountFilePathError.isResolveScopedMountFilePathError(
+            result.error
+          )
+        ) {
+          expect(result.error.code).toBe("outside_scope");
+        }
+      }
+    });
+
+    it("returns normalized relative and GCS paths", () => {
+      const result = resolveScopedMountFilePath({
+        relPath: "project/reports/../reports/file.txt",
+        expectedPrefix: "project",
+        mountBasePath,
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.normalizedRelative).toBe("reports/file.txt");
+        expect(result.value.normalizedGcsPath).toBe(
+          `${mountBasePath}reports/file.txt`
+        );
+      }
+    });
+  });
+
+  describe("resolveMoveSourcePath", () => {
+    const mountBasePath = "w/ws123/projects/proj1/files/";
+
+    it("resolves a scoped listing path", () => {
+      const result = resolveMoveSourcePath({
+        sourcePath: "project/reports/report_fil_abc.pdf",
+        expectedPrefix: "project",
+        mountBasePath,
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.normalizedMountFilePath).toBe(
+          `${mountBasePath}reports/report_fil_abc.pdf`
+        );
+      }
+    });
+
+    it("resolves a mount-relative path", () => {
+      const result = resolveMoveSourcePath({
+        sourcePath: "reports/file.txt",
+        expectedPrefix: "project",
+        mountBasePath,
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.normalizedMountFilePath).toBe(
+          `${mountBasePath}reports/file.txt`
+        );
+      }
+    });
+
+    it("rejects a scoped path with the wrong prefix", () => {
+      const result = resolveMoveSourcePath({
+        sourcePath: "conversation/file.txt",
+        expectedPrefix: "project",
+        mountBasePath,
+      });
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("invalid_path");
+      }
+    });
+  });
+
+  describe("resolveMountFileSourcePath", () => {
+    const mountBasePath = "w/ws123/conversations/conv1/files/";
+
+    it("resolves a mount-relative path", () => {
+      const result = resolveMountFileSourcePath({
+        sourcePath: "reports/file.txt",
+        mountBasePath,
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.normalizedMountFilePath).toBe(
+          `${mountBasePath}reports/file.txt`
+        );
+      }
+    });
+  });
+
+  describe("resolveMountFilePath", () => {
+    const mountBasePath = "w/ws123/conversations/conv1/files/";
+
+    it("rejects path traversal", () => {
+      const result = resolveMountFilePath({
+        mountFilePath: `${mountBasePath}../other/file.txt`,
+        mountBasePath,
+      });
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("outside_scope");
+      }
+    });
+
+    it("returns the normalized mount file path", () => {
+      const result = resolveMountFilePath({
+        mountFilePath: `${mountBasePath}reports/../reports/file.txt`,
+        mountBasePath,
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.normalizedMountFilePath).toBe(
+          `${mountBasePath}reports/file.txt`
+        );
+      }
+    });
+  });
+
+  describe("normalizeAndValidateMountRelativeFilePath", () => {
+    it("rejects empty paths", () => {
+      expect(normalizeAndValidateMountRelativeFilePath("").isErr()).toBe(true);
+      expect(normalizeAndValidateMountRelativeFilePath("  ").isErr()).toBe(
+        true
+      );
+    });
+
+    it("rejects path traversal", () => {
+      expect(
+        normalizeAndValidateMountRelativeFilePath("../evil.txt").isErr()
+      ).toBe(true);
+    });
+
+    it("normalizes nested file paths", () => {
+      const result = normalizeAndValidateMountRelativeFilePath(
+        "/archive/report.pdf"
+      );
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe("archive/report.pdf");
+      }
     });
   });
 

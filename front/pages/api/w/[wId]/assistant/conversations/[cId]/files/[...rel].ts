@@ -1,9 +1,10 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { moveMountFile } from "@app/lib/api/files/mount_file_ops";
+import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
 import {
   getConversationFilesBasePath,
-  parseScopedFilePath,
+  isResolveMountFilePathError,
+  resolveScopedMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,9 +13,9 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import path from "path";
 import { fromError } from "zod-validation-error";
 
 export type ConversationFileRelResponseBody = Record<string, never>;
@@ -47,38 +48,36 @@ async function handler(
   }
 
   const owner = auth.getNonNullableWorkspace();
-
-  const scopedPath = parseScopedFilePath(rel.join("/"));
-  if (!scopedPath || scopedPath.prefix !== "conversation") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Path must start with the scope prefix `conversation/`.",
-      },
-    });
-  }
-
-  const basePath = getConversationFilesBasePath({
+  const mountBasePath = getConversationFilesBasePath({
     workspaceId: owner.sId,
     conversationId: cId,
   });
-  const normalizedGcsPath = path.posix.normalize(
-    `${basePath}${scopedPath.rel}`
-  );
-  if (!normalizedGcsPath.startsWith(basePath)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Access denied: path is outside conversation scope.",
-      },
-    });
-  }
-  const normalizedRelative = scopedPath.rel;
+  const relPath = rel.join("/");
 
   switch (req.method) {
     case "GET": {
+      const pathRes = resolveScopedMountFilePath({
+        relPath,
+        expectedPrefix: "conversation",
+        mountBasePath,
+        outsideScopeMessage:
+          "Access denied: path is outside conversation scope.",
+      });
+      if (pathRes.isErr()) {
+        const { code, message } = pathRes.error;
+        return apiError(req, res, {
+          status_code: code === "outside_scope" ? 403 : 400,
+          api_error: {
+            type:
+              code === "outside_scope"
+                ? "workspace_auth_error"
+                : "invalid_request_error",
+            message,
+          },
+        });
+      }
+      const { normalizedGcsPath } = pathRes.value;
+
       const bucket = getPrivateUploadBucket();
       const contentTypeResult =
         await bucket.getFileContentType(normalizedGcsPath);
@@ -119,20 +118,33 @@ async function handler(
         });
       }
 
-      const moveResult = await moveMountFile(
+      const moveResult = await moveMountFileWithinScope(
         auth,
         { useCase: "conversation", conversationId: cId },
         {
-          relativeFilePath: normalizedRelative,
-          parentRelativePath: bodyValidation.data.parentRelativePath,
+          sourcePath: relPath,
+          destRelativeFilePath: bodyValidation.data.destRelativeFilePath,
         }
       );
       if (moveResult.isErr()) {
+        if (isResolveMountFilePathError(moveResult.error)) {
+          const { code, message } = moveResult.error;
+          return apiError(req, res, {
+            status_code: code === "outside_scope" ? 403 : 400,
+            api_error: {
+              type:
+                code === "outside_scope"
+                  ? "workspace_auth_error"
+                  : "invalid_request_error",
+              message,
+            },
+          });
+        }
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: moveResult.error.message,
+            message: normalizeError(moveResult.error).message,
           },
         });
       }

@@ -171,6 +171,213 @@ export function parseScopedFilePath(filePath: string): ScopedFilePath | null {
   return { prefix: prefixResult.data, rel: filePath.slice(slashIdx + 1) };
 }
 
+export class ResolveScopedMountFilePathError extends Error {
+  constructor(
+    readonly code: "invalid_prefix" | "outside_scope",
+    message: string
+  ) {
+    super(message);
+    this.name = "ResolveScopedMountFilePathError";
+  }
+
+  static isResolveScopedMountFilePathError(
+    error: unknown
+  ): error is ResolveScopedMountFilePathError {
+    return error instanceof ResolveScopedMountFilePathError;
+  }
+}
+
+/**
+ * Parse a scoped rel path, normalize it under `mountBasePath`, and reject traversal.
+ */
+export function resolveScopedMountFilePath({
+  relPath,
+  expectedPrefix,
+  mountBasePath,
+  outsideScopeMessage = "Access denied: path is outside mount scope.",
+}: {
+  relPath: string;
+  expectedPrefix: ScopedFilePathPrefix;
+  mountBasePath: string;
+  outsideScopeMessage?: string;
+}): Result<
+  { normalizedRelative: string; normalizedGcsPath: string },
+  ResolveScopedMountFilePathError
+> {
+  const scopedPath = parseScopedFilePath(relPath);
+  if (!scopedPath || scopedPath.prefix !== expectedPrefix) {
+    return new Err(
+      new ResolveScopedMountFilePathError(
+        "invalid_prefix",
+        "Path must start with the correct scope prefix."
+      )
+    );
+  }
+
+  const normalizedGcsPath = path.posix.normalize(
+    `${mountBasePath}${scopedPath.rel}`
+  );
+  if (!normalizedGcsPath.startsWith(mountBasePath)) {
+    return new Err(
+      new ResolveScopedMountFilePathError("outside_scope", outsideScopeMessage)
+    );
+  }
+
+  return new Ok({
+    normalizedRelative: normalizedGcsPath.slice(mountBasePath.length),
+    normalizedGcsPath,
+  });
+}
+
+export type ResolveMountFilePathError = {
+  code: "invalid_path" | "outside_scope";
+  message: string;
+};
+
+export function isResolveMountFilePathError(
+  error: unknown
+): error is ResolveMountFilePathError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "invalid_path" || error.code === "outside_scope")
+  );
+}
+
+/**
+ * Validate a full GCS mount file path (as stored on `FileResource.mountFilePath`)
+ * and ensure it lies under `mountBasePath`.
+ */
+export function resolveMountFilePath({
+  mountFilePath,
+  mountBasePath,
+  outsideScopeMessage = "Access denied: path is outside mount scope.",
+}: {
+  mountFilePath: string;
+  mountBasePath: string;
+  outsideScopeMessage?: string;
+}): Result<{ normalizedMountFilePath: string }, ResolveMountFilePathError> {
+  const normalizedMountFilePath = path.posix.normalize(
+    mountFilePath.trim().replace(/^\/+/, "")
+  );
+  if (!normalizedMountFilePath.startsWith(mountBasePath)) {
+    return new Err({
+      code: "outside_scope",
+      message: outsideScopeMessage,
+    });
+  }
+
+  const mountRelative = normalizedMountFilePath.slice(mountBasePath.length);
+  const validated = normalizeAndValidateMountRelativeFilePath(mountRelative);
+  if (validated.isErr()) {
+    return new Err({
+      code: "invalid_path",
+      message: validated.error.message,
+    });
+  }
+
+  return new Ok({ normalizedMountFilePath });
+}
+
+/**
+ * Resolve a move source path: scoped listing path (`project/foo.pdf`),
+ * mount-relative path (`foo.pdf`), or full GCS path (`w/...`).
+ */
+export function resolveMoveSourcePath({
+  sourcePath,
+  expectedPrefix,
+  mountBasePath,
+  outsideScopeMessage = "Access denied: path is outside mount scope.",
+}: {
+  sourcePath: string;
+  expectedPrefix: ScopedFilePathPrefix;
+  mountBasePath: string;
+  outsideScopeMessage?: string;
+}): Result<{ normalizedMountFilePath: string }, ResolveMountFilePathError> {
+  const trimmed = sourcePath.trim().replace(/^\/+/, "");
+
+  const scoped = parseScopedFilePath(trimmed);
+  if (scoped) {
+    if (scoped.prefix !== expectedPrefix) {
+      return new Err({
+        code: "invalid_path",
+        message: "Path must start with the correct scope prefix.",
+      });
+    }
+
+    const relativeRes = normalizeAndValidateMountRelativeFilePath(scoped.rel);
+    if (relativeRes.isErr()) {
+      return new Err({
+        code: "invalid_path",
+        message: relativeRes.error.message,
+      });
+    }
+
+    const normalizedMountFilePath = path.posix.normalize(
+      `${mountBasePath}${relativeRes.value}`
+    );
+    if (!normalizedMountFilePath.startsWith(mountBasePath)) {
+      return new Err({
+        code: "outside_scope",
+        message: outsideScopeMessage,
+      });
+    }
+
+    return new Ok({ normalizedMountFilePath });
+  }
+
+  if (trimmed.startsWith("w/")) {
+    return resolveMountFilePath({
+      mountFilePath: trimmed,
+      mountBasePath,
+      outsideScopeMessage,
+    });
+  }
+
+  return resolveMountFileSourcePath({
+    sourcePath: trimmed,
+    mountBasePath,
+    outsideScopeMessage,
+  });
+}
+
+/**
+ * Resolve a move source path relative to the mount root (no scope prefix).
+ * Returns the normalized mount file path or an error if the path is invalid.
+ */
+export function resolveMountFileSourcePath({
+  sourcePath,
+  mountBasePath,
+  outsideScopeMessage = "Access denied: path is outside mount scope.",
+}: {
+  sourcePath: string;
+  mountBasePath: string;
+  outsideScopeMessage?: string;
+}): Result<{ normalizedMountFilePath: string }, ResolveMountFilePathError> {
+  const trimmed = sourcePath.trim().replace(/^\/+/, "");
+
+  const relativeRes = normalizeAndValidateMountRelativeFilePath(trimmed);
+  if (relativeRes.isErr()) {
+    return new Err({
+      code: "invalid_path",
+      message: relativeRes.error.message,
+    });
+  }
+
+  const normalizedMountFilePath = path.posix.normalize(
+    `${mountBasePath}${relativeRes.value}`
+  );
+  if (!normalizedMountFilePath.startsWith(mountBasePath)) {
+    return new Err({
+      code: "outside_scope",
+      message: outsideScopeMessage,
+    });
+  }
+
+  return new Ok({ normalizedMountFilePath });
+}
+
 /**
  * Disambiguate a filename by inserting the file's sId before the extension.
  * "report.pdf" + "fil_abc" → "report_fil_abc.pdf"
@@ -236,6 +443,37 @@ export function normalizeMountParentRelativePath(
     normalized.split("/").some((part) => part === "..")
   ) {
     return new Err(new Error("parentRelativePath is outside mount scope."));
+  }
+
+  return new Ok(normalized);
+}
+
+/**
+ * Normalize and validate a file path within a mount (no scope prefix).
+ */
+export function normalizeAndValidateMountRelativeFilePath(
+  relativeFilePath: string
+): Result<string, Error> {
+  const trimmed = relativeFilePath.trim();
+  if (trimmed === "") {
+    return new Err(new Error("relativeFilePath is required."));
+  }
+
+  const normalized = path.posix.normalize(trimmed.replace(/^\/+/, ""));
+  if (normalized === "." || normalized === "") {
+    return new Err(new Error("Invalid file path."));
+  }
+
+  if (
+    normalized.startsWith("..") ||
+    normalized.split("/").some((part) => part === "..")
+  ) {
+    return new Err(new Error("relativeFilePath is outside mount scope."));
+  }
+
+  const fileName = normalized.split("/").pop();
+  if (!fileName) {
+    return new Err(new Error("Invalid file path."));
   }
 
   return new Ok(normalized);

@@ -3,7 +3,8 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   getProjectFilesBasePath,
-  parseScopedFilePath,
+  isResolveMountFilePathError,
+  resolveScopedMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
 import {
@@ -18,9 +19,9 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import path from "path";
 import { fromError } from "zod-validation-error";
 
 export type ProjectFileRelResponseBody = Record<string, never>;
@@ -52,39 +53,38 @@ async function handler(
     });
   }
 
-  const scopedPath = parseScopedFilePath(rel.join("/"));
-  if (!scopedPath || scopedPath.prefix !== "project") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Path must start with the scope prefix `project/`.",
-      },
-    });
-  }
-
   const owner = auth.getNonNullableWorkspace();
-  const basePath = getProjectFilesBasePath({
+  const mountBasePath = getProjectFilesBasePath({
     workspaceId: owner.sId,
     projectId: space.sId,
   });
-  const normalizedGcsPath = path.posix.normalize(
-    `${basePath}${scopedPath.rel}`
-  );
-  if (!normalizedGcsPath.startsWith(basePath)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Access denied: path is outside project scope.",
-      },
+  const relPath = rel.join("/");
+
+  const resolveScopedPath = () =>
+    resolveScopedMountFilePath({
+      relPath,
+      expectedPrefix: "project",
+      mountBasePath,
+      outsideScopeMessage: "Access denied: path is outside project scope.",
     });
-  }
-  const normalizedRelative = scopedPath.rel;
 
   switch (req.method) {
     case "GET": {
-      const gcsPath = normalizedGcsPath;
+      const pathRes = resolveScopedPath();
+      if (pathRes.isErr()) {
+        const { code, message } = pathRes.error;
+        return apiError(req, res, {
+          status_code: code === "outside_scope" ? 403 : 400,
+          api_error: {
+            type:
+              code === "outside_scope"
+                ? "workspace_auth_error"
+                : "invalid_request_error",
+            message,
+          },
+        });
+      }
+      const gcsPath = pathRes.value.normalizedGcsPath;
 
       const bucket = getPrivateUploadBucket();
       const contentTypeResult = await bucket.getFileContentType(gcsPath);
@@ -120,6 +120,22 @@ async function handler(
           },
         });
       }
+
+      const pathRes = resolveScopedPath();
+      if (pathRes.isErr()) {
+        const { code, message } = pathRes.error;
+        return apiError(req, res, {
+          status_code: code === "outside_scope" ? 403 : 400,
+          api_error: {
+            type:
+              code === "outside_scope"
+                ? "workspace_auth_error"
+                : "invalid_request_error",
+            message,
+          },
+        });
+      }
+      const { normalizedRelative } = pathRes.value;
 
       const { fileName } = req.body;
       if (
@@ -167,6 +183,22 @@ async function handler(
         });
       }
 
+      const pathRes = resolveScopedPath();
+      if (pathRes.isErr()) {
+        const { code, message } = pathRes.error;
+        return apiError(req, res, {
+          status_code: code === "outside_scope" ? 403 : 400,
+          api_error: {
+            type:
+              code === "outside_scope"
+                ? "workspace_auth_error"
+                : "invalid_request_error",
+            message,
+          },
+        });
+      }
+      const { normalizedRelative } = pathRes.value;
+
       const deleteResult = await deleteProjectFile(auth, {
         space,
         relativeFilePath: normalizedRelative,
@@ -208,15 +240,28 @@ async function handler(
 
       const moveResult = await moveProjectFile(auth, {
         space,
-        relativeFilePath: normalizedRelative,
-        parentRelativePath: bodyValidation.data.parentRelativePath,
+        sourcePath: relPath,
+        destRelativeFilePath: bodyValidation.data.destRelativeFilePath,
       });
       if (moveResult.isErr()) {
+        if (isResolveMountFilePathError(moveResult.error)) {
+          const { code, message } = moveResult.error;
+          return apiError(req, res, {
+            status_code: code === "outside_scope" ? 403 : 400,
+            api_error: {
+              type:
+                code === "outside_scope"
+                  ? "workspace_auth_error"
+                  : "invalid_request_error",
+              message,
+            },
+          });
+        }
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: moveResult.error.message,
+            message: normalizeError(moveResult.error).message,
           },
         });
       }

@@ -10,10 +10,12 @@ import type {
   FileExplorerEntry,
   FileExplorerSortMode,
   FilePanelCategory,
-  SandboxTreeNode,
+  FileSystemTreeNode,
 } from "./types";
 
 export const MIN_FILES_FOR_SEARCH = 10;
+
+export const ROOT_FOLDER_LABEL = "All files";
 
 /**
  * Category display configuration, ordered by priority.
@@ -39,7 +41,7 @@ export const CATEGORY_CONFIG: {
  * unmapped type) return null and only surface under the "All" chip.
  */
 export function getFileExplorerBucket(
-  node: SandboxTreeNode
+  node: FileSystemTreeNode
 ): FileExplorerBucket | null {
   if (node.isDirectory) {
     return "folders";
@@ -81,7 +83,7 @@ export function getFileExplorerBucket(
 
 /** Display order: Company Data refs, then folders, then GCS files. */
 function getExplorerNodeSortRank(
-  node: SandboxTreeNode,
+  node: FileSystemTreeNode,
   entryByRelativePath: Map<string, FileExplorerEntry>
 ): number {
   if (entryByRelativePath.get(node.path)?.kind === "node") {
@@ -98,8 +100,8 @@ function getExplorerNodeSortRank(
  * nodes), then folders, then files; within each group the selected sort mode applies.
  */
 export function compareTreeNodesForSort(
-  a: SandboxTreeNode,
-  b: SandboxTreeNode,
+  a: FileSystemTreeNode,
+  b: FileSystemTreeNode,
   sortMode: FileExplorerSortMode,
   entryByRelativePath: Map<string, FileExplorerEntry>
 ): number {
@@ -185,9 +187,11 @@ export function getCategoryFromContentType(
  * use-case prefix (first segment) is stripped so tree paths start at the
  * sandbox working directory root.
  */
-export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
-  const root: SandboxTreeNode[] = [];
-  const nodeMap = new Map<string, SandboxTreeNode>();
+export function buildSandboxTree(
+  entries: GCSMountEntry[]
+): FileSystemTreeNode[] {
+  const root: FileSystemTreeNode[] = [];
+  const nodeMap = new Map<string, FileSystemTreeNode>();
 
   for (const entry of entries.filter((e) => !e.isDirectory)) {
     const slashIdx = entry.path.indexOf("/");
@@ -205,7 +209,7 @@ export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
     for (let i = 0; i < parts.length - 1; i++) {
       currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i]!;
       if (!nodeMap.has(currentPath)) {
-        const dirNode: SandboxTreeNode = {
+        const dirNode: FileSystemTreeNode = {
           name: parts[i]!,
           path: currentPath,
           isDirectory: true,
@@ -229,7 +233,7 @@ export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
     }
 
     // Add the file node.
-    const fileNode: SandboxTreeNode = {
+    const fileNode: FileSystemTreeNode = {
       name: parts[parts.length - 1]!,
       path: relativePath,
       isDirectory: false,
@@ -265,7 +269,7 @@ export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
         continue;
       }
 
-      const dirNode: SandboxTreeNode = {
+      const dirNode: FileSystemTreeNode = {
         name: parts[i]!,
         path: currentPath,
         isDirectory: true,
@@ -300,7 +304,17 @@ export function getParentFolderRelativePath(relativeFilePath: string): string {
   return lastSlash >= 0 ? relativeFilePath.slice(0, lastSlash) : "";
 }
 
-function filterDirectoryNodes(nodes: SandboxTreeNode[]): SandboxTreeNode[] {
+/** Join a parent folder path and file name within a mount (no scope prefix). */
+export function joinMountRelativePath(
+  parentRelativePath: string,
+  fileName: string
+): string {
+  return parentRelativePath ? `${parentRelativePath}/${fileName}` : fileName;
+}
+
+function filterDirectoryNodes(
+  nodes: FileSystemTreeNode[]
+): FileSystemTreeNode[] {
   return nodes
     .filter((node) => node.isDirectory)
     .map((node) => ({
@@ -310,11 +324,13 @@ function filterDirectoryNodes(nodes: SandboxTreeNode[]): SandboxTreeNode[] {
 }
 
 /** Folder-only view of the sandbox tree (no files). */
-export function buildFolderTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
+export function buildFolderTree(
+  entries: GCSMountEntry[]
+): FileSystemTreeNode[] {
   return filterDirectoryNodes(buildSandboxTree(entries));
 }
 
-export function countFoldersInTree(nodes: SandboxTreeNode[]): number {
+export function countFoldersInTree(nodes: FileSystemTreeNode[]): number {
   return nodes.reduce(
     (count, node) => count + 1 + countFoldersInTree(node.children),
     0
@@ -324,13 +340,13 @@ export function countFoldersInTree(nodes: SandboxTreeNode[]): number {
 /** Human-readable breadcrumb for a folder path in the move dialog. */
 export function formatFolderDestinationLabel(
   folderPath: string,
-  folderTree: SandboxTreeNode[]
+  folderTree: FileSystemTreeNode[]
 ): string {
   if (!folderPath) {
-    return "All files";
+    return ROOT_FOLDER_LABEL;
   }
 
-  const labels = ["All files"];
+  const labels = [ROOT_FOLDER_LABEL];
   let nodes = folderTree;
   let current = "";
   for (const part of folderPath.split("/")) {
@@ -379,9 +395,9 @@ export function getFolderBreadcrumbSegments(
 }
 
 export function findTreeNodeByPath(
-  nodes: SandboxTreeNode[],
+  nodes: FileSystemTreeNode[],
   path: string
-): SandboxTreeNode | undefined {
+): FileSystemTreeNode | undefined {
   for (const node of nodes) {
     if (node.path === path) {
       return node;
@@ -397,9 +413,9 @@ export function findTreeNodeByPath(
 
 /** Children of a folder in the sandbox tree; root when `folderPath` is empty. */
 export function getChildrenAtFolderPath(
-  tree: SandboxTreeNode[],
+  tree: FileSystemTreeNode[],
   folderPath: string
-): SandboxTreeNode[] {
+): FileSystemTreeNode[] {
   if (!folderPath) {
     return tree;
   }

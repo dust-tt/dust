@@ -14,7 +14,7 @@ import type {
   FileExplorerFilter,
   FileExplorerMenuAction,
   FileExplorerSortMode,
-  SandboxTreeNode,
+  FileSystemTreeNode,
 } from "@app/components/file_explorer/types";
 import {
   buildFolderTree,
@@ -22,6 +22,7 @@ import {
   getFolderBreadcrumbSegments,
   getParentFolderRelativePath,
   getScopedRelativePath,
+  ROOT_FOLDER_LABEL,
 } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
@@ -51,7 +52,7 @@ function FileExplorerBreadcrumb({
 }: FileExplorerBreadcrumbProps) {
   const segments = getFolderBreadcrumbSegments(currentFolderPath);
   const items: BreadcrumbItem[] = [
-    { label: "All files", onClick: () => onNavigate(-1) },
+    { label: ROOT_FOLDER_LABEL, onClick: () => onNavigate(-1) },
     ...segments.map((segment, i) => ({
       label: segment.label,
       onClick: () => onNavigate(i),
@@ -223,7 +224,7 @@ export function FileExplorer({
     setCurrentFolderPath(segments[index]?.path ?? "");
   };
 
-  const handleFolderNavigate = (node: SandboxTreeNode) => {
+  const handleFolderNavigate = (node: FileSystemTreeNode) => {
     setCurrentFolderPath(node.path);
   };
 
@@ -233,8 +234,8 @@ export function FileExplorer({
 
   const parentFolderPath = getParentFolderRelativePath(currentFolderPath);
   const parentFolderLabel = parentFolderPath
-    ? (parentFolderPath.split("/").at(-1) ?? "All files")
-    : "All files";
+    ? (parentFolderPath.split("/").at(-1) ?? ROOT_FOLDER_LABEL)
+    : ROOT_FOLDER_LABEL;
 
   const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);
 
@@ -380,7 +381,7 @@ export function FileExplorer({
 
       {onMoveFile && (
         <MoveFileToFolderDialog
-          files={files}
+          folderTree={folderTree}
           file={fileToMove}
           isOpen={showMoveDialog}
           onClose={() => setShowMoveDialog(false)}
