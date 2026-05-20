@@ -107,7 +107,8 @@ app.get(
     categories["apps"].count = appsList.length;
     categories["actions"].count = actionsCount;
 
-    const shouldIncludeAllMembers = ctx.req.query("includeAllMembers") === "true";
+    const shouldIncludeAllMembers =
+      ctx.req.query("includeAllMembers") === "true";
 
     const { groupsToProcess, allGroupMemberships } =
       await space.fetchManualGroupsMemberships(auth, {

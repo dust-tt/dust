@@ -189,38 +189,42 @@ app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
   return ctx.json({});
 });
 
-app.delete("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
-  const built = await buildContext(ctx);
-  if ("error" in built) {
-    return built.error;
-  }
-  const { auth, space, normalizedRelative } = built;
+app.delete(
+  "/:rel{.+}",
+  spaceResource({ requireCanRead: true }),
+  async (ctx) => {
+    const built = await buildContext(ctx);
+    if ("error" in built) {
+      return built.error;
+    }
+    const { auth, space, normalizedRelative } = built;
 
-  if (!space.canWrite(auth)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "You do not have write access to this project.",
-      },
+    if (!space.canWrite(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have write access to this project.",
+        },
+      });
+    }
+
+    const deleteResult = await deleteProjectFile(auth, {
+      space,
+      relativeFilePath: normalizedRelative,
     });
-  }
+    if (deleteResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: deleteResult.error.message,
+        },
+      });
+    }
 
-  const deleteResult = await deleteProjectFile(auth, {
-    space,
-    relativeFilePath: normalizedRelative,
-  });
-  if (deleteResult.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: deleteResult.error.message,
-      },
-    });
+    return ctx.json({});
   }
-
-  return ctx.json({});
-});
+);
 
 export default app;

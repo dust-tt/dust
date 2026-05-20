@@ -46,7 +46,11 @@ app.get("/", async (ctx) => {
   const dataSource = isSlackBotEnabled ? dataSourceSlackBot : dataSourceSlack;
 
   if (!dataSource) {
-    return ctx.json({ provider, slackChannels: [], slackDataSource: undefined });
+    return ctx.json({
+      provider,
+      slackChannels: [],
+      slackDataSource: undefined,
+    });
   }
 
   if (!dataSource.connectorId) {

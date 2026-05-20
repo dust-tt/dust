@@ -29,30 +29,34 @@ export type PostMCPRegisterRequestBody = z.infer<
 // Mounted at /api/w/:wId/mcp/register.
 const app = new Hono();
 
-app.post("/", validate("json", PostMCPRegisterRequestBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const { serverName } = ctx.req.valid("json");
+app.post(
+  "/",
+  validate("json", PostMCPRegisterRequestBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { serverName } = ctx.req.valid("json");
 
-  const registration = await registerMCPServer(auth, {
-    serverName,
-    workspaceId: auth.getNonNullableWorkspace().sId,
-  });
+    const registration = await registerMCPServer(auth, {
+      serverName,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    });
 
-  if (registration.isErr()) {
-    const error = registration.error;
-    if (error instanceof MCPServerInstanceLimitError) {
+    if (registration.isErr()) {
+      const error = registration.error;
+      if (error instanceof MCPServerInstanceLimitError) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
+      }
       return apiError(ctx, {
-        status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: error.message },
       });
     }
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: { type: "internal_server_error", message: error.message },
-    });
-  }
 
-  return ctx.json(registration.value);
-});
+    return ctx.json(registration.value);
+  }
+);
 
 export default app;

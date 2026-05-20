@@ -12,6 +12,9 @@ appStatusApp.get("/", async (ctx) => {
     getDustStatusMemoized(),
   ]);
 
-  ctx.header("Cache-Control", "public, max-age=120, stale-while-revalidate=300");
+  ctx.header(
+    "Cache-Control",
+    "public, max-age=120, stale-while-revalidate=300"
+  );
   return ctx.json({ providersStatus, dustStatus }, 200);
 });

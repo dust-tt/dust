@@ -143,88 +143,101 @@ app.delete(
   }
 );
 
-app.patch("/", validate("json", PatchTriggersRequestBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId") ?? "";
+app.patch(
+  "/",
+  validate("json", PatchTriggersRequestBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const aId = ctx.req.param("aId") ?? "";
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "light",
-  });
-  if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration was not found.",
-      },
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "light",
     });
-  }
-
-  const allTriggers = await TriggerResource.listByAgentConfigurationId(
-    auth,
-    aId
-  );
-  const userTriggers = allTriggers.filter(
-    (trigger) => trigger.editor === auth.getNonNullableUser().id
-  );
-
-  const { triggers } = ctx.req.valid("json");
-  const workspace = auth.getNonNullableWorkspace();
-
-  for (const triggerData of triggers) {
-    const triggerToUpdate = userTriggers.find((t) => t.sId === triggerData.sId);
-    if (!triggerToUpdate) {
-      continue;
-    }
-
-    const triggerValidation = TriggerSchema.safeParse({
-      ...triggerData,
-      editor: triggerToUpdate.editor,
-    });
-    if (!triggerValidation.success) {
+    if (
+      !agentConfiguration ||
+      (!agentConfiguration.canRead && !auth.isAdmin())
+    ) {
       return apiError(ctx, {
-        status_code: 400,
+        status_code: 404,
         api_error: {
-          type: "invalid_request_error",
-          message: `Invalid trigger data: ${triggerValidation.error.message}`,
+          type: "agent_configuration_not_found",
+          message: "The agent configuration was not found.",
         },
       });
     }
 
-    const validatedTrigger = triggerValidation.data;
-    const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-      ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
-      : null;
+    const allTriggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      aId
+    );
+    const userTriggers = allTriggers.filter(
+      (trigger) => trigger.editor === auth.getNonNullableUser().id
+    );
 
-    const updatedTrigger = await TriggerResource.update(auth, triggerData.sId, {
-      ...validatedTrigger,
-      status: validatedTrigger.status ?? "enabled",
-      webhookSourceViewId,
-    });
+    const { triggers } = ctx.req.valid("json");
+    const workspace = auth.getNonNullableWorkspace();
 
-    if (updatedTrigger.isErr()) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          agentConfigurationId: aId,
-          triggerId: triggerData.sId,
-          error: updatedTrigger.error,
-        },
-        "Failed to update trigger"
+    for (const triggerData of triggers) {
+      const triggerToUpdate = userTriggers.find(
+        (t) => t.sId === triggerData.sId
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Failed to update trigger ${triggerData.name}.`,
-        },
-      });
-    }
-  }
+      if (!triggerToUpdate) {
+        continue;
+      }
 
-  return ctx.body(null, 204);
-});
+      const triggerValidation = TriggerSchema.safeParse({
+        ...triggerData,
+        editor: triggerToUpdate.editor,
+      });
+      if (!triggerValidation.success) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid trigger data: ${triggerValidation.error.message}`,
+          },
+        });
+      }
+
+      const validatedTrigger = triggerValidation.data;
+      const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
+        ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
+        : null;
+
+      const updatedTrigger = await TriggerResource.update(
+        auth,
+        triggerData.sId,
+        {
+          ...validatedTrigger,
+          status: validatedTrigger.status ?? "enabled",
+          webhookSourceViewId,
+        }
+      );
+
+      if (updatedTrigger.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            agentConfigurationId: aId,
+            triggerId: triggerData.sId,
+            error: updatedTrigger.error,
+          },
+          "Failed to update trigger"
+        );
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Failed to update trigger ${triggerData.name}.`,
+          },
+        });
+      }
+    }
+
+    return ctx.body(null, 204);
+  }
+);
 
 app.post("/", validate("json", PostTriggersRequestBodySchema), async (ctx) => {
   const auth = ctx.get("auth");

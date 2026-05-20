@@ -70,7 +70,9 @@ app.get(
 
     const results = filteredResults
       .map((r) => conversationMap.get(r.conversationId)?.toJSON())
-      .filter((ctx): ctx is ConversationWithoutContentType => ctx !== undefined);
+      .filter(
+        (ctx): ctx is ConversationWithoutContentType => ctx !== undefined
+      );
 
     return ctx.json({ conversations: results });
   }

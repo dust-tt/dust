@@ -24,81 +24,85 @@ const PatchAgentTagsRequestBodySchema = z
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/tags.
 const app = new Hono();
 
-app.patch("/", validate("json", PatchAgentTagsRequestBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId") ?? "";
+app.patch(
+  "/",
+  validate("json", PatchAgentTagsRequestBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const aId = ctx.req.param("aId") ?? "";
 
-  const agent = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "light",
-  });
-  if (!agent) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration was not found.",
-      },
+    const agent = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "light",
     });
+    if (!agent) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The agent configuration was not found.",
+        },
+      });
+    }
+
+    if (!agent.canEdit && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "agent_group_permission_error",
+          message:
+            "Only editors of the agent or workspace admins can modify agent.",
+        },
+      });
+    }
+
+    const { addTagIds = [], removeTagIds = [] } = ctx.req.valid("json");
+
+    const tagsToAdd = await TagResource.fetchByIds(auth, addTagIds);
+    const tagsToRemove = await TagResource.fetchByIds(auth, removeTagIds);
+
+    if (
+      tagsToAdd.length !== addTagIds.length ||
+      tagsToRemove.length !== removeTagIds.length
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid tag ids",
+        },
+      });
+    }
+
+    if (
+      !isBuilder(auth.getNonNullableWorkspace()) &&
+      (tagsToAdd.some((tag) => tag.kind === "protected") ||
+        tagsToRemove.some((tag) => tag.kind === "protected"))
+    ) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Protected tags cannot be added or removed.",
+        },
+      });
+    }
+
+    await Promise.all([
+      concurrentExecutor(tagsToAdd, (tag) => tag.addToAgent(auth, agent), {
+        concurrency: 10,
+      }),
+      concurrentExecutor(
+        tagsToRemove,
+        (tag) => tag.removeFromAgent(auth, agent),
+        { concurrency: 10 }
+      ),
+    ]);
+
+    const tags = await TagResource.listForAgent(auth, agent.id);
+
+    return ctx.json({ tags: tags.map((t) => t.toJSON()) });
   }
-
-  if (!agent.canEdit && !auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "agent_group_permission_error",
-        message:
-          "Only editors of the agent or workspace admins can modify agent.",
-      },
-    });
-  }
-
-  const { addTagIds = [], removeTagIds = [] } = ctx.req.valid("json");
-
-  const tagsToAdd = await TagResource.fetchByIds(auth, addTagIds);
-  const tagsToRemove = await TagResource.fetchByIds(auth, removeTagIds);
-
-  if (
-    tagsToAdd.length !== addTagIds.length ||
-    tagsToRemove.length !== removeTagIds.length
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid tag ids",
-      },
-    });
-  }
-
-  if (
-    !isBuilder(auth.getNonNullableWorkspace()) &&
-    (tagsToAdd.some((tag) => tag.kind === "protected") ||
-      tagsToRemove.some((tag) => tag.kind === "protected"))
-  ) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Protected tags cannot be added or removed.",
-      },
-    });
-  }
-
-  await Promise.all([
-    concurrentExecutor(tagsToAdd, (tag) => tag.addToAgent(auth, agent), {
-      concurrency: 10,
-    }),
-    concurrentExecutor(
-      tagsToRemove,
-      (tag) => tag.removeFromAgent(auth, agent),
-      { concurrency: 10 }
-    ),
-  ]);
-
-  const tags = await TagResource.listForAgent(auth, agent.id);
-
-  return ctx.json({ tags: tags.map((t) => t.toJSON()) });
-});
+);
 
 export default app;

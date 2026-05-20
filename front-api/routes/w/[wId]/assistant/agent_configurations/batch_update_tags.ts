@@ -20,7 +20,11 @@ app.post(
   validate("json", BatchUpdateAgentTagsRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const { agentIds, addTagIds = [], removeTagIds = [] } = ctx.req.valid("json");
+    const {
+      agentIds,
+      addTagIds = [],
+      removeTagIds = [],
+    } = ctx.req.valid("json");
 
     const tagsToAdd = await TagResource.fetchByIds(auth, addTagIds);
     const tagsToRemove = await TagResource.fetchByIds(auth, removeTagIds);

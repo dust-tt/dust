@@ -65,7 +65,10 @@ async function fetchManagedNotionDataSource(
   return { kind: "ok", dataSource };
 }
 
-function errorJson(ctx: Context, result: Extract<FetchResult, { kind: "err" }>) {
+function errorJson(
+  ctx: Context,
+  result: Extract<FetchResult, { kind: "err" }>
+) {
   return apiError(ctx, {
     status_code: result.status,
     api_error: { type: result.type, message: result.message },
