@@ -453,6 +453,27 @@ function getDataSourceRetrievalDocumentsInternalMCPServerName(
   );
 }
 
+function isDataSourceRetrievalDocumentsAction(
+  action: AgentMCPActionResource
+): boolean {
+  const internalMCPServerName =
+    getDataSourceRetrievalDocumentsInternalMCPServerName(action);
+
+  return (
+    internalMCPServerName === SEARCH_SERVER_NAME ||
+    internalMCPServerName === DATA_SOURCES_FILE_SYSTEM_SERVER_NAME
+  );
+}
+
+function isDataSourcesFileSystemRetrievalDocumentsAction(
+  action: AgentMCPActionResource
+): boolean {
+  return (
+    getDataSourceRetrievalDocumentsInternalMCPServerName(action) ===
+    DATA_SOURCES_FILE_SYSTEM_SERVER_NAME
+  );
+}
+
 async function extractRetrievalDocuments(
   auth: Authenticator,
   {
@@ -469,21 +490,9 @@ async function extractRetrievalDocuments(
 ): Promise<AgentRetrievalOutputAnalyticsData[]> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const retrievalDocumentActions: {
-    action: AgentMCPActionResource;
-    internalMCPServerName: InternalMCPServerNameType;
-  }[] = [];
-  for (const action of actions) {
-    const internalMCPServerName =
-      getDataSourceRetrievalDocumentsInternalMCPServerName(action);
-
-    if (
-      internalMCPServerName === SEARCH_SERVER_NAME ||
-      internalMCPServerName === DATA_SOURCES_FILE_SYSTEM_SERVER_NAME
-    ) {
-      retrievalDocumentActions.push({ action, internalMCPServerName });
-    }
-  }
+  const retrievalDocumentActions = actions.filter(
+    isDataSourceRetrievalDocumentsAction
+  );
 
   if (retrievalDocumentActions.length === 0) {
     return [];
@@ -492,13 +501,10 @@ async function extractRetrievalDocuments(
   // Filter out file_system server actions - they don't have DB configurations.
   // Note: file_system uses ID 1010 (positive), so we can't rely on id > 0 alone.
   const actionsWithConfigs = retrievalDocumentActions.filter(
-    ({ internalMCPServerName }) =>
-      internalMCPServerName !== DATA_SOURCES_FILE_SYSTEM_SERVER_NAME
+    (action) => !isDataSourcesFileSystemRetrievalDocumentsAction(action)
   );
   const configIds = Array.from(
-    new Set(
-      actionsWithConfigs.map(({ action }) => action.mcpServerConfigurationId)
-    )
+    new Set(actionsWithConfigs.map((action) => action.mcpServerConfigurationId))
   );
 
   // Convert string IDs to numeric ModelIds.
@@ -508,13 +514,18 @@ async function extractRetrievalDocuments(
     .map((id) => parseInt(id, 10))
     .filter((id) => !isNaN(id) && id > 0);
 
-  const outputItemsByActionId = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-    actionIds: retrievalDocumentActions.map(({ action }) => action.id),
-    ignoreContent: false,
-  });
+  const outputItemsByActionId =
+    await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: retrievalDocumentActions.map((action) => action.id),
+      ignoreContent: false,
+    });
   // Fetch MCP server configurations for analytics tracking.
   // Using standalone resource allows independent querying for reporting purposes.
-  const serverConfigs = await AgentMCPServerConfigurationResource.fetchByModelIds(auth, configModelIds);
+  const serverConfigs =
+    await AgentMCPServerConfigurationResource.fetchByModelIds(
+      auth,
+      configModelIds
+    );
 
   const configMap = new Map(serverConfigs.map((c) => [c.id.toString(), c]));
 
@@ -536,7 +547,7 @@ async function extractRetrievalDocuments(
   })[] = [];
   const dataSourceViewIds = new Set<string>();
 
-  for (const { action } of retrievalDocumentActions) {
+  for (const action of retrievalDocumentActions) {
     const actionOutputItems = outputItemsByActionId.get(action.id);
     if (!actionOutputItems) {
       continue;
