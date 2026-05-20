@@ -6,6 +6,7 @@ import { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -119,6 +120,59 @@ describe("listHandler", () => {
       useCase: "project",
       projectId: projectId,
     });
+  });
+
+  it("includes fil_ id in listing for frame and slideshow files but not for regular files", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+
+    const conversation = await createConversation(auth, {
+      title: "Test",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    mockListGCSMountFiles.mockResolvedValue([
+      {
+        isDirectory: false,
+        fileName: "chart.html",
+        path: "conversation/chart.html",
+        sizeBytes: 2048,
+        lastModifiedMs: 0,
+        contentType: frameContentType,
+        fileId: "fil_frameabc123",
+        thumbnailUrl: null,
+      },
+      {
+        isDirectory: false,
+        fileName: "slides.html",
+        path: "conversation/slides.html",
+        sizeBytes: 4096,
+        lastModifiedMs: 0,
+        contentType: frameSlideshowContentType,
+        fileId: "fil_slidexyz789",
+        thumbnailUrl: null,
+      },
+      {
+        isDirectory: false,
+        fileName: "report.pdf",
+        path: "conversation/report.pdf",
+        sizeBytes: 8192,
+        lastModifiedMs: 0,
+        contentType: "application/pdf",
+        fileId: "fil_pdfdef456",
+        thumbnailUrl: null,
+      },
+    ]);
+
+    const result = await listHandler({}, makeExtra(auth, conversation));
+
+    assert(result.isOk());
+    const text = result.value[0];
+    assert(text.type === "text");
+
+    expect(text.text).toContain("[id: fil_frameabc123]");
+    expect(text.text).toContain("[id: fil_slidexyz789]");
+    expect(text.text).not.toContain("[id: fil_pdfdef456]");
   });
 
   it("returns Err when scope=project in a non-project conversation", async () => {
