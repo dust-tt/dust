@@ -19,6 +19,8 @@ import type {
 import {
   buildFolderTree,
   countFoldersInTree,
+  getFolderBreadcrumbSegments,
+  getParentFolderRelativePath,
   getScopedRelativePath,
 } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -36,27 +38,22 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import {
-  type Dispatch,
-  type SetStateAction,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface FileExplorerBreadcrumbProps {
-  folderStack: SandboxTreeNode[];
+  currentFolderPath: string;
   onNavigate: (index: number) => void;
 }
 
 function FileExplorerBreadcrumb({
-  folderStack,
+  currentFolderPath,
   onNavigate,
 }: FileExplorerBreadcrumbProps) {
+  const segments = getFolderBreadcrumbSegments(currentFolderPath);
   const items: BreadcrumbItem[] = [
     { label: "All files", onClick: () => onNavigate(-1) },
-    ...folderStack.map((node, i) => ({
-      label: node.name,
+    ...segments.map((segment, i) => ({
+      label: segment.label,
       onClick: () => onNavigate(i),
     })),
   ];
@@ -69,16 +66,16 @@ interface FileExplorerProps {
   contentNodes?: ContentNodeEntry[];
   defaultViewMode?: ViewMode;
   emptyState?: React.ReactNode;
-  folderStack?: SandboxTreeNode[];
   hideTitleBorder?: boolean;
   files: GCSMountEntry[];
   getFileUrl: (path: string) => string;
   headerActions?: React.ReactNode;
   isLoading: boolean;
+  navigationResetKey?: number;
   onClose?: () => void;
+  onCurrentFolderChange?: (relativePath: string) => void;
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
   onFileDownload: (entry: FileEntry) => Promise<void>;
-  onFolderStackChange?: Dispatch<SetStateAction<SandboxTreeNode[]>>;
   onMoveFile?: (
     entry: FileEntry,
     parentRelativePath: string
@@ -92,36 +89,36 @@ export function FileExplorer({
   contentNodes = [],
   defaultViewMode = "grid",
   emptyState,
-  folderStack: folderStackProp,
   files,
   getFileUrl,
   headerActions,
   hideTitleBorder = false,
   isLoading,
+  navigationResetKey,
   onClose,
+  onCurrentFolderChange,
   onDelete,
   onFileDownload,
-  onFolderStackChange,
   onMoveFile,
   onOpenInteractive,
   onRename,
 }: FileExplorerProps) {
-  const [internalFolderStack, setInternalFolderStack] = useState<
-    SandboxTreeNode[]
-  >([]);
-  const folderStack = folderStackProp ?? internalFolderStack;
-  // Pass functional updates through to the parent setter. Applying `update(folderStack)`
-  // here would use a stale prop and can clear the stack (jump to root) on list refresh.
-  const setFolderStack = useCallback(
-    (update: SetStateAction<SandboxTreeNode[]>) => {
-      if (onFolderStackChange) {
-        onFolderStackChange(update);
-      } else {
-        setInternalFolderStack(update);
-      }
-    },
-    [onFolderStackChange]
-  );
+  const [currentFolderPath, setCurrentFolderPath] = useState("");
+  const prevNavigationResetKey = useRef(navigationResetKey);
+
+  useEffect(() => {
+    onCurrentFolderChange?.(currentFolderPath);
+  }, [currentFolderPath, onCurrentFolderChange]);
+
+  useEffect(() => {
+    if (
+      navigationResetKey !== undefined &&
+      prevNavigationResetKey.current !== navigationResetKey
+    ) {
+      setCurrentFolderPath("");
+    }
+    prevNavigationResetKey.current = navigationResetKey;
+  }, [navigationResetKey]);
 
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,13 +141,20 @@ export function FileExplorer({
     () =>
       getFileExplorerPipeline({
         contentNodes,
+        currentFolderPath,
         files,
-        folderStack,
         searchQuery,
         activeFilter,
         sortMode,
       }),
-    [contentNodes, files, folderStack, searchQuery, activeFilter, sortMode]
+    [
+      contentNodes,
+      currentFolderPath,
+      files,
+      searchQuery,
+      activeFilter,
+      sortMode,
+    ]
   );
 
   const folderTree = useMemo(() => buildFolderTree(files), [files]);
@@ -210,24 +214,27 @@ export function FileExplorer({
   );
 
   const handleBreadcrumbNavigate = (index: number) => {
-    setFolderStack((prev) => (index < 0 ? [] : prev.slice(0, index + 1)));
+    if (index < 0) {
+      setCurrentFolderPath("");
+      return;
+    }
+
+    const segments = getFolderBreadcrumbSegments(currentFolderPath);
+    setCurrentFolderPath(segments[index]?.path ?? "");
   };
 
   const handleFolderNavigate = (node: SandboxTreeNode) => {
-    setFolderStack((prev) => [...prev, node]);
+    setCurrentFolderPath(node.path);
   };
 
   const handleGoUp = () => {
-    setFolderStack((prev) => prev.slice(0, -1));
+    setCurrentFolderPath(getParentFolderRelativePath(currentFolderPath));
   };
 
-  const parentFolderLabel =
-    folderStack.length <= 1
-      ? "All files"
-      : (folderStack.at(-2)?.name ?? "All files");
-
-  const parentFolderDropPath =
-    folderStack.length <= 1 ? "" : (folderStack.at(-2)?.path ?? "");
+  const parentFolderPath = getParentFolderRelativePath(currentFolderPath);
+  const parentFolderLabel = parentFolderPath
+    ? (parentFolderPath.split("/").at(-1) ?? "All files")
+    : "All files";
 
   const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);
 
@@ -297,7 +304,7 @@ export function FileExplorer({
             )}
           >
             <FileExplorerBreadcrumb
-              folderStack={folderStack}
+              currentFolderPath={currentFolderPath}
               onNavigate={handleBreadcrumbNavigate}
             />
             <div className="flex items-center gap-2">
@@ -344,11 +351,11 @@ export function FileExplorer({
             isEmpty={fileCount === 0 && folderCount === 0}
             emptyState={emptyState}
             fileDragEnabled={fileDragEnabled}
-            parentFolderDropPath={parentFolderDropPath}
+            parentFolderDropPath={parentFolderPath}
             parentFolderLabel={
-              folderStack.length > 0 ? parentFolderLabel : undefined
+              currentFolderPath ? parentFolderLabel : undefined
             }
-            onGoUp={folderStack.length > 0 ? handleGoUp : undefined}
+            onGoUp={currentFolderPath ? handleGoUp : undefined}
             onFolderNavigate={handleFolderNavigate}
             onFileOpen={handleFileOpen}
             onFileDownload={onFileDownload}

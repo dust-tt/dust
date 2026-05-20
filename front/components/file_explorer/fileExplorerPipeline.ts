@@ -8,8 +8,8 @@ import type {
 import {
   buildSandboxTree,
   compareTreeNodesForSort,
+  getChildrenAtFolderPath,
   getFileExplorerBucket,
-  resolveFolderStackInTree,
 } from "@app/components/file_explorer/utils";
 import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
@@ -30,8 +30,8 @@ export interface FileExplorerPipeline {
 interface GetFileExplorerPipelineParams {
   activeFilter: FileExplorerFilter;
   contentNodes: ContentNodeEntry[];
+  currentFolderPath: string;
   files: GCSMountEntry[];
-  folderStack: SandboxTreeNode[];
   searchQuery: string;
   sortMode: FileExplorerSortMode;
 }
@@ -48,13 +48,12 @@ function toRelativePath(entry: GCSMountEntry): string {
 export function getFileExplorerPipeline({
   activeFilter,
   contentNodes,
+  currentFolderPath,
   files,
-  folderStack,
   searchQuery,
   sortMode,
 }: GetFileExplorerPipelineParams): FileExplorerPipeline {
   const entryByRelativePath = new Map<string, FileExplorerEntry>();
-  const timestampsByPath = new Map<string, number>();
   for (const f of files) {
     if (f.isDirectory) {
       continue;
@@ -62,24 +61,15 @@ export function getFileExplorerPipeline({
 
     const relativePath = toRelativePath(f);
     entryByRelativePath.set(relativePath, { ...f, kind: "file" });
-    timestampsByPath.set(relativePath, f.lastModifiedMs);
   }
 
   // Content nodes are always flat (no folder structure). They appear only at
   // the root level and are keyed by their synthetic path.
   for (const node of contentNodes) {
     entryByRelativePath.set(node.path, node);
-    if (node.lastModifiedMs !== null) {
-      timestampsByPath.set(node.path, node.lastModifiedMs);
-    }
   }
 
   const tree = buildSandboxTree(files);
-  // Navigation state holds node object references from an older tree; re-resolve by path
-  // on each render so the current folder lists fresh children after SWR refresh (without
-  // rewriting `folderStack` in state, which would jump the user to root — see
-  // `resolveFolderStackInTree`).
-  const resolvedFolderStack = resolveFolderStackInTree(tree, folderStack);
 
   // Synthetic tree nodes for content-node entries — always flat, at root level.
   const contentNodeTreeNodes: SandboxTreeNode[] = contentNodes.map((cn) => ({
@@ -91,14 +81,9 @@ export function getFileExplorerPipeline({
     children: [],
   }));
 
-  const currentNodes =
-    resolvedFolderStack.length > 0
-      ? // Fresh `children` from the latest tree, not from nodes captured at click time.
-        (resolvedFolderStack.at(-1)?.children ?? [])
-      : folderStack.length > 0
-        ? // Tree is rebuilding (e.g. during SWR revalidate); avoid flashing the root listing.
-          []
-        : [...tree, ...contentNodeTreeNodes];
+  const currentNodes = currentFolderPath
+    ? getChildrenAtFolderPath(tree, currentFolderPath)
+    : [...tree, ...contentNodeTreeNodes];
 
   const q = searchQuery.trim().toLowerCase();
   const visibleNodes = currentNodes.filter((node) => {
@@ -138,13 +123,7 @@ export function getFileExplorerPipeline({
         });
 
   const sortedNodes = [...matchingNodes].sort((a, b) =>
-    compareTreeNodesForSort(
-      a,
-      b,
-      sortMode,
-      timestampsByPath,
-      entryByRelativePath
-    )
+    compareTreeNodesForSort(a, b, sortMode, entryByRelativePath)
   );
 
   let folderCount = 0;
