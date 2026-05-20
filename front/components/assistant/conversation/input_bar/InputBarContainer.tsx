@@ -219,6 +219,13 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
+  const attachedNodesRef = useRef(attachedNodes);
+  attachedNodesRef.current = attachedNodes;
+  const onNodeUnselectRef = useRef(onNodeUnselect);
+  onNodeUnselectRef.current = onNodeUnselect;
+  // Tracks internalIds of nodes that have a dataSourceLink chip in the editor,
+  // so we only sync removal for nodes that were created via URL paste.
+  const dataSourceLinkNodeIdsRef = useRef<Set<string>>(new Set());
   const selectedMCPServerViewIds = useMemo(
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
@@ -512,6 +519,11 @@ const InputBarContainer = ({
     },
   });
 
+  const editorServiceRef = useRef(editorService);
+  editorServiceRef.current = editorService;
+  const saveDraftRef = useRef(saveDraft);
+  saveDraftRef.current = saveDraft;
+
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
     const currentPastedIds = new Set(
@@ -530,6 +542,39 @@ const InputBarContainer = ({
       }
     });
   }, [fileUploaderService.fileBlobs, removePastedAttachmentChip]);
+
+  // Sync: when an attachment card is removed, remove the corresponding
+  // dataSourceLink chip(s) from the editor in a single transaction.
+  useEffect(() => {
+    const editorInstance = editorRef.current;
+    if (!editorInstance) {
+      return;
+    }
+
+    const attachedNodeIds = new Set(attachedNodes.map((n) => n.internalId));
+
+    editorInstance.commands.command(({ state, tr }) => {
+      let removed = false;
+      // Collect positions in reverse order so deletions don't shift later positions.
+      const toDelete: { from: number; to: number }[] = [];
+      state.doc.descendants((node, pos) => {
+        if (
+          node.type.name === "dataSourceLink" &&
+          node.attrs?.nodeId &&
+          !attachedNodeIds.has(String(node.attrs.nodeId))
+        ) {
+          toDelete.push({ from: pos, to: pos + node.nodeSize });
+        }
+      });
+
+      for (let i = toDelete.length - 1; i >= 0; i--) {
+        tr.delete(toDelete[i].from, toDelete[i].to);
+        removed = true;
+      }
+
+      return removed;
+    });
+  }, [attachedNodes]);
 
   const voiceTranscriberService = useVoiceTranscriberService({
     owner,
@@ -602,50 +647,80 @@ const InputBarContainer = ({
     }
   };
 
+  const handleEditorUpdate = useCallback(() => {
+    const currentEditor = editorRef.current;
+    const currentEditorService = editorServiceRef.current;
+    const editorIsEmpty = currentEditorService.isEmpty();
+    setIsEmpty(editorIsEmpty);
+
+    // Auto-save draft when content changes and track user mentions.
+    // Include the selected single agent so the debounced save doesn't
+    // overwrite the agent mention saved by the single-agent effect.
+    const { markdown, mentions: editorMentions } =
+      currentEditorService.getMarkdownAndMentions();
+    saveDraftRef.current(
+      editorIsEmpty ? "" : markdown,
+      selectedSingleAgentRef.current
+    );
+    const userMentioned = editorMentions.some((m) => m.type === "user");
+
+    // Check if the very first content node in the editor is a user mention.
+    let editorStartsWithUserMention = false;
+    if (userMentioned && currentEditor) {
+      const firstChild = currentEditor.state.doc.firstChild;
+      const firstNode = firstChild?.firstChild;
+      editorStartsWithUserMention =
+        firstNode?.type.name === "mention" && firstNode.attrs.type === "user";
+    }
+    setStartsWithUserMention(editorStartsWithUserMention);
+    onEditorMentionsChangedRef.current(
+      userMentioned,
+      editorStartsWithUserMention
+    );
+
+    // Sync: when a dataSourceLink chip is deleted from the editor, remove
+    // the corresponding attached node so the attachment card disappears.
+    if (currentEditor) {
+      const chipNodeIds = new Set<string>();
+      currentEditor.state.doc.descendants((node) => {
+        if (node.type.name === "dataSourceLink" && node.attrs?.nodeId) {
+          chipNodeIds.add(String(node.attrs.nodeId));
+        }
+      });
+
+      // Update the tracked set and unselect nodes whose chip was removed.
+      const prevIds = dataSourceLinkNodeIdsRef.current;
+      for (const prevId of prevIds) {
+        if (!chipNodeIds.has(prevId)) {
+          const node = attachedNodesRef.current.find(
+            (n) => n.internalId === prevId
+          );
+          if (node) {
+            onNodeUnselectRef.current(node);
+          }
+        }
+      }
+      dataSourceLinkNodeIdsRef.current = chipNodeIds;
+    }
+  }, []);
+
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
-    const handleUpdate = () => {
-      const editorIsEmpty = editorService.isEmpty();
-      setIsEmpty(editorIsEmpty);
-
-      // Auto-save draft when content changes and track user mentions.
-      // Include the selected single agent so the debounced save doesn't
-      // overwrite the agent mention saved by the single-agent effect.
-      const { markdown, mentions: editorMentions } =
-        editorService.getMarkdownAndMentions();
-      saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
-      const userMentioned = editorMentions.some((m) => m.type === "user");
-
-      // Check if the very first content node in the editor is a user mention.
-      let editorStartsWithUserMention = false;
-      if (userMentioned && editor) {
-        const firstChild = editor.state.doc.firstChild;
-        const firstNode = firstChild?.firstChild;
-        editorStartsWithUserMention =
-          firstNode?.type.name === "mention" && firstNode.attrs.type === "user";
-      }
-      setStartsWithUserMention(editorStartsWithUserMention);
-      onEditorMentionsChangedRef.current(
-        userMentioned,
-        editorStartsWithUserMention
-      );
-    };
-
     if (editorRef.current) {
-      editorRef.current.off("update", handleUpdate);
+      editorRef.current.off("update", handleEditorUpdate);
     }
 
     if (editor) {
-      editor.on("update", handleUpdate);
+      editor.on("update", handleEditorUpdate);
     }
     editorRef.current = editor;
 
     return () => {
       if (editor) {
-        editor.off("update", handleUpdate);
+        editor.off("update", handleEditorUpdate);
       }
     };
-  }, [editor, editorService, saveDraft]);
+  }, [editor, handleEditorUpdate]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
