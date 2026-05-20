@@ -789,9 +789,9 @@ export function _getDustDeepseekGlobalAgent(
   });
 }
 
-// TODO(2026-05-20): roll dust-quick forward to GEMINI_3_5_FLASH_MODEL_CONFIG
-// once 3.5 Flash has soaked. 3 Flash is demoted (isLatest: false) but kept
-// callable so this path keeps working in the meantime.
+// TODO(2026-05-20): retire dust-quick in a follow-up PR. 3 Flash is demoted
+// (isLatest: false) but kept callable so this path keeps working in the
+// meantime. dust-goog now covers the fast Google path on 3.5 Flash.
 export function _getDustQuickGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
