@@ -125,6 +125,15 @@ where
                 return Ok(());
             }
             HeaderRead::NonHttp => {
+                // The trust boundary is the SNI/TCP layer, not HTTP: the
+                // nftables redirect and the SNI gate have already pinned the
+                // upstream TCP destination to an allowlisted domain. When the
+                // first bytes inside the MITM'd TLS stream don't look like
+                // HTTP (postgres-over-TLS, a custom binary protocol over 443,
+                // etc.), there's nothing for us to parse or rewrite, so we
+                // splice the rest of the connection raw. The bytes still flow
+                // only to the allowlisted upstream that the SNI gate
+                // approved.
                 copy_raw_client_to_upstream(&mut reader, upstream).await?;
                 return Ok(());
             }
