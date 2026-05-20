@@ -2,18 +2,22 @@ import logger from "@app/logger/logger";
 import fs from "fs";
 import path from "path";
 
-const LOGO_PATH = "public/static/landing/logos/dust/Dust_LogoSquare.svg";
+// Resolved relative to this file so the lookup works regardless of the
+// process' cwd (front/, front-api/, tests, …).
+const LOGO_PATH = path.resolve(
+  __dirname,
+  "../../../public/static/landing/logos/dust/Dust_LogoSquare.svg"
+);
 
 // Read logo SVG once at module load time (not per request).
 // Falls back to empty string if file is missing - footer still works, just no logo.
 function loadLogoSvg(): string {
-  const fullPath = path.join(process.cwd(), LOGO_PATH);
   try {
     return fs
-      .readFileSync(fullPath, "utf-8")
+      .readFileSync(LOGO_PATH, "utf-8")
       .replace(/width="48" height="48"/, 'width="16" height="16"');
   } catch (err) {
-    logger.error({ err, path: fullPath }, "Failed to load PDF footer logo");
+    logger.error({ err, path: LOGO_PATH }, "Failed to load PDF footer logo!");
     return "";
   }
 }
