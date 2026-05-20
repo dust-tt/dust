@@ -18,9 +18,14 @@ import { isAPIError } from "@app/types/error";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
+
+export type GetDataSourceUpdateResponseBody = {
+  connectorId: string;
+};
 
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/update.
 const app = new Hono();
@@ -28,7 +33,7 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", UpdateConnectorRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetDataSourceUpdateResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();

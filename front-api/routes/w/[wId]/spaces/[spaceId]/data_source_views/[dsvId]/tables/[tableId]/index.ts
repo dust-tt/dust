@@ -1,10 +1,16 @@
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
+import type { CoreAPITable } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
+
+export type GetDataSourceViewTableResponseBody = {
+  table: CoreAPITable;
+};
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables/:tableId.
@@ -14,7 +20,7 @@ app.get(
   "/",
   withSpace({ requireCanRead: true }),
   withDataSourceView({ requireCanRead: true }),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetDataSourceViewTableResponseBody> => {
     const dataSourceView = ctx.get("dataSourceView");
     const tableId = ctx.req.param("tableId") ?? "";
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);

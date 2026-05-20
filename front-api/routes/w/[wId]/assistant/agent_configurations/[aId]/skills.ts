@@ -1,12 +1,18 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type GetAgentSkillsResponseBody = {
+  skills: SkillType[];
+};
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/skills.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetAgentSkillsResponseBody> => {
   const auth = ctx.get("auth");
   const aId = ctx.req.param("aId") ?? "";
 

@@ -14,12 +14,14 @@ import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { InternalPostConversationsRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
+  ConversationListItemType,
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -31,6 +33,18 @@ import search from "./search";
 import semanticSearch from "./semantic_search";
 import sendOnboarding from "./send-onboarding";
 import spaces from "./spaces";
+
+export type GetConversationsResponseBody = {
+  conversations: ConversationListItemType[];
+  hasMore: boolean;
+  lastValue: string | null;
+};
+
+export type PostConversationsResponseBody = {
+  conversation: ConversationType;
+  message?: UserMessageType;
+  contentFragments: ContentFragmentType[];
+};
 
 // Normalize spaceId: undefined -> null for backward compatibility (users who
 // haven't refreshed their browser may send undefined). Applied via preprocess
@@ -54,7 +68,7 @@ function isConversationNotFoundError(err: unknown): err is ConversationError {
 // Mounted under /api/w/:wId/assistant/conversations.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetConversationsResponseBody> => {
   const auth = ctx.get("auth");
 
   // getPaginationParams expects a Next-style query object; flatten Hono's
@@ -95,227 +109,228 @@ app.get("/", async (ctx) => {
   });
 });
 
-app.post("/", validate("json", PostConversationsBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const user = auth.getNonNullableUser();
+app.post(
+  "/",
+  validate("json", PostConversationsBodySchema),
+  async (ctx): HandlerResult<PostConversationsResponseBody> => {
+    const auth = ctx.get("auth");
+    const user = auth.getNonNullableUser();
 
-  const {
-    title,
-    visibility,
-    spaceId,
-    message,
-    contentFragments,
-    metadata,
-    skipToolsValidation,
-  } = ctx.req.valid("json");
-
-  if (message?.context.clientSideMCPServerIds) {
-    const hasServerAccess = await concurrentExecutor(
-      message.context.clientSideMCPServerIds,
-      async (serverId) => validateMCPServerAccess(auth, { serverId }),
-      { concurrency: 10 }
-    );
-
-    if (hasServerAccess.some((r) => r === false)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "User does not have access to the client-side MCP servers.",
-        },
-      });
-    }
-  }
-
-  // Validate spaceId if provided and convert to model ID
-  let spaceModelId: number | null = null;
-  if (spaceId) {
-    const space = await SpaceResource.fetchById(auth, spaceId);
-    if (!space || !space.canReadOrAdministrate(auth)) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "space_not_found",
-          message: "Space not found or access denied",
-        },
-      });
-    }
-    spaceModelId = space.id;
-  }
-
-  let newConversation = await createConversation(auth, {
-    title,
-    visibility,
-    spaceId: spaceModelId,
-    metadata,
-  });
-
-  if (newConversation.depth === 0) {
-    await ConversationResource.upsertParticipation(auth, {
-      conversation: newConversation,
-      action: "subscribed",
-      user: user.toJSON(),
-    });
-  }
-
-  const newContentFragments: ContentFragmentType[] = [];
-  let newMessage: UserMessageType | null = null;
-
-  const baseContext = {
-    username: user.username,
-    fullName: user.fullName(),
-    email: user.email,
-  };
-
-  if (contentFragments.length > 0) {
-    const newContentFragmentsRes = await concurrentExecutor(
+    const {
+      title,
+      visibility,
+      spaceId,
+      message,
       contentFragments,
-      async (contentFragment) =>
-        postNewContentFragment(auth, newConversation, contentFragment, {
-          ...baseContext,
-          profilePictureUrl: contentFragment.context.profilePictureUrl,
-        }),
-      { concurrency: 4 }
-    );
+      metadata,
+      skipToolsValidation,
+    } = ctx.req.valid("json");
 
-    for (const r of newContentFragmentsRes) {
-      if (r.isErr()) {
+    if (message?.context.clientSideMCPServerIds) {
+      const hasServerAccess = await concurrentExecutor(
+        message.context.clientSideMCPServerIds,
+        async (serverId) => validateMCPServerAccess(auth, { serverId }),
+        { concurrency: 10 }
+      );
+
+      if (hasServerAccess.some((r) => r === false)) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "User does not have access to the client-side MCP servers.",
+          },
+        });
+      }
+    }
+
+    // Validate spaceId if provided and convert to model ID
+    let spaceModelId: number | null = null;
+    if (spaceId) {
+      const space = await SpaceResource.fetchById(auth, spaceId);
+      if (!space || !space.canReadOrAdministrate(auth)) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "space_not_found",
+            message: "Space not found or access denied",
+          },
+        });
+      }
+      spaceModelId = space.id;
+    }
+
+    let newConversation = await createConversation(auth, {
+      title,
+      visibility,
+      spaceId: spaceModelId,
+      metadata,
+    });
+
+    if (newConversation.depth === 0) {
+      await ConversationResource.upsertParticipation(auth, {
+        conversation: newConversation,
+        action: "subscribed",
+        user: user.toJSON(),
+      });
+    }
+
+    const newContentFragments: ContentFragmentType[] = [];
+    let newMessage: UserMessageType | null = null;
+
+    const baseContext = {
+      username: user.username,
+      fullName: user.fullName(),
+      email: user.email,
+    };
+
+    if (contentFragments.length > 0) {
+      const newContentFragmentsRes = await concurrentExecutor(
+        contentFragments,
+        async (contentFragment) =>
+          postNewContentFragment(auth, newConversation, contentFragment, {
+            ...baseContext,
+            profilePictureUrl: contentFragment.context.profilePictureUrl,
+          }),
+        { concurrency: 4 }
+      );
+
+      for (const r of newContentFragmentsRes) {
+        if (r.isErr()) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: r.error.message,
+            },
+          });
+        }
+
+        newContentFragments.push(r.value);
+      }
+
+      newConversation = {
+        ...newConversation,
+        content: [
+          ...newConversation.content,
+          ...newContentFragments.map((contentFragment) => [contentFragment]),
+        ],
+      };
+    }
+
+    if (message) {
+      // If tools are enabled, we need to add the MCP server views to the
+      // conversation before posting the message.
+      if (message.context.selectedMCPServerViewIds) {
+        const mcpServerViews = await MCPServerViewResource.fetchByIds(
+          auth,
+          message.context.selectedMCPServerViewIds
+        );
+
+        const r = await ConversationResource.upsertMCPServerViews(auth, {
+          conversation: newConversation,
+          mcpServerViews,
+          enabled: true,
+          source: "conversation",
+          agentConfigurationId: null,
+        });
+        if (r.isErr()) {
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to add MCP server views to conversation",
+            },
+          });
+        }
+      }
+
+      const inlineSelectedSkillIds = extractUniqueSkillIds(message.content);
+      // TODO(2026-05-04 aubin): Remove this fallback once all clients submit
+      // inline <skill ... /> tags instead of the legacy selectedSkillIds field.
+      const selectedSkillIds =
+        inlineSelectedSkillIds.length > 0
+          ? inlineSelectedSkillIds
+          : (message.context.selectedSkillIds ?? []);
+      if (selectedSkillIds.length > 0) {
+        const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
+
+        const r = await SkillResource.upsertConversationSkills(auth, {
+          conversationId: newConversation.id,
+          skills,
+          enabled: true,
+        });
+
+        if (r.isErr()) {
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to add skills to conversation",
+            },
+          });
+        }
+      }
+
+      if (message.content.length === 0 && message.mentions.length === 0) {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: r.error.message,
+            message:
+              "Message content cannot be empty unless at least one mention is provided.",
           },
         });
       }
 
-      newContentFragments.push(r.value);
-    }
-
-    newConversation = {
-      ...newConversation,
-      content: [
-        ...newConversation.content,
-        ...newContentFragments.map((contentFragment) => [contentFragment]),
-      ],
-    };
-  }
-
-  if (message) {
-    // If tools are enabled, we need to add the MCP server views to the
-    // conversation before posting the message.
-    if (message.context.selectedMCPServerViewIds) {
-      const mcpServerViews = await MCPServerViewResource.fetchByIds(
-        auth,
-        message.context.selectedMCPServerViewIds
-      );
-
-      const r = await ConversationResource.upsertMCPServerViews(auth, {
+      // If a message was provided we do await for the message to be created
+      // before returning the conversation along with the message.
+      const messageRes = await postUserMessage(auth, {
         conversation: newConversation,
-        mcpServerViews,
-        enabled: true,
-        source: "conversation",
-        agentConfigurationId: null,
-      });
-      if (r.isErr()) {
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to add MCP server views to conversation",
-          },
-        });
-      }
-    }
-
-    const inlineSelectedSkillIds = extractUniqueSkillIds(message.content);
-    // TODO(2026-05-04 aubin): Remove this fallback once all clients submit
-    // inline <skill ... /> tags instead of the legacy selectedSkillIds field.
-    const selectedSkillIds =
-      inlineSelectedSkillIds.length > 0
-        ? inlineSelectedSkillIds
-        : (message.context.selectedSkillIds ?? []);
-    if (selectedSkillIds.length > 0) {
-      const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
-
-      const r = await SkillResource.upsertConversationSkills(auth, {
-        conversationId: newConversation.id,
-        skills,
-        enabled: true,
-      });
-
-      if (r.isErr()) {
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to add skills to conversation",
-          },
-        });
-      }
-    }
-
-    if (message.content.length === 0 && message.mentions.length === 0) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Message content cannot be empty unless at least one mention is provided.",
+        content: message.content,
+        mentions: message.mentions,
+        context: {
+          timezone: message.context.timezone,
+          username: user.username,
+          fullName: user.fullName(),
+          email: user.email,
+          profilePictureUrl: message.context.profilePictureUrl,
+          origin: message.context.origin ?? "web",
+          clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
         },
+        skipToolsValidation: skipToolsValidation ?? false,
       });
+      if (messageRes.isErr()) {
+        return apiError(ctx, messageRes.error);
+      }
+
+      newMessage = messageRes.value.userMessage;
     }
 
-    // If a message was provided we do await for the message to be created
-    // before returning the conversation along with the message.
-    const messageRes = await postUserMessage(auth, {
+    if (newContentFragments.length > 0 || newMessage) {
+      // If we created a user message or a content fragment (or both) we
+      // retrieve the conversation. If a user message was posted, we know that
+      // the agent messages have been created as well, so pulling the
+      // conversation again will allow to have an up to date view of the
+      // conversation with agent messages included so that the user of the API
+      // can start streaming events from these agent messages directly.
+      const updatedRes = await getConversation(auth, newConversation.sId);
+
+      if (updatedRes.isOk()) {
+        newConversation = updatedRes.value;
+      } else if (!isConversationNotFoundError(updatedRes.error)) {
+        return apiErrorForConversation(ctx, updatedRes.error);
+      }
+    }
+
+    return ctx.json({
       conversation: newConversation,
-      content: message.content,
-      mentions: message.mentions,
-      context: {
-        timezone: message.context.timezone,
-        username: user.username,
-        fullName: user.fullName(),
-        email: user.email,
-        profilePictureUrl: message.context.profilePictureUrl,
-        origin: message.context.origin ?? "web",
-        clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
-      },
-      skipToolsValidation: skipToolsValidation ?? false,
+      message: newMessage ?? undefined,
+      contentFragments: newContentFragments,
     });
-    if (messageRes.isErr()) {
-      return apiError(ctx, messageRes.error);
-    }
-
-    newMessage = messageRes.value.userMessage;
   }
-
-  if (newContentFragments.length > 0 || newMessage) {
-    // If we created a user message or a content fragment (or both) we
-    // retrieve the conversation. If a user message was posted, we know that
-    // the agent messages have been created as well, so pulling the
-    // conversation again will allow to have an up to date view of the
-    // conversation with agent messages included so that the user of the API
-    // can start streaming events from these agent messages directly.
-    const updatedRes = await getConversation(auth, newConversation.sId);
-
-    if (updatedRes.isOk()) {
-      newConversation = updatedRes.value;
-    } else if (!isConversationNotFoundError(updatedRes.error)) {
-      return apiErrorForConversation(ctx, updatedRes.error);
-    }
-  }
-
-  return ctx.json({
-    conversation: newConversation,
-    message: newMessage ?? undefined,
-    contentFragments: newContentFragments,
-  } satisfies {
-    conversation: ConversationType;
-    message?: UserMessageType;
-    contentFragments: ContentFragmentType[];
-  });
-});
+);
 
 // Register static paths BEFORE `/:cId` so the param route does not swallow
 // these names as conversation ids.

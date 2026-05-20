@@ -2,10 +2,15 @@ import {
   archiveAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type PostAgentConfigurationArchiveResponseBody = {
+  archived: number;
+};
 
 const PostAgentConfigurationArchiveSchema = z.object({
   agentConfigurationIds: z.array(z.string()),
@@ -17,7 +22,7 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostAgentConfigurationArchiveSchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostAgentConfigurationArchiveResponseBody> => {
     const auth = ctx.get("auth");
     const { agentConfigurationIds } = ctx.req.valid("json");
 

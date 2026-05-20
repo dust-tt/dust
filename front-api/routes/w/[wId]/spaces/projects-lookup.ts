@@ -1,12 +1,18 @@
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { ProjectType } from "@app/types/space";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type SpacesLookupResponseBody = {
+  spaces: ProjectType[];
+};
 
 // Mounted under /api/w/:wId/spaces/projects-lookup.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<SpacesLookupResponseBody> => {
   const auth = ctx.get("auth");
   const ids = ctx.req.queries("ids");
 

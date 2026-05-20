@@ -1,12 +1,20 @@
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceType } from "@app/types/data_source";
 
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type GetBotDataSourcesResponseBody = {
+  slackBotDataSource: DataSourceType | null;
+  microsoftBotDataSource: DataSourceType | null;
+  discordBotDataSource: DataSourceType | null;
+};
 
 // Mounted at /api/w/:wId/data_sources/bot-data-sources.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetBotDataSourcesResponseBody> => {
   const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {

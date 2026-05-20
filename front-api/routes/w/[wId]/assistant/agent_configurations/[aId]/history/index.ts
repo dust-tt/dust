@@ -3,14 +3,20 @@ import {
   listsAgentConfigurationVersions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { GetAgentConfigurationsHistoryQuerySchema } from "@app/types/api/internal/agent_configuration";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 import { fromError } from "zod-validation-error";
 
+export type GetAgentConfigurationsResponseBody = {
+  history: LightAgentConfigurationType[];
+};
+
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/history.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
   const auth = ctx.get("auth");
   const aId = ctx.req.param("aId") ?? "";
 

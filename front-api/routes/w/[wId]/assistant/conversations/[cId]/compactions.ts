@@ -2,11 +2,17 @@ import { compactConversation } from "@app/lib/api/assistant/conversation/compact
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isProviderWhitelisted } from "@app/lib/assistant";
 import { isSupportedModel } from "@app/types/assistant/assistant";
+import type { CompactionMessageType } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type PostConversationCompactResponseBody = {
+  compactionMessage: CompactionMessageType;
+};
 
 const PostConversationCompactionsBodySchema = z.object({
   model: z.object({
@@ -21,7 +27,7 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostConversationCompactionsBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostConversationCompactResponseBody> => {
     const auth = ctx.get("auth");
     const conversationId = ctx.req.param("cId") ?? "";
 

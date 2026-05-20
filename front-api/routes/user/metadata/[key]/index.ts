@@ -1,11 +1,22 @@
 import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { APIErrorResponse } from "@app/types/error";
+import type { UserMetadataType } from "@app/types/user";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import type { Context } from "hono";
+import type { Context, TypedResponse } from "hono";
 import { Hono } from "hono";
 import { Op } from "sequelize";
 import { z } from "zod";
+
+export type GetUserMetadataResponseBody = {
+  metadata: UserMetadataType | null;
+};
+
+export type PostUserMetadataResponseBody = {
+  metadata: UserMetadataType;
+};
 
 const PostUserMetadataBodySchema = z.object({
   value: z.string(),
@@ -15,7 +26,12 @@ const PostUserMetadataBodySchema = z.object({
 // `/api/user` sub-app.
 const app = new Hono();
 
-async function loadUserAndWorkspace(ctx: Context) {
+async function loadUserAndWorkspace(
+  ctx: Context
+): Promise<
+  | { u: UserResource; workspaceModelId: number | undefined }
+  | { err: Response & TypedResponse<APIErrorResponse> }
+> {
   const session = ctx.get("session");
   const user = await getUserFromSession(session);
   if (!user) {
@@ -57,7 +73,7 @@ async function loadUserAndWorkspace(ctx: Context) {
   return { u, workspaceModelId };
 }
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetUserMetadataResponseBody> => {
   const r = await loadUserAndWorkspace(ctx);
   if ("err" in r) {
     return r.err;
@@ -68,17 +84,21 @@ app.get("/", async (ctx) => {
   return ctx.json({ metadata });
 });
 
-app.post("/", validate("json", PostUserMetadataBodySchema), async (ctx) => {
-  const r = await loadUserAndWorkspace(ctx);
-  if ("err" in r) {
-    return r.err;
-  }
+app.post(
+  "/",
+  validate("json", PostUserMetadataBodySchema),
+  async (ctx): HandlerResult<PostUserMetadataResponseBody> => {
+    const r = await loadUserAndWorkspace(ctx);
+    if ("err" in r) {
+      return r.err;
+    }
 
-  const key = ctx.req.param("key") ?? "";
-  const { value } = ctx.req.valid("json");
-  await r.u.setMetadata(key, value, r.workspaceModelId);
-  return ctx.json({ metadata: { key, value } });
-});
+    const key = ctx.req.param("key") ?? "";
+    const { value } = ctx.req.valid("json");
+    await r.u.setMetadata(key, value, r.workspaceModelId);
+    return ctx.json({ metadata: { key, value } });
+  }
+);
 
 app.delete("/", async (ctx) => {
   const r = await loadUserAndWorkspace(ctx);

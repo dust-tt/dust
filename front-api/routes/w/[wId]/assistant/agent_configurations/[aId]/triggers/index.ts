@@ -3,13 +3,22 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
+import type { TriggerType } from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
 
 import tId from "./[tId]";
+
+export type GetTriggersResponseBody = {
+  triggers: (TriggerType & {
+    isEditor: boolean;
+    editorName?: string;
+  })[];
+};
 
 const DeleteTriggersRequestBodySchema = z.object({
   triggerIds: z.array(z.string()),
@@ -36,7 +45,7 @@ function isWebhookTriggerData(trigger: {
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/triggers.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetTriggersResponseBody> => {
   const auth = ctx.get("auth");
   const aId = ctx.req.param("aId") ?? "";
 

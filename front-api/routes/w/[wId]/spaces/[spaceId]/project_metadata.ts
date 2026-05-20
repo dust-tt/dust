@@ -5,40 +5,54 @@ import {
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_task/client";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
+import type { ProjectMetadataType } from "@app/types/project_metadata";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
+export type GetProjectMetadataResponseBody = {
+  projectMetadata: ProjectMetadataType | null;
+};
+
+export type PatchProjectMetadataResponseBody = {
+  projectMetadata: ProjectMetadataType;
+};
+
 // Mounted under /api/w/:wId/spaces/:spaceId/project_metadata. All routes
 // require the space to be a project; this is checked inline per handler.
 const app = new Hono();
 
-app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
-  const auth = ctx.get("auth");
-  const space = ctx.get("space");
+app.get(
+  "/",
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<GetProjectMetadataResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
-  if (!space.isProject()) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Project metadata is only available for project spaces.",
-      },
+    if (!space.isProject()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Project metadata is only available for project spaces.",
+        },
+      });
+    }
+
+    const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+    return ctx.json({
+      projectMetadata: metadata ? metadata.toJSON() : null,
     });
   }
-
-  const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
-  return ctx.json({
-    projectMetadata: metadata ? metadata.toJSON() : null,
-  });
-});
+);
 
 app.patch(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PatchProjectMetadataBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchProjectMetadataResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 

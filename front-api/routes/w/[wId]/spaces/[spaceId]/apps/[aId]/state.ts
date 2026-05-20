@@ -1,9 +1,15 @@
 import { AppResource } from "@app/lib/resources/app_resource";
+import type { AppType } from "@app/types/app";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type PostStateResponseBody = {
+  app: AppType;
+};
 
 const PostStateBodySchema = z.object({
   specification: z.string(),
@@ -18,7 +24,7 @@ app.post(
   "/",
   withSpace({ requireCanWrite: true }),
   validate("json", PostStateBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostStateResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const aId = ctx.req.param("aId") ?? "";

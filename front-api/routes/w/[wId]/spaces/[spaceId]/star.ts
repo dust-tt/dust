@@ -1,9 +1,17 @@
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type PostUserProjectStarResponseBody = {
+  sId: string;
+  spaceId: string;
+  userId: string;
+  isStarred: boolean;
+};
 
 const PostUserProjectStarBodySchema = z.object({
   starred: z.boolean(),
@@ -16,7 +24,7 @@ app.post(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostUserProjectStarBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostUserProjectStarResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const { starred } = ctx.req.valid("json");

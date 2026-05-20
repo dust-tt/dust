@@ -1,11 +1,17 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { TagType } from "@app/types/tag";
 import { isBuilder } from "@app/types/user";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type PatchAgentTagsResponseBody = {
+  tags: TagType[];
+};
 
 const PatchAgentTagsRequestBodySchema = z
   .object({
@@ -27,7 +33,7 @@ const app = new Hono();
 app.patch(
   "/",
   validate("json", PatchAgentTagsRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchAgentTagsResponseBody> => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
 

@@ -1,5 +1,7 @@
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { SpaceKind } from "@app/types/space";
+import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
@@ -8,6 +10,16 @@ import { z } from "zod";
 
 import webhookSourceViewId from "./[webhookSourceViewId]";
 
+export type GetWebhookSourceViewsResponseBody = {
+  success: boolean;
+  webhookSourceViews: WebhookSourceViewType[];
+};
+
+export type PostWebhookSourceViewResponseBody = {
+  success: boolean;
+  webhookSourceView: WebhookSourceViewType;
+};
+
 const PostWebhookSourceViewBodySchema = z.object({
   webhookSourceId: z.string(),
 });
@@ -15,21 +27,25 @@ const PostWebhookSourceViewBodySchema = z.object({
 // Mounted under /api/w/:wId/spaces/:spaceId/webhook_source_views.
 const app = new Hono();
 
-app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
-  const auth = ctx.get("auth");
-  const space = ctx.get("space");
-  const views = await WebhookSourcesViewResource.listBySpace(auth, space);
-  return ctx.json({
-    success: true,
-    webhookSourceViews: views.map((v) => v.toJSON()),
-  });
-});
+app.get(
+  "/",
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<GetWebhookSourceViewsResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const views = await WebhookSourcesViewResource.listBySpace(auth, space);
+    return ctx.json({
+      success: true,
+      webhookSourceViews: views.map((v) => v.toJSON()),
+    });
+  }
+);
 
 app.post(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostWebhookSourceViewBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostWebhookSourceViewResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const { webhookSourceId } = ctx.req.valid("json");

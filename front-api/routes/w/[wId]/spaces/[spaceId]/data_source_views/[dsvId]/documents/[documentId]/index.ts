@@ -1,10 +1,16 @@
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { CoreAPIDocument } from "@app/types/core/data_source";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
+
+export type GetDataSourceViewDocumentResponseBody = {
+  document: CoreAPIDocument;
+};
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/documents/:documentId.
@@ -14,7 +20,7 @@ app.get(
   "/",
   withSpace({ requireCanRead: true }),
   withDataSourceView({ requireCanRead: true }),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetDataSourceViewDocumentResponseBody> => {
     const dataSourceView = ctx.get("dataSourceView");
     const documentId = ctx.req.param("documentId") ?? "";
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);

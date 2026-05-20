@@ -6,6 +6,8 @@ import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/config
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/internal/agent_configuration";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -26,11 +28,19 @@ import tags from "./tags";
 import triggers from "./triggers";
 import usage from "./usage";
 
+export type GetAgentConfigurationResponseBody = {
+  agentConfiguration: AgentConfigurationType;
+};
+
+export type DeleteAgentConfigurationResponseBody = {
+  success: boolean;
+};
+
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId. The bare
 // `/` handles GET, PATCH, and DELETE on the agent itself.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetAgentConfigurationResponseBody> => {
   const auth = ctx.get("auth");
   const aId = ctx.req.param("aId") ?? "";
 
@@ -59,7 +69,7 @@ app.get("/", async (ctx) => {
 app.patch(
   "/",
   validate("json", PostOrPatchAgentConfigurationRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetAgentConfigurationResponseBody> => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
     const body = ctx.req.valid("json");
@@ -125,47 +135,50 @@ app.patch(
   }
 );
 
-app.delete("/", async (ctx) => {
-  const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId") ?? "";
+app.delete(
+  "/",
+  async (ctx): HandlerResult<DeleteAgentConfigurationResponseBody> => {
+    const auth = ctx.get("auth");
+    const aId = ctx.req.param("aId") ?? "";
 
-  const agent = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "full",
-  });
-  if (!agent || (!agent.canRead && !auth.isAdmin())) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The Agent you're trying to access was not found.",
-      },
+    const agent = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "full",
     });
-  }
+    if (!agent || (!agent.canRead && !auth.isAdmin())) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The Agent you're trying to access was not found.",
+        },
+      });
+    }
 
-  if (!agent.canEdit && !auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Only editors can delete workspace agent.",
-      },
-    });
-  }
+    if (!agent.canEdit && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only editors can delete workspace agent.",
+        },
+      });
+    }
 
-  const archived = await archiveAgentConfiguration(auth, aId);
-  if (!archived) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent you're trying to delete was not found.",
-      },
-    });
-  }
+    const archived = await archiveAgentConfiguration(auth, aId);
+    if (!archived) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The agent you're trying to delete was not found.",
+        },
+      });
+    }
 
-  return ctx.json({ success: true });
-});
+    return ctx.json({ success: true });
+  }
+);
 
 app.route("/editors", editors);
 app.route("/export", exportRoutes);

@@ -1,8 +1,15 @@
 import { importAgentConfigurationFromYAMLString } from "@app/lib/api/assistant/configuration/yaml_import";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type PostAgentConfigurationFromYAMLResponseBody = {
+  agentConfiguration: AgentConfigurationType;
+  skippedActions?: { name: string; reason: string }[];
+};
 
 const PostAgentConfigurationFromYAMLRequestBodySchema = z.object({
   yamlContent: z.string(),
@@ -14,7 +21,7 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostAgentConfigurationFromYAMLRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostAgentConfigurationFromYAMLResponseBody> => {
     const auth = ctx.get("auth");
     const { yamlContent } = ctx.req.valid("json");
 

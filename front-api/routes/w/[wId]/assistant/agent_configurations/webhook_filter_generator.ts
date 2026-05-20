@@ -3,10 +3,15 @@ import {
   WEBHOOK_PRESETS,
   WEBHOOK_PROVIDERS,
 } from "@app/types/triggers/webhooks";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type PostWebhookFilterGeneratorResponseBody = {
+  filter: string;
+};
 
 const PostWebhookFilterGeneratorRequestBodySchema = z.object({
   naturalDescription: z.string(),
@@ -20,7 +25,7 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostWebhookFilterGeneratorRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostWebhookFilterGeneratorResponseBody> => {
     const auth = ctx.get("auth");
     const {
       naturalDescription,

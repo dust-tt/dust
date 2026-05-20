@@ -1,6 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import type { ProjectTaskType } from "@app/types/project_task";
 import { PROJECT_TASK_STATUSES } from "@app/types/project_task";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
@@ -8,6 +10,23 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import start from "./start";
+
+// `ProjectTaskType` declares several `Date` fields (`doneAt`,
+// `agentSuggestionReviewedAt`, `createdAt`, `updatedAt`). On the wire these
+// JSON-serialize to ISO strings, so the response body overrides those fields
+// as `string`. Consumers already accept `Date | string` via
+// `formatFriendlyDate(...)`.
+export interface PatchProjectTaskResponseBody {
+  task: Omit<
+    ProjectTaskType,
+    "doneAt" | "agentSuggestionReviewedAt" | "createdAt" | "updatedAt"
+  > & {
+    doneAt: string | null;
+    agentSuggestionReviewedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
 
 const PatchProjectTaskBodySchema = z
   .object({
@@ -37,7 +56,7 @@ app.patch(
   "/",
   withSpace({ requireCanRead: true }),
   validate("json", PatchProjectTaskBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchProjectTaskResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const taskId = ctx.req.param("taskId") ?? "";

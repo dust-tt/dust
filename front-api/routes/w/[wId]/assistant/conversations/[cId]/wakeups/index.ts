@@ -1,14 +1,20 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 import wakeup from "./[wuId]";
 
+export type GetConversationWakeUpsResponseBody = {
+  wakeUps: WakeUpType[];
+};
+
 // Mounted at /api/w/:wId/assistant/conversations/:cId/wakeups.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetConversationWakeUpsResponseBody> => {
   const auth = ctx.get("auth");
   const cId = ctx.req.param("cId") ?? "";
 

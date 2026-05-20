@@ -1,14 +1,26 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 import mId from "./[mId]";
 
+// JSON-serializes Date fields to ISO strings on the wire; type reflects wire
+// format. The underlying `AgentMemoryResource.toJSON` returns `lastUpdated:
+// Date` but `JSON.stringify` emits a string.
+export type GetAgentMemoriesResponseBody = {
+  memories: {
+    sId: string;
+    lastUpdated: string;
+    content: string;
+  }[];
+};
+
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/memories.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetAgentMemoriesResponseBody> => {
   const auth = ctx.get("auth");
   const aId = ctx.req.param("aId") ?? "";
 

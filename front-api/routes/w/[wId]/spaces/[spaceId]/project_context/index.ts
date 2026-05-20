@@ -1,3 +1,4 @@
+import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   addContentNodeToProject,
   listProjectContextAttachments,
@@ -6,6 +7,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentNodeType } from "@app/types/core/content_node";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
@@ -14,6 +16,15 @@ import { z } from "zod";
 
 import contentNodes from "./content_nodes";
 import files from "./files";
+
+export type GetProjectContextResponseBody = {
+  attachments: ConversationAttachmentType[];
+};
+
+export type PostProjectContextContentNodeResponseBody = {
+  contentFragments: PostProjectContextContentNodeFragment[];
+  errors: Array<{ index: number; message: string }>;
+};
 
 const PostProjectContextContentNodeItemSchema = z.object({
   title: z.string().min(1, "title is required"),
@@ -27,7 +38,7 @@ const PostProjectContextContentNodeBodySchema = z.object({
   items: z.array(PostProjectContextContentNodeItemSchema),
 });
 
-type PostProjectContextContentNodeFragment = {
+export type PostProjectContextContentNodeFragment = {
   sId: string;
   title: string;
   contentType: string;
@@ -59,26 +70,30 @@ function attachmentTitleMatchesQuery(title: string, q: string): boolean {
 // Mounted under /api/w/:wId/spaces/:spaceId/project_context.
 const app = new Hono();
 
-app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
-  const auth = ctx.get("auth");
-  const space = ctx.get("space");
+app.get(
+  "/",
+  withSpace({ requireCanRead: true }),
+  async (ctx): HandlerResult<GetProjectContextResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
-  const attachments = await listProjectContextAttachments(auth, space);
+    const attachments = await listProjectContextAttachments(auth, space);
 
-  const q = ctx.req.query("query")?.trim().toLowerCase() ?? "";
+    const q = ctx.req.query("query")?.trim().toLowerCase() ?? "";
 
-  const filtered = attachments.filter((a) =>
-    attachmentTitleMatchesQuery(a.title, q)
-  );
+    const filtered = attachments.filter((a) =>
+      attachmentTitleMatchesQuery(a.title, q)
+    );
 
-  return ctx.json({ attachments: filtered });
-});
+    return ctx.json({ attachments: filtered });
+  }
+);
 
 app.post(
   "/",
   withSpace({ requireCanRead: true }),
   validate("json", PostProjectContextContentNodeBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostProjectContextContentNodeResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 

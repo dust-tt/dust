@@ -2,11 +2,16 @@ import { searchProjectConversations } from "@app/lib/api/projects/search";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type SearchConversationsResponseBody = {
+  conversations: ConversationWithoutContentType[];
+};
 
 const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.1;
 
@@ -28,7 +33,7 @@ app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
   validate("query", SearchConversationsQuerySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<SearchConversationsResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const { query, limit: topK } = ctx.req.valid("query");

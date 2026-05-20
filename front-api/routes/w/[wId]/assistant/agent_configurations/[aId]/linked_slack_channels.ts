@@ -4,10 +4,15 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type PatchLinkedSlackChannelsResponseBody = {
+  success: true;
+};
 
 const PatchLinkedSlackChannelsRequestBodySchema = z.object({
   slack_channel_internal_ids: z.array(z.string()),
@@ -21,7 +26,7 @@ const app = new Hono();
 app.patch(
   "/",
   validate("json", PatchLinkedSlackChannelsRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchLinkedSlackChannelsResponseBody> => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
     const body = ctx.req.valid("json");

@@ -10,10 +10,20 @@ import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types/api/internal/agent_configuration";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
+
+export type GetAgentConfigurationsResponseBody = {
+  agentConfigurations: LightAgentConfigurationType[];
+};
+
+export type PostAgentConfigurationResponseBody = {
+  agentConfiguration: LightAgentConfigurationType;
+};
 
 import agent from "./[aId]";
 import batchUpdateScope from "./batch_update_scope";
@@ -30,7 +40,7 @@ import webhookFilterGenerator from "./webhook_filter_generator";
 // applied by the parent workspace sub-app.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
   const rawQuery = ctx.req.query();
@@ -164,52 +174,55 @@ app.get("/", async (ctx) => {
   return ctx.json({ agentConfigurations });
 });
 
-app.post("/", async (ctx) => {
-  const auth = ctx.get("auth");
+app.post(
+  "/",
+  async (ctx): HandlerResult<PostAgentConfigurationResponseBody> => {
+    const auth = ctx.get("auth");
 
-  const isSaveAgentConfigurationsEnabled =
-    await KillSwitchResource.isKillSwitchEnabled("save_agent_configurations");
-  if (isSaveAgentConfigurationsEnabled) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Saving agent configurations is temporarily disabled, try again later.",
-      },
+    const isSaveAgentConfigurationsEnabled =
+      await KillSwitchResource.isKillSwitchEnabled("save_agent_configurations");
+    if (isSaveAgentConfigurationsEnabled) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "Saving agent configurations is temporarily disabled, try again later.",
+        },
+      });
+    }
+
+    const body = await ctx.req.json();
+    const bodyValidation =
+      PostOrPatchAgentConfigurationRequestBodySchema.safeParse(body);
+    if (!bodyValidation.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid request body: ${bodyValidation.error.message}`,
+        },
+      });
+    }
+
+    const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
+      auth,
+      assistant: bodyValidation.data.assistant,
     });
+
+    if (agentConfigurationRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "assistant_saving_error",
+          message: `Error saving agent: ${agentConfigurationRes.error.message}`,
+        },
+      });
+    }
+
+    return ctx.json({ agentConfiguration: agentConfigurationRes.value });
   }
-
-  const body = await ctx.req.json();
-  const bodyValidation =
-    PostOrPatchAgentConfigurationRequestBodySchema.safeParse(body);
-  if (!bodyValidation.success) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid request body: ${bodyValidation.error.message}`,
-      },
-    });
-  }
-
-  const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
-    auth,
-    assistant: bodyValidation.data.assistant,
-  });
-
-  if (agentConfigurationRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "assistant_saving_error",
-        message: `Error saving agent: ${agentConfigurationRes.error.message}`,
-      },
-    });
-  }
-
-  return ctx.json({ agentConfiguration: agentConfigurationRes.value });
-});
+);
 
 // Register static paths BEFORE `/:aId` so the param route does not swallow
 // these names as agent ids.
