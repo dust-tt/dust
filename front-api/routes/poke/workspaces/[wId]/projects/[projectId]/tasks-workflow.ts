@@ -3,7 +3,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type PokeProjectWorkflowInfo = {
@@ -24,7 +24,7 @@ export type PokeGetProjectWorkflow = {
 // Mounted at /api/poke/workspaces/:wId/projects/:projectId/tasks-workflow.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<PokeGetProjectWorkflow> => {
   const auth = ctx.get("auth");
   const projectId = ctx.req.param("projectId");
   if (!projectId) {
@@ -66,13 +66,12 @@ app.get("/", async (ctx) => {
     closeTime: description.closeTime?.getTime() ?? null,
   };
 
-  const body: PokeGetProjectWorkflow = {
+  return ctx.json({
     metadata: metadata ? metadata.toJSON() : null,
     temporalNamespace: config.getTemporalFrontNamespace() ?? "",
     workflowId,
     latestWorkflow,
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

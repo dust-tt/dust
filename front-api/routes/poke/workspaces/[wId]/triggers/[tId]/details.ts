@@ -4,7 +4,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { UserType } from "@app/types/user";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type PokeGetTriggerDetails = {
@@ -16,7 +16,7 @@ export type PokeGetTriggerDetails = {
 // Mounted at /api/poke/workspaces/:wId/triggers/:tId/details.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<PokeGetTriggerDetails> => {
   const auth = ctx.get("auth");
   const tId = ctx.req.param("tId");
   if (!tId) {
@@ -59,12 +59,11 @@ app.get("/", async (ctx) => {
     : [];
   const editorUser = editorUsers.length > 0 ? editorUsers[0].toJSON() : null;
 
-  const body: PokeGetTriggerDetails = {
+  return ctx.json({
     trigger: trigger.toJSON(),
     agent: agentConfiguration,
     editorUser,
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

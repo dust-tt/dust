@@ -1,5 +1,6 @@
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { AppType } from "@app/types/app";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 import aId from "./[aId]";
@@ -13,12 +14,11 @@ export type PokeListApps = {
 // the parent workspaces/[wId] sub-app.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<PokeListApps> => {
   const auth = ctx.get("auth");
   const apps = await AppResource.listByWorkspace(auth);
 
-  const body: PokeListApps = { apps: apps.map((a) => a.toJSON()) };
-  return ctx.json(body);
+  return ctx.json({ apps: apps.map((a) => a.toJSON()) });
 });
 
 // Literal segments before param segments.

@@ -3,7 +3,7 @@ import {
   listTriggersWithProviderAndEditor,
   type TriggerWithProviderAndEditor,
 } from "@app/lib/triggers/admin/list_with_metadata";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -23,13 +23,12 @@ const DeleteTriggerQuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/triggers.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<PokeListTriggers> => {
   const auth = ctx.get("auth");
 
   const triggers = await listTriggersWithProviderAndEditor(auth);
 
-  const body: PokeListTriggers = { triggers };
-  return ctx.json(body);
+  return ctx.json({ triggers });
 });
 
 app.delete("/", validate("query", DeleteTriggerQuerySchema), async (ctx) => {

@@ -1,6 +1,6 @@
 import { AppResource } from "@app/lib/resources/app_resource";
 import { type ExportedApp, exportAppWithDatasets } from "@app/lib/utils/apps";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type ExportAppResponseBody = {
@@ -10,7 +10,7 @@ export type ExportAppResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/apps/:aId/export.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<ExportAppResponseBody> => {
   const auth = ctx.get("auth");
   const aId = ctx.req.param("aId");
   if (!aId) {
@@ -36,8 +36,7 @@ app.get("/", async (ctx) => {
 
   const exported = await exportAppWithDatasets(auth, appResource);
 
-  const body: ExportAppResponseBody = { app: exported };
-  return ctx.json(body);
+  return ctx.json({ app: exported });
 });
 
 export default app;
