@@ -969,7 +969,7 @@ export async function reconcileSensitivityLabelsForParent({
 
   const childNodes = childrenResult.results
     .filter((item) => item.folder)
-    .map((item) => getDriveInternalIdFromItem(item));
+    .map((item) => getDriveItemInternalId(item));
 
   return {
     childNodes,
