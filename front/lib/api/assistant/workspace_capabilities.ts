@@ -1,7 +1,4 @@
-import {
-  REASONING_MODEL_CONFIGS,
-  USED_MODEL_CONFIGS,
-} from "@app/components/providers/model_configs";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -20,6 +17,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
 export interface AvailableTool {
@@ -74,12 +72,10 @@ export async function listActiveAgentsUsingNonRegionalModels(
   const workspaceId = auth.getNonNullableWorkspace().id;
   const region = regionConfig.getCurrentRegion();
 
+  // Match against the full catalog: existing agents may use older
+  // still-supported models no longer surfaced in the picker.
   const regionalModelKeys = new Set<string>();
-  for (const m of [
-    ...USED_MODEL_CONFIGS,
-    ...REASONING_MODEL_CONFIGS,
-    ...CUSTOM_MODEL_CONFIGS,
-  ]) {
+  for (const m of SUPPORTED_MODEL_CONFIGS) {
     if (m.regionalAvailability[region] === true) {
       regionalModelKeys.add(`${m.providerId}:${m.modelId}`);
     }
