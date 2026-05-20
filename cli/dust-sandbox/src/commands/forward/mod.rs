@@ -430,7 +430,7 @@ where
             &mut upstream_write,
             &runtime.secret_table,
             mode,
-            Some(&websocket_watch_tx),
+            &websocket_watch_tx,
         ) => {
             match request_result {
                 Ok(()) => {

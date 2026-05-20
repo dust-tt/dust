@@ -88,17 +88,13 @@ enum UpgradeVerdict {
     NotAnUpgrade,
     AwaitingResponse(oneshot::Receiver<bool>),
     ResponseTaskGone,
-    NoWatchWired,
 }
 
 async fn register_upgrade_verdict(
-    websocket_watch_tx: Option<&mpsc::Sender<WebSocketUpgradeWatch>>,
+    websocket_watch_tx: &mpsc::Sender<WebSocketUpgradeWatch>,
 ) -> UpgradeVerdict {
-    let Some(tx) = websocket_watch_tx else {
-        return UpgradeVerdict::NoWatchWired;
-    };
     let (accepted_tx, accepted_rx) = oneshot::channel();
-    if tx
+    if websocket_watch_tx
         .send(WebSocketUpgradeWatch { accepted_tx })
         .await
         .is_err()
@@ -151,7 +147,7 @@ pub(super) async fn forward_http1_requests<R, W>(
     upstream: &mut W,
     secret_table: &SecretTable,
     mode: HttpRewriteMode<'_>,
-    websocket_watch_tx: Option<&mpsc::Sender<WebSocketUpgradeWatch>>,
+    websocket_watch_tx: &mpsc::Sender<WebSocketUpgradeWatch>,
 ) -> RewriteResult<()>
 where
     R: AsyncRead + Unpin,
@@ -224,13 +220,6 @@ where
                 // so we can't learn the 101 verdict. Tear down rather than
                 // splice raw frames into a half-closed connection.
                 shutdown_upstream(upstream).await?;
-                return Ok(());
-            }
-            UpgradeVerdict::NoWatchWired => {
-                // Unit tests that exercise the request rewriter without the
-                // response copier. Preserve the message-loop-only behavior
-                // (splice raw, let the test inspect what reached upstream).
-                copy_raw_client_to_upstream(&mut reader, upstream).await?;
                 return Ok(());
             }
         }
@@ -1924,8 +1913,30 @@ mod tests {
             Ok::<(), std::io::Error>(())
         });
 
-        let rewrite_result =
-            forward_http1_requests(&mut client_read, &mut upstream_write, table, mode, None).await;
+        // Tests don't run the response copier, so spawn an auto-accept task
+        // on the watch channel. This stands in for "upstream replied 101" so
+        // an upgrade request gets spliced raw, and otherwise the channel is
+        // never touched.
+        let (websocket_watch_tx, mut websocket_watch_rx) =
+            mpsc::channel::<WebSocketUpgradeWatch>(1);
+        let auto_accept_task = tokio::spawn(async move {
+            while let Some(watch) = websocket_watch_rx.recv().await {
+                let _ = watch.accepted_tx.send(true);
+            }
+        });
+
+        let rewrite_result = forward_http1_requests(
+            &mut client_read,
+            &mut upstream_write,
+            table,
+            mode,
+            &websocket_watch_tx,
+        )
+        .await;
+        drop(websocket_watch_tx);
+        auto_accept_task
+            .await
+            .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
         drop(upstream_write);
         // Drop client_read so a writer task still trying to push the tail of
         // an oversized input fails fast with BrokenPipe instead of hanging
