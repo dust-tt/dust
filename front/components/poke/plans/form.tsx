@@ -43,6 +43,8 @@ export type EditingPlanType = {
   maxMessagesTimeframe: string;
   isDeepDiveAllowed: boolean;
   maxUsers: string | number;
+  maxFreeUsers: string | number;
+  maxLifetimeFreeUsers: string | number;
   maxVaults: string | number;
   name: string;
   trialPeriodDays: string | number;
@@ -72,6 +74,8 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
     maxUsers: plan.limits.users.maxUsers,
+    maxFreeUsers: plan.limits.users.maxFreeUsers,
+    maxLifetimeFreeUsers: plan.limits.users.maxLifetimeFreeUsers,
     maxVaults: plan.limits.vaults.maxVaults,
     trialPeriodDays: plan.trialPeriodDays,
     maxImagesPerWeek: plan.limits.capabilities.images.maxImagesPerWeek,
@@ -123,6 +127,10 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       },
       users: {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
+        maxFreeUsers: parseMaybeNumber(editingPlan.maxFreeUsers),
+        maxLifetimeFreeUsers: parseMaybeNumber(
+          editingPlan.maxLifetimeFreeUsers
+        ),
         isSSOAllowed: editingPlan.isSSOAllowed,
         isSCIMAllowed: editingPlan.isSCIMAllowed,
       },
@@ -161,6 +169,8 @@ const getEmptyPlan = (): EditingPlanType => ({
   maxMessagesTimeframe: "day",
   isDeepDiveAllowed: true,
   maxUsers: "",
+  maxFreeUsers: -1,
+  maxLifetimeFreeUsers: -1,
   maxVaults: "",
   name: "",
   trialPeriodDays: 0,
@@ -299,6 +309,19 @@ export const PLAN_FIELDS = {
     width: "small",
     title: "# Users",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxUsers),
+  },
+  maxFreeUsers: {
+    type: "number",
+    width: "small",
+    title: "# Free",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxFreeUsers),
+  },
+  maxLifetimeFreeUsers: {
+    type: "number",
+    width: "small",
+    title: "# Free (LT)",
+    error: (plan: EditingPlanType) =>
+      errorCheckNumber(plan.maxLifetimeFreeUsers),
   },
   isSSOAllowed: {
     type: "boolean",

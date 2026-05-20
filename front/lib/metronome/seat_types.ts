@@ -1,8 +1,5 @@
 import { getMetronomeClient } from "@app/lib/metronome/client";
-import {
-  DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY,
-  SEAT_TYPE_CUSTOM_FIELD_KEY,
-} from "@app/lib/metronome/constants";
+import { SEAT_TYPE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -95,62 +92,115 @@ export function isMauContract(
 }
 
 /**
- * Fetch the `DUST_DEFAULT_SEAT_TYPE` value from a rate card. The rate card
- * is the template-level entity shared by all contracts on the same plan,
- * so tagging it once at `metronome_setup` time backfills every existing
- * and future contract — no per-contract setValues needed.
- *
- * Errors are intentionally NOT caught here: caching `null` on a transient
- * Metronome error would stick for the full TTL and break new-member
- * onboarding on every contract sharing this rate card. Let the error
- * propagate so the cache stays empty and the next call retries.
+ * Caps gating which seat tier `getDefaultSeatTypeForContract` is allowed
+ * to pick. Sourced from the plan model
+ * (`plan.limits.users.maxFreeUsers` / `maxLifetimeFreeUsers`); the caller
+ * passes them in. Use `-1` to disable a limit (matches plan convention).
  */
-async function fetchRateCardDefaultSeatType(
-  rateCardId: string
-): Promise<MembershipSeatType | null> {
-  const response = await getMetronomeClient().v1.contracts.rateCards.retrieve({
-    id: rateCardId,
-  });
-  const value =
-    response.data.custom_fields?.[DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY];
-  return value && isMembershipSeatType(value) ? value : null;
-}
-
-const RATE_CARD_DEFAULT_SEAT_TYPE_TTL_MS = 6 * 60 * 60 * 1000;
-
-const getCachedRateCardDefaultSeatType = cacheWithRedis(
-  fetchRateCardDefaultSeatType,
-  (rateCardId: string) => `metronome:rate-card-default-seat-type:${rateCardId}`,
-  { ttlMs: RATE_CARD_DEFAULT_SEAT_TYPE_TTL_MS }
-);
+export type FreeSeatLimits = {
+  maxActiveFreeUsers: number;
+  maxLifetimeFreeUsers: number;
+};
 
 /**
- * Returns the seat type to assign to a new membership on this contract,
- * resolved from the rate card's `DUST_DEFAULT_SEAT_TYPE` custom field.
- * Validated against the seat tiers actually billed on the contract.
- * Returns `undefined` when the rate card is missing the field, holds an
- * unrecognised value, or points to a seat type the contract doesn't carry
- * — the caller should refuse to create the membership in those cases
- * rather than silently fall back to a hardcoded seat type.
+ * `free`-seat usage counts on the workspace. Built by
+ * `MembershipResource.getFreeSeatCounts`. `lifetime` is across all
+ * memberships ever (active + revoked + expired), since `free` is
+ * one-shot per user.
  */
-export async function getDefaultSeatTypeForContract(
-  contract: Pick<CachedContract, "subscriptions" | "rate_card_id">,
-  productSeatTypes: Map<string, MembershipSeatType>
-): Promise<MembershipSeatType | undefined> {
-  if (!contract.rate_card_id) {
-    return undefined;
+export type FreeSeatCounts = {
+  active: number;
+  lifetime: number;
+};
+
+/**
+ * Returns the seat type to assign to a new membership on this contract.
+ *
+ * The default is derived from the contract itself — no rate-card custom
+ * field. We order the seat tiers actually billed on the contract by AWU
+ * allowance (ascending — the cheapest first) and pick the lowest tier.
+ *
+ * Legacy contracts carrying only untagged subscriptions (e.g. the legacy
+ * MAU plan products) fall back to `"workspace"` — those subscriptions are
+ * quantity-managed by `syncMauCount`, so the seat type is informational
+ * only and `"workspace"` matches what new-tier enterprise contracts use.
+ *
+ * `free` is a one-shot starter tier (its lifetime AWU credit cannot be
+ * re-granted). It is skipped, and the next tier in the ordering is
+ * tried, when any of the following are true:
+ *
+ *   - `isReturningMember` is true (the user already had a membership row
+ *     in this workspace at some point).
+ *   - `useFreeSeat` is false (caller opted out, e.g. an admin invitation
+ *     that should land on a paid tier directly).
+ *   - `freeSeatCounts.active >= freeSeatLimits.maxActiveFreeUsers` (and
+ *     the limit is not `-1`).
+ *   - `freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers`
+ *     (and the limit is not `-1`).
+ *
+ * Returns `undefined` when no remaining tier is assignable (e.g. a
+ * free-only contract that has exhausted its lifetime cap).
+ *
+ * The workspace-wide active-member cap (`plan.limits.users.maxUsers`) is
+ * NOT enforced here — it's already enforced upstream by
+ * `evaluateWorkspaceSeatAvailability` (signup) and `invitation.ts` (invite
+ * creation).
+ */
+export function getDefaultSeatTypeForContract(
+  contract: Pick<CachedContract, "subscriptions" | "recurring_credits">,
+  productSeatTypes: Map<string, MembershipSeatType>,
+  {
+    isReturningMember = false,
+    useFreeSeat = true,
+    freeSeatCounts,
+    freeSeatLimits,
+  }: {
+    isReturningMember?: boolean;
+    useFreeSeat?: boolean;
+    freeSeatCounts?: FreeSeatCounts;
+    freeSeatLimits?: FreeSeatLimits;
+  } = {}
+): MembershipSeatType | undefined {
+  const seatTypesOnContract = [
+    ...getSeatSubscriptionsFromContract(contract, productSeatTypes).keys(),
+  ];
+  if (seatTypesOnContract.length === 0) {
+    return "workspace";
   }
-  const seatTypesOnContract = new Set(
-    getSeatSubscriptionsFromContract(contract, productSeatTypes).keys()
-  );
-  if (seatTypesOnContract.size === 0) {
-    return undefined;
+  const ordered = seatTypesOnContract
+    .map((seatType) => ({
+      seatType,
+      awu: getAwuAllocationForSeatType(contract, seatType, productSeatTypes),
+    }))
+    // Stable secondary sort on the seat-type name keeps ordering
+    // deterministic when two tiers share an allowance (e.g. workspace = 0
+    // and free = 0 on a hybrid contract).
+    .sort((a, b) => a.awu - b.awu || a.seatType.localeCompare(b.seatType));
+  for (const { seatType } of ordered) {
+    if (seatType === "free") {
+      if (isReturningMember || !useFreeSeat) {
+        continue;
+      }
+      if (
+        freeSeatLimits &&
+        freeSeatCounts &&
+        freeSeatLimits.maxActiveFreeUsers !== -1 &&
+        freeSeatCounts.active >= freeSeatLimits.maxActiveFreeUsers
+      ) {
+        continue;
+      }
+      if (
+        freeSeatLimits &&
+        freeSeatCounts &&
+        freeSeatLimits.maxLifetimeFreeUsers !== -1 &&
+        freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers
+      ) {
+        continue;
+      }
+    }
+    return seatType;
   }
-  const value = await getCachedRateCardDefaultSeatType(contract.rate_card_id);
-  if (!value) {
-    return undefined;
-  }
-  return seatTypesOnContract.has(value) ? value : undefined;
+  return undefined;
 }
 
 /**

@@ -13,6 +13,8 @@ const FREE_BYOK_PLAN_DATA: PlanAttributes = {
   name: "Free (BYOK)",
   maxMessages: -1,
   maxUsersInWorkspace: -1,
+  maxFreeUsersInWorkspace: -1,
+  maxLifetimeFreeUsersInWorkspace: -1,
   maxVaultsInWorkspace: -1,
   maxImagesPerWeek: 50,
   maxMessagesTimeframe: "lifetime",

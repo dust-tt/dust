@@ -17,7 +17,6 @@ import {
   AWU_PRIORITY_SEAT_ALLOCATION,
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_USD_ID,
-  DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY,
   DEV_CREDIT_TYPE_AWU_ID,
   DEV_CREDIT_TYPE_PROG_USD_ID,
   PLAN_CODE_CUSTOM_FIELD_KEY,
@@ -32,7 +31,6 @@ import {
   FREE_ANNUAL_CREDIT_NAME,
   FREE_MONTHLY_CREDIT_NAME,
 } from "@app/lib/metronome/types";
-import type { MembershipSeatType } from "@app/types/memberships";
 
 // Number of pricing tiers for any tiered seat-style product (MAU, future).
 // Tier products and rates are derived from the prefix.
@@ -60,9 +58,9 @@ const FREE_SEAT_CREDIT_NAME = "Free Seat Credits";
 // so these values aren't referenced anywhere else.
 const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
 const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
-// One-shot per-seat AWU grant carried by the Free Seat subscription. Modeled
-// as a long-duration recurring credit (commit_duration of 1200 PERIODS) so it
-// behaves like a lifetime grant for each free user.
+// Per-seat AWU grant carried by the Free Seat subscription. Granted once
+// per seat on contract start and valid for the lifetime of the contract.
+// Never refilled.
 const FREE_SEAT_LIFETIME_AWU_CREDITS = 300;
 
 if (!process.env.METRONOME_API_KEY) {
@@ -170,12 +168,6 @@ interface RateCardDef {
     fiat_per_custom_credit: number;
   }>;
   rates: RateDef[];
-  // Default seat type for new memberships on any contract using this rate
-  // card. Stamped on the rate card as the `DUST_DEFAULT_SEAT_TYPE` custom
-  // field — runtime reads this via the Redis-cached rate-card map (see
-  // `seat_types.ts`). Must reference one of the seat tiers actually billed
-  // by this rate card.
-  defaultSeatType?: MembershipSeatType;
 }
 
 interface PackageSubscription {
@@ -215,6 +207,15 @@ interface RecurringCreditDef {
     product_tags?: string[];
   }>;
   recurrence_frequency?: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
+  // Optional. Offset relative to the recurring credit start that determines
+  // when the contract will stop creating recurring commits. Use a very small
+  // value (e.g. 1 day) to make the credit one-shot — Metronome fires the
+  // first commit on contract start, then the duration expires before the
+  // next would be issued.
+  duration?: {
+    unit: "DAYS" | "WEEKS" | "MONTHS" | "YEARS";
+    value: number;
+  };
   name?: string;
   // Attach the credit to a SEAT_BASED subscription so each seat gets its own
   // allocation (INDIVIDUAL) or all seats share one pool (POOLED).
@@ -834,7 +835,6 @@ function getRateCards(): RateCardDef[] {
       description:
         "Enterprise plan (USD). Per-seat billing + AWU-based AI/Tool usage.",
       aliases: [{ name: "enterprise-usd" }],
-      defaultSeatType: "workspace",
       fiat_credit_type_id: CREDIT_TYPE_USD_ID,
       credit_type_conversions: [
         {
@@ -865,7 +865,6 @@ function getRateCards(): RateCardDef[] {
       description:
         "Enterprise plan (EUR). Per-seat billing + AWU-based AI/Tool usage.",
       aliases: [{ name: "enterprise-eur" }],
-      defaultSeatType: "workspace",
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
       credit_type_conversions: [
         {
@@ -896,7 +895,7 @@ function getRateCards(): RateCardDef[] {
       description:
         "Business plan (USD). Pro/Max seats with per-seat AWU credit allocation.",
       aliases: [{ name: "business-usd" }],
-      defaultSeatType: "free",
+      // free for first-time joiners (one-shot starter), pro for re-joiners.
       fiat_credit_type_id: CREDIT_TYPE_USD_ID,
       credit_type_conversions: [
         {
@@ -940,7 +939,7 @@ function getRateCards(): RateCardDef[] {
       description:
         "Business plan (EUR). Pro/Max seats with per-seat AWU credit allocation.",
       aliases: [{ name: "business-eur" }],
-      defaultSeatType: "free",
+      // free for first-time joiners (one-shot starter), pro for re-joiners.
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
       credit_type_conversions: [
         {
@@ -1176,12 +1175,15 @@ function getPerSeatIndividualAwuCredits({
 }
 
 // Per-seat INDIVIDUAL AWU credit attached to the Free Seat SEAT_BASED
-// subscription. The credit recurs annually with a very long `commit_duration`
-// so each commit effectively never expires within the contract's lifetime —
-// the closest expression of a "lifetime" per-seat grant in Metronome's
-// recurring-credit model. Not prorated on seat increase: a new free seat
-// always gets the full 300 AWU grant regardless of when in the period it was
-// added.
+// subscription. Issued exactly once per seat:
+//   - `duration: { value: 1, unit: "DAYS" }` stops the recurrence after the
+//     first commit (which fires on contract start / seat assignment), so the
+//     credit is never re-issued.
+//   - `commit_duration: { value: 100, unit: "YEARS" }`... not supported by
+//     Metronome (`PERIODS` only), so we approximate with 100 ANNUAL periods
+//     — effectively the lifetime of any reasonable contract.
+//   - Not prorated on seat increase: a new free seat always gets the full
+//     300 AWU grant regardless of when in the period it was added.
 function getFreeSeatLifetimeAwuCredits(): RecurringCreditDef {
   return {
     product_name: "Seat Individual Credits",
@@ -1189,11 +1191,12 @@ function getFreeSeatLifetimeAwuCredits(): RecurringCreditDef {
       credit_type_id: getCreditTypeAwuId(),
       unit_price: FREE_SEAT_LIFETIME_AWU_CREDITS,
     },
-    commit_duration: { value: 1200, unit: "PERIODS" },
+    commit_duration: { value: 100, unit: "PERIODS" },
     priority: 200,
     starting_at_offset: { unit: "DAYS", value: 0 },
     applicable_product_tags: [USAGE_TAG],
     recurrence_frequency: "ANNUAL",
+    duration: { value: 1, unit: "DAYS" },
     name: FREE_SEAT_CREDIT_NAME,
     subscription_config: {
       subscription_temporary_id: FREE_SEAT_SUBSCRIPTION_TEMPORARY_ID,
@@ -1989,7 +1992,6 @@ async function syncRateCards(): Promise<void> {
     if (ex && (await rateCardMatches(ex, desired))) {
       console.log(`  ✓ ${desired.name} — up to date (${ex.id})`);
       ids.rateCards[desired.name] = ex.id;
-      await reconcileRateCardCustomFields(ex, desired);
     } else {
       if (ex) {
         console.log(
@@ -2012,9 +2014,6 @@ async function syncRateCards(): Promise<void> {
           aliases: desired.aliases,
           fiat_credit_type_id: desired.fiat_credit_type_id,
           credit_type_conversions: desired.credit_type_conversions,
-          custom_fields: desired.defaultSeatType
-            ? { [DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY]: desired.defaultSeatType }
-            : undefined,
         });
         const id = (created as { data: { id: string } }).data.id;
         console.log(`    → ${id}`);
@@ -2053,46 +2052,6 @@ async function syncRateCards(): Promise<void> {
 
       recreated.rateCards.add(desired.name);
     }
-  }
-}
-
-/**
- * Reconcile `custom_fields` on an existing rate card via `setValues` —
- * drift on custom fields alone never triggers a rate-card recreate (and
- * `rateCardMatches` intentionally ignores them). One pass per setup run is
- * enough to backfill `DUST_DEFAULT_SEAT_TYPE` across every contract on the
- * rate card — no per-contract iteration needed.
- */
-async function reconcileRateCardCustomFields(
-  ex: { id: string; custom_fields?: Record<string, string> },
-  desired: RateCardDef
-): Promise<void> {
-  const desiredCfs: Record<string, string> = {};
-  if (desired.defaultSeatType) {
-    desiredCfs[DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY] = desired.defaultSeatType;
-  }
-  if (Object.keys(desiredCfs).length === 0) {
-    return;
-  }
-  const existingCfs = ex.custom_fields ?? {};
-  const drift: Record<string, string> = {};
-  for (const [key, value] of Object.entries(desiredCfs)) {
-    if (existingCfs[key] !== value) {
-      drift[key] = value;
-    }
-  }
-  if (Object.keys(drift).length === 0) {
-    return;
-  }
-  console.log(
-    `  ✎ ${EXECUTE ? "Updating" : "[DRYRUN] Would update"} ${desired.name} custom_fields ${JSON.stringify(drift)}`
-  );
-  if (EXECUTE) {
-    await client.v1.customFields.setValues({
-      entity: "rate_card",
-      entity_id: ex.id,
-      custom_fields: drift,
-    });
   }
 }
 
@@ -2444,6 +2403,7 @@ async function syncPackages(): Promise<void> {
               ...(credit.recurrence_frequency
                 ? { recurrence_frequency: credit.recurrence_frequency }
                 : {}),
+              ...(credit.duration ? { duration: credit.duration } : {}),
               ...(credit.name ? { name: credit.name } : {}),
               ...(subscriptionConfig
                 ? { subscription_config: subscriptionConfig }
@@ -2492,19 +2452,12 @@ async function syncPackages(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 const CUSTOM_FIELD_KEYS: Array<{
-  entity: "contract" | "contract_product" | "rate_card";
+  entity: "contract" | "contract_product";
   key: string;
 }> = [
   { entity: "contract", key: "MAU_TIERS" },
   { entity: "contract", key: "MAU_THRESHOLD" },
   { entity: "contract", key: PLAN_CODE_CUSTOM_FIELD_KEY },
-  // Stamped on each rate card: which seat type new memberships should be
-  // assigned to on contracts using this rate card. Set once at the
-  // template level so every existing contract on the rate card inherits
-  // the value without per-contract backfill. Read by
-  // `createAndTrackMembership` (see seat_types.ts:
-  // `getDefaultSeatTypeForContract`).
-  { entity: "rate_card", key: DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY },
   // Stamped on each seat-style product (Workspace / Pro / Max / Free).
   // Runtime code reads `product.custom_fields.DUST_SEAT_TYPE` (cached in
   // Redis) instead of comparing product names/IDs, which change on every

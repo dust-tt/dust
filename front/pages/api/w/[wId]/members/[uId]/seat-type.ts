@@ -104,6 +104,15 @@ async function handler(
                 message: "Could not find the user or their active membership.",
               },
             });
+          case "free_seat_not_allowed":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "The free seat is reserved for first-time members and cannot be assigned again.",
+              },
+            });
           case "metronome_error":
             return apiError(req, res, {
               status_code: 502,

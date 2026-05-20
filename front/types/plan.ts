@@ -42,6 +42,8 @@ export type LimitsType = {
   };
   users: {
     maxUsers: number;
+    maxFreeUsers: number;
+    maxLifetimeFreeUsers: number;
     isSSOAllowed: boolean;
     isSCIMAllowed: boolean;
   };

@@ -42,6 +42,8 @@ export function renderPlanFromModel({
       },
       users: {
         maxUsers: plan.maxUsersInWorkspace,
+        maxFreeUsers: plan.maxFreeUsersInWorkspace,
+        maxLifetimeFreeUsers: plan.maxLifetimeFreeUsersInWorkspace,
         isSSOAllowed: plan.isSSOAllowed,
         isSCIMAllowed: plan.isSCIMAllowed,
       },

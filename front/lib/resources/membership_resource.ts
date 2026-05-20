@@ -375,6 +375,32 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
+   * Returns true when the user has *any* prior membership row in the
+   * workspace — current, future-scheduled, or revoked. Used to enforce
+   * that `"free"` is a one-shot starter tier: it can only be assigned at
+   * the very first membership creation; any subsequent change refuses
+   * `"free"` (including re-joining after revoke).
+   */
+  static async hasAnyMembershipOfUserInWorkspace({
+    user,
+    workspace,
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<boolean> {
+    const count = await this.model.count({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
+    return count > 0;
+  }
+
+  /**
    * Returns the future-scheduled membership row for the user (startAt > NOW)
    * if any. Used to detect / consume scheduled seat changes.
    */
@@ -679,6 +705,41 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       distinct: true,
       col: "userId",
     });
+  }
+
+  /**
+   * Counts used to enforce the plan-level `free`-seat caps
+   * (`plan.limits.users.maxFreeUsers` / `maxLifetimeFreeUsers`).
+   *
+   *  - `active`:   distinct users with a currently-active `free` row.
+   *  - `lifetime`: distinct users ever assigned `free` (active + revoked
+   *    + expired). `free` is a one-shot starter tier, so the lifetime
+   *    count is the right denominator for the cap.
+   */
+  static async getFreeSeatCounts({
+    workspace,
+  }: {
+    workspace: LightWorkspaceType;
+  }): Promise<{ active: number; lifetime: number }> {
+    const now = new Date();
+    const [active, lifetime] = await Promise.all([
+      MembershipModel.count({
+        where: {
+          workspaceId: workspace.id,
+          seatType: "free",
+          startAt: { [Op.lte]: now },
+          endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }] },
+        },
+        distinct: true,
+        col: "userId",
+      }),
+      MembershipModel.count({
+        where: { workspaceId: workspace.id, seatType: "free" },
+        distinct: true,
+        col: "userId",
+      }),
+    ]);
+    return { active, lifetime };
   }
 
   /**

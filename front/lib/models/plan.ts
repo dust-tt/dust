@@ -28,6 +28,14 @@ export class PlanModel extends BaseModel<PlanModel> {
   declare maxMessagesTimeframe: MaxMessagesTimeframeType;
   declare isDeepDiveAllowed: boolean;
   declare maxUsersInWorkspace: number;
+  // Cap on simultaneously-active `free` seats in this workspace. `-1` =
+  // unlimited. Enforced by `getDefaultSeatTypeForContract`: when reached,
+  // `free` is skipped and the next billed tier is picked.
+  declare maxFreeUsersInWorkspace: number;
+  // Cap on distinct users ever assigned the `free` seat (active + revoked).
+  // `-1` = unlimited. `free` is a one-shot starter, so the lifetime count
+  // is the correct denominator.
+  declare maxLifetimeFreeUsersInWorkspace: number;
   declare maxImagesPerWeek: number;
   declare maxVaultsInWorkspace: number;
   declare isSlackbotAllowed: boolean;
@@ -98,6 +106,16 @@ PlanModel.init(
     maxUsersInWorkspace: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    maxFreeUsersInWorkspace: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: -1,
+    },
+    maxLifetimeFreeUsersInWorkspace: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: -1,
     },
     maxVaultsInWorkspace: {
       type: DataTypes.INTEGER,
