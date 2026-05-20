@@ -13,12 +13,12 @@ const app = new Hono();
 app.get(
   "/",
   validate("query", GetAgentConfigurationNameIsAvailableSchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { handle } = c.req.valid("query");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { handle } = ctx.req.valid("query");
 
     const sId = await getAgentIdFromName(auth, handle);
-    return c.json({ available: sId === null });
+    return ctx.json({ available: sId === null });
   }
 );
 

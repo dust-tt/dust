@@ -13,8 +13,8 @@ export type GetProvisioningStatusResponseBody = {
 // Mounted at /api/w/:wId/provisioning-status.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const groups =
     await GroupResource.listRoleProvisioningGroupsForWorkspace(auth);
@@ -23,7 +23,7 @@ app.get("/", async (c) => {
     hasAdminGroup: groups.some((g) => g.name === ADMIN_GROUP_NAME),
     hasBuilderGroup: groups.some((g) => g.name === BUILDER_GROUP_NAME),
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

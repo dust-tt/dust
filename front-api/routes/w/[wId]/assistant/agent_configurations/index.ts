@@ -30,10 +30,10 @@ import webhookFilterGenerator from "./webhook_filter_generator";
 // applied by the parent workspace sub-app.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
-  const rawQuery = c.req.query();
+  const rawQuery = ctx.req.query();
 
   // Mirror the Next handler: limit is a numeric param but URL params are
   // strings, so coerce before passing to the schema.
@@ -45,7 +45,7 @@ app.get("/", async (c) => {
         : undefined,
   });
   if (!queryValidation.success) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -68,7 +68,7 @@ app.get("/", async (c) => {
   // @ts-expect-error: added for backwards compatibility
   viewParam = viewParam === "assistant-search" ? "list" : viewParam;
   if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "app_auth_error",
@@ -161,16 +161,16 @@ app.get("/", async (c) => {
     }));
   }
 
-  return c.json({ agentConfigurations });
+  return ctx.json({ agentConfigurations });
 });
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const isSaveAgentConfigurationsEnabled =
     await KillSwitchResource.isKillSwitchEnabled("save_agent_configurations");
   if (isSaveAgentConfigurationsEnabled) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "app_auth_error",
@@ -180,11 +180,11 @@ app.post("/", async (c) => {
     });
   }
 
-  const body = await c.req.json();
+  const body = await ctx.req.json();
   const bodyValidation =
     PostOrPatchAgentConfigurationRequestBodySchema.safeParse(body);
   if (!bodyValidation.success) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -199,7 +199,7 @@ app.post("/", async (c) => {
   });
 
   if (agentConfigurationRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "assistant_saving_error",
@@ -208,7 +208,7 @@ app.post("/", async (c) => {
     });
   }
 
-  return c.json({ agentConfiguration: agentConfigurationRes.value });
+  return ctx.json({ agentConfiguration: agentConfigurationRes.value });
 });
 
 // Register static paths BEFORE `/:aId` so the param route does not swallow

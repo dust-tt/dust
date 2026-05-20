@@ -13,11 +13,11 @@ export type GetReinforcementDailySpendResponseBody = {
 // Mounted at /api/w/:wId/skills/reinforcement_daily_spend.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -42,7 +42,7 @@ app.get("/", async (c) => {
     dailySpendMicroUsd[day] = spend;
   }
 
-  return c.json({
+  return ctx.json({
     dailySpendMicroUsd,
     periodStartDate: period.cycleStart.toISOString(),
     periodEndDate: period.cycleEnd.toISOString(),

@@ -4,16 +4,16 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/mentions/suggestions.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
-  const query = c.req.query("query")?.trim().toLowerCase() ?? "";
-  const current = c.req.query("current") === "true";
-  const spaceId = c.req.query("spaceId");
+  const query = ctx.req.query("query")?.trim().toLowerCase() ?? "";
+  const current = ctx.req.query("current") === "true";
+  const spaceId = ctx.req.query("spaceId");
 
   // `select` may appear multiple times in the query string. Default to both
   // agents and users when absent.
-  const selectValues = c.req.queries("select");
+  const selectValues = ctx.req.queries("select");
   const select = !selectValues
     ? { agents: true, users: true }
     : {
@@ -28,7 +28,7 @@ app.get("/", async (c) => {
     spaceId,
   });
 
-  return c.json({ suggestions });
+  return ctx.json({ suggestions });
 });
 
 export default app;

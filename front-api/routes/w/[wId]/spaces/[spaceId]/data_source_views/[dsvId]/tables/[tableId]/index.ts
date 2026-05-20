@@ -14,9 +14,9 @@ app.get(
   "/",
   spaceResource({ requireCanRead: true }),
   dataSourceViewResource({ requireCanRead: true }),
-  async (c) => {
-    const dataSourceView = c.get("dataSourceView");
-    const tableId = c.req.param("tableId") ?? "";
+  async (ctx) => {
+    const dataSourceView = ctx.get("dataSourceView");
+    const tableId = ctx.req.param("tableId") ?? "";
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const tableRes = await coreAPI.getTable({
       projectId: dataSourceView.dataSource.dustAPIProjectId,
@@ -24,7 +24,7 @@ app.get(
       tableId,
     });
     if (tableRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "data_source_error",
@@ -34,7 +34,7 @@ app.get(
         },
       });
     }
-    return c.json({ table: tableRes.value.table });
+    return ctx.json({ table: tableRes.value.table });
   }
 );
 

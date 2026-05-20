@@ -20,19 +20,19 @@ const PatchAppBodySchema = z.object({
 const app = new Hono();
 
 // GET / — read app.
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const aId = ctx.req.param("aId") ?? "";
 
   const found = await AppResource.fetchById(auth, aId);
   if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "app_not_found", message: "The app was not found." },
     });
   }
-  return c.json({ app: found.toJSON() });
+  return ctx.json({ app: found.toJSON() });
 });
 
 // POST / — update app settings.
@@ -40,20 +40,20 @@ app.post(
   "/",
   spaceResource({ requireCanRead: true }),
   validate("json", PatchAppBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const aId = c.req.param("aId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const aId = ctx.req.param("aId") ?? "";
 
     const found = await AppResource.fetchById(auth, aId);
     if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: { type: "app_not_found", message: "The app was not found." },
       });
     }
     if (!found.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -61,9 +61,9 @@ app.post(
         },
       });
     }
-    const { name, description } = c.req.valid("json");
+    const { name, description } = ctx.req.valid("json");
     if (!APP_NAME_REGEXP.test(name)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -73,25 +73,25 @@ app.post(
       });
     }
     await found.updateSettings(auth, { name, description });
-    return c.json({ app: found.toJSON() });
+    return ctx.json({ app: found.toJSON() });
   }
 );
 
 // DELETE / — soft delete app.
-app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const aId = c.req.param("aId") ?? "";
+app.delete("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const aId = ctx.req.param("aId") ?? "";
 
   const found = await AppResource.fetchById(auth, aId);
   if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "app_not_found", message: "The app was not found." },
     });
   }
   if (!found.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -101,7 +101,7 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
   }
   const deleteRes = await softDeleteApp(auth, found);
   if (deleteRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
@@ -109,7 +109,7 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
       },
     });
   }
-  return c.body(null, 204);
+  return ctx.body(null, 204);
 });
 
 app.route("/state", state);

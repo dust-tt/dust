@@ -18,11 +18,11 @@ const app = new Hono();
 app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
     const views = await WebhookSourcesViewResource.listBySpace(auth, space);
-    return c.json({
+    return ctx.json({
       success: true,
       webhookSourceViews: views.map((v) => v.toJSON()),
     });
@@ -33,13 +33,13 @@ app.post(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("json", PostWebhookSourceViewBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const { webhookSourceId } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { webhookSourceId } = ctx.req.valid("json");
 
     if (!auth.isAdmin()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "webhook_source_view_auth_error",
@@ -50,7 +50,7 @@ app.post(
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -66,7 +66,7 @@ app.post(
         webhookSourceId
       );
     if (!systemView) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -80,7 +80,7 @@ app.post(
       systemView,
       space,
     });
-    return c.json({ success: true, webhookSourceView: view.toJSON() });
+    return ctx.json({ success: true, webhookSourceView: view.toJSON() });
   }
 );
 

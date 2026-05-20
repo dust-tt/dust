@@ -15,9 +15,9 @@ const ConversationSkillActionRequestSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/skills.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.param("cId") ?? "";
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -25,7 +25,7 @@ app.get("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const conversationSkills = await SkillResource.listEnabledByConversation(
@@ -33,15 +33,15 @@ app.get("/", async (c) => {
     { conversation: conversationRes.value }
   );
 
-  return c.json({ skills: conversationSkills.map((s) => s.toJSON(auth)) });
+  return ctx.json({ skills: conversationSkills.map((s) => s.toJSON(auth)) });
 });
 
 app.post(
   "/",
   validate("json", ConversationSkillActionRequestSchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const conversationId = c.req.param("cId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const conversationId = ctx.req.param("cId") ?? "";
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(
@@ -49,11 +49,11 @@ app.post(
         conversationId
       );
     if (conversationRes.isErr()) {
-      return apiErrorForConversation(c, conversationRes.error);
+      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
     const conversationWithoutContent = conversationRes.value;
-    const { action, skillId } = c.req.valid("json");
+    const { action, skillId } = ctx.req.valid("json");
 
     const skillRes = await SkillResource.fetchById(auth, skillId);
 
@@ -66,7 +66,7 @@ app.post(
         },
         "Skill not found"
       );
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "skill_not_found",
@@ -91,7 +91,7 @@ app.post(
         },
         "Failed to upsert skill to conversation"
       );
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -100,7 +100,7 @@ app.post(
       });
     }
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

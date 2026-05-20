@@ -10,8 +10,8 @@ export type GetPendingInvitationsResponseBody = {
 // Mounted at /api/w/:wId/me/pending-invitations.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();
 
   const invitationResources =
@@ -33,7 +33,7 @@ app.get("/", async (c) => {
   );
 
   const body: GetPendingInvitationsResponseBody = { pendingInvitations };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

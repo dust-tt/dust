@@ -476,7 +476,7 @@ describe("GET /api/w/:wId/assistant/conversations/semantic_search", () => {
       expect(data.conversations).toHaveLength(2);
 
       const spaceNames = data.conversations.map(
-        (c: { spaceName: string }) => c.spaceName
+        (ctx: { spaceName: string }) => ctx.spaceName
       );
       expect(spaceNames).toContain(projectSpace1.name);
       expect(spaceNames).toContain(projectSpace2.name);

@@ -21,14 +21,14 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/seats/plan.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const workspace = auth.getNonNullableWorkspace();
   const contract = await getActiveContract(workspace.sId);
 
   if (!contract || !contract.rate_card_id) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "internal_server_error",
@@ -47,7 +47,7 @@ app.get("/", async (c) => {
       },
       "[Metronome] Failed to resolve contract currency for seat plan"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -60,7 +60,7 @@ app.get("/", async (c) => {
   // MAU contracts don't bill per-seat — return an empty seat plan up-front.
   if (isMauContract(contract)) {
     const empty: SeatPlanResponseBody = {};
-    return c.json(empty);
+    return ctx.json(empty);
   }
 
   // Build `productId → seatType` from contract subscriptions so we can resolve
@@ -72,7 +72,7 @@ app.get("/", async (c) => {
   );
   if (seatTypesByProductId.size === 0) {
     const empty: SeatPlanResponseBody = {};
-    return c.json(empty);
+    return ctx.json(empty);
   }
 
   const monthlyPriceCentsBySeatType = new Map<MembershipSeatType, number>();
@@ -122,7 +122,7 @@ app.get("/", async (c) => {
       "[Metronome] Failed to fetch rate schedule for seat products"
     );
     return apiError(
-      c,
+      ctx,
       {
         status_code: 500,
         api_error: {
@@ -153,7 +153,7 @@ app.get("/", async (c) => {
     };
     response[seatType] = info;
   }
-  return c.json(response);
+  return ctx.json(response);
 });
 
 export default app;

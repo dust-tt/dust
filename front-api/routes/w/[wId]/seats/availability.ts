@@ -10,11 +10,11 @@ export type GetSeatAvailabilityResponseBody = {
 // Mounted at /api/w/:wId/seats/availability.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -26,7 +26,7 @@ app.get("/", async (c) => {
 
   const hasAvailableSeats = await checkWorkspaceSeatAvailabilityUsingAuth(auth);
   const body: GetSeatAvailabilityResponseBody = { hasAvailableSeats };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

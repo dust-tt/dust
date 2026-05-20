@@ -15,12 +15,12 @@ declare module "hono" {
  * Mirrors `withSessionAuthentication` in `front/lib/api/auth_wrappers.ts`.
  * Apply to routes that need a logged-in user but no workspace scoping.
  */
-export const sessionAuth: MiddlewareHandler = async (c, next) => {
-  const result = await resolveSession(c);
+export const sessionAuth: MiddlewareHandler = async (ctx, next) => {
+  const result = await resolveSession(ctx);
   if (result instanceof Response) {
     return result;
   }
 
-  c.set("session", result);
+  ctx.set("session", result);
   await next();
 };

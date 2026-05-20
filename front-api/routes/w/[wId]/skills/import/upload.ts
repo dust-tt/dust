@@ -11,11 +11,11 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/skills/import/upload.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isBuilder()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: { type: "app_auth_error", message: "User is not a builder." },
     });
@@ -23,9 +23,9 @@ app.post("/", async (c) => {
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = await c.req.parseBody({ all: true });
+    parsed = await ctx.req.parseBody({ all: true });
   } catch (err) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -43,7 +43,7 @@ app.post("/", async (c) => {
     fieldNames = [rawNames];
   }
   if (fieldNames.length === 0) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -65,7 +65,7 @@ app.post("/", async (c) => {
   }
 
   if (blobs.length === 0) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -76,7 +76,7 @@ app.post("/", async (c) => {
 
   for (const blob of blobs) {
     if (blob.size > MAX_ZIP_SIZE_BYTES) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -112,7 +112,7 @@ app.post("/", async (c) => {
     names: fieldNames,
   });
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -121,7 +121,7 @@ app.post("/", async (c) => {
     });
   }
 
-  return c.json({
+  return ctx.json({
     imported: result.value.imported.map((skill) => skill.toJSON(auth)),
     updated: result.value.updated.map((skill) => skill.toJSON(auth)),
     skipped: result.value.skipped,

@@ -9,13 +9,13 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/skills/:sId/files/:fileId/content.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const sId = c.req.param("sId");
-  const fileId = c.req.param("fileId");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const sId = ctx.req.param("sId");
+  const fileId = ctx.req.param("fileId");
 
   if (!isString(sId)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -25,7 +25,7 @@ app.get("/", async (c) => {
   }
 
   if (!isString(fileId)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -36,7 +36,7 @@ app.get("/", async (c) => {
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
@@ -48,7 +48,7 @@ app.get("/", async (c) => {
     file.useCase !== "skill_attachment" ||
     file.useCaseMetadata?.skillId !== sId
   ) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });

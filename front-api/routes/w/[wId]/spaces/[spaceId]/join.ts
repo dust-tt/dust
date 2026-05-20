@@ -15,12 +15,12 @@ const app = new Hono();
 app.post(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -30,7 +30,7 @@ app.post(
     }
 
     if (space.isProjectAndRestricted()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -40,7 +40,7 @@ app.post(
     }
 
     if (space.managementMode !== "manual") {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
@@ -51,7 +51,7 @@ app.post(
     }
 
     if (space.isMember(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -66,7 +66,7 @@ app.post(
     });
 
     if (memberGroupSpaces.length !== 1) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -81,7 +81,7 @@ app.post(
       users: [user.toJSON()],
     });
     if (result.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -107,7 +107,7 @@ app.post(
       workspace: { id: workspace.id },
     });
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

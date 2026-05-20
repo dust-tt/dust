@@ -5,8 +5,8 @@ import { Hono } from "hono";
 // underlying suggestion feature has been removed.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  return c.json({ agentConfigurations: [] });
+app.get("/", async (ctx) => {
+  return ctx.json({ agentConfigurations: [] });
 });
 
 export default app;

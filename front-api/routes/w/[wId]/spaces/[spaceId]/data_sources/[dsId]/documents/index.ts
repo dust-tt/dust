@@ -16,12 +16,12 @@ app.post(
   spaceResource({ requireCanRead: true }),
   dataSourceResource({ requireCanRead: true }),
   validate("json", PostDataSourceDocumentRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -31,7 +31,7 @@ app.post(
     }
 
     if (dataSource.connectorId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -52,7 +52,7 @@ app.post(
       mime_type,
       title,
       document_id,
-    } = c.req.valid("json");
+    } = ctx.req.valid("json");
 
     const upsertResult = await upsertDocument({
       // Use document_id if provided (slugified for LLM-friendly node IDs),
@@ -75,7 +75,7 @@ app.post(
     if (upsertResult.isErr()) {
       switch (upsertResult.error.code) {
         case "data_source_quota_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "data_source_quota_error",
@@ -85,7 +85,7 @@ app.post(
         case "invalid_url":
         case "text_or_section_required":
         case "invalid_parent_id":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -93,7 +93,7 @@ app.post(
             },
           });
         default:
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
@@ -103,7 +103,7 @@ app.post(
       }
     }
 
-    return c.json({ document: upsertResult.value.document }, 201);
+    return ctx.json({ document: upsertResult.value.document }, 201);
   }
 );
 

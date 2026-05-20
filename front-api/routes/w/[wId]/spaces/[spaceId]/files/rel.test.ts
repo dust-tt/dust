@@ -24,7 +24,7 @@ function fileRequest(
 ) {
   // Build the path joined as one fully-encoded string so that ".." segments
   // and slashes survive URL normalization (e.g. for path traversal cases).
-  // The handler decodes the resulting `rel` param via `c.req.param("rel")`.
+  // The handler decodes the resulting `rel` param via `ctx.req.param("rel")`.
   const joined = relSegments.join("/");
   const encoded = encodeURIComponent(joined);
   const url = `/api/w/${workspace.sId}/spaces/${spaceId}/files/${encoded}`;

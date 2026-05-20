@@ -20,13 +20,13 @@ import path from "path";
 // captures everything past `/files/` (matching Next's `[...rel]`).
 const app = new Hono();
 
-async function buildContext(c: any) {
-  const space = c.get("space");
-  const auth = c.get("auth");
+async function buildContext(ctx: any) {
+  const space = ctx.get("space");
+  const auth = ctx.get("auth");
 
   if (!space.isProject()) {
     return {
-      error: apiError(c, {
+      error: apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -36,10 +36,10 @@ async function buildContext(c: any) {
     };
   }
 
-  const rel = c.req.param("rel");
+  const rel = ctx.req.param("rel");
   if (!isString(rel) || rel.length === 0) {
     return {
-      error: apiError(c, {
+      error: apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -52,7 +52,7 @@ async function buildContext(c: any) {
   const scopedPath = parseScopedFilePath(rel);
   if (!scopedPath || scopedPath.prefix !== "project") {
     return {
-      error: apiError(c, {
+      error: apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -72,7 +72,7 @@ async function buildContext(c: any) {
   );
   if (!normalizedGcsPath.startsWith(basePath)) {
     return {
-      error: apiError(c, {
+      error: apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -90,17 +90,17 @@ async function buildContext(c: any) {
   };
 }
 
-app.get("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
-  const ctx = await buildContext(c);
-  if ("error" in ctx) {
-    return ctx.error;
+app.get("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const built = await buildContext(ctx);
+  if ("error" in built) {
+    return built.error;
   }
-  const { normalizedGcsPath } = ctx;
+  const { normalizedGcsPath } = built;
 
   const bucket = getPrivateUploadBucket();
   const contentTypeResult = await bucket.getFileContentType(normalizedGcsPath);
   if (contentTypeResult.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -136,15 +136,15 @@ app.get("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
   });
 });
 
-app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
-  const ctx = await buildContext(c);
-  if ("error" in ctx) {
-    return ctx.error;
+app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const built = await buildContext(ctx);
+  if ("error" in built) {
+    return built.error;
   }
-  const { auth, space, normalizedRelative } = ctx;
+  const { auth, space, normalizedRelative } = built;
 
   if (!space.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -153,7 +153,7 @@ app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
     });
   }
 
-  const body = await c.req.json().catch(() => ({}));
+  const body = await ctx.req.json().catch(() => ({}));
   const { fileName } = body ?? {};
   if (
     !isString(fileName) ||
@@ -161,7 +161,7 @@ app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
     fileName.includes("/") ||
     fileName.includes("\\")
   ) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -177,7 +177,7 @@ app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
     newFileName: fileName.trim(),
   });
   if (renameResult.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -186,41 +186,45 @@ app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
     });
   }
 
-  return c.json({});
+  return ctx.json({});
 });
 
-app.delete("/:rel{.+}", spaceResource({ requireCanRead: true }), async (c) => {
-  const ctx = await buildContext(c);
-  if ("error" in ctx) {
-    return ctx.error;
-  }
-  const { auth, space, normalizedRelative } = ctx;
+app.delete(
+  "/:rel{.+}",
+  spaceResource({ requireCanRead: true }),
+  async (ctx) => {
+    const built = await buildContext(ctx);
+    if ("error" in built) {
+      return built.error;
+    }
+    const { auth, space, normalizedRelative } = built;
 
-  if (!space.canWrite(auth)) {
-    return apiError(c, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "You do not have write access to this project.",
-      },
+    if (!space.canWrite(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have write access to this project.",
+        },
+      });
+    }
+
+    const deleteResult = await deleteProjectFile(auth, {
+      space,
+      relativeFilePath: normalizedRelative,
     });
-  }
+    if (deleteResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: deleteResult.error.message,
+        },
+      });
+    }
 
-  const deleteResult = await deleteProjectFile(auth, {
-    space,
-    relativeFilePath: normalizedRelative,
-  });
-  if (deleteResult.isErr()) {
-    return apiError(c, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: deleteResult.error.message,
-      },
-    });
+    return ctx.json({});
   }
-
-  return c.json({});
-});
+);
 
 export default app;

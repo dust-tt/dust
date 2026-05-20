@@ -20,10 +20,10 @@ app.get(
   "/",
   spaceResource({ requireCanRead: true }),
   dataSourceResource({ requireCanRead: true }),
-  async (c) => {
-    const dataSource = c.get("dataSource");
+  async (ctx) => {
+    const dataSource = ctx.get("dataSource");
     if (!dataSource.connectorId || !isWebsite(dataSource)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_not_managed",
@@ -40,7 +40,7 @@ app.get(
       dataSource.connectorId
     );
     if (connectorRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "connector_not_found_error",
@@ -49,7 +49,7 @@ app.get(
         },
       });
     }
-    return c.json({ configuration: connectorRes.value.configuration });
+    return ctx.json({ configuration: connectorRes.value.configuration });
   }
 );
 
@@ -58,12 +58,12 @@ app.patch(
   spaceResource({ requireCanRead: true }),
   dataSourceResource({ requireCanRead: true }),
   validate("json", UpdateConnectorConfigurationTypeSchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
 
     if (!dataSource.connectorId || !isWebsite(dataSource)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_not_managed",
@@ -73,7 +73,7 @@ app.patch(
     }
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -84,7 +84,7 @@ app.patch(
     }
 
     if (!auth.isBuilder()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -94,7 +94,7 @@ app.patch(
       });
     }
 
-    const { configuration } = c.req.valid("json");
+    const { configuration } = ctx.req.valid("json");
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
@@ -105,7 +105,7 @@ app.patch(
       configuration: { configuration },
     });
     if (updateRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "connector_update_error",
@@ -115,7 +115,7 @@ app.patch(
       });
     }
 
-    return c.json({ configuration: updateRes.value.configuration });
+    return ctx.json({ configuration: updateRes.value.configuration });
   }
 );
 

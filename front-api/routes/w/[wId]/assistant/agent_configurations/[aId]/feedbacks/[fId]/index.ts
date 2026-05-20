@@ -14,17 +14,17 @@ const PatchBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/feedbacks/:fId.
 const app = new Hono();
 
-app.patch("/", validate("json", PatchBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
-  const fId = c.req.param("fId") ?? "";
+app.patch("/", validate("json", PatchBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
+  const fId = ctx.req.param("fId") ?? "";
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!agentConfiguration) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -34,7 +34,7 @@ app.patch("/", validate("json", PatchBodySchema), async (c) => {
   }
 
   if (!agentConfiguration.canEdit && !auth.isBuilder()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -48,7 +48,7 @@ app.patch("/", validate("json", PatchBodySchema), async (c) => {
     agentConfigurationId: aId,
   });
   if (!feedback) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -57,7 +57,7 @@ app.patch("/", validate("json", PatchBodySchema), async (c) => {
     });
   }
 
-  const { dismissed } = c.req.valid("json");
+  const { dismissed } = ctx.req.valid("json");
 
   if (dismissed) {
     await feedback.dismiss();
@@ -76,7 +76,7 @@ app.patch("/", validate("json", PatchBodySchema), async (c) => {
     });
   }
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

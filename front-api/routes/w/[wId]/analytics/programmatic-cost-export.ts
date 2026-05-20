@@ -10,23 +10,23 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/analytics/programmatic-cost-export.
 const app = new Hono();
 
-app.get("/", validate("query", ExportQuerySchema), async (c) => {
-  const auth = c.get("auth");
-  const query = c.req.valid("query");
+app.get("/", validate("query", ExportQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const query = ctx.req.valid("query");
 
   const result = await getProgrammaticCostExport(auth, query);
 
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: result.error.status,
       api_error: result.error.error,
     });
   }
 
   const { csv, filename } = result.value;
-  c.header("Content-Type", "text/csv");
-  c.header("Content-Disposition", `attachment; filename=${filename}`);
-  return c.body(csv);
+  ctx.header("Content-Type", "text/csv");
+  ctx.header("Content-Disposition", `attachment; filename=${filename}`);
+  return ctx.body(csv);
 });
 
 export default app;

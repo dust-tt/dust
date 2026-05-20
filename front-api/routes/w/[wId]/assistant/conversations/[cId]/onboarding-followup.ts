@@ -12,16 +12,16 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/conversations/:cId/onboarding-followup.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();
-  const conversationId = c.req.param("cId") ?? "";
+  const conversationId = ctx.req.param("cId") ?? "";
 
-  const body = await c.req.json().catch(() => ({}));
+  const body = await ctx.req.json().catch(() => ({}));
   const { toolId } = body;
 
   if (!isString(toolId) || !isInternalMCPServerName(toolId)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -32,13 +32,13 @@ app.post("/", async (c) => {
 
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const conversation = conversationRes.value;
 
   // Extract user's preferred language from Accept-Language header.
-  const acceptLanguage = c.req.header("accept-language");
+  const acceptLanguage = ctx.req.header("accept-language");
   const language = acceptLanguage?.split(",")[0]?.split("-")[0] ?? null;
 
   const followUpPrompt = buildOnboardingFollowUpPrompt(toolId, language);
@@ -63,10 +63,10 @@ app.post("/", async (c) => {
   });
 
   if (messageRes.isErr()) {
-    return apiError(c, messageRes.error);
+    return apiError(ctx, messageRes.error);
   }
 
-  return c.json({ agentMessages: messageRes.value.agentMessages });
+  return ctx.json({ agentMessages: messageRes.value.agentMessages });
 });
 
 export default app;

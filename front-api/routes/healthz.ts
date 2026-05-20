@@ -3,9 +3,9 @@ import { Hono } from "hono";
 
 export const healthzApp = new Hono();
 
-healthzApp.get("/", (c) => {
+healthzApp.get("/", (ctx) => {
   const startMs = performance.now();
-  const response = c.text("ok", 200);
+  const response = ctx.text("ok", 200);
   const elapsedMs = performance.now() - startMs;
 
   getStatsDClient().distribution("requests.health.check", elapsedMs);

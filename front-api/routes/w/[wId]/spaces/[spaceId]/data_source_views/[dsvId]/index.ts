@@ -23,8 +23,8 @@ app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   dataSourceViewResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const dataSourceView = c.get("dataSourceView");
+  async (ctx) => {
+    const dataSourceView = ctx.get("dataSourceView");
     let connector: ConnectorType | null = null;
     const connectorId = dataSourceView.dataSource.connectorId;
 
@@ -39,7 +39,7 @@ app.get(
       }
     }
 
-    return c.json({ dataSourceView: dataSourceView.toJSON(), connector });
+    return ctx.json({ dataSourceView: dataSourceView.toJSON(), connector });
   }
 );
 
@@ -48,14 +48,14 @@ app.patch(
   spaceResource({ requireCanReadOrAdministrate: true }),
   dataSourceViewResource({ requireCanReadOrAdministrate: true }),
   validate("json", PatchDataSourceViewSchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSourceView = c.get("dataSourceView");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSourceView = ctx.get("dataSourceView");
 
     const isSaveDataSourceViewsEnabled =
       await KillSwitchResource.isKillSwitchEnabled("save_data_source_views");
     if (isSaveDataSourceViewsEnabled) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "app_auth_error",
@@ -67,13 +67,13 @@ app.patch(
 
     const r = await handlePatchDataSourceView(
       auth,
-      c.req.valid("json"),
+      ctx.req.valid("json"),
       dataSourceView
     );
     if (r.isErr()) {
       switch (r.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "workspace_auth_error",
@@ -81,7 +81,7 @@ app.patch(
             },
           });
         case "internal_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
@@ -106,7 +106,7 @@ app.patch(
       }
     }
 
-    return c.json({ dataSourceView: r.value.toJSON(), connector });
+    return ctx.json({ dataSourceView: r.value.toJSON(), connector });
   }
 );
 
@@ -114,12 +114,12 @@ app.delete(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   dataSourceViewResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSourceView = c.get("dataSourceView");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSourceView = ctx.get("dataSourceView");
 
     if (!dataSourceView.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -128,11 +128,11 @@ app.delete(
       });
     }
 
-    const force = c.req.query("force") === "true";
+    const force = ctx.req.query("force") === "true";
     if (!force) {
       const usageRes = await dataSourceView.getUsagesByAgents(auth);
       if (usageRes.isErr() || usageRes.value.count > 0) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 401,
           api_error: {
             type: "data_source_error",
@@ -145,7 +145,7 @@ app.delete(
     }
 
     await dataSourceView.delete(auth, { hardDelete: true });
-    return c.body(null, 204);
+    return ctx.body(null, 204);
   }
 );
 

@@ -6,11 +6,11 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/builder/sidekick/prompt/existing.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const agentConfigurationId = c.req.query("agentConfigurationId");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const agentConfigurationId = ctx.req.query("agentConfigurationId");
   if (!agentConfigurationId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 422,
       api_error: {
         type: "unprocessable_entity",
@@ -20,7 +20,7 @@ app.get("/", async (c) => {
     });
   }
 
-  return c.json(await buildExistingAgentPrompt(auth, agentConfigurationId));
+  return ctx.json(await buildExistingAgentPrompt(auth, agentConfigurationId));
 });
 
 export default app;

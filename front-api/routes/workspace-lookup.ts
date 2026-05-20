@@ -20,18 +20,18 @@ workspaceLookupApp.use("*", sessionAuth);
 workspaceLookupApp.get(
   "/",
   validate("query", GetWorkspaceLookupQuerySchema),
-  async (c) => {
-    const session = c.get("session");
+  async (ctx) => {
+    const session = ctx.get("session");
 
     const user = await getUserFromSession(session);
     if (!user) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: { type: "user_not_found", message: "User not found." },
       });
     }
 
-    const { flow } = c.req.valid("query");
+    const { flow } = ctx.req.valid("query");
 
     if (flow === "no-auto-join") {
       const [, userEmailDomain] = user.email.split("@");
@@ -41,7 +41,7 @@ workspaceLookupApp.get(
       const workspaceVerifiedDomain = result?.domainInfo.domain ?? null;
 
       if (!workspace || !workspaceVerifiedDomain) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 404,
           api_error: {
             type: "workspace_not_found",
@@ -50,7 +50,7 @@ workspaceLookupApp.get(
         });
       }
 
-      return c.json({
+      return ctx.json({
         workspace: renderLightWorkspaceType({ workspace }),
         status: "auto-join-disabled" as const,
         workspaceVerifiedDomain,
@@ -59,7 +59,7 @@ workspaceLookupApp.get(
 
     const result = await fetchRevokedWorkspace(user);
     if (result.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "workspace_not_found",
@@ -68,7 +68,7 @@ workspaceLookupApp.get(
       });
     }
 
-    return c.json({
+    return ctx.json({
       workspace: renderLightWorkspaceType({ workspace: result.value }),
       status: "revoked" as const,
       workspaceVerifiedDomain: null,

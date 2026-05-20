@@ -12,12 +12,12 @@ import rel from "./[...rel]";
 // Mounted under /api/w/:wId/spaces/:spaceId/files.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
+app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
 
   if (!space.isProject()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -31,7 +31,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
     projectId: space.sId,
   });
 
-  return c.json({ files });
+  return ctx.json({ files });
 });
 
 app.post(

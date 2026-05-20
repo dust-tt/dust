@@ -52,9 +52,9 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostTextAsCronRuleRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const body = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const body = ctx.req.valid("json");
 
     const r = await generateScheduleRule(auth, body);
 
@@ -65,7 +65,7 @@ app.post(
       ].includes(r.error.message)
         ? r.error.message
         : GENERIC_ERROR_MESSAGE;
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -74,7 +74,7 @@ app.post(
       });
     }
 
-    return c.json(scheduleConfigToResponse(r.value));
+    return ctx.json(scheduleConfigToResponse(r.value));
   }
 );
 

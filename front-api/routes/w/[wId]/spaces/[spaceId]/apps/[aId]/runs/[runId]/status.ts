@@ -9,21 +9,21 @@ import { Hono } from "hono";
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/status.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const aId = c.req.param("aId") ?? "";
-  let runId: string | null = c.req.param("runId") ?? null;
+app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const aId = ctx.req.param("aId") ?? "";
+  let runId: string | null = ctx.req.param("runId") ?? null;
 
   const found = await AppResource.fetchById(auth, aId);
   if (!found || found.space.sId !== space.sId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "app_not_found", message: "The app was not found." },
     });
   }
   if (!found.canRead(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -35,7 +35,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
     runId = found.savedRun;
   }
   if (!runId || runId.length === 0) {
-    return c.json({ run: null });
+    return ctx.json({ run: null });
   }
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const run = await coreAPI.getRunStatus({
@@ -44,12 +44,12 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
   });
   if (run.isErr()) {
     if (run.error.code === "run_not_found") {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: { type: "run_not_found", message: "The run was not found." },
       });
     }
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -58,7 +58,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
       },
     });
   }
-  return c.json({ run: run.value.run });
+  return ctx.json({ run: run.value.run });
 });
 
 export default app;

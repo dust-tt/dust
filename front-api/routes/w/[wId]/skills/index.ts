@@ -109,20 +109,20 @@ app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
 app.route("/similar", similar);
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
-  const withRelations = c.req.query("withRelations");
-  const status = c.req.query("status");
-  const globalSpaceOnly = c.req.query("globalSpaceOnly");
-  const onlyCustom = c.req.query("onlyCustom");
-  const isDefault = c.req.query("isDefault");
-  const viewType = c.req.query("viewType");
+  const withRelations = ctx.req.query("withRelations");
+  const status = ctx.req.query("status");
+  const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
+  const onlyCustom = ctx.req.query("onlyCustom");
+  const isDefault = ctx.req.query("isDefault");
+  const viewType = ctx.req.query("viewType");
 
   let skillView: SkillViewType = "full";
   if (viewType !== undefined) {
     if (!isString(viewType) || !isSkillViewType(viewType)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -135,7 +135,7 @@ app.get("/", async (c) => {
   }
 
   if (withRelations === "true" && skillView === "summary") {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -146,7 +146,7 @@ app.get("/", async (c) => {
 
   const statusValidation = SkillStatusSchema.safeParse(status);
   if (!statusValidation.success) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -195,11 +195,11 @@ app.get("/", async (c) => {
       { concurrency: 10 }
     );
 
-    return c.json({ skills: skillsWithRelations });
+    return ctx.json({ skills: skillsWithRelations });
   }
 
   if (skillView === "summary") {
-    return c.json({
+    return ctx.json({
       skills: skills.map((sc) => {
         const {
           instructions,
@@ -213,17 +213,17 @@ app.get("/", async (c) => {
     });
   }
 
-  return c.json({
+  return ctx.json({
     skills: skills.map((sc) => sc.toJSON(auth)),
   });
 });
 
-app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
-  const auth = c.get("auth");
+app.post("/", validate("json", PostSkillRequestBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
   if (!isBuilder(owner)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: { type: "app_auth_error", message: "User is not a builder." },
     });
@@ -231,11 +231,11 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
 
   const user = auth.getNonNullableUser();
 
-  const body = c.req.valid("json");
+  const body = ctx.req.valid("json");
   const name = body.name.trim();
 
   if (!name) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -247,7 +247,7 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
   const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
   if (existingSkill) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -264,7 +264,7 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
   );
 
   if (mcpServerViewIds.length !== mcpServerViews.length) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "invalid_request_error",
@@ -284,7 +284,7 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
     dataSourceViewIds
   );
   if (dataSourceViews.length !== dataSourceViewIds.length) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "invalid_request_error",
@@ -317,7 +317,7 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
     );
 
   if (additionalRequestedSpaceIdsRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -337,7 +337,7 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
 
   // Only global skills can be extended.
   if (extendedSkill !== null && !extendedSkill.isExtendable) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -351,7 +351,7 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
   if (fileAttachments) {
     const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("sandbox_tools") && fileAttachments.length > 0) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
@@ -363,7 +363,7 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
     const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
     files = await FileResource.fetchByIds(auth, fileAttachmentIds);
     if (files.length !== fileAttachmentIds.length) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "invalid_request_error",
@@ -374,7 +374,7 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
 
     for (const file of files) {
       if (!file.isReady || file.useCase !== "skill_attachment") {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -434,7 +434,7 @@ app.post("/", validate("json", PostSkillRequestBodySchema), async (c) => {
     });
   }
 
-  return c.json({ skill: newSkill.toJSON(auth) });
+  return ctx.json({ skill: newSkill.toJSON(auth) });
 });
 
 // Per-skill operations: mounted at /:sId so child routes can read it.

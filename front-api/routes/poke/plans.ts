@@ -57,7 +57,7 @@ export const PlanTypeSchema = z.object({
 // Mounted at /api/poke/plans. pokeAuth is applied by the parent poke sub-app.
 const app = new Hono();
 
-app.get("/", async (c) => {
+app.get("/", async (ctx) => {
   const planModels = await PlanModel.findAll({
     order: [["createdAt", "ASC"]],
   });
@@ -65,17 +65,17 @@ app.get("/", async (c) => {
     renderPlanFromModel({ plan })
   );
 
-  return c.json({ plans });
+  return ctx.json({ plans });
 });
 
-app.post("/", validate("json", PlanTypeSchema), async (c) => {
-  const body = c.req.valid("json");
+app.post("/", validate("json", PlanTypeSchema), async (ctx) => {
+  const body = ctx.req.valid("json");
 
   const { sizeLimit } = documentBodyParserConfig.api.bodyParser;
   const maxSizeMb = parseInt(sizeLimit.replace("mb", ""), 10);
 
   if (body.limits.dataSources.documents.sizeMb >= maxSizeMb) {
-    return c.json(
+    return ctx.json(
       {
         error: {
           type: "invalid_request_error",
@@ -125,7 +125,7 @@ app.post("/", validate("json", PlanTypeSchema), async (c) => {
   // since the cached subscription includes a snapshot of plan data.
   await SubscriptionResource.invalidateSubscriptionCacheForPlan(plan.id);
 
-  return c.json({ plan: body });
+  return ctx.json({ plan: body });
 });
 
 export default app;

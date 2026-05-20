@@ -16,12 +16,12 @@ const app = new Hono();
 app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -36,7 +36,7 @@ app.get(
       space.id
     );
     const serialized = preference?.toJSON();
-    return c.json({
+    return ctx.json({
       userProjectNotificationPreference:
         serialized && serialized.notificationPreference !== null
           ? {
@@ -54,12 +54,12 @@ app.patch(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("json", PatchUserProjectNotificationPreferenceBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -69,7 +69,7 @@ app.patch(
       });
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
 
     const preferenceResource =
       await UserProjectPreferencesResource.setNotificationPreference(auth, {
@@ -78,7 +78,7 @@ app.patch(
       });
 
     const serialized = preferenceResource.toJSON();
-    return c.json({
+    return ctx.json({
       userProjectNotificationPreference:
         serialized.notificationPreference !== null
           ? {

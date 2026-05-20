@@ -17,9 +17,9 @@ import { apiError } from "./utils";
 
 type HeaderRecord = Record<string, string | string[] | undefined>;
 
-function readHeaders(c: Context): HeaderRecord {
+function readHeaders(ctx: Context): HeaderRecord {
   const headers: Record<string, string> = {};
-  c.req.raw.headers.forEach((value, key) => {
+  ctx.req.raw.headers.forEach((value, key) => {
     headers[key] = value;
   });
   return headers;
@@ -102,10 +102,10 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
  * not yet ported — it is only used by `run_dust_app`, and we'll add it as a
  * factory variant when we migrate that endpoint.
  */
-export const publicApiAuth: MiddlewareHandler = async (c, next) => {
-  const wId = c.req.param("wId");
+export const publicApiAuth: MiddlewareHandler = async (ctx, next) => {
+  const wId = ctx.req.param("wId");
   if (!wId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
@@ -114,9 +114,9 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
     });
   }
 
-  const authHeader = c.req.header("authorization");
+  const authHeader = ctx.req.header("authorization");
   if (!authHeader) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "not_authenticated",
@@ -125,14 +125,14 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
     });
   }
 
-  const headers = readHeaders(c);
+  const headers = readHeaders(ctx);
 
   // 1) Sandbox token.
   const token = authHeader.replace("Bearer ", "");
   if (token && isSandboxTokenPrefix(token)) {
     const payload = await verifySandboxExecToken(token);
     if (!payload) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 401,
         api_error: {
           type: "invalid_sandbox_token_error",
@@ -142,11 +142,11 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
     }
     const authRes = await Authenticator.fromSandboxToken(payload, wId);
     if (authRes.isErr()) {
-      return apiError(c, authRes.error);
+      return apiError(ctx, authRes.error);
     }
     const auth = authRes.value;
     applyClientIp(auth, headers);
-    c.set("auth", auth);
+    ctx.set("auth", auth);
     await next();
     return;
   }
@@ -154,7 +154,7 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
   // 2) OAuth bearer token (resolves to a workspace user session).
   const bearerRes = await getSessionFromBearerToken(authHeader);
   if (bearerRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: bearerRes.error,
@@ -167,7 +167,7 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
     const auth = await Authenticator.fromSession(session, wId);
 
     if (auth.user() === null) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 401,
         api_error: {
           type: "user_not_found",
@@ -177,7 +177,7 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
       });
     }
     if (!auth.isUser()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 401,
         api_error: {
           type: "workspace_auth_error",
@@ -187,10 +187,10 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
     }
     const workspaceError = validateWorkspaceFromAuth(auth);
     if (workspaceError) {
-      return apiError(c, workspaceError);
+      return apiError(ctx, workspaceError);
     }
     applyClientIp(auth, headers);
-    c.set("auth", auth);
+    ctx.set("auth", auth);
     await next();
     return;
   }
@@ -198,7 +198,7 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
   // 3) API key.
   const keyRes = await getAPIKey(authHeader);
   if (keyRes.isErr()) {
-    return apiError(c, keyRes.error);
+    return apiError(ctx, keyRes.error);
   }
 
   const keyAndWorkspaceAuth = await Authenticator.fromKey(
@@ -211,11 +211,11 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
 
   const workspaceError = validateWorkspaceFromAuth(workspaceAuth);
   if (workspaceError) {
-    return apiError(c, workspaceError);
+    return apiError(ctx, workspaceError);
   }
 
   if (!workspaceAuth.isUser()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "workspace_auth_error",
@@ -247,6 +247,6 @@ export const publicApiAuth: MiddlewareHandler = async (c, next) => {
   }
 
   applyClientIp(workspaceAuth, headers);
-  c.set("auth", workspaceAuth);
+  ctx.set("auth", workspaceAuth);
   await next();
 };

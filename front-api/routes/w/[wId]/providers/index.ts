@@ -20,11 +20,11 @@ function redactConfig(config: string) {
 // Mounted at /api/w/:wId/providers.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isBuilder()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "provider_auth_error",
@@ -47,7 +47,7 @@ app.get("/", async (c) => {
       config: redactConfig(p.config),
     })),
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

@@ -37,8 +37,8 @@ export function sortSpacesSummary<T extends { id: number }>(
 // Mounted under /api/w/:wId/assistant/conversations/spaces.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const { nonArchivedSpaces, metadataMap } =
     await listNonArchivedMemberSpacesWithMetadata(auth);
@@ -123,7 +123,7 @@ app.get("/", async (c) => {
     })),
   };
 
-  return c.json(response);
+  return ctx.json(response);
 });
 
 app.route("/:spaceId", spaceId);

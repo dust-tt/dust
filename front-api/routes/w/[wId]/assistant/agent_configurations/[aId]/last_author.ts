@@ -6,16 +6,16 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/last_author.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!agentConfiguration) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -25,14 +25,14 @@ app.get("/", async (c) => {
   }
 
   if (!agentConfiguration.versionAuthorId) {
-    return c.json({ user: null });
+    return ctx.json({ user: null });
   }
 
   const agentLastAuthor = await UserResource.fetchByModelIds([
     agentConfiguration.versionAuthorId,
   ]);
 
-  return c.json({
+  return ctx.json({
     user: agentLastAuthor[0] ? agentLastAuthor[0].toJSON() : null,
   });
 });

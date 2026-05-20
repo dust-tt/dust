@@ -17,9 +17,9 @@ export type GetMCPServersResponseBody = {
 // space.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
+app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
 
   const [
     internalInstalledServers,
@@ -61,7 +61,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
     success: true,
     servers: availableServer,
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

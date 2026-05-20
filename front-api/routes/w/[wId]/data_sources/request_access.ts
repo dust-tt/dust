@@ -19,17 +19,17 @@ const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 // Mounted at /api/w/:wId/data_sources/request_access.
 const app = new Hono();
 
-app.post("/", validate("json", PostRequestAccessBodySchema), async (c) => {
-  const auth = c.get("auth");
+app.post("/", validate("json", PostRequestAccessBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();
   const emailRequester = user.email;
-  const { emailMessage, dataSourceId } = c.req.valid("json");
+  const { emailMessage, dataSourceId } = ctx.req.valid("json");
 
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId, {
     includeEditedBy: true,
   });
   if (!dataSource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -40,7 +40,7 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (c) => {
 
   // Prevent users from requesting access to data sources outside their workspace (e.g., public).
   if (dataSource.workspaceId !== auth.getNonNullableWorkspace().id) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -50,7 +50,7 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (c) => {
   }
 
   if (!dataSource.editedByUser?.sId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "user_not_found",
@@ -68,7 +68,7 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (c) => {
   });
 
   if (remaining === 0) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 429,
       api_error: {
         type: "rate_limit_error",
@@ -92,7 +92,7 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (c) => {
   });
 
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -101,7 +101,7 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (c) => {
     });
   }
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

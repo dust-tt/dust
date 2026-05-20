@@ -69,15 +69,15 @@ const PostBodySchema = z.discriminatedUnion("serverType", [
 // workspace sub-app.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const servers = await listMCPServersWithViews(auth);
-  return c.json({ success: true, servers });
+  return ctx.json({ success: true, servers });
 });
 
-app.post("/", validate("json", PostBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const body = c.req.valid("json");
+app.post("/", validate("json", PostBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const body = ctx.req.valid("json");
 
   const result =
     body.serverType === "remote"
@@ -88,7 +88,7 @@ app.post("/", validate("json", PostBodySchema), async (c) => {
     const message = result.error.message;
     if (isRemoteMCPServerError(result.error)) {
       // Non-standard envelope: callers rely on the `isRemoteServerError` flag.
-      return c.json(
+      return ctx.json(
         {
           error: { type: "invalid_request_error", message },
           isRemoteServerError: true,
@@ -96,13 +96,13 @@ app.post("/", validate("json", PostBodySchema), async (c) => {
         400
       );
     }
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: { type: "invalid_request_error", message },
     });
   }
 
-  return c.json({ success: true, server: result.value }, 201);
+  return ctx.json({ success: true, server: result.value }, 201);
 });
 
 app.route("/available", available);

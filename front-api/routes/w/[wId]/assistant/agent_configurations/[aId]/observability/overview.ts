@@ -16,16 +16,16 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/observability/overview.
 const app = new Hono();
 
-app.get("/", validate("query", QuerySchema), async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const assistant = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!assistant || (!assistant.canRead && !auth.isAdmin())) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -34,7 +34,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     });
   }
 
-  const { days, version } = c.req.valid("query");
+  const { days, version } = ctx.req.valid("query");
   const owner = auth.getNonNullableWorkspace();
 
   const baseQuery = buildAgentAnalyticsBaseQuery({
@@ -46,7 +46,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
 
   const overview = await fetchAgentOverview(baseQuery, days);
   if (overview.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -63,7 +63,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     negativeFeedbacks,
   } = overview.value;
 
-  return c.json({
+  return ctx.json({
     activeUsers,
     mentions: {
       messageCount,

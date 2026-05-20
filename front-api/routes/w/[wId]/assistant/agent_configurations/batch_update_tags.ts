@@ -18,9 +18,13 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", BatchUpdateAgentTagsRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { agentIds, addTagIds = [], removeTagIds = [] } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const {
+      agentIds,
+      addTagIds = [],
+      removeTagIds = [],
+    } = ctx.req.valid("json");
 
     const tagsToAdd = await TagResource.fetchByIds(auth, addTagIds);
     const tagsToRemove = await TagResource.fetchByIds(auth, removeTagIds);
@@ -29,7 +33,7 @@ app.post(
       tagsToAdd.length !== addTagIds.length ||
       tagsToRemove.length !== removeTagIds.length
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
@@ -61,7 +65,7 @@ app.post(
       { concurrency: 10 }
     );
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

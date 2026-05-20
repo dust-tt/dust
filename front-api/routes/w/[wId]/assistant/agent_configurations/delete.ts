@@ -17,9 +17,9 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostAgentConfigurationArchiveSchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { agentConfigurationIds } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { agentConfigurationIds } = ctx.req.valid("json");
 
     const agentConfigurations = await getAgentConfigurations(auth, {
       agentIds: agentConfigurationIds,
@@ -27,7 +27,7 @@ app.post(
     });
     const toDelete = agentConfigurations.filter((a) => a.status === "active");
     if (toDelete.length !== agentConfigurationIds.length) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
@@ -36,7 +36,7 @@ app.post(
       });
     }
     if (toDelete.some((agent) => !agent.canEdit && !auth.isAdmin())) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -49,7 +49,7 @@ app.post(
       await archiveAgentConfiguration(auth, agentConfiguration.sId);
     }
 
-    return c.json({ archived: agentConfigurations.length });
+    return ctx.json({ archived: agentConfigurations.length });
   }
 );
 

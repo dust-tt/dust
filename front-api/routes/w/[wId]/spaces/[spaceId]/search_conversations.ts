@@ -28,10 +28,10 @@ app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("query", SearchConversationsQuerySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const { query, limit: topK } = c.req.valid("query");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { query, limit: topK } = ctx.req.valid("query");
 
     const searchRes = await searchProjectConversations(auth, {
       query,
@@ -49,7 +49,7 @@ app.get(
         },
         "Failed to search conversations in datasource"
       );
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -66,13 +66,15 @@ app.get(
       auth,
       filteredResults.map((r) => r.conversationId)
     );
-    const conversationMap = new Map(conversations.map((c) => [c.sId, c]));
+    const conversationMap = new Map(conversations.map((ctx) => [ctx.sId, ctx]));
 
     const results = filteredResults
       .map((r) => conversationMap.get(r.conversationId)?.toJSON())
-      .filter((c): c is ConversationWithoutContentType => c !== undefined);
+      .filter(
+        (ctx): ctx is ConversationWithoutContentType => ctx !== undefined
+      );
 
-    return c.json({ conversations: results });
+    return ctx.json({ conversations: results });
   }
 );
 

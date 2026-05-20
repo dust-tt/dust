@@ -7,9 +7,9 @@ import differenceWith from "lodash/differenceWith";
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views/not_activated.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
+app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
 
   const spaceMcpServerViews = await MCPServerViewResource.listBySpace(
     auth,
@@ -36,7 +36,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
       (b.internalMCPServerId ?? b.remoteMCPServerId)
   );
 
-  return c.json({
+  return ctx.json({
     success: true,
     serverViews: removeNulls(activableMcpServerViews.map((s) => s.toJSON())),
   });

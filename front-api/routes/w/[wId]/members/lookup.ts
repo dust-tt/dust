@@ -8,7 +8,7 @@ import { z } from "zod";
 
 const MEMBERS_LOOKUP_MAX_IDS = 50;
 
-// @hono/zod-validator's "query" target calls c.req.queries() (plural) under
+// @hono/zod-validator's "query" target calls ctx.req.queries() (plural) under
 // the hood and collapses single-value keys to scalar / preserves repeated
 // keys as arrays. Same shape as legacy NextApiRequest.query: ?ids=1 → "1",
 // ?ids=1&ids=2 → ["1", "2"]. The union accepts both branches.
@@ -23,18 +23,18 @@ export type MembersLookupResponseBody = {
 // Mounted at /api/w/:wId/members/lookup.
 const app = new Hono();
 
-app.get("/", validate("query", MembersLookupQuerySchema), async (c) => {
-  const auth = c.get("auth");
-  const { ids: rawIds } = c.req.valid("query");
+app.get("/", validate("query", MembersLookupQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { ids: rawIds } = ctx.req.valid("query");
   const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
 
   if (ids.length === 0) {
     const body: MembersLookupResponseBody = { users: [] };
-    return c.json(body);
+    return ctx.json(body);
   }
 
   if (ids.length > MEMBERS_LOOKUP_MAX_IDS) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -48,7 +48,7 @@ app.get("/", validate("query", MembersLookupQuerySchema), async (c) => {
 
   if (users.length === 0) {
     const body: MembersLookupResponseBody = { users: [] };
-    return c.json(body);
+    return ctx.json(body);
   }
 
   const owner = auth.getNonNullableWorkspace();
@@ -63,7 +63,7 @@ app.get("/", validate("query", MembersLookupQuerySchema), async (c) => {
   const body: MembersLookupResponseBody = {
     users: filteredUsers.map((user) => user.toJSON()),
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

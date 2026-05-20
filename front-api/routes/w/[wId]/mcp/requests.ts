@@ -17,10 +17,10 @@ const app = new Hono();
 
 const SSE_PREFIX = "/api/sse";
 
-function redirectToSse(c: Context) {
-  const url = new URL(c.req.url);
+function redirectToSse(ctx: Context) {
+  const url = new URL(ctx.req.url);
   const sseUrl = `${url.origin}${SSE_PREFIX}${url.pathname}${url.search}`;
-  return c.redirect(sseUrl, 307);
+  return ctx.redirect(sseUrl, 307);
 }
 
 app.get("/", redirectToSse);

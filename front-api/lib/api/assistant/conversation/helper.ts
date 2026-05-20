@@ -13,10 +13,10 @@ import type { Context } from "hono";
  * attachment, since the error type is the signal. Anything else is mapped
  * to 500 and the original error is attached so its stack lands in the log.
  */
-export function apiErrorForConversation(c: Context, error: Error) {
+export function apiErrorForConversation(ctx: Context, error: Error) {
   const apiErr = getConversationApiError(error);
   if (error instanceof ConversationError) {
-    return apiError(c, apiErr);
+    return apiError(ctx, apiErr);
   }
-  return apiError(c, apiErr, error);
+  return apiError(ctx, apiErr, error);
 }

@@ -16,18 +16,18 @@ const PostTagSearchBodySchema = z.object({
 // Mounted at /api/w/:wId/data_source_views/tags/search.
 const app = new Hono();
 
-app.post("/", validate("json", PostTagSearchBodySchema), async (c) => {
-  const auth = c.get("auth");
+app.post("/", validate("json", PostTagSearchBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
   // workspaceAuth already enforces auth.isUser().
-  const { dataSourceViewIds, query, queryType } = c.req.valid("json");
+  const { dataSourceViewIds, query, queryType } = ctx.req.valid("json");
 
   const dataSourceViews = await DataSourceViewResource.fetchByIds(
     auth,
     dataSourceViewIds
   );
   if (dataSourceViews.some((dsv) => !dsv.canRead(auth))) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
@@ -44,7 +44,7 @@ app.post("/", validate("json", PostTagSearchBodySchema), async (c) => {
   });
 
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -53,7 +53,7 @@ app.post("/", validate("json", PostTagSearchBodySchema), async (c) => {
     });
   }
 
-  return c.json(result.value);
+  return ctx.json(result.value);
 });
 
 export default app;

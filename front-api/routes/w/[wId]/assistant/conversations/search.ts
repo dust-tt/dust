@@ -6,12 +6,12 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/conversations/search.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   // getPaginationParams expects a Next-style query object; flatten Hono's
   // query map (single-valued strings are fine here).
-  const queryObj = c.req.query();
+  const queryObj = ctx.req.query();
   const paginationRes = getPaginationParams(queryObj, {
     defaultLimit: 20,
     defaultOrderColumn: "updatedAt",
@@ -21,7 +21,7 @@ app.get("/", async (c) => {
   });
 
   if (paginationRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -30,9 +30,9 @@ app.get("/", async (c) => {
     });
   }
 
-  const query = c.req.query("query");
+  const query = ctx.req.query("query");
   if (!query || query.length === 0) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -57,7 +57,7 @@ app.get("/", async (c) => {
     spaceName: null,
   }));
 
-  return c.json({
+  return ctx.json({
     conversations,
     hasMore: result.hasMore,
     lastValue: result.lastValue,

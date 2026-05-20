@@ -15,9 +15,9 @@ const PostMessageEventBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/cancel.
 const app = new Hono();
 
-app.post("/", validate("json", PostMessageEventBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+app.post("/", validate("json", PostMessageEventBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.param("cId") ?? "";
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -25,10 +25,10 @@ app.post("/", validate("json", PostMessageEventBodySchema), async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
-  const { action, messageIds } = c.req.valid("json");
+  const { action, messageIds } = ctx.req.valid("json");
 
   switch (action) {
     case "cancel":
@@ -49,7 +49,7 @@ app.post("/", validate("json", PostMessageEventBodySchema), async (c) => {
       assertNever(action);
   }
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

@@ -15,8 +15,8 @@ export type GetUserTriggersResponseBody = {
 // Mounted at /api/w/:wId/me/triggers.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const editorTriggers = await TriggerResource.listByUserEditor(
     auth,
@@ -50,7 +50,7 @@ app.get("/", async (c) => {
   );
 
   const body: GetUserTriggersResponseBody = { triggers };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

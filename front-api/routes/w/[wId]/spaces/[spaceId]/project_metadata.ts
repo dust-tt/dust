@@ -17,12 +17,12 @@ const app = new Hono();
 app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -32,7 +32,7 @@ app.get(
     }
 
     const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
-    return c.json({
+    return ctx.json({
       projectMetadata: metadata ? metadata.toJSON() : null,
     });
   }
@@ -42,12 +42,12 @@ app.patch(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("json", PatchProjectMetadataBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -57,7 +57,7 @@ app.patch(
     }
 
     if (!space.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -66,7 +66,7 @@ app.patch(
       });
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
 
     let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
@@ -141,7 +141,7 @@ app.patch(
       }
     }
 
-    return c.json({ projectMetadata: metadata.toJSON() });
+    return ctx.json({ projectMetadata: metadata.toJSON() });
   }
 );
 

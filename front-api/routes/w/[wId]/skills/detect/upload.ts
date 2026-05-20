@@ -13,11 +13,11 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/skills/detect/upload.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isBuilder()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: { type: "app_auth_error", message: "User is not a builder." },
     });
@@ -27,9 +27,9 @@ app.post("/", async (c) => {
   // same field name are returned as an array.
   let parsed: Record<string, unknown>;
   try {
-    parsed = await c.req.parseBody({ all: true });
+    parsed = await ctx.req.parseBody({ all: true });
   } catch (err) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -51,7 +51,7 @@ app.post("/", async (c) => {
   }
 
   if (blobs.length === 0) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -63,7 +63,7 @@ app.post("/", async (c) => {
   // Enforce the max size per file.
   for (const blob of blobs) {
     if (blob.size > MAX_ZIP_SIZE_BYTES) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -98,7 +98,7 @@ app.post("/", async (c) => {
 
   const result = await detectSkillsFromUploadedFiles(formidableFiles);
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -110,7 +110,7 @@ app.post("/", async (c) => {
   const detectedSkills = result.value;
 
   if (detectedSkills.length === 0) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -153,7 +153,7 @@ app.post("/", async (c) => {
     };
   });
 
-  return c.json({ skills: skillSummaries });
+  return ctx.json({ skills: skillSummaries });
 });
 
 export default app;

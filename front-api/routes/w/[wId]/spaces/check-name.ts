@@ -6,12 +6,12 @@ import { Hono } from "hono";
 // Mounted under /api/w/:wId/spaces/check-name.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const name = c.req.query("name");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const name = ctx.req.query("name");
 
   if (!name || name.length === 0) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -22,7 +22,7 @@ app.get("/", async (c) => {
 
   // Find the space with this name (case-insensitive)
   const existingSpace = await SpaceResource.fetchByName(auth, name);
-  return c.json({ available: !existingSpace });
+  return ctx.json({ available: !existingSpace });
 });
 
 export default app;

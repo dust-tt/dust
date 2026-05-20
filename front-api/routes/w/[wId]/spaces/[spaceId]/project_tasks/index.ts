@@ -64,12 +64,12 @@ function parseProjectTasksPeopleMode(
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
+app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
 
   if (!space.isProject()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -82,10 +82,10 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
   const state = await ProjectTaskStateResource.fetchBySpace(auth, {
     spaceId: space.id,
   });
-  const timeScope = parseProjectTaskTimeScope(c.req.query("period"));
+  const timeScope = parseProjectTaskTimeScope(ctx.req.query("period"));
   const peopleMode = parseProjectTasksPeopleMode(
-    c.req.query("people"),
-    c.req.query("assignee")
+    ctx.req.query("people"),
+    ctx.req.query("assignee")
   );
   const assigneeUserId: ModelId | null =
     peopleMode === "mine" ? currentUser.id : null;
@@ -147,7 +147,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
     }
   );
 
-  return c.json({
+  return ctx.json({
     tasks: todosWithSources,
     lastReadAt: state ? state.lastReadAt.toISOString() : null,
     viewerUserId: currentUser.sId,
@@ -158,12 +158,12 @@ app.post(
   "/",
   spaceResource({ requireCanRead: true }),
   validate("json", PostProjectTaskBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -172,7 +172,7 @@ app.post(
       });
     }
 
-    const { text, assigneeUserId } = c.req.valid("json");
+    const { text, assigneeUserId } = ctx.req.valid("json");
     const workspace = auth.getNonNullableWorkspace();
     const currentUser = auth.getNonNullableUser();
 
@@ -191,7 +191,7 @@ app.post(
       );
       const assigneeUser = assigneeAuth.user();
       if (!assigneeUser) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -201,7 +201,7 @@ app.post(
       }
 
       if (!space.isMember(assigneeAuth)) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -234,7 +234,7 @@ app.post(
       newTodo.sId
     );
     if (!todoResource) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -245,7 +245,7 @@ app.post(
 
     // Manual creates are never linked to a conversation until someone uses "Start"
     // (see project_task/start); skip getLatestConversationId and keep the same shape as GET.
-    return c.json(
+    return ctx.json(
       {
         task: {
           ...todoResource.toJSON(),

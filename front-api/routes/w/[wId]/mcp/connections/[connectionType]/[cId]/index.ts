@@ -7,16 +7,16 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/mcp/connections/:connectionType/:cId.
 const app = new Hono();
 
-async function loadConnection(c: Context) {
-  const auth = c.get("auth");
-  const cId = c.req.param("cId") ?? "";
+async function loadConnection(ctx: Context) {
+  const auth = ctx.get("auth");
+  const cId = ctx.req.param("cId") ?? "";
   return MCPServerConnectionResource.fetchById(auth, cId);
 }
 
-app.get("/", async (c) => {
-  const connectionRes = await loadConnection(c);
+app.get("/", async (ctx) => {
+  const connectionRes = await loadConnection(ctx);
   if (connectionRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "mcp_server_connection_not_found",
@@ -28,14 +28,14 @@ app.get("/", async (c) => {
   const value: { connection: MCPServerConnectionType } = {
     connection: connectionRes.value.toJSON(),
   };
-  return c.json(value);
+  return ctx.json(value);
 });
 
-app.delete("/", async (c) => {
-  const auth = c.get("auth");
-  const connectionRes = await loadConnection(c);
+app.delete("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const connectionRes = await loadConnection(ctx);
   if (connectionRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "mcp_server_connection_not_found",
@@ -46,7 +46,7 @@ app.delete("/", async (c) => {
 
   const result = await connectionRes.value.delete(auth);
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -55,7 +55,7 @@ app.delete("/", async (c) => {
     });
   }
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

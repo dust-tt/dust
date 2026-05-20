@@ -6,13 +6,13 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/conversations/send-onboarding.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
-  const body = await c.req.json().catch(() => ({}));
+  const body = await ctx.req.json().catch(() => ({}));
 
   // Accept language from body or fall back to Accept-Language header.
-  const acceptLanguage = c.req.header("accept-language");
+  const acceptLanguage = ctx.req.header("accept-language");
   const language = isString(body?.language)
     ? body.language
     : (acceptLanguage?.split(",")[0]?.split("-")[0] ?? null);
@@ -26,10 +26,10 @@ app.post("/", async (c) => {
   });
 
   if (result.isErr()) {
-    return apiError(c, result.error);
+    return apiError(ctx, result.error);
   }
 
-  return c.json({ conversationId: result.value });
+  return ctx.json({ conversationId: result.value });
 });
 
 export default app;

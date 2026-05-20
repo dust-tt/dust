@@ -18,13 +18,13 @@ app.post(
   "/",
   spaceResource({ requireCanRead: true }),
   validate("json", PostStartProjectTaskBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const taskId = c.req.param("taskId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const taskId = ctx.req.param("taskId") ?? "";
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -33,7 +33,7 @@ app.post(
       });
     }
 
-    const { customMessage, agentConfigurationId } = c.req.valid("json");
+    const { customMessage, agentConfigurationId } = ctx.req.valid("json");
     const startRes = await startAgentForProjectTask(auth, {
       space,
       taskId,
@@ -41,7 +41,7 @@ app.post(
       agentConfigurationId,
     });
     if (startRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: startRes.error.statusCode,
         api_error: {
           type: startRes.error.type as APIErrorType,
@@ -50,7 +50,7 @@ app.post(
       });
     }
 
-    return c.json({ task: startRes.value.task });
+    return ctx.json({ task: startRes.value.task });
   }
 );
 

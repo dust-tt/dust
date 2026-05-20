@@ -11,9 +11,9 @@ const MarkAllAsReadBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/bulk-actions.
 const app = new Hono();
 
-app.post("/", validate("json", MarkAllAsReadBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const { conversationIds, action } = c.req.valid("json");
+app.post("/", validate("json", MarkAllAsReadBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { conversationIds, action } = ctx.req.valid("json");
 
   if (action === "mark_as_read") {
     await ConversationResource.batchMarkAsReadAndClearActionRequired(
@@ -22,7 +22,7 @@ app.post("/", validate("json", MarkAllAsReadBodySchema), async (c) => {
     );
   }
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

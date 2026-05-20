@@ -23,14 +23,14 @@ const app = new Hono();
 app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const category = c.req.query("category") as
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const category = ctx.req.query("category") as
       | DataSourceViewCategory
       | undefined;
-    const withDetails = c.req.query("withDetails");
-    const includeEditedBy = c.req.query("includeEditedBy");
+    const withDetails = ctx.req.query("withDetails");
+    const includeEditedBy = ctx.req.query("includeEditedBy");
 
     const dataSourceViews = (
       await DataSourceViewResource.listBySpace(auth, space, {
@@ -41,11 +41,11 @@ app.get(
       .filter((d) => !category || d.category === category);
 
     if (!withDetails) {
-      return c.json({ dataSourceViews });
+      return ctx.json({ dataSourceViews });
     }
 
     if (!category) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -96,7 +96,7 @@ app.get(
         };
       })
     );
-    return c.json({ dataSourceViews: enhancedDataSourceViews });
+    return ctx.json({ dataSourceViews: enhancedDataSourceViews });
   }
 );
 
@@ -104,12 +104,12 @@ app.post(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("json", ContentSchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -121,7 +121,7 @@ app.post(
     const isSaveDataSourceViewsEnabled =
       await KillSwitchResource.isKillSwitchEnabled("save_data_source_views");
     if (isSaveDataSourceViewsEnabled) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "app_auth_error",
@@ -131,11 +131,11 @@ app.post(
       });
     }
 
-    const { dataSourceId, parentsIn } = c.req.valid("json");
+    const { dataSourceId, parentsIn } = ctx.req.valid("json");
 
     const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
     if (!dataSource) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -150,7 +150,7 @@ app.post(
       space
     );
     if (existing.length > 0) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -167,7 +167,7 @@ app.post(
         parentsIn
       );
     if (dataSourceViewRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -176,7 +176,7 @@ app.post(
       });
     }
 
-    return c.json({ dataSourceView: dataSourceViewRes.value.toJSON() }, 201);
+    return ctx.json({ dataSourceView: dataSourceViewRes.value.toJSON() }, 201);
   }
 );
 

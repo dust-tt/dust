@@ -5,16 +5,16 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/export/yaml.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const result = await exportAgentConfigurationAsYAML(auth, aId);
   if (result.isErr()) {
-    return apiError(c, result.error);
+    return apiError(ctx, result.error);
   }
 
-  return c.json(result.value);
+  return ctx.json(result.value);
 });
 
 export default app;

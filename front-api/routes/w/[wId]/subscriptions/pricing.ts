@@ -10,11 +10,11 @@ export type GetSubscriptionPricingResponseBody = {
 // Mounted at /api/w/:wId/subscriptions/pricing.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -27,12 +27,12 @@ app.get("/", async (c) => {
   const subscriptionResource = auth.subscriptionResource();
   if (!subscriptionResource) {
     const body: GetSubscriptionPricingResponseBody = { perSeatPricing: null };
-    return c.json(body);
+    return ctx.json(body);
   }
 
   const perSeatPricing = await subscriptionResource.getPerSeatPricing();
   const body: GetSubscriptionPricingResponseBody = { perSeatPricing };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

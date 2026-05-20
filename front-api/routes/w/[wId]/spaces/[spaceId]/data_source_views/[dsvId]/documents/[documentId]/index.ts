@@ -14,9 +14,9 @@ app.get(
   "/",
   spaceResource({ requireCanRead: true }),
   dataSourceViewResource({ requireCanRead: true }),
-  async (c) => {
-    const dataSourceView = c.get("dataSourceView");
-    const documentId = c.req.param("documentId") ?? "";
+  async (ctx) => {
+    const dataSourceView = ctx.get("dataSourceView");
+    const documentId = ctx.req.param("documentId") ?? "";
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const doc = await coreAPI.getDataSourceDocument({
       dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
@@ -25,7 +25,7 @@ app.get(
       viewFilter: dataSourceView.toViewFilter(),
     });
     if (doc.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "data_source_error",
@@ -35,7 +35,7 @@ app.get(
         },
       });
     }
-    return c.json({ document: doc.value.document });
+    return ctx.json({ document: doc.value.document });
   }
 );
 

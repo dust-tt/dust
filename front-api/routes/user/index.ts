@@ -30,12 +30,12 @@ const app = new Hono();
 
 app.use("*", sessionAuth);
 
-app.get("/", async (c) => {
-  const session = c.get("session");
+app.get("/", async (ctx) => {
+  const session = ctx.get("session");
 
   const user = await getUserFromSession(session);
   if (!user) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "user_not_found",
@@ -59,16 +59,16 @@ app.get("/", async (c) => {
   });
 
   const subscriberHash = await getSubscriberHash(user);
-  return c.json({ user: { ...user, subscriberHash } });
+  return ctx.json({ user: { ...user, subscriberHash } });
 });
 
-app.patch("/", validate("json", PatchUserBodySchema), async (c) => {
-  const session = c.get("session");
-  const body = c.req.valid("json");
+app.patch("/", validate("json", PatchUserBodySchema), async (ctx) => {
+  const session = ctx.get("session");
+  const body = ctx.req.valid("json");
 
   const user = await getUserFromSession(session);
   if (!user) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "user_not_found",
@@ -89,7 +89,7 @@ app.patch("/", validate("json", PatchUserBodySchema), async (c) => {
 
   const u = await UserResource.fetchByModelId(user.id);
   if (!u) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "user_not_found",
@@ -120,7 +120,7 @@ app.patch("/", validate("json", PatchUserBodySchema), async (c) => {
   const { imageUrl, favoritePlatforms, emailProvider, workspaceId } = body;
 
   if (firstName.length === 0 || lastName.length === 0) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -132,7 +132,7 @@ app.patch("/", validate("json", PatchUserBodySchema), async (c) => {
   if (firstName !== user.firstName || lastName !== user.lastName) {
     // Provisioned users cannot update their name.
     if (user.origin === "provisioned") {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -148,7 +148,7 @@ app.patch("/", validate("json", PatchUserBodySchema), async (c) => {
   }
 
   if (jobType !== undefined && !isJobType(jobType)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -160,7 +160,7 @@ app.patch("/", validate("json", PatchUserBodySchema), async (c) => {
   if (favoritePlatforms !== undefined) {
     for (const platform of favoritePlatforms) {
       if (!isFavoritePlatform(platform)) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -200,7 +200,7 @@ app.patch("/", validate("json", PatchUserBodySchema), async (c) => {
     jobType,
   });
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 app.route("/metadata", metadata);

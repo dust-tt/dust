@@ -15,10 +15,10 @@ export type GetVerifyResponseBody = {
   initialCountryCode: Country;
 };
 
-async function detectCountryFromIP(c: Context): Promise<Country> {
+async function detectCountryFromIP(ctx: Context): Promise<Country> {
   try {
     const headers: Record<string, string> = {};
-    c.req.raw.headers.forEach((value, key) => {
+    ctx.req.raw.headers.forEach((value, key) => {
       headers[key] = value;
     });
     const ip = getClientIp({ headers });
@@ -39,11 +39,11 @@ async function detectCountryFromIP(c: Context): Promise<Country> {
 // Mounted at /api/w/:wId/verify.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -53,13 +53,13 @@ app.get("/", async (c) => {
   }
 
   const isEligibleForTrial = await isWorkspaceEligibleForTrial(auth);
-  const initialCountryCode = await detectCountryFromIP(c);
+  const initialCountryCode = await detectCountryFromIP(ctx);
 
   const body: GetVerifyResponseBody = {
     isEligibleForTrial,
     initialCountryCode,
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

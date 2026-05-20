@@ -5,11 +5,11 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/agent_configurations/create-pending.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.user()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "not_authenticated",
@@ -19,7 +19,7 @@ app.post("/", async (c) => {
   }
 
   const { sId } = await createPendingAgentConfiguration(auth);
-  return c.json({ sId });
+  return ctx.json({ sId });
 });
 
 export default app;

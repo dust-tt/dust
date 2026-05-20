@@ -16,13 +16,13 @@ app.post(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("json", PostUserProjectStarBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const { starred } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { starred } = ctx.req.valid("json");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -36,7 +36,7 @@ app.post(
       isStarred: starred,
     });
 
-    return c.json(pref.toJSON());
+    return ctx.json(pref.toJSON());
   }
 );
 

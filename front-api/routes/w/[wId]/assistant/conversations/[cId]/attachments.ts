@@ -6,20 +6,20 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/conversations/:cId/attachments.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.param("cId") ?? "";
 
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const attachments = await listAttachments(auth, {
     conversation: conversationRes.value,
   });
 
-  return c.json({ attachments });
+  return ctx.json({ attachments });
 });
 
 export default app;

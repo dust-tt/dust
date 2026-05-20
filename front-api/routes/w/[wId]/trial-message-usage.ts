@@ -9,11 +9,11 @@ export type GetTrialMessageUsageResponseType = {
 // Mounted at /api/w/:wId/trial-message-usage.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const usage = await getMessageUsageCount(auth);
   const body: GetTrialMessageUsageResponseType = usage;
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

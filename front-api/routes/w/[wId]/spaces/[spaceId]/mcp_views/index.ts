@@ -106,16 +106,16 @@ const app = new Hono();
 app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     const r = GetQueryParamsSchema.safeParse({
-      availability: c.req.query("availability"),
+      availability: ctx.req.query("availability"),
     });
 
     if (!r.success) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -153,7 +153,7 @@ app.get(
     ];
 
     if (mcpServerIdsRequiringWorkspaceConnection.length === 0) {
-      return c.json({
+      return ctx.json({
         success: true,
         serverViews: filteredServerViews,
       });
@@ -170,7 +170,7 @@ app.get(
       workspaceConnections.map((connection) => connection.mcpServerId)
     );
 
-    return c.json({
+    return ctx.json({
       success: true,
       serverViews: filteredServerViews.map((serverView) => ({
         ...serverView,
@@ -194,14 +194,14 @@ app.post(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("json", PostBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
-    const { mcpServerId } = c.req.valid("json");
+    const { mcpServerId } = ctx.req.valid("json");
 
     if (!auth.isAdmin()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "mcp_auth_error",
@@ -212,7 +212,7 @@ app.post(
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -229,7 +229,7 @@ app.post(
       );
 
     if (!systemView) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -247,7 +247,7 @@ app.post(
       );
 
     if (hasConflict) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -272,7 +272,7 @@ app.post(
       });
     }
 
-    return c.json({
+    return ctx.json({
       success: true,
       serverView: serverView.toJSON(),
     });

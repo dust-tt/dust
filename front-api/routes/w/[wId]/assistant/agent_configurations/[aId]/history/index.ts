@@ -10,16 +10,16 @@ import { fromError } from "zod-validation-error";
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/history.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const assistant = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!assistant || (!assistant.canRead && !auth.isAdmin())) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -30,7 +30,7 @@ app.get("/", async (c) => {
 
   // The schema expects `limit` as a number; query params arrive as strings,
   // so we parseInt before validation (matches the Next-side handler).
-  const queryRaw = c.req.query();
+  const queryRaw = ctx.req.query();
   const queryValidation = GetAgentConfigurationsHistoryQuerySchema.safeParse({
     ...queryRaw,
     limit:
@@ -39,7 +39,7 @@ app.get("/", async (c) => {
         : undefined,
   });
   if (!queryValidation.success) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -60,7 +60,7 @@ app.get("/", async (c) => {
   }
 
   if (!agentConfigurations || !agentConfigurations[0].canRead) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -69,7 +69,7 @@ app.get("/", async (c) => {
     });
   }
 
-  return c.json({ history: agentConfigurations });
+  return ctx.json({ history: agentConfigurations });
 });
 
 export default app;

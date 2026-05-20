@@ -11,8 +11,8 @@ export type GetMCPServersResponseBody = {
 // Mounted at /api/w/:wId/mcp/available.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const internalServers = (
     await InternalMCPServerInMemoryResource.listAvailableInternalMCPServers(
@@ -26,7 +26,7 @@ app.get("/", async (c) => {
     )
   ).map((r) => r.toJSON());
 
-  return c.json({
+  return ctx.json({
     success: true,
     servers: [...internalServers, ...defaultRemoteServers],
   });

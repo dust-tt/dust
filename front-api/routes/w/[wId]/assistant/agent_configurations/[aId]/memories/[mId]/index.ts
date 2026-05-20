@@ -14,13 +14,13 @@ const PatchAgentMemoryRequestBodySchema = z.object({
 const app = new Hono();
 
 async function loadAgentAndMemory(
-  c: Context
+  ctx: Context
 ): Promise<
   { ok: true; memory: AgentMemoryResource } | { ok: false; response: Response }
 > {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
-  const mId = c.req.param("mId") ?? "";
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
+  const mId = ctx.req.param("mId") ?? "";
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: aId,
@@ -29,7 +29,7 @@ async function loadAgentAndMemory(
   if (!agentConfiguration || !agentConfiguration.canRead) {
     return {
       ok: false,
-      response: apiError(c, {
+      response: apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
@@ -43,7 +43,7 @@ async function loadAgentAndMemory(
   if (!user) {
     return {
       ok: false,
-      response: apiError(c, {
+      response: apiError(ctx, {
         status_code: 401,
         api_error: {
           type: "user_authentication_required",
@@ -61,7 +61,7 @@ async function loadAgentAndMemory(
   if (!memory) {
     return {
       ok: false,
-      response: apiError(c, {
+      response: apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_memory_not_found",
@@ -77,30 +77,30 @@ async function loadAgentAndMemory(
 app.patch(
   "/",
   validate("json", PatchAgentMemoryRequestBodySchema),
-  async (c) => {
-    const r = await loadAgentAndMemory(c);
+  async (ctx) => {
+    const r = await loadAgentAndMemory(ctx);
     if (!r.ok) {
       return r.response;
     }
-    const auth = c.get("auth");
-    const { content } = c.req.valid("json");
+    const auth = ctx.get("auth");
+    const { content } = ctx.req.valid("json");
 
     await r.memory.updateContent(auth, content);
 
-    return c.json({ memory: r.memory.toJSON() });
+    return ctx.json({ memory: r.memory.toJSON() });
   }
 );
 
-app.delete("/", async (c) => {
-  const r = await loadAgentAndMemory(c);
+app.delete("/", async (ctx) => {
+  const r = await loadAgentAndMemory(ctx);
   if (!r.ok) {
     return r.response;
   }
-  const auth = c.get("auth");
+  const auth = ctx.get("auth");
 
   const result = await r.memory.delete(auth, {});
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -109,7 +109,7 @@ app.delete("/", async (c) => {
     });
   }
 
-  return c.body(null, 204);
+  return ctx.body(null, 204);
 });
 
 export default app;

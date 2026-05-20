@@ -74,13 +74,13 @@ const PatchSkillRequestBodySchema = z.object({
 // Shared per-request prelude: resolve :sId to a SkillResource or return a
 // failure Response. See [API10].
 async function loadSkill(
-  c: Context
+  ctx: Context
 ): Promise<{ skill: SkillResource; sId: string } | Response> {
-  const auth = c.get("auth");
-  const sId = c.req.param("sId");
+  const auth = ctx.get("auth");
+  const sId = ctx.req.param("sId");
 
   if (!isString(sId)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -91,7 +91,7 @@ async function loadSkill(
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "skill_not_found",
@@ -113,16 +113,16 @@ app.route("/reinforcement", reinforcement);
 app.route("/restore", restore);
 app.route("/files/:fileId/content", filesRoute);
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
-  const loaded = await loadSkill(c);
+  const loaded = await loadSkill(ctx);
   if (loaded instanceof Response) {
     return loaded;
   }
   const { skill } = loaded;
 
-  const withRelations = c.req.query("withRelations");
+  const withRelations = ctx.req.query("withRelations");
 
   const serializedSkill = skill.toJSON(auth);
 
@@ -144,26 +144,26 @@ app.get("/", async (c) => {
       },
     };
 
-    return c.json({ skill: skillWithRelations });
+    return ctx.json({ skill: skillWithRelations });
   }
-  return c.json({ skill: serializedSkill });
+  return ctx.json({ skill: serializedSkill });
 });
 
-app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
-  const auth = c.get("auth");
+app.patch("/", validate("json", PatchSkillRequestBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
-  const loaded = await loadSkill(c);
+  const loaded = await loadSkill(ctx);
   if (loaded instanceof Response) {
     return loaded;
   }
   const { skill } = loaded;
 
-  const body = c.req.valid("json");
+  const body = ctx.req.valid("json");
   const name = body.name.trim();
 
   if (!name) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -174,7 +174,7 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
 
   // Check if user can write.
   if (!skill.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -187,7 +187,7 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
   const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
   if (existingSkill && existingSkill.id !== skill.id) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -199,7 +199,7 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
   // Validate MCP server view IDs.
   for (const tool of body.tools) {
     if (!isResourceSId("mcp_server_view", tool.mcpServerViewId)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -217,7 +217,7 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
   );
 
   if (mcpServerViewIds.length !== mcpServerViews.length) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "invalid_request_error",
@@ -238,7 +238,7 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
     dataSourceViewIds
   );
   if (dataSourceViews.length !== dataSourceViewIds.length) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "invalid_request_error",
@@ -274,7 +274,7 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
       );
 
     if (additionalRequestedSpaceIdsRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -310,7 +310,7 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
   if (fileAttachments) {
     const featureFlags = await getFeatureFlags(auth);
     if (!featureFlags.includes("sandbox_tools") && fileAttachments.length > 0) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
@@ -322,7 +322,7 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
     const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
     files = await FileResource.fetchByIds(auth, fileAttachmentIds);
     if (files.length !== fileAttachmentIds.length) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "invalid_request_error",
@@ -333,7 +333,7 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
 
     for (const file of files) {
       if (!file.isReady || file.useCase !== "skill_attachment") {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -375,14 +375,14 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
 
   await pruneOutdatedSkillEditSuggestions(auth, skill);
 
-  return c.json({ skill: skill.toJSON(auth) });
+  return ctx.json({ skill: skill.toJSON(auth) });
 });
 
-app.delete("/", async (c) => {
-  const auth = c.get("auth");
+app.delete("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
-  const loaded = await loadSkill(c);
+  const loaded = await loadSkill(ctx);
   if (loaded instanceof Response) {
     return loaded;
   }
@@ -390,7 +390,7 @@ app.delete("/", async (c) => {
 
   // Check if user can write.
   if (!skill.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -411,7 +411,7 @@ app.delete("/", async (c) => {
 
   await skill.archive(auth);
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

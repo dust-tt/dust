@@ -9,13 +9,13 @@ export const authContextApp = new Hono();
 
 authContextApp.use("*", sessionAuth);
 
-authContextApp.get("/", async (c) => {
-  const session = c.get("session");
+authContextApp.get("/", async (ctx) => {
+  const session = ctx.get("session");
 
   if (session.workspaceId) {
     const redirect = await getWorkspaceRegionRedirect(session.workspaceId);
     if (redirect) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "workspace_in_different_region",
@@ -28,7 +28,7 @@ authContextApp.get("/", async (c) => {
 
   const user = await fetchUserFromSession(session);
   if (!user) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "user_not_found",
@@ -37,7 +37,7 @@ authContextApp.get("/", async (c) => {
     });
   }
 
-  return c.json({
+  return ctx.json({
     user: user.toJSON(),
     defaultWorkspaceId: session.workspaceId ?? null,
   });

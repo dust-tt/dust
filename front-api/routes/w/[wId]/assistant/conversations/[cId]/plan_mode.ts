@@ -15,19 +15,19 @@ export type PlanApprovalState = "draft" | "pending" | "approved";
 // Mounted at /api/w/:wId/assistant/conversations/:cId/plan_mode.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const cId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const cId = ctx.req.param("cId") ?? "";
 
   // Ensure the caller has access to the conversation.
   const conversationRes = await getLightConversation(auth, cId);
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const planFile = await findActivePlanFile(auth, cId);
   if (!planFile) {
-    return c.json({
+    return ctx.json({
       planFile: null,
       content: null,
       approvalState: "draft" as PlanApprovalState,
@@ -56,7 +56,7 @@ app.get("/", async (c) => {
       ? "approved"
       : "draft";
 
-  return c.json({
+  return ctx.json({
     planFile: planFile.toJSON(auth),
     content,
     approvalState,

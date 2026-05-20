@@ -21,18 +21,18 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostConversationCompactionsBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const conversationId = c.req.param("cId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const conversationId = ctx.req.param("cId") ?? "";
 
     const conversationRes = await getConversation(auth, conversationId);
     if (conversationRes.isErr()) {
-      return apiErrorForConversation(c, conversationRes.error);
+      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
-    const { model } = c.req.valid("json");
+    const { model } = ctx.req.valid("json");
     if (!isSupportedModel(model)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -42,7 +42,7 @@ app.post(
     }
 
     if (!isProviderWhitelisted(auth, model.providerId)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "model_disabled",
@@ -56,10 +56,10 @@ app.post(
       model,
     });
     if (result.isErr()) {
-      return apiError(c, result.error);
+      return apiError(ctx, result.error);
     }
 
-    return c.json({ compactionMessage: result.value.compactionMessage });
+    return ctx.json({ compactionMessage: result.value.compactionMessage });
   }
 );
 

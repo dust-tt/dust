@@ -14,15 +14,15 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", InternalPostBuilderGenerateSchemaRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { instructions } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { instructions } = ctx.req.valid("json");
 
     const model = !auth.isUpgraded()
       ? await getSmallWhitelistedModel(auth)
       : await getLargeWhitelistedModel(auth);
     if (!model) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -38,7 +38,7 @@ app.post(
     });
 
     if (schemaRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -47,7 +47,7 @@ app.post(
       });
     }
 
-    return c.json({ schema: schemaRes.value.schema });
+    return ctx.json({ schema: schemaRes.value.schema });
   }
 );
 

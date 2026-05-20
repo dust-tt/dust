@@ -10,12 +10,12 @@ export type RestoreSkillConfigurationResponseBody = {
 // Mounted at /api/w/:wId/skills/:sId/restore.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
-  const sId = c.req.param("sId");
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const sId = ctx.req.param("sId");
 
   if (!isString(sId)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -27,7 +27,7 @@ app.post("/", async (c) => {
   const skillResource = await SkillResource.fetchById(auth, sId);
 
   if (!skillResource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "skill_not_found",
@@ -37,7 +37,7 @@ app.post("/", async (c) => {
   }
 
   if (!skillResource.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -52,7 +52,7 @@ app.post("/", async (c) => {
     skillResource.name
   );
   if (existingSkill) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -63,7 +63,7 @@ app.post("/", async (c) => {
 
   await skillResource.restore(auth);
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

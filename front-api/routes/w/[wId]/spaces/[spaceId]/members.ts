@@ -44,12 +44,12 @@ app.patch(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("json", PatchSpaceMembersRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isRegular() && !space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -59,7 +59,7 @@ app.patch(
     }
 
     if (!space.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -69,7 +69,7 @@ app.patch(
       });
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
     const owner = auth.getNonNullableWorkspace();
 
     if (
@@ -77,7 +77,7 @@ app.patch(
       !body.isRestricted &&
       !areOpenProjectsAllowed(owner)
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
@@ -105,7 +105,7 @@ app.patch(
     if (updateRes.isErr()) {
       switch (updateRes.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "workspace_auth_error",
@@ -114,7 +114,7 @@ app.patch(
             },
           });
         case "user_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "user_not_found",
@@ -122,7 +122,7 @@ app.patch(
             },
           });
         case "user_not_member":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -130,7 +130,7 @@ app.patch(
             },
           });
         case "group_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "group_not_found",
@@ -138,7 +138,7 @@ app.patch(
             },
           });
         case "user_already_member":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -146,7 +146,7 @@ app.patch(
             },
           });
         case "invalid_id":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -154,7 +154,7 @@ app.patch(
             },
           });
         case "group_requirements_not_met":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
@@ -163,7 +163,7 @@ app.patch(
             },
           });
         case "system_or_global_group":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -231,7 +231,7 @@ app.patch(
       }
     }
 
-    return c.json({ space: space.toJSON() });
+    return ctx.json({ space: space.toJSON() });
   }
 );
 

@@ -15,12 +15,12 @@ const PostNotionUrlStatusBodySchema = z.object({
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion_url_status.
 const app = new Hono();
 
-app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (c) => {
-  const auth = c.get("auth");
+app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -29,11 +29,11 @@ app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (c) => {
     });
   }
 
-  const dsId = c.req.param("dsId") ?? "";
+  const dsId = ctx.req.param("dsId") ?? "";
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -43,7 +43,7 @@ app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (c) => {
   }
 
   if (dataSource.connectorProvider !== "notion") {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -54,7 +54,7 @@ app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (c) => {
 
   const flags = await getFeatureFlags(auth);
   if (!flags.includes("advanced_notion_management")) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "feature_flag_not_found",
@@ -64,7 +64,7 @@ app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (c) => {
   }
 
   if (!dataSource.connectorId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -73,7 +73,7 @@ app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (c) => {
     });
   }
 
-  const { url } = c.req.valid("json");
+  const { url } = ctx.req.valid("json");
 
   const connectorsAPI = new ConnectorsAPI(
     apiConfig.getConnectorsAPIConfig(),
@@ -93,7 +93,7 @@ app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (c) => {
       },
       "Failed to get Notion URL status"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -102,7 +102,7 @@ app.post("/", validate("json", PostNotionUrlStatusBodySchema), async (c) => {
     });
   }
 
-  return c.json(statusRes.value);
+  return ctx.json(statusRes.value);
 });
 
 export default app;

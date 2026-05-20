@@ -8,13 +8,13 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion/webhook_config.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const dsId = ctx.req.param("dsId") ?? "";
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -24,7 +24,7 @@ app.get("/", async (c) => {
   }
 
   if (!dataSource.connectorId || dataSource.connectorProvider !== "notion") {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "data_source_error",
@@ -50,7 +50,7 @@ app.get("/", async (c) => {
       },
       "Failed to get Notion workspace ID"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -76,7 +76,7 @@ app.get("/", async (c) => {
       webhookRouterRes.error.type === "not_found" ||
       webhookRouterRes.error.type === "connector_not_found"
     ) {
-      return c.json({ webhookUrl, verificationToken: null });
+      return ctx.json({ webhookUrl, verificationToken: null });
     }
 
     logger.error(
@@ -86,7 +86,7 @@ app.get("/", async (c) => {
       },
       "Failed to get webhook router entry"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -96,7 +96,7 @@ app.get("/", async (c) => {
     });
   }
 
-  return c.json({
+  return ctx.json({
     webhookUrl,
     verificationToken: webhookRouterRes.value.signingSecret,
   });

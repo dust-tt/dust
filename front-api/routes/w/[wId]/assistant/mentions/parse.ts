@@ -10,12 +10,12 @@ const ParseMentionsRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/mentions/parse.
 const app = new Hono();
 
-app.post("/", validate("json", ParseMentionsRequestBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const { markdown } = c.req.valid("json");
+app.post("/", validate("json", ParseMentionsRequestBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { markdown } = ctx.req.valid("json");
 
   const processedMarkdown = await parseMentionsInMarkdown({ auth, markdown });
-  return c.json({ markdown: processedMarkdown });
+  return ctx.json({ markdown: processedMarkdown });
 });
 
 export default app;

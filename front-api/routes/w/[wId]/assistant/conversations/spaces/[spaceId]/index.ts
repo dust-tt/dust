@@ -23,11 +23,11 @@ function parseFilter(value: string | undefined): SpaceConversationsFilter {
 // Mounted at /api/w/:wId/assistant/conversations/spaces/:spaceId.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const spaceId = c.req.param("spaceId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const spaceId = ctx.req.param("spaceId") ?? "";
 
-  const paginationRes = getPaginationParams(c.req.query(), {
+  const paginationRes = getPaginationParams(ctx.req.query(), {
     defaultLimit: 20,
     defaultOrderColumn: "updatedAt",
     defaultOrderDirection: "desc",
@@ -35,7 +35,7 @@ app.get("/", async (c) => {
   });
 
   if (paginationRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -45,12 +45,12 @@ app.get("/", async (c) => {
   }
 
   const pagination = paginationRes.value;
-  const conversationFilter = parseFilter(c.req.query("filter"));
+  const conversationFilter = parseFilter(ctx.req.query("filter"));
 
   // Fetch and verify space access.
   const space = await SpaceResource.fetchById(auth, spaceId);
   if (!space || !space.canReadOrAdministrate(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "space_not_found",
@@ -95,7 +95,7 @@ app.get("/", async (c) => {
     { concurrency: 10 }
   );
 
-  return c.json({
+  return ctx.json({
     conversations: removeNulls(
       spaceConversationsFull.map((res) => (res.isOk() ? res.value : null))
     ),

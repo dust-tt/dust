@@ -18,20 +18,20 @@ app.post(
   "/",
   spaceResource({ requireCanWrite: true }),
   validate("json", PostStateBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const aId = c.req.param("aId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const aId = ctx.req.param("aId") ?? "";
 
     const found = await AppResource.fetchById(auth, aId);
     if (!found || found.space.sId !== space.sId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: { type: "app_not_found", message: "The app was not found." },
       });
     }
     if (!found.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -39,7 +39,7 @@ app.post(
         },
       });
     }
-    const { specification, config: appConfig, run } = c.req.valid("json");
+    const { specification, config: appConfig, run } = ctx.req.valid("json");
     const updateParams: {
       savedSpecification: string;
       savedConfig: string;
@@ -52,7 +52,7 @@ app.post(
       updateParams.savedRun = run;
     }
     await found.updateState(auth, updateParams);
-    return c.json({ app: found.toJSON() });
+    return ctx.json({ app: found.toJSON() });
   }
 );
 

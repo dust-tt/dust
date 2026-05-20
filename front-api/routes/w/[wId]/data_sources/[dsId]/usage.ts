@@ -6,13 +6,13 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/data_sources/:dsId/usage.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const dsId = ctx.req.param("dsId") ?? "";
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource || !dataSource.canRead(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -23,7 +23,7 @@ app.get("/", async (c) => {
 
   const usage = await getDataSourceUsage({ auth, dataSource });
   if (usage.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -32,7 +32,7 @@ app.get("/", async (c) => {
     });
   }
 
-  return c.json({ usage: usage.value });
+  return ctx.json({ usage: usage.value });
 });
 
 export default app;

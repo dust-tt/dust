@@ -39,14 +39,14 @@ const ALLOWED_CONFIG_KEYS = new Set<string>([
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/config/:key.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
-  const configKey = c.req.param("key") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const dsId = ctx.req.param("dsId") ?? "";
+  const configKey = ctx.req.param("key") ?? "";
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -55,7 +55,7 @@ app.get("/", async (c) => {
     });
   }
   if (!dataSource.connectorId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_error",
@@ -64,7 +64,7 @@ app.get("/", async (c) => {
     });
   }
   if (!ALLOWED_CONFIG_KEYS.has(configKey)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -83,7 +83,7 @@ app.get("/", async (c) => {
   );
 
   if (configRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_error",
@@ -93,20 +93,20 @@ app.get("/", async (c) => {
     });
   }
 
-  return c.json({ configValue: configRes.value.configValue });
+  return ctx.json({ configValue: configRes.value.configValue });
 });
 
 app.post(
   "/",
   validate("json", PostManagedDataSourceConfigRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const dsId = c.req.param("dsId") ?? "";
-    const configKey = c.req.param("key") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dsId = ctx.req.param("dsId") ?? "";
+    const configKey = ctx.req.param("key") ?? "";
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_not_found",
@@ -115,7 +115,7 @@ app.post(
       });
     }
     if (!dataSource.connectorId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_error",
@@ -124,7 +124,7 @@ app.post(
       });
     }
     if (!ALLOWED_CONFIG_KEYS.has(configKey)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -134,7 +134,7 @@ app.post(
     }
 
     if (!auth.isAdmin() || !dataSource.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -145,7 +145,7 @@ app.post(
       });
     }
 
-    const { configValue } = c.req.valid("json");
+    const { configValue } = ctx.req.valid("json");
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
@@ -158,7 +158,7 @@ app.post(
     );
 
     if (setConfigRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "data_source_error",
@@ -168,7 +168,7 @@ app.post(
       });
     }
 
-    return c.json({ configValue });
+    return ctx.json({ configValue });
   }
 );
 

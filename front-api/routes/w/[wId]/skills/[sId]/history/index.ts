@@ -14,12 +14,12 @@ export type GetSkillHistoryResponseBody = {
 // Mounted at /api/w/:wId/skills/:sId/history.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const sId = c.req.param("sId");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const sId = ctx.req.param("sId");
 
   if (!isString(sId)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -32,7 +32,7 @@ app.get("/", async (c) => {
   const skill = await SkillResource.fetchById(auth, sId);
 
   if (!skill || !skill.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "skill_not_found",
@@ -41,13 +41,13 @@ app.get("/", async (c) => {
     });
   }
 
-  const rawLimit = c.req.query("limit");
+  const rawLimit = ctx.req.query("limit");
   const queryValidation = GetSkillHistoryQuerySchema.safeParse({
     limit: typeof rawLimit === "string" ? parseInt(rawLimit, 10) : undefined,
   });
   if (!queryValidation.success) {
     const pathError = fromError(queryValidation.error).toString();
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -78,7 +78,7 @@ app.get("/", async (c) => {
     };
   });
 
-  return c.json({ history: skillVersions });
+  return ctx.json({ history: skillVersions });
 });
 
 export default app;

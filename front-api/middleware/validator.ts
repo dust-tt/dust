@@ -21,9 +21,9 @@ export function validate<
   Target extends keyof ValidationTargets,
   Schema extends ZodType,
 >(target: Target, schema: Schema) {
-  return zValidator(target, schema, (result, c) => {
+  return zValidator(target, schema, (result, ctx) => {
     if (!result.success) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
