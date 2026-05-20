@@ -76,7 +76,7 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
         "report.pdf",
       ]);
       expect(response.status).toBe(400);
-      expect((await response.json()).error.message).toMatch(/project\//);
+      expect((await response.json()).error.message).toMatch(/scope prefix/i);
     });
 
     it("returns 403 for path traversal attempts", async () => {
@@ -270,6 +270,76 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
         ["project", "file.txt"],
         { method: "DELETE" }
       );
+      expect(response.status).toBe(500);
+    });
+  });
+
+  describe("POST (move)", () => {
+    beforeEach(() => {
+      vi.spyOn(projectsContext, "moveProjectFile").mockResolvedValue(
+        new Ok(undefined)
+      );
+    });
+
+    it("returns 200 and calls moveProjectFile with the right args", async () => {
+      const { workspace, project } = await setupProject();
+      const response = await fileRequest(
+        workspace,
+        project.sId,
+        ["reports", "file.txt"],
+        {
+          method: "POST",
+          body: { destRelativeFilePath: "archive/file.txt" },
+        }
+      );
+      expect(response.status).toBe(200);
+      expect(projectsContext.moveProjectFile).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          space: expect.objectContaining({ sId: project.sId }),
+          sourcePath: "reports/file.txt",
+          destRelativeFilePath: "archive/file.txt",
+        }
+      );
+    });
+
+    it("returns 400 when destRelativeFilePath is missing", async () => {
+      const { workspace, project } = await setupProject();
+      const response = await fileRequest(
+        workspace,
+        project.sId,
+        ["reports", "file.txt"],
+        { method: "POST", body: {} }
+      );
+      expect(response.status).toBe(400);
+    });
+
+    it("returns 404 when the user lacks write permission (requireCanWrite)", async () => {
+      vi.spyOn(SpaceResource.prototype, "canWrite").mockReturnValue(false);
+      const { workspace, project } = await setupProject();
+      const response = await fileRequest(
+        workspace,
+        project.sId,
+        ["reports", "file.txt"],
+        {
+          method: "POST",
+          body: { destRelativeFilePath: "archive/file.txt" },
+        }
+      );
+      // withSpace({ requireCanWrite }) masks denied write as space_not_found.
+      expect(response.status).toBe(404);
+      expect(projectsContext.moveProjectFile).not.toHaveBeenCalled();
+    });
+
+    it("returns 500 when moveProjectFile fails", async () => {
+      vi.spyOn(projectsContext, "moveProjectFile").mockResolvedValue(
+        new Err(new Error("GCS error"))
+      );
+      const { workspace, project } = await setupProject();
+      const response = await fileRequest(workspace, project.sId, ["file.txt"], {
+        method: "POST",
+        body: { destRelativeFilePath: "file.txt" },
+      });
       expect(response.status).toBe(500);
     });
   });

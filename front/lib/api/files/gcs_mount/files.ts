@@ -101,6 +101,26 @@ export function getGCSPathFromScopedPath({
   return prefix + scopedPath.slice(scopePrefix.length);
 }
 
+/**
+ * Inverse of `getGCSPathFromScopedPath`: full GCS object path to scoped listing path
+ * (e.g. `w/.../files/report.pdf` → `project/report.pdf`).
+ */
+export function getScopedPathFromGCSPath({
+  prefix,
+  gcsPath,
+  useCase,
+}: {
+  prefix: string;
+  gcsPath: string;
+  useCase: GCSMountPoint["useCase"];
+}): string | null {
+  if (!gcsPath.startsWith(prefix)) {
+    return null;
+  }
+
+  return `${useCase}/${gcsPath.slice(prefix.length)}`;
+}
+
 function makeDirectoryEntry(
   {
     fileName,

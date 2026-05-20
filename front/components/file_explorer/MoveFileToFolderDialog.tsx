@@ -1,12 +1,11 @@
-import type { SandboxTreeNode } from "@app/components/file_explorer/types";
+import type { FileSystemTreeNode } from "@app/components/file_explorer/types";
 import {
-  buildFolderTree,
   formatFolderDestinationLabel,
   getAncestorFolderPaths,
   getParentFolderRelativePath,
   getScopedRelativePath,
+  ROOT_FOLDER_LABEL,
 } from "@app/components/file_explorer/utils";
-import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
 import type { Result } from "@app/types/shared/result";
 import {
   Dialog,
@@ -24,7 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 interface FolderTreeNodeProps {
   currentParentPath: string;
   expandedPaths: Set<string>;
-  node: SandboxTreeNode;
+  node: FileSystemTreeNode;
   onSelect: (path: string) => void;
   selectedPath: string;
 }
@@ -68,7 +67,7 @@ function FolderTreeNode({
 }
 
 export interface MoveFileToFolderDialogProps {
-  files: GCSMountEntry[];
+  folderTree: FileSystemTreeNode[];
   file: { fileName: string; path: string } | null;
   isOpen: boolean;
   onClose: () => void;
@@ -76,14 +75,12 @@ export interface MoveFileToFolderDialogProps {
 }
 
 export function MoveFileToFolderDialog({
-  files,
+  folderTree,
   file,
   isOpen,
   onClose,
   onMove,
 }: MoveFileToFolderDialogProps) {
-  const folderTree = useMemo(() => buildFolderTree(files), [files]);
-
   const currentParentPath = useMemo(() => {
     if (!file) {
       return "";
@@ -152,8 +149,8 @@ export function MoveFileToFolderDialog({
               isNavigatable
               label={
                 currentParentPath === ""
-                  ? "All files (current location)"
-                  : "All files"
+                  ? `${ROOT_FOLDER_LABEL} (current location)`
+                  : ROOT_FOLDER_LABEL
               }
               visual={FolderIcon}
               type={hasFolders ? "node" : "leaf"}

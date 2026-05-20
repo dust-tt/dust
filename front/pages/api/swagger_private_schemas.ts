@@ -817,6 +817,10 @@
  *           type: string
  *         publicUrl:
  *           type: string
+ *         path:
+ *           type: string
+ *           nullable: true
+ *           description: path when the file is ready on a mount (e.g. `project/report.pdf` or `conversation/chart.png`). Same shape as mount file listing entries.
  *     PrivateSpace:
  *       type: object
  *       description: A space in the workspace.

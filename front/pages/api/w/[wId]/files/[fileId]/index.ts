@@ -122,6 +122,11 @@
  */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
+import { getScopedPathFromGCSPath } from "@app/lib/api/files/gcs_mount/files";
+import {
+  getConversationFilesBasePath,
+  getProjectFilesBasePath,
+} from "@app/lib/api/files/mount_path";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import {
@@ -143,7 +148,48 @@ import { isConversationFileUseCase } from "@app/types/files";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface FileUploadedRequestResponseBody {
-  file: FileType;
+  file: FileType & {
+    /** Scoped mount path when the file is on GCS (same shape as `GCSMountEntryBase.path`). */
+    path: string | null;
+  };
+}
+
+function resolveUploadMountScopedPath(
+  auth: Authenticator,
+  file: FileResource
+): string | null {
+  if (!file.mountFilePath) {
+    return null;
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+
+  if (file.useCase === "project_context" && file.useCaseMetadata?.spaceId) {
+    return getScopedPathFromGCSPath({
+      prefix: getProjectFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: file.useCaseMetadata.spaceId,
+      }),
+      gcsPath: file.mountFilePath,
+      useCase: "project",
+    });
+  }
+
+  if (
+    isConversationFileUseCase(file.useCase) &&
+    file.useCaseMetadata?.conversationId
+  ) {
+    return getScopedPathFromGCSPath({
+      prefix: getConversationFilesBasePath({
+        workspaceId: owner.sId,
+        conversationId: file.useCaseMetadata.conversationId,
+      }),
+      gcsPath: file.mountFilePath,
+      useCase: "conversation",
+    });
+  }
+
+  return null;
 }
 
 export const config = {
@@ -507,7 +553,12 @@ async function handler(
         }
       }
 
-      return res.status(200).json({ file: file.toJSON(auth) });
+      return res.status(200).json({
+        file: {
+          ...file.toJSON(auth),
+          path: resolveUploadMountScopedPath(auth, file),
+        },
+      });
     }
 
     default:

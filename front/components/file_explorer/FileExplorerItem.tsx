@@ -7,7 +7,7 @@ import type {
   ContentNodeEntry,
   FileEntry,
   FileExplorerMenuAction,
-  SandboxTreeNode,
+  FileSystemTreeNode,
 } from "@app/components/file_explorer/types";
 import {
   getCategoryFromContentType,
@@ -308,9 +308,9 @@ export function FileExplorerGoUpCard({
 }
 
 export interface FileExplorerFolderCardProps {
-  node: SandboxTreeNode;
+  node: FileSystemTreeNode;
   viewMode: ViewMode;
-  onNavigate: (node: SandboxTreeNode) => void;
+  onNavigate: (node: FileSystemTreeNode) => void;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
 }
 

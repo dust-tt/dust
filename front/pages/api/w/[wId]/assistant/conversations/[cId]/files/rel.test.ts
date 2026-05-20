@@ -165,24 +165,21 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/[...rel] (move)"
 
   it("should move a file within the conversation mount", async () => {
     const mountFileOps = await import("@app/lib/api/files/mount_file_ops");
-    vi.spyOn(mountFileOps, "moveMountFile").mockResolvedValue(
+    vi.spyOn(mountFileOps, "moveMountFileWithinScope").mockResolvedValue(
       new Ok(undefined)
     );
 
-    const { req, res } = await setupTest(
-      ["conversation", "reports", "chart.png"],
-      "POST"
-    );
-    req.body = { parentRelativePath: "archive" };
+    const { req, res } = await setupTest(["reports", "chart.png"], "POST");
+    req.body = { destRelativeFilePath: "archive/chart.png" };
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(mountFileOps.moveMountFile).toHaveBeenCalledWith(
+    expect(mountFileOps.moveMountFileWithinScope).toHaveBeenCalledWith(
       expect.anything(),
       { useCase: "conversation", conversationId: CONVERSATION_SID },
       {
-        relativeFilePath: "reports/chart.png",
-        parentRelativePath: "archive",
+        sourcePath: "reports/chart.png",
+        destRelativeFilePath: "archive/chart.png",
       }
     );
   });

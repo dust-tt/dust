@@ -1,6 +1,7 @@
 import {
   getProjectFilesBasePath,
-  parseScopedFilePath,
+  isResolveMountFilePathError,
+  resolveScopedMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
 import {
@@ -10,12 +11,12 @@ import {
 } from "@app/lib/api/projects/context";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
-import path from "path";
 
 // Catch-all for /api/w/:wId/spaces/:spaceId/files/<...rel>.
 //
@@ -52,44 +53,40 @@ async function buildContext(ctx: any) {
     };
   }
 
-  const scopedPath = parseScopedFilePath(rel);
-  if (!scopedPath || scopedPath.prefix !== "project") {
-    return {
-      error: apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Path must start with the scope prefix `project/`.",
-        },
-      }),
-    };
-  }
-
   const owner = auth.getNonNullableWorkspace();
   const basePath = getProjectFilesBasePath({
     workspaceId: owner.sId,
     projectId: space.sId,
   });
-  const normalizedGcsPath = path.posix.normalize(
-    `${basePath}${scopedPath.rel}`
-  );
-  if (!normalizedGcsPath.startsWith(basePath)) {
+  const pathRes = resolveScopedMountFilePath({
+    relPath: rel,
+    expectedPrefix: "project",
+    mountBasePath: basePath,
+    outsideScopeMessage: "Access denied: path is outside project scope.",
+  });
+  if (pathRes.isErr()) {
+    const { code, message } = pathRes.error;
     return {
       error: apiError(ctx, {
-        status_code: 403,
+        status_code: code === "outside_scope" ? 403 : 400,
         api_error: {
-          type: "workspace_auth_error",
-          message: "Access denied: path is outside project scope.",
+          type:
+            code === "outside_scope"
+              ? "workspace_auth_error"
+              : "invalid_request_error",
+          message,
         },
       }),
     };
   }
 
+  const { normalizedGcsPath, normalizedRelative } = pathRes.value;
+
   return {
     auth,
     space,
     normalizedGcsPath,
-    normalizedRelative: scopedPath.rel,
+    normalizedRelative,
   };
 }
 
@@ -231,11 +228,29 @@ app.post(
   withSpace({ requireCanWrite: true }),
   validate("json", MoveMountFileRequestBodySchema),
   async (c) => {
-    const ctx = await buildContext(c);
-    if ("error" in ctx) {
-      return ctx.error;
+    const space = c.get("space");
+    const auth = c.get("auth");
+
+    if (!space.isProject()) {
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Files are only available for project spaces.",
+        },
+      });
     }
-    const { auth, space, normalizedRelative } = ctx;
+
+    const rel = c.req.param("rel");
+    if (!isString(rel) || rel.length === 0) {
+      return apiError(c, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Missing file path.",
+        },
+      });
+    }
 
     if (!space.canWrite(auth)) {
       return apiError(c, {
@@ -247,19 +262,32 @@ app.post(
       });
     }
 
-    const { parentRelativePath } = c.req.valid("json");
+    const { destRelativeFilePath } = c.req.valid("json");
 
     const moveResult = await moveProjectFile(auth, {
       space,
-      relativeFilePath: normalizedRelative,
-      parentRelativePath,
+      sourcePath: rel,
+      destRelativeFilePath,
     });
     if (moveResult.isErr()) {
+      if (isResolveMountFilePathError(moveResult.error)) {
+        const { code, message } = moveResult.error;
+        return apiError(c, {
+          status_code: code === "outside_scope" ? 403 : 400,
+          api_error: {
+            type:
+              code === "outside_scope"
+                ? "workspace_auth_error"
+                : "invalid_request_error",
+            message,
+          },
+        });
+      }
       return apiError(c, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: moveResult.error.message,
+          message: normalizeError(moveResult.error).message,
         },
       });
     }

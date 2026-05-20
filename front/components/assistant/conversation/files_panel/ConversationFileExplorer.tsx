@@ -2,6 +2,10 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
+import {
+  getScopedRelativePath,
+  joinMountRelativePath,
+} from "@app/components/file_explorer/utils";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import config from "@app/lib/api/config";
 import { downloadSandboxFile } from "@app/lib/swr/files";
@@ -44,11 +48,15 @@ export function ConversationFileExplorer({
 
   const onFileDownload = useFileDownload({ getFileResponse });
 
-  const onMoveFile = useCallback(
+  // Pass to FileExplorer component to enable file moving.
+  const _onMoveFile = useCallback(
     async (entry: FileEntry, parentRelativePath: string) => {
       const result = await moveMountFile({
-        scopedPath: entry.path,
-        parentRelativePath: parentRelativePath || undefined,
+        relativeFilePath: getScopedRelativePath(entry.path),
+        destRelativeFilePath: joinMountRelativePath(
+          parentRelativePath,
+          entry.fileName
+        ),
       });
       if (result.isOk()) {
         await mutateSandboxFiles();
@@ -64,7 +72,6 @@ export function ConversationFileExplorer({
       isLoading={isSandboxFilesLoading}
       getFileUrl={getFileUrl}
       onFileDownload={onFileDownload}
-      onMoveFile={onMoveFile}
       onClose={closePanel}
       onOpenInteractive={(entry) =>
         openPanel({ type: "interactive_content", fileId: entry.fileId })
