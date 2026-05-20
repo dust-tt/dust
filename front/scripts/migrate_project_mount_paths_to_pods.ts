@@ -1,5 +1,5 @@
-// Script for the /projects/ → /pods/ GCS mount path migration.
-//
+// Script for the /projects/ → /pods/ GCS mount path migration. Disabled after cleanup —
+// the migration is complete and the helpers it depended on have been removed.
 /*
 // GCS objects at w/{wId}/projects/{spaceId}/files/... were already copied to
 // w/{wId}/pods/{spaceId}/files/... by the backfill script backfill_project_mount_paths_to_pods.
