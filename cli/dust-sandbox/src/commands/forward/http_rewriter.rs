@@ -19,6 +19,7 @@ const MAX_HEADERS: usize = 128;
 const READ_CHUNK_BYTES: usize = 8 * 1024;
 const NON_HTTP_FALLBACK_BYTES: usize = 4 * 1024;
 const MAX_CHUNK_LINE_BYTES: usize = 8 * 1024;
+const MAX_TRAILER_BLOCK_BYTES: usize = 32 * 1024;
 
 #[derive(Clone, Copy, Debug)]
 pub(super) enum HttpRewriteMode<'a> {
@@ -45,13 +46,6 @@ impl HttpRewriteMode<'_> {
         match self {
             Self::Tls { sni } => Some(sni),
             Self::PlainHttp { .. } => None,
-        }
-    }
-
-    fn default_host_port(self) -> u16 {
-        match self {
-            Self::Tls { .. } => 443,
-            Self::PlainHttp { .. } => 80,
         }
     }
 }
@@ -437,7 +431,7 @@ fn normalized_single_host(
 
     let host_value = std::str::from_utf8(&hosts[0].value)
         .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
-    let host = normalize_host(host_value, mode.default_host_port())
+    let host = normalize_host(host_value, mode.port())
         .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
 
     if let HttpRewriteMode::Tls { sni } = mode {
@@ -513,17 +507,16 @@ fn body_kind(
                 ));
             }
             seen_content_length = true;
-            let value = std::str::from_utf8(&header.value).map_err(|_| {
-                HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, host)
-            })?;
-            let parsed = value.trim().parse::<usize>().map_err(|_| {
-                HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, host)
-            })?;
+            let value = std::str::from_utf8(&header.value)
+                .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, host))?;
+            let parsed = value
+                .trim()
+                .parse::<usize>()
+                .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, host))?;
             content_length = Some(parsed);
         } else if header.name.eq_ignore_ascii_case("transfer-encoding") {
-            let value = std::str::from_utf8(&header.value).map_err(|_| {
-                HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, host)
-            })?;
+            let value = std::str::from_utf8(&header.value)
+                .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, host))?;
             transfer_encoding_values.push(value.to_ascii_lowercase());
         }
     }
@@ -634,13 +627,19 @@ where
             .write_all(&line)
             .await
             .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
-        let chunk_size = parse_chunk_size(&line).map_err(|_| {
-            HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None)
-        })?;
+        let chunk_size = parse_chunk_size(&line)
+            .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
 
         if chunk_size == 0 {
+            let mut trailer_bytes = 0_usize;
             loop {
                 let trailer_line = reader.read_line(mode).await?;
+                trailer_bytes = trailer_bytes
+                    .checked_add(trailer_line.len())
+                    .filter(|total| *total <= MAX_TRAILER_BLOCK_BYTES)
+                    .ok_or_else(|| {
+                        HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None)
+                    })?;
                 let done = trailer_line == b"\r\n";
                 upstream
                     .write_all(&trailer_line)
@@ -652,7 +651,10 @@ where
             }
         }
 
-        forward_exact(reader, upstream, chunk_size + 2, mode).await?;
+        let chunk_with_crlf = chunk_size
+            .checked_add(2)
+            .ok_or_else(|| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
+        forward_exact(reader, upstream, chunk_with_crlf, mode).await?;
     }
 }
 
@@ -970,9 +972,8 @@ mod tests {
     async fn drops_oversized_header_line() -> Result<()> {
         let table = empty_table()?;
         let huge_value = "x".repeat(MAX_HEADER_LINE_BYTES);
-        let input = format!(
-            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nX-Big: {huge_value}\r\n\r\n"
-        );
+        let input =
+            format!("GET / HTTP/1.1\r\nHost: api.openai.com\r\nX-Big: {huge_value}\r\n\r\n");
         let err = rewrite_once(
             input.as_bytes(),
             &table,
@@ -1000,6 +1001,98 @@ mod tests {
         .await?;
 
         assert_eq!(output, b"\x00\x00\x00\x08postgres");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn drops_content_length_and_transfer_encoding_together() -> Result<()> {
+        // Smuggling regression: a fronting proxy that honors CL while we
+        // honor TE (or vice versa) is exactly the split this denies.
+        let table = empty_table()?;
+        let err = rewrite_once(
+            b"POST / HTTP/1.1\r\nHost: api.openai.com\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n",
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("CL + TE conflict should deny");
+
+        assert_deny_reason(err, DenyReason::MalformedHeaders);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn drops_duplicate_content_length() -> Result<()> {
+        let table = empty_table()?;
+        let err = rewrite_once(
+            b"POST / HTTP/1.1\r\nHost: api.openai.com\r\nContent-Length: 5\r\nContent-Length: 5\r\n\r\nhello",
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("duplicate Content-Length should deny");
+
+        assert_deny_reason(err, DenyReason::MalformedHeaders);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn drops_transfer_encoding_with_non_chunked_token() -> Result<()> {
+        // Anything other than the single token `chunked` is denied so we
+        // never have to interpret gzip/deflate/identity layers on the
+        // request body.
+        let table = empty_table()?;
+        let err = rewrite_once(
+            b"POST / HTTP/1.1\r\nHost: api.openai.com\r\nTransfer-Encoding: chunked, gzip\r\n\r\n0\r\n\r\n",
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("TE list with non-chunked token should deny");
+
+        assert_deny_reason(err, DenyReason::MalformedHeaders);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn forwards_plain_http_request_unchanged() -> Result<()> {
+        let table = empty_table()?;
+        let output = rewrite_once(
+            b"GET / HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: Bearer real-secret\r\n\r\n",
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(text.starts_with("GET / HTTP/1.1\r\n"));
+        assert!(text.contains("Host: api.openai.com\r\n"));
+        assert!(text.contains("Authorization: Bearer real-secret\r\n"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn forwards_plain_http_with_non_default_port_in_host() -> Result<()> {
+        let table = empty_table()?;
+        let output = rewrite_once(
+            b"GET / HTTP/1.1\r\nHost: api.openai.com:8080\r\n\r\n",
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(text.contains("Host: api.openai.com:8080\r\n"));
         Ok(())
     }
 
