@@ -29,6 +29,7 @@ export function CreateFolderDialog({
   spaceId,
 }: CreateFolderDialogProps) {
   const [folderName, setFolderName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const createFolder = useCreateProjectFolder({ owner, spaceId });
 
@@ -42,19 +43,31 @@ export function CreateFolderDialog({
   }, [isOpen]);
 
   const handleCreate = useCallback(async () => {
-    if (!folderName.trim()) {
+    if (!folderName.trim() || isCreating) {
       return;
     }
 
-    const result = await createFolder({
-      folderName: folderName.trim(),
-      parentRelativePath,
-    });
-    if (result.isOk()) {
-      await onCreated();
-      onClose();
+    setIsCreating(true);
+    try {
+      const result = await createFolder({
+        folderName: folderName.trim(),
+        parentRelativePath,
+      });
+      if (result.isOk()) {
+        await onCreated();
+        onClose();
+      }
+    } finally {
+      setIsCreating(false);
     }
-  }, [createFolder, folderName, onClose, onCreated, parentRelativePath]);
+  }, [
+    createFolder,
+    folderName,
+    isCreating,
+    onClose,
+    onCreated,
+    parentRelativePath,
+  ]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -81,11 +94,13 @@ export function CreateFolderDialog({
             label: "Create",
             variant: "primary",
             onClick: handleCreate,
-            disabled: !folderName.trim(),
+            disabled: !folderName.trim() || isCreating,
+            isLoading: isCreating,
           }}
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
+            disabled: isCreating,
           }}
         />
       </DialogContent>
