@@ -6,15 +6,15 @@ import { useEffect, useState } from "react";
 // Set to null when there's nothing to promote.
 // =============================================================================
 const CURRENT_PROMO: PromoConfig | null = {
-  id: "dust-for-data-teams-webinar",
-  image: "/static/landing/Data_Teams_Webinar_Banner.png",
-  link: "https://watch.getcontrast.io/register/dust-dust-for-data-teams?utm_source=website",
-  title: "How Data Teams use Dust",
-  time: "11 AM PT",
-  host: "Theo Gantzer · Lead Data @ Dust",
+  id: "dust-for-seo-marketing-webinar",
+  image: "/static/landing/SEO_Marketing_Webinar_Banner.png",
+  link: "https://watch.getcontrast.io/register/dust-dust-agents-for-seo-teams?utm_source=website",
+  title: "Dust for SEO Marketing",
+  time: "May 26",
+  host: "Davis · SEO Lead @ Dust",
   linkLabel: "Register Now",
-  // Banner auto-hides after this date (May 20th 7:00 PM Paris / CEST).
-  expiresAt: new Date("2026-05-20T19:00:00+02:00"),
+  // Banner auto-hides after this date (May 26th 7:00 PM Paris / CEST).
+  expiresAt: new Date("2026-05-26T19:00:00+02:00"),
 };
 // =============================================================================
 
@@ -61,7 +61,7 @@ export function PromoBanner() {
   const { link, title, time, host, linkLabel, id } = CURRENT_PROMO;
 
   return (
-    <div className="fixed bottom-4 left-4 z-40 max-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:max-w-[210px]">
+    <div className="fixed bottom-4 right-4 z-40 max-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:max-w-[210px]">
       <Button
         variant="outline"
         icon={XMarkIcon}
