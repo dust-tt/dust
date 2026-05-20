@@ -101,7 +101,6 @@ export function compareTreeNodesForSort(
   a: SandboxTreeNode,
   b: SandboxTreeNode,
   sortMode: FileExplorerSortMode,
-  timestampsByPath: Map<string, number>,
   entryByRelativePath: Map<string, FileExplorerEntry>
 ): number {
   const rankDiff =
@@ -121,8 +120,8 @@ export function compareTreeNodesForSort(
     case "last-modified": {
       // Folders have no timestamp on the tree (they're inferred from file paths). Among files,
       // sort by recency; tie-break by name.
-      const ta = timestampsByPath.get(a.path) ?? 0;
-      const tb = timestampsByPath.get(b.path) ?? 0;
+      const ta = entryByRelativePath.get(a.path)?.lastModifiedMs ?? 0;
+      const tb = entryByRelativePath.get(b.path)?.lastModifiedMs ?? 0;
       if (tb !== ta) {
         return tb - ta;
       }
@@ -362,41 +361,49 @@ export function getAncestorFolderPaths(folderPath: string): Set<string> {
   return paths;
 }
 
-/**
- * Re-resolve breadcrumb navigation against a freshly built tree.
- *
- * Folder navigation stores `SandboxTreeNode` object references in `folderStack`
- * (see `handleFolderNavigate`). The explorer tree is derived from `files` via
- * `buildSandboxTree` on every SWR refresh — each refresh allocates new node objects
- * with new `children` arrays.
- *
- * If we read `folderStack.at(-1).children` after an upload/rename/delete, we still
- * point at the *previous* tree: the list revalidates but the current folder looks
- * unchanged until the user leaves and re-enters the folder.
- *
- * We keep navigation stable by path (e.g. `reports/q1`) and look up the matching
- * directory nodes in the latest tree so `children` always reflects current `files`.
- */
-export function resolveFolderStackInTree(
-  tree: SandboxTreeNode[],
-  folderStack: SandboxTreeNode[]
-): SandboxTreeNode[] {
-  const resolved: SandboxTreeNode[] = [];
-  let currentLevel = tree;
-
-  for (const stackNode of folderStack) {
-    if (!stackNode.isDirectory) {
-      break;
-    }
-
-    const fresh = currentLevel.find((n) => n.path === stackNode.path);
-    if (!fresh?.isDirectory) {
-      break;
-    }
-
-    resolved.push(fresh);
-    currentLevel = fresh.children;
+/** Breadcrumb segments for a folder path (e.g. `reports/q1` → two segments). */
+export function getFolderBreadcrumbSegments(
+  folderPath: string
+): { label: string; path: string }[] {
+  if (!folderPath) {
+    return [];
   }
 
-  return resolved;
+  const segments: { label: string; path: string }[] = [];
+  let current = "";
+  for (const part of folderPath.split("/")) {
+    current = current ? `${current}/${part}` : part;
+    segments.push({ label: part, path: current });
+  }
+  return segments;
+}
+
+export function findTreeNodeByPath(
+  nodes: SandboxTreeNode[],
+  path: string
+): SandboxTreeNode | undefined {
+  for (const node of nodes) {
+    if (node.path === path) {
+      return node;
+    }
+
+    const found = findTreeNodeByPath(node.children, path);
+    if (found) {
+      return found;
+    }
+  }
+  return undefined;
+}
+
+/** Children of a folder in the sandbox tree; root when `folderPath` is empty. */
+export function getChildrenAtFolderPath(
+  tree: SandboxTreeNode[],
+  folderPath: string
+): SandboxTreeNode[] {
+  if (!folderPath) {
+    return tree;
+  }
+
+  const folder = findTreeNodeByPath(tree, folderPath);
+  return folder?.isDirectory ? folder.children : [];
 }

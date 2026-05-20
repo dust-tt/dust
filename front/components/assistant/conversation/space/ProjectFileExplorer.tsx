@@ -11,7 +11,6 @@ import type {
   ContentNodeEntry,
   FileEntry,
   FileExplorerEntry,
-  SandboxTreeNode,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
@@ -232,7 +231,8 @@ function ProjectFileExplorerContent({
 }: ProjectFileExplorerProps) {
   const [frameFileId, setFrameFileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [folderStack, setFolderStack] = useState<SandboxTreeNode[]>([]);
+  const [currentFolderPath, setCurrentFolderPath] = useState("");
+  const [navigationResetKey, setNavigationResetKey] = useState(0);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [fileToRename, setFileToRename] = useState<{
@@ -243,10 +243,7 @@ function ProjectFileExplorerContent({
     "companyData" | "noCompanyData" | null
   >(null);
 
-  const podMountParentRelativePath = useMemo(
-    () => (folderStack.length > 0 ? (folderStack.at(-1)?.path ?? "") : ""),
-    [folderStack]
-  );
+  const podMountParentRelativePath = currentFolderPath;
   const isArchived = !!space.archivedAt;
   const canManuallyManageProjectKnowledge =
     isManualProjectKnowledgeManagementAllowed(owner);
@@ -584,7 +581,7 @@ function ProjectFileExplorerContent({
       }
 
       await refreshProjectKnowledge();
-      setFolderStack([]);
+      setNavigationResetKey((key) => key + 1);
       return true;
     },
     [
@@ -682,12 +679,12 @@ function ProjectFileExplorerContent({
         defaultViewMode="list"
         emptyState={hasFiles ? undefined : emptyState}
         files={projectGCSFiles}
-        folderStack={folderStack}
         getFileUrl={getFileUrl}
         hideTitleBorder
+        navigationResetKey={navigationResetKey}
+        onCurrentFolderChange={setCurrentFolderPath}
         onFileDownload={onFileDownload}
         onDelete={!isArchived ? onDelete : undefined}
-        onFolderStackChange={setFolderStack}
         onMoveFile={!isArchived ? onMoveFile : undefined}
         onRename={!isArchived ? onRename : undefined}
         onOpenInteractive={(entry) => setFrameFileId(entry.fileId)}
