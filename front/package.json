@@ -32,6 +32,8 @@
     "coverage": "vitest --coverage",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh",
+    "migration:generate:pre-deploy": "./scripts/generate-migration.sh pre-deploy",
+    "migration:generate:post-deploy": "./scripts/generate-migration.sh post-deploy",
     "debug:profiler": "node ./scripts/debug/run_profiler.ts",
     "sitemap": "next-sitemap",
     "analyze": "NODE_OPTIONS=--max-old-space-size=16384 ANALYZE=true npm run build",
