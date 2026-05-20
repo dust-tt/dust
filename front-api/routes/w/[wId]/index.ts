@@ -4,6 +4,7 @@ import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 
 import analytics from "./analytics";
 import assistant from "./assistant";
+import authContext from "./auth-context";
 import builder from "./builder";
 import coupon from "./coupon";
 import credits from "./credits";
@@ -28,9 +29,15 @@ import verifiedDomains from "./verified-domains";
 import verify from "./verify";
 import welcome from "./welcome";
 
-// Mounted at /api/w/:wId. Every route below inherits workspaceAuth, which
-// resolves the Authenticator and stashes it on the context.
+// Mounted at /api/w/:wId. Every route registered below the workspaceAuth
+// `use` call inherits it — the middleware resolves the Authenticator and
+// stashes it on the context.
 const app = new Hono();
+
+// auth-context is mounted BEFORE the workspaceAuth wildcard middleware so it
+// bypasses the standard workspace lookup — it has its own auth that allows
+// missing workspaces in order to return cross-region redirects.
+app.route("/auth-context", authContext);
 
 app.use("*", workspaceAuth);
 
