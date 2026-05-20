@@ -10,6 +10,7 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
   OAuthConnectionType,
@@ -226,13 +227,26 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       ) {
         return new Ok(undefined);
       }
+      logger.warn(
+        {
+          requestedTeamId: connection.metadata.requested_team_id,
+          requestedTeamName: connection.metadata.requested_team_name,
+          actualTeamId: connection.metadata.team_id,
+          actualTeamName: connection.metadata.team_name,
+        },
+        "OAuth: Slack team mismatch on connection"
+      );
       return new Err({
         message:
           "You must select `" +
           connection.metadata.requested_team_name +
-          "` as the team to connect, instead of `" +
+          " (" +
+          connection.metadata.requested_team_id +
+          ")` as the team to connect, instead of `" +
           connection.metadata.team_name +
-          "`.",
+          " (" +
+          connection.metadata.team_id +
+          ")`.",
       });
     }
     return new Ok(undefined);

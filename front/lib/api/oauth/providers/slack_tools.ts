@@ -180,13 +180,26 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
       ) {
         return new Ok(undefined);
       }
+      logger.warn(
+        {
+          requestedTeamId: connection.metadata.requested_team_id,
+          requestedTeamName: connection.metadata.requested_team_name,
+          actualTeamId: connection.metadata.team_id,
+          actualTeamName: connection.metadata.team_name,
+        },
+        "OAuth: Slack team mismatch on Slack tools connection"
+      );
       return new Err({
         message:
           "You must select `" +
           connection.metadata.requested_team_name +
-          "` as the team to connect, instead of `" +
+          " (" +
+          connection.metadata.requested_team_id +
+          ")` as the team to connect, instead of `" +
           connection.metadata.team_name +
-          "`.",
+          " (" +
+          connection.metadata.team_id +
+          ")`.",
       });
     }
     return new Ok(undefined);
