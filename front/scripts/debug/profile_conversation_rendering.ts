@@ -8,7 +8,7 @@ import {
   getModelConfigByModelId,
   getSupportedModelConfigs,
 } from "@app/lib/llms/model_configurations";
-import { saveProfile } from "@app/pages/api/debug/profiler";
+import { saveProfile } from "@app/lib/api/debug/profiler";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript(

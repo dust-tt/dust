@@ -1,5 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
-/** @ignoreswagger */
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type {
   EmailAttachment,
@@ -36,39 +34,42 @@ import apiConfig from "@app/lib/api/config";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedFileContentType } from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import { apiError } from "@front-api/middleware/utils";
 import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
-import type { NextApiRequest, NextApiResponse } from "next";
-import getRawBody from "raw-body";
-
-const SENDGRID_PARSE_WEBHOOK_MAX_SIZE = "30mb";
-
-// Disabling Next.js's body parser as formidable has its own
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+import { Hono } from "hono";
 
 const EMAIL_WEBHOOK_RELAY_HEADER = "x-dust-email-webhook-relayed";
 const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
   "x-dust-email-webhook-source-region";
 const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
+// SendGrid Parse limits inbound mail to ~30MB; matches the original
+// `SENDGRID_PARSE_WEBHOOK_MAX_SIZE = "30mb"` enforced by `raw-body`.
+const SENDGRID_PARSE_WEBHOOK_MAX_SIZE_BYTES = 30 * 1024 * 1024;
+
+function headersToNodeHeaders(
+  webHeaders: Headers
+): Record<string, string | string[] | undefined> {
+  const out: Record<string, string | string[] | undefined> = {};
+  webHeaders.forEach((value, key) => {
+    out[key] = value;
+  });
+  return out;
+}
+
 function isRelayedWebhookRequest(
-  req: Pick<NextApiRequest, "headers">
+  headers: Record<string, string | string[] | undefined>
 ): boolean {
   return (
-    req.headers[EMAIL_WEBHOOK_RELAY_HEADER] === EMAIL_WEBHOOK_RELAY_HEADER_VALUE
+    headers[EMAIL_WEBHOOK_RELAY_HEADER] === EMAIL_WEBHOOK_RELAY_HEADER_VALUE
   );
 }
 
@@ -78,14 +79,14 @@ function isRelayEligibleError(error: EmailTriggerError): boolean {
   );
 }
 
-export function shouldRelayToOtherRegion({
-  req,
+function shouldRelayToOtherRegion({
+  headers,
   error,
 }: {
-  req: Pick<NextApiRequest, "headers">;
+  headers: Record<string, string | string[] | undefined>;
   error: EmailTriggerError;
 }): boolean {
-  return isRelayEligibleError(error) && !isRelayedWebhookRequest(req);
+  return isRelayEligibleError(error) && !isRelayedWebhookRequest(headers);
 }
 
 function hasValidSendgridAuthorization(
@@ -107,15 +108,15 @@ function hasValidSendgridAuthorization(
 }
 
 function hasValidRelayAuthorization(
-  req: Pick<NextApiRequest, "headers">
+  headers: Record<string, string | string[] | undefined>
 ): boolean {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  const authHeader = headers.authorization;
+  if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
     return false;
   }
 
   return (
-    isRelayedWebhookRequest(req) &&
+    isRelayedWebhookRequest(headers) &&
     authHeader.slice("Bearer ".length) === regionsConfig.getLookupApiSecret()
   );
 }
@@ -183,13 +184,8 @@ async function relayEmailToOtherRegion(
 
 function parseThreadingHeaders(rawHeaders: string | null) {
   if (!rawHeaders) {
-    return {
-      messageId: null,
-      inReplyTo: null,
-      references: null,
-    };
+    return { messageId: null, inReplyTo: null, references: null };
   }
-
   return {
     messageId: parseHeaderValue(rawHeaders, "Message-ID"),
     inReplyTo: parseHeaderValue(rawHeaders, "In-Reply-To"),
@@ -197,10 +193,9 @@ function parseThreadingHeaders(rawHeaders: string | null) {
   };
 }
 
-// Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
 const parseSendgridWebhookContent = async (
   rawBody: Buffer,
-  headers: NextApiRequest["headers"]
+  headers: Record<string, string | string[] | undefined>
 ): Promise<Result<InboundEmail, Error>> => {
   const req = createBufferedRequestFromRawBody(rawBody, headers);
   if (!isSendgridParseFormRequest(req)) {
@@ -232,7 +227,6 @@ const parseSendgridWebhookContent = async (
     }
 
     const from = envelope.from;
-
     if (!from || typeof from !== "string") {
       return new Err(new Error("Failed to parse envelope.from"));
     }
@@ -251,7 +245,6 @@ const parseSendgridWebhookContent = async (
       return senderRes;
     }
 
-    // Extract attachments from files, filtering to supported content types.
     const attachments: EmailAttachment[] = [];
     for (const [key, fileArray] of Object.entries(files)) {
       if (!fileArray) {
@@ -277,8 +270,8 @@ const parseSendgridWebhookContent = async (
       subject: subject || "(no subject)",
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       text: text || "",
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       auth: {
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         SPF: SPF || "",
         dkim: parseSendgridDkimResults(dkimRaw),
         dkimRaw,
@@ -292,10 +285,6 @@ const parseSendgridWebhookContent = async (
         full: senderHeaderValue,
       },
       envelope: {
-        // Use raw headers to get all To/Cc recipients: Sendgrid's envelope.to only
-        // contains addresses matching the inbound-parse domain, omitting human recipients.
-        // envelope.cc is not populated by Sendgrid at all.
-        // Fall back to envelope.to if headers are absent so agent routing still works.
         to: (() => {
           const fromHeaders = extractEmailAddressesFromHeader(
             isString(rawHeaders) ? parseHeaderValue(rawHeaders, "To") : null
@@ -312,9 +301,7 @@ const parseSendgridWebhookContent = async (
       },
       attachments,
     });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (e) {
+  } catch (_e) {
     return new Err(new Error("Failed to parse email content"));
   }
 };
@@ -337,103 +324,105 @@ const replyToError = async (
   });
 };
 
-export type PostResponseBody = {
-  success: boolean;
-};
+// Mounted at /api/email/webhook.
+const app = new Hono();
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostResponseBody>>
-): Promise<void> {
-  switch (req.method) {
-    case "POST":
-      const authHeader = req.headers.authorization;
-      const isSendgridRequest = hasValidSendgridAuthorization(authHeader);
-      const isRelayRequest = hasValidRelayAuthorization(req);
+app.post("/", async (ctx) => {
+  const headers = headersToNodeHeaders(ctx.req.raw.headers);
+  const authHeader = isString(headers.authorization)
+    ? headers.authorization
+    : undefined;
+  const isSendgridRequest = hasValidSendgridAuthorization(authHeader);
+  const isRelayRequest = hasValidRelayAuthorization(headers);
 
-      if (!authHeader) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "missing_authorization_header_error",
-            message: "Missing Authorization header",
-          },
-        });
-      }
+  if (!authHeader) {
+    return apiError(ctx, {
+      status_code: 401,
+      api_error: {
+        type: "missing_authorization_header_error",
+        message: "Missing Authorization header",
+      },
+    });
+  }
 
-      if (!isSendgridRequest && !isRelayRequest) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_basic_authorization_error",
-            message: "Invalid Authorization header",
-          },
-        });
-      }
+  if (!isSendgridRequest && !isRelayRequest) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_basic_authorization_error",
+        message: "Invalid Authorization header",
+      },
+    });
+  }
 
-      // SendGrid signs the exact multipart bytes, so we must verify the raw body
-      // before formidable parses or rewrites anything.
-      let rawBody: Buffer;
-      try {
-        rawBody = await getRawBody(req, {
-          limit: SENDGRID_PARSE_WEBHOOK_MAX_SIZE,
-        });
-      } catch {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Failed to read raw request body.",
-          },
-        });
-      }
+  // SendGrid signs the exact multipart bytes, so we must verify the raw body
+  // before formidable parses or rewrites anything.
+  let rawBody: Buffer;
+  try {
+    const arrayBuffer = await ctx.req.arrayBuffer();
+    if (arrayBuffer.byteLength > SENDGRID_PARSE_WEBHOOK_MAX_SIZE_BYTES) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Request body too large.",
+        },
+      });
+    }
+    rawBody = Buffer.from(arrayBuffer);
+  } catch {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Failed to read raw request body.",
+      },
+    });
+  }
 
-      // Only the original SendGrid ingress carries the signed raw multipart body.
-      // Cross-region relays rebuild the form-data payload, so the forwarded hop must
-      // trust our relay auth instead of re-running SendGrid signature verification.
-      if (isSendgridRequest && !isDevelopment()) {
-        const signatureValidationRes = validateSendgridParseWebhookSignature({
-          publicKey: apiConfig.getSendgridParseWebhookPublicKey(),
-          headers: req.headers,
-          rawBody,
-        });
-        if (signatureValidationRes.isErr()) {
-          logger.warn(
-            {
-              errorType: signatureValidationRes.error.apiError.type,
-              message: signatureValidationRes.error.apiError.message,
-            },
-            "[email] Rejected SendGrid Parse webhook before multipart parsing"
-          );
-          return apiError(req, res, {
-            status_code: signatureValidationRes.error.statusCode,
-            api_error: signatureValidationRes.error.apiError,
-          });
-        }
-      }
+  if (isSendgridRequest && !isDevelopment()) {
+    const signatureValidationRes = validateSendgridParseWebhookSignature({
+      publicKey: apiConfig.getSendgridParseWebhookPublicKey(),
+      headers,
+      rawBody,
+    });
+    if (signatureValidationRes.isErr()) {
+      logger.warn(
+        {
+          errorType: signatureValidationRes.error.apiError.type,
+          message: signatureValidationRes.error.apiError.message,
+        },
+        "[email] Rejected SendGrid Parse webhook before multipart parsing"
+      );
+      return apiError(ctx, {
+        status_code: signatureValidationRes.error.statusCode,
+        api_error: signatureValidationRes.error.apiError,
+      });
+    }
+  }
 
-      const emailRes = await parseSendgridWebhookContent(rawBody, req.headers);
-      if (emailRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: emailRes.error.message,
-          },
-        });
-      }
+  const emailRes = await parseSendgridWebhookContent(rawBody, headers);
+  if (emailRes.isErr()) {
+    return apiError(ctx, {
+      status_code: 401,
+      api_error: {
+        type: "invalid_request_error",
+        message: emailRes.error.message,
+      },
+    });
+  }
 
-      const email = emailRes.value;
+  const email = emailRes.value;
 
-      // At this stage we have a valid email in we can respond 200 to the webhook, no more apiError
-      // possible below this point, errors should be reported to the sender.
-      res.status(200).json({ success: true });
-
+  // Acknowledge the webhook now — from here on, all errors should be sent as
+  // a reply to the original sender, not surfaced to SendGrid. We finish the
+  // remaining processing in a detached IIFE so the response goes out
+  // immediately, matching the Next-side `res.status(200).json(...)` then
+  // keep-working pattern.
+  void (async () => {
+    try {
       const authDecision = evaluateInboundAuth(email);
-
       if (!authDecision.authenticated) {
-        // Do not reply to unauthenticated mail — the sender may be spoofed,
-        // and replying would cause backscatter.
         logger.warn(
           {
             reason: authDecision.reason,
@@ -466,12 +455,11 @@ async function handler(
         email: email.sender.email,
       });
       if (userRes.isErr()) {
-        if (shouldRelayToOtherRegion({ req, error: userRes.error })) {
+        if (shouldRelayToOtherRegion({ headers, error: userRes.error })) {
           const relayRes = await relayEmailToOtherRegion(email);
           if (relayRes.isOk()) {
             return;
           }
-
           logger.error(
             {
               senderEmail: email.sender.email,
@@ -482,15 +470,12 @@ async function handler(
             "[email] Failed to relay inbound email to other region"
           );
         }
-
         await replyToError(email, userRes.error);
         return;
       }
 
       const { user, workspace } = userRes.value;
 
-      // Find target emails in [...to, ...cc, ...bcc] whose domain is
-      // ASSISTANT_EMAIL_SUBDOMAIN.
       const targetEmails = [
         ...(email.envelope.to ?? []),
         ...(email.envelope.cc ?? []),
@@ -529,7 +514,7 @@ async function handler(
         sort: undefined,
       });
 
-      let agentConfigurations: LightAgentConfigurationType[] = [];
+      const agentConfigurations: LightAgentConfigurationType[] = [];
       for (const targetEmail of targetEmails) {
         const matchResult = emailAssistantMatcher({
           allAgentConfigurations,
@@ -539,7 +524,6 @@ async function handler(
           await replyToError(email, matchResult.error);
           continue;
         }
-
         agentConfigurations.push(matchResult.value.agentConfiguration);
       }
 
@@ -547,7 +531,6 @@ async function handler(
         return;
       }
 
-      // Trigger async processing - reply will be sent by finalization activity.
       const triggerRes = await triggerFromEmail(auth, {
         agentConfigurations,
         email,
@@ -568,7 +551,7 @@ async function handler(
             name: triggerRes.value.conversation.sId,
           }),
         ],
-        context: getAuditLogContext(auth, req),
+        context: getAuditLogContext(auth),
         metadata: {
           sender_email: email.sender.email,
           agent_id: agentConfigurations.map((a) => a.sId).join(","),
@@ -585,18 +568,15 @@ async function handler(
         },
         "[email] Triggered async email processing"
       );
-      return;
+    } catch (err) {
+      logger.error(
+        { error: normalizeError(err) },
+        "[email] Unhandled error in async email processing"
+      );
+    }
+  })();
 
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, GET or POST is expected.",
-        },
-      });
-  }
-}
+  return ctx.json({ success: true });
+});
 
-export default withLogging(handler);
+export default app;

@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
 import {
@@ -5,8 +6,8 @@ import {
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/api/email";
-import { getRedisCacheClient } from "@app/lib/api/redis";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
+import { storeStripeCheckoutSessionStatus } from "@app/lib/api/stripe/checkout_status";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -1546,43 +1547,6 @@ async function handler(
         },
       });
   }
-}
-
-const CHECKOUT_TTL_SECONDS = 200;
-const CHECKOUT_KEY_PREFIX = "stripe:checkout:";
-const CheckoutErrorSchema = z.object({ status: z.string() });
-
-export async function storeStripeCheckoutSessionStatus({
-  sessionId,
-  status,
-}: {
-  sessionId: string;
-  status: string;
-}): Promise<void> {
-  const redis = await getRedisCacheClient({
-    origin: "stripe_checkout_status",
-  });
-  await redis.set(
-    `${CHECKOUT_KEY_PREFIX}${sessionId}`,
-    JSON.stringify({ status }),
-    { EX: CHECKOUT_TTL_SECONDS }
-  );
-}
-
-export async function getStripeCheckoutSessionStatus(
-  sessionId: string
-): Promise<{ status: string } | null> {
-  const redis = await getRedisCacheClient({
-    origin: "stripe_checkout_status",
-  });
-  const key = `${CHECKOUT_KEY_PREFIX}${sessionId}`;
-  const raw = await redis.get(key);
-  if (!raw) {
-    return null;
-  }
-  await redis.del(key);
-  const parsed = CheckoutErrorSchema.safeParse(JSON.parse(raw));
-  return parsed.success ? parsed.data : null;
 }
 
 export default withLogging(handler);

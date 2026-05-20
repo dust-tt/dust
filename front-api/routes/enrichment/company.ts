@@ -1,5 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
-/** @ignoreswagger */
 import config from "@app/lib/api/config";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { untrustedFetch } from "@app/lib/egress/server";
@@ -8,19 +6,11 @@ import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { Hono } from "hono";
 
 // Company size thresholds
 const ENTERPRISE_THRESHOLD = 100;
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
-
-interface EnrichmentResponse {
-  success: boolean;
-  companySize?: number;
-  companyName?: string;
-  redirectUrl: string;
-  error?: string;
-}
 
 // Parse employee count from Apollo's employee range strings
 // e.g., "11-20", "51-100", "1,001-5,000", "10,001+"
@@ -29,7 +19,6 @@ function parseEmployeeCount(employeeRange: string | null): number | null {
     return null;
   }
 
-  // Remove commas and get the first number
   const cleaned = employeeRange.replace(/,/g, "");
   const match = cleaned.match(/^(\d+)/);
 
@@ -48,7 +37,6 @@ function mapCountryToRegion(country: string | null): string | null {
 
   const c = country.toLowerCase();
 
-  // Europe
   const europeCountries = [
     "albania",
     "andorra",
@@ -103,7 +91,6 @@ function mapCountryToRegion(country: string | null): string | null {
     return "Europe";
   }
 
-  // North America
   const northAmericaCountries = [
     "united states",
     "usa",
@@ -115,7 +102,6 @@ function mapCountryToRegion(country: string | null): string | null {
     return "North America";
   }
 
-  // Latin America (Central America, South America, Caribbean)
   const latinAmericaCountries = [
     "argentina",
     "belize",
@@ -147,7 +133,6 @@ function mapCountryToRegion(country: string | null): string | null {
     return "Latin America";
   }
 
-  // Asia
   const asiaCountries = [
     "afghanistan",
     "armenia",
@@ -206,7 +191,6 @@ function mapCountryToRegion(country: string | null): string | null {
     return "Asia";
   }
 
-  // Oceania
   const oceaniaCountries = [
     "australia",
     "fiji",
@@ -227,7 +211,6 @@ function mapCountryToRegion(country: string | null): string | null {
     return "Oceania";
   }
 
-  // Africa (remaining countries)
   const africaCountries = [
     "algeria",
     "angola",
@@ -288,8 +271,7 @@ function mapCountryToRegion(country: string | null): string | null {
   return null;
 }
 
-// Enrichment using Apollo API
-// Docs: https://docs.apollo.io/reference/organization-enrichment
+// Enrichment using Apollo API. Docs: https://docs.apollo.io/reference/organization-enrichment
 async function enrichCompanyFromDomain(domain: string): Promise<{
   size: number | null;
   name: string | null;
@@ -325,7 +307,6 @@ async function enrichCompanyFromDomain(domain: string): Promise<{
 
     if (!response.ok) {
       if (response.status === 404) {
-        // Company not found
         return {
           size: null,
           name: null,
@@ -361,9 +342,7 @@ async function enrichCompanyFromDomain(domain: string): Promise<{
       };
     }
 
-    // Apollo returns estimated_num_employees (number) or employee_count_range (string)
     let size: number | null = null;
-
     if (typeof org.estimated_num_employees === "number") {
       size = org.estimated_num_employees;
     } else if (org.employee_count_range) {
@@ -389,101 +368,94 @@ async function enrichCompanyFromDomain(domain: string): Promise<{
   }
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<EnrichmentResponse>
-) {
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      success: false,
-      redirectUrl: "/home/pricing",
-      error: "Method not allowed",
-    });
-  }
+// Mounted at /api/enrichment/company.
+const app = new Hono();
 
-  const { email } = req.body;
+app.post("/", async (ctx) => {
+  const body = await ctx.req.json().catch(() => ({}));
+  const { email } = body ?? {};
 
   if (!email || typeof email !== "string") {
-    return res.status(400).json({
-      success: false,
-      redirectUrl: "/home/pricing",
-      error: "Email is required",
-    });
+    return ctx.json(
+      {
+        success: false,
+        redirectUrl: "/home/pricing",
+        error: "Email is required",
+      },
+      400
+    );
   }
 
   const domain = extractDomain(email);
 
   if (!domain) {
-    return res.status(400).json({
-      success: false,
-      redirectUrl: "/home/pricing",
-      error: "Invalid email format",
-    });
+    return ctx.json(
+      {
+        success: false,
+        redirectUrl: "/home/pricing",
+        error: "Invalid email format",
+      },
+      400
+    );
   }
 
   const encodedEmail = encodeURIComponent(email);
 
-  // Check if user already exists in WorkOS - if so, redirect to login.
+  // Check if user already exists in WorkOS — if so, redirect to login.
   const existingUsers = await fetchUsersFromWorkOSWithEmails([email]);
   if (existingUsers.length > 0) {
-    return res.status(200).json({
+    return ctx.json({
       success: true,
       redirectUrl: `/api/workos/login?loginHint=${encodedEmail}`,
     });
   }
 
-  // Skip enrichment for personal email domains (gmail, outlook, yahoo, etc.)
-  // Redirect directly to signup
+  // Skip enrichment for personal email domains (gmail, outlook, yahoo, etc.).
   if (isPersonalEmailDomain(domain)) {
-    return res.status(200).json({
+    return ctx.json({
       success: true,
       redirectUrl: `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`,
     });
   }
 
-  // Check if domain has auto-join enabled - redirect to sign-up (user doesn't exist yet)
+  // Check if domain has auto-join enabled — redirect to sign-up.
   const isAutoJoinDomain =
     await WorkspaceResource.isDomainAutoJoinEnabled(domain);
   if (isAutoJoinDomain) {
-    return res.status(200).json({
+    return ctx.json({
       success: true,
       redirectUrl: `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`,
     });
   }
 
-  // Check if domain has valid MX records before calling Apollo
+  // Check if domain has valid MX records before calling Apollo.
   const hasMx = await hasValidMxRecords(domain);
   if (!hasMx) {
-    return res.status(400).json({
-      success: false,
-      redirectUrl: "/home/pricing",
-      error: "Please use a valid work email address",
-    });
+    return ctx.json(
+      {
+        success: false,
+        redirectUrl: "/home/pricing",
+        error: "Please use a valid work email address",
+      },
+      400
+    );
   }
 
-  // Enrich company data for work emails
   const { size, name, region, funding, revenue } =
     await enrichCompanyFromDomain(domain);
 
-  // Determine redirect based on company size
   let redirectUrl: string;
-
   if (size === null) {
-    // Unknown company size - default to signup (self-serve)
     redirectUrl = `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`;
   } else if (size <= ENTERPRISE_THRESHOLD) {
-    // Small company - self-serve signup
     redirectUrl = `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`;
   } else {
-    // Enterprise - contact sales with email and company data prefilled for HubSpot
     const params = new URLSearchParams();
     params.set("email", email);
     if (name) {
       params.set("company", name);
     }
     if (size) {
-      // Map size to HubSpot headcount ranges
       let headcount: string;
       if (size <= 100) {
         headcount = "1-100";
@@ -504,7 +476,6 @@ export default async function handler(
     redirectUrl = `/home/contact?${params.toString()}`;
   }
 
-  // Send Slack notification for all Apollo enrichments
   const destinationLabel = redirectUrl.includes("/home/contact")
     ? "Contact Sales"
     : "Self-serve Signup";
@@ -526,10 +497,12 @@ export default async function handler(
     channel: GTM_LEADS_SLACK_CHANNEL_ID,
   });
 
-  return res.status(200).json({
+  return ctx.json({
     success: true,
     companySize: size ?? undefined,
     companyName: name ?? undefined,
     redirectUrl,
   });
-}
+});
+
+export default app;
