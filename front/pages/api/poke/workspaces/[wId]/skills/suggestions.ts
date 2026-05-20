@@ -12,7 +12,7 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-export const PostSkillSuggestionBodySchema = z.object({
+const PostSkillSuggestionBodySchema = z.object({
   name: z.string().min(1, "Name is required."),
   userFacingDescription: z.string().min(1, "Description is required."),
   agentFacingDescription: z
