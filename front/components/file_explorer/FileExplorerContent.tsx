@@ -27,11 +27,14 @@ interface FileExplorerContentProps {
   viewMode: ViewMode;
   isEmpty: boolean;
   emptyState?: React.ReactNode;
+  fileDragEnabled?: boolean;
+  parentFolderDropPath?: string;
   parentFolderLabel?: string;
   onGoUp?: () => void;
   onFolderNavigate: (node: SandboxTreeNode) => void;
   onFileOpen: (entry: FileEntry) => void;
   onFileDownload: (entry: FileEntry) => Promise<void>;
+  onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   onNodeOpen: (entry: ContentNodeEntry) => void;
   getFileMenuItems?: (entry: FileExplorerEntry) => FileExplorerMenuAction[];
 }
@@ -43,11 +46,14 @@ export function FileExplorerContent({
   viewMode,
   isEmpty,
   emptyState,
+  fileDragEnabled,
+  parentFolderDropPath,
   parentFolderLabel,
   onGoUp,
   onFolderNavigate,
   onFileOpen,
   onFileDownload,
+  onMoveFileDrop,
   onNodeOpen,
   getFileMenuItems,
 }: FileExplorerContentProps) {
@@ -58,8 +64,10 @@ export function FileExplorerContent({
       <FileExplorerGoUpCard
         key="go-up"
         parentLabel={parentFolderLabel}
+        parentRelativePath={parentFolderDropPath ?? ""}
         viewMode={viewMode}
         onGoUp={onGoUp}
+        onMoveFileDrop={onMoveFileDrop}
       />
     ) : null;
 
@@ -71,6 +79,7 @@ export function FileExplorerContent({
           node={node}
           viewMode={viewMode}
           onNavigate={onFolderNavigate}
+          onMoveFileDrop={onMoveFileDrop}
         />
       );
     }
@@ -96,6 +105,7 @@ export function FileExplorerContent({
         return (
           <FileExplorerFileCard
             key={`file:${entry.path}`}
+            draggable={fileDragEnabled}
             entry={entry}
             viewMode={viewMode}
             onOpen={onFileOpen}

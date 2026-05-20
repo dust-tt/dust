@@ -1,3 +1,8 @@
+import {
+  canMoveFileToParentFolder,
+  setFileExplorerDragData,
+  useFileExplorerDropTarget,
+} from "@app/components/file_explorer/fileExplorerDragDrop";
 import type {
   ContentNodeEntry,
   FileEntry,
@@ -35,29 +40,61 @@ import { useState } from "react";
 export type ViewMode = "grid" | "list";
 
 export type FileExplorerItemProps = {
+  draggable?: boolean;
+  extraMenuItems?: FileExplorerMenuAction[];
+  isDropActive?: boolean;
+  isDragging?: boolean;
   onDownload?: () => Promise<void>;
+  onDragEnd?: (e: React.DragEvent) => void;
+  onDragEnter?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
   onOpen: () => void;
   subtitle: string;
   title: string;
   titleClassName?: string;
   viewMode: ViewMode;
-  extraMenuItems?: FileExplorerMenuAction[];
 } & (
   | { kind: "icon"; visual: React.ComponentType }
   | { kind: "thumbnail"; thumbnailSrc: string | null }
 );
 
 // TODO(2026-04-27 FILE SYSTEM): Candidate for Sparkle once the GCS file explorer pattern stabilises.
+const dropActiveClasses = cn(
+  "ring-2 ring-primary-400 ring-inset dark:ring-primary-400-night",
+  "bg-primary-100 dark:bg-primary-100-night"
+);
+
 export function FileExplorerItem(props: FileExplorerItemProps) {
   const {
+    draggable,
+    extraMenuItems,
+    isDropActive,
+    isDragging,
     onDownload,
+    onDragEnd,
+    onDragEnter,
+    onDragLeave,
+    onDragOver,
+    onDragStart,
+    onDrop,
     onOpen,
     subtitle,
     title,
     titleClassName,
     viewMode,
-    extraMenuItems,
   } = props;
+
+  const interactionHandlers = {
+    onDragEnd,
+    onDragEnter,
+    onDragLeave,
+    onDragOver,
+    onDragStart,
+    onDrop,
+  };
 
   const thumbnailContent =
     props.kind === "icon" ? (
@@ -164,11 +201,17 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
   if (viewMode === "list") {
     return (
       <div
+        draggable={draggable}
         className={cn(
-          "flex cursor-pointer items-center gap-4 rounded-xl px-3 py-2",
-          "hover:bg-muted-background dark:hover:bg-muted-background-night"
+          "flex items-center gap-4 rounded-xl px-3 py-2",
+          draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+          isDragging && "opacity-50",
+          isDropActive
+            ? dropActiveClasses
+            : "hover:bg-muted-background dark:hover:bg-muted-background-night"
         )}
         onClick={onOpen}
+        {...interactionHandlers}
       >
         <div className="flex h-4 w-4 shrink-0 items-center justify-center">
           {thumbnailContent}
@@ -180,11 +223,23 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div
+      className={cn("flex flex-col gap-1", isDragging && "opacity-50")}
+      draggable={draggable}
+      onDragEnd={onDragEnd}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDragStart={onDragStart}
+      onDrop={onDrop}
+    >
       <div
         className={cn(
-          "flex h-24 cursor-pointer items-center justify-center overflow-hidden rounded-xl",
-          "bg-muted-background hover:brightness-95 dark:bg-muted-background-night",
+          "flex h-24 items-center justify-center overflow-hidden rounded-xl",
+          draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+          isDropActive
+            ? dropActiveClasses
+            : "bg-muted-background hover:brightness-95 dark:bg-muted-background-night",
           props.kind === "icon" && "p-4"
         )}
         onClick={onOpen}
@@ -213,15 +268,31 @@ function getFileSubtitle(entry: GCSMountFileEntry, viewMode: ViewMode): string {
 
 export interface FileExplorerGoUpCardProps {
   parentLabel: string;
+  parentRelativePath: string;
   viewMode: ViewMode;
   onGoUp: () => void;
+  onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
 }
 
 export function FileExplorerGoUpCard({
   parentLabel,
+  parentRelativePath,
   viewMode,
   onGoUp,
+  onMoveFileDrop,
 }: FileExplorerGoUpCardProps) {
+  const { isDragOver, dropTargetProps } = useFileExplorerDropTarget({
+    disabled: !onMoveFileDrop,
+    onDrop: (scopedFilePath) => {
+      if (
+        onMoveFileDrop &&
+        canMoveFileToParentFolder(scopedFilePath, parentRelativePath)
+      ) {
+        onMoveFileDrop(scopedFilePath, parentRelativePath);
+      }
+    },
+  });
+
   return (
     <FileExplorerItem
       kind="icon"
@@ -229,7 +300,9 @@ export function FileExplorerGoUpCard({
       viewMode={viewMode}
       title="Back"
       subtitle={`Browse "${parentLabel}"`}
+      isDropActive={isDragOver}
       onOpen={onGoUp}
+      {...dropTargetProps}
     />
   );
 }
@@ -238,13 +311,27 @@ export interface FileExplorerFolderCardProps {
   node: SandboxTreeNode;
   viewMode: ViewMode;
   onNavigate: (node: SandboxTreeNode) => void;
+  onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
 }
 
 export function FileExplorerFolderCard({
   node,
   viewMode,
   onNavigate,
+  onMoveFileDrop,
 }: FileExplorerFolderCardProps) {
+  const { isDragOver, dropTargetProps } = useFileExplorerDropTarget({
+    disabled: !onMoveFileDrop,
+    onDrop: (scopedFilePath) => {
+      if (
+        onMoveFileDrop &&
+        canMoveFileToParentFolder(scopedFilePath, node.path)
+      ) {
+        onMoveFileDrop(scopedFilePath, node.path);
+      }
+    },
+  });
+
   const childCount = node.children.length;
   const subtitle =
     childCount === 0
@@ -261,12 +348,15 @@ export function FileExplorerFolderCard({
       title={node.name}
       titleClassName="font-semibold"
       subtitle={subtitle}
+      isDropActive={isDragOver}
       onOpen={() => onNavigate(node)}
+      {...dropTargetProps}
     />
   );
 }
 
 export interface FileExplorerFileCardProps {
+  draggable?: boolean;
   entry: FileEntry;
   viewMode: ViewMode;
   onOpen: (entry: FileEntry) => void;
@@ -275,13 +365,37 @@ export interface FileExplorerFileCardProps {
 }
 
 export function FileExplorerFileCard({
+  draggable: draggableProp,
   entry,
   viewMode,
   onOpen,
   onDownload,
   extraMenuItems,
 }: FileExplorerFileCardProps) {
+  const [isDragging, setIsDragging] = useState(false);
   const subtitle = getFileSubtitle(entry, viewMode);
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (e.target instanceof HTMLElement && e.target.closest("button")) {
+      e.preventDefault();
+      return;
+    }
+    setFileExplorerDragData(e.dataTransfer, entry.path);
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  const dragProps = draggableProp
+    ? {
+        draggable: true as const,
+        isDragging,
+        onDragEnd: handleDragEnd,
+        onDragStart: handleDragStart,
+      }
+    : {};
 
   if (
     getCategoryFromContentType(entry.contentType) === "image" &&
@@ -297,6 +411,7 @@ export function FileExplorerFileCard({
         onOpen={() => onOpen(entry)}
         onDownload={() => onDownload(entry)}
         extraMenuItems={extraMenuItems}
+        {...dragProps}
       />
     );
   }
@@ -312,6 +427,7 @@ export function FileExplorerFileCard({
       onOpen={() => onOpen(entry)}
       onDownload={() => onDownload(entry)}
       extraMenuItems={extraMenuItems}
+      {...dragProps}
     />
   );
 }
