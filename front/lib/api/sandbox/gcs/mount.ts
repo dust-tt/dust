@@ -1,6 +1,6 @@
 import {
   getConversationFilesBasePath,
-  getProjectFilesBasePath,
+  getPodsFilesBasePath,
 } from "@app/lib/api/files/mount_path";
 import { mintDownscopedGcsToken } from "@app/lib/api/sandbox/gcs/token";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
@@ -18,17 +18,17 @@ import { Err, Ok } from "@app/types/shared/result";
 const MOUNT_TIMEOUT_MS = 30_000;
 
 const MOUNT_POINT_CONVERSATION = "/files/conversation";
-const MOUNT_POINT_PROJECT = "/files/project";
+const MOUNT_POINT_POD = "/files/pod";
 
 interface MountTarget {
-  label: "conversation" | "project";
+  label: "conversation" | "pod";
   mountPoint: string;
   prefix: string;
 }
 
 /**
  * Compute the set of GCS prefixes / sandbox mount points for the given conversation.
- * Always includes the conversation mount. Add the project mount when the conversation belongs to a
+ * Always includes the conversation mount. Add the Pod mount when the conversation belongs to a
  * project space.
  */
 function buildMountTargets(
@@ -52,12 +52,12 @@ function buildMountTargets(
 
   if (isProjectConversation(conversation)) {
     targets.push({
-      label: "project",
-      prefix: getProjectFilesBasePath({
+      label: "pod",
+      prefix: getPodsFilesBasePath({
         workspaceId,
-        projectId: conversation.spaceId,
+        podId: conversation.spaceId,
       }).replace(/\/$/, ""),
-      mountPoint: MOUNT_POINT_PROJECT,
+      mountPoint: MOUNT_POINT_POD,
     });
   }
 
@@ -68,7 +68,7 @@ function buildMountTargets(
  * Mount GCS files into a running sandbox via gcsfuse.
  *
  * Always mounts the conversation prefix at /files/conversation. When the conversation belongs to
- * a project, also mounts the project prefix at /files/project. Both gcsfuse processes share the
+ * a Pod, also mounts the Pod prefix at /files/pod. Both gcsfuse processes share the
  * same token server on :9876, fed by a single multi-prefix downscoped token.
  *
  * The mount sequence:
