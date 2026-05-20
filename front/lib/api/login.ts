@@ -244,9 +244,13 @@ export async function performLogin(
         await user.unsafeDelete();
       }
 
+      const returnToAfterSSO = inviteToken
+        ? `/api/login?inviteToken=${encodeURIComponent(inviteToken)}&wId=${encodeURIComponent(error.workspaceId)}`
+        : null;
+
       const ssoLoginUrl = await makeEnterpriseConnectionInitiateLoginUrl(
         error.workspaceId,
-        null
+        returnToAfterSSO
       );
 
       logger.error(
