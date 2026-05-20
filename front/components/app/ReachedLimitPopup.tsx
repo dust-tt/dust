@@ -186,8 +186,8 @@ function getLimitPromptForCode(
             <Page.P>
               You have run out of credits.
               {isAdmin
-                ? "Please purchase more credits to continue using Dust."
-                : "Please contact your administrator to purchase more credits."}
+                ? " Please purchase more credits to continue using Dust."
+                : " Please contact your administrator to purchase more credits."}
             </Page.P>
           </>
         ),
