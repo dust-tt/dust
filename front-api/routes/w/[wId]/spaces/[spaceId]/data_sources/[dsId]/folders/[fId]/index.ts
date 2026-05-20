@@ -1,8 +1,8 @@
 import apiConfig from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import { dataSourceResource } from "@front-api/middleware/data_source_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withDataSource } from "@front-api/middleware/with_data_source";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -11,8 +11,8 @@ const app = new Hono();
 
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSource({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");

@@ -10,7 +10,7 @@ import { credentialsFromProviders } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isString } from "@app/types/shared/utils/general";
 import { sessionAuth } from "@front-api/middleware/session_auth";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
@@ -63,7 +63,7 @@ async function loadApp(
 app.get(
   "/",
   sessionAuth,
-  spaceResource({ requireCanWrite: true }),
+  withSpace({ requireCanWrite: true }),
   async (ctx) => {
     const loaded = await loadApp(ctx);
     if (loaded instanceof Response) {
@@ -158,7 +158,7 @@ app.get(
   }
 );
 
-app.post("/", spaceResource({ requireCanWrite: true }), async (ctx) => {
+app.post("/", withSpace({ requireCanWrite: true }), async (ctx) => {
   const loaded = await loadApp(ctx);
   if (loaded instanceof Response) {
     return loaded;

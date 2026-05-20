@@ -1,7 +1,7 @@
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -11,7 +11,7 @@ const app = new Hono();
 
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");

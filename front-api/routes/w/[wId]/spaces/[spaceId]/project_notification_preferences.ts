@@ -1,6 +1,6 @@
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { NOTIFICATION_CONDITION_OPTIONS } from "@app/types/notification_preferences";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -15,7 +15,7 @@ const app = new Hono();
 
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
@@ -52,7 +52,7 @@ app.get(
 
 app.patch(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PatchUserProjectNotificationPreferenceBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

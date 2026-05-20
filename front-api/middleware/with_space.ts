@@ -14,7 +14,7 @@ declare module "hono" {
   }
 }
 
-interface SpaceResourceOptions {
+interface WithSpaceOptions {
   requireCanAdministrate?: boolean;
   requireCanReadOrAdministrate?: boolean;
   requireCanRead?: boolean;
@@ -24,7 +24,7 @@ interface SpaceResourceOptions {
 function hasPermission(
   auth: Authenticator,
   space: SpaceResource,
-  options: SpaceResourceOptions
+  options: WithSpaceOptions
 ): boolean {
   if (options.requireCanAdministrate && !space.canAdministrate(auth)) {
     return false;
@@ -61,9 +61,7 @@ function deriveAccessMethod(auth: Authenticator): string {
  *
  * Apply after the auth middleware so `ctx.get("auth")` is available.
  */
-export function spaceResource(
-  options: SpaceResourceOptions
-): MiddlewareHandler {
+export function withSpace(options: WithSpaceOptions): MiddlewareHandler {
   return async (ctx, next) => {
     const auth = ctx.get("auth");
     const spaceId = ctx.req.param("spaceId");

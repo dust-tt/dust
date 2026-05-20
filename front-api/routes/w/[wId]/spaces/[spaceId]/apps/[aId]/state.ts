@@ -1,5 +1,5 @@
 import { AppResource } from "@app/lib/resources/app_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -16,7 +16,7 @@ const app = new Hono();
 
 app.post(
   "/",
-  spaceResource({ requireCanWrite: true }),
+  withSpace({ requireCanWrite: true }),
   validate("json", PostStateBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

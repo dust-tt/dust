@@ -1,13 +1,13 @@
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import differenceWith from "lodash/differenceWith";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views/not_activated.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
 

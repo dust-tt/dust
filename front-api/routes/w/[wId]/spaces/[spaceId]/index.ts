@@ -16,7 +16,7 @@ import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { AgentsUsageType } from "@app/types/data_source";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -47,13 +47,13 @@ type SpaceCategoryInfo = {
 // Mounted under /api/w/:wId/spaces/:spaceId. The bare `/` handles GET, PATCH,
 // and DELETE on the space resource itself. Per-space sub-resource sub-apps
 // live in their own sibling files; each sub-app applies its own
-// `spaceResource(...)` middleware so different permission options can be used
+// `withSpace(...)` middleware so different permission options can be used
 // per route.
 const app = new Hono();
 
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
@@ -171,7 +171,7 @@ app.get(
 
 app.patch(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PatchSpaceRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -254,7 +254,7 @@ app.patch(
 
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");

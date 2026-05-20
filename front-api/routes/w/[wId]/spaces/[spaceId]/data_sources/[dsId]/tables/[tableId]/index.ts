@@ -2,8 +2,8 @@ import { upsertTable } from "@app/lib/api/data_sources";
 import { deleteTable } from "@app/lib/api/tables";
 import { PatchDataSourceTableRequestBodySchema } from "@app/types/api/public/data_sources";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { dataSourceResource } from "@front-api/middleware/data_source_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withDataSource } from "@front-api/middleware/with_data_source";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -13,8 +13,8 @@ const app = new Hono();
 
 app.patch(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
+  withDataSource({ requireCanRead: true }),
   validate("json", PatchDataSourceTableRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -67,8 +67,8 @@ app.patch(
 
 app.delete(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
+  withDataSource({ requireCanRead: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");

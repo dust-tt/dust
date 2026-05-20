@@ -1,7 +1,7 @@
 import { softDeleteApp } from "@app/lib/api/apps";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { APP_NAME_REGEXP } from "@app/types/app";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -20,7 +20,7 @@ const PatchAppBodySchema = z.object({
 const app = new Hono();
 
 // GET / — read app.
-app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
   const aId = ctx.req.param("aId") ?? "";
@@ -38,7 +38,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
 // POST / — update app settings.
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", PatchAppBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -78,7 +78,7 @@ app.post(
 );
 
 // DELETE / — soft delete app.
-app.delete("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.delete("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
   const aId = ctx.req.param("aId") ?? "";

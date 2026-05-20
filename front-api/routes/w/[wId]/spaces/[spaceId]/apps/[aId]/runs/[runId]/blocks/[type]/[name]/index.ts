@@ -3,7 +3,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { BlockType } from "@app/types/run";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -11,7 +11,7 @@ import { Hono } from "hono";
 // /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/blocks/:type/:name.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanWrite: true }), async (ctx) => {
+app.get("/", withSpace({ requireCanWrite: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
   const aId = ctx.req.param("aId") ?? "";

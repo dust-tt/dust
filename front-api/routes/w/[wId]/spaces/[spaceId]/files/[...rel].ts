@@ -11,7 +11,7 @@ import {
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -93,7 +93,7 @@ async function buildContext(ctx: any) {
   };
 }
 
-app.get("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.get("/:rel{.+}", withSpace({ requireCanRead: true }), async (ctx) => {
   const built = await buildContext(ctx);
   if ("error" in built) {
     return built.error;
@@ -139,7 +139,7 @@ app.get("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
   });
 });
 
-app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.patch("/:rel{.+}", withSpace({ requireCanRead: true }), async (ctx) => {
   const built = await buildContext(ctx);
   if ("error" in built) {
     return built.error;
@@ -194,7 +194,7 @@ app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
 
 app.delete(
   "/:rel{.+}",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   async (ctx) => {
     const built = await buildContext(ctx);
     if ("error" in built) {
@@ -232,7 +232,7 @@ app.delete(
 
 app.post(
   "/:rel{.+}",
-  spaceResource({ requireCanWrite: true }),
+  withSpace({ requireCanWrite: true }),
   validate("json", MoveMountFileRequestBodySchema),
   async (c) => {
     const ctx = await buildContext(c);

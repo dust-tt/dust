@@ -10,7 +10,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ContentSchema } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -22,7 +22,7 @@ const app = new Hono();
 
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
@@ -102,7 +102,7 @@ app.get(
 
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", ContentSchema),
   async (ctx) => {
     const auth = ctx.get("auth");

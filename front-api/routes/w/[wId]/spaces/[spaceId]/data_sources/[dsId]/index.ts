@@ -6,8 +6,8 @@ import {
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import { dataSourceResource } from "@front-api/middleware/data_source_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withDataSource } from "@front-api/middleware/with_data_source";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -27,8 +27,8 @@ const app = new Hono();
 
 app.patch(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceResource({}),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSource({}),
   validate("json", PatchDataSourceWithoutProviderRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -90,8 +90,8 @@ app.patch(
 
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceResource({}),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSource({}),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");

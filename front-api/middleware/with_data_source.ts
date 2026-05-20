@@ -9,7 +9,7 @@ declare module "hono" {
   }
 }
 
-interface DataSourceResourceOptions {
+interface WithDataSourceOptions {
   requireCanAdministrate?: boolean;
   requireCanReadOrAdministrate?: boolean;
   requireCanRead?: boolean;
@@ -19,7 +19,7 @@ interface DataSourceResourceOptions {
 function hasPermission(
   auth: Authenticator,
   ds: DataSourceResource,
-  o: DataSourceResourceOptions
+  o: WithDataSourceOptions
 ): boolean {
   if (o.requireCanAdministrate && !ds.canAdministrate(auth)) {
     return false;
@@ -38,12 +38,12 @@ function hasPermission(
 
 /**
  * Fetches `DataSourceResource` named by `:dsId`, ensures it belongs to the
- * space already on context (set by `spaceResource`), enforces the requested
+ * space already on context (set by `withSpace`), enforces the requested
  * permission, and stashes it on `ctx.var.dataSource`. Mirrors
  * `withDataSourceFromRoute` in `front/lib/api/resource_wrappers.ts`.
  */
-export function dataSourceResource(
-  options: DataSourceResourceOptions
+export function withDataSource(
+  options: WithDataSourceOptions
 ): MiddlewareHandler {
   return async (ctx, next) => {
     const auth = ctx.get("auth");

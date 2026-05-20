@@ -6,8 +6,8 @@ import { PatchDataSourceViewSchema } from "@app/types/api/public/spaces";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -21,8 +21,8 @@ const app = new Hono();
 
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceViewResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const dataSourceView = ctx.get("dataSourceView");
     let connector: ConnectorType | null = null;
@@ -45,8 +45,8 @@ app.get(
 
 app.patch(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceViewResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({ requireCanReadOrAdministrate: true }),
   validate("json", PatchDataSourceViewSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -112,8 +112,8 @@ app.patch(
 
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceViewResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const dataSourceView = ctx.get("dataSourceView");

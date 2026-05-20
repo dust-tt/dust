@@ -6,7 +6,7 @@ import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isString } from "@app/types/shared/utils/general";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import type { Context } from "hono";
@@ -78,7 +78,7 @@ async function loadApp(
   return { appResource, aId };
 }
 
-app.get("/", spaceResource({ requireCanWrite: true }), async (ctx) => {
+app.get("/", withSpace({ requireCanWrite: true }), async (ctx) => {
   const loaded = await loadApp(ctx);
   if (loaded instanceof Response) {
     return loaded;
@@ -92,7 +92,7 @@ app.get("/", spaceResource({ requireCanWrite: true }), async (ctx) => {
 
 app.post(
   "/",
-  spaceResource({ requireCanWrite: true }),
+  withSpace({ requireCanWrite: true }),
   validate("json", PostDatasetRequestBodySchema),
   async (ctx) => {
     const loaded = await loadApp(ctx);
