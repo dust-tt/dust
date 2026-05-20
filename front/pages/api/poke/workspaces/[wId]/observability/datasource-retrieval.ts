@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { WorkspaceDatasourceRetrievalData } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import { fetchWorkspaceDatasourceRetrievalMetrics } from "@app/lib/api/assistant/observability/datasource_retrieval";

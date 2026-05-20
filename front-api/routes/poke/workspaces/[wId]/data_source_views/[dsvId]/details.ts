@@ -1,0 +1,46 @@
+import { dataSourceViewToPokeJSON } from "@app/lib/poke/utils";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { PokeDataSourceViewType } from "@app/types/poke";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { Hono } from "hono";
+
+export type PokeGetDataSourceViewDetails = {
+  dataSourceView: PokeDataSourceViewType;
+};
+
+// Mounted at /api/poke/workspaces/:wId/data_source_views/:dsvId/details.
+const app = new Hono();
+
+app.get("/", async (ctx): HandlerResult<PokeGetDataSourceViewDetails> => {
+  const auth = ctx.get("auth");
+  const dsvId = ctx.req.param("dsvId");
+  if (!dsvId) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid data source view ID.",
+      },
+    });
+  }
+
+  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId, {
+    includeEditedBy: true,
+  });
+
+  if (!dataSourceView) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_view_not_found",
+        message: "Data source view not found.",
+      },
+    });
+  }
+
+  const dataSourceViewJSON = await dataSourceViewToPokeJSON(dataSourceView);
+
+  return ctx.json({ dataSourceView: dataSourceViewJSON });
+});
+
+export default app;
