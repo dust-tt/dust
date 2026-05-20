@@ -52,7 +52,7 @@ describe("sandbox image registry", () => {
   test("bumps the base image for the scoped MITM rollout", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.13",
+      tag: "0.8.14",
     });
   });
 
