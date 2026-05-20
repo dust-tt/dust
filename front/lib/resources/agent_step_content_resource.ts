@@ -33,7 +33,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 export const FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE = 512;
 
@@ -71,10 +71,20 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   ): Promise<ModelId[]> {
     const uniqueAgentMessageIds = [...new Set(agentMessageIds)];
 
+    if (uniqueAgentMessageIds.length === 0) {
+      return [];
+    }
+
     const agentMessages = await AgentMessageModel.findAll({
+      attributes: ["id", "agentConfigurationId"],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        id: { [Op.in]: uniqueAgentMessageIds },
+        id: {
+          [Op.any]: Sequelize.literal("$agentMessageIds::bigint[]"),
+        },
+      },
+      bind: {
+        agentMessageIds: uniqueAgentMessageIds,
       },
     });
 
@@ -196,7 +206,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           where: {
             workspaceId: owner.id,
             agentMessageId: {
-              [Op.in]: chunk,
+              [Op.any]: Sequelize.literal("$agentMessageIds::bigint[]"),
             },
           },
           order: [
@@ -204,6 +214,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
             ["index", "ASC"],
             ["version", "DESC"],
           ],
+          bind: {
+            agentMessageIds: chunk,
+          },
           transaction,
         }),
       {
