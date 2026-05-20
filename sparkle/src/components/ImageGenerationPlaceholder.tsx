@@ -1,5 +1,5 @@
 import { cn } from "@sparkle/lib/utils";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 
 // ─── AnimatedGridPattern ──────────────────────────────────────────────────────
@@ -30,6 +30,7 @@ function AnimatedGridPattern({
   duration = 1.2,
   repeatDelay = 0,
 }: AnimatedGridPatternProps) {
+  const shouldReduceMotion = useReducedMotion();
   const id = useId();
   const containerRef = useRef<SVGSVGElement | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -135,16 +136,22 @@ function AnimatedGridPattern({
           <motion.rect
             key={`${sid}-${iteration}`}
             initial={{ opacity: 0 }}
-            animate={{ opacity: maxOpacity }}
-            transition={{
-              duration,
-              repeat: 1,
-              delay: sid * 0.1,
-              repeatType: "reverse",
-              repeatDelay,
-              ease: [0.645, 0.045, 0.355, 1],
-            }}
-            onAnimationComplete={() => updateSquarePosition(sid)}
+            animate={{ opacity: shouldReduceMotion ? 0 : maxOpacity }}
+            transition={
+              shouldReduceMotion
+                ? { duration: 0 }
+                : {
+                    duration,
+                    repeat: 1,
+                    delay: sid * 0.05,
+                    repeatType: "reverse",
+                    repeatDelay,
+                    ease: [0.645, 0.045, 0.355, 1],
+                  }
+            }
+            onAnimationComplete={
+              shouldReduceMotion ? undefined : () => updateSquarePosition(sid)
+            }
             width={width - 1}
             height={height - 1}
             x={sx * width + 1}
@@ -204,6 +211,7 @@ export function ImageGenerationPlaceholder({
   size = 260,
   className,
 }: ImageGenerationPlaceholderProps) {
+  const shouldReduceMotion = useReducedMotion();
   const [gridOpacity, setGridOpacity] = useState(1);
   const [imgMounted, setImgMounted] = useState(false);
   const [imgOpacity, setImgOpacity] = useState(0);
@@ -214,20 +222,20 @@ export function ImageGenerationPlaceholder({
     if (!src) {
       return;
     }
-    // Fade out grid over 220ms.
     setGridOpacity(0);
-    // Mount image 120ms in so both overlap briefly.
+    // With reduced motion: mount image immediately with no transition overlap.
+    const delay = shouldReduceMotion ? 0 : 120;
     const t = setTimeout(() => {
       setImgMounted(true);
       rafRef.current = requestAnimationFrame(() => setImgOpacity(1));
-    }, 120);
+    }, delay);
     return () => {
       clearTimeout(t);
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
       }
     };
-  }, [src]);
+  }, [src, shouldReduceMotion]);
 
   return (
     <div
@@ -244,7 +252,9 @@ export function ImageGenerationPlaceholder({
           position: "absolute",
           inset: 0,
           opacity: gridOpacity,
-          transition: `opacity 220ms ${EASE_OUT_QUART}`,
+          transition: shouldReduceMotion
+            ? "none"
+            : `opacity 220ms ${EASE_OUT_QUART}`,
           pointerEvents: gridOpacity > 0 ? "auto" : "none",
         }}
       >
@@ -275,7 +285,9 @@ export function ImageGenerationPlaceholder({
             height: "100%",
             objectFit: "cover",
             opacity: imgOpacity,
-            transition: `opacity 350ms ${EASE_OUT_QUART}`,
+            transition: shouldReduceMotion
+              ? "none"
+              : `opacity 350ms ${EASE_OUT_QUART}`,
           }}
         />
       )}
