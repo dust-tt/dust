@@ -21,13 +21,13 @@ const SetConnectorPermissionsRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/permissions.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const dsId = ctx.req.param("dsId") ?? "";
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -36,7 +36,7 @@ app.get("/", async (c) => {
     });
   }
   if (!dataSource.connectorId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "data_source_not_managed",
@@ -45,7 +45,7 @@ app.get("/", async (c) => {
     });
   }
   if (!dataSource.canAdministrate(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
@@ -55,11 +55,11 @@ app.get("/", async (c) => {
     });
   }
 
-  const parentIdParam = c.req.query("parentId");
+  const parentIdParam = ctx.req.query("parentId");
   const parentId =
     typeof parentIdParam === "string" ? parentIdParam : undefined;
 
-  const filterPermissionParam = c.req.query("filterPermission");
+  const filterPermissionParam = ctx.req.query("filterPermission");
   let filterPermission: "read" | "write" | undefined;
   if (filterPermissionParam === "read") {
     filterPermission = "read";
@@ -76,7 +76,7 @@ app.get("/", async (c) => {
       // We let builders get the write permissions of a connector.
       // `write` is used for selection of default slack channel in the workspace agent builder.
       if (!auth.isBuilder()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
@@ -89,7 +89,7 @@ app.get("/", async (c) => {
     case undefined:
       // Only admins can browse "all" the resources of a connector.
       if (!auth.isAdmin()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
@@ -103,9 +103,9 @@ app.get("/", async (c) => {
       assertNever(filterPermission);
   }
 
-  const viewType = c.req.query("viewType");
+  const viewType = ctx.req.query("viewType");
   if (!viewType || !isValidContentNodesViewType(viewType)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -127,7 +127,7 @@ app.get("/", async (c) => {
 
   if (permissionsRes.isErr()) {
     if (permissionsRes.error.type === "connector_rate_limit_error") {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 429,
         api_error: {
           type: "rate_limit_error",
@@ -137,7 +137,7 @@ app.get("/", async (c) => {
       });
     }
     if (permissionsRes.error.type === "connector_authorization_error") {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 401,
         api_error: {
           type: "data_source_auth_error",
@@ -146,7 +146,7 @@ app.get("/", async (c) => {
         },
       });
     }
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -156,19 +156,19 @@ app.get("/", async (c) => {
     });
   }
 
-  return c.json({ resources: permissionsRes.value.resources });
+  return ctx.json({ resources: permissionsRes.value.resources });
 });
 
 app.post(
   "/",
   validate("json", SetConnectorPermissionsRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const dsId = c.req.param("dsId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dsId = ctx.req.param("dsId") ?? "";
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     if (!dataSource) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_not_found",
@@ -177,7 +177,7 @@ app.post(
       });
     }
     if (!dataSource.connectorId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "data_source_not_managed",
@@ -186,7 +186,7 @@ app.post(
       });
     }
     if (!dataSource.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -196,7 +196,7 @@ app.post(
       });
     }
 
-    const { resources } = c.req.valid("json");
+    const { resources } = ctx.req.valid("json");
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
@@ -211,7 +211,7 @@ app.post(
     });
 
     if (connectorsRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -221,7 +221,7 @@ app.post(
       });
     }
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

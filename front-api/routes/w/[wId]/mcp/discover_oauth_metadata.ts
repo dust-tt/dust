@@ -34,14 +34,14 @@ const app = new Hono();
 //
 // Note: callers should not invoke this frequently — the remote server is
 // likely to rate-limit.
-app.post("/", validate("json", PostBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const { url, customHeaders } = c.req.valid("json");
+app.post("/", validate("json", PostBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { url, customHeaders } = ctx.req.valid("json");
 
   try {
     new URL(url);
   } catch {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -62,7 +62,7 @@ app.post("/", validate("json", PostBodySchema), async (c) => {
   });
 
   if (directConnectRes.isOk()) {
-    return c.json({ oauthRequired: false });
+    return ctx.json({ oauthRequired: false });
   }
 
   // Direct connect failed — try discovery.
@@ -77,13 +77,13 @@ app.post("/", validate("json", PostBodySchema), async (c) => {
   });
 
   if (discoveryRes.isOk()) {
-    return c.json({
+    return ctx.json({
       oauthRequired: true,
       connectionMetadata: discoveryRes.value,
     });
   }
 
-  return apiError(c, {
+  return apiError(ctx, {
     status_code: 500,
     api_error: {
       type: "internal_server_error",

@@ -14,9 +14,9 @@ export type GetActionsResponseBody = {
 // Mounted at /api/w/:wId/builder/assistants/:aId/actions.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   try {
     const agentConfiguration = await getAgentConfiguration(auth, {
@@ -24,7 +24,7 @@ app.get("/", async (c) => {
       variant: "full",
     });
     if (!agentConfiguration) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
@@ -50,9 +50,9 @@ app.get("/", async (c) => {
       throw new Error("Invalid agent scope");
     }
 
-    return c.json({ actions });
+    return ctx.json({ actions });
   } catch {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",

@@ -9,13 +9,13 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/oauth-metadata.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const dsId = ctx.req.param("dsId") ?? "";
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -25,7 +25,7 @@ app.get("/", async (c) => {
   }
 
   if (!dataSource.connectorId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "data_source_not_managed",
@@ -35,7 +35,7 @@ app.get("/", async (c) => {
   }
 
   if (!dataSource.canAdministrate(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
@@ -61,7 +61,7 @@ app.get("/", async (c) => {
       },
       "Failed to fetch connector details"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -72,7 +72,7 @@ app.get("/", async (c) => {
 
   const connectionId = connectorRes.value.connectionId;
   if (!connectionId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "connector_oauth_connection_not_found",
@@ -92,7 +92,7 @@ app.get("/", async (c) => {
       },
       "Failed to fetch OAuth connection metadata"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -108,7 +108,7 @@ app.get("/", async (c) => {
   delete metadata.client_secret;
   delete metadata.refresh_token;
 
-  return c.json({ metadata });
+  return ctx.json({ metadata });
 });
 
 export default app;

@@ -41,12 +41,12 @@ const app = new Hono();
 app.patch(
   "/",
   validate("json", PatchSkillReinforcementBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const sId = c.req.param("sId");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const sId = ctx.req.param("sId");
 
     if (!isString(sId)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -57,7 +57,7 @@ app.patch(
 
     const skill = await SkillResource.fetchById(auth, sId);
     if (!skill) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "skill_not_found",
@@ -70,14 +70,14 @@ app.patch(
       reinforcement,
       selfImprovementLock,
       selfImprovementCostsCapMicroUsd,
-    } = c.req.valid("json");
+    } = ctx.req.valid("json");
 
     // The lock and per-skill cap are admin-only controls.
     const requiresAdmin =
       selfImprovementLock !== undefined ||
       selfImprovementCostsCapMicroUsd !== undefined;
     if (requiresAdmin && !auth.isAdmin()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -91,7 +91,7 @@ app.patch(
     // only admins can flip it.
     if (reinforcement !== undefined) {
       if (!skill.canWrite(auth)) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "app_auth_error",
@@ -100,7 +100,7 @@ app.patch(
         });
       }
       if (skill.selfImprovementLock && !auth.isAdmin()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
@@ -136,7 +136,7 @@ app.patch(
       );
     }
 
-    return c.json({ skill: skill.toJSON(auth) });
+    return ctx.json({ skill: skill.toJSON(auth) });
   }
 );
 

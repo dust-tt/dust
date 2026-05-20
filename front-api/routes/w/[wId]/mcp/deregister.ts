@@ -17,13 +17,13 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostMCPDeregisterRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { serverId } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { serverId } = ctx.req.valid("json");
 
     await deregisterMCPServer(auth, { serverId });
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

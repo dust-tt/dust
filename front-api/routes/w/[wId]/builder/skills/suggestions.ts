@@ -21,13 +21,13 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostSkillSuggestionsRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const inputs = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const inputs = ctx.req.valid("json");
 
     const suggestionRes = await getSkillDescriptionSuggestion(auth, inputs);
     if (suggestionRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -36,7 +36,7 @@ app.post(
       });
     }
 
-    return c.json({ suggestion: suggestionRes.value });
+    return ctx.json({ suggestion: suggestionRes.value });
   }
 );
 

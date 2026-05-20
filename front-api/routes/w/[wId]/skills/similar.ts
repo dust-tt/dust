@@ -11,16 +11,16 @@ export type GetSimilarSkillsResponseBody = {
 // Mounted at /api/w/:wId/skills/similar.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
-  const body = await c.req.json().catch(() => null);
+  const body = await ctx.req.json().catch(() => null);
   const naturalDescription = body?.naturalDescription;
   const excludeSkillId = body?.excludeSkillId;
 
   if (!isString(naturalDescription)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -30,7 +30,7 @@ app.post("/", async (c) => {
   }
 
   if (excludeSkillId !== undefined && !isString(excludeSkillId)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -49,7 +49,7 @@ app.post("/", async (c) => {
       { error: result.error, workspaceId: owner.sId },
       "Error fetching similar skills"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -77,7 +77,7 @@ app.post("/", async (c) => {
     );
   }
 
-  return c.json(result.value);
+  return ctx.json(result.value);
 });
 
 export default app;

@@ -9,11 +9,11 @@ export type GetWorkspaceFeatureFlagsResponseType = {
 // Mounted at /api/w/:wId/feature-flags.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const feature_flags = await getFeatureFlags(auth);
   const body: GetWorkspaceFeatureFlagsResponseType = { feature_flags };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

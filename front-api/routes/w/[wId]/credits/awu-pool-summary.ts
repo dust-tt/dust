@@ -28,11 +28,11 @@ export type AwuPoolSummaryResponseBody = {
 // Mounted at /api/w/:wId/credits/awu-pool-summary.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -46,7 +46,7 @@ app.get("/", async (c) => {
   const subscription = auth.subscription();
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId || !subscription?.metronomeContractId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -62,7 +62,7 @@ app.get("/", async (c) => {
   ]);
 
   if (balancesResult.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -71,7 +71,7 @@ app.get("/", async (c) => {
     });
   }
   if (invoicesResult.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -101,7 +101,7 @@ app.get("/", async (c) => {
       consumedByProgrammaticCredits: 0,
       resetDate: "",
     };
-    return c.json(emptyBody);
+    return ctx.json(emptyBody);
   }
 
   const resetDate = ceilToMidnightUTC(
@@ -165,7 +165,7 @@ app.get("/", async (c) => {
   ]);
 
   if (usageResult.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -202,7 +202,7 @@ app.get("/", async (c) => {
     consumedByProgrammaticCredits,
     resetDate,
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

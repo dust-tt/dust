@@ -10,11 +10,11 @@ export type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
 // Mounted at /api/v1/w/:wId/verified_domains.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isSystemKey()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
@@ -28,7 +28,7 @@ app.get("/", async (c) => {
 
   if (!workspaceResource) {
     // This should not happen as the workspace is fetched from the auth.
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -41,7 +41,7 @@ app.get("/", async (c) => {
   const body: GetWorkspaceVerifiedDomainsResponseType = {
     verified_domains: verifiedDomains,
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

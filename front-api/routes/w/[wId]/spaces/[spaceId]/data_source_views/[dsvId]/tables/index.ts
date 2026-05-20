@@ -15,11 +15,11 @@ app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   dataSourceViewResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const dataSourceView = c.get("dataSourceView");
-    const paginationRes = getCursorPaginationParams(c.req.query());
+  async (ctx) => {
+    const dataSourceView = ctx.get("dataSourceView");
+    const paginationRes = getCursorPaginationParams(ctx.req.query());
     if (paginationRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_pagination_parameters",
@@ -36,7 +36,7 @@ app.get(
         }
       );
     if (contentNodes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -44,7 +44,7 @@ app.get(
         },
       });
     }
-    return c.json({
+    return ctx.json({
       tables: contentNodes.value.nodes,
       nextPageCursor: contentNodes.value.nextPageCursor,
     });

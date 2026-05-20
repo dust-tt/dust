@@ -17,11 +17,11 @@ app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   dataSourceViewResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const dataSourceView = c.get("dataSourceView");
-    const query = c.req.query("query");
+  async (ctx) => {
+    const dataSourceView = ctx.get("dataSourceView");
+    const query = ctx.req.query("query");
     if (!query || query.length < MIN_SEARCH_QUERY_SIZE) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -30,9 +30,9 @@ app.get(
       });
     }
 
-    const paginationRes = getCursorPaginationParams(c.req.query());
+    const paginationRes = getCursorPaginationParams(ctx.req.query());
     if (paginationRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_pagination_parameters",
@@ -59,7 +59,7 @@ app.get(
       },
     });
     if (searchRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -71,7 +71,7 @@ app.get(
       ...getContentNodeFromCoreNode(node, "table"),
       dataSourceView: dataSourceView.toJSON(),
     }));
-    return c.json({
+    return ctx.json({
       tables,
       nextPageCursor: searchRes.value.next_page_cursor,
       warningCode: searchRes.value.warning_code,

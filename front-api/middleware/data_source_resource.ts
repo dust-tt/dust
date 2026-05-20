@@ -39,18 +39,18 @@ function hasPermission(
 /**
  * Fetches `DataSourceResource` named by `:dsId`, ensures it belongs to the
  * space already on context (set by `spaceResource`), enforces the requested
- * permission, and stashes it on `c.var.dataSource`. Mirrors
+ * permission, and stashes it on `ctx.var.dataSource`. Mirrors
  * `withDataSourceFromRoute` in `front/lib/api/resource_wrappers.ts`.
  */
 export function dataSourceResource(
   options: DataSourceResourceOptions
 ): MiddlewareHandler {
-  return async (c, next) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const dsId = c.req.param("dsId");
+  return async (ctx, next) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const dsId = ctx.req.param("dsId");
     if (!dsId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -65,7 +65,7 @@ export function dataSourceResource(
       space.isConversations() ||
       !hasPermission(auth, ds, options)
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_not_found",
@@ -73,7 +73,7 @@ export function dataSourceResource(
         },
       });
     }
-    c.set("dataSource", ds);
+    ctx.set("dataSource", ds);
     await next();
   };
 }

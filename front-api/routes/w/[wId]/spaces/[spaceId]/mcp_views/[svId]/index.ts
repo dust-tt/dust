@@ -10,13 +10,13 @@ const app = new Hono();
 app.delete(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const serverViewId = c.req.param("svId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const serverViewId = ctx.req.param("svId") ?? "";
 
     if (!auth.isUser()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 401,
         api_error: {
           type: "mcp_auth_error",
@@ -31,7 +31,7 @@ app.delete(
       serverViewId
     );
     if (!mcpServerView || mcpServerView.space.id !== space.id) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_not_found",
@@ -42,7 +42,7 @@ app.delete(
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -53,7 +53,7 @@ app.delete(
     }
 
     if (!auth.isAdmin()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "mcp_auth_error",
@@ -64,7 +64,7 @@ app.delete(
 
     await mcpServerView.delete(auth, { hardDelete: true });
 
-    return c.json({ deleted: true });
+    return ctx.json({ deleted: true });
   }
 );
 

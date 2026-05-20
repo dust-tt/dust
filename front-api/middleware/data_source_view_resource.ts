@@ -39,19 +39,19 @@ function hasPermission(
 /**
  * Fetches `DataSourceViewResource` named by `:dsvId`, ensures it belongs to
  * the space already on context (set by `spaceResource`), enforces the
- * requested permission, and stashes it on `c.var.dataSourceView`.
+ * requested permission, and stashes it on `ctx.var.dataSourceView`.
  * Mirrors `withDataSourceViewFromRoute` in
  * `front/lib/api/resource_wrappers.ts`.
  */
 export function dataSourceViewResource(
   options: DataSourceViewResourceOptions
 ): MiddlewareHandler {
-  return async (c, next) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const dsvId = c.req.param("dsvId");
+  return async (ctx, next) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const dsvId = ctx.req.param("dsvId");
     if (!dsvId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -66,7 +66,7 @@ export function dataSourceViewResource(
       space.isConversations() ||
       !hasPermission(auth, view, options)
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_view_not_found",
@@ -74,7 +74,7 @@ export function dataSourceViewResource(
         },
       });
     }
-    c.set("dataSourceView", view);
+    ctx.set("dataSourceView", view);
     await next();
   };
 }

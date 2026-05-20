@@ -21,7 +21,7 @@ const app = new Hono();
 // from the path params and enforces read access on the app. Returns either
 // the loaded resources (with the validated `aId` and `name` params) or the
 // `Response` to short-circuit the handler with.
-async function loadAppAndDataset(c: Context): Promise<
+async function loadAppAndDataset(ctx: Context): Promise<
   | {
       appResource: AppResource;
       dataset: DatasetModel;
@@ -30,11 +30,11 @@ async function loadAppAndDataset(c: Context): Promise<
     }
   | Response
 > {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const { aId, name } = c.req.param();
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const { aId, name } = ctx.req.param();
   if (!isString(aId) || !isString(name)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -44,7 +44,7 @@ async function loadAppAndDataset(c: Context): Promise<
   }
   const owner = auth.workspace();
   if (!owner) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
@@ -55,14 +55,14 @@ async function loadAppAndDataset(c: Context): Promise<
 
   const appResource = await AppResource.fetchById(auth, aId);
   if (!appResource || appResource.space.sId !== space.sId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "app_not_found", message: "The app was not found." },
     });
   }
 
   if (!appResource.canRead(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -79,7 +79,7 @@ async function loadAppAndDataset(c: Context): Promise<
     },
   });
   if (!dataset) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "dataset_not_found",
@@ -92,19 +92,19 @@ async function loadAppAndDataset(c: Context): Promise<
   return { appResource, dataset, aId, name };
 }
 
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const loaded = await loadAppAndDataset(c);
+app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const loaded = await loadAppAndDataset(ctx);
   if (loaded instanceof Response) {
     return loaded;
   }
   const { appResource, dataset } = loaded;
-  const auth = c.get("auth");
+  const auth = ctx.get("auth");
 
-  const showData = c.req.query("data") === "true";
+  const showData = ctx.req.query("data") === "true";
   const datasetHash = showData
     ? await getDatasetHash(auth, appResource, dataset.name, "latest")
     : null;
-  return c.json({
+  return ctx.json({
     dataset: {
       name: dataset.name,
       description: dataset.description,
@@ -118,16 +118,16 @@ app.post(
   "/",
   spaceResource({ requireCanRead: true }),
   validate("json", PostDatasetRequestBodySchema),
-  async (c) => {
-    const loaded = await loadAppAndDataset(c);
+  async (ctx) => {
+    const loaded = await loadAppAndDataset(ctx);
     if (loaded instanceof Response) {
       return loaded;
     }
     const { appResource, dataset, name } = loaded;
-    const auth = c.get("auth");
+    const auth = ctx.get("auth");
 
     if (!appResource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -137,14 +137,14 @@ app.post(
       });
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
 
     // Check name validity.
     if (
       !body.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
       body.dataset.name.length === 0
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -155,7 +155,7 @@ app.post(
       });
     }
     if (name !== body.dataset.name) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -172,7 +172,7 @@ app.post(
         schema: body.schema,
       });
     } catch {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -198,7 +198,7 @@ app.post(
       data,
     });
     if (d.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -217,7 +217,7 @@ app.post(
       schema: body.schema,
     });
 
-    return c.json({
+    return ctx.json({
       dataset: {
         name: body.dataset.name,
         description,
@@ -227,17 +227,17 @@ app.post(
   }
 );
 
-app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const loaded = await loadAppAndDataset(c);
+app.delete("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const loaded = await loadAppAndDataset(ctx);
   if (loaded instanceof Response) {
     return loaded;
   }
   const { appResource, dataset } = loaded;
-  const auth = c.get("auth");
+  const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
   if (!appResource.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -254,7 +254,7 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
     },
   });
 
-  return c.json({
+  return ctx.json({
     dataset: {
       name: dataset.name,
       description: dataset.description,

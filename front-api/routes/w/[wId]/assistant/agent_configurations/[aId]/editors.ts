@@ -29,16 +29,16 @@ const PatchAgentEditorsRequestBodySchema = z
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/editors.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const agent = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!agent) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -54,7 +54,7 @@ app.get("/", async (c) => {
   if (editorGroupRes.isErr()) {
     switch (editorGroupRes.error.code) {
       case "unauthorized":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 401,
           api_error: {
             type: "workspace_auth_error",
@@ -62,7 +62,7 @@ app.get("/", async (c) => {
           },
         });
       case "invalid_id":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -70,7 +70,7 @@ app.get("/", async (c) => {
           },
         });
       case "group_not_found":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 404,
           api_error: {
             type: "group_not_found",
@@ -78,7 +78,7 @@ app.get("/", async (c) => {
           },
         });
       case "internal_error":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -92,7 +92,7 @@ app.get("/", async (c) => {
 
   const editorGroup = editorGroupRes.value;
   if (!editorGroup.canRead(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "agent_group_permission_error",
@@ -102,22 +102,22 @@ app.get("/", async (c) => {
   }
 
   const members = await editorGroup.getActiveMembers(auth);
-  return c.json({ editors: members.map((m) => m.toJSON()) });
+  return ctx.json({ editors: members.map((m) => m.toJSON()) });
 });
 
 app.patch(
   "/",
   validate("json", PatchAgentEditorsRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const aId = c.req.param("aId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const aId = ctx.req.param("aId") ?? "";
 
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
       variant: "light",
     });
     if (!agent) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
@@ -133,7 +133,7 @@ app.patch(
     if (editorGroupRes.isErr()) {
       switch (editorGroupRes.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "workspace_auth_error",
@@ -141,7 +141,7 @@ app.patch(
             },
           });
         case "invalid_id":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -149,7 +149,7 @@ app.patch(
             },
           });
         case "group_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "group_not_found",
@@ -157,7 +157,7 @@ app.patch(
             },
           });
         case "internal_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
@@ -171,7 +171,7 @@ app.patch(
 
     const editorGroup = editorGroupRes.value;
     if (!editorGroup.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "agent_group_permission_error",
@@ -181,7 +181,7 @@ app.patch(
       });
     }
 
-    const { addEditorIds = [], removeEditorIds = [] } = c.req.valid("json");
+    const { addEditorIds = [], removeEditorIds = [] } = ctx.req.valid("json");
 
     const usersToAdd = await UserResource.fetchByIds(addEditorIds);
     const usersToRemove = await UserResource.fetchByIds(removeEditorIds);
@@ -199,7 +199,7 @@ app.patch(
       const missingIds = [...missingAddIds, ...missingRemoveIds];
 
       if (missingIds.length > 0) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 404,
           api_error: {
             type: "user_not_found",
@@ -218,7 +218,7 @@ app.patch(
     if (updateRes.isErr()) {
       switch (updateRes.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "workspace_auth_error",
@@ -226,7 +226,7 @@ app.patch(
             },
           });
         case "invalid_id":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -234,7 +234,7 @@ app.patch(
             },
           });
         case "group_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "group_not_found",
@@ -242,7 +242,7 @@ app.patch(
             },
           });
         case "user_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "user_not_found",
@@ -250,7 +250,7 @@ app.patch(
             },
           });
         case "user_not_member":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 409,
             api_error: {
               type: "invalid_request_error",
@@ -258,7 +258,7 @@ app.patch(
             },
           });
         case "group_requirements_not_met":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
@@ -267,7 +267,7 @@ app.patch(
             },
           });
         case "system_or_global_group":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
@@ -275,7 +275,7 @@ app.patch(
             },
           });
         case "user_already_member":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 409,
             api_error: {
               type: "invalid_request_error",
@@ -284,7 +284,7 @@ app.patch(
             },
           });
         case "internal_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
@@ -297,7 +297,7 @@ app.patch(
     }
 
     const updatedMembers = await editorGroup.getActiveMembers(auth);
-    return c.json({ editors: updatedMembers.map((m) => m.toJSON()) });
+    return ctx.json({ editors: updatedMembers.map((m) => m.toJSON()) });
   }
 );
 

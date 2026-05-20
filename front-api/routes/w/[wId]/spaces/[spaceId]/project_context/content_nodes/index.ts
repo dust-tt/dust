@@ -24,13 +24,13 @@ app.delete(
   "/",
   spaceResource({ requireCanRead: true }),
   validate("json", DeleteContentNodeBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const { items } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { items } = ctx.req.valid("json");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -40,7 +40,7 @@ app.delete(
       });
     }
     if (!space.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -54,7 +54,7 @@ app.delete(
       nodes: items,
     });
     if (r.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -62,7 +62,7 @@ app.delete(
         },
       });
     }
-    return c.json({});
+    return ctx.json({});
   }
 );
 

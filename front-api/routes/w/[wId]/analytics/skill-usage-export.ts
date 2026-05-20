@@ -25,11 +25,11 @@ interface SkillUsageExportRow {
 // Mounted at /api/w/:wId/analytics/skill-usage-export.
 const app = new Hono();
 
-app.get("/", validate("query", QuerySchema), async (c) => {
-  const auth = c.get("auth");
+app.get("/", validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -38,7 +38,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     });
   }
 
-  const { days } = c.req.valid("query");
+  const { days } = ctx.req.valid("query");
   const owner = auth.getNonNullableWorkspace();
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
@@ -47,7 +47,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
 
   const skillsResult = await fetchAvailableSkills(baseQuery);
   if (skillsResult.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -65,7 +65,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
       skill.skillName
     );
     if (usageResult.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -101,12 +101,12 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   const csvData = rows.map((row) => headers.map((h) => row[h]));
   const csv = stringify([headers, ...csvData], { header: false });
 
-  c.header("Content-Type", "text/csv");
-  c.header(
+  ctx.header("Content-Type", "text/csv");
+  ctx.header(
     "Content-Disposition",
     `attachment; filename="dust_skill_usage_last_${days}_days.csv"`
   );
-  return c.body(csv);
+  return ctx.body(csv);
 });
 
 export default app;

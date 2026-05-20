@@ -9,16 +9,16 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/restore.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!agentConfiguration || (!agentConfiguration.canEdit && !auth.isAdmin())) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -35,7 +35,7 @@ app.post("/", async (c) => {
   if (restoredResult.isErr()) {
     switch (restoredResult.error.code) {
       case "name_conflict":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -43,7 +43,7 @@ app.post("/", async (c) => {
           },
         });
       case "unauthorized":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "app_auth_error",
@@ -51,7 +51,7 @@ app.post("/", async (c) => {
           },
         });
       case "internal_error":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -64,7 +64,7 @@ app.post("/", async (c) => {
   }
 
   if (!restoredResult.value.restored) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -73,7 +73,7 @@ app.post("/", async (c) => {
     });
   }
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

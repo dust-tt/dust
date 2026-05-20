@@ -7,14 +7,14 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/webhook_requests.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
-  const tId = c.req.param("tId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
+  const tId = ctx.req.param("tId") ?? "";
 
   const trigger = await TriggerResource.fetchById(auth, tId);
   if (!trigger) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "trigger_not_found",
@@ -24,7 +24,7 @@ app.get("/", async (c) => {
   }
 
   if (trigger.agentConfigurationId !== aId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -39,7 +39,7 @@ app.get("/", async (c) => {
       trigger: trigger.toJSON(),
       limit: 15,
     });
-    return c.json({ requests: r });
+    return ctx.json({ requests: r });
   } catch (error) {
     logger.error(
       {
@@ -49,7 +49,7 @@ app.get("/", async (c) => {
       },
       "Error fetching webhook requests"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",

@@ -6,11 +6,11 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/data_sources/bot-data-sources.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -30,7 +30,7 @@ app.get("/", async (c) => {
     DataSourceResource.listByConnectorProvider(auth, "discord_bot"),
   ]);
 
-  return c.json({
+  return ctx.json({
     slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
     microsoftBotDataSource: microsoftBotDataSource?.toJSON() ?? null,
     discordBotDataSource: discordBotDataSource?.toJSON() ?? null,

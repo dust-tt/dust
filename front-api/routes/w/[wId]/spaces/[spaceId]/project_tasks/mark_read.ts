@@ -6,12 +6,12 @@ import { Hono } from "hono";
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/mark_read.
 const app = new Hono();
 
-app.post("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
+app.post("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
 
   if (!space.isProject()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -25,7 +25,7 @@ app.post("/", spaceResource({ requireCanRead: true }), async (c) => {
     lastReadAt: new Date(),
   });
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

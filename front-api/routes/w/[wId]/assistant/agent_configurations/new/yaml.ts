@@ -14,9 +14,9 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostAgentConfigurationFromYAMLRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { yamlContent } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { yamlContent } = ctx.req.valid("json");
 
     const result = await importAgentConfigurationFromYAMLString(
       auth,
@@ -24,11 +24,11 @@ app.post(
     );
 
     if (result.isErr()) {
-      return apiError(c, result.error);
+      return apiError(ctx, result.error);
     }
 
     const { agentConfiguration, skippedActions } = result.value;
-    return c.json({ agentConfiguration, skippedActions });
+    return ctx.json({ agentConfiguration, skippedActions });
   }
 );
 

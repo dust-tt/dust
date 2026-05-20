@@ -16,13 +16,13 @@ declare module "hono" {
 // inherits the `skill` context variable.
 const app = new Hono();
 
-app.use("*", async (c, next) => {
-  const auth = c.get("auth");
-  const sId = c.req.param("sId") ?? "";
+app.use("*", async (ctx, next) => {
+  const auth = ctx.get("auth");
+  const sId = ctx.req.param("sId") ?? "";
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "skill_not_found",
@@ -32,7 +32,7 @@ app.use("*", async (c, next) => {
   }
 
   if (!skill.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "agent_group_permission_error",
@@ -42,7 +42,7 @@ app.use("*", async (c, next) => {
     });
   }
 
-  c.set("skill", skill);
+  ctx.set("skill", skill);
   await next();
 });
 

@@ -16,13 +16,13 @@ app.patch(
   spaceResource({ requireCanRead: true }),
   dataSourceResource({ requireCanRead: true }),
   validate("json", PatchDataSourceTableRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
-    const tableId = c.req.param("tableId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
+    const tableId = ctx.req.param("tableId") ?? "";
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -32,7 +32,7 @@ app.patch(
     }
 
     if (dataSource.connectorId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -41,7 +41,7 @@ app.patch(
       });
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
     const upsertRes = await upsertTable({
       auth,
       params: {
@@ -52,7 +52,7 @@ app.patch(
       dataSource,
     });
     if (upsertRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -61,7 +61,7 @@ app.patch(
       });
     }
 
-    return c.json({ table: upsertRes.value?.table });
+    return ctx.json({ table: upsertRes.value?.table });
   }
 );
 
@@ -69,13 +69,13 @@ app.delete(
   "/",
   spaceResource({ requireCanRead: true }),
   dataSourceResource({ requireCanRead: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
-    const tableId = c.req.param("tableId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
+    const tableId = ctx.req.param("tableId") ?? "";
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -92,7 +92,7 @@ app.delete(
     if (delRes.isErr()) {
       switch (delRes.error.type) {
         case "not_found_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: delRes.error.notFoundError.type,
@@ -101,7 +101,7 @@ app.delete(
           });
         case "invalid_request_error":
         case "internal_server_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
@@ -113,7 +113,7 @@ app.delete(
       }
     }
 
-    return c.body(null, 200);
+    return ctx.body(null, 200);
   }
 );
 

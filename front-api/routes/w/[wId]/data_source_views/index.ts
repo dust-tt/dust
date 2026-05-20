@@ -6,10 +6,10 @@ import tags from "./tags";
 // Mounted under /api/w/:wId/data_source_views.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
-  return c.json({
+  return ctx.json({
     dataSourceViews: dataSourceViews.map((dsv) => dsv.toJSON()),
   });
 });

@@ -42,13 +42,13 @@ export interface PatchSkillEditorsResponseBody {
 // resources or a Response describing the failure — keeps the validation
 // prelude in one place per [API10].
 async function loadSkillAndEditorGroup(
-  c: Context
+  ctx: Context
 ): Promise<{ skill: SkillResource; editorGroup: GroupResource } | Response> {
-  const auth = c.get("auth");
-  const sId = c.req.param("sId");
+  const auth = ctx.get("auth");
+  const sId = ctx.req.param("sId");
 
   if (!isString(sId)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -59,7 +59,7 @@ async function loadSkillAndEditorGroup(
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "skill_not_found",
@@ -70,7 +70,7 @@ async function loadSkillAndEditorGroup(
 
   const { editorGroup } = skill;
   if (!editorGroup) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -85,10 +85,10 @@ async function loadSkillAndEditorGroup(
 // Mounted at /api/w/:wId/skills/:sId/editors.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
-  const loaded = await loadSkillAndEditorGroup(c);
+  const loaded = await loadSkillAndEditorGroup(ctx);
   if (loaded instanceof Response) {
     return loaded;
   }
@@ -97,23 +97,23 @@ app.get("/", async (c) => {
   const members = await editorGroup.getActiveMembers(auth);
   const memberUsers = members.map((m) => m.toJSON());
 
-  return c.json({ editors: memberUsers });
+  return ctx.json({ editors: memberUsers });
 });
 
 app.patch(
   "/",
   validate("json", PatchSkillEditorsRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
+  async (ctx) => {
+    const auth = ctx.get("auth");
 
-    const loaded = await loadSkillAndEditorGroup(c);
+    const loaded = await loadSkillAndEditorGroup(ctx);
     if (loaded instanceof Response) {
       return loaded;
     }
     const { skill: skillRes, editorGroup } = loaded;
 
     if (!skillRes.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -122,7 +122,7 @@ app.patch(
       });
     }
 
-    const { addEditorIds = [], removeEditorIds = [] } = c.req.valid("json");
+    const { addEditorIds = [], removeEditorIds = [] } = ctx.req.valid("json");
 
     const usersToAddResources = await UserResource.fetchByIds(addEditorIds);
     const usersToRemoveResources =
@@ -144,7 +144,7 @@ app.patch(
       const missingIds = [...missingAddIds, ...missingRemoveIds];
 
       if (missingIds.length > 0) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 404,
           api_error: {
             type: "user_not_found",
@@ -156,7 +156,7 @@ app.patch(
 
     // Check authorization for modifying group members
     if (!editorGroup.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 401,
         api_error: {
           type: "workspace_auth_error",
@@ -171,7 +171,7 @@ app.patch(
     if (addRes.isErr()) {
       switch (addRes.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "workspace_auth_error",
@@ -180,7 +180,7 @@ app.patch(
             },
           });
         case "group_requirements_not_met":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
@@ -188,7 +188,7 @@ app.patch(
             },
           });
         case "system_or_global_group":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
@@ -197,7 +197,7 @@ app.patch(
             },
           });
         case "user_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "user_not_found",
@@ -205,7 +205,7 @@ app.patch(
             },
           });
         case "user_already_member":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 409,
             api_error: {
               type: "invalid_request_error",
@@ -224,7 +224,7 @@ app.patch(
     if (removeRes.isErr()) {
       switch (removeRes.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "workspace_auth_error",
@@ -233,7 +233,7 @@ app.patch(
             },
           });
         case "system_or_global_group":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
@@ -242,7 +242,7 @@ app.patch(
             },
           });
         case "user_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "user_not_found",
@@ -250,7 +250,7 @@ app.patch(
             },
           });
         case "user_not_member":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 409,
             api_error: {
               type: "invalid_request_error",
@@ -264,7 +264,7 @@ app.patch(
 
     const updatedMembers = await editorGroup.getActiveMembers(auth);
 
-    return c.json({
+    return ctx.json({
       editors: updatedMembers.map((m) => m.toJSON()),
     });
   }

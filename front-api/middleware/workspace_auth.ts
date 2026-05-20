@@ -18,10 +18,10 @@ declare module "hono" {
  * `front/lib/api/auth_wrappers.ts`. Apply to any route under
  * `/api/w/:wId/...`.
  */
-export const workspaceAuth: MiddlewareHandler = async (c, next) => {
-  const wId = c.req.param("wId");
+export const workspaceAuth: MiddlewareHandler = async (ctx, next) => {
+  const wId = ctx.req.param("wId");
   if (!wId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
@@ -30,7 +30,7 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
     });
   }
 
-  const sessionResult = await resolveSession(c);
+  const sessionResult = await resolveSession(ctx);
   if (sessionResult instanceof Response) {
     return sessionResult;
   }
@@ -38,7 +38,7 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
   const auth = await Authenticator.fromSession(sessionResult, wId);
 
   const headers: Record<string, string | string[] | undefined> = {};
-  c.req.raw.headers.forEach((value, key) => {
+  ctx.req.raw.headers.forEach((value, key) => {
     headers[key] = value;
   });
   const ip = getClientIp({ headers });
@@ -49,7 +49,7 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   if (!owner || !plan) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
@@ -59,7 +59,7 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
   }
 
   if (!auth.isUser()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "workspace_auth_error",
@@ -68,6 +68,6 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
     });
   }
 
-  c.set("auth", auth);
+  ctx.set("auth", auth);
   await next();
 };

@@ -13,11 +13,11 @@ export type PostTrialVerifyResponseBody = {
 // Mounted at /api/w/:wId/trial/start.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -29,7 +29,7 @@ app.post("/", async (c) => {
 
   const isValidForTrial = await isWorkspaceEligibleForTrial(auth);
   if (!isValidForTrial) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -41,7 +41,7 @@ app.post("/", async (c) => {
   const hasVerifiedPhone =
     await WorkspaceVerificationAttemptResource.hasVerifiedPhone(auth);
   if (!hasVerifiedPhone) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -53,7 +53,7 @@ app.post("/", async (c) => {
   await activatePhoneTrial(auth);
 
   const body: PostTrialVerifyResponseBody = { success: true };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

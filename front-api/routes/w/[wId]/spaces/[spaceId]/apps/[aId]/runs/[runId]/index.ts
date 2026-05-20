@@ -12,18 +12,18 @@ import status from "./status";
 const app = new Hono();
 
 // GET / — get a run.
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
+app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
   // Keep the dynamic import: `@app/lib/api/run` is loaded lazily to avoid
   // pulling its dependency tree at module init time.
   const { getRun } = await import("@app/lib/api/run");
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const aId = c.req.param("aId") ?? "";
-  const runId = c.req.param("runId") ?? "";
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const aId = ctx.req.param("aId") ?? "";
+  const runId = ctx.req.param("runId") ?? "";
 
   const found = await AppResource.fetchById(auth, aId);
   if (!found || !found.canRead(auth) || found.space.sId !== space.sId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
@@ -33,12 +33,12 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
   }
   const result = await getRun(auth, found.toJSON() as AppType, runId);
   if (!result) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "run_not_found", message: "The run was not found" },
     });
   }
-  return c.json({ run: result.run, spec: result.spec });
+  return ctx.json({ run: result.run, spec: result.spec });
 });
 
 app.route("/cancel", cancel);

@@ -19,11 +19,11 @@ const GetCheckoutStatusQuerySchema = z.object({
 // for the Stripe-only checkout flow (PaymentProcessingPage).
 const app = new Hono();
 
-app.get("/", validate("query", GetCheckoutStatusQuerySchema), async (c) => {
-  const auth = c.get("auth");
+app.get("/", validate("query", GetCheckoutStatusQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -33,16 +33,16 @@ app.get("/", validate("query", GetCheckoutStatusQuerySchema), async (c) => {
     });
   }
 
-  const { plan_code } = c.req.valid("query");
+  const { plan_code } = ctx.req.valid("query");
 
   const subscription = auth.subscription();
   if (subscription?.plan.code === plan_code) {
     const body: GetCheckoutStatusResponseBody = { status: "success" };
-    return c.json(body);
+    return ctx.json(body);
   }
 
   const body: GetCheckoutStatusResponseBody = { status: "pending" };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

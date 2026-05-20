@@ -15,11 +15,11 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", BatchUpdateAgentScopeRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
+  async (ctx) => {
+    const auth = ctx.get("auth");
 
     if (!auth.isBuilder()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -28,11 +28,11 @@ app.post(
       });
     }
 
-    const { agentIds, scope } = c.req.valid("json");
+    const { agentIds, scope } = ctx.req.valid("json");
 
     const result = await updateAgentConfigurationsScope(auth, agentIds, scope);
     if (result.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -41,7 +41,7 @@ app.post(
       });
     }
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

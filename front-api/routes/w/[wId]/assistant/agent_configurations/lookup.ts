@@ -11,13 +11,13 @@ const GetLookupRequestSchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/lookup.
 const app = new Hono();
 
-app.get("/", validate("query", GetLookupRequestSchema), async (c) => {
-  const auth = c.get("auth");
-  const { handle } = c.req.valid("query");
+app.get("/", validate("query", GetLookupRequestSchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { handle } = ctx.req.valid("query");
 
   const sId = await getAgentIdFromName(auth, handle);
   if (!sId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -26,7 +26,7 @@ app.get("/", validate("query", GetLookupRequestSchema), async (c) => {
     });
   }
 
-  return c.json({ sId });
+  return ctx.json({ sId });
 });
 
 export default app;

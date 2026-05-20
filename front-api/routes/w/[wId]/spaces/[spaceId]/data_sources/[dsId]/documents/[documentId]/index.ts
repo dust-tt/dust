@@ -18,13 +18,13 @@ app.patch(
   spaceResource({ requireCanRead: true }),
   dataSourceResource({ requireCanRead: true }),
   validate("json", PostDataSourceDocumentRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
-    const documentId = c.req.param("documentId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
+    const documentId = ctx.req.param("documentId") ?? "";
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -34,7 +34,7 @@ app.patch(
     }
 
     if (isManaged(dataSource) || isWebsite(dataSource)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -54,7 +54,7 @@ app.patch(
       light_document_output,
       mime_type,
       title,
-    } = c.req.valid("json");
+    } = ctx.req.valid("json");
 
     const upsertResult = await upsertDocument({
       document_id: documentId,
@@ -75,7 +75,7 @@ app.patch(
     if (upsertResult.isErr()) {
       switch (upsertResult.error.code) {
         case "data_source_quota_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "data_source_quota_error",
@@ -85,7 +85,7 @@ app.patch(
         case "invalid_url":
         case "text_or_section_required":
         case "invalid_parent_id":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -93,7 +93,7 @@ app.patch(
             },
           });
         default:
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
@@ -103,7 +103,7 @@ app.patch(
       }
     }
 
-    return c.json({ document: upsertResult.value.document });
+    return ctx.json({ document: upsertResult.value.document });
   }
 );
 
@@ -111,13 +111,13 @@ app.delete(
   "/",
   spaceResource({ requireCanRead: true }),
   dataSourceResource({ requireCanRead: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
-    const documentId = c.req.param("documentId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
+    const documentId = ctx.req.param("documentId") ?? "";
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -127,7 +127,7 @@ app.delete(
     }
 
     if (dataSource.connectorId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -143,7 +143,7 @@ app.delete(
       documentId,
     });
     if (deleteRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -152,7 +152,7 @@ app.delete(
       });
     }
 
-    return c.body(null, 204);
+    return ctx.body(null, 204);
   }
 );
 

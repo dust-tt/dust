@@ -26,16 +26,16 @@ const GetSuggestionsQuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/suggestions.
 const app = new Hono();
 
-app.get("/", validate("query", GetSuggestionsQuerySchema), async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", validate("query", GetSuggestionsQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const agent = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!agent) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -44,7 +44,7 @@ app.get("/", validate("query", GetSuggestionsQuerySchema), async (c) => {
     });
   }
   if (!agent.canEdit && !auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "agent_group_permission_error",
@@ -54,11 +54,11 @@ app.get("/", validate("query", GetSuggestionsQuerySchema), async (c) => {
     });
   }
 
-  const { states, kind, limit } = c.req.valid("query");
+  const { states, kind, limit } = ctx.req.valid("query");
 
   const parsedLimit = limit ? parseInt(limit, 10) : undefined;
   if (parsedLimit !== undefined && isNaN(parsedLimit)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -73,22 +73,22 @@ app.get("/", validate("query", GetSuggestionsQuerySchema), async (c) => {
     { states, kind, limit: parsedLimit }
   );
 
-  return c.json({ suggestions: suggestions.map((s) => s.toJSON()) });
+  return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
 });
 
 app.patch(
   "/",
   validate("json", PatchSuggestionRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const aId = c.req.param("aId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const aId = ctx.req.param("aId") ?? "";
 
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
       variant: "light",
     });
     if (!agent) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
@@ -97,7 +97,7 @@ app.patch(
       });
     }
     if (!agent.canEdit && !auth.isAdmin()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "agent_group_permission_error",
@@ -107,7 +107,7 @@ app.patch(
       });
     }
 
-    const { suggestionIds, state } = c.req.valid("json");
+    const { suggestionIds, state } = ctx.req.valid("json");
 
     const suggestions = await AgentSuggestionResource.fetchByIds(
       auth,
@@ -115,7 +115,7 @@ app.patch(
     );
 
     if (suggestions.length !== suggestionIds.length) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_suggestion_not_found",
@@ -126,7 +126,7 @@ app.patch(
 
     for (const suggestion of suggestions) {
       if (suggestion._agentConfigurationId !== agent.sId) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -144,7 +144,7 @@ app.patch(
       suggestionIds
     );
 
-    return c.json({
+    return ctx.json({
       suggestions: updatedSuggestions.map((s) => s.toJSON()),
     });
   }

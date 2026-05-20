@@ -14,16 +14,16 @@ export type GeoLocationResponse = {
 // Mounted at /api/geo/location. No workspace auth — top-level route.
 const app = new Hono();
 
-app.get("/", async (c) => {
+app.get("/", async (ctx) => {
   const headers: Record<string, string> = {};
-  c.req.raw.headers.forEach((value, key) => {
+  ctx.req.raw.headers.forEach((value, key) => {
     headers[key] = value;
   });
   const ip = getClientIp({ headers });
 
   if (ip === "internal") {
     logger.error("No IP address found in request");
-    return c.json({ error: "No IP address found" }, 400);
+    return ctx.json({ error: "No IP address found" }, 400);
   }
 
   try {
@@ -32,10 +32,10 @@ app.get("/", async (c) => {
       isGDPR: isGDPRCountry(countryCode),
       countryCode,
     };
-    return c.json(body);
+    return ctx.json(body);
   } catch (err) {
     logger.error({ error: normalizeError(err) }, "Error in geolocation API");
-    return c.json(
+    return ctx.json(
       { error: "Internal server error while fetching geolocation" },
       500
     );

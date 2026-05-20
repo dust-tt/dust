@@ -54,9 +54,9 @@ const app = new Hono();
 app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     const dataSourceViewsList = await DataSourceViewResource.listBySpace(
       auth,
@@ -107,7 +107,7 @@ app.get(
     categories["apps"].count = appsList.length;
     categories["actions"].count = actionsCount;
 
-    const shouldIncludeAllMembers = c.req.query("includeAllMembers") === "true";
+    const shouldIncludeAllMembers = ctx.req.query("includeAllMembers") === "true";
 
     const { groupsToProcess, allGroupMemberships } =
       await space.fetchManualGroupsMemberships(auth, {
@@ -150,7 +150,7 @@ app.get(
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : undefined;
 
-    return c.json({
+    return ctx.json({
       space: {
         ...space.toJSON(),
         categories,
@@ -172,12 +172,12 @@ app.patch(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("json", PatchSpaceRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -186,7 +186,7 @@ app.patch(
       });
     }
 
-    const { content, name } = c.req.valid("json");
+    const { content, name } = ctx.req.valid("json");
 
     if (content) {
       const currentViews = await DataSourceViewResource.listBySpace(
@@ -223,7 +223,7 @@ app.patch(
               );
 
             if (dataSourceViewRes.isErr()) {
-              return apiError(c, {
+              return apiError(ctx, {
                 status_code: 403,
                 api_error: {
                   type: "data_source_auth_error",
@@ -247,19 +247,19 @@ app.patch(
     if (name) {
       await space.updateName(auth, name);
     }
-    return c.json({ space: space.toJSON() });
+    return ctx.json({ space: space.toJSON() });
   }
 );
 
 app.delete(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -268,7 +268,7 @@ app.delete(
       });
     }
 
-    const shouldForce = c.req.query("force") === "true";
+    const shouldForce = ctx.req.query("force") === "true";
 
     try {
       const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
@@ -277,7 +277,7 @@ app.delete(
         shouldForce
       );
       if (deleteRes.isErr()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -286,7 +286,7 @@ app.delete(
         });
       }
     } catch (e) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -309,7 +309,7 @@ app.delete(
       },
     });
 
-    return c.json({ space: space.toJSON() });
+    return ctx.json({ space: space.toJSON() });
   }
 );
 

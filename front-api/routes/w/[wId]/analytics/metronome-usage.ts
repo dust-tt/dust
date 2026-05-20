@@ -74,12 +74,12 @@ const GROUP_BY_TO_EVENT_PROPERTY: Record<MetronomeUsageGroupByType, string> = {
 // Mounted at /api/w/:wId/analytics/metronome-usage.
 const app = new Hono();
 
-app.get("/", validate("query", QuerySchema), async (c) => {
-  const auth = c.get("auth");
+app.get("/", validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
   const workspace = auth.getNonNullableWorkspace();
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -96,7 +96,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     selectedPeriod,
     billingCycleStartDay,
     windowSize,
-  } = c.req.valid("query");
+  } = ctx.req.valid("query");
 
   const referenceDate = selectedPeriod ? new Date(selectedPeriod) : new Date();
   if (selectedPeriod) {
@@ -135,7 +135,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     });
 
     if (result.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -183,7 +183,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
       const msg = llmGroupedResult.error.message;
       const isGroupKeyError =
         msg.includes("group") || msg.includes("not found");
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: isGroupKeyError ? 400 : 500,
         api_error: {
           type: isGroupKeyError
@@ -323,7 +323,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   }
 
   const body: GetMetronomeUsageResponse = { points, availableGroups };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

@@ -30,16 +30,16 @@ import usage from "./usage";
 // `/` handles GET, PATCH, and DELETE on the agent itself.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const agent = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "full",
   });
   if (!agent || (!agent.canRead && !auth.isAdmin())) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -48,7 +48,7 @@ app.get("/", async (c) => {
     });
   }
 
-  return c.json({
+  return ctx.json({
     agentConfiguration: {
       ...agent,
       lastAuthors: await getAgentRecentAuthors({ agent, auth }),
@@ -59,17 +59,17 @@ app.get("/", async (c) => {
 app.patch(
   "/",
   validate("json", PostOrPatchAgentConfigurationRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const aId = c.req.param("aId") ?? "";
-    const body = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const aId = ctx.req.param("aId") ?? "";
+    const body = ctx.req.valid("json");
 
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
       variant: "full",
     });
     if (!agent || (!agent.canRead && !auth.isAdmin())) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
@@ -79,7 +79,7 @@ app.patch(
     }
 
     if (!agent.canEdit && !auth.isAdmin()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -96,7 +96,7 @@ app.patch(
     });
 
     if (!agentConfiguration) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
@@ -112,7 +112,7 @@ app.patch(
     });
 
     if (agentConfigurationRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "assistant_saving_error",
@@ -121,20 +121,20 @@ app.patch(
       });
     }
 
-    return c.json({ agentConfiguration: agentConfigurationRes.value });
+    return ctx.json({ agentConfiguration: agentConfigurationRes.value });
   }
 );
 
-app.delete("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.delete("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const agent = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "full",
   });
   if (!agent || (!agent.canRead && !auth.isAdmin())) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -144,7 +144,7 @@ app.delete("/", async (c) => {
   }
 
   if (!agent.canEdit && !auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -155,7 +155,7 @@ app.delete("/", async (c) => {
 
   const archived = await archiveAgentConfiguration(auth, aId);
   if (!archived) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -164,7 +164,7 @@ app.delete("/", async (c) => {
     });
   }
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 app.route("/editors", editors);

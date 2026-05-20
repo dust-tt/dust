@@ -11,8 +11,8 @@ import type { MiddlewareHandler } from "hono";
  * `front/lib/api/auth_wrappers.ts`. Apply to any route under
  * `/api/poke/...`.
  */
-export const pokeAuth: MiddlewareHandler = async (c, next) => {
-  const sessionResult = await resolveSession(c);
+export const pokeAuth: MiddlewareHandler = async (ctx, next) => {
+  const sessionResult = await resolveSession(ctx);
   if (sessionResult instanceof Response) {
     return sessionResult;
   }
@@ -20,7 +20,7 @@ export const pokeAuth: MiddlewareHandler = async (c, next) => {
   const auth = await Authenticator.fromSuperUserSession(sessionResult, null);
 
   if (!auth.isDustSuperUser()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "not_authenticated",
@@ -29,6 +29,6 @@ export const pokeAuth: MiddlewareHandler = async (c, next) => {
     });
   }
 
-  c.set("auth", auth);
+  ctx.set("auth", auth);
   await next();
 };

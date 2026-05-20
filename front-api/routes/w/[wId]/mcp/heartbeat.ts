@@ -30,9 +30,9 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostMCPHeartbeatRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { serverId } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { serverId } = ctx.req.valid("json");
 
     const result = await updateMCPServerHeartbeat(auth, {
       serverId,
@@ -43,10 +43,10 @@ app.post(
       // Return 200 with success: false instead of 4xx to avoid triggering
       // monitoring alerts for expected conditions (expired/terminated
       // connections).
-      return c.json({ success: false });
+      return ctx.json({ success: false });
     }
 
-    return c.json(result);
+    return ctx.json(result);
   }
 );
 

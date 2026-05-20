@@ -90,15 +90,15 @@ app.post(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("json", PostDataSourceRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
     const owner = auth.getNonNullableWorkspace();
     const plan = auth.getNonNullablePlan();
 
     if (space.isSystem()) {
       if (!space.canAdministrate(auth)) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
@@ -109,7 +109,7 @@ app.post(
       }
     } else {
       if (space.isGlobal() && !auth.isBuilder()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
@@ -120,7 +120,7 @@ app.post(
       }
 
       if (!space.canWrite(auth)) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
@@ -131,11 +131,11 @@ app.post(
       }
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
 
     if ("provider" in body) {
       return handleDataSourceWithProvider({
-        c,
+        ctx,
         auth,
         plan,
         owner,
@@ -159,7 +159,7 @@ app.post(
           : r.error.code === "plan_limit_error"
             ? 401
             : 400;
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: status,
         api_error: {
           type: r.error.code,
@@ -186,7 +186,7 @@ app.post(
       },
     });
 
-    return c.json(
+    return ctx.json(
       {
         dataSource: dataSourceView.dataSource.toJSON(),
         dataSourceView: dataSourceView.toJSON(),
@@ -202,14 +202,14 @@ export default app;
 
 // Data sources with provider = all connectors except folders.
 async function handleDataSourceWithProvider({
-  c,
+  ctx,
   auth,
   plan,
   owner,
   space,
   body,
 }: {
-  c: Context;
+  ctx: Context;
   auth: Authenticator;
   plan: PlanType;
   owner: WorkspaceType;
@@ -221,7 +221,7 @@ async function handleDataSourceWithProvider({
 
   const isConnectionIdRequired = isConnectionIdRequiredForProvider(provider);
   if (isConnectionIdRequired && !connectionId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -238,7 +238,7 @@ async function handleDataSourceWithProvider({
     featureFlags
   );
   if (!isDataSourceAllowedInPlan) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "plan_limit_error",
@@ -249,7 +249,7 @@ async function handleDataSourceWithProvider({
 
   // System spaces only for managed data sources; webcrawler is regular-only.
   if (space.isSystem() && provider === "webcrawler") {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -258,7 +258,7 @@ async function handleDataSourceWithProvider({
     });
   }
   if (!space.isSystem() && provider !== "webcrawler") {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -270,9 +270,9 @@ async function handleDataSourceWithProvider({
   // The suffix is optional and used manually to allow multiple data sources
   // of the same provider. Search for "setupWithSuffixConnector" in the
   // codebase.
-  const suffix = c.req.query("suffix") ?? null;
+  const suffix = ctx.req.query("suffix") ?? null;
   if (suffix && !isValidConnectorSuffix(suffix)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -313,7 +313,7 @@ async function handleDataSourceWithProvider({
     const configurationRes =
       WebCrawlerConfigurationTypeSchema.safeParse(configuration);
     if (!configurationRes.success) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -332,7 +332,7 @@ async function handleDataSourceWithProvider({
       { error: systemAPIKeyRes.error },
       "Could not create the system API key"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -349,7 +349,7 @@ async function handleDataSourceWithProvider({
 
   const dustProject = await coreAPI.createProject();
   if (dustProject.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -367,7 +367,7 @@ async function handleDataSourceWithProvider({
       { error: normalizeError(err) },
       "Failed to get LLM credentials to create data source"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -397,7 +397,7 @@ async function handleDataSourceWithProvider({
   });
 
   if (dustDataSource.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -430,7 +430,7 @@ async function handleDataSourceWithProvider({
   );
   if (existingDataSource) {
     await rollbackCoreDataSource();
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -485,7 +485,7 @@ async function handleDataSourceWithProvider({
     );
     if (checkConnectionOwnershipRes.isErr()) {
       await rollbackManagedDataSource();
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -515,7 +515,7 @@ async function handleDataSourceWithProvider({
     switch (connectorsRes.error.type) {
       case "authorization_error":
       case "invalid_request_error":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -524,7 +524,7 @@ async function handleDataSourceWithProvider({
           },
         });
       default:
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -568,7 +568,7 @@ async function handleDataSourceWithProvider({
         );
       }
 
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -595,7 +595,7 @@ async function handleDataSourceWithProvider({
   });
 
   // Build the response before scheduling fire-and-forget tracking work.
-  const response = c.json(
+  const response = ctx.json(
     {
       dataSource: dataSource.toJSON(),
       dataSourceView: dataSourceView.toJSON(),

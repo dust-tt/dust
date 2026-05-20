@@ -21,11 +21,11 @@ app.route("/awu-pool-summary", awuPoolSummary);
 app.route("/members-usage", membersUsage);
 app.route("/metronome-balances", metronomeBalances);
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -72,7 +72,7 @@ app.get("/", async (c) => {
     pendingCredits:
       pendingCreditsData.length > 0 ? pendingCreditsData : undefined,
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

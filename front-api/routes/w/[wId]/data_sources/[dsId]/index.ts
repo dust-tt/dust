@@ -19,13 +19,13 @@ const PostDataSourceBodySchema = z
 // update the data source settings.
 const app = new Hono();
 
-app.post("/", validate("json", PostDataSourceBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+app.post("/", validate("json", PostDataSourceBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const dsId = ctx.req.param("dsId") ?? "";
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -35,7 +35,7 @@ app.post("/", validate("json", PostDataSourceBodySchema), async (c) => {
   }
 
   if (!dataSource.canAdministrate(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
@@ -45,10 +45,10 @@ app.post("/", validate("json", PostDataSourceBodySchema), async (c) => {
     });
   }
 
-  const { assistantDefaultSelected } = c.req.valid("json");
+  const { assistantDefaultSelected } = ctx.req.valid("json");
   await dataSource.setDefaultSelectedForAssistant(assistantDefaultSelected);
 
-  return c.json({ dataSource: dataSource.toJSON() });
+  return ctx.json({ dataSource: dataSource.toJSON() });
 });
 
 app.route("/files", files);

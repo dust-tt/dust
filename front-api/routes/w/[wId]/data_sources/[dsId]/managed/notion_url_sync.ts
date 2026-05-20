@@ -65,8 +65,8 @@ async function fetchManagedNotionDataSource(
   return { kind: "ok", dataSource };
 }
 
-function errorJson(c: Context, result: Extract<FetchResult, { kind: "err" }>) {
-  return apiError(c, {
+function errorJson(ctx: Context, result: Extract<FetchResult, { kind: "err" }>) {
+  return apiError(ctx, {
     status_code: result.status,
     api_error: { type: result.type, message: result.message },
   });
@@ -75,13 +75,13 @@ function errorJson(c: Context, result: Extract<FetchResult, { kind: "err" }>) {
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion_url_sync.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const dsId = ctx.req.param("dsId") ?? "";
 
   const result = await fetchManagedNotionDataSource(auth, dsId);
   if (result.kind === "err") {
-    return errorJson(c, result);
+    return errorJson(ctx, result);
   }
 
   const owner = auth.getNonNullableWorkspace();
@@ -94,20 +94,20 @@ app.get("/", async (c) => {
     JSON.parse(r)
   );
 
-  return c.json({ syncResults: lastSyncedUrls });
+  return ctx.json({ syncResults: lastSyncedUrls });
 });
 
-app.post("/", validate("json", PostNotionSyncPayloadSchema), async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+app.post("/", validate("json", PostNotionSyncPayloadSchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const dsId = ctx.req.param("dsId") ?? "";
 
   const result = await fetchManagedNotionDataSource(auth, dsId);
   if (result.kind === "err") {
-    return errorJson(c, result);
+    return errorJson(ctx, result);
   }
 
   const owner = auth.getNonNullableWorkspace();
-  const { urls, method } = c.req.valid("json");
+  const { urls, method } = ctx.req.valid("json");
 
   const syncResults = (
     await syncNotionUrls({
@@ -146,7 +146,7 @@ app.post("/", validate("json", PostNotionSyncPayloadSchema), async (c) => {
     }
   });
 
-  return c.json({ syncResults });
+  return ctx.json({ syncResults });
 });
 
 export default app;

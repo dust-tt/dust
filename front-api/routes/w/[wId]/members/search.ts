@@ -29,13 +29,13 @@ export type SearchMembersResponseBody = {
 // Mounted at /api/w/:wId/members/search.
 const app = new Hono();
 
-app.get("/", validate("query", SearchMembersQuerySchema), async (c) => {
-  const auth = c.get("auth");
-  const query = c.req.valid("query");
+app.get("/", validate("query", SearchMembersQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const query = ctx.req.valid("query");
 
   const emails = query.searchEmails?.split(",");
   if (emails?.length && emails.length > MAX_SEARCH_EMAILS) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -56,7 +56,7 @@ app.get("/", validate("query", SearchMembersQuerySchema), async (c) => {
   );
 
   const body: SearchMembersResponseBody = { members, total };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

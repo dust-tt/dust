@@ -10,13 +10,13 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", InternalPostBuilderSuggestionsRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { type, inputs } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { type, inputs } = ctx.req.valid("json");
 
     const suggestionsRes = await getBuilderSuggestions(auth, type, inputs);
     if (suggestionsRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -25,7 +25,7 @@ app.post(
       });
     }
 
-    return c.json(suggestionsRes.value);
+    return ctx.json(suggestionsRes.value);
   }
 );
 

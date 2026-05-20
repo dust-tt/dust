@@ -27,10 +27,10 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostRequestActionsAccessBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
+  async (ctx) => {
+    const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
-    const { emailMessage, mcpServerViewId } = c.req.valid("json");
+    const { emailMessage, mcpServerViewId } = ctx.req.valid("json");
     const emailRequester = user.email;
 
     const mcpServerView = await MCPServerViewResource.fetchById(
@@ -39,7 +39,7 @@ app.post(
     );
 
     if (!mcpServerView) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "mcp_server_view_not_found",
@@ -49,7 +49,7 @@ app.post(
     }
 
     if (!mcpServerView.editedByUser?.sId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "user_not_found",
@@ -67,7 +67,7 @@ app.post(
     });
 
     if (remaining === 0) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 429,
         api_error: {
           type: "rate_limit_error",
@@ -92,7 +92,7 @@ app.post(
     });
 
     if (result.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -100,7 +100,7 @@ app.post(
         },
       });
     }
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

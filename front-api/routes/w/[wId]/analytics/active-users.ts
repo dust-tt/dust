@@ -22,11 +22,11 @@ export type GetWorkspaceActiveUsersResponse = {
 // Mounted at /api/w/:wId/analytics/active-users.
 const app = new Hono();
 
-app.get("/", validate("query", QuerySchema), async (c) => {
-  const auth = c.get("auth");
+app.get("/", validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -35,7 +35,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     });
   }
 
-  const { days, timezone } = c.req.valid("query");
+  const { days, timezone } = ctx.req.valid("query");
   const owner = auth.getNonNullableWorkspace();
 
   const { startDate, endDate } = daysToDateRange(days, timezone);
@@ -47,7 +47,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   );
 
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -59,7 +59,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   const body: GetWorkspaceActiveUsersResponse = {
     points: result.value,
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

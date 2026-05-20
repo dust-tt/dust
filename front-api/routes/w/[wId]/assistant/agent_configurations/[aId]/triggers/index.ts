@@ -36,16 +36,16 @@ function isWebhookTriggerData(trigger: {
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/triggers.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -71,15 +71,15 @@ app.get("/", async (c) => {
     editorName: editorNamesMap.get(trigger.editor),
   }));
 
-  return c.json({ triggers });
+  return ctx.json({ triggers });
 });
 
 app.delete(
   "/",
   validate("json", DeleteTriggersRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const aId = c.req.param("aId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const aId = ctx.req.param("aId") ?? "";
 
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId: aId,
@@ -89,7 +89,7 @@ app.delete(
       !agentConfiguration ||
       (!agentConfiguration.canRead && !auth.isAdmin())
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
@@ -106,7 +106,7 @@ app.delete(
       (trigger) => trigger.editor === auth.getNonNullableUser().id
     );
 
-    const { triggerIds } = c.req.valid("json");
+    const { triggerIds } = ctx.req.valid("json");
     const workspace = auth.getNonNullableWorkspace();
 
     for (const triggerId of triggerIds) {
@@ -129,7 +129,7 @@ app.delete(
           },
           "Failed to delete trigger"
         );
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -139,20 +139,20 @@ app.delete(
       }
     }
 
-    return c.body(null, 204);
+    return ctx.body(null, 204);
   }
 );
 
-app.patch("/", validate("json", PatchTriggersRequestBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.patch("/", validate("json", PatchTriggersRequestBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -169,7 +169,7 @@ app.patch("/", validate("json", PatchTriggersRequestBodySchema), async (c) => {
     (trigger) => trigger.editor === auth.getNonNullableUser().id
   );
 
-  const { triggers } = c.req.valid("json");
+  const { triggers } = ctx.req.valid("json");
   const workspace = auth.getNonNullableWorkspace();
 
   for (const triggerData of triggers) {
@@ -183,7 +183,7 @@ app.patch("/", validate("json", PatchTriggersRequestBodySchema), async (c) => {
       editor: triggerToUpdate.editor,
     });
     if (!triggerValidation.success) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -213,7 +213,7 @@ app.patch("/", validate("json", PatchTriggersRequestBodySchema), async (c) => {
         },
         "Failed to update trigger"
       );
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -223,19 +223,19 @@ app.patch("/", validate("json", PatchTriggersRequestBodySchema), async (c) => {
     }
   }
 
-  return c.body(null, 204);
+  return ctx.body(null, 204);
 });
 
-app.post("/", validate("json", PostTriggersRequestBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.post("/", validate("json", PostTriggersRequestBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -244,7 +244,7 @@ app.post("/", validate("json", PostTriggersRequestBodySchema), async (c) => {
     });
   }
 
-  const { triggers } = c.req.valid("json");
+  const { triggers } = ctx.req.valid("json");
   const workspace = auth.getNonNullableWorkspace();
 
   for (const triggerData of triggers) {
@@ -253,7 +253,7 @@ app.post("/", validate("json", PostTriggersRequestBodySchema), async (c) => {
       editor: auth.getNonNullableUser().id,
     });
     if (!triggerValidation.success) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -296,7 +296,7 @@ app.post("/", validate("json", PostTriggersRequestBodySchema), async (c) => {
         },
         "Failed to create trigger"
       );
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -306,7 +306,7 @@ app.post("/", validate("json", PostTriggersRequestBodySchema), async (c) => {
     }
   }
 
-  return c.body(null, 204);
+  return ctx.body(null, 204);
 });
 
 app.route("/:tId", tId);

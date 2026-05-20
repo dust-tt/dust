@@ -21,13 +21,13 @@ const app = new Hono();
 app.patch(
   "/",
   validate("json", PatchLinkedSlackChannelsRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const aId = c.req.param("aId") ?? "";
-    const body = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const aId = ctx.req.param("aId") ?? "";
+    const body = ctx.req.valid("json");
 
     if (!auth.isBuilder()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -40,7 +40,7 @@ app.patch(
     if (body.auto_respond_without_mention) {
       const featureFlags = await getFeatureFlags(auth);
       if (!featureFlags.includes("slack_enhanced_default_agent")) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "feature_flag_not_found",
@@ -58,7 +58,7 @@ app.patch(
     );
 
     if (!slackDataSource) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_not_found",
@@ -77,7 +77,7 @@ app.patch(
       variant: "light",
     });
     if (!agentConfiguration) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_configuration_not_found",
@@ -88,7 +88,7 @@ app.patch(
     }
 
     if (!agentConfiguration.canEdit && !auth.isAdmin()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -115,7 +115,7 @@ app.patch(
           connectorsApiRes.error,
           "Slack channel linking already in progress."
         );
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 409,
           api_error: {
             type: "connector_operation_in_progress",
@@ -128,7 +128,7 @@ app.patch(
         connectorsApiRes.error,
         "An error occurred while linking Slack channels."
       );
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -137,7 +137,7 @@ app.patch(
       });
     }
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

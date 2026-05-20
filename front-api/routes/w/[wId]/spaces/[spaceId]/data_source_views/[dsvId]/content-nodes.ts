@@ -27,12 +27,12 @@ app.post(
   spaceResource({ requireCanReadOrAdministrate: true }),
   dataSourceViewResource({ requireCanReadOrAdministrate: true }),
   validate("json", ContentNodesBody),
-  async (c) => {
-    const dataSourceView = c.get("dataSourceView");
-    const { internalIds, parentId, viewType, sorting } = c.req.valid("json");
+  async (ctx) => {
+    const dataSourceView = ctx.get("dataSourceView");
+    const { internalIds, parentId, viewType, sorting } = ctx.req.valid("json");
 
     if (parentId && internalIds) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -42,9 +42,9 @@ app.post(
       });
     }
 
-    const paginationRes = getCursorPaginationParams(c.req.query());
+    const paginationRes = getCursorPaginationParams(ctx.req.query());
     if (paginationRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_pagination_parameters",
@@ -66,7 +66,7 @@ app.post(
       }
     );
     if (contentNodesRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -74,7 +74,7 @@ app.post(
         },
       });
     }
-    return c.json(contentNodesRes.value);
+    return ctx.json(contentNodesRes.value);
   }
 );
 

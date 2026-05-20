@@ -3,7 +3,7 @@ import { Hono } from "hono";
 
 export const killApp = new Hono();
 
-killApp.get("/", async (c) => {
+killApp.get("/", async (ctx) => {
   const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
-  return c.json({ killSwitches });
+  return ctx.json({ killSwitches });
 });

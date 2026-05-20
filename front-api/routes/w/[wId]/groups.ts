@@ -17,9 +17,9 @@ const GetGroupsQuerySchema = z.object({
 // Mounted at /api/w/:wId/groups.
 const app = new Hono();
 
-app.get("/", validate("query", GetGroupsQuerySchema), async (c) => {
-  const auth = c.get("auth");
-  const { kind, spaceId } = c.req.valid("query");
+app.get("/", validate("query", GetGroupsQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { kind, spaceId } = ctx.req.valid("query");
 
   const groupKinds: GroupKind[] = kind
     ? Array.isArray(kind)
@@ -42,7 +42,7 @@ app.get("/", validate("query", GetGroupsQuerySchema), async (c) => {
   }));
 
   const body: GetGroupsResponseBody = { groups: groupsWithMemberCount };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

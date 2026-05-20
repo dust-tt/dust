@@ -13,13 +13,13 @@ import type { Context } from "hono";
  * Mirrors the bearer-or-cookie chain in `front/logger/withlogging.ts`.
  */
 export async function resolveSession(
-  c: Context
+  ctx: Context
 ): Promise<Response | SessionWithUser> {
   const bearerRes = await getSessionFromBearerToken(
-    c.req.header("authorization")
+    ctx.req.header("authorization")
   );
   if (bearerRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: bearerRes.error,
@@ -30,18 +30,18 @@ export async function resolveSession(
 
   let session: SessionWithUser | null | undefined = bearerRes.value;
   if (!session) {
-    const cookies = parseCookieHeader(c.req.header("cookie"));
+    const cookies = parseCookieHeader(ctx.req.header("cookie"));
     const result = await getWorkOSSessionWithSetCookies(
       cookies["workos_session"]
     );
     for (const cookie of result.setCookies) {
-      c.header("Set-Cookie", cookie, { append: true });
+      ctx.header("Set-Cookie", cookie, { append: true });
     }
     session = result.session ?? null;
   }
 
   if (!session) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "not_authenticated",

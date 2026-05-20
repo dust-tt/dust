@@ -29,13 +29,13 @@ export type PatchMCPServerToolsPermissionsResponseBody = {
 // Mounted at /api/w/:wId/mcp/:serverId/tools/:toolName.
 const app = new Hono();
 
-app.patch("/", validate("json", UpdateMCPToolSettingsBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const serverId = c.req.param("serverId") ?? "";
-  const toolName = c.req.param("toolName") ?? "";
+app.patch("/", validate("json", UpdateMCPToolSettingsBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const serverId = ctx.req.param("serverId") ?? "";
+  const toolName = ctx.req.param("toolName") ?? "";
 
   if (!auth.isUser()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "mcp_auth_error",
@@ -47,7 +47,7 @@ app.patch("/", validate("json", UpdateMCPToolSettingsBodySchema), async (c) => {
 
   const { id } = getServerTypeAndIdFromSId(serverId);
   if (!id) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -56,7 +56,7 @@ app.patch("/", validate("json", UpdateMCPToolSettingsBodySchema), async (c) => {
     });
   }
 
-  const { permission, enabled } = c.req.valid("json");
+  const { permission, enabled } = ctx.req.valid("json");
 
   await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
     serverSId: serverId,
@@ -65,7 +65,7 @@ app.patch("/", validate("json", UpdateMCPToolSettingsBodySchema), async (c) => {
     enabled: enabled ?? true,
   });
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

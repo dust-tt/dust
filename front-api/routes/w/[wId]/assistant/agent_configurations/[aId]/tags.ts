@@ -24,16 +24,16 @@ const PatchAgentTagsRequestBodySchema = z
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/tags.
 const app = new Hono();
 
-app.patch("/", validate("json", PatchAgentTagsRequestBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.patch("/", validate("json", PatchAgentTagsRequestBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const agent = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!agent) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -43,7 +43,7 @@ app.patch("/", validate("json", PatchAgentTagsRequestBodySchema), async (c) => {
   }
 
   if (!agent.canEdit && !auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "agent_group_permission_error",
@@ -53,7 +53,7 @@ app.patch("/", validate("json", PatchAgentTagsRequestBodySchema), async (c) => {
     });
   }
 
-  const { addTagIds = [], removeTagIds = [] } = c.req.valid("json");
+  const { addTagIds = [], removeTagIds = [] } = ctx.req.valid("json");
 
   const tagsToAdd = await TagResource.fetchByIds(auth, addTagIds);
   const tagsToRemove = await TagResource.fetchByIds(auth, removeTagIds);
@@ -62,7 +62,7 @@ app.patch("/", validate("json", PatchAgentTagsRequestBodySchema), async (c) => {
     tagsToAdd.length !== addTagIds.length ||
     tagsToRemove.length !== removeTagIds.length
   ) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "invalid_request_error",
@@ -76,7 +76,7 @@ app.patch("/", validate("json", PatchAgentTagsRequestBodySchema), async (c) => {
     (tagsToAdd.some((tag) => tag.kind === "protected") ||
       tagsToRemove.some((tag) => tag.kind === "protected"))
   ) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -98,7 +98,7 @@ app.patch("/", validate("json", PatchAgentTagsRequestBodySchema), async (c) => {
 
   const tags = await TagResource.listForAgent(auth, agent.id);
 
-  return c.json({ tags: tags.map((t) => t.toJSON()) });
+  return ctx.json({ tags: tags.map((t) => t.toJSON()) });
 });
 
 export default app;

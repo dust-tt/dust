@@ -41,13 +41,13 @@ const app = new Hono();
 // belongs to the current space, and enforces write access on it. Returns
 // either the loaded resources or the `Response` to short-circuit with.
 async function loadApp(
-  c: Context
+  ctx: Context
 ): Promise<{ appResource: AppResource; aId: string } | Response> {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const { aId } = c.req.param();
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const { aId } = ctx.req.param();
   if (!isString(aId)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -58,14 +58,14 @@ async function loadApp(
 
   const appResource = await AppResource.fetchById(auth, aId);
   if (!appResource || appResource.space.sId !== space.sId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "app_not_found", message: "The app was not found." },
     });
   }
 
   if (!appResource.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -78,31 +78,31 @@ async function loadApp(
   return { appResource, aId };
 }
 
-app.get("/", spaceResource({ requireCanWrite: true }), async (c) => {
-  const loaded = await loadApp(c);
+app.get("/", spaceResource({ requireCanWrite: true }), async (ctx) => {
+  const loaded = await loadApp(ctx);
   if (loaded instanceof Response) {
     return loaded;
   }
   const { appResource } = loaded;
-  const auth = c.get("auth");
+  const auth = ctx.get("auth");
 
   const datasets = await getDatasets(auth, appResource.toJSON());
-  return c.json({ datasets });
+  return ctx.json({ datasets });
 });
 
 app.post(
   "/",
   spaceResource({ requireCanWrite: true }),
   validate("json", PostDatasetRequestBodySchema),
-  async (c) => {
-    const loaded = await loadApp(c);
+  async (ctx) => {
+    const loaded = await loadApp(ctx);
     if (loaded instanceof Response) {
       return loaded;
     }
     const { appResource } = loaded;
-    const auth = c.get("auth");
+    const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
 
     // Check that dataset does not already exist.
     const existing = await DatasetModel.findAll({
@@ -114,7 +114,7 @@ app.post(
     });
 
     if (existing.some((e) => e.name === body.dataset.name)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -128,7 +128,7 @@ app.post(
       !body.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
       body.dataset.name.length === 0
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -146,7 +146,7 @@ app.post(
         schema: body.schema,
       });
     } catch {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -171,7 +171,7 @@ app.post(
       data,
     });
     if (dataset.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -192,7 +192,7 @@ app.post(
       schema: body.schema,
     });
 
-    return c.json(
+    return ctx.json(
       {
         dataset: {
           name: body.dataset.name,

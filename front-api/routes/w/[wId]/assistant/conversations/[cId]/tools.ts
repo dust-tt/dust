@@ -15,9 +15,9 @@ const ConversationToolActionRequestSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/tools.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.param("cId") ?? "";
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -25,11 +25,11 @@ app.get("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const conversationWithoutContent = conversationRes.value;
-  const agentConfigurationId = c.req.query("agent_configuration_id");
+  const agentConfigurationId = ctx.req.query("agent_configuration_id");
 
   const conversationMCPServerViews =
     await ConversationResource.fetchMCPServerViews(
@@ -51,15 +51,15 @@ app.get("/", async (c) => {
 
   const tools = mcpServerViews.map((v) => v.toJSON());
 
-  return c.json({ tools });
+  return ctx.json({ tools });
 });
 
 app.post(
   "/",
   validate("json", ConversationToolActionRequestSchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const conversationId = c.req.param("cId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const conversationId = ctx.req.param("cId") ?? "";
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(
@@ -67,11 +67,11 @@ app.post(
         conversationId
       );
     if (conversationRes.isErr()) {
-      return apiErrorForConversation(c, conversationRes.error);
+      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
     const conversationWithoutContent = conversationRes.value;
-    const { action, mcp_server_view_id } = c.req.valid("json");
+    const { action, mcp_server_view_id } = ctx.req.valid("json");
 
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
@@ -79,7 +79,7 @@ app.post(
     );
 
     if (!mcpServerView) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "mcp_server_view_not_found",
@@ -96,7 +96,7 @@ app.post(
       agentConfigurationId: null,
     });
     if (upsertResult.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -105,7 +105,7 @@ app.post(
       });
     }
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

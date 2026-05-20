@@ -15,11 +15,11 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/analytics/source-export.
 const app = new Hono();
 
-app.get("/", validate("query", QuerySchema), async (c) => {
-  const auth = c.get("auth");
+app.get("/", validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -28,7 +28,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     });
   }
 
-  const { days } = c.req.valid("query");
+  const { days } = ctx.req.valid("query");
   const owner = auth.getNonNullableWorkspace();
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
@@ -38,7 +38,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   const result = await fetchContextOriginDailyBreakdown(baseQuery);
 
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -59,12 +59,12 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   const csvData = rows.map((row) => [row.date, row.origin, row.messageCount]);
   const csv = stringify([headers, ...csvData], { header: false });
 
-  c.header("Content-Type", "text/csv");
-  c.header(
+  ctx.header("Content-Type", "text/csv");
+  ctx.header(
     "Content-Disposition",
     `attachment; filename="dust_sources_last_${days}_days.csv"`
   );
-  return c.body(csv);
+  return ctx.body(csv);
 });
 
 export default app;

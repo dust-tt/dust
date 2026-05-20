@@ -13,13 +13,13 @@ const PostMCPResultsBodySchema = z.object({
 // Mounted at /api/w/:wId/mcp/results.
 const app = new Hono();
 
-app.post("/", validate("json", PostMCPResultsBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const { serverId, result } = c.req.valid("json");
+app.post("/", validate("json", PostMCPResultsBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { serverId, result } = ctx.req.valid("json");
 
   const isValidAccess = await validateMCPServerAccess(auth, { serverId });
   if (!isValidAccess) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "mcp_auth_error",
@@ -33,7 +33,7 @@ app.post("/", validate("json", PostMCPResultsBodySchema), async (c) => {
     result,
   });
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

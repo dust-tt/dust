@@ -16,8 +16,8 @@ export type GetAvailableModelsResponseType = {
 // Mounted at /api/w/:wId/models.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const featureFlags = await getFeatureFlags(auth);
   // Include both standard models and custom models (from GCS at build time).
@@ -34,7 +34,7 @@ app.get("/", async (c) => {
   );
 
   const body: GetAvailableModelsResponseType = { models, reasoningModels };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

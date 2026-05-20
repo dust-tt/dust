@@ -13,12 +13,12 @@ const app = new Hono();
 app.post(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -28,7 +28,7 @@ app.post(
     }
 
     if (!space.isMember(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -46,7 +46,7 @@ app.post(
       const activeEditors = await editorGroup.getActiveMembers(auth);
       const isUserEditor = activeEditors.some((m) => m.sId === user.sId);
       if (isUserEditor && activeEditors.length === 1) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
@@ -64,7 +64,7 @@ app.post(
     for (const group of groupsToLeave) {
       const result = await group.leaveGroup(auth);
       if (result.isErr() && result.error.code !== "user_not_member") {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -85,7 +85,7 @@ app.post(
       metadata: { space_name: space.name },
     });
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

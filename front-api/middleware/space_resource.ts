@@ -59,16 +59,16 @@ function deriveAccessMethod(auth: Authenticator): string {
  * context under `space`. Mirrors `withSpaceFromRoute` from
  * `front/lib/api/resource_wrappers.ts`.
  *
- * Apply after the auth middleware so `c.get("auth")` is available.
+ * Apply after the auth middleware so `ctx.get("auth")` is available.
  */
 export function spaceResource(
   options: SpaceResourceOptions
 ): MiddlewareHandler {
-  return async (c, next) => {
-    const auth = c.get("auth");
-    const spaceId = c.req.param("spaceId");
+  return async (ctx, next) => {
+    const auth = ctx.get("auth");
+    const spaceId = ctx.req.param("spaceId");
     if (!spaceId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -83,7 +83,7 @@ export function spaceResource(
       space.isConversations() ||
       !hasPermission(auth, space, options)
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "space_not_found",
@@ -111,7 +111,7 @@ export function spaceResource(
       });
     }
 
-    c.set("space", space);
+    ctx.set("space", space);
     await next();
   };
 }

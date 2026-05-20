@@ -37,13 +37,13 @@ app.patch(
   "/",
   spaceResource({ requireCanRead: true }),
   validate("json", PatchProjectTaskBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const taskId = c.req.param("taskId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const taskId = ctx.req.param("taskId") ?? "";
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -54,7 +54,7 @@ app.patch(
 
     const task = await ProjectTaskResource.fetchBySId(auth, taskId);
     if (!task || task.spaceId !== space.id) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "project_task_not_found",
@@ -64,7 +64,7 @@ app.patch(
     }
 
     const user = auth.getNonNullableUser();
-    const { text, status, assigneeUserId } = c.req.valid("json");
+    const { text, status, assigneeUserId } = ctx.req.valid("json");
     const workspace = auth.getNonNullableWorkspace();
 
     const updates: Parameters<typeof task.updateWithVersion>[1] = {};
@@ -99,7 +99,7 @@ app.patch(
         );
         const assigneeUser = assigneeAuth.user();
         if (!assigneeUser) {
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -108,7 +108,7 @@ app.patch(
           });
         }
         if (!space.isMember(assigneeAuth)) {
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -126,7 +126,7 @@ app.patch(
       updatedTask;
     const conversationId = await taskResource.getLatestConversationId(auth);
 
-    return c.json({
+    return ctx.json({
       task: {
         ...taskResource.toJSON(),
         conversationId,
@@ -135,13 +135,13 @@ app.patch(
   }
 );
 
-app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const taskId = c.req.param("taskId") ?? "";
+app.delete("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const taskId = ctx.req.param("taskId") ?? "";
 
   if (!space.isProject()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -152,7 +152,7 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
 
   const task = await ProjectTaskResource.fetchBySId(auth, taskId);
   if (!task || task.spaceId !== space.id) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "project_task_not_found",
@@ -163,7 +163,7 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
 
   await task.softDelete(auth);
 
-  return c.body(null, 204);
+  return ctx.body(null, 204);
 });
 
 app.route("/start", start);

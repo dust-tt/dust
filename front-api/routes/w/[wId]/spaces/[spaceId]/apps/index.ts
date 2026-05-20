@@ -24,11 +24,11 @@ const app = new Hono();
 app.get(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
     const apps = await AppResource.listBySpace(auth, space);
-    return c.json({ apps: apps.map((a) => a.toJSON()) });
+    return ctx.json({ apps: apps.map((a) => a.toJSON()) });
   }
 );
 
@@ -37,13 +37,13 @@ app.post(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   validate("json", PostAppBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
     const owner = auth.getNonNullableWorkspace();
 
     if (!space.canWrite(auth) || !auth.isBuilder()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -53,9 +53,9 @@ app.post(
       });
     }
 
-    const { name, description } = c.req.valid("json");
+    const { name, description } = ctx.req.valid("json");
     if (!APP_NAME_REGEXP.test(name)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -68,7 +68,7 @@ app.post(
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const p = await coreAPI.createProject();
     if (p.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -89,7 +89,7 @@ app.post(
       },
       space
     );
-    return c.json({ app: created.toJSON() }, 201);
+    return ctx.json({ app: created.toJSON() }, 201);
   }
 );
 

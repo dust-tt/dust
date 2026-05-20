@@ -17,11 +17,11 @@ const GetCouponValidateQuerySchema = z.object({
 // Mounted at /api/w/:wId/coupon/validate.
 const app = new Hono();
 
-app.get("/", validate("query", GetCouponValidateQuerySchema), async (c) => {
-  const auth = c.get("auth");
+app.get("/", validate("query", GetCouponValidateQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -31,11 +31,11 @@ app.get("/", validate("query", GetCouponValidateQuerySchema), async (c) => {
     });
   }
 
-  const { code } = c.req.valid("query");
+  const { code } = ctx.req.valid("query");
 
   const coupon = await CouponResource.findByCode(code);
   if (!coupon) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "coupon_not_found",
@@ -47,7 +47,7 @@ app.get("/", validate("query", GetCouponValidateQuerySchema), async (c) => {
   const validationResult = coupon.validateRedemption();
   if (validationResult.isErr()) {
     const { code: errorCode } = validationResult.error;
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "coupon_not_redeemable",
@@ -62,7 +62,7 @@ app.get("/", validate("query", GetCouponValidateQuerySchema), async (c) => {
       { coupon }
     );
   if (existingRedemption) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "coupon_already_redeemed",
@@ -72,7 +72,7 @@ app.get("/", validate("query", GetCouponValidateQuerySchema), async (c) => {
   }
 
   const body: GetCouponValidateResponseBody = { coupon: coupon.toJSON() };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

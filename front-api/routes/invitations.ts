@@ -13,12 +13,12 @@ export const invitationsApp = new Hono();
 
 invitationsApp.use("*", sessionAuth);
 
-invitationsApp.get("/", async (c) => {
-  const session = c.get("session");
+invitationsApp.get("/", async (ctx) => {
+  const session = ctx.get("session");
 
   const user = await getUserFromSession(session);
   if (!user) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "user_not_found", message: "User not found." },
     });
@@ -53,5 +53,5 @@ invitationsApp.get("/", async (c) => {
     );
   }
 
-  return c.json({ pendingInvitations });
+  return ctx.json({ pendingInvitations });
 });

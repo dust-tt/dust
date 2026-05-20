@@ -15,12 +15,12 @@ const PostUserMetadataBodySchema = z.object({
 // `/api/user` sub-app.
 const app = new Hono();
 
-async function loadUserAndWorkspace(c: Context) {
-  const session = c.get("session");
+async function loadUserAndWorkspace(ctx: Context) {
+  const session = ctx.get("session");
   const user = await getUserFromSession(session);
   if (!user) {
     return {
-      err: apiError(c, {
+      err: apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "user_not_found" as const,
@@ -35,7 +35,7 @@ async function loadUserAndWorkspace(c: Context) {
   const u = await UserResource.fetchByModelId(user.id);
   if (!u) {
     return {
-      err: apiError(c, {
+      err: apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "user_not_found" as const,
@@ -45,7 +45,7 @@ async function loadUserAndWorkspace(c: Context) {
     };
   }
 
-  const wIdQuery = c.req.query("workspaceId");
+  const wIdQuery = ctx.req.query("workspaceId");
   let workspaceModelId: number | undefined;
   if (wIdQuery) {
     const ws = user.workspaces.find((w) => w.sId === wIdQuery);
@@ -57,42 +57,42 @@ async function loadUserAndWorkspace(c: Context) {
   return { u, workspaceModelId };
 }
 
-app.get("/", async (c) => {
-  const r = await loadUserAndWorkspace(c);
+app.get("/", async (ctx) => {
+  const r = await loadUserAndWorkspace(ctx);
   if ("err" in r) {
     return r.err;
   }
 
-  const key = c.req.param("key") ?? "";
+  const key = ctx.req.param("key") ?? "";
   const metadata = await r.u.getMetadata(key, r.workspaceModelId);
-  return c.json({ metadata });
+  return ctx.json({ metadata });
 });
 
-app.post("/", validate("json", PostUserMetadataBodySchema), async (c) => {
-  const r = await loadUserAndWorkspace(c);
+app.post("/", validate("json", PostUserMetadataBodySchema), async (ctx) => {
+  const r = await loadUserAndWorkspace(ctx);
   if ("err" in r) {
     return r.err;
   }
 
-  const key = c.req.param("key") ?? "";
-  const { value } = c.req.valid("json");
+  const key = ctx.req.param("key") ?? "";
+  const { value } = ctx.req.valid("json");
   await r.u.setMetadata(key, value, r.workspaceModelId);
-  return c.json({ metadata: { key, value } });
+  return ctx.json({ metadata: { key, value } });
 });
 
-app.delete("/", async (c) => {
-  const r = await loadUserAndWorkspace(c);
+app.delete("/", async (ctx) => {
+  const r = await loadUserAndWorkspace(ctx);
   if ("err" in r) {
     return r.err;
   }
 
-  const key = c.req.param("key") ?? "";
+  const key = ctx.req.param("key") ?? "";
   await r.u.deleteMetadata({
     key: {
       [Op.like]: `${key}%`,
     },
   });
-  return c.body(null, 200);
+  return ctx.body(null, 200);
 });
 
 export default app;

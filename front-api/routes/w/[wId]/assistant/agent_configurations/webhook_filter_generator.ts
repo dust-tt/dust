@@ -20,13 +20,13 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostWebhookFilterGeneratorRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
+  async (ctx) => {
+    const auth = ctx.get("auth");
     const {
       naturalDescription,
       event: eventValue,
       provider,
-    } = c.req.valid("json");
+    } = ctx.req.valid("json");
 
     const {
       filterGenerationInstructions: providerSpecificInstructions,
@@ -36,7 +36,7 @@ app.post(
     const event = events.find((event) => event.value === eventValue);
 
     if (!event) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -52,7 +52,7 @@ app.post(
     });
 
     if (filterGenerationResult.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -61,7 +61,7 @@ app.post(
       });
     }
 
-    return c.json({ filter: filterGenerationResult.value.filter });
+    return ctx.json({ filter: filterGenerationResult.value.filter });
   }
 );
 

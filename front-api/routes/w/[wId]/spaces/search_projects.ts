@@ -8,10 +8,10 @@ import { Hono } from "hono";
 // Mounted under /api/w/:wId/spaces/search_projects.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
-  const paginationRes = getPaginationParams(c.req.query(), {
+  const paginationRes = getPaginationParams(ctx.req.query(), {
     defaultLimit: 20,
     defaultOrderColumn: "name",
     defaultOrderDirection: "asc",
@@ -20,7 +20,7 @@ app.get("/", async (c) => {
   });
 
   if (paginationRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -29,7 +29,7 @@ app.get("/", async (c) => {
     });
   }
 
-  const queryString = c.req.query("query");
+  const queryString = ctx.req.query("query");
   const pagination = paginationRes.value;
 
   const {
@@ -62,7 +62,7 @@ app.get("/", async (c) => {
     results.push({ ...metadata, isMember: space.isMember(auth) });
   }
 
-  return c.json({
+  return ctx.json({
     spaces: results,
     hasMore,
     lastValue,

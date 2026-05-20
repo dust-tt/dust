@@ -94,8 +94,8 @@ type GroupedAggs = {
 // Mounted at /api/w/:wId/analytics/programmatic-cost.
 const app = new Hono();
 
-app.get("/", validate("query", QuerySchema), async (c) => {
-  const auth = c.get("auth");
+app.get("/", validate("query", QuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
   const {
     groupBy,
@@ -103,7 +103,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     selectedPeriod,
     billingCycleStartDay,
     filter: filterParams,
-  } = c.req.valid("query");
+  } = ctx.req.valid("query");
 
   const referenceDate = selectedPeriod ? new Date(selectedPeriod) : new Date();
   if (selectedPeriod) {
@@ -170,7 +170,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
   });
 
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -241,7 +241,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
       );
 
       if (availableGroupsResult.isErr()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -354,7 +354,7 @@ app.get("/", validate("query", QuerySchema), async (c) => {
     points,
     availableGroups,
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

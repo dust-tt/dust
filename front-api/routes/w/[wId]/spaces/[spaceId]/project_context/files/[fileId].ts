@@ -9,13 +9,13 @@ import { Hono } from "hono";
 // we keep the same checks here.
 const app = new Hono();
 
-app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const fileId = c.req.param("fileId") ?? "";
+app.delete("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const fileId = ctx.req.param("fileId") ?? "";
 
   if (!space.isProject()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -25,7 +25,7 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
     });
   }
   if (!space.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -36,7 +36,7 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
 
   const r = await removeFileFromProject(auth, { space, fileId });
   if (r.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -44,7 +44,7 @@ app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
       },
     });
   }
-  return c.json({});
+  return ctx.json({});
 });
 
 export default app;

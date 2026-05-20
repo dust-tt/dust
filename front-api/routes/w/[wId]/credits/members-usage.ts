@@ -136,11 +136,11 @@ async function fetchPerUserUsageCredits({
 // Mounted at /api/w/:wId/credits/members-usage.
 const app = new Hono();
 
-app.get("/", validate("query", MembersUsagePaginationSchema), async (c) => {
-  const auth = c.get("auth");
+app.get("/", validate("query", MembersUsagePaginationSchema), async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -149,7 +149,7 @@ app.get("/", validate("query", MembersUsagePaginationSchema), async (c) => {
     });
   }
 
-  const paginationParams = c.req.valid("query");
+  const paginationParams = ctx.req.valid("query");
   const workspace = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const { metronomeCustomerId } = workspace;
@@ -210,9 +210,9 @@ app.get("/", validate("query", MembersUsagePaginationSchema), async (c) => {
   const body: GetMembersUsageResponseBody = {
     members: membersUsage,
     total,
-    nextPageUrl: buildUrlWithParams(c.req.url, nextPageParams),
+    nextPageUrl: buildUrlWithParams(ctx.req.url, nextPageParams),
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

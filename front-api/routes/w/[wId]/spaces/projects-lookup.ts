@@ -6,12 +6,12 @@ import { Hono } from "hono";
 // Mounted under /api/w/:wId/spaces/projects-lookup.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const ids = c.req.queries("ids");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const ids = ctx.req.queries("ids");
 
   if (!ids || ids.length === 0) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -31,7 +31,7 @@ app.get("/", async (c) => {
     openProjects
   );
 
-  return c.json({
+  return ctx.json({
     spaces: projectsWithDescriptions,
   });
 });

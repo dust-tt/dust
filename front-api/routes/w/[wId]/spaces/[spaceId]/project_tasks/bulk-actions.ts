@@ -30,12 +30,12 @@ app.post(
   "/",
   spaceResource({ requireCanRead: true }),
   validate("json", BulkActionsBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -44,7 +44,7 @@ app.post(
       });
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
 
     switch (body.action) {
       case "set_status": {
@@ -72,7 +72,7 @@ app.post(
         );
 
         if (result.isErr()) {
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -81,7 +81,7 @@ app.post(
           });
         }
 
-        return c.json({ success: true });
+        return ctx.json({ success: true });
       }
 
       case "approve_agent_suggestion": {
@@ -99,7 +99,7 @@ app.post(
             reviewedByUserId: user.id,
           });
         }
-        return c.json({ success: true });
+        return ctx.json({ success: true });
       }
 
       case "reject_agent_suggestion": {
@@ -117,7 +117,7 @@ app.post(
             reviewedByUserId: user.id,
           });
         }
-        return c.json({ success: true });
+        return ctx.json({ success: true });
       }
 
       default:

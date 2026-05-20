@@ -8,17 +8,17 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/data_sources/:dsId/files.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const dsId = ctx.req.param("dsId") ?? "";
 
-  const body = await c.req.json().catch(() => ({}));
+  const body = await ctx.req.json().catch(() => ({}));
   const { fileId, upsertArgs } = body;
 
   // Get file and make sure that it is within the same workspace.
   const file = await FileResource.fetchById(auth, fileId);
   if (!file) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -33,7 +33,7 @@ app.post("/", async (c) => {
       file.useCase
     )
   ) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -45,7 +45,7 @@ app.post("/", async (c) => {
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -55,7 +55,7 @@ app.post("/", async (c) => {
   }
 
   if (!dataSource.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
@@ -99,7 +99,7 @@ app.post("/", async (c) => {
         break;
     }
 
-    return c.json(
+    return ctx.json(
       {
         error: {
           type,
@@ -110,7 +110,7 @@ app.post("/", async (c) => {
     );
   }
 
-  return c.json({ file: file.toPublicJSON(auth) });
+  return ctx.json({ file: file.toPublicJSON(auth) });
 });
 
 export default app;

@@ -13,12 +13,12 @@ app.delete(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
   dataSourceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
-    const fId = c.req.param("fId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
+    const fId = ctx.req.param("fId") ?? "";
     if (!fId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -28,7 +28,7 @@ app.delete(
     }
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -44,7 +44,7 @@ app.delete(
       folderId: fId,
     });
     if (delRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -54,7 +54,7 @@ app.delete(
       });
     }
 
-    return c.body(null, 204);
+    return ctx.body(null, 204);
   }
 );
 

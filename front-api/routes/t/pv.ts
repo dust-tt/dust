@@ -29,9 +29,9 @@ function getClient(): PostHog | null {
 // Mounted at /api/t/pv.
 const app = new Hono();
 
-app.post("/", async (c) => {
+app.post("/", async (ctx) => {
   const headers: Record<string, string | string[] | undefined> = {};
-  c.req.raw.headers.forEach((value, key) => {
+  ctx.req.raw.headers.forEach((value, key) => {
     headers[key] = value;
   });
   const ipRaw = getClientIp({ headers });
@@ -46,23 +46,23 @@ app.post("/", async (c) => {
       logger,
     });
     if (remaining <= 0) {
-      return c.json({ ok: false }, 429);
+      return ctx.json({ ok: false }, 429);
     }
   }
 
   const client = getClient();
   if (!client) {
-    return c.json({ ok: true });
+    return ctx.json({ ok: true });
   }
 
-  const body = await c.req.json().catch(() => ({}));
+  const body = await ctx.req.json().catch(() => ({}));
   const page_url =
     typeof body?.page_url === "string" ? body.page_url : undefined;
   const referrer =
     typeof body?.referrer === "string" ? body.referrer : undefined;
 
   // Read anonymous ID from body or cookie fallback.
-  const cookieHeader = c.req.header("cookie");
+  const cookieHeader = ctx.req.header("cookie");
   const anonymousIdFromBody =
     typeof body?.anonymous_id === "string" ? body.anonymous_id : undefined;
   const anonymousId =
@@ -75,7 +75,7 @@ app.post("/", async (c) => {
   const consentCookie = cookies[DUST_COOKIES_ACCEPTED];
   const hasConsent = consentCookie === "true" || consentCookie === "auto";
 
-  const userAgent = c.req.header("user-agent") ?? undefined;
+  const userAgent = ctx.req.header("user-agent") ?? undefined;
 
   // The anonymous device ID is the primary identifier. If the user is logged
   // in, the PostHog alias created at login time will link events to their
@@ -99,7 +99,7 @@ app.post("/", async (c) => {
     logger.error({ err }, "Failed to capture server_pageview on PostHog");
   }
 
-  return c.json({ ok: true });
+  return ctx.json({ ok: true });
 });
 
 export default app;

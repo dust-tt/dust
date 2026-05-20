@@ -6,9 +6,9 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/conversations/:cId/feedbacks.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.param("cId") ?? "";
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -16,7 +16,7 @@ app.get("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const feedbacksRes = await getConversationFeedbacksForUser(
@@ -24,10 +24,10 @@ app.get("/", async (c) => {
     conversationRes.value
   );
   if (feedbacksRes.isErr()) {
-    return apiErrorForConversation(c, feedbacksRes.error);
+    return apiErrorForConversation(ctx, feedbacksRes.error);
   }
 
-  return c.json({ feedbacks: feedbacksRes.value });
+  return ctx.json({ feedbacks: feedbacksRes.value });
 });
 
 export default app;

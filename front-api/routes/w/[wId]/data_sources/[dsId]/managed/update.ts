@@ -25,15 +25,15 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/update.
 const app = new Hono();
 
-app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
-  const auth = c.get("auth");
+app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
-  const dsId = c.req.param("dsId") ?? "";
+  const dsId = ctx.req.param("dsId") ?? "";
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -43,7 +43,7 @@ app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
   }
 
   if (!dataSource.connectorId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "data_source_not_managed",
@@ -53,7 +53,7 @@ app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
   }
 
   if (!dataSource.canAdministrate(auth) || !auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
@@ -63,7 +63,7 @@ app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
     });
   }
 
-  const body = c.req.valid("json");
+  const body = ctx.req.valid("json");
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -86,7 +86,7 @@ app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
 
   if (updateRes.isErr()) {
     if (isConnectorsAPIError(updateRes.error) && isAPIError(updateRes.error)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 401,
         api_error: {
           type: updateRes.error.type,
@@ -95,7 +95,7 @@ app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
         },
       });
     }
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -113,7 +113,7 @@ app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
     });
 
     if (webhookRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -152,7 +152,7 @@ app.post("/", validate("json", UpdateConnectorRequestBodySchema), async (c) => {
     },
   });
 
-  return c.json(updateRes.value);
+  return ctx.json(updateRes.value);
 });
 
 export default app;

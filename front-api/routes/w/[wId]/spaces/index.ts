@@ -49,13 +49,13 @@ export type PostSpacesResponseBody = {
 };
 
 // Mounted under /api/w/:wId/spaces. workspaceAuth is applied by the parent
-// workspace sub-app, so c.get("auth") is always available here.
+// workspace sub-app, so ctx.get("auth") is always available here.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const role = c.req.query("role");
-  const kind = c.req.query("kind");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const role = ctx.req.query("role");
+  const kind = ctx.req.query("kind");
 
   let spaces: SpaceResource[] = [];
   if (role === "admin") {
@@ -82,12 +82,12 @@ app.get("/", async (c) => {
   const body: GetSpacesResponseBody = {
     spaces: [...nonProjectsJson, ...projectsJson],
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
-app.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const requestBody = c.req.valid("json");
+app.post("/", validate("json", PostSpaceRequestBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const requestBody = ctx.req.valid("json");
   const owner = auth.getNonNullableWorkspace();
 
   if (
@@ -95,7 +95,7 @@ app.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
     !requestBody.isRestricted &&
     !areOpenProjectsAllowed(owner)
   ) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "invalid_request_error",
@@ -109,7 +109,7 @@ app.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
   if (spaceRes.isErr()) {
     switch (spaceRes.error.code) {
       case "limit_reached":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "plan_limit_error",
@@ -118,7 +118,7 @@ app.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
           },
         });
       case "space_already_exists":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "space_already_exists",
@@ -126,7 +126,7 @@ app.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
           },
         });
       case "internal_error":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -134,7 +134,7 @@ app.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
           },
         });
       case "unauthorized":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
@@ -164,7 +164,7 @@ app.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
   });
 
   const responseBody: PostSpacesResponseBody = { space: space.toJSON() };
-  return c.json(responseBody, 201);
+  return ctx.json(responseBody, 201);
 });
 
 // Register static paths BEFORE `/:spaceId` so the param route does not

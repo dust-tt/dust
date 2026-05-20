@@ -8,11 +8,11 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/builder/slack/channels_linked_with_agent.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isBuilder()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
@@ -46,11 +46,11 @@ app.get("/", async (c) => {
   const dataSource = isSlackBotEnabled ? dataSourceSlackBot : dataSourceSlack;
 
   if (!dataSource) {
-    return c.json({ provider, slackChannels: [], slackDataSource: undefined });
+    return ctx.json({ provider, slackChannels: [], slackDataSource: undefined });
   }
 
   if (!dataSource.connectorId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "data_source_not_managed",
@@ -64,7 +64,7 @@ app.get("/", async (c) => {
     (dataSource.connectorProvider !== "slack_bot" &&
       dataSource.connectorProvider !== "slack")
   ) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "data_source_not_managed",
@@ -84,7 +84,7 @@ app.get("/", async (c) => {
     });
 
   if (linkedSlackChannelsRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -93,7 +93,7 @@ app.get("/", async (c) => {
     });
   }
 
-  return c.json({
+  return ctx.json({
     provider,
     slackChannels: linkedSlackChannelsRes.value.slackChannels,
     slackDataSource: dataSource.toJSON(),

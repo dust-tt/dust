@@ -44,9 +44,9 @@ const PatchConversationsRequestBodySchema = z.union([
 // handles GET, DELETE, and PATCH on the conversation resource itself.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const cId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const cId = ctx.req.param("cId") ?? "";
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(auth, cId, {
@@ -60,7 +60,7 @@ app.get("/", async (c) => {
       canAccess === "conversation_access_restricted"
         ? new ConversationError("conversation_access_restricted")
         : conversationRes.error;
-    return apiErrorForConversation(c, error);
+    return apiErrorForConversation(ctx, error);
   }
 
   const conversation = conversationRes.value;
@@ -81,40 +81,40 @@ app.get("/", async (c) => {
     },
   });
 
-  return c.json({ conversation });
+  return ctx.json({ conversation });
 });
 
-app.delete("/", async (c) => {
-  const auth = c.get("auth");
-  const cId = c.req.param("cId") ?? "";
-  const forceDelete = c.req.query("forceDelete") === "true";
+app.delete("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const cId = ctx.req.param("cId") ?? "";
+  const forceDelete = ctx.req.query("forceDelete") === "true";
 
   const result = await deleteOrLeaveConversation(auth, {
     conversationId: cId,
     forceDelete,
   });
   if (result.isErr()) {
-    return apiErrorForConversation(c, result.error);
+    return apiErrorForConversation(ctx, result.error);
   }
 
-  return c.body(null, 200);
+  return ctx.body(null, 200);
 });
 
 app.patch(
   "/",
   validate("json", PatchConversationsRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const cId = c.req.param("cId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const cId = ctx.req.param("cId") ?? "";
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(auth, cId);
     if (conversationRes.isErr()) {
-      return apiErrorForConversation(c, conversationRes.error);
+      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
     const conversation = conversationRes.value;
-    const data = c.req.valid("json");
+    const data = ctx.req.valid("json");
 
     if ("title" in data) {
       const result = await updateConversationTitle(auth, {
@@ -124,9 +124,9 @@ app.patch(
       await ConversationResource.markAsReadForAuthUser(auth, { conversation });
 
       if (result.isErr()) {
-        return apiErrorForConversation(c, result.error);
+        return apiErrorForConversation(ctx, result.error);
       }
-      return c.json({ success: true });
+      return ctx.json({ success: true });
     }
 
     if ("read" in data) {
@@ -139,7 +139,7 @@ app.patch(
           conversation,
         });
       }
-      return c.json({ success: true });
+      return ctx.json({ success: true });
     }
 
     if ("spaceId" in data) {
@@ -148,21 +148,21 @@ app.patch(
         spaceId: data.spaceId,
       });
       if (r.isOk()) {
-        return c.json({ success: true });
+        return ctx.json({ success: true });
       }
       switch (r.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: { type: "user_not_found", message: r.error.message },
           });
         case "space_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: { type: "space_not_found", message: "Space not found" },
           });
         case "conversation_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "conversation_not_found",
@@ -170,7 +170,7 @@ app.patch(
             },
           });
         case "internal_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
@@ -189,29 +189,29 @@ app.patch(
         data.accessMode
       );
       if (result.isErr()) {
-        return apiErrorForConversation(c, result.error);
+        return apiErrorForConversation(ctx, result.error);
       }
-      return c.json({ success: true });
+      return ctx.json({ success: true });
     }
 
     if ("removeFromProject" in data) {
       const r = await moveConversationOutOfProject(auth, { conversation });
       if (r.isOk()) {
-        return c.json({ success: true });
+        return ctx.json({ success: true });
       }
       switch (r.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: { type: "user_not_found", message: r.error.message },
           });
         case "space_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: { type: "space_not_found", message: "Space not found" },
           });
         case "conversation_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "conversation_not_found",
@@ -219,7 +219,7 @@ app.patch(
             },
           });
         case "internal_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
@@ -231,7 +231,7 @@ app.patch(
       }
     }
 
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",

@@ -12,11 +12,11 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/credits/metronome-balances.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -29,7 +29,7 @@ app.get("/", async (c) => {
   const workspace = auth.getNonNullableWorkspace();
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -40,7 +40,7 @@ app.get("/", async (c) => {
 
   const result = await listMetronomeBalances(metronomeCustomerId);
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -59,7 +59,7 @@ app.get("/", async (c) => {
     .map(metronomeBalanceToDisplayData);
 
   const body: GetCreditsResponseBody = { credits };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

@@ -9,18 +9,18 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
  * Returns a JSON error response from an `APIErrorWithStatusCode` and emits
  * the same logging / tracing / statsd side-effects as `apiError` in
  * `front/logger/withlogging.ts`. Use this for every error path in a Hono
- * handler — do not call `c.json({ error: ... }, status)` directly, so the
+ * handler — do not call `ctx.json({ error: ... }, status)` directly, so the
  * observability behavior stays consistent across Next and Hono.
  *
  * Pass `error` when forwarding an underlying exception so its message and
  * stack are captured in the log instead of the synthetic one.
  *
- * The `status_code` field is typed as `number` but Hono's `c.json` expects
+ * The `status_code` field is typed as `number` but Hono's `ctx.json` expects
  * the narrower `ContentfulStatusCode` — the cast is safe because all our
  * status codes are valid HTTP error codes.
  */
 export function apiError(
-  c: Context,
+  ctx: Context,
   err: APIErrorWithStatusCode,
   error?: Error
 ) {
@@ -33,8 +33,8 @@ export function apiError(
 
   logger.error(
     {
-      method: c.req.method,
-      url: c.req.url,
+      method: ctx.req.method,
+      url: ctx.req.url,
       statusCode: err.status_code,
       apiError: { ...err, callstack },
       error: errorAttrs,
@@ -49,12 +49,12 @@ export function apiError(
   }
 
   getStatsDClient().increment("api_errors.count", 1, [
-    `method:${c.req.method}`,
+    `method:${ctx.req.method}`,
     `status_code:${err.status_code}`,
     `error_type:${err.api_error.type}`,
   ]);
 
-  return c.json(
+  return ctx.json(
     { error: err.api_error },
     err.status_code as ContentfulStatusCode
   );

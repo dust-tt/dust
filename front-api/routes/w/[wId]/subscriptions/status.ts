@@ -11,8 +11,8 @@ export type GetSubscriptionStatusResponseBody = {
 // Mounted at /api/w/:wId/subscriptions/status.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
   // Only admins can be redirected to trial-ended page.
@@ -21,7 +21,7 @@ app.get("/", async (c) => {
       shouldRedirect: false,
       redirectUrl: null,
     };
-    return c.json(body);
+    return ctx.json(body);
   }
 
   const subscription = auth.subscription();
@@ -34,7 +34,7 @@ app.get("/", async (c) => {
           shouldRedirect: true,
           redirectUrl: `/w/${owner.sId}/trial-ended`,
         };
-        return c.json(body);
+        return ctx.json(body);
       }
     } catch {
       // If we can't check message usage, don't redirect.
@@ -53,7 +53,7 @@ app.get("/", async (c) => {
         shouldRedirect: true,
         redirectUrl: `/w/${owner.sId}/trial-ended`,
       };
-      return c.json(body);
+      return ctx.json(body);
     }
   }
 
@@ -61,7 +61,7 @@ app.get("/", async (c) => {
     shouldRedirect: false,
     redirectUrl: null,
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

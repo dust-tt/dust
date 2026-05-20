@@ -8,9 +8,9 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/conversations/:cId/participants.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.param("cId") ?? "";
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -18,7 +18,7 @@ app.get("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const participantsRes = await fetchConversationParticipants(
@@ -26,7 +26,7 @@ app.get("/", async (c) => {
     conversationRes.value
   );
   if (participantsRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "conversation_not_found",
@@ -35,12 +35,12 @@ app.get("/", async (c) => {
     });
   }
 
-  return c.json({ participants: participantsRes.value });
+  return ctx.json({ participants: participantsRes.value });
 });
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.param("cId") ?? "";
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -48,13 +48,13 @@ app.post("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const conversation = conversationRes.value;
   const u = auth.user();
   if (!u) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "app_auth_error",
@@ -73,7 +73,7 @@ app.post("/", async (c) => {
 
   if (isAlreadyParticipant) {
     return apiErrorForConversation(
-      c,
+      ctx,
       new ConversationError("user_already_participant")
     );
   }
@@ -85,7 +85,7 @@ app.post("/", async (c) => {
     lastReadAt: new Date(),
   });
 
-  return c.body(null, 201);
+  return ctx.body(null, 201);
 });
 
 export default app;

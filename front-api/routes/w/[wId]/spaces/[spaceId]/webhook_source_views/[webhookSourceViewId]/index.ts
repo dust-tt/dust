@@ -12,13 +12,13 @@ const app = new Hono();
 app.delete(
   "/",
   spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const webhookSourceViewId = c.req.param("webhookSourceViewId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const webhookSourceViewId = ctx.req.param("webhookSourceViewId") ?? "";
 
     if (!auth.isUser()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 401,
         api_error: {
           type: "webhook_source_view_auth_error",
@@ -27,7 +27,7 @@ app.delete(
       });
     }
     if (!auth.isAdmin()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "webhook_source_view_auth_error",
@@ -42,7 +42,7 @@ app.delete(
       webhookSourceViewId
     );
     if (!view || view.space.id !== space.id) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "webhook_source_view_not_found",
@@ -53,7 +53,7 @@ app.delete(
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -68,7 +68,7 @@ app.delete(
     } catch (err) {
       const e = normalizeError(err);
       if (e.name === "SequelizeForeignKeyConstraintError") {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 409,
           api_error: {
             type: "webhook_source_view_triggering_agent",
@@ -80,7 +80,7 @@ app.delete(
       throw e;
     }
 
-    return c.json({ deleted: true });
+    return ctx.json({ deleted: true });
   }
 );
 

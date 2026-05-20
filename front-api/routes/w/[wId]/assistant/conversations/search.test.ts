@@ -164,7 +164,7 @@ describe("GET /api/w/:wId/assistant/conversations/search", () => {
       const data = await response.json();
       expect(data.conversations).toHaveLength(2);
 
-      const sIds = data.conversations.map((c: { sId: string }) => c.sId);
+      const sIds = data.conversations.map((ctx: { sId: string }) => ctx.sId);
       expect(sIds).toContain(conv1.sId);
       expect(sIds).toContain(conv3.sId);
     });

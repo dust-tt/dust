@@ -9,10 +9,10 @@ export type GetMCPServersUsageResponseBody = {
 // Mounted at /api/w/:wId/mcp/usage.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const usage = await getToolsUsage(auth);
-  return c.json({ usage });
+  return ctx.json({ usage });
 });
 
 export default app;

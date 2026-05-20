@@ -6,16 +6,16 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/mcp_configurations.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const aId = c.req.param("aId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const aId = ctx.req.param("aId") ?? "";
 
   const assistant = await getAgentConfiguration(auth, {
     agentId: aId,
     variant: "light",
   });
   if (!assistant || (!assistant.canRead && !auth.isAdmin())) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "agent_configuration_not_found",
@@ -26,7 +26,7 @@ app.get("/", async (c) => {
 
   const owner = auth.workspace();
   if (!owner) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
@@ -40,7 +40,7 @@ app.get("/", async (c) => {
     agentConfigurationId: aId,
   });
 
-  return c.json({ configurations });
+  return ctx.json({ configurations });
 });
 
 export default app;

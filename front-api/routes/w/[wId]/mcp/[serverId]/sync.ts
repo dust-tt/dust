@@ -13,12 +13,12 @@ export type SyncMCPServerResponseBody = {
 // metadata for a remote MCP server.
 const app = new Hono();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
-  const serverId = c.req.param("serverId") ?? "";
+app.post("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const serverId = ctx.req.param("serverId") ?? "";
 
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
@@ -30,7 +30,7 @@ app.post("/", async (c) => {
 
   const server = await RemoteMCPServerResource.fetchById(auth, serverId);
   if (!server) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -45,7 +45,7 @@ app.post("/", async (c) => {
       lastError: r.error.message,
       lastSyncAt: new Date(),
     });
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -63,7 +63,7 @@ app.post("/", async (c) => {
     clearError: true,
   });
 
-  return c.json({ success: true, server: server.toJSON() });
+  return ctx.json({ success: true, server: server.toJSON() });
 });
 
 export default app;

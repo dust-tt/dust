@@ -7,11 +7,11 @@ export type GetPublicSpacesResponseBody = {
 };
 
 // Mounted at /api/v1/w/:wId/spaces. publicApiAuth is applied by the parent
-// v1 workspace sub-app, so c.get("auth") is always available here.
+// v1 workspace sub-app, so ctx.get("auth") is always available here.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   const allSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
   const spaces = allSpaces.filter((space) => space.kind !== "conversations");
@@ -19,7 +19,7 @@ app.get("/", async (c) => {
   const body: GetPublicSpacesResponseBody = {
     spaces: spaces.map((space) => space.toJSON()),
   };
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

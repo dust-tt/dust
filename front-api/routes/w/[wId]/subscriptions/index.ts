@@ -31,10 +31,10 @@ const PatchSubscriptionRequestBody = z.object({
 // and PATCH on the workspace's subscription itself; admin-only.
 const app = new Hono();
 
-function requireAdmin(c: Context) {
-  const auth = c.get("auth");
+function requireAdmin(ctx: Context) {
+  const auth = ctx.get("auth");
   if (!auth.isAdmin()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -46,19 +46,19 @@ function requireAdmin(c: Context) {
   return null;
 }
 
-app.get("/", async (c) => {
-  const denied = requireAdmin(c);
+app.get("/", async (ctx) => {
+  const denied = requireAdmin(ctx);
   if (denied) {
     return denied;
   }
-  const auth = c.get("auth");
+  const auth = ctx.get("auth");
 
   try {
     const fetched = await SubscriptionResource.fetchByAuthenticator(auth);
-    return c.json({ subscriptions: fetched.map((s) => s.toJSON()) });
+    return ctx.json({ subscriptions: fetched.map((s) => s.toJSON()) });
   } catch (error) {
     logger.error({ error }, "Error while subscribing workspace to plan");
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -68,13 +68,13 @@ app.get("/", async (c) => {
   }
 });
 
-app.post("/", validate("json", PostSubscriptionRequestBody), async (c) => {
-  const denied = requireAdmin(c);
+app.post("/", validate("json", PostSubscriptionRequestBody), async (ctx) => {
+  const denied = requireAdmin(ctx);
   if (denied) {
     return denied;
   }
-  const auth = c.get("auth");
-  const body = c.req.valid("json");
+  const auth = ctx.get("auth");
+  const body = ctx.req.valid("json");
 
   try {
     const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
@@ -92,10 +92,10 @@ app.post("/", validate("json", PostSubscriptionRequestBody), async (c) => {
       }
     );
 
-    return c.json(checkoutUrlResult);
+    return ctx.json(checkoutUrlResult);
   } catch (error) {
     logger.error({ error }, "Error while subscribing workspace to plan");
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -105,16 +105,16 @@ app.post("/", validate("json", PostSubscriptionRequestBody), async (c) => {
   }
 });
 
-app.patch("/", validate("json", PatchSubscriptionRequestBody), async (c) => {
-  const denied = requireAdmin(c);
+app.patch("/", validate("json", PatchSubscriptionRequestBody), async (ctx) => {
+  const denied = requireAdmin(ctx);
   if (denied) {
     return denied;
   }
-  const auth = c.get("auth");
+  const auth = ctx.get("auth");
 
   const subscription = auth.subscription();
   if (!subscription) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "subscription_not_found",
@@ -123,12 +123,12 @@ app.patch("/", validate("json", PatchSubscriptionRequestBody), async (c) => {
     });
   }
 
-  const { action } = c.req.valid("json");
+  const { action } = ctx.req.valid("json");
 
   switch (action) {
     case "cancel_free_trial": {
       if (!subscription.trialing) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "action_unknown_error",
@@ -141,7 +141,7 @@ app.patch("/", validate("json", PatchSubscriptionRequestBody), async (c) => {
       const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
 
       if (!subscription.stripeSubscriptionId && !useMetronomeBilling) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "subscription_state_invalid",
@@ -165,7 +165,7 @@ app.patch("/", validate("json", PatchSubscriptionRequestBody), async (c) => {
         contractId: subscription.metronomeContractId,
       });
       if (result.isErr() && useMetronomeBilling) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -177,7 +177,7 @@ app.patch("/", validate("json", PatchSubscriptionRequestBody), async (c) => {
     }
     case "pay_now": {
       if (!subscription.trialing) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "subscription_state_invalid",
@@ -186,7 +186,7 @@ app.patch("/", validate("json", PatchSubscriptionRequestBody), async (c) => {
         });
       }
       if (!subscription.stripeSubscriptionId) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "subscription_state_invalid",
@@ -210,7 +210,7 @@ app.patch("/", validate("json", PatchSubscriptionRequestBody), async (c) => {
           { error: result.error },
           "Error while upgrading to business plan"
         );
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "subscription_state_invalid",
@@ -224,7 +224,7 @@ app.patch("/", validate("json", PatchSubscriptionRequestBody), async (c) => {
       assertNever(action);
   }
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 app.route("/checkout-status", checkoutStatus);

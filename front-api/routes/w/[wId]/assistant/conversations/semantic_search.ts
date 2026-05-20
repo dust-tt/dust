@@ -16,16 +16,16 @@ const SearchQuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/semantic_search.
 const app = new Hono();
 
-app.get("/", validate("query", SearchQuerySchema), async (c) => {
-  const auth = c.get("auth");
-  const { query, limit } = c.req.valid("query");
+app.get("/", validate("query", SearchQuerySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { query, limit } = ctx.req.valid("query");
 
   const projectSpaces = (await SpaceResource.listProjectSpaces(auth)).filter(
     (space) => space.isMember(auth)
   );
 
   if (projectSpaces.length === 0) {
-    return c.json({ conversations: [] });
+    return ctx.json({ conversations: [] });
   }
 
   const searchRes = await searchProjectConversations(auth, {
@@ -35,7 +35,7 @@ app.get("/", validate("query", SearchQuerySchema), async (c) => {
   });
 
   if (searchRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -71,7 +71,7 @@ app.get("/", validate("query", SearchQuerySchema), async (c) => {
     })
     .filter((conv) => conv !== null);
 
-  return c.json({ conversations: results });
+  return ctx.json({ conversations: results });
 });
 
 export default app;
