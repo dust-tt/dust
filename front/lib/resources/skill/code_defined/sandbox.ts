@@ -199,7 +199,7 @@ function buildEnvironmentVariablesSection(): string {
   return `#### Sandbox Environment Variables
 
 The sandbox may have workspace-configured environment variables available
-in the bash shell and to any code you run. Treat all of them as sensitive.
+in the bash shell and to any code you run. All of them are sensitive.
 
 There are two prefixes:
 
@@ -221,9 +221,14 @@ Hard rules for environment variables:
 - Do not transform a \`DSEC_*\` placeholder before sending it. Do not URL
   encode it, split it across fields, put it in a request body, write it to a
   file and re-read it, sign with it, or use it in HMAC/SigV4 flows. The
-  exception is standard HTTP Basic auth: it is OK to let a client encode
-  \`user:$DSEC_SECRET\` or \`$DSEC_SECRET:\` into
-  \`Authorization: Basic ...\`.
+  exception is standard HTTP Basic auth: it is OK to let a normal HTTP
+  client base64-encode \`user:$DSEC_SECRET\` or \`$DSEC_SECRET:\` into the
+  \`Authorization: Basic ...\` header (the egress proxy handles that case);
+  do not base64-encode the value yourself.
+- Do not put a \`DSEC_*\` placeholder in a URL or query string (e.g.
+  \`https://api.example.com/x?token=$DSEC_FOO\`). The egress proxy only
+  substitutes in HTTP headers; placeholders on the request line are
+  rejected and the connection is dropped.
 - Use a \`DSEC_*\` secret only with its approved HTTPS destination. Cross-
   domain use will not substitute and the request will fail.
 - Do not pass custom TLS trust settings such as Python \`verify=\`, Node

@@ -57,6 +57,9 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("`DSEC_*`: HTTPS secret placeholders");
     expect(instructions).toContain("Authorization: Basic");
     expect(instructions).toContain(
+      "Do not put a `DSEC_*` placeholder in a URL or query string"
+    );
+    expect(instructions).toContain(
       'os.environ["OPENAI_API_KEY"] = os.environ["DSEC_OPENAI_API_KEY"]'
     );
     expect(instructions).toContain("rustls-tls-native-roots");
