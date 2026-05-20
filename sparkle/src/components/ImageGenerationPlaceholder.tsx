@@ -1,3 +1,4 @@
+import { cn } from "@sparkle/lib/utils";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 
@@ -129,7 +130,7 @@ function AnimatedGridPattern({
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill={`url(#${id})`} />
-      <svg x={x} y={y} className="s-overflow-visible">
+      <svg x={x} y={y} style={{ overflow: "visible" }}>
         {squares.map(({ pos: [sx, sy], id: sid, iteration }) => (
           <motion.rect
             key={`${sid}-${iteration}`}
@@ -187,28 +188,14 @@ export interface ImageGenerationPlaceholderProps {
    */
   src?: string | null;
   alt?: string;
-  /** Text shown while generating. Defaults to "Creating image". */
+  /** Label shown while generating. Defaults to "Creating image". */
   label?: string;
   /** Size in px for both width and height. Defaults to 260. */
   size?: number;
   className?: string;
-  style?: React.CSSProperties;
 }
 
 const EASE_OUT_QUART = "cubic-bezier(0.165, 0.84, 0.44, 1)";
-
-const PULSE_STYLE = `
-@keyframes igp-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.7; }
-}
-.igp-label {
-  animation: igp-pulse 2s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .igp-label { animation: none; }
-}
-`;
 
 export function ImageGenerationPlaceholder({
   src,
@@ -216,7 +203,6 @@ export function ImageGenerationPlaceholder({
   label = "Creating image",
   size = 260,
   className,
-  style,
 }: ImageGenerationPlaceholderProps) {
   const [gridOpacity, setGridOpacity] = useState(1);
   const [imgMounted, setImgMounted] = useState(false);
@@ -228,9 +214,9 @@ export function ImageGenerationPlaceholder({
     if (!src) {
       return;
     }
-    // Fade out grid over 220ms
+    // Fade out grid over 220ms.
     setGridOpacity(0);
-    // Mount image 120ms in so both overlap briefly
+    // Mount image 120ms in so both overlap briefly.
     const t = setTimeout(() => {
       setImgMounted(true);
       rafRef.current = requestAnimationFrame(() => setImgOpacity(1));
@@ -245,20 +231,13 @@ export function ImageGenerationPlaceholder({
 
   return (
     <div
-      className={className}
-      style={{
-        position: "relative",
-        width: size,
-        height: size,
-        borderRadius: 16,
-        overflow: "hidden",
-        flexShrink: 0,
-        background: "#f8f8f8",
-        ...style,
-      }}
+      className={cn(
+        "s-relative s-overflow-hidden s-shrink-0 s-rounded-2xl",
+        "s-bg-muted-background dark:s-bg-muted-background-night",
+        className
+      )}
+      style={{ width: size, height: size }}
     >
-      <style>{PULSE_STYLE}</style>
-
       {/* Generating state — fades out when src arrives */}
       <div
         style={{
@@ -270,17 +249,12 @@ export function ImageGenerationPlaceholder({
         }}
       >
         <span
-          className="igp-label"
-          style={{
-            position: "absolute",
-            top: 12,
-            left: 14,
-            fontSize: 13,
-            color: "#9ca3af",
-            fontWeight: 500,
-            zIndex: 1,
-            pointerEvents: "none",
-          }}
+          className={cn(
+            "s-absolute s-top-3 s-left-3.5 s-z-10",
+            "s-text-xs s-font-medium s-pointer-events-none",
+            "s-text-muted-foreground dark:s-text-muted-foreground-night",
+            "motion-safe:s-animate-opacity-pulse"
+          )}
         >
           {label}
           <AnimatedDots />
