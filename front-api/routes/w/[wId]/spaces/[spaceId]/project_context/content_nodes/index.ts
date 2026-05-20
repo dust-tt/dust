@@ -1,9 +1,12 @@
 import { removeContentNodesFromProject } from "@app/lib/api/projects/context";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type DeleteProjectContextContentNodeResponseBody = Record<string, never>;
 
 const ContentNodeItemSchema = z.object({
   nodeId: z.string().min(1, "nodeId is required"),
@@ -24,7 +27,7 @@ app.delete(
   "/",
   withSpace({ requireCanRead: true }),
   validate("json", DeleteContentNodeBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<DeleteProjectContextContentNodeResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const { items } = ctx.req.valid("json");

@@ -1,12 +1,18 @@
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 import tags from "./tags";
 
+export type GetDataSourceViewsResponseBody = {
+  dataSourceViews: DataSourceViewType[];
+};
+
 // Mounted under /api/w/:wId/data_source_views.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetDataSourceViewsResponseBody> => {
   const auth = ctx.get("auth");
   const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
   return ctx.json({

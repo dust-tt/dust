@@ -1,5 +1,8 @@
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
+import type { CoreAPILightDocument } from "@app/types/core/data_source";
+import type { DocumentType } from "@app/types/document";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withDataSource } from "@front-api/middleware/with_data_source";
@@ -7,6 +10,10 @@ import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 import documentId from "./[documentId]";
+
+export type PostDocumentResponseBody = {
+  document: DocumentType | CoreAPILightDocument;
+};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId/documents.
 const app = new Hono();
@@ -16,7 +23,7 @@ app.post(
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
   validate("json", PostDataSourceDocumentRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostDocumentResponseBody> => {
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");
 

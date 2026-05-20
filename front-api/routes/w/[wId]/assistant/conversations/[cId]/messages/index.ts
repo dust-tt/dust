@@ -9,80 +9,119 @@ import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
+import type {
+  AgentMessageType,
+  LegacyLightMessageType,
+  LightMessageType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 
 import message from "./[mId]";
 
+export type PostMessagesResponseBody = {
+  message: UserMessageType;
+  contentFragments: ContentFragmentType[];
+  agentMessages: AgentMessageType[];
+};
+
+// TODO remove after monday 2025-12-01 (once everyone has likely reloaded their browser)
+interface LegacyFetchConversationMessagesResponse {
+  hasMore: boolean;
+  lastValue: number | null;
+  messages: LegacyLightMessageType[];
+}
+
+export interface FetchConversationMessagesResponse {
+  hasMore: boolean;
+  lastValue: number | null;
+  messages: LightMessageType[];
+}
+
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
-  const auth = ctx.get("auth");
-  const conversationId = ctx.req.param("cId") ?? "";
+app.get(
+  "/",
+  async (
+    ctx
+  ): HandlerResult<
+    LegacyFetchConversationMessagesResponse | FetchConversationMessagesResponse
+  > => {
+    const auth = ctx.get("auth");
+    const conversationId = ctx.req.param("cId") ?? "";
 
-  const messageStartTime = performance.now();
+    const messageStartTime = performance.now();
 
-  // getPaginationParams expects a Next-style query object; flatten Hono's
-  // query map (single-valued strings are fine here).
-  const queryObj = ctx.req.query();
-  const paginationRes = getPaginationParams(queryObj, {
-    defaultLimit: 10,
-    defaultOrderColumn: "rank",
-    defaultOrderDirection: "desc",
-    supportedOrderColumn: ["rank"],
-  });
-  if (paginationRes.isErr()) {
-    return apiError(
-      ctx,
-      {
-        status_code: 400,
-        api_error: {
-          type: "invalid_pagination_parameters",
-          message: "Invalid pagination parameters",
+    // getPaginationParams expects a Next-style query object; flatten Hono's
+    // query map (single-valued strings are fine here).
+    const queryObj = ctx.req.query();
+    const paginationRes = getPaginationParams(queryObj, {
+      defaultLimit: 10,
+      defaultOrderColumn: "rank",
+      defaultOrderDirection: "desc",
+      supportedOrderColumn: ["rank"],
+    });
+    if (paginationRes.isErr()) {
+      return apiError(
+        ctx,
+        {
+          status_code: 400,
+          api_error: {
+            type: "invalid_pagination_parameters",
+            message: "Invalid pagination parameters",
+          },
         },
-      },
-      paginationRes.error
+        paginationRes.error
+      );
+    }
+
+    const useNewResponseFormat = ctx.req.query("newResponseFormat") === "1";
+
+    // Note that we don't use the order column and order direction here because
+    // we enforce sorting by rank in descending order.
+    const messagesRes = await fetchConversationMessages(auth, {
+      conversationId,
+      limit: paginationRes.value.limit,
+      lastRank: paginationRes.value.lastValue,
+      viewType: useNewResponseFormat ? "light" : "legacy-light",
+    });
+
+    if (messagesRes.isErr()) {
+      return apiErrorForConversation(ctx, messagesRes.error);
+    }
+
+    const messageLatency = performance.now() - messageStartTime;
+
+    getStatsDClient().distribution(
+      "assistant.messages.fetch.latency",
+      messageLatency
     );
+    const rawSize = Buffer.byteLength(
+      JSON.stringify(messagesRes.value),
+      "utf8"
+    );
+    getStatsDClient().distribution(
+      "assistant.messages.fetch.raw_size",
+      rawSize
+    );
+
+    return ctx.json(messagesRes.value);
   }
-
-  const useNewResponseFormat = ctx.req.query("newResponseFormat") === "1";
-
-  // Note that we don't use the order column and order direction here because
-  // we enforce sorting by rank in descending order.
-  const messagesRes = await fetchConversationMessages(auth, {
-    conversationId,
-    limit: paginationRes.value.limit,
-    lastRank: paginationRes.value.lastValue,
-    viewType: useNewResponseFormat ? "light" : "legacy-light",
-  });
-
-  if (messagesRes.isErr()) {
-    return apiErrorForConversation(ctx, messagesRes.error);
-  }
-
-  const messageLatency = performance.now() - messageStartTime;
-
-  getStatsDClient().distribution(
-    "assistant.messages.fetch.latency",
-    messageLatency
-  );
-  const rawSize = Buffer.byteLength(JSON.stringify(messagesRes.value), "utf8");
-  getStatsDClient().distribution("assistant.messages.fetch.raw_size", rawSize);
-
-  return ctx.json(messagesRes.value);
-});
+);
 
 app.post(
   "/",
   validate("json", InternalPostMessagesRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostMessagesResponseBody> => {
     const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
     const conversationId = ctx.req.param("cId") ?? "";

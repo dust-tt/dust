@@ -2,13 +2,19 @@ import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type GetNotionWebhookConfigResponseBody = {
+  webhookUrl: string;
+  verificationToken: string | null;
+};
 
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion/webhook_config.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetNotionWebhookConfigResponseBody> => {
   const auth = ctx.get("auth");
   const dsId = ctx.req.param("dsId") ?? "";
 

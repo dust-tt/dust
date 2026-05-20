@@ -3,10 +3,15 @@ import {
   validateUserMention,
 } from "@app/lib/api/assistant/conversation/mentions";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type PostMentionActionResponseBody = {
+  success: boolean;
+};
 
 const PostMentionActionRequestBodySchema = z.object({
   type: z.enum(["agent", "user"]),
@@ -20,7 +25,7 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostMentionActionRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostMentionActionResponseBody> => {
     const auth = ctx.get("auth");
     const cId = ctx.req.param("cId") ?? "";
     const mId = ctx.req.param("mId") ?? "";

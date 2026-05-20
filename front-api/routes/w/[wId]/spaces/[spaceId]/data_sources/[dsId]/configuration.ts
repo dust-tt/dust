@@ -1,15 +1,24 @@
 import config from "@app/lib/api/config";
 import { isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
+import type { ConnectorConfiguration } from "@app/types/connectors/configuration";
 import {
   ConnectorsAPI,
   UpdateConnectorConfigurationTypeSchema,
 } from "@app/types/connectors/connectors_api";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withDataSource } from "@front-api/middleware/with_data_source";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
+
+export type GetDataSourceConfigurationResponseBody = {
+  configuration: ConnectorConfiguration;
+};
+
+export type PatchDataSourceConfigurationResponseBody =
+  GetDataSourceConfigurationResponseBody;
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/configuration.
 // Only Slack and Webcrawler connectors have configurations; Slack is set from
@@ -20,7 +29,7 @@ app.get(
   "/",
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetDataSourceConfigurationResponseBody> => {
     const dataSource = ctx.get("dataSource");
     if (!dataSource.connectorId || !isWebsite(dataSource)) {
       return apiError(ctx, {
@@ -58,7 +67,7 @@ app.patch(
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
   validate("json", UpdateConnectorConfigurationTypeSchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchDataSourceConfigurationResponseBody> => {
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");
 

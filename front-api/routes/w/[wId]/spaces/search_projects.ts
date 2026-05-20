@@ -2,13 +2,21 @@ import { getPaginationParams } from "@app/lib/api/pagination";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type { ProjectType } from "@app/types/space";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type SearchProjectsResponseBody = {
+  spaces: Array<ProjectType & { isMember: boolean }>;
+  hasMore: boolean;
+  lastValue: string | null;
+};
 
 // Mounted under /api/w/:wId/spaces/search_projects.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<SearchProjectsResponseBody> => {
   const auth = ctx.get("auth");
 
   const paginationRes = getPaginationParams(ctx.req.query(), {

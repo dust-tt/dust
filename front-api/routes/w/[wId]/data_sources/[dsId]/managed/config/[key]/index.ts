@@ -2,10 +2,15 @@ import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type GetOrPostManagedDataSourceConfigResponseBody = {
+  configValue: string;
+};
 
 const PostManagedDataSourceConfigRequestBodySchema = z.object({
   configValue: z.string(),
@@ -39,67 +44,70 @@ const ALLOWED_CONFIG_KEYS = new Set<string>([
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/config/:key.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
-  const auth = ctx.get("auth");
-  const dsId = ctx.req.param("dsId") ?? "";
-  const configKey = ctx.req.param("key") ?? "";
+app.get(
+  "/",
+  async (ctx): HandlerResult<GetOrPostManagedDataSourceConfigResponseBody> => {
+    const auth = ctx.get("auth");
+    const dsId = ctx.req.param("dsId") ?? "";
+    const configKey = ctx.req.param("key") ?? "";
 
-  const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  if (!dataSource) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-  if (!dataSource.connectorId) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_error",
-        message: "The data source you requested is not managed.",
-      },
-    });
-  }
-  if (!ALLOWED_CONFIG_KEYS.has(configKey)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid config key: ${configKey}`,
-      },
-    });
-  }
+    const dataSource = await DataSourceResource.fetchById(auth, dsId);
+    if (!dataSource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+    if (!dataSource.connectorId) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_error",
+          message: "The data source you requested is not managed.",
+        },
+      });
+    }
+    if (!ALLOWED_CONFIG_KEYS.has(configKey)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid config key: ${configKey}`,
+        },
+      });
+    }
 
-  const connectorsAPI = new ConnectorsAPI(
-    config.getConnectorsAPIConfig(),
-    logger
-  );
-  const configRes = await connectorsAPI.getConnectorConfig(
-    dataSource.connectorId,
-    configKey
-  );
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsAPIConfig(),
+      logger
+    );
+    const configRes = await connectorsAPI.getConnectorConfig(
+      dataSource.connectorId,
+      configKey
+    );
 
-  if (configRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_error",
-        message: "Failed to retrieve config for data source.",
-        connectors_error: configRes.error,
-      },
-    });
+    if (configRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_error",
+          message: "Failed to retrieve config for data source.",
+          connectors_error: configRes.error,
+        },
+      });
+    }
+
+    return ctx.json({ configValue: configRes.value.configValue });
   }
-
-  return ctx.json({ configValue: configRes.value.configValue });
-});
+);
 
 app.post(
   "/",
   validate("json", PostManagedDataSourceConfigRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetOrPostManagedDataSourceConfigResponseBody> => {
     const auth = ctx.get("auth");
     const dsId = ctx.req.param("dsId") ?? "";
     const configKey = ctx.req.param("key") ?? "";

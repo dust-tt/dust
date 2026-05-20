@@ -7,13 +7,23 @@ import logger from "@app/logger/logger";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { sessionAuth } from "@front-api/middleware/session_auth";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
 
 import metadata from "./metadata";
+
+export type GetUserResponseBody = {
+  user: UserTypeWithWorkspaces & { subscriberHash: string | null };
+};
+
+export type PostUserMetadataResponseBody = {
+  success: boolean;
+};
 
 const PatchUserBodySchema = z.object({
   firstName: z.string(),
@@ -30,7 +40,7 @@ const app = new Hono();
 
 app.use("*", sessionAuth);
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetUserResponseBody> => {
   const session = ctx.get("session");
 
   const user = await getUserFromSession(session);
@@ -62,146 +72,150 @@ app.get("/", async (ctx) => {
   return ctx.json({ user: { ...user, subscriberHash } });
 });
 
-app.patch("/", validate("json", PatchUserBodySchema), async (ctx) => {
-  const session = ctx.get("session");
-  const body = ctx.req.valid("json");
+app.patch(
+  "/",
+  validate("json", PatchUserBodySchema),
+  async (ctx): HandlerResult<PostUserMetadataResponseBody> => {
+    const session = ctx.get("session");
+    const body = ctx.req.valid("json");
 
-  const user = await getUserFromSession(session);
-  if (!user) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "The user was not found.",
-      },
-    });
-  }
-
-  // Set selectedWorkspace from the organization ID.
-  if (session.organizationId) {
-    const ws = user.workspaces.find(
-      (w) => w.workOSOrganizationId === session.organizationId
-    );
-    if (ws) {
-      user.selectedWorkspace = ws.sId;
+    const user = await getUserFromSession(session);
+    if (!user) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "user_not_found",
+          message: "The user was not found.",
+        },
+      });
     }
-  }
 
-  const u = await UserResource.fetchByModelId(user.id);
-  if (!u) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "user_not_found",
-        message: "The user was not found.",
-      },
-    });
-  }
-
-  const workspace = user.workspaces[0];
-  if (workspace?.role === "admin") {
-    sendUserOperationMessage({
-      message:
-        `workspace_sid: ${workspace?.sId}; email: [${user.email}]; ` +
-        `User Name [${user.firstName} ${user.lastName}].`,
-      logger,
-      channel: "C075LJ6PUFQ",
-    }).catch((err) => {
-      logger.error(
-        { error: err },
-        "Failed to send user operation message to Slack."
+    // Set selectedWorkspace from the organization ID.
+    if (session.organizationId) {
+      const ws = user.workspaces.find(
+        (w) => w.workOSOrganizationId === session.organizationId
       );
-    });
-  }
+      if (ws) {
+        user.selectedWorkspace = ws.sId;
+      }
+    }
 
-  const firstName = body.firstName.trim();
-  const lastName = body.lastName.trim();
-  const jobType = body.jobType?.trim();
-  const { imageUrl, favoritePlatforms, emailProvider, workspaceId } = body;
+    const u = await UserResource.fetchByModelId(user.id);
+    if (!u) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "user_not_found",
+          message: "The user was not found.",
+        },
+      });
+    }
 
-  if (firstName.length === 0 || lastName.length === 0) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "First name and last name cannot be empty.",
-      },
-    });
-  }
+    const workspace = user.workspaces[0];
+    if (workspace?.role === "admin") {
+      sendUserOperationMessage({
+        message:
+          `workspace_sid: ${workspace?.sId}; email: [${user.email}]; ` +
+          `User Name [${user.firstName} ${user.lastName}].`,
+        logger,
+        channel: "C075LJ6PUFQ",
+      }).catch((err) => {
+        logger.error(
+          { error: err },
+          "Failed to send user operation message to Slack."
+        );
+      });
+    }
 
-  if (firstName !== user.firstName || lastName !== user.lastName) {
-    // Provisioned users cannot update their name.
-    if (user.origin === "provisioned") {
+    const firstName = body.firstName.trim();
+    const lastName = body.lastName.trim();
+    const jobType = body.jobType?.trim();
+    const { imageUrl, favoritePlatforms, emailProvider, workspaceId } = body;
+
+    if (firstName.length === 0 || lastName.length === 0) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Cannot update name for provisioned users.",
+          message: "First name and last name cannot be empty.",
         },
       });
     }
-    await u.updateName(firstName, lastName);
-  }
 
-  if (imageUrl && imageUrl !== user.image) {
-    await u.updateImage(imageUrl);
-  }
-
-  if (jobType !== undefined && !isJobType(jobType)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Job type is invalid.",
-      },
-    });
-  }
-
-  if (favoritePlatforms !== undefined) {
-    for (const platform of favoritePlatforms) {
-      if (!isFavoritePlatform(platform)) {
+    if (firstName !== user.firstName || lastName !== user.lastName) {
+      // Provisioned users cannot update their name.
+      if (user.origin === "provisioned") {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid favorite platform: ${platform}`,
+            message: "Cannot update name for provisioned users.",
           },
         });
       }
+      await u.updateName(firstName, lastName);
     }
-  }
 
-  const userMetadata: Record<string, string | undefined> = {
-    job_type: jobType,
-    "onboarding:email_provider": emailProvider,
-  };
-  for (const [key, value] of Object.entries(userMetadata)) {
-    if (value !== undefined) {
-      await u.setMetadata(key, String(value));
+    if (imageUrl && imageUrl !== user.image) {
+      await u.updateImage(imageUrl);
     }
-  }
 
-  // Workspace-scoped metadata (requires workspaceId).
-  if (workspaceId && favoritePlatforms !== undefined) {
-    const ws = user.workspaces.find((w) => w.sId === workspaceId);
-    if (ws) {
-      await u.setMetadata(
-        "favorite_platforms",
-        JSON.stringify(favoritePlatforms),
-        ws.id
-      );
+    if (jobType !== undefined && !isJobType(jobType)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Job type is invalid.",
+        },
+      });
     }
+
+    if (favoritePlatforms !== undefined) {
+      for (const platform of favoritePlatforms) {
+        if (!isFavoritePlatform(platform)) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid favorite platform: ${platform}`,
+            },
+          });
+        }
+      }
+    }
+
+    const userMetadata: Record<string, string | undefined> = {
+      job_type: jobType,
+      "onboarding:email_provider": emailProvider,
+    };
+    for (const [key, value] of Object.entries(userMetadata)) {
+      if (value !== undefined) {
+        await u.setMetadata(key, String(value));
+      }
+    }
+
+    // Workspace-scoped metadata (requires workspaceId).
+    if (workspaceId && favoritePlatforms !== undefined) {
+      const ws = user.workspaces.find((w) => w.sId === workspaceId);
+      if (ws) {
+        await u.setMetadata(
+          "favorite_platforms",
+          JSON.stringify(favoritePlatforms),
+          ws.id
+        );
+      }
+    }
+
+    await ServerSideTracking.trackUpdateUser({
+      user,
+      workspace: renderLightWorkspaceType({ workspace }),
+      role: workspace.role !== "none" ? workspace.role : "user",
+      jobType,
+    });
+
+    return ctx.json({ success: true });
   }
-
-  await ServerSideTracking.trackUpdateUser({
-    user,
-    workspace: renderLightWorkspaceType({ workspace }),
-    role: workspace.role !== "none" ? workspace.role : "user",
-    jobType,
-  });
-
-  return ctx.json({ success: true });
-});
+);
 
 app.route("/metadata", metadata);
 

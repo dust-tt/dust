@@ -9,14 +9,21 @@ import {
   moveProjectFile,
   renameProjectFile,
 } from "@app/lib/api/projects/context";
+import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type { APIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
+import type { Context, TypedResponse } from "hono";
 import { Hono } from "hono";
+
+export type ProjectFileRelResponseBody = Record<string, never>;
 
 // Catch-all for /api/w/:wId/spaces/:spaceId/files/<...rel>.
 //
@@ -24,7 +31,15 @@ import { Hono } from "hono";
 // captures everything past `/files/` (matching Next's `[...rel]`).
 const app = new Hono();
 
-async function buildContext(ctx: any) {
+async function buildContext(ctx: Context): Promise<
+  | {
+      auth: Authenticator;
+      space: SpaceResource;
+      normalizedGcsPath: string;
+      normalizedRelative: string;
+    }
+  | { error: Response & TypedResponse<APIErrorResponse> }
+> {
   const space = ctx.get("space");
   const auth = ctx.get("auth");
 
@@ -136,98 +151,106 @@ app.get("/:rel{.+}", withSpace({ requireCanRead: true }), async (ctx) => {
   });
 });
 
-app.patch("/:rel{.+}", withSpace({ requireCanRead: true }), async (ctx) => {
-  const built = await buildContext(ctx);
-  if ("error" in built) {
-    return built.error;
-  }
-  const { auth, space, normalizedRelative } = built;
+app.patch(
+  "/:rel{.+}",
+  withSpace({ requireCanRead: true }),
+  async (ctx): HandlerResult<ProjectFileRelResponseBody> => {
+    const built = await buildContext(ctx);
+    if ("error" in built) {
+      return built.error;
+    }
+    const { auth, space, normalizedRelative } = built;
 
-  if (!space.canWrite(auth)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "You do not have write access to this project.",
-      },
+    if (!space.canWrite(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have write access to this project.",
+        },
+      });
+    }
+
+    const body = await ctx.req.json().catch(() => ({}));
+    const { fileName } = body ?? {};
+    if (
+      !isString(fileName) ||
+      fileName.trim() === "" ||
+      fileName.includes("/") ||
+      fileName.includes("\\")
+    ) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "fileName is required and must be a non-empty string without path separators.",
+        },
+      });
+    }
+
+    const renameResult = await renameProjectFile(auth, {
+      space,
+      relativeFilePath: normalizedRelative,
+      newFileName: fileName.trim(),
     });
-  }
+    if (renameResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: renameResult.error.message,
+        },
+      });
+    }
 
-  const body = await ctx.req.json().catch(() => ({}));
-  const { fileName } = body ?? {};
-  if (
-    !isString(fileName) ||
-    fileName.trim() === "" ||
-    fileName.includes("/") ||
-    fileName.includes("\\")
-  ) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "fileName is required and must be a non-empty string without path separators.",
-      },
+    return ctx.json({});
+  }
+);
+
+app.delete(
+  "/:rel{.+}",
+  withSpace({ requireCanRead: true }),
+  async (ctx): HandlerResult<ProjectFileRelResponseBody> => {
+    const built = await buildContext(ctx);
+    if ("error" in built) {
+      return built.error;
+    }
+    const { auth, space, normalizedRelative } = built;
+
+    if (!space.canWrite(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have write access to this project.",
+        },
+      });
+    }
+
+    const deleteResult = await deleteProjectFile(auth, {
+      space,
+      relativeFilePath: normalizedRelative,
     });
+    if (deleteResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: deleteResult.error.message,
+        },
+      });
+    }
+
+    return ctx.json({});
   }
-
-  const renameResult = await renameProjectFile(auth, {
-    space,
-    relativeFilePath: normalizedRelative,
-    newFileName: fileName.trim(),
-  });
-  if (renameResult.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: renameResult.error.message,
-      },
-    });
-  }
-
-  return ctx.json({});
-});
-
-app.delete("/:rel{.+}", withSpace({ requireCanRead: true }), async (ctx) => {
-  const built = await buildContext(ctx);
-  if ("error" in built) {
-    return built.error;
-  }
-  const { auth, space, normalizedRelative } = built;
-
-  if (!space.canWrite(auth)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "You do not have write access to this project.",
-      },
-    });
-  }
-
-  const deleteResult = await deleteProjectFile(auth, {
-    space,
-    relativeFilePath: normalizedRelative,
-  });
-  if (deleteResult.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: deleteResult.error.message,
-      },
-    });
-  }
-
-  return ctx.json({});
-});
+);
 
 app.post(
   "/:rel{.+}",
   withSpace({ requireCanWrite: true }),
   validate("json", MoveMountFileRequestBodySchema),
-  async (c) => {
+  async (c): HandlerResult<ProjectFileRelResponseBody> => {
     const space = c.get("space");
     const auth = c.get("auth");
 

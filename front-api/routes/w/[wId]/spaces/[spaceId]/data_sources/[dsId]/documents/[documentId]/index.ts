@@ -4,11 +4,18 @@ import { isManaged, isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { CoreAPILightDocument } from "@app/types/core/data_source";
+import type { DocumentType } from "@app/types/document";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withDataSource } from "@front-api/middleware/with_data_source";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
+
+export type PatchDocumentResponseBody = {
+  document: DocumentType | CoreAPILightDocument;
+};
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/documents/:documentId.
 const app = new Hono();
@@ -18,7 +25,7 @@ app.patch(
   withSpace({ requireCanRead: true }),
   withDataSource({ requireCanRead: true }),
   validate("json", PostDataSourceDocumentRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchDocumentResponseBody> => {
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");
     const documentId = ctx.req.param("documentId") ?? "";

@@ -5,10 +5,20 @@ import {
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { UserType } from "@app/types/user";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type GetAgentEditorsResponseBody = {
+  editors: UserType[];
+};
+
+export type PatchAgentEditorsResponseBody = {
+  editors: UserType[];
+};
 
 const PatchAgentEditorsRequestBodySchema = z
   .object({
@@ -29,7 +39,7 @@ const PatchAgentEditorsRequestBodySchema = z
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/editors.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetAgentEditorsResponseBody> => {
   const auth = ctx.get("auth");
   const aId = ctx.req.param("aId") ?? "";
 
@@ -108,7 +118,7 @@ app.get("/", async (ctx) => {
 app.patch(
   "/",
   validate("json", PatchAgentEditorsRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchAgentEditorsResponseBody> => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
 

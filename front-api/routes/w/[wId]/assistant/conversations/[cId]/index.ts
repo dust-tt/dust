@@ -10,13 +10,23 @@ import {
   moveConversationToProject,
 } from "@app/lib/api/projects/conversations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type GetConversationResponseBody = {
+  conversation: ConversationWithoutContentType;
+};
+
+export type PatchConversationResponseBody = {
+  success: boolean;
+};
 
 import actions from "./actions";
 import attachments from "./attachments";
@@ -48,7 +58,7 @@ const PatchConversationsRequestBodySchema = z.union([
 // handles GET, DELETE, and PATCH on the conversation resource itself.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetConversationResponseBody> => {
   const auth = ctx.get("auth");
   const cId = ctx.req.param("cId") ?? "";
 
@@ -107,7 +117,7 @@ app.delete("/", async (ctx) => {
 app.patch(
   "/",
   validate("json", PatchConversationsRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchConversationResponseBody> => {
     const auth = ctx.get("auth");
     const cId = ctx.req.param("cId") ?? "";
 

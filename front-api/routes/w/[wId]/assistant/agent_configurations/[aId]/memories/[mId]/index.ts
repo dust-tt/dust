@@ -1,10 +1,24 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import type { APIErrorResponse } from "@app/types/error";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import type { Context } from "hono";
+import type { Context, TypedResponse } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
+
+// `lastUpdated` is a `Date` in `AgentMemoryResource.toJSON()` but JSON-serializes
+// to an ISO string on the wire; the type reflects the wire format. Consumers
+// (e.g. `AgentMemoryTab`) already pass it through `new Date(...)`, so the
+// string form is compatible.
+export type PatchAgentMemoryResponseBody = {
+  memory: {
+    sId: string;
+    lastUpdated: string;
+    content: string;
+  };
+};
 
 const PatchAgentMemoryRequestBodySchema = z.object({
   content: z.string(),
@@ -16,7 +30,8 @@ const app = new Hono();
 async function loadAgentAndMemory(
   ctx: Context
 ): Promise<
-  { ok: true; memory: AgentMemoryResource } | { ok: false; response: Response }
+  | { ok: true; memory: AgentMemoryResource }
+  | { ok: false; response: Response & TypedResponse<APIErrorResponse> }
 > {
   const auth = ctx.get("auth");
   const aId = ctx.req.param("aId") ?? "";
@@ -77,7 +92,7 @@ async function loadAgentAndMemory(
 app.patch(
   "/",
   validate("json", PatchAgentMemoryRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchAgentMemoryResponseBody> => {
     const r = await loadAgentAndMemory(ctx);
     if (!r.ok) {
       return r.response;

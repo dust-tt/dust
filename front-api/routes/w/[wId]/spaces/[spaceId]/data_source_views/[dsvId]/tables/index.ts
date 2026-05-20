@@ -1,11 +1,18 @@
 import { getFlattenedContentNodesOfViewTypeForDataSourceView } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import tableId from "./[tableId]";
 import search from "./search";
+
+export type ListTablesResponseBody = {
+  tables: DataSourceViewContentNode[];
+  nextPageCursor: string | null;
+};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables.
 const app = new Hono();
@@ -15,7 +22,7 @@ app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
   withDataSourceView({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
+  async (ctx): HandlerResult<ListTablesResponseBody> => {
     const dataSourceView = ctx.get("dataSourceView");
     const paginationRes = getCursorPaginationParams(ctx.req.query());
     if (paginationRes.isErr()) {

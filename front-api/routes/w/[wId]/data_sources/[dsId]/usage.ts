@@ -1,12 +1,18 @@
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { AgentsUsageType } from "@app/types/data_source";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type GetDataSourceUsageResponseBody = {
+  usage: AgentsUsageType;
+};
 
 // Mounted at /api/w/:wId/data_sources/:dsId/usage.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetDataSourceUsageResponseBody> => {
   const auth = ctx.get("auth");
   const dsId = ctx.req.param("dsId") ?? "";
 

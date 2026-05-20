@@ -2,12 +2,21 @@ import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import logger from "@app/logger/logger";
+import type { SearchWarningCode } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
+
+export type SearchTablesResponseBody = {
+  tables: DataSourceViewContentNode[];
+  nextPageCursor: string | null;
+  warningCode: SearchWarningCode | null;
+};
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables/search.
@@ -17,7 +26,7 @@ app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
   withDataSourceView({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
+  async (ctx): HandlerResult<SearchTablesResponseBody> => {
     const dataSourceView = ctx.get("dataSourceView");
     const query = ctx.req.query("query");
     if (!query || query.length < MIN_SEARCH_QUERY_SIZE) {

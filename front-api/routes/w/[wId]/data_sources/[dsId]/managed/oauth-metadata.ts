@@ -3,13 +3,18 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type GetOAuthMetadataResponseBody = {
+  metadata: Record<string, unknown>;
+};
 
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/oauth-metadata.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetOAuthMetadataResponseBody> => {
   const auth = ctx.get("auth");
   const dsId = ctx.req.param("dsId") ?? "";
 

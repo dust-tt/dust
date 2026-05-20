@@ -1,12 +1,22 @@
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type SearchConversationsResponseBody = {
+  conversations: Array<
+    ConversationWithoutContentType & { spaceName: string | null }
+  >;
+  hasMore: boolean;
+  lastValue: string | null;
+};
 
 // Mounted at /api/w/:wId/assistant/conversations/search.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<SearchConversationsResponseBody> => {
   const auth = ctx.get("auth");
 
   // getPaginationParams expects a Next-style query object; flatten Hono's

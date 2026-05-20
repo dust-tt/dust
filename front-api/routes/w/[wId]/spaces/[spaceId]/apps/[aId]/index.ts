@@ -1,6 +1,8 @@
 import { softDeleteApp } from "@app/lib/api/apps";
 import { AppResource } from "@app/lib/resources/app_resource";
+import type { AppType } from "@app/types/app";
 import { APP_NAME_REGEXP } from "@app/types/app";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
@@ -11,6 +13,10 @@ import datasets from "./datasets";
 import runs from "./runs";
 import state from "./state";
 
+export type GetOrPostAppResponseBody = {
+  app: AppType;
+};
+
 const PatchAppBodySchema = z.object({
   name: z.string(),
   description: z.string(),
@@ -20,27 +26,34 @@ const PatchAppBodySchema = z.object({
 const app = new Hono();
 
 // GET / — read app.
-app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
-  const auth = ctx.get("auth");
-  const space = ctx.get("space");
-  const aId = ctx.req.param("aId") ?? "";
+app.get(
+  "/",
+  withSpace({ requireCanRead: true }),
+  async (ctx): HandlerResult<GetOrPostAppResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const aId = ctx.req.param("aId") ?? "";
 
-  const found = await AppResource.fetchById(auth, aId);
-  if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: { type: "app_not_found", message: "The app was not found." },
-    });
+    const found = await AppResource.fetchById(auth, aId);
+    if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "app_not_found",
+          message: "The app was not found.",
+        },
+      });
+    }
+    return ctx.json({ app: found.toJSON() });
   }
-  return ctx.json({ app: found.toJSON() });
-});
+);
 
 // POST / — update app settings.
 app.post(
   "/",
   withSpace({ requireCanRead: true }),
   validate("json", PatchAppBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetOrPostAppResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const aId = ctx.req.param("aId") ?? "";

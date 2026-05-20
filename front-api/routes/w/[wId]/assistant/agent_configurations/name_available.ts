@@ -1,7 +1,12 @@
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type GetAgentNameIsAvailableResponseBody = {
+  available: boolean;
+};
 
 const GetAgentConfigurationNameIsAvailableSchema = z.object({
   handle: z.string(),
@@ -13,7 +18,7 @@ const app = new Hono();
 app.get(
   "/",
   validate("query", GetAgentConfigurationNameIsAvailableSchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetAgentNameIsAvailableResponseBody> => {
     const auth = ctx.get("auth");
     const { handle } = ctx.req.valid("query");
 

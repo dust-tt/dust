@@ -5,7 +5,9 @@ import logger from "@app/logger/logger";
 import { PatchDataSourceViewSchema } from "@app/types/api/public/spaces";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
@@ -16,6 +18,16 @@ import contentNodes from "./content-nodes";
 import documents from "./documents";
 import tables from "./tables";
 
+export type GetDataSourceViewResponseBody = {
+  dataSourceView: DataSourceViewType;
+  connector: ConnectorType | null;
+};
+
+export type PatchDataSourceViewResponseBody = {
+  dataSourceView: DataSourceViewType;
+  connector: ConnectorType | null;
+};
+
 // Mounted under /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId.
 const app = new Hono();
 
@@ -23,7 +35,7 @@ app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
   withDataSourceView({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetDataSourceViewResponseBody> => {
     const dataSourceView = ctx.get("dataSourceView");
     let connector: ConnectorType | null = null;
     const connectorId = dataSourceView.dataSource.connectorId;
@@ -48,7 +60,7 @@ app.patch(
   withSpace({ requireCanReadOrAdministrate: true }),
   withDataSourceView({ requireCanReadOrAdministrate: true }),
   validate("json", PatchDataSourceViewSchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchDataSourceViewResponseBody> => {
     const auth = ctx.get("auth");
     const dataSourceView = ctx.get("dataSourceView");
 

@@ -1,12 +1,17 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type CheckNameResponseBody = {
+  available: boolean;
+};
 
 // Mounted under /api/w/:wId/spaces/check-name.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<CheckNameResponseBody> => {
   const auth = ctx.get("auth");
   const name = ctx.req.query("name");
 

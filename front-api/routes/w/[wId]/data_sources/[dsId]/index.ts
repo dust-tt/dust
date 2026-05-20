@@ -1,5 +1,7 @@
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceType } from "@app/types/data_source";
 
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -8,6 +10,10 @@ import { z } from "zod";
 import files from "./files";
 import managed from "./managed";
 import usage from "./usage";
+
+export type GetOrPostDataSourceResponseBody = {
+  dataSource: DataSourceType;
+};
 
 const PostDataSourceBodySchema = z
   .object({
@@ -19,37 +25,41 @@ const PostDataSourceBodySchema = z
 // update the data source settings.
 const app = new Hono();
 
-app.post("/", validate("json", PostDataSourceBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const dsId = ctx.req.param("dsId") ?? "";
+app.post(
+  "/",
+  validate("json", PostDataSourceBodySchema),
+  async (ctx): HandlerResult<GetOrPostDataSourceResponseBody> => {
+    const auth = ctx.get("auth");
+    const dsId = ctx.req.param("dsId") ?? "";
 
-  const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  if (!dataSource) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
+    const dataSource = await DataSourceResource.fetchById(auth, dsId);
+    if (!dataSource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    if (!dataSource.canAdministrate(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "You do not have permission to access this data source's settings.",
+        },
+      });
+    }
+
+    const { assistantDefaultSelected } = ctx.req.valid("json");
+    await dataSource.setDefaultSelectedForAssistant(assistantDefaultSelected);
+
+    return ctx.json({ dataSource: dataSource.toJSON() });
   }
-
-  if (!dataSource.canAdministrate(auth)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "You do not have permission to access this data source's settings.",
-      },
-    });
-  }
-
-  const { assistantDefaultSelected } = ctx.req.valid("json");
-  await dataSource.setDefaultSelectedForAssistant(assistantDefaultSelected);
-
-  return ctx.json({ dataSource: dataSource.toJSON() });
-});
+);
 
 app.route("/files", files);
 app.route("/managed", managed);

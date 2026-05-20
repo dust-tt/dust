@@ -1,9 +1,19 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+export type GetSuggestionsResponseBody = {
+  suggestions: AgentSuggestionType[];
+};
+
+export type PatchSuggestionResponseBody = {
+  suggestions: AgentSuggestionType[];
+};
 
 const PatchSuggestionRequestBodySchema = z.object({
   suggestionIds: z.array(z.string()).min(1),
@@ -26,60 +36,65 @@ const GetSuggestionsQuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/suggestions.
 const app = new Hono();
 
-app.get("/", validate("query", GetSuggestionsQuerySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const aId = ctx.req.param("aId") ?? "";
+app.get(
+  "/",
+  validate("query", GetSuggestionsQuerySchema),
+  async (ctx): HandlerResult<GetSuggestionsResponseBody> => {
+    const auth = ctx.get("auth");
+    const aId = ctx.req.param("aId") ?? "";
 
-  const agent = await getAgentConfiguration(auth, {
-    agentId: aId,
-    variant: "light",
-  });
-  if (!agent) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration was not found.",
-      },
+    const agent = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "light",
     });
+    if (!agent) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The agent configuration was not found.",
+        },
+      });
+    }
+    if (!agent.canEdit && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "agent_group_permission_error",
+          message:
+            "Only editors of the agent or workspace admins can view suggestions.",
+        },
+      });
+    }
+
+    const { states, kind, limit } = ctx.req.valid("query");
+
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+    if (parsedLimit !== undefined && isNaN(parsedLimit)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid limit parameter: must be a number",
+        },
+      });
+    }
+
+    const suggestions =
+      await AgentSuggestionResource.listByAgentConfigurationId(auth, aId, {
+        states,
+        kind,
+        limit: parsedLimit,
+      });
+
+    return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
   }
-  if (!agent.canEdit && !auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "agent_group_permission_error",
-        message:
-          "Only editors of the agent or workspace admins can view suggestions.",
-      },
-    });
-  }
-
-  const { states, kind, limit } = ctx.req.valid("query");
-
-  const parsedLimit = limit ? parseInt(limit, 10) : undefined;
-  if (parsedLimit !== undefined && isNaN(parsedLimit)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid limit parameter: must be a number",
-      },
-    });
-  }
-
-  const suggestions = await AgentSuggestionResource.listByAgentConfigurationId(
-    auth,
-    aId,
-    { states, kind, limit: parsedLimit }
-  );
-
-  return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
-});
+);
 
 app.patch(
   "/",
   validate("json", PatchSuggestionRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchSuggestionResponseBody> => {
     const auth = ctx.get("auth");
     const aId = ctx.req.param("aId") ?? "";
 

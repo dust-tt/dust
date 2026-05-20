@@ -5,12 +5,13 @@ import {
   TOO_FREQUENT_MESSAGE,
 } from "@app/lib/api/assistant/configuration/triggers";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
 
-type PostTextAsCronRuleResponseBody =
+export type PostTextAsCronRuleResponseBody =
   | { type?: "cron"; cronRule: string; timezone: string }
   | {
       type: "interval";
@@ -52,7 +53,7 @@ const app = new Hono();
 app.post(
   "/",
   validate("json", PostTextAsCronRuleRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostTextAsCronRuleResponseBody> => {
     const auth = ctx.get("auth");
     const body = ctx.req.valid("json");
 

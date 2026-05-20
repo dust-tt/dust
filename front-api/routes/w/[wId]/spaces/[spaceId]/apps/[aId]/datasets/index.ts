@@ -5,15 +5,26 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { DatasetType } from "@app/types/dataset";
+import type { APIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import type { Context } from "hono";
+import type { Context, TypedResponse } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 
 import name from "./[name]";
+
+export type GetDatasetsResponseBody = {
+  datasets: DatasetType[];
+};
+
+export type PostDatasetResponseBody = {
+  dataset: DatasetType;
+};
 
 export const PostDatasetRequestBodySchema = z.object({
   dataset: z.object({
@@ -42,7 +53,10 @@ const app = new Hono();
 // either the loaded resources or the `Response` to short-circuit with.
 async function loadApp(
   ctx: Context
-): Promise<{ appResource: AppResource; aId: string } | Response> {
+): Promise<
+  | { appResource: AppResource; aId: string }
+  | (Response & TypedResponse<APIErrorResponse>)
+> {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
   const { aId } = ctx.req.param();
@@ -78,23 +92,27 @@ async function loadApp(
   return { appResource, aId };
 }
 
-app.get("/", withSpace({ requireCanWrite: true }), async (ctx) => {
-  const loaded = await loadApp(ctx);
-  if (loaded instanceof Response) {
-    return loaded;
-  }
-  const { appResource } = loaded;
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  withSpace({ requireCanWrite: true }),
+  async (ctx): HandlerResult<GetDatasetsResponseBody> => {
+    const loaded = await loadApp(ctx);
+    if (loaded instanceof Response) {
+      return loaded;
+    }
+    const { appResource } = loaded;
+    const auth = ctx.get("auth");
 
-  const datasets = await getDatasets(auth, appResource.toJSON());
-  return ctx.json({ datasets });
-});
+    const datasets = await getDatasets(auth, appResource.toJSON());
+    return ctx.json({ datasets });
+  }
+);
 
 app.post(
   "/",
   withSpace({ requireCanWrite: true }),
   validate("json", PostDatasetRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostDatasetResponseBody> => {
     const loaded = await loadApp(ctx);
     if (loaded instanceof Response) {
       return loaded;

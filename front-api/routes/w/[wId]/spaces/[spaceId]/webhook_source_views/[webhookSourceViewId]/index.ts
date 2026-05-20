@@ -1,9 +1,14 @@
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
+
+export type DeleteWebhookSourceViewResponseBody = {
+  deleted: boolean;
+};
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/webhook_source_views/:webhookSourceViewId.
@@ -12,7 +17,7 @@ const app = new Hono();
 app.delete(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
+  async (ctx): HandlerResult<DeleteWebhookSourceViewResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const webhookSourceViewId = ctx.req.param("webhookSourceViewId") ?? "";
