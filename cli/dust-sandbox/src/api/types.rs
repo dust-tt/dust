@@ -44,7 +44,11 @@ pub struct CallToolRequest {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(tag = "status", rename_all = "snake_case")]
+#[serde(
+    tag = "status",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase"
+)]
 pub enum CallToolPostResponse {
     Pending { action_id: String },
 }
@@ -241,6 +245,15 @@ mod tests {
             ActionPollResponse::Success { is_error, .. } => assert!(is_error),
             _ => panic!("expected success"),
         }
+    }
+
+    #[test]
+    fn parse_call_tool_post_response_pending() {
+        let resp: CallToolPostResponse =
+            serde_json::from_str(r#"{"status":"pending","actionId":"act_abc"}"#)
+                .expect("should parse");
+        let CallToolPostResponse::Pending { action_id } = resp;
+        assert_eq!(action_id, "act_abc");
     }
 
     #[test]
