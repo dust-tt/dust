@@ -6,9 +6,11 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
 
-// MITM-specific reasons are constructed by the request rewriter, which lands in
-// a follow-up PR. They are wired through the deny log shape now so the JSON
-// format does not have to change again.
+// The four placeholder-related variants below (PlaceholderOnNonAllowed,
+// ValueControlChar, UrlLinePlaceholder, Port80Placeholder) are declared here
+// so the JSON shape covers every deny reason the rewriter can emit. They are
+// not constructed yet: the substitution path that produces them lives in the
+// request rewriter and is not wired in this build.
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DenyReason {
@@ -17,6 +19,7 @@ pub enum DenyReason {
     DomainExtractionFailed,
     PlaceholderOnNonAllowed,
     HostSniMismatch,
+    ConnectMethodForbidden,
     ValueControlChar,
     UrlLinePlaceholder,
     MalformedHeaders,
@@ -35,6 +38,7 @@ impl DenyReason {
             Self::DomainExtractionFailed => "domain_extraction_failed",
             Self::PlaceholderOnNonAllowed => "placeholder_on_non_allowed",
             Self::HostSniMismatch => "host_sni_mismatch",
+            Self::ConnectMethodForbidden => "connect_method_forbidden",
             Self::ValueControlChar => "value_control_char",
             Self::UrlLinePlaceholder => "url_line_placeholder",
             Self::MalformedHeaders => "malformed_headers",
@@ -69,8 +73,6 @@ impl DenyLogEntry {
         }
     }
 
-    // Constructed by the request rewriter (follow-up PR).
-    #[allow(dead_code)]
     pub fn mitm(
         reason: DenyReason,
         domain: Option<&str>,
