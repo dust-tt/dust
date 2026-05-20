@@ -1,4 +1,10 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import {
+  getInternalMCPServerNameFromSId,
+  type InternalMCPServerNameType,
+  SEARCH_SERVER_NAME,
+  SEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
@@ -423,8 +429,29 @@ async function collectSkillsUsageFromMessage(
   return skillsUsed;
 }
 
-// Internal server that doesn't have a persistent DB configuration.
-const FILE_SYSTEM_SERVER_NAME = "data_sources_file_system";
+const DATA_SOURCES_FILE_SYSTEM_SERVER_NAME = "data_sources_file_system";
+
+function getDataSourceRetrievalDocumentsInternalMCPServerName(
+  action: AgentMCPActionResource
+): InternalMCPServerNameType | null {
+  // Keep this aligned with DATA_SOURCE_SEARCH_RESULT producers whose source includes
+  // both data_source_id and data_source_view_id. Slack and Notion use the same output
+  // mime type, but only include provider metadata.
+  if (!isLightServerSideMCPToolConfiguration(action.toolConfiguration)) {
+    return null;
+  }
+
+  if (action.toolConfiguration.originalName !== SEARCH_TOOL_NAME) {
+    return null;
+  }
+
+  return (
+    action.metadata.internalMCPServerName ??
+    getInternalMCPServerNameFromSId(
+      action.toolConfiguration.internalMCPServerId ?? null
+    )
+  );
+}
 
 async function extractRetrievalDocuments(
   auth: Authenticator,
@@ -442,21 +469,36 @@ async function extractRetrievalDocuments(
 ): Promise<AgentRetrievalOutputAnalyticsData[]> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const searchActions = actions.filter((action) =>
-    isLightServerSideMCPToolConfiguration(action.toolConfiguration)
-  );
+  const retrievalDocumentActions: {
+    action: AgentMCPActionResource;
+    internalMCPServerName: InternalMCPServerNameType;
+  }[] = [];
+  for (const action of actions) {
+    const internalMCPServerName =
+      getDataSourceRetrievalDocumentsInternalMCPServerName(action);
 
-  if (searchActions.length === 0) {
+    if (
+      internalMCPServerName === SEARCH_SERVER_NAME ||
+      internalMCPServerName === DATA_SOURCES_FILE_SYSTEM_SERVER_NAME
+    ) {
+      retrievalDocumentActions.push({ action, internalMCPServerName });
+    }
+  }
+
+  if (retrievalDocumentActions.length === 0) {
     return [];
   }
 
   // Filter out file_system server actions - they don't have DB configurations.
   // Note: file_system uses ID 1010 (positive), so we can't rely on id > 0 alone.
-  const actionsWithConfigs = searchActions.filter(
-    (a) => a.metadata.internalMCPServerName !== FILE_SYSTEM_SERVER_NAME
+  const actionsWithConfigs = retrievalDocumentActions.filter(
+    ({ internalMCPServerName }) =>
+      internalMCPServerName !== DATA_SOURCES_FILE_SYSTEM_SERVER_NAME
   );
   const configIds = Array.from(
-    new Set(actionsWithConfigs.map((a) => a.mcpServerConfigurationId))
+    new Set(
+      actionsWithConfigs.map(({ action }) => action.mcpServerConfigurationId)
+    )
   );
 
   // Convert string IDs to numeric ModelIds.
@@ -470,7 +512,7 @@ async function extractRetrievalDocuments(
   // Using standalone resource allows independent querying for reporting purposes.
   const [outputItemsByActionId, serverConfigs] = await Promise.all([
     AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
-      actionIds: searchActions.map((a) => a.id),
+      actionIds: retrievalDocumentActions.map(({ action }) => action.id),
       ignoreContent: false,
     }),
     AgentMCPServerConfigurationResource.fetchByModelIds(auth, configModelIds),
@@ -496,7 +538,7 @@ async function extractRetrievalDocuments(
   })[] = [];
   const dataSourceViewIds = new Set<string>();
 
-  for (const action of searchActions) {
+  for (const { action } of retrievalDocumentActions) {
     const actionOutputItems = outputItemsByActionId.get(action.id);
     if (!actionOutputItems) {
       continue;
