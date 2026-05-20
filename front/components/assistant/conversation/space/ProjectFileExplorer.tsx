@@ -22,10 +22,10 @@ import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation
 import config from "@app/lib/api/config";
 import { useAppRouter } from "@app/lib/platform";
 import { downloadPodFile } from "@app/lib/swr/files";
+import { useMoveMountFile } from "@app/lib/swr/mount_files";
 import {
   useAddProjectContextContentNodes,
   useDeleteProjectFile,
-  useMovePodContextFile,
   useProjectContextAttachments,
   useProjectFiles,
   useRemoveProjectContextContentNodes,
@@ -344,9 +344,8 @@ function ProjectFileExplorerContent({
     },
   });
 
-  const movePodContextFile = useMovePodContextFile({
-    owner,
-    spaceId: space.sId,
+  const moveMountFile = useMoveMountFile({
+    filesApiBasePath: `/api/w/${owner.sId}/spaces/${space.sId}/files`,
   });
 
   const uploadFilesToProject = useCallback(
@@ -362,11 +361,8 @@ function ProjectFileExplorerContent({
 
       if (podMountParentRelativePath) {
         for (const blob of uploadedBlobs) {
-          if (!blob.fileId) {
-            continue;
-          }
-          const moveResult = await movePodContextFile({
-            fileId: blob.fileId,
+          const moveResult = await moveMountFile({
+            scopedPath: `project/${blob.filename}`,
             parentRelativePath: podMountParentRelativePath,
           });
           if (moveResult.isErr()) {
@@ -378,7 +374,7 @@ function ProjectFileExplorerContent({
       await refreshProjectFiles();
     },
     [
-      movePodContextFile,
+      moveMountFile,
       podMountParentRelativePath,
       projectFileUpload,
       refreshProjectFiles,
@@ -455,6 +451,20 @@ function ProjectFileExplorerContent({
     setFileToRename({ path: entry.path, fileName: entry.fileName });
     setShowRenameDialog(true);
   }, []);
+
+  const onMoveFile = useCallback(
+    async (entry: FileEntry, parentRelativePath: string) => {
+      const result = await moveMountFile({
+        scopedPath: entry.path,
+        parentRelativePath: parentRelativePath || undefined,
+      });
+      if (result.isOk()) {
+        await refreshProjectFiles();
+      }
+      return result;
+    },
+    [moveMountFile, refreshProjectFiles]
+  );
 
   const getFileUrl = useCallback(
     (path: string) =>
@@ -678,6 +688,7 @@ function ProjectFileExplorerContent({
         onFileDownload={onFileDownload}
         onDelete={!isArchived ? onDelete : undefined}
         onFolderStackChange={setFolderStack}
+        onMoveFile={!isArchived ? onMoveFile : undefined}
         onRename={!isArchived ? onRename : undefined}
         onOpenInteractive={(entry) => setFrameFileId(entry.fileId)}
         headerActions={addButton}

@@ -265,8 +265,47 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
     });
   });
 
+  describe("POST (move)", () => {
+    beforeEach(() => {
+      vi.spyOn(projectsContext, "moveProjectFile").mockResolvedValue(
+        new Ok(undefined)
+      );
+    });
+
+    it("returns 200 and calls moveProjectFile with the right args", async () => {
+      const { req, res, project } = await makeProjectRequest(
+        "POST",
+        ["project", "reports", "file.txt"],
+        { body: { parentRelativePath: "archive" } }
+      );
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(200);
+      expect(projectsContext.moveProjectFile).toHaveBeenCalledWith(
+        expect.anything(),
+        {
+          space: expect.objectContaining({ sId: project.sId }),
+          relativeFilePath: "reports/file.txt",
+          parentRelativePath: "archive",
+        }
+      );
+    });
+
+    it("returns 500 when moveProjectFile fails", async () => {
+      vi.spyOn(projectsContext, "moveProjectFile").mockResolvedValue(
+        new Err(new Error("GCS error"))
+      );
+      const { req, res } = await makeProjectRequest(
+        "POST",
+        ["project", "file.txt"],
+        { body: {} }
+      );
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(500);
+    });
+  });
+
   it("returns 405 for unsupported methods", async () => {
-    const { req, res } = await makeProjectRequest("POST", [
+    const { req, res } = await makeProjectRequest("PUT", [
       "project",
       "file.txt",
     ]);

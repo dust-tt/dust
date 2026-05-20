@@ -131,8 +131,8 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/[...rel]", () => 
     });
   });
 
-  it("should reject non-GET methods", async () => {
-    const { req, res } = await setupTest(["chart.png"], "POST");
+  it("should reject unsupported methods", async () => {
+    const { req, res } = await setupTest(["conversation", "chart.png"], "PUT");
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
   });
@@ -148,6 +148,42 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/[...rel]", () => 
     await handler(req, res);
     expect(mockGetFileContentType).toHaveBeenCalledWith(
       `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/chart.png`
+    );
+  });
+});
+
+describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/[...rel] (move)", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const { ConversationResource } = await import(
+      "@app/lib/resources/conversation_resource"
+    );
+    vi.mocked(ConversationResource.fetchById).mockResolvedValue({
+      sId: CONVERSATION_SID,
+    } as never);
+  });
+
+  it("should move a file within the conversation mount", async () => {
+    const mountFileOps = await import("@app/lib/api/files/mount_file_ops");
+    vi.spyOn(mountFileOps, "moveMountFile").mockResolvedValue(
+      new Ok(undefined)
+    );
+
+    const { req, res } = await setupTest(
+      ["conversation", "reports", "chart.png"],
+      "POST"
+    );
+    req.body = { parentRelativePath: "archive" };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(mountFileOps.moveMountFile).toHaveBeenCalledWith(
+      expect.anything(),
+      { useCase: "conversation", conversationId: CONVERSATION_SID },
+      {
+        relativeFilePath: "reports/chart.png",
+        parentRelativePath: "archive",
+      }
     );
   });
 });

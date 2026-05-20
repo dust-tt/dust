@@ -5,8 +5,10 @@ import {
   getProjectFilesBasePath,
   parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
+import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
 import {
   deleteProjectFile,
+  moveProjectFile,
   renameProjectFile,
 } from "@app/lib/api/projects/context";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
@@ -19,6 +21,7 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import path from "path";
+import { fromError } from "zod-validation-error";
 
 export type ProjectFileRelResponseBody = Record<string, never>;
 
@@ -181,12 +184,52 @@ async function handler(
       return res.status(200).json({});
     }
 
+    case "POST": {
+      if (!space.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "You do not have write access to this project.",
+          },
+        });
+      }
+
+      const bodyValidation = MoveMountFileRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
+          },
+        });
+      }
+
+      const moveResult = await moveProjectFile(auth, {
+        space,
+        relativeFilePath: normalizedRelative,
+        parentRelativePath: bodyValidation.data.parentRelativePath,
+      });
+      if (moveResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: moveResult.error.message,
+          },
+        });
+      }
+
+      return res.status(200).json({});
+    }
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "Only GET, PATCH and DELETE methods are supported.",
+          message: "Only GET, PATCH, POST and DELETE methods are supported.",
         },
       });
   }

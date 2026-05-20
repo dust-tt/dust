@@ -2,8 +2,10 @@ import {
   getProjectFilesBasePath,
   parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
+import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
 import {
   deleteProjectFile,
+  moveProjectFile,
   renameProjectFile,
 } from "@app/lib/api/projects/context";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -11,6 +13,7 @@ import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import path from "path";
 
@@ -224,6 +227,48 @@ app.delete(
     }
 
     return ctx.json({});
+  }
+);
+
+app.post(
+  "/:rel{.+}",
+  spaceResource({ requireCanWrite: true }),
+  validate("json", MoveMountFileRequestBodySchema),
+  async (c) => {
+    const ctx = await buildContext(c);
+    if ("error" in ctx) {
+      return ctx.error;
+    }
+    const { auth, space, normalizedRelative } = ctx;
+
+    if (!space.canWrite(auth)) {
+      return apiError(c, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have write access to this project.",
+        },
+      });
+    }
+
+    const { parentRelativePath } = c.req.valid("json");
+
+    const moveResult = await moveProjectFile(auth, {
+      space,
+      relativeFilePath: normalizedRelative,
+      parentRelativePath,
+    });
+    if (moveResult.isErr()) {
+      return apiError(c, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: moveResult.error.message,
+        },
+      });
+    }
+
+    return c.json({});
   }
 );
 
