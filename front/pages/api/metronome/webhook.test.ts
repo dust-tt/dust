@@ -5,6 +5,10 @@ import {
   listMetronomeContracts,
 } from "@app/lib/metronome/client";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import {
+  releaseMetronomeWebhookEvent,
+  tryClaimMetronomeWebhookEvent,
+} from "@app/lib/metronome/webhook_idempotency";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -51,6 +55,11 @@ vi.mock("@app/temporal/scrub_workspace/client", () => ({
 
 vi.mock("@app/lib/api/subscription", () => ({
   restoreWorkspaceAfterSubscription: vi.fn(),
+}));
+
+vi.mock("@app/lib/metronome/webhook_idempotency", () => ({
+  tryClaimMetronomeWebhookEvent: vi.fn(),
+  releaseMetronomeWebhookEvent: vi.fn(),
 }));
 
 const METRONOME_CUSTOMER_ID = "cust_test_xxx";
@@ -165,6 +174,10 @@ beforeEach(() => {
     new Ok({} as never)
   );
   vi.mocked(restoreWorkspaceAfterSubscription).mockResolvedValue(undefined);
+  // Default: every event is freshly claimed. Tests that exercise the
+  // duplicate path override this with `mockResolvedValueOnce(false)`.
+  vi.mocked(tryClaimMetronomeWebhookEvent).mockResolvedValue(true);
+  vi.mocked(releaseMetronomeWebhookEvent).mockResolvedValue(undefined);
 });
 
 /** Stub `getMetronomeClient().webhooks.unwrap` to bypass signature verification. */
@@ -465,5 +478,98 @@ describe("Metronome webhook — contract.end", () => {
 
     expect(res._getStatusCode()).toBe(200);
     expect(launchScheduleWorkspaceScrubWorkflow).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the subscription active when the scrub launch fails, so a retry can complete", async () => {
+    // Reordering guarantee: a scrub-launch failure must not leave the
+    // subscription in "ended" status, otherwise the retry would dispatch
+    // to the no-op branch and the scrub would never run.
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    const event = contractEvent("contract.end", OLD_CONTRACT_ID);
+    mockUnwrap(event);
+    vi.mocked(listMetronomeContracts).mockResolvedValue(
+      new Ok([
+        {
+          id: OLD_CONTRACT_ID,
+          starting_at: new Date(Date.now() - 10_000).toISOString(),
+          ending_before: new Date().toISOString(),
+        },
+      ] as never)
+    );
+    vi.mocked(launchScheduleWorkspaceScrubWorkflow).mockResolvedValueOnce(
+      new Err(new Error("Temporal unavailable"))
+    );
+
+    const { req, res } = makeWebhookRequest(event);
+    await handler(req, res as never);
+
+    expect(res._getStatusCode()).toBe(500);
+    const refreshed = await WorkspaceResource.fetchById(workspace.sId);
+    const sub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+      refreshed!.id
+    );
+    expect(sub!.status).toBe("active");
+    expect(sub!.metronomeContractId).toBe(OLD_CONTRACT_ID);
+  });
+});
+
+describe("Metronome webhook — idempotency", () => {
+  it("short-circuits to 200 without side effects when the event id has already been processed", async () => {
+    await ensureEnterprisePlan();
+    await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
+    mockUnwrap(event);
+    // Simulate a redelivery: the claim helper reports the id is already held.
+    vi.mocked(tryClaimMetronomeWebhookEvent).mockResolvedValueOnce(false);
+
+    const { req, res } = makeWebhookRequest(event);
+    await handler(req, res as never);
+
+    expect(res._getStatusCode()).toBe(200);
+    // No side effects: the handler returned before fetching the contract or
+    // touching the subscription.
+    expect(getMetronomeContractById).not.toHaveBeenCalled();
+    expect(restoreWorkspaceAfterSubscription).not.toHaveBeenCalled();
+    // We do not release the claim on the short-circuit path — the original
+    // delivery owns it.
+    expect(releaseMetronomeWebhookEvent).not.toHaveBeenCalled();
+  });
+
+  it("releases the claim when processing fails so a retry can reprocess", async () => {
+    await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
+    mockUnwrap(event);
+    // Force the contract fetch to fail — this is one of the 500-return paths.
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Err({ message: "boom" } as never)
+    );
+
+    const { req, res } = makeWebhookRequest(event);
+    await handler(req, res as never);
+
+    expect(res._getStatusCode()).toBe(500);
+    expect(releaseMetronomeWebhookEvent).toHaveBeenCalledWith(event.id);
+  });
+
+  it("does not release the claim on a successful run", async () => {
+    await ensureEnterprisePlan();
+    await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
+    mockUnwrap(event);
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: NEW_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: new Date().toISOString(),
+        custom_fields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
+      } as never)
+    );
+
+    const { req, res } = makeWebhookRequest(event);
+    await handler(req, res as never);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(tryClaimMetronomeWebhookEvent).toHaveBeenCalledWith(event.id);
+    expect(releaseMetronomeWebhookEvent).not.toHaveBeenCalled();
   });
 });
