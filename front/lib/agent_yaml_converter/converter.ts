@@ -4,6 +4,7 @@ import {
   isAutoInternalMCPServerName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type {
   AgentYAMLAction,
   AgentYAMLConfig,
@@ -19,12 +20,93 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import * as yaml from "js-yaml";
 
 export class AgentYAMLConverter {
+  static generationSettingsToModel(
+    generationSettings: AgentYAMLConfig["generation_settings"]
+  ): PostOrPatchAgentConfigurationRequestBody["assistant"]["model"] {
+    const {
+      model_id: modelId,
+      provider_id: providerId,
+      reasoning_effort: reasoningEffort,
+      response_format: responseFormat,
+      temperature,
+    } = generationSettings;
+
+    return {
+      modelId,
+      providerId,
+      temperature,
+      reasoningEffort,
+      responseFormat,
+    };
+  }
+
+  static mergeGenerationSettingsPatch(
+    model: PostOrPatchAgentConfigurationRequestBody["assistant"]["model"],
+    generationSettings: Partial<AgentYAMLConfig["generation_settings"]> = {}
+  ): PostOrPatchAgentConfigurationRequestBody["assistant"]["model"] {
+    const {
+      model_id = model.modelId,
+      provider_id = model.providerId,
+      reasoning_effort = model.reasoningEffort,
+      response_format = model.responseFormat,
+      temperature = model.temperature,
+    } = generationSettings;
+
+    return {
+      ...model,
+      modelId: model_id,
+      providerId: provider_id,
+      temperature,
+      reasoningEffort: reasoning_effort,
+      responseFormat: response_format,
+    };
+  }
+
+  static agentConfigurationActionsToAssistantActions(
+    actions: AgentConfigurationType["actions"]
+  ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"] {
+    return actions
+      .filter(isServerSideMCPServerConfiguration)
+      .map(
+        ({
+          additionalConfiguration,
+          childAgentId,
+          dataSources,
+          description,
+          dustAppConfiguration,
+          dustProject,
+          jsonSchema,
+          mcpServerViewId,
+          name,
+          secretName,
+          tables,
+          timeFrame,
+          type,
+        }) => ({
+          additionalConfiguration,
+          childAgentId,
+          dataSources,
+          description,
+          dustAppConfiguration,
+          dustProject,
+          jsonSchema,
+          mcpServerViewId,
+          name,
+          secretName,
+          tables,
+          timeFrame,
+          type,
+        })
+      );
+  }
+
   static async fromBuilderFormData(
     auth: Authenticator,
     formData: AgentBuilderFormData,
@@ -433,6 +515,35 @@ export class AgentYAMLConverter {
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  static async convertYAMLToolsetToAssistantActions(
+    auth: Authenticator,
+    toolset: AgentYAMLConfig["toolset"]
+  ): Promise<
+    Result<
+      {
+        actions: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"];
+        skippedActions: { name: string; reason: string }[];
+      },
+      Error
+    >
+  > {
+    const result = await this.convertYAMLActionsToMCPConfigurations(
+      auth,
+      toolset
+    );
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok({
+      actions: result.value.configurations,
+      skippedActions: result.value.skipped.map(({ action, reason }) => ({
+        name: action.name ?? "",
+        reason,
+      })),
+    });
   }
 
   static fromYAMLString(yamlString: string): Result<AgentYAMLConfig, Error> {

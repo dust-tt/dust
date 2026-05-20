@@ -16,18 +16,33 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
 
 const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 
-export async function getAgentConfigurationAsYAMLConfig(
+export type ExportableAgentConfiguration = AgentConfigurationType & {
+  scope: Exclude<AgentConfigurationType["scope"], "global">;
+  status: "active";
+};
+
+function isExportableAgentConfiguration(
+  agentConfiguration: AgentConfigurationType
+): agentConfiguration is ExportableAgentConfiguration {
+  return (
+    agentConfiguration.status === "active" &&
+    agentConfiguration.scope !== "global"
+  );
+}
+
+export async function getAgentConfigurationForExport(
   auth: Authenticator,
   agentId: string
-): Promise<Result<AgentYAMLConfig, APIErrorWithContentfulStatusCode>> {
+): Promise<Result<ExportableAgentConfiguration, APIErrorWithStatusCode>> {
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId,
     variant: "full",
@@ -43,10 +58,7 @@ export async function getAgentConfigurationAsYAMLConfig(
     });
   }
 
-  if (
-    agentConfiguration.status !== "active" ||
-    agentConfiguration.scope === "global"
-  ) {
+  if (!isExportableAgentConfiguration(agentConfiguration)) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -56,6 +68,13 @@ export async function getAgentConfigurationAsYAMLConfig(
     });
   }
 
+  return new Ok(agentConfiguration);
+}
+
+export async function convertAgentConfigurationToYAMLConfig(
+  auth: Authenticator,
+  agentConfiguration: AgentConfigurationType
+): Promise<Result<AgentYAMLConfig, APIErrorWithStatusCode>> {
   const { dataSourceViews, mcpServerViews } =
     await getAccessibleSourcesAndAppsForActions(auth);
   const skills = await SkillResource.listByAgentConfiguration(
@@ -181,23 +200,24 @@ export async function exportAgentConfigurationAsYAML(
   auth: Authenticator,
   agentId: string
 ): Promise<
-  Result<
-    { yamlContent: string; filename: string },
-    APIErrorWithContentfulStatusCode
-  >
+  Result<{ yamlContent: string; filename: string }, APIErrorWithStatusCode>
 > {
-  const yamlConfigResult = await getAgentConfigurationAsYAMLConfig(
-    auth,
-    agentId
-  );
+  const agentResult = await getAgentConfigurationForExport(auth, agentId);
+  if (agentResult.isErr()) {
+    return agentResult;
+  }
 
+  const yamlConfigResult = await convertAgentConfigurationToYAMLConfig(
+    auth,
+    agentResult.value
+  );
   if (yamlConfigResult.isErr()) {
     return yamlConfigResult;
   }
 
-  const yamlStringResult = AgentYAMLConverter.toYAMLString(
-    yamlConfigResult.value
-  );
+  const yamlConfig = yamlConfigResult.value;
+
+  const yamlStringResult = AgentYAMLConverter.toYAMLString(yamlConfig);
 
   if (yamlStringResult.isErr()) {
     return new Err({
@@ -209,7 +229,7 @@ export async function exportAgentConfigurationAsYAML(
     });
   }
 
-  const sanitizedName = yamlConfigResult.value.agent.handle.replace(
+  const sanitizedName = yamlConfig.agent.handle.replace(
     AGENT_NAME_SANITATION_REGEX,
     "_"
   );
