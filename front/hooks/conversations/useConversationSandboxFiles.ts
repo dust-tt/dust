@@ -24,7 +24,7 @@ export function useConversationSandboxFiles({
       ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/files`
       : null,
     sandboxFilesFetcher,
-    options
+    { keepPreviousData: true, ...options }
   );
 
   const disabled = options?.disabled;
