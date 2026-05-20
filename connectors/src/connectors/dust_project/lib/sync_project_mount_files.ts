@@ -6,6 +6,7 @@ import {
 import {
   deleteDataSourceDocument,
   MAX_FILE_SIZE_TO_DOWNLOAD,
+  MAX_SMALL_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
@@ -200,7 +201,7 @@ export async function syncProjectMountFile({
       },
     });
   } else if (mimeType.startsWith("text/")) {
-    const textRes = handleTextFile(buffer, MAX_FILE_SIZE_TO_DOWNLOAD);
+    const textRes = handleTextFile(buffer, MAX_SMALL_DOCUMENT_TXT_LEN);
     if (textRes.isErr()) {
       localLogger.warn(
         { error: textRes.error },
