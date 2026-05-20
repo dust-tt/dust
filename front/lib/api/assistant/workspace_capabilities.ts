@@ -64,13 +64,13 @@ export async function getAvailableModelsForWorkspace(
 }
 
 /**
- * Count active workspace agents whose model is not available in the
- * current region. Used to gate enabling `regionalModelsOnly` on a
+ * List sIds of active workspace agents whose model is not available in
+ * the current region. Used to gate enabling `regionalModelsOnly` on a
  * workspace — admins must not strand existing agents.
  */
-export async function countActiveAgentsUsingNonRegionalModels(
+export async function listActiveAgentsUsingNonRegionalModels(
   auth: Authenticator
-): Promise<number> {
+): Promise<string[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
   const region = regionConfig.getCurrentRegion();
 
@@ -87,16 +87,14 @@ export async function countActiveAgentsUsingNonRegionalModels(
 
   const activeAgents = await AgentConfigurationModel.findAll({
     where: { workspaceId, status: "active" },
-    attributes: ["providerId", "modelId"],
+    attributes: ["sId", "providerId", "modelId"],
   });
 
-  let count = 0;
-  for (const agent of activeAgents) {
-    if (!regionalModelKeys.has(`${agent.providerId}:${agent.modelId}`)) {
-      count += 1;
-    }
-  }
-  return count;
+  return activeAgents
+    .filter(
+      (agent) => !regionalModelKeys.has(`${agent.providerId}:${agent.modelId}`)
+    )
+    .map((agent) => agent.sId);
 }
 
 /**
