@@ -318,12 +318,17 @@ async function handler(
         logger.error(
           {
             panic: true,
-            workspaceId: owner.sId,
             error: normalizeError(provisionResult.error).message,
+            stripeCustomerId,
+            currency,
+            workspaceId: owner.sId,
             userId: user.sId,
             planCode,
             metronomePackageAlias,
+            couponId: coupon?.sId,
+            pendingRedemptionId: pendingRedemption?.sId,
             firstPeriodPaymentEnforced: shouldEnforceFirstPeriodPayment,
+            firstPeriodPaymentCents: effectiveSubtotalCents,
             uniquenessKey: setupSessionId,
           },
           "[Checkout] Payment succeeded but Metronome provisioning failed"
