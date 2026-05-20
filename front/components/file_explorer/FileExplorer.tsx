@@ -4,6 +4,7 @@ import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
 import { FileExplorerToolbar } from "@app/components/file_explorer/FileExplorerToolbar";
 import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
 import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
+import { MoveFileToFolderDialog } from "@app/components/file_explorer/MoveFileToFolderDialog";
 import type {
   ContentNodeEntry,
   FileEntry,
@@ -14,14 +15,20 @@ import type {
   FileExplorerSortMode,
   SandboxTreeNode,
 } from "@app/components/file_explorer/types";
+import {
+  buildFolderTree,
+  countFoldersInTree,
+} from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
 import { isInteractiveContentType } from "@app/types/files";
+import { Err, type Result } from "@app/types/shared/result";
 import {
   type BreadcrumbItem,
   Breadcrumbs,
   Button,
   cn,
+  FolderOpenIcon,
   PencilSquareIcon,
   TrashIcon,
   XMarkIcon,
@@ -70,6 +77,10 @@ interface FileExplorerProps {
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
   onFileDownload: (entry: FileEntry) => Promise<void>;
   onFolderStackChange?: Dispatch<SetStateAction<SandboxTreeNode[]>>;
+  onMoveFile?: (
+    entry: FileEntry,
+    parentRelativePath: string
+  ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
   onRename?: (entry: FileEntry) => void;
 }
@@ -89,6 +100,7 @@ export function FileExplorer({
   onDelete,
   onFileDownload,
   onFolderStackChange,
+  onMoveFile,
   onOpenInteractive,
   onRename,
 }: FileExplorerProps) {
@@ -116,6 +128,8 @@ export function FileExplorer({
     useState<FileExplorerSortMode>("last-modified");
   const [previewFile, setPreviewFile] = useState<FileEntry | null>(null);
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
+  const [fileToMove, setFileToMove] = useState<FileEntry | null>(null);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
 
   const {
     sortedNodes,
@@ -137,6 +151,12 @@ export function FileExplorer({
     [contentNodes, files, folderStack, searchQuery, activeFilter, sortMode]
   );
 
+  const folderTree = useMemo(() => buildFolderTree(files), [files]);
+  const totalFolderCount = useMemo(
+    () => countFoldersInTree(folderTree),
+    [folderTree]
+  );
+
   const getMenuItems = useCallback(
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
       const items: FileExplorerMenuAction[] = [];
@@ -147,6 +167,17 @@ export function FileExplorer({
           onClick: (e) => {
             e.stopPropagation();
             onRename(entry);
+          },
+        });
+      }
+      if (onMoveFile && totalFolderCount > 0 && entry.kind === "file") {
+        items.push({
+          label: "Move to…",
+          icon: FolderOpenIcon,
+          onClick: (e) => {
+            e.stopPropagation();
+            setFileToMove(entry);
+            setShowMoveDialog(true);
           },
         });
       }
@@ -163,7 +194,17 @@ export function FileExplorer({
       }
       return items;
     },
-    [onDelete, onRename]
+    [onDelete, onMoveFile, onRename, totalFolderCount]
+  );
+
+  const handleMoveToFolder = useCallback(
+    async (parentRelativePath: string) => {
+      if (!fileToMove || !onMoveFile) {
+        return new Err(new Error("No file selected to move."));
+      }
+      return onMoveFile(fileToMove, parentRelativePath);
+    },
+    [fileToMove, onMoveFile]
   );
 
   const handleBreadcrumbNavigate = (index: number) => {
@@ -283,7 +324,9 @@ export function FileExplorer({
             onFileOpen={handleFileOpen}
             onFileDownload={onFileDownload}
             onNodeOpen={handleNodeOpen}
-            getFileMenuItems={onDelete || onRename ? getMenuItems : undefined}
+            getFileMenuItems={
+              onDelete || onRename || onMoveFile ? getMenuItems : undefined
+            }
           />
         </div>
       </div>
@@ -297,6 +340,16 @@ export function FileExplorer({
         onPrev={handlePreviewPrev}
         onNext={handlePreviewNext}
       />
+
+      {onMoveFile && (
+        <MoveFileToFolderDialog
+          files={files}
+          file={fileToMove}
+          isOpen={showMoveDialog}
+          onClose={() => setShowMoveDialog(false)}
+          onMove={handleMoveToFolder}
+        />
+      )}
     </>
   );
 }

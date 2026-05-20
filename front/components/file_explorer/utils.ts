@@ -289,6 +289,79 @@ export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
   return root;
 }
 
+/** Strip the scoped prefix (e.g. `project/`) from a mount path. */
+export function getScopedRelativePath(scopedPath: string): string {
+  const slashIdx = scopedPath.indexOf("/");
+  return slashIdx >= 0 ? scopedPath.slice(slashIdx + 1) : scopedPath;
+}
+
+/** Parent folder path within the mount, or empty string for the root. */
+export function getParentFolderRelativePath(relativeFilePath: string): string {
+  const lastSlash = relativeFilePath.lastIndexOf("/");
+  return lastSlash >= 0 ? relativeFilePath.slice(0, lastSlash) : "";
+}
+
+function filterDirectoryNodes(nodes: SandboxTreeNode[]): SandboxTreeNode[] {
+  return nodes
+    .filter((node) => node.isDirectory)
+    .map((node) => ({
+      ...node,
+      children: filterDirectoryNodes(node.children),
+    }));
+}
+
+/** Folder-only view of the sandbox tree (no files). */
+export function buildFolderTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
+  return filterDirectoryNodes(buildSandboxTree(entries));
+}
+
+export function countFoldersInTree(nodes: SandboxTreeNode[]): number {
+  return nodes.reduce(
+    (count, node) => count + 1 + countFoldersInTree(node.children),
+    0
+  );
+}
+
+/** Human-readable breadcrumb for a folder path in the move dialog. */
+export function formatFolderDestinationLabel(
+  folderPath: string,
+  folderTree: SandboxTreeNode[]
+): string {
+  if (!folderPath) {
+    return "All files";
+  }
+
+  const labels = ["All files"];
+  let nodes = folderTree;
+  let current = "";
+  for (const part of folderPath.split("/")) {
+    current = current ? `${current}/${part}` : part;
+    const node = nodes.find((n) => n.path === current);
+    if (!node) {
+      labels.push(part);
+      break;
+    }
+    labels.push(node.name);
+    nodes = node.children;
+  }
+  return labels.join(" / ");
+}
+
+/** Paths of every ancestor folder, for expanding the tree to a location. */
+export function getAncestorFolderPaths(folderPath: string): Set<string> {
+  if (!folderPath) {
+    return new Set();
+  }
+
+  const paths = new Set<string>();
+  let current = "";
+  for (const part of folderPath.split("/")) {
+    current = current ? `${current}/${part}` : part;
+    paths.add(current);
+  }
+  return paths;
+}
+
 /**
  * Re-resolve breadcrumb navigation against a freshly built tree.
  *
