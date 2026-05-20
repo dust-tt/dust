@@ -24,18 +24,14 @@ export type MemberUsageType = {
   seatUsagePercent: number | null;
   // Total user AWU consumption for the period, regardless of whether it
   // was covered by the seat allocation or overflowed into the workspace
-  // pool. This is the value the per-user spend cap is compared against
-  // (the Metronome alert is configured on the same metric); to derive
-  // pool overflow, subtract the seat allocation client-side.
+  // pool.
   consumedAwuCredits: number;
   // Billing cadence for the seat subscription the user is assigned to; null when unknown.
   billingFrequency: BillingFrequency | null;
   // Set when a future seat change is scheduled (e.g. at the next credit refresh).
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
-  // Per-user spend cap in AWU credits (the upper bound on workspace pool
-  // consumption). `null` means no cap is set for this user (unlimited
-  // within the workspace pool).
+  // Per-user total spend cap in AWU credits for the billing period
   spendLimitAwuCredits: number | null;
 };
 
