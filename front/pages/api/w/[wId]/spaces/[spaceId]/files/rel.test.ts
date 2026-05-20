@@ -303,10 +303,7 @@ describe("/api/w/[wId]/spaces/[spaceId]/files/[...rel]", () => {
   });
 
   it("returns 405 for unsupported methods", async () => {
-    const { req, res } = await makeProjectRequest("PUT", [
-      "pod",
-      "file.txt",
-    ]);
+    const { req, res } = await makeProjectRequest("PUT", ["pod", "file.txt"]);
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
   });
