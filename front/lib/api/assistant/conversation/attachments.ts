@@ -363,9 +363,11 @@ export function renderAttachmentXml({
         ]),
   ];
 
-  if (isContentNodeAttachmentType(attachment) && attachment.sourceUrl) {
-    params.push(`sourceUrl="${attachment.sourceUrl}"`);
+  if (isContentNodeAttachmentType(attachment)) {
     params.push(`nodeId="${attachment.nodeId}"`);
+    if (attachment.sourceUrl) {
+      params.push(`sourceUrl="${attachment.sourceUrl}"`);
+    }
   }
 
   let tag = `<attachment ${params.join(" ")}`;
