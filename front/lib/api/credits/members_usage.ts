@@ -7,12 +7,8 @@ import {
   MembershipResource,
   type MembershipsPaginationParams,
 } from "@app/lib/resources/membership_resource";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { MembershipSeatType } from "@app/types/memberships";
-import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 export type MemberUsageType = {
   sId: string;
@@ -44,7 +40,7 @@ export type GetMembersUsageResponseBody = {
 export const DEFAULT_MEMBERS_USAGE_PAGE_LIMIT = 50;
 export const MAX_MEMBERS_USAGE_PAGE_LIMIT = 150;
 
-const MembersUsagePaginationSchema = z.object({
+export const MembersUsagePaginationSchema = z.object({
   limit: z.coerce
     .number()
     .int()
@@ -56,14 +52,18 @@ const MembersUsagePaginationSchema = z.object({
   lastValue: z.coerce.number().optional().catch(undefined),
 });
 
+export type MembersUsagePaginationInput = z.infer<
+  typeof MembersUsagePaginationSchema
+>;
+
 function buildUrlWithParams(
-  req: NextApiRequest,
+  currentUrl: string,
   newParams: MembershipsPaginationParams | undefined
 ) {
   if (!newParams) {
     return undefined;
   }
-  const url = new URL(req.url!, `http://${req.headers.host}`);
+  const url = new URL(currentUrl, "http://placeholder");
   Object.entries(newParams).forEach(([key, value]) => {
     if (value === null || value === undefined) {
       url.searchParams.delete(key);
@@ -130,119 +130,89 @@ async function fetchPerUserSpendLimitsForMembersTable({
   return result.value;
 }
 
-export async function handleGetMembersUsageRequest(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetMembersUsageResponseBody>>,
-  auth: Authenticator
-): Promise<void> {
-  if (!auth.isAdmin()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Only workspace admins can access the members usage list.",
-      },
+export async function getMembersUsage({
+  auth,
+  paginationParams,
+  currentUrl,
+}: {
+  auth: Authenticator;
+  paginationParams: MembersUsagePaginationInput;
+  currentUrl: string;
+}): Promise<GetMembersUsageResponseBody> {
+  const workspace = auth.getNonNullableWorkspace();
+  const subscription = auth.subscription();
+  const { metronomeCustomerId } = workspace;
+  const metronomeContractId = subscription?.metronomeContractId ?? null;
+
+  const [
+    membershipsResult,
+    perUserTotalCredits,
+    seatDataByUserId,
+    perUserSpendLimits,
+  ] = await Promise.all([
+    MembershipResource.getActiveMemberships({
+      workspace,
+      paginationParams,
+    }),
+    fetchPerUserUsageCreditsForMembersTable({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      metronomeContractId,
+    }),
+    fetchSeatDataForMembersTable({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      metronomeContractId,
+    }),
+    fetchPerUserSpendLimitsForMembersTable({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      workspaceSId: workspace.sId,
+    }),
+  ]);
+
+  const { memberships, total, nextPageParams } = membershipsResult;
+
+  const scheduledByUserId =
+    await MembershipResource.getScheduledMembershipsByUserIdInWorkspace({
+      workspace,
+      userIds: memberships.map((m) => m.userId),
     });
-  }
 
-  switch (req.method) {
-    case "GET": {
-      const paginationRes = MembersUsagePaginationSchema.safeParse(req.query);
-      if (!paginationRes.success) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid pagination parameters: ${fromError(paginationRes.error).toString()}`,
-          },
-        });
-      }
-
-      const paginationParams = paginationRes.data;
-      const workspace = auth.getNonNullableWorkspace();
-      const subscription = auth.subscription();
-      const { metronomeCustomerId } = workspace;
-      const metronomeContractId = subscription?.metronomeContractId ?? null;
-
-      const [
-        membershipsResult,
-        perUserTotalCredits,
-        seatDataByUserId,
-        perUserSpendLimits,
-      ] = await Promise.all([
-        MembershipResource.getActiveMemberships({
-          workspace,
-          paginationParams,
-        }),
-        fetchPerUserUsageCreditsForMembersTable({
-          metronomeCustomerId: metronomeCustomerId ?? null,
-          metronomeContractId,
-        }),
-        fetchSeatDataForMembersTable({
-          metronomeCustomerId: metronomeCustomerId ?? null,
-          metronomeContractId,
-        }),
-        fetchPerUserSpendLimitsForMembersTable({
-          metronomeCustomerId: metronomeCustomerId ?? null,
-          workspaceSId: workspace.sId,
-        }),
-      ]);
-
-      const { memberships, total, nextPageParams } = membershipsResult;
-
-      const scheduledByUserId =
-        await MembershipResource.getScheduledMembershipsByUserIdInWorkspace({
-          workspace,
-          userIds: memberships.map((m) => m.userId),
-        });
-
-      const membersUsage: MemberUsageType[] = memberships.flatMap((m) => {
-        if (!m.user) {
-          return [];
-        }
-        const userId = m.user.sId;
-        const totalCredits = perUserTotalCredits.get(userId) ?? 0;
-        const seatData = seatDataByUserId.get(userId);
-        const awuAllocation = seatData?.awuAllocation ?? 0;
-
-        let seatUsagePercent: number | null = null;
-        if (awuAllocation > 0) {
-          const seatConsumed = Math.min(totalCredits, awuAllocation);
-          seatUsagePercent = (seatConsumed / awuAllocation) * 100;
-        }
-
-        const scheduled = scheduledByUserId.get(m.userId);
-
-        return [
-          {
-            sId: userId,
-            name: m.user.name,
-            email: m.user.email ?? null,
-            image: m.user.imageUrl ?? null,
-            seatType: m.seatType ?? null,
-            seatUsagePercent,
-            consumedAwuCredits: totalCredits,
-            billingFrequency: seatData?.billingFrequency ?? null,
-            scheduledSeatType: scheduled?.seatType ?? null,
-            scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
-            spendLimitAwuCredits: perUserSpendLimits.get(userId) ?? null,
-          },
-        ];
-      });
-
-      return res.status(200).json({
-        members: membersUsage,
-        total,
-        nextPageUrl: buildUrlWithParams(req, nextPageParams),
-      });
+  const membersUsage: MemberUsageType[] = memberships.flatMap((m) => {
+    if (!m.user) {
+      return [];
     }
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
-  }
+    const userId = m.user.sId;
+    const totalCredits = perUserTotalCredits.get(userId) ?? 0;
+    const seatData = seatDataByUserId.get(userId);
+    const awuAllocation = seatData?.awuAllocation ?? 0;
+
+    let seatUsagePercent: number | null = null;
+    if (awuAllocation > 0) {
+      const seatConsumed = Math.min(totalCredits, awuAllocation);
+      seatUsagePercent = (seatConsumed / awuAllocation) * 100;
+    }
+
+    const scheduled = scheduledByUserId.get(m.userId);
+
+    return [
+      {
+        sId: userId,
+        name: m.user.name,
+        email: m.user.email ?? null,
+        image: m.user.imageUrl ?? null,
+        seatType: m.seatType ?? null,
+        seatUsagePercent,
+        consumedAwuCredits: totalCredits,
+        billingFrequency: seatData?.billingFrequency ?? null,
+        scheduledSeatType: scheduled?.seatType ?? null,
+        scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
+        spendLimitAwuCredits: perUserSpendLimits.get(userId) ?? null,
+      },
+    ];
+  });
+
+  return {
+    members: membersUsage,
+    total,
+    nextPageUrl: buildUrlWithParams(currentUrl, nextPageParams),
+  };
 }
