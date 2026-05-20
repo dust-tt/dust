@@ -8,7 +8,7 @@ This doc maps the existing Metronome + credit-pricing code paths so the UI work 
 data already in place, lists the gates to enable in dev, and flags the small backend gaps that
 need filling before the design can be shipped end-to-end.
 
-All paths below are relative to the hive worktree `~/code/dust/.hives/wk1/`.
+All paths below are relative to the hive worktree `~/code/dust/.hives/<hive-name>/`.
 
 ---
 
@@ -17,17 +17,19 @@ All paths below are relative to the hive worktree `~/code/dust/.hives/wk1/`.
 **The real gate (per Slack discussion):**
 
 ```ts
-isSubscriptionMetronomeBilled(subscription) && !isLegacyPlan(subscription.plan)
+isSubscriptionMetronomeBilled(subscription) && !(await isLegacyPlan(workspace.sId))
 ```
 
 - `isSubscriptionMetronomeBilled` is already defined in `front/types/plan.ts` — true when the
   subscription has a `metronomeContractId` (and no `stripeSubscriptionId`).
-- `isLegacyPlan` is **not yet defined** — it needs to be introduced. It must return `true` for
-  current plan codes (`PRO_PLAN_SEAT_29`, `PRO_PLAN_SEAT_39`, `PRO_PLAN_LARGE_FILES`, any
-  existing `ENT_*` plans created before credit-pricing) and any contract on a `legacy-*`
-  Metronome package alias (`LEGACY_PRO_MONTHLY_PACKAGE_ALIAS` etc. in
-  `front/lib/metronome/types.ts:19-28`). The new credit-pricing plan codes — to be introduced
-  alongside the new Pro / Max / Business tiers — return `false`.
+- `isLegacyPlan` already exists in `front/lib/metronome/plan_type.ts`. It is an async,
+  server-side helper keyed by `workspace.sId`: it fetches the active Metronome contract and
+  treats plans whose rate card prices `Programmatic Usage` as legacy. It fails open to `true`
+  when the contract or rate card cannot be determined.
+- Do **not** add a plan-code-based `isLegacyPlan` in `front/lib/plans/plan_codes.ts`; the
+  Metronome contract/rate-card check is the source of truth. Client-side routing/sidebar code
+  needs to consume this through a thin API/SWR layer or through server-provided workspace billing
+  state.
 
 When the gate is true → show the new `/w/:wId/billing` page and hide the old
 `/w/:wId/subscription` sidebar entry (or redirect from it). When false → keep the existing
@@ -37,27 +39,31 @@ on legacy plans*; they must continue to see the current page until they're migra
 ### Feature flags (separate from the gate, but needed for dev)
 
 Two flags declared in `front/types/shared/feature_flags.ts:267-325`, both `dust_only`. Neither
-flag is the source of truth for the Billing-page gate above; they exist to bootstrap Metronome
-billing on a workspace and to soft-gate the parallel Usage admin page.
+flag is the source of truth for the Billing-page gate above; Metronome billing is default-on
+unless the global kill switch is active, and the Usage-page flag is temporary.
 
 | Flag | What it controls |
 | --- | --- |
-| `metronome_billing` | **Critical for dev setup.** Required for a newly-created subscription to be backed by a Metronome contract instead of a Stripe-only subscription — without it, the workspace ends up on the Stripe path and the Metronome-backed endpoints (`/metronome/contract`, `/metronome/invoice`, `/seats/plan`) return null / 400. Also gates Metronome usage event emission (`llm_usage`, `tool_use`). Default-on logic at `front/lib/api/subscription.ts:15-23` (`isMetronomeBillingEnabled`): the `global_disable_metronome_billing` kill switch turns it off globally, this flag re-enables it per workspace. |
-| `metronome_billing_usage_page` | Gates the new "Usage" admin page (`UsagePage`) and its sidebar entry. Used at `front/components/navigation/config.ts:268` and inside `front/components/pages/workspace/UsagePage.tsx:152, 221`. Independent of the new Billing page — that one uses the contract-based gate above. |
+| `metronome_billing` | Metronome billing is default-on. The `global_disable_metronome_billing` kill switch turns it off globally; this flag only re-enables it for an individual workspace while the kill switch is active. Also gates Metronome usage event emission (`llm_usage`, `tool_use`). |
+| `metronome_billing_usage_page` | Temporary gate for the new "Usage" admin page (`UsagePage`) and its sidebar entry. Used at `front/components/navigation/config.ts:268` and inside `front/components/pages/workspace/UsagePage.tsx:152, 221`. There is a follow-up task to replace it with `!isLegacyPlan(workspace.sId)` so Usage and Billing share the same credit-pricing gate. |
 
 ### Enabling locally in dev
 
 The full setup to get a Metronome-backed subscription on a dev workspace:
 
-1. **Enable `metronome_billing` on the workspace** so subscription creation goes through the
-   Metronome path. Also enable `metronome_billing_usage_page` the same way to see the new admin
-   UI:
+1. **Verify the `global_disable_metronome_billing` kill switch is disabled locally** so
+   subscription creation goes through the Metronome path by default. You no longer need to enable
+   `metronome_billing` on the workspace in normal local dev; only use that feature flag if the
+   global kill switch is intentionally enabled and this one workspace must bypass it.
+
+   To see the current Usage admin page before it is migrated to `!isLegacyPlan`, enable
+   `metronome_billing_usage_page`:
 
    ```bash
    # from the hive root
    npm -w front run script -- toggle_feature_flags \
      --enable \
-     --featureFlag metronome_billing \
+     --featureFlag metronome_billing_usage_page \
      --workspaceIds <wId> \
      --execute
    ```
@@ -149,6 +155,10 @@ The response shape (`SeatPlanResponseBody` at `seat_plan.ts:27-28`) already matc
 | `28,000 credits per months` | `max.awuCredits` (`MAX_SEAT_CREDIT_NAME`). |
 | "32 seats assigned" / "12 seats assigned" | `useWorkspaceSeatsCount` → `GET /api/w/[wId]/seats/count` (returns counts by seat type — pro / max / free / workspace). The constants for seat types/AWU defaults live at `front/lib/metronome/constants.ts:163-193` (`PRO_SEAT_MONTHLY_AWU_CREDITS = 8000`, `MAX_SEAT_MONTHLY_AWU_CREDITS = 40000`). |
 
+The credit-pricing direction is to have **no unassigned/available seat pool**. Billing should
+only render assigned seats by type. Do not surface "available seats" in this page or rely on
+`/api/w/[wId]/seats/availability` for the new Billing experience.
+
 ### 3.3 "Upgrade your workspace — Enterprise / Contact sales"
 
 Static block. Existing `MetronomeSubscriptionPanel.tsx:44`:
@@ -193,8 +203,8 @@ is to expose the Stripe hosted URL.
 - `front/lib/metronome/client.ts` — `getMetronomeClient()`, `getActiveContract`,
   `getMetronomeContractById`, `listMetronomeDraftInvoices` (line 1422), `listMetronomeBalances`
   (line 1445), event ingestion.
-- `front/lib/metronome/plan_type.ts` — cached `getActiveContract(workspaceId)`, invalidated by
-  the Metronome webhook.
+- `front/lib/metronome/plan_type.ts` — cached `getActiveContract(workspaceId)` plus the
+  canonical async `isLegacyPlan(workspaceId)` helper, invalidated by the Metronome webhook.
 - `front/lib/metronome/contract_lifecycle.ts` — `cancelWorkspaceContractAtPeriodEnd`,
   `reactivateWorkspaceContract`.
 - `front/lib/metronome/constants.ts:163-193` — seat AWU allocations and product/credit names.
@@ -213,7 +223,8 @@ is to expose the Stripe hosted URL.
   `isSubscriptionMetronomeBilled(subscription)`.
 - `front/lib/plans/plan_codes.ts` — `PRO_PLAN_SEAT_29_CODE`, `PRO_PLAN_SEAT_39_CODE` (Business),
   `ENT_PLAN_*`, plus `isProPlan`, `isEntreprisePlanPrefix`, `isWhitelistedBusinessPlan`,
-  `isUpgraded`.
+  `isUpgraded`. Do not put the credit-pricing legacy gate here; use
+  `front/lib/metronome/plan_type.ts`.
 - `front/lib/plans/billing_currency.ts:61-72` — geo → currency resolution (Metronome path
   prefers EUR for EU/EEA/CH, USD elsewhere).
 - `front/lib/plans/stripe.ts:570-596` — `createCustomerPortalSession`, the Stripe-portal escape
@@ -230,7 +241,7 @@ is to expose the Stripe hosted URL.
 | GET | `/api/w/[wId]/credits/awu-pool-summary` | Pooled AWU pool (Usage page; not Billing). |
 | GET | `/api/w/[wId]/seats/plan` | `pro` / `max` `{ awuCredits, priceCents, currency }`. |
 | GET | `/api/w/[wId]/seats/count` | Seat counts by seat type. |
-| GET | `/api/w/[wId]/seats/availability` | Whether more seats can be added. |
+| GET | `/api/w/[wId]/seats/availability` | Existing Usage/invite affordance. Do not use for the new Billing page; credit pricing is moving to no unassigned/available seats. |
 | GET | `/api/w/[wId]/subscriptions/pricing` | Stripe-flavored per-seat pricing fallback (`usePerSeatPricing`). |
 | GET | `/api/w/[wId]/subscriptions/trial-info` | Trial state. |
 | PATCH | `/api/w/[wId]/subscriptions` | Trial-skip / business upgrade, body matches `PatchSubscriptionRequestBody`. |
@@ -265,16 +276,24 @@ is to expose the Stripe hosted URL.
 These are the only meaningful backend deltas — keep them small and per `[BACK16]`/`[BACK18]`
 keep business logic in `lib/api/*` and HTTP shaping in handlers.
 
-1. **Finalized invoices listing** (for the "Invoices" section):
+1. **Billing eligibility** (for client-side route/sidebar/Usage gating):
+   - Add `lib/api/billing/eligibility.ts` that returns
+     `{ isCreditPricingBillingEnabled: boolean }`.
+   - Compute it from `isSubscriptionMetronomeBilled(subscription)` plus the existing
+     `isLegacyPlan(workspace.sId)` helper in `front/lib/metronome/plan_type.ts`.
+   - Add a thin `GET /api/w/[wId]/billing/eligibility` endpoint and a `useBillingEligibility`
+     SWR hook in `front/lib/swr/billing.ts`.
+
+2. **Finalized invoices listing** (for the "Invoices" section):
    - Add `listMetronomeFinalizedInvoices(metronomeCustomerId)` next to
      `listMetronomeDraftInvoices` at `front/lib/metronome/client.ts:1422`, filtering
      `status: "FINALIZED"`.
    - Add `lib/api/billing/invoices.ts` with a typed mapper to
      `{ id; issuedAtMs; amountCents; currency; hostedUrl }`.
    - New endpoint `GET /api/w/[wId]/metronome/invoices` (admin-only).
-   - New SWR hook `useMetronomeInvoices` in `front/lib/swr/workspaces.ts`.
+   - New SWR hook `useMetronomeInvoices` in `front/lib/swr/billing.ts`.
 
-2. **Billing info (address + default card)** — pick one:
+3. **Billing info (address + default card)** — pick one:
    - *Lightweight*: keep "Change" buttons as a `POST /api/stripe/portal` redirect (already
      implemented). Display the address/card client-side from a new
      `GET /api/w/[wId]/billing/info` that returns `{ address, name, defaultPaymentMethod: { brand, last4 } }`
@@ -282,30 +301,28 @@ keep business logic in `lib/api/*` and HTTP shaping in handlers.
    - *Inline edit*: use Stripe Elements + a new endpoint to attach payment methods. More work,
      not necessary for first cut.
 
-3. **Annual price for seat cards**: `front/lib/api/credits/seat_plan.ts:116` carries a TODO for
+4. **Annual price for seat cards**: `front/lib/api/credits/seat_plan.ts:116` carries a TODO for
    annual seat pricing (https://github.com/dust-tt/tasks/issues/8072). Until that's resolved the
    "Switch to yearly" CTA can rely on `useMetronomeInvoice().invoice.billingPeriod` for the
    *current* cadence and a coarse annual estimate, but per-seat annual prices in the cards will
    need the rate-card extension.
 
-4. **Sidebar entry (if Option B)**: add a `billing` menu item next to `subscription` at
-   `front/components/navigation/config.ts:243-291`, gated on `metronome_billing_usage_page`
-   (same flag as Usage) until a dedicated flag is introduced.
-
 ---
 
 ## 6. Suggested implementation order
 
-1. Toggle `metronome_billing_usage_page` on a dev workspace; confirm `useMetronomeContract`,
-   `useMetronomeInvoice`, and `useSeatPlan` return the expected data.
-2. Create `front/components/pages/workspace/billing/BillingPage.tsx` (or refactor
-   `SubscriptionPage.tsx`) wiring the hooks above. Render: current-plan card → seat cards →
-   Enterprise upsell → billing info → invoices.
-3. Add the finalized-invoices endpoint + SWR hook, plug the Invoices section.
-4. Add the billing-info endpoint (or wire "Change" to Stripe portal redirect) and plug the
+1. Verify `global_disable_metronome_billing` is disabled locally, create/upgrade a workspace,
+   and flip `metronomeContractId` in Poke so `useMetronomeContract`, `useMetronomeInvoice`, and
+   `useSeatPlan` return the expected data.
+2. Add the billing-eligibility endpoint + SWR hook over the existing
+   `front/lib/metronome/plan_type.ts` `isLegacyPlan(workspace.sId)` helper.
+3. Create `front/components/pages/workspace/billing/BillingPage.tsx` wiring the hooks above.
+   Render: current-plan card → seat cards → Enterprise upsell → billing info → invoices.
+4. Add the finalized-invoices endpoint + SWR hook, plug the Invoices section.
+5. Add the billing-info endpoint (or wire "Change" to Stripe portal redirect) and plug the
    billing info section.
-5. Update the SPA route table at `front-spa/src/app/routes/adminRoutes.tsx` and the sidebar
-   config; ship behind the existing gate.
+6. Update the SPA route table at `front-spa/src/app/routes/adminRoutes.tsx` and the sidebar
+   config; ship behind the billing-eligibility gate.
 
 ---
 
