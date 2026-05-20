@@ -26,6 +26,10 @@ const MAX_AWU_CREDITS = 1_000_000;
 
 type SpendLimitKind = "unlimited" | "limited";
 
+function isSpendLimitKind(value: string): value is SpendLimitKind {
+  return value === "unlimited" || value === "limited";
+}
+
 interface EditSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -162,7 +166,11 @@ export function EditSpendLimitModal({
           ) : (
             <RadioGroup
               value={kind}
-              onValueChange={(v) => handleSelectKind(v as SpendLimitKind)}
+              onValueChange={(v) => {
+                if (isSpendLimitKind(v)) {
+                  handleSelectKind(v);
+                }
+              }}
               className="flex flex-col gap-3"
             >
               <RadioGroupItem

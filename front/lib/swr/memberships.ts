@@ -18,6 +18,24 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
+import { z } from "zod";
+
+const SpendLimitResponseSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("unlimited") }),
+  z.object({
+    kind: z.literal("limited"),
+    awuCredits: z.number(),
+  }),
+]);
+
+const PytUserSpendLimitResponseSchema = z.object({
+  limit: SpendLimitResponseSchema,
+  transitionedTo: z.union([
+    z.literal("reached"),
+    z.literal("resolved"),
+    z.null(),
+  ]),
+});
 
 type PaginationParams = {
   orderColumn: "createdAt";
@@ -344,7 +362,7 @@ export function useUpdateUserSpendLimit({
         return null;
       }
 
-      const body = (await res.json()) as PutUserSpendLimitResponseBody;
+      const body = PytUserSpendLimitResponseSchema.parse(await res.json());
       sendNotification({
         type: "success",
         title: "Spend limit updated",

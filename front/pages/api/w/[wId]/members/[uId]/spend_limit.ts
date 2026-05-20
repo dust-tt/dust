@@ -1,4 +1,6 @@
 /** @ignoreswagger */
+
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   type GetUserSpendLimitResponse,
@@ -121,6 +123,7 @@ async function handler(
     }
 
     case "PUT": {
+      const auditContext = getAuditLogContext(auth, req);
       const bodyValidation = UpdateUserSpendLimitBodySchema.safeParse(req.body);
       if (!bodyValidation.success) {
         return apiError(req, res, {
@@ -135,6 +138,7 @@ async function handler(
       const result = await setUserSpendLimit(auth, {
         userId: uId,
         limit: bodyValidation.data,
+        auditContext,
       });
       if (result.isErr()) {
         return mapErrorToHttp(req, res, result.error);

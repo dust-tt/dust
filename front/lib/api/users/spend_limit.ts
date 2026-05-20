@@ -1,13 +1,13 @@
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
-  getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import {
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { getUserForWorkspace } from "@app/lib/api/user";
+import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import {
   clearMetronomePerUserCapAlert,
@@ -143,9 +143,11 @@ export async function setUserSpendLimit(
   {
     userId,
     limit,
+    auditContext,
   }: {
     userId: string;
     limit: UserSpendLimit;
+    auditContext: AuditLogContext;
   }
 ): Promise<Result<SetUserSpendLimitResponse, UserSpendLimitError>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -192,10 +194,21 @@ export async function setUserSpendLimit(
           new UserSpendLimitError("metronome_error", clearResult.error.message)
         );
       }
-      await dispatchPerUserCapResolved({
-        workspace: workspaceResource,
-        userId: user.sId,
-      });
+      try {
+        await dispatchPerUserCapResolved({
+          workspace: workspaceResource,
+          userId: user.sId,
+        });
+      } catch (error) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            err: error,
+          },
+          "[Metronome PerUserCap] dispatchPerUserCapResolved failed after spend-limit update; continuing"
+        );
+      }
       transitionedTo = "resolved";
       break;
     }
@@ -217,16 +230,28 @@ export async function setUserSpendLimit(
         userSId: user.sId,
         awuCapCredits: limit.awuCredits,
       });
-      if (transitionedTo === "reached") {
-        await dispatchPerUserCapReached({
-          workspace: workspaceResource,
-          userId: user.sId,
-        });
-      } else if (transitionedTo === "resolved") {
-        await dispatchPerUserCapResolved({
-          workspace: workspaceResource,
-          userId: user.sId,
-        });
+      try {
+        if (transitionedTo === "reached") {
+          await dispatchPerUserCapReached({
+            workspace: workspaceResource,
+            userId: user.sId,
+          });
+        } else if (transitionedTo === "resolved") {
+          await dispatchPerUserCapResolved({
+            workspace: workspaceResource,
+            userId: user.sId,
+          });
+        }
+      } catch (error) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            transitionedTo,
+            err: error,
+          },
+          "[Metronome PerUserCap] dispatch after spend-limit update failed; continuing"
+        );
       }
       // transitionedTo === null: usage unavailable — let webhook reconcile.
       break;
@@ -245,7 +270,7 @@ export async function setUserSpendLimit(
         name: user.fullName() ?? "unknown",
       }),
     ],
-    context: getAuditLogContext(auth),
+    context: auditContext,
     metadata: {
       kind: limit.kind,
       awu_credits:

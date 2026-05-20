@@ -1,7 +1,6 @@
 import * as creditStateDispatcher from "@app/lib/api/metronome/credit_state_dispatcher";
 import * as perUserAlerts from "@app/lib/metronome/per_user_alerts";
 import * as perUserUsage from "@app/lib/metronome/per_user_usage";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -49,12 +48,9 @@ const TEST_METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const TEST_ALERT_ID = "alert_test_xxx";
 
 async function makeMetronomeWorkspaceWithCustomer(): Promise<WorkspaceType> {
-  const workspace = await WorkspaceFactory.metronome();
-  await WorkspaceModel.update(
-    { metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID },
-    { where: { sId: workspace.sId } }
-  );
-  return workspace;
+  return WorkspaceFactory.metronome({
+    metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
+  });
 }
 
 beforeEach(() => {
