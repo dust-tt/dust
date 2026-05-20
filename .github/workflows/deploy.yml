@@ -138,6 +138,84 @@ jobs:
             echo "matrix=[\"${{ inputs.regions }}\"]" >> $GITHUB_OUTPUT
           fi
 
+  check-migrations:
+    if: inputs.component == 'front' || inputs.component == 'connectors'
+    needs: [ create-matrix ]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        region: ${{ fromJson(needs.create-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Check pre-deploy migrations applied in ${{ matrix.region }}
+        env:
+          SECRET: ${{ secrets.DUST_MIGRATION_API_SECRET }}
+        run: |
+          COMPONENT="${{ inputs.component }}"
+          REGION="${{ matrix.region }}"
+
+          if [ "$COMPONENT" = "front" ]; then
+            if [ "$REGION" = "us-central1" ]; then
+              BASE_URL="https://dust.tt"
+            else
+              BASE_URL="https://eu.dust.tt"
+            fi
+            MIGRATION_DIR="front/migrations/pre-deploy"
+            API_PATH="/api/migration/applied/pre-deploy"
+          else
+            if [ "$REGION" = "us-central1" ]; then
+              BASE_URL="${{ secrets.CONNECTORS_API_URL_US }}"
+            else
+              BASE_URL="${{ secrets.CONNECTORS_API_URL_EU }}"
+            fi
+            MIGRATION_DIR="connectors/migrations/pre-deploy"
+            API_PATH="/migration/applied/pre-deploy"
+          fi
+
+          # Names are stored as "pre-deploy/<filename>" in schema_migrations.
+          mapfile -t RELEASE_FILES < <(
+            find "$MIGRATION_DIR" -maxdepth 1 -name "*.sql" \
+              | sort \
+              | while read -r f; do echo "pre-deploy/$(basename "$f")"; done
+          )
+
+          if [ ${#RELEASE_FILES[@]} -eq 0 ]; then
+            echo "No pre-deploy migrations in this release — gate passed."
+            exit 0
+          fi
+
+          echo "Release contains ${#RELEASE_FILES[@]} pre-deploy migration(s):"
+          printf '  %s\n' "${RELEASE_FILES[@]}"
+          echo ""
+
+          RESPONSE=$(curl -sf -H "Authorization: Bearer $SECRET" "$BASE_URL$API_PATH") || {
+            echo "ERROR: Failed to reach $BASE_URL$API_PATH"
+            echo "Ensure DUST_MIGRATION_API_SECRET is provisioned and the service is reachable."
+            exit 1
+          }
+
+          mapfile -t APPLIED < <(echo "$RESPONSE" | jq -r '.migrations[].name')
+          echo "Applied in $REGION: ${#APPLIED[@]} migration(s)"
+
+          MISSING=()
+          for F in "${RELEASE_FILES[@]}"; do
+            if ! printf '%s\n' "${APPLIED[@]}" | grep -qxF "$F"; then
+              MISSING+=("$F")
+            fi
+          done
+
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo ""
+            echo "ERROR: ${#MISSING[@]} pre-deploy migration(s) not yet applied in $REGION:"
+            printf '  - %s\n' "${MISSING[@]}"
+            echo ""
+            echo "Run 'npm run migration:apply:pre-deploy' in $REGION before deploying $COMPONENT."
+            exit 1
+          fi
+
+          echo "All pre-deploy migrations applied in $REGION ✓"
+
   build:
     permissions:
       contents: read
@@ -211,8 +289,8 @@ jobs:
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy:
-    needs: [ prepare, notify-start, build, deploy-app, deploy-poke, deploy-app-bleeding-edge, deploy-poke-bleeding-edge, ensure-sandbox-images ]
-    if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
+    needs: [ prepare, notify-start, build, check-migrations, deploy-app, deploy-poke, deploy-app-bleeding-edge, deploy-poke-bleeding-edge, ensure-sandbox-images ]
+    if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') && (needs.check-migrations.result == 'success' || needs.check-migrations.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
