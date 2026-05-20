@@ -212,13 +212,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       { transaction }
     );
 
-    await AgentStepContentToolExecutionModel.create({
-      workspaceId: workspace.id,
-      agentMessageId: blob.agentMessageId,
-      conversationId: conversation.id,
-      agentMCPActionId: action.id,
-      stepContentId: stepContent.id,
-    });
+    await AgentStepContentToolExecutionModel.create(
+      {
+        workspaceId: workspace.id,
+        agentMessageId: blob.agentMessageId,
+        conversationId: conversation.id,
+        agentMCPActionId: action.id,
+        stepContentId: stepContent.id,
+      },
+      {
+        transaction,
+      }
+    );
 
     assert(
       stepContent.isFunctionCallContent(),
