@@ -11,10 +11,11 @@ use crate::egress_secrets::SecretTable;
 use super::deny_log::{DenyLogEntry, DenyReason};
 
 // Limits are intentionally generous compared to nginx/Apache defaults
-// (~8-32 KiB / ~100 headers). We are a transparent egress proxy in front of
-// LLM and SaaS APIs that ship large JWT/cookie/trace headers; the upstream
-// APIs cap requests themselves, so the role of these limits is to bound
-// memory and reject obviously-malformed traffic, not to be the gatekeeper.
+// (~8-32 KiB / ~100 headers). This rewriter sits in front of arbitrary
+// outbound HTTP traffic from the sandbox (curl, git, package managers,
+// browsers, anything), so the role of these limits is to bound our own
+// memory use and reject obviously-malformed traffic, not to enforce a
+// policy on what the destination accepts.
 const MAX_HEADER_BLOCK_BYTES: usize = 64 * 1024;
 const MAX_HEADER_LINE_BYTES: usize = 16 * 1024;
 const MAX_HEADERS: usize = 256;
