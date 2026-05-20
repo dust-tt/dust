@@ -61,25 +61,6 @@ jobs:
           command: versions deploy ${{ steps.version.outputs.id }}@100% --config wrangler-${{ matrix.app }}.toml -y
           wranglerVersion: "4.80.0"
 
-      - name: Resolve bleeding-edge version ID
-        id: bleeding_edge_version
-        run: |
-          VERSION_ID="${{ github.event.client_payload[format('spa_{0}_bleeding_edge_version_id', matrix.app)] }}"
-          echo "id=${VERSION_ID}" >> $GITHUB_OUTPUT
-          if [ -n "$VERSION_ID" ]; then
-            echo "Promoting bleeding-edge version: ${VERSION_ID}"
-          fi
-
-      - name: Promote bleeding-edge version
-        if: ${{ steps.bleeding_edge_version.outputs.id != '' }}
-        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: front-spa
-          command: versions deploy ${{ steps.bleeding_edge_version.outputs.id }}@100% --config wrangler-${{ matrix.app }}.toml --env bleeding-edge -y
-          wranglerVersion: "4.80.0"
-
       - name: Create deploy tag
         if: ${{ github.event.client_payload.sha && github.event.client_payload.image_tag }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
