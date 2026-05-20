@@ -179,7 +179,7 @@ export function SandboxTab({
   if (files.length === 0) {
     return (
       <div className="p-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-        No files in the sandbox yet.
+        No files in the Computer yet.
       </div>
     );
   }

@@ -83,7 +83,7 @@ function statusLabel(status: EgressStatus, isRunning: boolean): string {
   }
   switch (status) {
     case "added":
-      return "Added to sandbox allowlist";
+      return "Added to Computer allowlist";
     case "already_allowed":
       return "Already allowed";
     case "unknown":

@@ -209,17 +209,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   sandbox_tools: {
     description:
-      "Sandbox MCP tool for executing code in isolated Linux containers",
+      "Computer MCP tool for executing code in isolated Linux containers (a.k.a. sandbox)",
     stage: "dust_only",
   },
   sandbox_dsbx_tools: {
     description:
-      "Programmatic access to MCP tools from inside the sandbox via the dsbx CLI",
+      "Programmatic access to MCP tools from inside the Computer (sandbox) via the dsbx CLI",
     stage: "dust_only",
   },
   sandbox_workspace_admin: {
     description:
-      "Workspace admin configuration for the sandbox: whitelisted domains, environment variables, and the agent egress request setting/tool",
+      "Workspace admin configuration for the Computer (sandbox): whitelisted domains, environment variables, and the agent egress request setting/tool",
     stage: "dust_only",
   },
   skills_as_user_messages: {
