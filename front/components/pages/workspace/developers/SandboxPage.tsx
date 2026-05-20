@@ -19,7 +19,7 @@ export function SandboxPage() {
     if (!isAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Only workspace admins can manage sandbox settings.
+          Only workspace admins can manage Computer settings.
         </ContentMessage>
       );
     }
@@ -27,7 +27,7 @@ export function SandboxPage() {
     if (!hasSandboxAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Sandbox workspace administration is not enabled for this workspace.
+          Computer administration is not enabled for this workspace.
         </ContentMessage>
       );
     }
@@ -43,9 +43,9 @@ export function SandboxPage() {
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
-        title="Sandbox"
+        title="Computer"
         icon={CommandLineIcon}
-        description="Configure workspace-level sandbox network access and environment variables."
+        description="Configure workspace-level network access and environment variables for the Computer."
       />
       {renderBody()}
     </Page.Vertical>

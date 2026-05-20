@@ -420,14 +420,14 @@ export function EnvironmentSection() {
     if (!isAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Only workspace admins can manage sandbox environment variables.
+          Only workspace admins can manage Computer environment variables.
         </ContentMessage>
       );
     }
     if (!hasSandboxAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Sandbox workspace administration is not enabled for this workspace.
+          Computer administration is not enabled for this workspace.
         </ContentMessage>
       );
     }
@@ -442,7 +442,7 @@ export function EnvironmentSection() {
           size="lg"
           title="Failed to load"
         >
-          The sandbox environment variables could not be loaded.
+          The Computer environment variables could not be loaded.
         </ContentMessage>
       );
     }
@@ -451,7 +451,7 @@ export function EnvironmentSection() {
       <Page.Vertical align="stretch" gap="lg">
         <Page.SectionHeader
           title="Environment variables"
-          description="Secrets mounted as env vars on every sandbox in this workspace."
+          description="Secrets mounted as env vars on every Computer in this workspace."
         />
 
         <ContentMessage
@@ -465,23 +465,23 @@ export function EnvironmentSection() {
               <strong>HTTPS secrets (DSEC_)</strong> — for credentials and
               anything sensitive. Stored encrypted on the host. The dsbx
               forwarder injects the value only into outbound HTTPS requests to
-              the domains you whitelist; sandbox code never sees the raw value.
-              Safe for API keys, tokens, and other secrets bound to a known
-              external service.
+              the domains you whitelist; code running in the Computer never sees
+              the raw value. Safe for API keys, tokens, and other secrets bound
+              to a known external service.
             </div>
             <div>
               <strong>Config ({SANDBOX_ENV_VAR_PREFIX})</strong> — for
               non-sensitive configuration: feature flags, identifiers, public
               endpoints, model names. Mounted as plain env vars on every new
-              sandbox and read directly by the agent and the code it runs.
+              Computer and read directly by the agent and the code it runs.
               Anything you put here should be safe to log; do not use for
               credentials.
             </div>
             <div>
               Values are write-only: they cannot be viewed after saving, only
-              overwritten or deleted. Env vars are snapshotted at sandbox boot,
-              so running sandboxes keep their original values; new sandboxes
-              (new conversations, restarts) pick up the latest.
+              overwritten or deleted. Env vars are snapshotted when the Computer
+              starts: an already-running Computer keeps its original values, and
+              any new Computer (new conversation, restart) picks up the latest.
             </div>
           </div>
         </ContentMessage>
@@ -605,7 +605,7 @@ export function EnvironmentSection() {
                     <div className="flex flex-col">
                       <Label>HTTPS secret</Label>
                       <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                        Keep the value out of the sandbox environment.
+                        Keep the value out of the Computer environment.
                       </span>
                     </div>
                     <SliderToggle
@@ -632,12 +632,12 @@ export function EnvironmentSection() {
                     {kindValue === "https_secret" ? (
                       <>
                         Stored securely. The dsbx forwarder injects it only into
-                        outbound HTTPS requests to whitelisted domains; sandbox
+                        outbound HTTPS requests to whitelisted domains; Computer
                         code never reads it.
                       </>
                     ) : (
                       <>
-                        Mounted as a prefixed env var on every new sandbox and
+                        Mounted as a prefixed env var on every new Computer and
                         read directly by the agent and any code it runs. Use for
                         non-sensitive values.
                       </>
@@ -780,9 +780,9 @@ export function EnvironmentSection() {
                     icon={InformationCircleIcon}
                     title="Promotion only takes effect on next wake"
                   >
-                    Running sandboxes keep the previous {SANDBOX_ENV_VAR_PREFIX}
+                    Running Computers keep the previous {SANDBOX_ENV_VAR_PREFIX}
                     -prefixed value in their env until they are restarted. New
-                    sandboxes will receive the promoted secret only via
+                    Computers will receive the promoted secret only via
                     egress-time substitution to the allowed domains.
                   </ContentMessage>
                 ) : null}

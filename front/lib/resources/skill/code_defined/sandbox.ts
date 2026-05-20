@@ -22,7 +22,7 @@ function buildSandboxInstructionProse({
   hasDsbxTools: boolean;
 }): string {
   const instructions = [
-    "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands.",
+    'The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. Always call this environment "the Computer" in any text you send to the user.',
     "Use `bash` to run commands and scripts.",
     "The sandbox persists for the conversation duration.",
   ];
@@ -287,12 +287,13 @@ ${manifestYaml}
 
 export const sandboxSkill = {
   sId: "sandbox",
-  name: "Sandbox",
+  name: "Computer",
   userFacingDescription:
-    "Run code, scripts, and shell commands in an isolated Linux environment.",
+    "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment).",
   agentFacingDescription:
     "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
-    "process data, install packages, manipulate files, or perform any task requiring shell access.",
+    "process data, install packages, manipulate files, or perform any task requiring shell access. " +
+    "Always call this environment 'the Computer' in any text you send to the user.",
   fetchInstructions: async (
     auth: Authenticator,
     {

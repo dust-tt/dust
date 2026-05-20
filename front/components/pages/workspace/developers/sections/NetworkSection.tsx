@@ -121,14 +121,14 @@ export function NetworkSection() {
     if (!isAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Only workspace admins can manage sandbox network settings.
+          Only workspace admins can manage Computer network settings.
         </ContentMessage>
       );
     }
     if (!hasSandboxAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Sandbox workspace administration is not enabled for this workspace.
+          Computer administration is not enabled for this workspace.
         </ContentMessage>
       );
     }
@@ -143,7 +143,7 @@ export function NetworkSection() {
           size="lg"
           title="Failed to load"
         >
-          The sandbox network settings could not be loaded.
+          The Computer network settings could not be loaded.
         </ContentMessage>
       );
     }
@@ -156,7 +156,7 @@ export function NetworkSection() {
               Agent-requested domains
             </div>
             <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Allow agents using the sandbox to ask for additional domains, one
+              Allow agents using the Computer to ask for additional domains, one
               approval per domain, during the conversation. When disabled,
               agents cannot request new domains and should only rely on the
               domains listed below.
@@ -174,7 +174,7 @@ export function NetworkSection() {
 
         <Page.SectionHeader
           title="Allowed domains"
-          description="These domains apply to all sandboxes in this workspace. Changes are picked up by egress proxy cache refreshes, typically within 60 seconds."
+          description="These domains apply to every Computer in this workspace. Changes are picked up by egress proxy cache refreshes, typically within 60 seconds."
         />
 
         <form
@@ -256,11 +256,11 @@ export function NetworkSection() {
             </DialogTitle>
           </DialogHeader>
           <DialogContainer>
-            When enabled, any agent running in the sandbox can ask the user to
+            When enabled, any agent running in the Computer can ask the user to
             allow additional domains during the conversation. Each request is
             approval-gated, but a non-admin user in this workspace can grant
             network access to a domain you have not pre-approved. Domains added
-            this way last only for the current sandbox.
+            this way last only for the current Computer.
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{

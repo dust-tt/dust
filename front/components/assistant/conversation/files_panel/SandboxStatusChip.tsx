@@ -9,13 +9,13 @@ interface SandboxStatusChipProps {
 export function SandboxStatusChip({ status }: SandboxStatusChipProps) {
   switch (status) {
     case "running":
-      return <Chip size="mini" color="success" label="Sandbox running" />;
+      return <Chip size="mini" color="success" label="Computer running" />;
     case "sleeping":
-      return <Chip size="mini" color="warning" label="Sandbox sleeping" />;
+      return <Chip size="mini" color="warning" label="Computer sleeping" />;
     case "pending_approval":
       return <Chip size="mini" color="warning" label="Waiting for approval" />;
     case "deleted":
-      return <Chip size="mini" color="primary" label="Sandbox expired" />;
+      return <Chip size="mini" color="primary" label="Computer expired" />;
     default:
       assertNever(status);
   }

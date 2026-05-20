@@ -335,7 +335,7 @@ export const subNavigationAdmin = ({
         },
         {
           id: "sandbox",
-          label: "Sandbox",
+          label: "Computer",
           icon: GlobeAltIcon,
           href: `/w/${owner.sId}/developers/sandbox`,
           current: isCurrent("sandbox"),
