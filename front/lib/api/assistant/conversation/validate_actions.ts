@@ -7,10 +7,12 @@ import {
   extractArgRequiringApprovalValues,
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { resumeSandboxChildAction } from "@app/lib/api/sandbox/resume_child_action";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
@@ -151,6 +153,23 @@ export async function validateAction(
       ? payload.actionId === actionId
       : false;
   }, getMessageChannelId(messageId));
+
+  if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+    if (approvalState !== "rejected") {
+      await resumeSandboxChildAction(auth, {
+        action,
+        conversationId,
+        conversationTitle,
+        agentMessageId,
+        agentMessageVersion,
+        branchId,
+        userMessageId,
+        userMessageVersion,
+        userMessageOrigin,
+      });
+    }
+    return new Ok(undefined);
+  }
 
   // We only launch the agent loop if there are no remaining blocked actions.
   const blockedActions =

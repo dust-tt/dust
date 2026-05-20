@@ -2,11 +2,13 @@ import {
   isToolFileAuthRequiredEvent,
   isToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp";
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { resumeSandboxChildAction } from "@app/lib/api/sandbox/resume_child_action";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -142,6 +144,23 @@ export async function resolveAuthentication(
       (payload as { actionId: string }).actionId === actionId
     );
   }, getMessageChannelId(messageId));
+
+  if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+    if (outcome === "completed") {
+      await resumeSandboxChildAction(auth, {
+        action,
+        conversationId,
+        conversationTitle,
+        agentMessageId,
+        agentMessageVersion,
+        branchId,
+        userMessageId,
+        userMessageVersion,
+        userMessageOrigin,
+      });
+    }
+    return new Ok(undefined);
+  }
 
   const blockedActions =
     await AgentMCPActionResource.listBlockedActionsForConversation(

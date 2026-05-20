@@ -1,8 +1,10 @@
 import { isToolAskUserQuestionEvent } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { resumeSandboxChildAction } from "@app/lib/api/sandbox/resume_child_action";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -106,6 +108,21 @@ export async function registerUserAnswer(
     const payload = JSON.parse(event.message["payload"]);
     return isToolAskUserQuestionEvent(payload) && payload.actionId === actionId;
   }, getMessageChannelId(messageId));
+
+  if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+    await resumeSandboxChildAction(auth, {
+      action,
+      conversationId,
+      conversationTitle,
+      agentMessageId,
+      agentMessageVersion,
+      branchId,
+      userMessageId,
+      userMessageVersion,
+      userMessageOrigin,
+    });
+    return new Ok(undefined);
+  }
 
   // Only launch the agent loop if there are no remaining blocked actions.
   const blockedActions =
