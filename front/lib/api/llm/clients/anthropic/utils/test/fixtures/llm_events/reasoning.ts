@@ -7,6 +7,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     content: { modelInteractionId: "msg_01Reasoning123" },
     metadata: {
       clientId: "anthropic" as const,
+      inferenceProvider: "anthropic",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -17,6 +18,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "anthropic" as const,
+      inferenceProvider: "anthropic",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -27,6 +29,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "anthropic" as const,
+      inferenceProvider: "anthropic",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -37,6 +40,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "anthropic" as const,
+      inferenceProvider: "anthropic",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
       encrypted_content: "",
     },
@@ -48,6 +52,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "anthropic" as const,
+      inferenceProvider: "anthropic",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -58,6 +63,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "anthropic" as const,
+      inferenceProvider: "anthropic",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -68,6 +74,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "anthropic" as const,
+      inferenceProvider: "anthropic",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -84,6 +91,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "anthropic" as const,
+      inferenceProvider: "anthropic",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -97,6 +105,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
         },
         metadata: {
           clientId: "anthropic" as const,
+          inferenceProvider: "anthropic",
           modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
           encrypted_content: "",
         },
@@ -108,6 +117,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
         },
         metadata: {
           clientId: "anthropic" as const,
+          inferenceProvider: "anthropic",
           modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
         },
       },
@@ -119,6 +129,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
       },
       metadata: {
         clientId: "anthropic" as const,
+        inferenceProvider: "anthropic",
         modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
       },
     },
@@ -129,6 +140,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
       },
       metadata: {
         clientId: "anthropic" as const,
+        inferenceProvider: "anthropic",
         modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
         encrypted_content: "",
       },
@@ -136,6 +148,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     toolCalls: undefined,
     metadata: {
       clientId: "anthropic" as const,
+      inferenceProvider: "anthropic",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },

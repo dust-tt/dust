@@ -6,6 +6,7 @@ export const reasoningLLMEvents = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -16,6 +17,7 @@ export const reasoningLLMEvents = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -26,6 +28,7 @@ export const reasoningLLMEvents = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -36,6 +39,7 @@ export const reasoningLLMEvents = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -46,6 +50,7 @@ export const reasoningLLMEvents = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -56,6 +61,7 @@ export const reasoningLLMEvents = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -66,6 +72,7 @@ export const reasoningLLMEvents = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -78,6 +85,7 @@ export const reasoningLLMEvents = [
       id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
       encrypted_content: undefined,
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -88,6 +96,7 @@ export const reasoningLLMEvents = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -102,6 +111,7 @@ export const reasoningLLMEvents = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -116,6 +126,7 @@ export const reasoningLLMEvents = [
         metadata: {
           id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
           clientId: "openai",
+          inferenceProvider: "openai",
           modelId: "gpt-5",
           encrypted_content: undefined,
         },
@@ -127,6 +138,7 @@ export const reasoningLLMEvents = [
         },
         metadata: {
           clientId: "openai",
+          inferenceProvider: "openai",
           modelId: "gpt-5",
         },
       },
@@ -138,6 +150,7 @@ export const reasoningLLMEvents = [
       },
       metadata: {
         clientId: "openai",
+        inferenceProvider: "openai",
         modelId: "gpt-5",
       },
     },
@@ -149,6 +162,7 @@ export const reasoningLLMEvents = [
       metadata: {
         id: "rs_06e2b572b276da09016901d7350ae08198ba76145524efe4b2",
         clientId: "openai",
+        inferenceProvider: "openai",
         modelId: "gpt-5",
         encrypted_content: undefined,
       },
@@ -156,6 +170,7 @@ export const reasoningLLMEvents = [
     toolCalls: undefined,
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },

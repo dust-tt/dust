@@ -10,6 +10,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -17,6 +18,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     type: "tool_call_delta",
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -24,6 +26,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     type: "tool_call_delta",
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -36,6 +39,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -43,6 +47,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     type: "tool_call_delta",
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -50,6 +55,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     type: "tool_call_delta",
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -62,6 +68,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -74,6 +81,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -88,6 +96,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     },
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },
@@ -103,6 +112,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
         },
         metadata: {
           clientId: "openai",
+          inferenceProvider: "openai",
           modelId: "gpt-5",
         },
       },
@@ -118,6 +128,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
         },
         metadata: {
           clientId: "openai",
+          inferenceProvider: "openai",
           modelId: "gpt-5",
         },
       },
@@ -132,6 +143,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
         },
         metadata: {
           clientId: "openai",
+          inferenceProvider: "openai",
           modelId: "gpt-5",
         },
       },
@@ -147,12 +159,14 @@ export const functionCallLLMEvents: LLMEvent[] = [
         },
         metadata: {
           clientId: "openai",
+          inferenceProvider: "openai",
           modelId: "gpt-5",
         },
       },
     ],
     metadata: {
       clientId: "openai",
+      inferenceProvider: "openai",
       modelId: "gpt-5",
     },
   },

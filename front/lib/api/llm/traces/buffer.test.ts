@@ -19,7 +19,7 @@ class LLMEventFactory {
     return {
       type: "text_delta",
       content: { delta },
-      metadata: { clientId: "openai", modelId: "gpt-4-turbo" },
+      metadata: { clientId: "openai", inferenceProvider: "openai", modelId: "gpt-4-turbo" },
     };
   }
 
@@ -29,7 +29,7 @@ class LLMEventFactory {
     return {
       type: "text_generated",
       content: { text },
-      metadata: { clientId: "openai", modelId: "gpt-4-turbo" },
+      metadata: { clientId: "openai", inferenceProvider: "openai", modelId: "gpt-4-turbo" },
     };
   }
 
@@ -41,7 +41,7 @@ class LLMEventFactory {
         name: faker.hacker.verb(),
         arguments: { query: faker.lorem.sentence() },
       },
-      metadata: { clientId: "openai", modelId: "gpt-4-turbo" },
+      metadata: { clientId: "openai", inferenceProvider: "openai", modelId: "gpt-4-turbo" },
     };
   }
 
@@ -53,7 +53,7 @@ class LLMEventFactory {
         outputTokens: faker.number.int({ min: 10, max: 1000 }),
         totalTokens: 0, // Will be calculated
       },
-      metadata: { clientId: "openai", modelId: "gpt-4-turbo" },
+      metadata: { clientId: "openai", inferenceProvider: "openai", modelId: "gpt-4-turbo" },
     };
   }
 
@@ -64,7 +64,7 @@ class LLMEventFactory {
         isRetryable: false,
         message: "Maximum length reached",
       },
-      { clientId: "openai", modelId: "gpt-4-turbo" }
+      { clientId: "openai", inferenceProvider: "openai", modelId: "gpt-4-turbo" }
     );
   }
 }
