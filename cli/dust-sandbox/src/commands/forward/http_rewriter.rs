@@ -363,6 +363,19 @@ fn process_request(
     request: &RequestParts,
     mode: HttpRewriteMode<'_>,
 ) -> RewriteResult<ProcessedRequest> {
+    // CONNECT requests-inside an already-established session ask the receiver
+    // to act as a tunneling proxy. The upstream TCP destination is pinned to
+    // the SNI/domain that gated this session, so forwarding CONNECT to it
+    // would never establish a real tunnel. We deny up front rather than
+    // forward nonsense bytes that future refactors might start honoring.
+    if request.method.eq_ignore_ascii_case("CONNECT") {
+        return Err(HttpRewriteError::denied(
+            mode,
+            DenyReason::ConnectMethodForbidden,
+            None,
+        ));
+    }
+
     let host = normalized_single_host(request, mode)?;
     validate_absolute_uri_authority(&request.uri, &host, mode)?;
 
@@ -1060,6 +1073,23 @@ mod tests {
         .expect_err("TE list with non-chunked token should deny");
 
         assert_deny_reason(err, DenyReason::MalformedHeaders);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn drops_connect_method() -> Result<()> {
+        let table = empty_table()?;
+        let err = rewrite_once(
+            b"CONNECT api.openai.com:443 HTTP/1.1\r\nHost: api.openai.com\r\n\r\n",
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("CONNECT should deny");
+
+        assert_deny_reason(err, DenyReason::ConnectMethodForbidden);
         Ok(())
     }
 
