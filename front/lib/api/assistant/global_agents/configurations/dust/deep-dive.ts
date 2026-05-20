@@ -28,7 +28,6 @@ import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  AgentReasoningEffort,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -38,9 +37,11 @@ import {
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import type {
-  ModelConfigurationType,
-  ModelProviderIdType,
+import {
+  getMinimumReasoningEffort,
+  type ReasoningEffort,
+  type ModelConfigurationType,
+  type ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
@@ -354,7 +355,7 @@ function getModelConfig(
   } = {}
 ): {
   modelConfiguration: ModelConfigurationType;
-  reasoningEffort: AgentReasoningEffort;
+  reasoningEffort: ReasoningEffort;
 } | null {
   const candidates = [
     CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
@@ -368,7 +369,9 @@ function getModelConfig(
     ) {
       return {
         modelConfiguration: model,
-        reasoningEffort: reasoning ? "light" : model.minimumReasoningEffort,
+        reasoningEffort: reasoning
+          ? "light"
+          : getMinimumReasoningEffort(model.supportedReasoningEfforts),
       };
     }
   }
@@ -389,7 +392,7 @@ function getMaxReasoningModelConfig(
   excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
 ): {
   modelConfiguration: ModelConfigurationType;
-  reasoningEffort: AgentReasoningEffort;
+  reasoningEffort: ReasoningEffort;
 } | null {
   if (
     !excludeProviders.has("openai") &&

@@ -28,8 +28,12 @@ export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigur
     isLatest: false,
     generationTokensCount: 2048,
     supportsVision: false,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
+    supportedReasoningEfforts: {
+      none: true,
+      light: false,
+      medium: false,
+      high: false,
+    },
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -52,8 +56,12 @@ export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigura
     isLatest: false,
     generationTokensCount: 2048,
     supportsVision: false,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
+    supportedReasoningEfforts: {
+      none: true,
+      light: false,
+      medium: false,
+      high: false,
+    },
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -76,8 +84,12 @@ export const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
     isLatest: false,
     generationTokensCount: 2048,
     supportsVision: false,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
+    supportedReasoningEfforts: {
+      none: true,
+      light: false,
+      medium: false,
+      high: false,
+    },
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -100,8 +112,12 @@ export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
     isLatest: false,
     generationTokensCount: 2048,
     supportsVision: false,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
+    supportedReasoningEfforts: {
+      none: true,
+      light: false,
+      medium: false,
+      high: false,
+    },
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -123,8 +139,12 @@ export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
+  supportedReasoningEfforts: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
   defaultReasoningEffort: "none",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -146,8 +166,12 @@ export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
+  supportedReasoningEfforts: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
   defaultReasoningEffort: "none",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {

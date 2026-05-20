@@ -16,8 +16,12 @@ export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
+  supportedReasoningEfforts: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
   defaultReasoningEffort: "none",
   availableIfOneOf: {
     featureFlag: "deepseek_feature",
@@ -42,8 +46,12 @@ export const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
+  supportedReasoningEfforts: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
   defaultReasoningEffort: "none",
   availableIfOneOf: {
     featureFlag: "deepseek_feature",

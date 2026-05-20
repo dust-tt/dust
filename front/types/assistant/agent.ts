@@ -11,6 +11,7 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { DbModelIdSchema } from "@app/types/shared/model_id";
 import { TagSchema, type TagType } from "@app/types/tag";
@@ -111,11 +112,6 @@ export type AgentRecentAuthors = readonly string[];
 export const AGENT_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
 export type AgentReinforcementMode = (typeof AGENT_REINFORCEMENT_MODES)[number];
 
-const AGENT_REASONING_EFFORTS = ["none", "light", "medium", "high"] as const;
-
-export const AgentReasoningEffortSchema = z.enum(AGENT_REASONING_EFFORTS);
-export type AgentReasoningEffort = z.infer<typeof AgentReasoningEffortSchema>;
-
 export const AgentUsageSchema = z.object({
   messageCount: z.number(),
   conversationCount: z.number(),
@@ -124,21 +120,6 @@ export const AgentUsageSchema = z.object({
 });
 
 export type AgentUsageType = z.infer<typeof AgentUsageSchema>;
-
-// Constrains a reasoning effort to the [min, max] range supported by a model.
-export function clampReasoningEffort(
-  effort: AgentReasoningEffort,
-  min: AgentReasoningEffort,
-  max: AgentReasoningEffort
-): AgentReasoningEffort {
-  const effortIndex = AGENT_REASONING_EFFORTS.indexOf(effort);
-  const minIndex = AGENT_REASONING_EFFORTS.indexOf(min);
-  const maxIndex = AGENT_REASONING_EFFORTS.indexOf(max);
-
-  return AGENT_REASONING_EFFORTS[
-    Math.max(minIndex, Math.min(maxIndex, effortIndex))
-  ];
-}
 
 // ModelProviderIdSchema and ModelIdSchema are inlined here to avoid importing
 // from models/models.ts and models/providers.ts which have io-ts side effects
@@ -149,7 +130,7 @@ export const AgentModelConfigurationSchema = z.object({
   ),
   modelId: z.custom<ModelIdType>((val) => typeof val === "string"),
   temperature: z.number(),
-  reasoningEffort: AgentReasoningEffortSchema.optional(),
+  reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
   responseFormat: z.string().optional(),
   metaData: z.record(z.string(), z.unknown()).optional(),
 });

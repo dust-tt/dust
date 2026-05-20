@@ -53,8 +53,12 @@ export const GPT_4_TURBO_2024_04_09_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: true,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
   tokenizer: { type: "tiktoken", base: "cl100k_base" },
@@ -164,8 +168,7 @@ Same pattern with Anthropic-specific files:
 |----------|-------------|
 | `supportsVision` | Can process images |
 | `supportsResponseFormat` | Supports structured output (JSON) |
-| `minimumReasoningEffort` | Min reasoning level ("none", "low", "medium", "high") |
-| `maximumReasoningEffort` | Max reasoning level |
+| `supportedReasoningEfforts` | Supported reasoning levels (none, light, medium, high) |
 | `defaultReasoningEffort` | Default reasoning level |
 | `tokenizer` | Tokenizer config for token counting |
 
