@@ -1,16 +1,66 @@
 /** @ignoreswagger */
-// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import type { PokeWorkspaceType } from "@app/lib/api/poke/workspaces";
-import { listWorkspacesForPoke } from "@app/lib/api/poke/workspaces";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
+import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
+import {
+  isEntreprisePlanPrefix,
+  isFreePlan,
+  isFriendsAndFamilyPlan,
+  isOldFreePlan,
+  isProPlanPrefix,
+} from "@app/lib/plans/plan_codes";
+import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
+import { tryParsePhoneNumber } from "@app/lib/plans/trial/phone";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
+import { isDomain, isEmailValid } from "@app/lib/utils";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { SubscriptionType } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
+import type { FindOptions, Order, WhereOptions } from "sequelize";
+import { Op } from "sequelize";
+
+export type PokeWorkspaceType = LightWorkspaceType & {
+  createdAt: string;
+  subscription: SubscriptionType;
+  membersCount: number;
+};
 
 export type GetPokeWorkspacesResponseBody = {
   workspaces: PokeWorkspaceType[];
+};
+
+const getPlanPriority = (planCode: string) => {
+  if (isEntreprisePlanPrefix(planCode)) {
+    return 1;
+  }
+
+  if (isFriendsAndFamilyPlan(planCode)) {
+    return 2;
+  }
+
+  if (isProPlanPrefix(planCode)) {
+    return 3;
+  }
+
+  if (isFreePlan(planCode)) {
+    return 4;
+  }
+
+  if (isOldFreePlan(planCode)) {
+    return 5;
+  }
+
+  return 6;
 };
 
 async function handler(
@@ -37,6 +87,8 @@ async function handler(
         ? decodeURIComponent(req.query.search as string).trim()
         : undefined;
       let limit: number = 0;
+      let originalLimit: number = 0;
+      const order: Order = [["createdAt", "DESC"]];
 
       if (req.query.upgraded !== undefined) {
         if (
@@ -82,16 +134,190 @@ async function handler(
           });
         }
 
-        limit = parseInt(req.query.limit, 10);
+        originalLimit = parseInt(req.query.limit, 10);
+        limit = originalLimit;
       }
 
-      const workspaces = await listWorkspacesForPoke(auth, {
-        listUpgraded,
-        searchTerm,
+      const conditions: WhereOptions<WorkspaceModel>[] = [];
+
+      if (listUpgraded !== undefined) {
+        const subscriptions =
+          await SubscriptionResource.internalListAllActiveNoFreeTestPlan();
+        const workspaceIds = subscriptions.map((s) => s.workspaceId);
+        if (listUpgraded) {
+          conditions.push({
+            id: {
+              [Op.in]: workspaceIds,
+            },
+          });
+        } else {
+          conditions.push({
+            id: {
+              [Op.notIn]: workspaceIds,
+            },
+          });
+        }
+      }
+
+      if (searchTerm) {
+        // Search by Stripe subscription ID (exact match).
+        let isSearchByStripeSubscription = false;
+        if (searchTerm.startsWith("sub_")) {
+          const subscription =
+            await SubscriptionResource.fetchByStripeId(searchTerm);
+          if (subscription) {
+            isSearchByStripeSubscription = true;
+            conditions.push({
+              id: subscription.workspaceId,
+            });
+          }
+        }
+
+        let isSearchByEmail = false;
+        if (isEmailValid(searchTerm)) {
+          // We can have 2 users with the same email if a Google user and a Github user have the same email.
+          const users = await UserResource.listByEmail(searchTerm);
+          if (users.length) {
+            const { memberships, total } =
+              await MembershipResource.getLatestMemberships({
+                users,
+              });
+            if (total > 0) {
+              conditions.push({
+                id: {
+                  [Op.in]: memberships.map((m) => m.workspaceId),
+                },
+              });
+              isSearchByEmail = true;
+            }
+          }
+        }
+
+        let isSearchByDomain = false;
+        if (isDomain(searchTerm)) {
+          const workspace = await WorkspaceResource.fetchByDomain(searchTerm);
+          if (workspace) {
+            isSearchByDomain = true;
+            conditions.push({
+              id: workspace.id,
+            });
+          }
+        }
+
+        let isSearchByPhone = false;
+        const e164 = tryParsePhoneNumber(searchTerm);
+        if (e164) {
+          const workspaceModelId =
+            await WorkspaceVerificationAttemptResource.findWorkspaceModelIdFromPhoneNumber(
+              e164
+            );
+          if (workspaceModelId) {
+            isSearchByPhone = true;
+            conditions.push({
+              id: workspaceModelId,
+            });
+          }
+        }
+
+        if (
+          !isSearchByEmail &&
+          !isSearchByDomain &&
+          !isSearchByStripeSubscription &&
+          !isSearchByPhone
+        ) {
+          conditions.push({
+            [Op.or]: [
+              {
+                sId: {
+                  [Op.iLike]: `%${searchTerm}%`,
+                },
+              },
+              {
+                name: {
+                  [Op.iLike]: `%${searchTerm}%`,
+                },
+              },
+            ],
+          });
+        }
+
+        // In case of search, we increase the limit for the sql query to 100 because we'll sort manually (until a better solution is found).
+        // Note from seb: I tried ordering directly in the query but I stumbled into sequelize behaviors that I don't understand.
+        limit = 100;
+      }
+
+      const where: FindOptions<WorkspaceModel>["where"] = conditions.length
+        ? {
+            [Op.and]: conditions,
+          }
+        : {};
+
+      const workspaces = await WorkspaceModel.findAll({
+        where,
         limit,
+        include: [
+          {
+            model: SubscriptionModel,
+            as: "subscriptions",
+            where: { status: "active" },
+            required: false,
+            include: [
+              {
+                model: PlanModel,
+                as: "plan",
+              },
+            ],
+          },
+        ],
+        order,
       });
 
-      return res.status(200).json({ workspaces });
+      // If limit is above originalLimit, sort manually and then splice.
+      if (limit > originalLimit) {
+        // Order by plan, entreprise first, then pro, then free and old free using isEntreprisePlan,
+        // isProPlan and isFreePlan, isOldFreePlan methods.
+        workspaces.sort((a, b) => {
+          // Note: TypeScript may incorrectly assume that `subscriptions` is always defined.
+          // Using optional chaining and default values to handle potential undefined cases.
+          const planAPriority = getPlanPriority(
+            a.subscriptions?.[0]?.plan?.code || ""
+          );
+          const planBPriority = getPlanPriority(
+            b.subscriptions?.[0]?.plan?.code || ""
+          );
+
+          return planAPriority - planBPriority;
+        });
+
+        workspaces.splice(originalLimit);
+      }
+
+      const lightWorkspaces = workspaces.map((workspace) =>
+        renderLightWorkspaceType({ workspace, role: "admin" })
+      );
+      const membersCountByWorkspaceId =
+        await MembershipResource.getMembersCountsForWorkspaces(auth, {
+          workspaces: lightWorkspaces,
+          activeOnly: true,
+        });
+
+      return res.status(200).json({
+        workspaces: workspaces.map((workspace) => ({
+          ...renderLightWorkspaceType({
+            workspace,
+            role: "admin",
+          }),
+          createdAt: workspace.createdAt.toISOString(),
+          subscription: renderSubscriptionFromModels({
+            plan: workspace.subscriptions[0]
+              ? workspace.subscriptions[0].plan
+              : // If there is no active subscription, we use the free plan data.
+                FREE_NO_PLAN_DATA,
+            activeSubscription: workspace.subscriptions[0],
+          }),
+          membersCount: membersCountByWorkspaceId[workspace.sId] ?? 0,
+        })),
+      });
 
     default:
       return apiError(req, res, {

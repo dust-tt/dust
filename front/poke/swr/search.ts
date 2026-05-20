@@ -1,10 +1,12 @@
-import type { PokeWorkspaceType } from "@app/lib/api/poke/workspaces";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokeSearchItemsResponseBody } from "@app/pages/api/poke/search";
-import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
+import type {
+  GetPokeWorkspacesResponseBody,
+  PokeWorkspaceType,
+} from "@app/pages/api/poke/workspaces";
 import type { PokeItemBase } from "@app/types/poke";
 import { useEffect, useState } from "react";
 import type { Fetcher } from "swr";
