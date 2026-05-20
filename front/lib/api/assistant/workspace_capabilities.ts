@@ -5,7 +5,11 @@ import {
   isToolWithKnowledge,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
-import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
+import { config as regionConfig } from "@app/lib/api/regions/config";
+import {
+  filterCustomAvailableAndWhitelistedModels,
+  getWhitelistedProviders,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -40,13 +44,19 @@ export async function getAvailableModelsForWorkspace(
   auth: Authenticator
 ): Promise<ModelConfigurationType[]> {
   const featureFlags = await getFeatureFlags(auth);
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.plan();
+  const region = regionConfig.getCurrentRegion();
+  const whitelistedProviders = getWhitelistedProviders(auth);
 
   const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
-  return filterCustomAvailableAndWhitelistedModels(
-    allUsedModels,
+  return filterCustomAvailableAndWhitelistedModels(allUsedModels, {
     featureFlags,
-    auth
-  );
+    plan,
+    owner,
+    region,
+    whitelistedProviders,
+  });
 }
 
 /**
