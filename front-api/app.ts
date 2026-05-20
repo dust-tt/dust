@@ -67,8 +67,7 @@ export function isHonoRoute(
     return false;
   }
 
-  const queryStart = url.indexOf("?");
-  const path = queryStart === -1 ? url : url.slice(0, queryStart);
+  const path = new URL(url, "http://localhost").pathname;
 
   if (dispatchRouter.match(method, path)[0].length > 0) {
     return true;
