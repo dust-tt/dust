@@ -120,7 +120,7 @@ describe("shouldRelayToOtherRegion", () => {
   it("relays first-hop user and workspace misses", () => {
     expect(
       shouldRelayToOtherRegion({
-        req: { headers: {} },
+        headers: {},
         error: {
           type: "user_not_found",
           message: "user missing",
@@ -130,7 +130,7 @@ describe("shouldRelayToOtherRegion", () => {
 
     expect(
       shouldRelayToOtherRegion({
-        req: { headers: {} },
+        headers: {},
         error: {
           type: "workspace_not_found",
           message: "workspace missing",
@@ -142,10 +142,8 @@ describe("shouldRelayToOtherRegion", () => {
   it("does not relay requests that were already forwarded", () => {
     expect(
       shouldRelayToOtherRegion({
-        req: {
-          headers: {
-            "x-dust-email-webhook-relayed": "1",
-          },
+        headers: {
+          "x-dust-email-webhook-relayed": "1",
         },
         error: {
           type: "user_not_found",
@@ -158,7 +156,7 @@ describe("shouldRelayToOtherRegion", () => {
   it("does not relay unrelated email errors", () => {
     expect(
       shouldRelayToOtherRegion({
-        req: { headers: {} },
+        headers: {},
         error: {
           type: "invalid_email_error",
           message: "bad recipient",
