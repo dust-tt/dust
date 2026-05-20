@@ -3,6 +3,7 @@ import { FileExplorerFilters } from "@app/components/file_explorer/FileExplorerF
 import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
 import { FileExplorerToolbar } from "@app/components/file_explorer/FileExplorerToolbar";
 import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
+import { canMoveFileToParentFolder } from "@app/components/file_explorer/fileExplorerDragDrop";
 import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
 import { MoveFileToFolderDialog } from "@app/components/file_explorer/MoveFileToFolderDialog";
 import type {
@@ -18,6 +19,7 @@ import type {
 import {
   buildFolderTree,
   countFoldersInTree,
+  getScopedRelativePath,
 } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
@@ -224,6 +226,31 @@ export function FileExplorer({
       ? "All files"
       : (folderStack.at(-2)?.name ?? "All files");
 
+  const parentFolderDropPath =
+    folderStack.length <= 1 ? "" : (folderStack.at(-2)?.path ?? "");
+
+  const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);
+
+  const handleMoveFileDrop = useCallback(
+    async (scopedFilePath: string, parentRelativePath: string) => {
+      if (
+        !onMoveFile ||
+        !canMoveFileToParentFolder(scopedFilePath, parentRelativePath)
+      ) {
+        return;
+      }
+
+      const relativePath = getScopedRelativePath(scopedFilePath);
+      const entry = entryByRelativePath.get(relativePath);
+      if (entry?.kind !== "file") {
+        return;
+      }
+
+      await onMoveFile(entry, parentRelativePath);
+    },
+    [entryByRelativePath, onMoveFile]
+  );
+
   const handleFileOpen = (entry: FileEntry) => {
     if (
       onOpenInteractive &&
@@ -316,6 +343,8 @@ export function FileExplorer({
             viewMode={viewMode}
             isEmpty={fileCount === 0 && folderCount === 0}
             emptyState={emptyState}
+            fileDragEnabled={fileDragEnabled}
+            parentFolderDropPath={parentFolderDropPath}
             parentFolderLabel={
               folderStack.length > 0 ? parentFolderLabel : undefined
             }
@@ -323,6 +352,7 @@ export function FileExplorer({
             onFolderNavigate={handleFolderNavigate}
             onFileOpen={handleFileOpen}
             onFileDownload={onFileDownload}
+            onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
             onNodeOpen={handleNodeOpen}
             getFileMenuItems={
               onDelete || onRename || onMoveFile ? getMenuItems : undefined

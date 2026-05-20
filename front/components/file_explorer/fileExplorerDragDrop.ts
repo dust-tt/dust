@@ -1,0 +1,126 @@
+import {
+  getParentFolderRelativePath,
+  getScopedRelativePath,
+} from "@app/components/file_explorer/utils";
+import type React from "react";
+import { useCallback, useRef, useState } from "react";
+
+/** Drag payload MIME type for file explorer file moves. */
+export const FILE_EXPLORER_DRAG_MIME = "application/x-dust-file-explorer-file";
+
+export function setFileExplorerDragData(
+  dataTransfer: DataTransfer,
+  scopedFilePath: string
+): void {
+  dataTransfer.effectAllowed = "move";
+  dataTransfer.setData(FILE_EXPLORER_DRAG_MIME, scopedFilePath);
+}
+
+export function getFileExplorerDragScopedPath(
+  dataTransfer: DataTransfer
+): string | null {
+  const path = dataTransfer.getData(FILE_EXPLORER_DRAG_MIME);
+  return path.length > 0 ? path : null;
+}
+
+export function hasFileExplorerDrag(dataTransfer: DataTransfer): boolean {
+  return dataTransfer.types.includes(FILE_EXPLORER_DRAG_MIME);
+}
+
+export function getCurrentParentRelativePath(fileScopedPath: string): string {
+  return getParentFolderRelativePath(getScopedRelativePath(fileScopedPath));
+}
+
+export function canMoveFileToParentFolder(
+  fileScopedPath: string,
+  targetParentRelativePath: string
+): boolean {
+  return (
+    getCurrentParentRelativePath(fileScopedPath) !== targetParentRelativePath
+  );
+}
+
+export function useFileExplorerDropTarget({
+  disabled,
+  onDrop,
+}: {
+  disabled?: boolean;
+  onDrop: (scopedFilePath: string) => void;
+}) {
+  const dragCounterRef = useRef(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const reset = useCallback(() => {
+    dragCounterRef.current = 0;
+    setIsDragOver(false);
+  }, []);
+
+  const onDragEnter = useCallback(
+    (e: React.DragEvent) => {
+      if (disabled || !hasFileExplorerDrag(e.dataTransfer)) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounterRef.current += 1;
+      if (dragCounterRef.current === 1) {
+        setIsDragOver(true);
+      }
+    },
+    [disabled]
+  );
+
+  const onDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (disabled || !hasFileExplorerDrag(e.dataTransfer)) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = "move";
+    },
+    [disabled]
+  );
+
+  const onDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      if (disabled || !hasFileExplorerDrag(e.dataTransfer)) {
+        return;
+      }
+      e.stopPropagation();
+      dragCounterRef.current -= 1;
+      if (dragCounterRef.current <= 0) {
+        reset();
+      }
+    },
+    [disabled, reset]
+  );
+
+  const onDropHandler = useCallback(
+    (e: React.DragEvent) => {
+      if (disabled) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      reset();
+
+      const scopedFilePath = getFileExplorerDragScopedPath(e.dataTransfer);
+      if (!scopedFilePath) {
+        return;
+      }
+      onDrop(scopedFilePath);
+    },
+    [disabled, onDrop, reset]
+  );
+
+  return {
+    isDragOver,
+    dropTargetProps: {
+      onDragEnter,
+      onDragOver,
+      onDragLeave,
+      onDrop: onDropHandler,
+    },
+  };
+}
