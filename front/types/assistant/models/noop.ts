@@ -15,8 +15,12 @@ export const NOOP_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
+  supportedReasoningEfforts: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
   defaultReasoningEffort: "none",
   supportsResponseFormat: false,
   availableIfOneOf: {

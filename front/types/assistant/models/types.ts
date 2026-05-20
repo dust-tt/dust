@@ -3,11 +3,10 @@ import { z } from "zod";
 import type { WhitelistableFeature } from "../../shared/feature_flags";
 import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import type { TokenizerConfig } from "../../tokenizer";
-import type { AgentReasoningEffort } from "../agent";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
 import type { MODEL_IDS, SUPPORTED_MODEL_CONFIGS } from "./models";
 import type { BYOK_MODEL_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "./providers";
-import type { REASONING_EFFORTS } from "./reasoning";
+import { ORDERED_REASONING_EFFORTS } from "./reasoning";
 
 export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
@@ -15,6 +14,17 @@ export type ByokModelProviderIdType = (typeof BYOK_MODEL_PROVIDER_IDS)[number];
 
 export const CUSTOM_THINKING_TYPES = ["auto", "enabled"] as const;
 export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
+
+// z.object (not z.record) so every reasoning effort key is required.
+const ReasoningEffortSupportSchema = z.object({
+  none: z.boolean(),
+  light: z.boolean(),
+  medium: z.boolean(),
+  high: z.boolean(),
+} satisfies Record<ReasoningEffort, z.ZodBoolean>);
+export type ReasoningEffortSupport = z.infer<
+  typeof ReasoningEffortSupportSchema
+>;
 
 // Schema for validating model configs (e.g., from GCS at build time).
 // This is the source of truth for the structure of ModelConfigurationType.
@@ -35,8 +45,7 @@ export const ModelConfigurationSchema = z.object({
   tokenCountAdjustment: z.number().optional(),
   generationTokensCount: z.number(),
   supportsVision: z.boolean(),
-  minimumReasoningEffort: z.string(),
-  maximumReasoningEffort: z.string(),
+  supportedReasoningEfforts: ReasoningEffortSupportSchema,
   defaultReasoningEffort: z.string(),
   useNativeLightReasoning: z.boolean().optional(),
   supportsResponseFormat: z.boolean().optional(),
@@ -62,8 +71,6 @@ export type ModelConfigurationType = Omit<
   ModelConfigurationSchemaType,
   | "providerId"
   | "modelId"
-  | "minimumReasoningEffort"
-  | "maximumReasoningEffort"
   | "defaultReasoningEffort"
   | "featureFlag"
   | "customAssistantFeatureFlag"
@@ -71,9 +78,7 @@ export type ModelConfigurationType = Omit<
 > & {
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
-  minimumReasoningEffort: AgentReasoningEffort;
-  maximumReasoningEffort: AgentReasoningEffort;
-  defaultReasoningEffort: AgentReasoningEffort;
+  defaultReasoningEffort: ReasoningEffort;
   // Specify if the model is available in specific regions.
   regionalAvailability: Record<RegionType, boolean>;
   // If undefined, model is available.
@@ -100,7 +105,7 @@ export type SupportedModel = ExtractSpecificKeys<
   (typeof SUPPORTED_MODEL_CONFIGS)[number],
   "providerId" | "modelId"
 >;
-export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
+export type ReasoningEffort = (typeof ORDERED_REASONING_EFFORTS)[number];
 
 export type EmbeddingProviderIdType = (typeof EMBEDDING_PROVIDER_IDS)[number];
 
@@ -119,3 +124,15 @@ export const ResponseFormatSchema = z.object({
   }),
 });
 export type ResponseFormat = z.infer<typeof ResponseFormatSchema>;
+
+export function getAvailableReasoningEfforts(
+  support: ReasoningEffortSupport
+): ReasoningEffort[] {
+  return ORDERED_REASONING_EFFORTS.filter((effort) => support[effort]);
+}
+
+export function getMinimumReasoningEffort(
+  support: ReasoningEffortSupport
+): ReasoningEffort {
+  return ORDERED_REASONING_EFFORTS.find((effort) => support[effort]) || "none";
+}

@@ -1,6 +1,9 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { AgentReasoningEffort } from "@app/types/assistant/agent";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import {
+  getAvailableReasoningEfforts,
+  type ModelConfigurationType,
+  type ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import {
   DropdownMenuLabel,
@@ -11,11 +14,12 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@dust-tt/sparkle";
+import isEqual from "lodash/isEqual";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useEffect, useMemo } from "react";
 import { useController, useWatch } from "react-hook-form";
 
-const REASONING_EFFORT_DESCRIPTIONS: Record<AgentReasoningEffort, string> = {
+const REASONING_EFFORT_DESCRIPTIONS: Record<ReasoningEffort, string> = {
   none: "No additional reasoning",
   light: "Quick analysis",
   medium: "Balanced reasoning",
@@ -57,8 +61,7 @@ export function ReasoningEffortSubmenu({
     if (modelConfig) {
       const currentEffort = field.value;
       const availableEfforts = getAvailableReasoningEfforts(
-        modelConfig.minimumReasoningEffort,
-        modelConfig.maximumReasoningEffort
+        modelConfig.supportedReasoningEfforts
       );
 
       if (!availableEfforts.includes(currentEffort)) {
@@ -71,17 +74,13 @@ export function ReasoningEffortSubmenu({
     return null;
   }
 
-  if (
-    modelConfig.minimumReasoningEffort === "none" &&
-    modelConfig.maximumReasoningEffort === "none"
-  ) {
+  const availableEfforts = getAvailableReasoningEfforts(
+    modelConfig.supportedReasoningEfforts
+  );
+
+  if (availableEfforts.length === 0 || isEqual(availableEfforts, ["none"])) {
     return null;
   }
-
-  const availableEfforts = getAvailableReasoningEfforts(
-    modelConfig.minimumReasoningEffort,
-    modelConfig.maximumReasoningEffort
-  );
 
   if (availableEfforts.length <= 1) {
     return <></>;
@@ -108,24 +107,4 @@ export function ReasoningEffortSubmenu({
       </DropdownMenuPortal>
     </DropdownMenuSub>
   );
-}
-
-function getAvailableReasoningEfforts(
-  min: AgentReasoningEffort,
-  max: AgentReasoningEffort
-): AgentReasoningEffort[] {
-  const allEfforts: AgentReasoningEffort[] = [
-    "none",
-    "light",
-    "medium",
-    "high",
-  ];
-  const minIndex = allEfforts.indexOf(min);
-  const maxIndex = allEfforts.indexOf(max);
-
-  if (minIndex === -1 || maxIndex === -1 || minIndex > maxIndex) {
-    return [];
-  }
-
-  return allEfforts.slice(minIndex, maxIndex + 1);
 }
