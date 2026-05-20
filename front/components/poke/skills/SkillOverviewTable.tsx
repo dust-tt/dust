@@ -57,6 +57,10 @@ export function SkillOverviewTable({
             </PokeTableCell>
           </PokeTableRow>
           <PokeTableRow>
+            <PokeTableCell>Default</PokeTableCell>
+            <PokeTableCell>{skill.isDefault ? "Yes" : "No"}</PokeTableCell>
+          </PokeTableRow>
+          <PokeTableRow>
             <PokeTableCell>Extended skill</PokeTableCell>
             <PokeTableCell>{skill.extendedSkillId ?? "None"}</PokeTableCell>
           </PokeTableRow>
