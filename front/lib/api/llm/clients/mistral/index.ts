@@ -25,6 +25,7 @@ import type {
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { Mistral } from "@mistralai/mistralai";
 import type { ChatCompletionRequest } from "@mistralai/mistralai/models/components";
 import {
@@ -169,7 +170,11 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {
     const job = await this.client.batch.jobs.get({ jobId: batchId });
 
-    switch (job.status) {
+    // Narrow OpenEnum to known values for exhaustive switching.
+    const jobStatus =
+      job.status as (typeof BatchJobStatus)[keyof typeof BatchJobStatus];
+
+    switch (jobStatus) {
       case BatchJobStatus.Success:
         return "ready";
       case BatchJobStatus.Failed:
@@ -185,11 +190,7 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
       case BatchJobStatus.CancellationRequested:
         return "computing";
       default:
-        logger.error(
-          { batchId, status: job.status, provider: "mistral" },
-          "Unrecognized Mistral batch status"
-        );
-        throw new Error(`Unrecognized Mistral batch status: ${job.status}`);
+        assertNever(jobStatus);
     }
   }
 

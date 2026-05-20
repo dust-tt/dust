@@ -23,8 +23,8 @@ import type {
   UsageInfo,
 } from "@mistralai/mistralai/models/components";
 import {
+  ChatCompletionChoiceFinishReason,
   CompletionResponseStreamChoiceFinishReason,
-  FinishReason,
 } from "@mistralai/mistralai/models/components";
 import compact from "lodash/compact";
 
@@ -336,9 +336,13 @@ export function chatCompletionToLLMEvents(
 
   const choice = response.choices[0];
   switch (choice.finishReason) {
-    case FinishReason.Stop:
-    case FinishReason.ToolCalls: {
-      const { content, toolCalls } = choice.message;
+    case ChatCompletionChoiceFinishReason.Stop:
+    case ChatCompletionChoiceFinishReason.ToolCalls: {
+      const message = choice.message;
+      if (!message) {
+        break;
+      }
+      const { content, toolCalls } = message;
       if (content) {
         const text = batchContentToText(content);
         if (text.length > 0) {
@@ -359,8 +363,8 @@ export function chatCompletionToLLMEvents(
       }
       break;
     }
-    case FinishReason.Length:
-    case FinishReason.ModelLength: {
+    case ChatCompletionChoiceFinishReason.Length:
+    case ChatCompletionChoiceFinishReason.ModelLength: {
       addEvent(
         new EventError(
           {
@@ -374,7 +378,7 @@ export function chatCompletionToLLMEvents(
       );
       break;
     }
-    case FinishReason.Error: {
+    case ChatCompletionChoiceFinishReason.Error: {
       addEvent(
         new EventError(
           {
