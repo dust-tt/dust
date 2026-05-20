@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { mergeConversationBranch } from "@app/lib/api/assistant/conversation/branches";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
