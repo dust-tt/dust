@@ -1,6 +1,8 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { buildSharedTemplateAttributes } from "@app/lib/api/poke/templates";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -135,26 +137,12 @@ async function handler(
       }
 
       await existingTemplate?.updateAttributes({
-        backgroundColor: body.backgroundColor,
-        userFacingDescription: body.userFacingDescription ?? null,
-        agentFacingDescription: body.agentFacingDescription ?? null,
-        emoji: body.emoji,
-        handle: body.handle,
-        helpActions: body.helpActions ?? null,
-        helpInstructions: body.helpInstructions ?? null,
-        sidekickInstructions: body.sidekickInstructions ?? null,
-        presetActions: body.presetActions,
+        ...buildSharedTemplateAttributes({ ...body, tags: body.tags }, model),
         timeFrameDuration: body.timeFrameDuration
           ? parseInt(body.timeFrameDuration, 10)
           : null,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         timeFrameUnit: body.timeFrameUnit || null,
-        presetDescription: null,
-        presetInstructions: body.presetInstructions ?? null,
-        presetModelId: model.modelId,
-        presetProviderId: model.providerId,
-        tags: body.tags,
-        visibility: body.visibility,
       });
 
       res.status(200).json({

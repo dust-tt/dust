@@ -2,7 +2,7 @@ import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortabl
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { usePokeGlobalAgentFeedbacks } from "@app/hooks/usePokeGlobalAgentFeedbacks";
-import type { GlobalAgentFeedbackItem } from "@app/pages/api/poke/global-agent-feedbacks";
+import type { GlobalAgentFeedbackItem } from "@app/lib/api/poke/global_agent_feedbacks";
 import { Button, Chip, LinkWrapper, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";

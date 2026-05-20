@@ -1,0 +1,28 @@
+import type { RegionType } from "@app/lib/api/regions/config";
+import { config, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
+import type { HandlerResult } from "@front-api/middleware/utils";
+import { Hono } from "hono";
+
+export type GetRegionResponseType = {
+  region: RegionType;
+  regionUrls: Record<RegionType, string>;
+};
+
+// Mounted at /api/poke/region. pokeAuth is applied by the parent poke sub-app.
+const app = new Hono();
+
+app.get("/", async (ctx): HandlerResult<GetRegionResponseType> => {
+  const currentRegion = config.getCurrentRegion();
+  return ctx.json({
+    region: currentRegion,
+    regionUrls: SUPPORTED_REGIONS.reduce(
+      (acc, region) => {
+        acc[region] = config.getRegionUrl(region);
+        return acc;
+      },
+      {} as Record<RegionType, string>
+    ),
+  });
+});
+
+export default app;

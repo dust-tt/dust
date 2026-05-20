@@ -4,6 +4,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { config as documentBodyParserConfig } from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 import type { PlanType } from "@app/types/plan";
 import type { HandlerResult } from "@front-api/middleware/utils";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -89,15 +90,13 @@ app.post(
     const maxSizeMb = parseInt(sizeLimit.replace("mb", ""), 10);
 
     if (body.limits.dataSources.documents.sizeMb >= maxSizeMb) {
-      return ctx.json(
-        {
-          error: {
-            type: "invalid_request_error",
-            message: `Document size limit must be less than ${maxSizeMb}MB.`,
-          },
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Document size limit must be less than ${maxSizeMb}MB.`,
         },
-        400
-      );
+      });
     }
 
     const planFields = {

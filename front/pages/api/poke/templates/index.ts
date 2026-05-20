@@ -1,6 +1,8 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { buildSharedTemplateAttributes } from "@app/lib/api/poke/templates";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -106,24 +108,10 @@ async function handler(
       }
 
       await TemplateResource.makeNew({
-        backgroundColor: body.backgroundColor,
-        userFacingDescription: body.userFacingDescription ?? null,
-        agentFacingDescription: body.agentFacingDescription ?? null,
-        emoji: body.emoji,
-        handle: body.handle,
-        helpActions: body.helpActions ?? null,
-        helpInstructions: body.helpInstructions ?? null,
-        sidekickInstructions: body.sidekickInstructions ?? null,
-        presetActions: body.presetActions,
-        presetDescription: null,
-        presetInstructions: body.presetInstructions ?? null,
-        presetModelId: model.modelId,
-        presetProviderId: model.providerId,
+        ...buildSharedTemplateAttributes({ ...body, tags: body.tags }, model),
         // Not configurable in the template, keeping the column for now since some templates do
         // have a custom temperature.
         presetTemperature: "balanced",
-        tags: body.tags,
-        visibility: body.visibility,
       });
 
       res.status(200).json({
