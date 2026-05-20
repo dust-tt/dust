@@ -258,7 +258,7 @@ async function handler(
       });
     }
 
-    if (space.kind !== "project" && file.useCase === "project_context") {
+    if (!space.isProject() && file.useCase === "project_context") {
       return apiError(req, res, {
         status_code: 400,
         api_error: {

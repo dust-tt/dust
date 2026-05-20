@@ -53,7 +53,7 @@ async function processProjectSpace(
     return;
   }
   const space = spaces[0];
-  if (space.kind !== "project") {
+  if (!space.isProject()) {
     logger.warn(
       { workspaceId: workspaceResource.sId, spaceId, kind: space.kind },
       "Space is not a project, skipping"
