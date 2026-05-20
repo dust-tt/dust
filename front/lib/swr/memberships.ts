@@ -5,6 +5,10 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
+import type {
+  GetUserSpendLimitResponseBody,
+  PutUserSpendLimitResponseBody,
+} from "@app/pages/api/w/[wId]/members/[uId]/spend_limit";
 import type { MembersLookupResponseBody } from "@app/pages/api/w/[wId]/members/lookup";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { GroupKind } from "@app/types/groups";
@@ -14,6 +18,24 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
+import { z } from "zod";
+
+const SpendLimitResponseSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("unlimited") }),
+  z.object({
+    kind: z.literal("limited"),
+    awuCredits: z.number(),
+  }),
+]);
+
+const PutUserSpendLimitResponseSchema = z.object({
+  limit: SpendLimitResponseSchema,
+  transitionedTo: z.union([
+    z.literal("reached"),
+    z.literal("resolved"),
+    z.null(),
+  ]),
+});
 
 type PaginationParams = {
   orderColumn: "createdAt";
@@ -276,4 +298,86 @@ export function useUpdateMemberSeatType({
   );
 
   return { doUpdateSeatType };
+}
+
+function spendLimitUrl(workspaceId: string, memberId: string): string {
+  return `/api/w/${workspaceId}/members/${memberId}/spend_limit`;
+}
+
+export function useUserSpendLimit({
+  workspaceId,
+  memberId,
+  disabled,
+}: {
+  workspaceId: string;
+  memberId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const spendLimitFetcher: Fetcher<GetUserSpendLimitResponseBody> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    spendLimitUrl(workspaceId, memberId),
+    spendLimitFetcher,
+    { disabled }
+  );
+
+  return {
+    spendLimit: data,
+    isSpendLimitLoading: !error && !data && !disabled,
+    isSpendLimitError: !!error,
+    mutateSpendLimit: mutate,
+  };
+}
+
+export function useUpdateUserSpendLimit({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doUpdateSpendLimit = useCallback(
+    async ({
+      memberId,
+      memberName,
+      limit,
+    }: {
+      memberId: string;
+      memberName: string;
+      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+    }): Promise<PutUserSpendLimitResponseBody | null> => {
+      const res = await clientFetch(spendLimitUrl(workspaceId, memberId), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(limit),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        sendNotification({
+          type: "error",
+          title: "Failed to update spend limit",
+          description: error?.error?.message ?? "An unexpected error occurred.",
+        });
+        return null;
+      }
+
+      const body = PutUserSpendLimitResponseSchema.parse(await res.json());
+      sendNotification({
+        type: "success",
+        title: "Spend limit updated",
+        description:
+          limit.kind === "unlimited"
+            ? `${memberName}'s spend limit has been removed.`
+            : `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`,
+      });
+
+      await mutate(spendLimitUrl(workspaceId, memberId));
+      await mutate(`/api/w/${workspaceId}/credits/members-usage`);
+      return body;
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { doUpdateSpendLimit };
 }

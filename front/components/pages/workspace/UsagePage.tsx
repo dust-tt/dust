@@ -3,6 +3,7 @@ import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
+import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
@@ -145,6 +146,8 @@ export function UsagePage() {
   >(null);
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
+    useState<MemberUsageType | null>(null);
+  const [editSpendLimitMember, setEditSpendLimitMember] =
     useState<MemberUsageType | null>(null);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
@@ -376,6 +379,7 @@ export function UsagePage() {
             seatTypeFilter={seatTypeFilter}
             showSeatColumns={hasSeatSubscription}
             onChangeSeat={setChangeSeatMember}
+            onEditSpendLimit={setEditSpendLimitMember}
           />
         </Page.Vertical>
 
@@ -397,6 +401,15 @@ export function UsagePage() {
             member={changeSeatMember}
             owner={owner}
             seatPlans={seatPlans}
+          />
+        )}
+
+        {editSpendLimitMember && (
+          <EditSpendLimitModal
+            isOpen={true}
+            onClose={() => setEditSpendLimitMember(null)}
+            member={editSpendLimitMember}
+            owner={owner}
           />
         )}
 
