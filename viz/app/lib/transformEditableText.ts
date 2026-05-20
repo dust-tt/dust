@@ -37,7 +37,12 @@ export function transformEditableText(code: string): string {
           start
         );
         const editId = `${line + 1}:${character}`;
-        replacements.push({ start, end, editId, rawText: code.slice(start, end) });
+        replacements.push({
+          start,
+          end,
+          editId,
+          rawText: code.slice(start, end),
+        });
       }
       ts.forEachChild(node, visit);
     };
@@ -59,7 +64,7 @@ export function transformEditableText(code: string): string {
   for (const { start, end, editId, rawText } of replacements) {
     result =
       result.slice(0, start) +
-      `<span data-editable="true" data-edit-id="${editId}">${rawText}</span>` +
+      `<span data-editable="true" data-edit-id="${editId}" className="cursor-text rounded-sm">${rawText}</span>` +
       result.slice(end);
   }
 

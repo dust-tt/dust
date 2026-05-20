@@ -395,7 +395,7 @@ export const VisualizationActionIframe = forwardRef<
       params.set("editable", "true");
     }
 
-    return `${props.vizUrl}/content?${params.toString()}`;
+    return `${props.vizUrl.replace(/\/$/, "")}/content?${params.toString()}`;
   }, [visualization, isInDrawer, isEditable, props.vizUrl]);
 
   return (

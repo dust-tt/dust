@@ -105,8 +105,6 @@ export function FrameRenderer({
   );
   const isFullScreen = fullScreenHash === "true";
 
-  const [frameRenderKey, setFrameRenderKey] = useState(0);
-
   const { fileContent, error, mutateFileContent } = useFileContent({
     fileId,
     owner,
@@ -148,7 +146,6 @@ export function FrameRenderer({
       await mutateFileContent(
         `/api/w/${owner.sId}/files/${fileId}?action=view`
       );
-      setFrameRenderKey((k) => k + 1);
       return { success: true };
     },
     [owner.sId, fileId, mutateFileContent]
@@ -384,7 +381,7 @@ export function FrameRenderer({
                 complete: true,
                 identifier: `viz-${fileId}`,
               }}
-              key={`viz-${fileId}-${frameRenderKey}`}
+              key={`viz-${fileId}`}
               conversationId={conversation?.sId ?? null}
               isEditable={true}
               spaceId={frameSpaceId}

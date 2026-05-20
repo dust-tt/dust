@@ -12,6 +12,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 const EditTextRequestBodySchema = z.object({
+  editId: z.string().regex(/^\d+:\d+$/, "editId must be in line:col format"),
   oldText: z.string().min(1, "oldText must be a non-empty string"),
   newText: z.string(),
 });
@@ -94,20 +95,18 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: bodyResult.error.errors
-              .map((e) => e.message)
-              .join(", "),
+            message: bodyResult.error.errors.map((e) => e.message).join(", "),
           },
         });
       }
 
-      const { oldText, newText } = bodyResult.data;
+      const { editId, oldText, newText } = bodyResult.data;
 
       const editResult = await editClientExecutableFile(auth, {
         fileId,
+        editId,
         oldString: oldText,
         newString: newText,
-        expectedReplacements: 1,
       });
 
       if (editResult.isErr()) {

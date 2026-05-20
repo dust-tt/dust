@@ -149,16 +149,57 @@ export async function createClientExecutableFile(
   }
 }
 
+function replaceAtPosition(
+  content: string,
+  editId: string,
+  oldString: string,
+  newString: string
+): Result<string, { tracked: boolean; message: string }> {
+  const [lineStr, colStr] = editId.split(":");
+  const lineIdx = parseInt(lineStr, 10) - 1; // editId is 1-indexed
+  const col = parseInt(colStr, 10);
+
+  const lines = content.split("\n");
+  if (lineIdx < 0 || lineIdx >= lines.length) {
+    return new Err({
+      tracked: false,
+      message: `editId ${editId} is out of range`,
+    });
+  }
+
+  // Compute absolute offset from line + col.
+  let offset = 0;
+  for (let i = 0; i < lineIdx; i++) {
+    offset += lines[i].length + 1; // +1 for the \n
+  }
+  offset += col;
+
+  if (content.slice(offset, offset + oldString.length) !== oldString) {
+    return new Err({
+      tracked: false,
+      message: `Text at position ${editId} does not match the expected value`,
+    });
+  }
+
+  return new Ok(
+    content.slice(0, offset) +
+      newString +
+      content.slice(offset + oldString.length)
+  );
+}
+
 export async function editClientExecutableFile(
   auth: Authenticator,
   {
     fileId,
+    editId,
     oldString,
     newString,
     expectedReplacements = 1,
     editedByAgentConfigurationId,
   }: {
     fileId: string;
+    editId?: string;
     oldString: string;
     newString: string;
     expectedReplacements?: number;
@@ -191,24 +232,41 @@ export async function editClientExecutableFile(
       }
       const { fileResource, content: currentContent } = fileContentResult.value;
 
-      const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
-        oldString,
-        newString,
-        currentContent,
-      });
+      let updatedContent: string;
 
-      if (occurrences === 0) {
-        return new Err({
-          message: `String not found in file: "${oldString}"`,
-          tracked: false,
+      if (editId) {
+        const posResult = replaceAtPosition(
+          currentContent,
+          editId,
+          oldString,
+          newString
+        );
+        if (posResult.isErr()) {
+          return new Err(posResult.error);
+        }
+        updatedContent = posResult.value;
+      } else {
+        const result = getUpdatedContentAndOccurrences({
+          oldString,
+          newString,
+          currentContent,
         });
-      }
 
-      if (occurrences !== expectedReplacements) {
-        return new Err({
-          message: `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
-          tracked: false,
-        });
+        if (result.occurrences === 0) {
+          return new Err({
+            message: `String not found in file: "${oldString}"`,
+            tracked: false,
+          });
+        }
+
+        if (result.occurrences !== expectedReplacements) {
+          return new Err({
+            message: `Expected ${expectedReplacements} replacements, but found ${result.occurrences} occurrences`,
+            tracked: false,
+          });
+        }
+
+        updatedContent = result.updatedContent;
       }
 
       // Update metadata to track the editing agent
@@ -245,7 +303,7 @@ export async function editClientExecutableFile(
       // Upload the updated content (version is incremented inside uploadContent).
       await fileResource.uploadContent(auth, updatedContent);
 
-      return new Ok({ fileResource, replacementCount: occurrences, warnings });
+      return new Ok({ fileResource, replacementCount: 1, warnings });
     });
   } catch (error) {
     return new Err({
