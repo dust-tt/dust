@@ -64,6 +64,7 @@ export enum GLOBAL_AGENTS_SID {
   DUST_OAI_HIGH = "dust-oai-high",
   DUST_GOOG = "dust-goog",
   DUST_GOOG_MEDIUM = "dust-goog-medium",
+  DUST_GOOG_HIGH = "dust-goog-high",
   DUST_GOOG_PRO = "dust-goog-pro",
   DUST_GOOG_PRO_MEDIUM = "dust-goog-pro-medium",
   DUST_GOOG_PRO_HIGH = "dust-goog-pro-high",

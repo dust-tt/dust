@@ -828,6 +828,18 @@ export function _getDustGoogMediumGlobalAgent(
   });
 }
 
+export function _getDustGoogHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GOOG_HIGH,
+    name: "dust-goog-high",
+    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
 export function _getDustGoogProGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs

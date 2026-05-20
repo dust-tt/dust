@@ -28,6 +28,7 @@ import {
   _getDustGlmMediumGlobalAgent,
   _getDustGlobalAgent,
   _getDustGoogGlobalAgent,
+  _getDustGoogHighGlobalAgent,
   _getDustGoogMediumGlobalAgent,
   _getDustGoogProGlobalAgent,
   _getDustGoogProHighGlobalAgent,
@@ -192,6 +193,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_GOOG_HIGH]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -1000,6 +1007,14 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_GOOG_HIGH:
+      agentConfiguration = _getDustGoogHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO:
       agentConfiguration = _getDustGoogProGlobalAgent(auth, {
         settings,
@@ -1240,6 +1255,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
     GLOBAL_AGENTS_SID.DUST_GOOG,
     GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_GOOG_HIGH,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH,

@@ -334,6 +334,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-goog but with medium reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_GOOG_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GOOG_HIGH,
+        name: "dust-goog-high",
+        description: "Same as dust-goog but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_GOOG_PRO:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO,
