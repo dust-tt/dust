@@ -1,10 +1,8 @@
-import type { Context } from "hono";
-
 import { getWorkOSSessionWithSetCookies } from "@app/lib/api/workos/user";
 import { getSessionFromBearerToken } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-
 import { apiError, parseCookieHeader } from "@front-api/middleware/utils";
+import type { Context } from "hono";
 
 /**
  * Resolves the session for a Hono request by trying the bearer token first,

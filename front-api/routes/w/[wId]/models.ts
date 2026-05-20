@@ -1,5 +1,3 @@
-import { Hono } from "hono";
-
 import {
   REASONING_MODEL_CONFIGS,
   USED_MODEL_CONFIGS,
@@ -8,6 +6,7 @@ import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
 import { getFeatureFlags } from "@app/lib/auth";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { Hono } from "hono";
 
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];

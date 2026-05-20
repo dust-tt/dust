@@ -1,11 +1,9 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { APIErrorType } from "@app/types/error";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/data_sources/:dsId/files.
 const app = new Hono();

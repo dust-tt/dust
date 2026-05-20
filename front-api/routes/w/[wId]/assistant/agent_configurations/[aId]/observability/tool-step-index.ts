@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchToolStepIndexDistribution } from "@app/lib/api/assistant/observability/tool_step_index";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),

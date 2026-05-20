@@ -1,5 +1,3 @@
-import { Hono } from "hono";
-
 import {
   PLAN_MODE_SERVER_NAME,
   REQUEST_PLAN_APPROVAL_TOOL_NAME,
@@ -9,8 +7,8 @@ import { findActivePlanFile } from "@app/lib/api/assistant/plan_mode";
 import { getFileContent } from "@app/lib/api/files/utils";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { Hono } from "hono";
 
 export type PlanApprovalState = "draft" | "pending" | "approved";
 

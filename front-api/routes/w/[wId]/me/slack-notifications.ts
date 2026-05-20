@@ -1,7 +1,6 @@
-import { Hono } from "hono";
-
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { Hono } from "hono";
 
 export type GetSlackNotificationResponseBody = {
   canConfigure: boolean;

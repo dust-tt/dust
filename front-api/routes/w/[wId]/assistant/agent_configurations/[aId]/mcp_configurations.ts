@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { listAgentMcpConfigurationsForAgent } from "@app/lib/api/assistant/mcp_configurations";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/mcp_configurations.
 const app = new Hono();

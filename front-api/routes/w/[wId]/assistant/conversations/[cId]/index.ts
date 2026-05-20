@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
@@ -17,9 +12,11 @@ import {
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 import attachments from "./attachments";
 import cancel from "./cancel";

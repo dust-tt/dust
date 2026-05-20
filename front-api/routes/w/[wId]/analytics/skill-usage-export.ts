@@ -1,16 +1,15 @@
-import { stringify } from "csv-stringify/sync";
-import { Hono } from "hono";
-import { z } from "zod";
-
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import {
   fetchAvailableSkills,
   fetchSkillUsageMetrics,
 } from "@app/lib/api/assistant/observability/skill_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
+import { stringify } from "csv-stringify/sync";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),

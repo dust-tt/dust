@@ -1,16 +1,14 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { Context } from "hono";
-import { Hono } from "hono";
-import { z } from "zod";
-
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import type { Context } from "hono";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PatchSkillEditorsRequestBodySchema = z
   .object({
@@ -91,7 +89,9 @@ app.get("/", async (c) => {
   const auth = c.get("auth");
 
   const loaded = await loadSkillAndEditorGroup(c);
-  if (loaded instanceof Response) return loaded;
+  if (loaded instanceof Response) {
+    return loaded;
+  }
   const { editorGroup } = loaded;
 
   const members = await editorGroup.getActiveMembers(auth);
@@ -107,7 +107,9 @@ app.patch(
     const auth = c.get("auth");
 
     const loaded = await loadSkillAndEditorGroup(c);
-    if (loaded instanceof Response) return loaded;
+    if (loaded instanceof Response) {
+      return loaded;
+    }
     const { skill: skillRes, editorGroup } = loaded;
 
     if (!skillRes.canWrite(auth)) {

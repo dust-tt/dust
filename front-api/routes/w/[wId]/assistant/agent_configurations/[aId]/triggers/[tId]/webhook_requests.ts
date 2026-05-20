@@ -1,10 +1,8 @@
-import { Hono } from "hono";
-
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/webhook_requests.
 const app = new Hono();

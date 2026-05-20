@@ -1,8 +1,7 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { GetWorkspaceFeatureFlagsResponseType } from "@dust-tt/client";
-import { Hono } from "hono";
-
 import { getFeatureFlags } from "@app/lib/auth";
+import type { GetWorkspaceFeatureFlagsResponseType } from "@dust-tt/client";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Re-exported so consumers can import the response type from the route
 // file, matching the convention of our other migrated routes.

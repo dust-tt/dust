@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import {
   MCPServerInstanceLimitError,
   registerMCPServer,
 } from "@app/lib/api/actions/mcp/client_side_registry";
 
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const MIN_SERVER_NAME_LENGTH = 5;
 const MAX_SERVER_NAME_LENGTH = 30;

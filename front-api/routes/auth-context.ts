@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { fetchUserFromSession } from "@app/lib/iam/users";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 import { sessionAuth } from "../middleware/session_auth";
 

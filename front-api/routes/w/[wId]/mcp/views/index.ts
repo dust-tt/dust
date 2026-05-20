@@ -1,9 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
@@ -11,6 +5,10 @@ import {
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
 type MCPViewsRequestAvailabilityType = z.infer<

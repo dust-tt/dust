@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -14,13 +9,14 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ProjectType, SpaceType } from "@app/types/space";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-
+import { Hono } from "hono";
+import { z } from "zod";
+import spaceId from "./[spaceId]";
 import checkName from "./check-name";
 import projectsLookup from "./projects-lookup";
 import searchProjects from "./search_projects";
-import spaceId from "./[spaceId]";
 
 const PostSpaceRequestBodySchema = z.intersection(
   z.object({

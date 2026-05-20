@@ -1,8 +1,7 @@
-import { Hono } from "hono";
+import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 
 import { apiError } from "@front-api/middleware/utils";
-
-import type { SubscriptionPerSeatPricing } from "@app/types/plan";
+import { Hono } from "hono";
 
 export type GetSubscriptionPricingResponseBody = {
   perSeatPricing: SubscriptionPerSeatPricing | null;

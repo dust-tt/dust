@@ -1,7 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import config from "@app/lib/api/config";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
@@ -10,10 +6,11 @@ import { PatchDataSourceViewSchema } from "@app/types/api/public/spaces";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
 import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
 
 import contentNodes from "./content-nodes";
 import documents from "./documents";

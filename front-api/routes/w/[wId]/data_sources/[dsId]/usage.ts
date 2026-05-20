@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/data_sources/:dsId/usage.
 const app = new Hono();

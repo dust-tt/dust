@@ -1,7 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { describe, expect, it, vi } from "vitest";
 
 const { mockCreateSpaceAndGroup } = vi.hoisted(() => ({
   mockCreateSpaceAndGroup: vi.fn(),

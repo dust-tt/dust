@@ -1,11 +1,9 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { createAndTrackMembership } from "@app/lib/api/membership";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 import { sessionAuth } from "../middleware/session_auth";
 

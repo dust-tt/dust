@@ -1,7 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import {
   ceilToMidnightUTC,
   floorToMidnightUTC,
@@ -15,6 +11,8 @@ import {
   getSeatProductIds,
 } from "@app/lib/metronome/constants";
 import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export type AwuPoolSummaryResponseBody = {
   totalCredits: number;

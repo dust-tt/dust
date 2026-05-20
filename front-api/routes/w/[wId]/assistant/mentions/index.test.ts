@@ -1,7 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { describe, expect, it, vi } from "vitest";
 
 // Mock Elasticsearch so `suggestionsOfMentions` doesn't hit a real cluster.
 vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {

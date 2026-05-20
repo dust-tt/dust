@@ -1,13 +1,10 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { CouponType } from "@app/types/coupon";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 export type GetCouponValidateResponseBody = {
   coupon: CouponType;

@@ -1,7 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import {
   getDataSourcesUsageByCategory,
@@ -14,9 +10,10 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ContentSchema } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
 
 import dsvId from "./[dsvId]";
 

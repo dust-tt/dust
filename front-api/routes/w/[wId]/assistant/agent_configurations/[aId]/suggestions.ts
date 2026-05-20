@@ -1,11 +1,9 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PatchSuggestionRequestBodySchema = z.object({
   suggestionIds: z.array(z.string()).min(1),

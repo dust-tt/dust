@@ -1,10 +1,8 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export type GetSimilarSkillsResponseBody = {
   similar_skills: string[];

@@ -1,5 +1,3 @@
-import { assert, describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -10,8 +8,8 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { getConversationUrlAccessMode } from "@app/types/assistant/conversation";
-
 import { honoApp } from "@front-api/app";
+import { assert, describe, expect, it } from "vitest";
 
 async function setupUserRequestWithConversation({
   privateByDefaultEnabled,

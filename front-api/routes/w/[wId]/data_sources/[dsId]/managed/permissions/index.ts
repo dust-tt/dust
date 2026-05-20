@@ -1,16 +1,13 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import config from "@app/lib/api/config";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const SetConnectorPermissionsRequestBodySchema = z.object({
   resources: z.array(

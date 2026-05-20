@@ -1,12 +1,10 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { searchProjectConversations } from "@app/lib/api/projects/search";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const SEMANTIC_SEARCH_SCORE_CUTOFF = 0.25;
 

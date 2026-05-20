@@ -1,15 +1,13 @@
-import type { estypes } from "@elastic/elasticsearch";
-import { Hono } from "hono";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
-
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { estypes } from "@elastic/elasticsearch";
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),

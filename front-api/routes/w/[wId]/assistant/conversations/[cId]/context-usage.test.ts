@@ -1,11 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { SupportedModel } from "@app/types/assistant/models/types";
-
 import { honoApp } from "@front-api/app";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const MODEL: SupportedModel = {
   providerId: "anthropic",

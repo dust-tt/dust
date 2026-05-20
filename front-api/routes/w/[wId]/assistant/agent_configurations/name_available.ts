@@ -1,9 +1,7 @@
+import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
+import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
-
-import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
-
-import { validate } from "@front-api/middleware/validator";
 
 const GetAgentConfigurationNameIsAvailableSchema = z.object({
   handle: z.string(),

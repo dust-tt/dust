@@ -1,5 +1,3 @@
-import { Hono } from "hono";
-
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
@@ -8,9 +6,9 @@ import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/config
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/internal/agent_configuration";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
 
 import editors from "./editors";
 import exportRoutes from "./export";

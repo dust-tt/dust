@@ -1,6 +1,5 @@
-import { Hono } from "hono";
-
 import { publicApiAuth } from "@front-api/middleware/public_api_auth";
+import { Hono } from "hono";
 
 import featureFlags from "./feature_flags";
 import spaces from "./spaces";

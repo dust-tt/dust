@@ -1,10 +1,7 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { buildShrinkWrapPromptForConversation } from "@app/lib/api/assistant/builder/sidekick_prompts";
-
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/builder/sidekick/prompt/shrink-wrap.
 const app = new Hono();

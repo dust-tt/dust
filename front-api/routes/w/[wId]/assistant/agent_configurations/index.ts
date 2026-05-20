@@ -1,7 +1,3 @@
-import { Hono } from "hono";
-import keyBy from "lodash/keyBy";
-import omit from "lodash/omit";
-
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -14,8 +10,10 @@ import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types/api/internal/agent_configuration";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
+import keyBy from "lodash/keyBy";
+import omit from "lodash/omit";
 
 import agent from "./[aId]";
 import batchUpdateScope from "./batch_update_scope";

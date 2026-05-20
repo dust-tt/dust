@@ -1,12 +1,10 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
-
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
-
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
 
 const PatchAgentMemoryRequestBodySchema = z.object({
   content: z.string(),

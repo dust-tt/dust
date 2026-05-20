@@ -1,7 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import {
   detectSkillsFromGitHubRepo,
   isSkillFromGitHubRepo,
@@ -13,6 +9,8 @@ import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 import upload from "./upload";
 

@@ -1,8 +1,7 @@
-import { Hono } from "hono";
+import { buildExistingAgentPrompt } from "@app/lib/api/assistant/builder/sidekick_prompts";
 
 import { apiError } from "@front-api/middleware/utils";
-
-import { buildExistingAgentPrompt } from "@app/lib/api/assistant/builder/sidekick_prompts";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/builder/sidekick/prompt/existing.
 const app = new Hono();

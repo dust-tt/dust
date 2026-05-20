@@ -1,12 +1,10 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 async function setup(role: MembershipRoleType = "admin") {
   return createPrivateApiMockRequest({ method: "GET", role });

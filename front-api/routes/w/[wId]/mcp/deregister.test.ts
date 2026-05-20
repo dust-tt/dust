@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockDeregisterMCPServer } = vi.hoisted(() => ({
   mockDeregisterMCPServer: vi.fn(),

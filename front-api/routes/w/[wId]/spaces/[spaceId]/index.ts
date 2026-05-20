@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import uniqBy from "lodash/uniqBy";
-
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
 import {
   buildAuditLogTarget,
@@ -21,9 +16,11 @@ import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { AgentsUsageType } from "@app/types/data_source";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import uniqBy from "lodash/uniqBy";
 
 import apps from "./apps";
 import dataSourceViews from "./data_source_views";

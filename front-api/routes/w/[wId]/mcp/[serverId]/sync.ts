@@ -1,10 +1,8 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export type SyncMCPServerResponseBody = {
   success: boolean;

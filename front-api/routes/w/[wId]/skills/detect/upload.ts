@@ -1,15 +1,14 @@
-import { apiError } from "@front-api/middleware/utils";
-import type formidable from "formidable";
-import { Hono } from "hono";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
 import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/files/detect_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { apiError } from "@front-api/middleware/utils";
+import type formidable from "formidable";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/skills/detect/upload.
 const app = new Hono();
@@ -43,7 +42,9 @@ app.post("/", async (c) => {
   const blobs: File[] = [];
   if (Array.isArray(rawFiles)) {
     for (const v of rawFiles) {
-      if (v instanceof File) blobs.push(v);
+      if (v instanceof File) {
+        blobs.push(v);
+      }
     }
   } else if (rawFiles instanceof File) {
     blobs.push(rawFiles);

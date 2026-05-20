@@ -1,11 +1,9 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PostMCPResultsBodySchema = z.object({
   result: z.unknown(),

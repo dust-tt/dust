@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-import { PostHog } from "posthog-node";
-
 import config from "@app/lib/api/config";
 import { DUST_COOKIES_ACCEPTED } from "@app/lib/cookies";
 import { readAnonymousIdFromCookies } from "@app/lib/utils/anonymous_id";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
-
 import { parseCookieHeader } from "@front-api/middleware/utils";
+import { Hono } from "hono";
+import { PostHog } from "posthog-node";
 
 const POSTHOG_HOST = "https://eu.i.posthog.com";
 

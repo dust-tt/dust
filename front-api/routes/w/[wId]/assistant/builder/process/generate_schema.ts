@@ -1,15 +1,12 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { getBuilderJsonSchemaGenerator } from "@app/lib/api/assistant/json_schema_generator";
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
 } from "@app/lib/assistant";
 import { InternalPostBuilderGenerateSchemaRequestBodySchema } from "@app/types/api/internal/assistant";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/builder/process/generate_schema.
 const app = new Hono();

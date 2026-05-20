@@ -1,7 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { metronomeBalanceToDisplayData } from "@app/lib/api/credits/metronome_balances";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
@@ -10,6 +6,8 @@ import type {
   CreditDisplayData,
   GetCreditsResponseBody,
 } from "@app/types/credits";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/credits/metronome-balances.
 const app = new Hono();

@@ -1,8 +1,7 @@
-import { Hono } from "hono";
+import { getStripeSubscription } from "@app/lib/plans/stripe";
 
 import { apiError } from "@front-api/middleware/utils";
-
-import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { Hono } from "hono";
 
 export type GetSubscriptionTrialInfoResponseBody = {
   trialDaysRemaining: number | null;

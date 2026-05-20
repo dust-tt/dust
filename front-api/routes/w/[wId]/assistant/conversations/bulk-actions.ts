@@ -1,9 +1,7 @@
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
-
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-
-import { validate } from "@front-api/middleware/validator";
 
 const MarkAllAsReadBodySchema = z.object({
   action: z.enum(["mark_as_read"]),

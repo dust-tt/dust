@@ -1,15 +1,11 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
-import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { getFlattenedContentNodesOfViewTypeForDataSourceView } from "@app/lib/api/data_source_view";
-
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
 import { spaceResource } from "@front-api/middleware/space_resource";
-
-import search from "./search";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 import tableId from "./[tableId]";
+import search from "./search";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables.
 const app = new Hono();

@@ -1,12 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-
 import { honoApp } from "@front-api/app";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("DELETE /api/w/:wId/spaces/:spaceId/project_context/files/:fileId", () => {
   beforeEach(() => {

@@ -1,8 +1,7 @@
-import { Hono } from "hono";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 
 import { apiError } from "@front-api/middleware/utils";
-
-import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { Hono } from "hono";
 
 export type GetWorkspaceSeatsCountResponseBody = {
   seatsCount: number;

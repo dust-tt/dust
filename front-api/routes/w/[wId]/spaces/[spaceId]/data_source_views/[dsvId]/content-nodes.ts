@@ -1,18 +1,15 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import {
   getCursorPaginationParams,
   SortingParamsCodec,
 } from "@app/lib/api/pagination";
 import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
-
 import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const ContentNodesBody = z.object({
   internalIds: z.array(z.string().nullable()).optional(),

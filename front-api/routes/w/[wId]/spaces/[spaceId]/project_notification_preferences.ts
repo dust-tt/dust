@@ -1,13 +1,10 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { NOTIFICATION_CONDITION_OPTIONS } from "@app/types/notification_preferences";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PatchUserProjectNotificationPreferenceBodySchema = z.object({
   preference: z.enum(NOTIFICATION_CONDITION_OPTIONS),

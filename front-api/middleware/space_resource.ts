@@ -1,6 +1,3 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { MiddlewareHandler } from "hono";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -8,6 +5,8 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { apiError } from "@front-api/middleware/utils";
+import type { MiddlewareHandler } from "hono";
 
 declare module "hono" {
   interface ContextVariableMap {

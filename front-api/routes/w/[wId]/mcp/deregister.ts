@@ -1,9 +1,7 @@
+import { deregisterMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
+import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
-
-import { deregisterMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
-
-import { validate } from "@front-api/middleware/validator";
 
 const PostMCPDeregisterRequestBodySchema = z.object({
   serverId: z.string(),

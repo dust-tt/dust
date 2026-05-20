@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import path from "path";
-
 import {
   getProjectFilesBasePath,
   parseScopedFilePath,
@@ -14,8 +9,10 @@ import {
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
+import path from "path";
 
 // Catch-all for /api/w/:wId/spaces/:spaceId/files/<...rel>.
 //

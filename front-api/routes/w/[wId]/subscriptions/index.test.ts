@@ -1,11 +1,9 @@
-import type { Stripe } from "stripe";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-
 import { honoApp } from "@front-api/app";
+import type { Stripe } from "stripe";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const TEST_CHECKOUT_URL = "https://checkout.stripe.com/test-session";
 const TEST_CLIENT_SECRET = "cs_test_client_secret";

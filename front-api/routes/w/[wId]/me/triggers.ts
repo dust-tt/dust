@@ -1,9 +1,8 @@
-import { Hono } from "hono";
-
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { Hono } from "hono";
 
 export type GetUserTriggersResponseBody = {
   triggers: (TriggerType & {

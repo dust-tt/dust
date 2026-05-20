@@ -1,6 +1,3 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import {
   GENERIC_ERROR_MESSAGE,
   generateScheduleRule,
@@ -8,9 +5,10 @@ import {
   TOO_FREQUENT_MESSAGE,
 } from "@app/lib/api/assistant/configuration/triggers";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 type PostTextAsCronRuleResponseBody =
   | { type?: "cron"; cronRule: string; timezone: string }

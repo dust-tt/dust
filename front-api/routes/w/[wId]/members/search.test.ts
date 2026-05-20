@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -7,6 +5,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import { describe, expect, it, vi } from "vitest";
 
 // Stub Elasticsearch-backed search with a SQL implementation so tests don't
 // depend on a running ES cluster.

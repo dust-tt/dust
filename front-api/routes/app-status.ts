@@ -1,9 +1,8 @@
-import { Hono } from "hono";
-
 import {
   getDustStatusMemoized,
   getProviderStatusMemoized,
 } from "@app/lib/api/status";
+import { Hono } from "hono";
 
 export const appStatusApp = new Hono();
 

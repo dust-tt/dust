@@ -1,9 +1,7 @@
-import { describe, expect, it } from "vitest";
-
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 async function setup(role: "builder" | "user" | "admin" = "admin") {
   const { workspace, systemSpace } = await createPrivateApiMockRequest({

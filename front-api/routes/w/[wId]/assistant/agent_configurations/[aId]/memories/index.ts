@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 import mId from "./[mId]";
 

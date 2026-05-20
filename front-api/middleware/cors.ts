@@ -1,5 +1,3 @@
-import type { MiddlewareHandler } from "hono";
-
 import {
   ALLOWED_HEADERS,
   isAllowedHeader,
@@ -7,6 +5,7 @@ import {
 } from "@app/config/cors";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
+import type { MiddlewareHandler } from "hono";
 
 const ALLOW_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 const EXPOSE_HEADERS = "X-Reload-Required";

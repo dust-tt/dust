@@ -51,7 +51,9 @@ const dispatchRouter = new SmartRouter<true>({
   routers: [new RegExpRouter<true>(), new TrieRouter<true>()],
 });
 for (const route of honoApp.routes) {
-  if (route.method === "ALL") continue;
+  if (route.method === "ALL") {
+    continue;
+  }
   dispatchRouter.add(route.method, route.path, true);
 }
 

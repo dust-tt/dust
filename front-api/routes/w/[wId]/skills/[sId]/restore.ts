@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isString } from "@app/types/shared/utils/general";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export type RestoreSkillConfigurationResponseBody = {
   success: true;

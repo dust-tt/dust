@@ -1,16 +1,13 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 export type DiscoverOAuthMetadataResponseBody =
   | {

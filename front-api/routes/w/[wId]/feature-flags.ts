@@ -1,7 +1,6 @@
-import { Hono } from "hono";
-
 import { getFeatureFlags } from "@app/lib/auth";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { Hono } from "hono";
 
 export type GetWorkspaceFeatureFlagsResponseType = {
   feature_flags: WhitelistableFeature[];

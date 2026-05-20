@@ -1,8 +1,7 @@
-import { Hono } from "hono";
+import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
 
 import { apiError } from "@front-api/middleware/utils";
-
-import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
+import { Hono } from "hono";
 
 export type GetSeatAvailabilityResponseBody = {
   hasAvailableSeats: boolean;

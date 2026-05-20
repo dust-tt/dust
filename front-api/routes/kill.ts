@@ -1,6 +1,5 @@
-import { Hono } from "hono";
-
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { Hono } from "hono";
 
 export const killApp = new Hono();
 

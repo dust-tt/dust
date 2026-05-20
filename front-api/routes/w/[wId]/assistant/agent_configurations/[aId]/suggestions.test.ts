@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -9,8 +7,8 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 async function setupTest(options: { role?: MembershipRoleType } = {}) {
   const role = options.role ?? "builder";
@@ -27,7 +25,9 @@ function getSuggestions(
   const search = new URLSearchParams();
   for (const [k, v] of Object.entries(query)) {
     if (Array.isArray(v)) {
-      for (const x of v) search.append(k, x);
+      for (const x of v) {
+        search.append(k, x);
+      }
     } else {
       search.append(k, v);
     }

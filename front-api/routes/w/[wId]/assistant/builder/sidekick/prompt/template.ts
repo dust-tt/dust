@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { buildTemplatePrompt } from "@app/lib/api/assistant/builder/sidekick_prompts";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/builder/sidekick/prompt/template.
 const app = new Hono();
