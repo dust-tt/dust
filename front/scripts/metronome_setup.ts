@@ -12,6 +12,10 @@
  * Requires: METRONOME_API_KEY env var
  */
 
+import {
+  AWU_PRICE_PER_CREDIT,
+  metronomeAmount,
+} from "@app/lib/metronome/amounts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_SEAT_ALLOCATION,
@@ -32,6 +36,7 @@ import {
   FREE_ANNUAL_CREDIT_NAME,
   FREE_MONTHLY_CREDIT_NAME,
 } from "@app/lib/metronome/types";
+import type { SupportedCurrency } from "@app/types/currency";
 
 // Number of pricing tiers for any tiered seat-style product (MAU, future).
 // Tier products and rates are derived from the prefix.
@@ -40,8 +45,9 @@ const SEAT_TIER_COUNT = 6;
 const PROGRAMMATIC_USAGE_CREDITS_IN_USD_CENTS = 100;
 const PROGRAMMATIC_USAGE_CREDITS_IN_EUR = 0.87;
 
-const AWU_IN_USD_CENTS = 1;
-const AWU_IN_EUR = 0.0087;
+const getOverageAwuRate = (currency: SupportedCurrency) => {
+  return metronomeAmount(AWU_PRICE_PER_CREDIT[currency] * 100, currency) * 2;
+};
 
 // Setup-only display names. Runtime code identifies seat-style subscriptions
 // via the `DUST_SEAT_TYPE` custom field on the product (see
@@ -229,6 +235,17 @@ interface RecurringCreditDef {
   };
 }
 
+// Package-level entitlement override for a specific product on the package's
+// rate card, applied from contract start. Used by the Enterprise Seat-based
+// packages to flip the default rate-card entitlements (Workspace true → false,
+// Pro/Max/Free false → true) without duplicating the rate card. Only flips
+// `entitled` — the rate-card's price/billing_frequency/credit_type are
+// preserved.
+interface PackageOverrideDef {
+  product_name: string;
+  entitled: boolean;
+}
+
 interface PackageDef {
   // Base name without version suffix. Version is auto-computed at sync time.
   name: string;
@@ -244,6 +261,7 @@ interface PackageDef {
   // Consolidate scheduled/commit charges onto the usage invoice instead of separate invoices.
   scheduled_charges_on_usage_invoices?: "ALL";
   recurring_credits?: RecurringCreditDef[];
+  overrides?: PackageOverrideDef[];
 }
 
 // ---------------------------------------------------------------------------
@@ -840,7 +858,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeAwuId(),
-          fiat_per_custom_credit: AWU_IN_USD_CENTS,
+          fiat_per_custom_credit: getOverageAwuRate("usd"),
         },
       ],
       rates: [
@@ -850,7 +868,35 @@ function getRateCards(): RateCardDef[] {
           entitled: true,
           rate_type: "FLAT",
           billing_frequency: "MONTHLY",
-          price: 4500,
+          price: 2000,
+          credit_type_id: CREDIT_TYPE_USD_ID,
+        },
+        {
+          product_name: PRO_SEAT_PRODUCT_NAME,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: false,
+          rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
+          price: 4400,
+          credit_type_id: CREDIT_TYPE_USD_ID,
+        },
+        {
+          product_name: MAX_SEAT_PRODUCT_NAME,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: false,
+          rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
+          price: 14000,
+          credit_type_id: CREDIT_TYPE_USD_ID,
+        },
+        {
+          product_name: FREE_SEAT_PRODUCT_NAME,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: false,
+          rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
+          price: 0,
+          credit_type_id: CREDIT_TYPE_USD_ID,
         },
         ...buildAwuAiUsageRates(),
         ...buildAwuToolUsageRates(),
@@ -870,7 +916,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeAwuId(),
-          fiat_per_custom_credit: AWU_IN_EUR,
+          fiat_per_custom_credit: getOverageAwuRate("eur"),
         },
       ],
       rates: [
@@ -880,7 +926,34 @@ function getRateCards(): RateCardDef[] {
           entitled: true,
           rate_type: "FLAT",
           billing_frequency: "MONTHLY",
-          price: 45,
+          price: 20,
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
+          product_name: PRO_SEAT_PRODUCT_NAME,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: false,
+          rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
+          price: 44,
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
+          product_name: MAX_SEAT_PRODUCT_NAME,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: false,
+          rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
+          price: 140,
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
+          product_name: FREE_SEAT_PRODUCT_NAME,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: false,
+          rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
+          price: 0,
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         ...buildAwuAiUsageRates(),
@@ -901,7 +974,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeAwuId(),
-          fiat_per_custom_credit: AWU_IN_USD_CENTS,
+          fiat_per_custom_credit: getOverageAwuRate("usd"),
         },
       ],
       rates: [
@@ -910,24 +983,27 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 2900,
           billing_frequency: "MONTHLY",
+          price: 3000,
+          credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
           product_name: MAX_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 14900,
           billing_frequency: "MONTHLY",
+          price: 15000,
+          credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
           product_name: FREE_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 0,
           billing_frequency: "MONTHLY",
+          price: 0,
+          credit_type_id: CREDIT_TYPE_USD_ID,
         },
         ...buildAwuAiUsageRates(),
         ...buildAwuToolUsageRates(),
@@ -945,7 +1021,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeAwuId(),
-          fiat_per_custom_credit: AWU_IN_EUR,
+          fiat_per_custom_credit: getOverageAwuRate("eur"),
         },
       ],
       rates: [
@@ -954,8 +1030,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 29,
           billing_frequency: "MONTHLY",
+          price: 30,
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
@@ -963,8 +1039,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 149,
           billing_frequency: "MONTHLY",
+          price: 150,
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
@@ -972,14 +1048,28 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 0,
           billing_frequency: "MONTHLY",
+          price: 0,
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         ...buildAwuAiUsageRates(),
         ...buildAwuToolUsageRates(),
       ],
     },
+  ];
+}
+
+// Entitlement-flip overrides for the Seat-based Enterprise packages. The
+// rate card carries the default Pooled-style entitlements (Workspace=true,
+// Pro/Max/Free=false); for the Seat-based variant we flip them (Workspace=
+// false, Pro/Max/Free=true). The rate-card's price / billing_frequency /
+// credit_type stay in effect — only entitled changes.
+function buildSeatEntitlementFlipOverrides(): PackageOverrideDef[] {
+  return [
+    { product_name: WORKSPACE_SEAT_PRODUCT_NAME, entitled: false },
+    { product_name: PRO_SEAT_PRODUCT_NAME, entitled: true },
+    { product_name: MAX_SEAT_PRODUCT_NAME, entitled: true },
+    { product_name: FREE_SEAT_PRODUCT_NAME, entitled: true },
   ];
 }
 
@@ -1023,16 +1113,19 @@ function getFreeAnnualRecurringCredits(): RecurringCreditDef {
   };
 }
 
-function getFreeExcessRecurringCredits(): RecurringCreditDef {
+function getFreeExcessRecurringCredits(
+  creditTypeId: string,
+  quantity: number
+): RecurringCreditDef {
   return {
     product_name: "Excess Credits",
     access_amount: {
-      credit_type_id: getCreditTypeProgrammaticUsdId(),
+      credit_type_id: creditTypeId,
       unit_price: 0,
-      quantity: 1_000,
+      quantity,
     },
     commit_duration: { value: 1, unit: "PERIODS" },
-    priority: 100,
+    priority: 999,
     starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
     applicable_product_tags: [USAGE_TAG],
     recurrence_frequency: "MONTHLY",
@@ -1234,7 +1327,7 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(),
+        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1245,7 +1338,7 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(),
+        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1256,7 +1349,7 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_ANNUAL_SUBSCRIPTION],
       recurring_credits: [
         getFreeAnnualRecurringCredits(),
-        getFreeExcessRecurringCredits(),
+        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1268,7 +1361,7 @@ function getPackages(): PackageDef[] {
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(),
+        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1280,7 +1373,7 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(),
+        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1291,7 +1384,7 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(),
+        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1302,7 +1395,7 @@ function getPackages(): PackageDef[] {
       subscriptions: [LEGACY_SEAT_ANNUAL_SUBSCRIPTION],
       recurring_credits: [
         getFreeAnnualRecurringCredits(),
-        getFreeExcessRecurringCredits(),
+        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1313,7 +1406,7 @@ function getPackages(): PackageDef[] {
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
         getFreeMonthlyRecurringCredits(),
-        getFreeExcessRecurringCredits(),
+        getFreeExcessRecurringCredits(getCreditTypeProgrammaticUsdId(), 5_000),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1321,19 +1414,57 @@ function getPackages(): PackageDef[] {
     // + AWU AI/Tool usage. Includes a recurring AWU credit that draws down on
     // usage tagged as free via the `is_free_usage` presentation group.
     {
-      name: "Enterprise USD",
+      name: "Enterprise Pooled USD",
       aliases: [{ name: "enterprise-usd" }],
       rate_card_name: "Enterprise USD",
       subscriptions: [WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION],
       scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [
+        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
+      ],
       ...BILLING_CYCLE_CONFIG,
     },
     {
-      name: "Enterprise EUR",
+      name: "Enterprise Pooled EUR",
       aliases: [{ name: "enterprise-eur" }],
       rate_card_name: "Enterprise EUR",
       subscriptions: [WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION],
       scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [
+        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
+      ],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    {
+      name: "Enterprise Seat-based USD",
+      aliases: [{ name: "enterprise-seat-based-usd" }],
+      rate_card_name: "Enterprise USD",
+      subscriptions: [
+        PRO_SEAT_SUBSCRIPTION,
+        MAX_SEAT_SUBSCRIPTION,
+        FREE_SEAT_SUBSCRIPTION,
+      ],
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [
+        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
+      ],
+      overrides: buildSeatEntitlementFlipOverrides(),
+      ...BILLING_CYCLE_CONFIG,
+    },
+    {
+      name: "Enterprise Seat-based EUR",
+      aliases: [{ name: "enterprise-seat-based-eur" }],
+      rate_card_name: "Enterprise EUR",
+      subscriptions: [
+        PRO_SEAT_SUBSCRIPTION,
+        MAX_SEAT_SUBSCRIPTION,
+        FREE_SEAT_SUBSCRIPTION,
+      ],
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [
+        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
+      ],
+      overrides: buildSeatEntitlementFlipOverrides(),
       ...BILLING_CYCLE_CONFIG,
     },
     // New Business USD / EUR — Pro and Max seats as SEAT_BASED subscriptions
@@ -1362,6 +1493,7 @@ function getPackages(): PackageDef[] {
           name: MAX_SEAT_CREDIT_NAME,
         }),
         getFreeSeatLifetimeAwuCredits(),
+        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1387,6 +1519,7 @@ function getPackages(): PackageDef[] {
           name: MAX_SEAT_CREDIT_NAME,
         }),
         getFreeSeatLifetimeAwuCredits(),
+        getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
       ],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -2101,6 +2234,20 @@ interface ExistingPackage {
       allocation?: "INDIVIDUAL" | "POOLED";
     };
   }>;
+  overrides?: Array<{
+    entitled?: boolean;
+    type?: string;
+    override_specifiers?: Array<{
+      product_id?: string;
+      billing_frequency?: string;
+    }>;
+    overwrite_rate?: {
+      rate_type?: string;
+      price?: number;
+      credit_type?: { id: string };
+    };
+    product?: { id: string };
+  }>;
 }
 
 function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
@@ -2280,6 +2427,34 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
     }
   }
 
+  const desiredOverrides = desired.overrides ?? [];
+  const existingOverrides = ex.overrides ?? [];
+  if (desiredOverrides.length !== existingOverrides.length) {
+    console.log(
+      `    [diff] ${desired.name}: overrides count ${existingOverrides.length} → ${desiredOverrides.length}`
+    );
+    return false;
+  }
+  for (const desiredOverride of desiredOverrides) {
+    const productId = ids.products[desiredOverride.product_name];
+    const match = existingOverrides.find(
+      (o) =>
+        (o.product?.id ?? o.override_specifiers?.[0]?.product_id) === productId
+    );
+    if (!match) {
+      console.log(
+        `    [diff] ${desired.name}: override for ${desiredOverride.product_name} (${productId}) not found`
+      );
+      return false;
+    }
+    if ((match.entitled ?? false) !== desiredOverride.entitled) {
+      console.log(
+        `    [diff] ${desired.name}: override ${desiredOverride.product_name} entitled ${match.entitled} → ${desiredOverride.entitled}`
+      );
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -2432,6 +2607,20 @@ async function syncPackages(): Promise<void> {
           }
         );
 
+        const overrides = (desired.overrides ?? []).map((o) => {
+          const productId = ids.products[o.product_name];
+          if (!productId) {
+            throw new Error(
+              `Product not found for override: ${o.product_name}`
+            );
+          }
+          return {
+            starting_at_offset: { unit: "DAYS" as const, value: 0 },
+            entitled: o.entitled,
+            override_specifiers: [{ product_id: productId }],
+          };
+        });
+
         const created = await client.v1.packages.create({
           name: versionedName,
           contract_name: versionedName,
@@ -2445,6 +2634,7 @@ async function syncPackages(): Promise<void> {
           ...(recurringCredits.length > 0
             ? { recurring_credits: recurringCredits }
             : {}),
+          ...(overrides.length > 0 ? { overrides } : {}),
           ...(desired.scheduled_charges_on_usage_invoices
             ? {
                 scheduled_charges_on_usage_invoices:
