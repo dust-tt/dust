@@ -28,7 +28,7 @@ function AnimatedGridPattern({
   numSquares = 30,
   maxOpacity = 0.28,
   duration = 1.2,
-  repeatDelay = 0,
+  duration: durationSeconds = 1.2,
   repeatDelay: repeatDelaySeconds = 0,
   const shouldReduceMotion = useReducedMotion();
   const id = useId();
