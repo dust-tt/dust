@@ -1,0 +1,15 @@
+{
+  "action": "member.spend_limit_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "kind": "string",
+    "awu_credits": "string"
+  }
+}
