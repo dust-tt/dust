@@ -85,6 +85,8 @@ export enum GLOBAL_AGENTS_SID {
   DUST_MINIMAX_MEDIUM = "dust-minimax-medium",
   DUST_MINIMAX_HIGH = "dust-minimax-high",
   DUST_DEEPSEEK = "dust-deepseek",
+  DUST_MISTRAL_MEDIUM_NONE = "dust-mistral-medium-none",
+  DUST_MISTRAL_MEDIUM_HIGH = "dust-mistral-medium-high",
   DUST_NEXT_HIGH = "dust-next-high",
   DEEP_DIVE = "deep-dive",
   DUST_TASK = "dust-task",

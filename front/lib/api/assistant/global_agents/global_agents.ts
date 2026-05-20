@@ -41,6 +41,8 @@ import {
   _getDustMinimaxGlobalAgent,
   _getDustMinimaxHighGlobalAgent,
   _getDustMinimaxMediumGlobalAgent,
+  _getDustMistralMediumHighGlobalAgent,
+  _getDustMistralMediumNoneGlobalAgent,
   _getDustNextGlobalAgent,
   _getDustNextHighGlobalAgent,
   _getDustNextMediumGlobalAgent,
@@ -307,6 +309,18 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.DUST_DEEPSEEK]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -959,6 +973,22 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE:
+      agentConfiguration = _getDustMistralMediumNoneGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH:
+      agentConfiguration = _getDustMistralMediumHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_QUICK:
       agentConfiguration = _getDustQuickGlobalAgent(auth, {
         settings,
@@ -1248,6 +1278,8 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_MINIMAX_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_MINIMAX_HIGH,
     GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
+    GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE,
+    GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH,
     GLOBAL_AGENTS_SID.DUST_QUICK,
     GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_OAI,
