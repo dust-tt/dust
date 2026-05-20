@@ -54,12 +54,12 @@ function isConversationNotFoundError(err: unknown): err is ConversationError {
 // Mounted under /api/w/:wId/assistant/conversations.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
   // getPaginationParams expects a Next-style query object; flatten Hono's
   // query map (single-valued strings are fine here).
-  const paginationRes = getPaginationParams(c.req.query(), {
+  const paginationRes = getPaginationParams(ctx.req.query(), {
     defaultLimit: 100,
     defaultOrderColumn: "updatedAt",
     defaultOrderDirection: "desc",
@@ -67,7 +67,7 @@ app.get("/", async (c) => {
   });
 
   if (paginationRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -88,15 +88,15 @@ app.get("/", async (c) => {
       }
     );
 
-  return c.json({
+  return ctx.json({
     conversations: result.conversations,
     hasMore: result.hasMore,
     lastValue: result.lastValue,
   });
 });
 
-app.post("/", validate("json", PostConversationsBodySchema), async (c) => {
-  const auth = c.get("auth");
+app.post("/", validate("json", PostConversationsBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();
 
   const {
@@ -107,7 +107,7 @@ app.post("/", validate("json", PostConversationsBodySchema), async (c) => {
     contentFragments,
     metadata,
     skipToolsValidation,
-  } = c.req.valid("json");
+  } = ctx.req.valid("json");
 
   if (message?.context.clientSideMCPServerIds) {
     const hasServerAccess = await concurrentExecutor(
@@ -117,7 +117,7 @@ app.post("/", validate("json", PostConversationsBodySchema), async (c) => {
     );
 
     if (hasServerAccess.some((r) => r === false)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
@@ -132,7 +132,7 @@ app.post("/", validate("json", PostConversationsBodySchema), async (c) => {
   if (spaceId) {
     const space = await SpaceResource.fetchById(auth, spaceId);
     if (!space || !space.canReadOrAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "space_not_found",
@@ -180,7 +180,7 @@ app.post("/", validate("json", PostConversationsBodySchema), async (c) => {
 
     for (const r of newContentFragmentsRes) {
       if (r.isErr()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -218,7 +218,7 @@ app.post("/", validate("json", PostConversationsBodySchema), async (c) => {
         agentConfigurationId: null,
       });
       if (r.isErr()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -245,7 +245,7 @@ app.post("/", validate("json", PostConversationsBodySchema), async (c) => {
       });
 
       if (r.isErr()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -256,7 +256,7 @@ app.post("/", validate("json", PostConversationsBodySchema), async (c) => {
     }
 
     if (message.content.length === 0 && message.mentions.length === 0) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -284,7 +284,7 @@ app.post("/", validate("json", PostConversationsBodySchema), async (c) => {
       skipToolsValidation: skipToolsValidation ?? false,
     });
     if (messageRes.isErr()) {
-      return apiError(c, messageRes.error);
+      return apiError(ctx, messageRes.error);
     }
 
     newMessage = messageRes.value.userMessage;
@@ -302,11 +302,11 @@ app.post("/", validate("json", PostConversationsBodySchema), async (c) => {
     if (updatedRes.isOk()) {
       newConversation = updatedRes.value;
     } else if (!isConversationNotFoundError(updatedRes.error)) {
-      return apiErrorForConversation(c, updatedRes.error);
+      return apiErrorForConversation(ctx, updatedRes.error);
     }
   }
 
-  return c.json({
+  return ctx.json({
     conversation: newConversation,
     message: newMessage ?? undefined,
     contentFragments: newContentFragments,

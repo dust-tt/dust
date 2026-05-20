@@ -8,9 +8,9 @@ import branch from "./[bId]";
 // Mounted at /api/w/:wId/assistant/conversations/:cId/branches.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const cId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const cId = ctx.req.param("cId") ?? "";
 
   const branchRes = await getMostRecentOpenBranchForConversation(auth, {
     conversationId: cId,
@@ -18,7 +18,7 @@ app.get("/", async (c) => {
   if (branchRes.isErr()) {
     switch (branchRes.error.code) {
       case "conversation_not_found":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 404,
           api_error: {
             type: "conversation_not_found",
@@ -26,7 +26,7 @@ app.get("/", async (c) => {
           },
         });
       case "internal_error":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -38,7 +38,7 @@ app.get("/", async (c) => {
     }
   }
 
-  return c.json({ branch: branchRes.value });
+  return ctx.json({ branch: branchRes.value });
 });
 
 app.route("/:bId", branch);

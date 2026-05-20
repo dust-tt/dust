@@ -21,15 +21,15 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.param("cId") ?? "";
 
   const messageStartTime = performance.now();
 
   // getPaginationParams expects a Next-style query object; flatten Hono's
   // query map (single-valued strings are fine here).
-  const queryObj = c.req.query();
+  const queryObj = ctx.req.query();
   const paginationRes = getPaginationParams(queryObj, {
     defaultLimit: 10,
     defaultOrderColumn: "rank",
@@ -38,7 +38,7 @@ app.get("/", async (c) => {
   });
   if (paginationRes.isErr()) {
     return apiError(
-      c,
+      ctx,
       {
         status_code: 400,
         api_error: {
@@ -50,7 +50,7 @@ app.get("/", async (c) => {
     );
   }
 
-  const useNewResponseFormat = c.req.query("newResponseFormat") === "1";
+  const useNewResponseFormat = ctx.req.query("newResponseFormat") === "1";
 
   // Note that we don't use the order column and order direction here because
   // we enforce sorting by rank in descending order.
@@ -62,7 +62,7 @@ app.get("/", async (c) => {
   });
 
   if (messagesRes.isErr()) {
-    return apiErrorForConversation(c, messagesRes.error);
+    return apiErrorForConversation(ctx, messagesRes.error);
   }
 
   const messageLatency = performance.now() - messageStartTime;
@@ -74,19 +74,19 @@ app.get("/", async (c) => {
   const rawSize = Buffer.byteLength(JSON.stringify(messagesRes.value), "utf8");
   getStatsDClient().distribution("assistant.messages.fetch.raw_size", rawSize);
 
-  return c.json(messagesRes.value);
+  return ctx.json(messagesRes.value);
 });
 
 app.post(
   "/",
   validate("json", InternalPostMessagesRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
+  async (ctx) => {
+    const auth = ctx.get("auth");
     const user = auth.getNonNullableUser();
-    const conversationId = c.req.param("cId") ?? "";
+    const conversationId = ctx.req.param("cId") ?? "";
 
     const { content, context, mentions, skipToolsValidation } =
-      c.req.valid("json");
+      ctx.req.valid("json");
 
     if (context.clientSideMCPServerIds) {
       const hasServerAccess = await concurrentExecutor(
@@ -96,7 +96,7 @@ app.post(
       );
 
       if (hasServerAccess.some((r) => r === false)) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "invalid_request_error",
@@ -110,11 +110,11 @@ app.post(
     const conversationRes = await getConversation(auth, conversationId);
 
     if (conversationRes.isErr()) {
-      return apiErrorForConversation(c, conversationRes.error);
+      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
     if (content.length === 0 && mentions.length === 0) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -137,7 +137,7 @@ app.post(
       });
 
       if (r.isErr()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -196,10 +196,10 @@ app.post(
     });
 
     if (messageRes.isErr()) {
-      return apiError(c, messageRes.error);
+      return apiError(ctx, messageRes.error);
     }
 
-    return c.json({
+    return ctx.json({
       message: messageRes.value.userMessage,
       contentFragments,
       agentMessages: messageRes.value.agentMessages,

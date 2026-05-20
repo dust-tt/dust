@@ -6,14 +6,14 @@ import { Hono } from "hono";
 // Mounted at /api/w/:wId/assistant/conversations/:cId/actions/blocked.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const cId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const cId = ctx.req.param("cId") ?? "";
 
   const conversation = await ConversationResource.fetchById(auth, cId);
 
   if (!conversation) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "conversation_not_found",
@@ -28,7 +28,7 @@ app.get("/", async (c) => {
       conversation
     );
 
-  return c.json({ blockedActions });
+  return ctx.json({ blockedActions });
 });
 
 export default app;

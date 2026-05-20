@@ -8,21 +8,21 @@ import wakeup from "./[wuId]";
 // Mounted at /api/w/:wId/assistant/conversations/:cId/wakeups.
 const app = new Hono();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const cId = c.req.param("cId") ?? "";
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const cId = ctx.req.param("cId") ?? "";
 
   // The fetchConversationWithoutContent method checks for conversation
   // accessibility (inside the resource through `baseFetchWithAuthorization`).
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(auth, cId);
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
   const conversation = conversationRes.value;
 
   const wakeUps = await WakeUpResource.listByConversation(auth, conversation);
-  return c.json({ wakeUps: wakeUps.map((w) => w.toJSON()) });
+  return ctx.json({ wakeUps: wakeUps.map((w) => w.toJSON()) });
 });
 
 app.route("/:wuId", wakeup);
