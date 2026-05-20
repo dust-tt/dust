@@ -9,7 +9,7 @@ import {
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
 import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
-import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
   AGENT_SUGGESTION_KINDS,
   AGENT_SUGGESTION_STATES,
@@ -96,7 +96,7 @@ const KnowledgeSuggestionSchema = z.object({
 const ModelSuggestionSchema = z.object({
   modelId: z.enum(MODEL_IDS).describe("The model ID to suggest"),
   reasoningEffort: z
-    .enum(REASONING_EFFORTS)
+    .enum(ORDERED_REASONING_EFFORTS)
     .optional()
     .describe("Optional reasoning effort level"),
 });

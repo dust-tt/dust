@@ -7,7 +7,7 @@ import type { AgentReasoningEffort } from "../agent";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
 import type { MODEL_IDS, SUPPORTED_MODEL_CONFIGS } from "./models";
 import type { BYOK_MODEL_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "./providers";
-import type { REASONING_EFFORTS } from "./reasoning";
+import type { ORDERED_REASONING_EFFORTS } from "./reasoning";
 
 export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
@@ -100,7 +100,7 @@ export type SupportedModel = ExtractSpecificKeys<
   (typeof SUPPORTED_MODEL_CONFIGS)[number],
   "providerId" | "modelId"
 >;
-export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
+export type ReasoningEffort = (typeof ORDERED_REASONING_EFFORTS)[number];
 
 export type EmbeddingProviderIdType = (typeof EMBEDDING_PROVIDER_IDS)[number];
 
