@@ -1,6 +1,6 @@
 [package]
 name = "dust-sandbox"
-version = "0.1.10"
+version = "0.1.11"
 edition = "2021"
 
 [[bin]]
@@ -11,6 +11,7 @@ path = "src/main.rs"
 clap = { version = "4", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
+base64 = "0.22"
 libc = "0.2"
 lru = "0.16"
 httparse = "1"

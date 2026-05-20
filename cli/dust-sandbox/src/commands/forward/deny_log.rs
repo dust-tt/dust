@@ -6,12 +6,6 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
 
-// The four placeholder-related variants below (PlaceholderOnNonAllowed,
-// ValueControlChar, UrlLinePlaceholder, Port80Placeholder) are declared here
-// so the JSON shape covers every deny reason the rewriter can emit. They are
-// not constructed yet: the substitution path that produces them lives in the
-// request rewriter and is not wired in this build.
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DenyReason {
     ProxyDenied,
