@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /**
  * @swagger
  * /api/w/{wId}/files/{fileId}:
