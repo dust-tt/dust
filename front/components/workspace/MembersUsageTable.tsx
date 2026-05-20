@@ -23,6 +23,7 @@ type RowData = {
   seatType: MembershipSeatType | null;
   seatUsagePercent: number | null;
   consumedWorkplacePoolCredits: number;
+  spendLimitAwuCredits: number | null;
   billingFrequency: BillingFrequency | null;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
@@ -272,7 +273,7 @@ const consumedWorkplacePoolCreditsColumn: ColumnDef<RowData, string> = {
     <div className="w-full pr-3">
       <WorkspaceUsageBar
         consumed={info.row.original.consumedWorkplacePoolCredits}
-        limit={null}
+        limit={info.row.original.spendLimitAwuCredits}
       />
     </div>
   ),
@@ -315,6 +316,7 @@ interface MembersUsageTableProps {
   seatTypeFilter: MembershipSeatType | "none" | null;
   showSeatColumns: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
+  onEditSpendLimit: (member: MemberUsageType) => void;
 }
 
 export function MembersUsageTable({
@@ -324,6 +326,7 @@ export function MembersUsageTable({
   seatTypeFilter,
   showSeatColumns,
   onChangeSeat,
+  onEditSpendLimit,
 }: MembersUsageTableProps) {
   if (isLoading) {
     return (
@@ -365,6 +368,7 @@ export function MembersUsageTable({
     seatType: m.seatType,
     seatUsagePercent: m.seatUsagePercent,
     consumedWorkplacePoolCredits: m.consumedWorkplacePoolCredits,
+    spendLimitAwuCredits: m.spendLimitAwuCredits,
     billingFrequency: m.billingFrequency,
     scheduledSeatType: m.scheduledSeatType,
     scheduledSeatChangeAt: m.scheduledSeatChangeAt,
@@ -373,6 +377,11 @@ export function MembersUsageTable({
         kind: "item" as const,
         label: "Change Seat Type",
         onClick: () => onChangeSeat(m),
+      },
+      {
+        kind: "item" as const,
+        label: "Update User Spend Limit",
+        onClick: () => onEditSpendLimit(m),
       },
     ],
   }));

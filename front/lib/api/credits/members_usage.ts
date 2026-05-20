@@ -1,11 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  ceilToMidnightUTC,
-  floorToMidnightUTC,
-  listMetronomeDraftInvoices,
-  listMetronomeUsageWithGroups,
-} from "@app/lib/metronome/client";
-import { getMetricLlmProviderCostAwuId } from "@app/lib/metronome/constants";
+import { listMetronomePerUserCapsForWorkspace } from "@app/lib/metronome/per_user_alerts";
+import { fetchPerUserPoolUsage } from "@app/lib/metronome/per_user_usage";
 import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
@@ -34,6 +29,10 @@ export type MemberUsageType = {
   // Set when a future seat change is scheduled (e.g. at the next credit refresh).
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
+  // Per-user spend cap in AWU credits (the upper bound on workspace pool
+  // consumption). `null` means no cap is set for this user (unlimited
+  // within the workspace pool).
+  spendLimitAwuCredits: number | null;
 };
 
 export type GetMembersUsageResponseBody = {
@@ -75,7 +74,7 @@ function buildUrlWithParams(
   return url.pathname + url.search;
 }
 
-async function fetchPerUserUsageCredits({
+async function fetchPerUserUsageCreditsForMembersTable({
   metronomeCustomerId,
   metronomeContractId,
 }: {
@@ -85,60 +84,14 @@ async function fetchPerUserUsageCredits({
   if (!metronomeCustomerId || !metronomeContractId) {
     return new Map();
   }
-
-  const invoicesResult = await listMetronomeDraftInvoices(metronomeCustomerId);
-  if (invoicesResult.isErr()) {
-    return new Map();
-  }
-
-  const now = Date.now();
-  const currentInvoice = invoicesResult.value.find((inv) => {
-    if (inv.contract_id !== metronomeContractId) {
-      return false;
-    }
-    if (!inv.start_timestamp || !inv.end_timestamp) {
-      return false;
-    }
-    const startMs = new Date(inv.start_timestamp).getTime();
-    const endMs = new Date(inv.end_timestamp).getTime();
-    return startMs <= now && now < endMs;
+  const result = await fetchPerUserPoolUsage({
+    metronomeCustomerId,
+    metronomeContractId,
   });
-
-  if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
+  if (result.isErr()) {
     return new Map();
   }
-
-  const startingOn = floorToMidnightUTC(
-    new Date(currentInvoice.start_timestamp)
-  ).toISOString();
-  const endingBefore = ceilToMidnightUTC(
-    new Date(currentInvoice.end_timestamp)
-  ).toISOString();
-
-  const usageResult = await listMetronomeUsageWithGroups({
-    customerId: metronomeCustomerId,
-    billableMetricId: getMetricLlmProviderCostAwuId(),
-    startingOn,
-    endingBefore,
-    windowSize: "NONE",
-    groupKey: ["user_id", "usage_type"],
-  });
-
-  if (usageResult.isErr()) {
-    return new Map();
-  }
-
-  const perUser = new Map<string, number>();
-  for (const entry of usageResult.value) {
-    const userId = entry.group?.["user_id"];
-    const usageType = entry.group?.["usage_type"];
-    if (!userId || usageType !== "user" || entry.value === null) {
-      continue;
-    }
-    const existing = perUser.get(userId) ?? 0;
-    perUser.set(userId, existing + entry.value);
-  }
-  return perUser;
+  return result.value;
 }
 
 export async function handleGetMembersUsageRequest(
@@ -175,23 +128,38 @@ export async function handleGetMembersUsageRequest(
       const { metronomeCustomerId } = workspace;
       const metronomeContractId = subscription?.metronomeContractId ?? null;
 
-      const [membershipsResult, perUserTotalCredits, seatDataByUserId] =
-        await Promise.all([
-          MembershipResource.getActiveMemberships({
-            workspace,
-            paginationParams,
-          }),
-          fetchPerUserUsageCredits({
-            metronomeCustomerId: metronomeCustomerId ?? null,
-            metronomeContractId,
-          }),
-          metronomeCustomerId && metronomeContractId
-            ? buildSeatDataByUserId({
-                metronomeCustomerId,
-                contractId: metronomeContractId,
-              })
-            : Promise.resolve(new Map()),
-        ]);
+      const [
+        membershipsResult,
+        perUserTotalCredits,
+        seatDataByUserId,
+        perUserSpendLimitsResult,
+      ] = await Promise.all([
+        MembershipResource.getActiveMemberships({
+          workspace,
+          paginationParams,
+        }),
+        fetchPerUserUsageCreditsForMembersTable({
+          metronomeCustomerId: metronomeCustomerId ?? null,
+          metronomeContractId,
+        }),
+        metronomeCustomerId && metronomeContractId
+          ? buildSeatDataByUserId({
+              metronomeCustomerId,
+              contractId: metronomeContractId,
+            })
+          : Promise.resolve(new Map()),
+        metronomeCustomerId
+          ? listMetronomePerUserCapsForWorkspace({
+              metronomeCustomerId,
+              workspaceSId: workspace.sId,
+            })
+          : Promise.resolve(null),
+      ]);
+
+      const perUserSpendLimits =
+        perUserSpendLimitsResult && perUserSpendLimitsResult.isOk()
+          ? perUserSpendLimitsResult.value
+          : new Map<string, number>();
 
       const { memberships, total, nextPageParams } = membershipsResult;
 
@@ -233,6 +201,7 @@ export async function handleGetMembersUsageRequest(
             billingFrequency: seatData?.billingFrequency ?? null,
             scheduledSeatType: scheduled?.seatType ?? null,
             scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
+            spendLimitAwuCredits: perUserSpendLimits.get(userId) ?? null,
           },
         ];
       });
