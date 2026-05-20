@@ -58,6 +58,12 @@ import {
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
+import {
+  classifyToolAbortSignal,
+  isRetryableToolDeployInterruptionError,
+  makeRetryableToolDeployInterruptionError,
+  shouldRetryToolOnDeployInterruption,
+} from "@app/lib/actions/tool_interruptions";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContextType,
@@ -87,7 +93,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { isInShutdown } from "@app/lib/shutdown_signal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
@@ -531,10 +536,26 @@ export async function* tryCallMCPTool(
       logger.info(toolLogContext, "MCP tool promise resolved");
     } catch (toolError) {
       if (abortSignal?.aborted) {
+        const abortClassification = classifyToolAbortSignal(abortSignal);
+        const retryPolicy =
+          getRetryPolicyFromToolConfiguration(toolConfiguration);
+        const info = Context.current().info;
+
+        if (
+          shouldRetryToolOnDeployInterruption({
+            abortClassification,
+            attempt: info.attempt,
+            retryPolicy,
+          })
+        ) {
+          throw makeRetryableToolDeployInterruptionError();
+        }
+
         return makeMCPToolExit({
-          message: isInShutdown()
-            ? TOOL_EXECUTION_INTERRUPTED_MESSAGE
-            : TOOL_EXECUTION_CANCELLED_MESSAGE,
+          message:
+            abortClassification === "deploy_interruption"
+              ? TOOL_EXECUTION_INTERRUPTED_MESSAGE
+              : TOOL_EXECUTION_CANCELLED_MESSAGE,
           isError: true,
         });
       }
@@ -544,6 +565,10 @@ export async function* tryCallMCPTool(
 
     return postProcessMCPToolResult(toolCallResult, toolConfiguration);
   } catch (error) {
+    if (isRetryableToolDeployInterruptionError(error)) {
+      throw error;
+    }
+
     logger.error(
       {
         conversationId,
