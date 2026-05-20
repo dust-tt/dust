@@ -810,7 +810,7 @@ mod tests {
             .await
             .context("test upstream failed to write 101")?;
 
-            let mut frame = [0_u8; 12];
+            let mut frame = [0_u8; b"client-frame".len()];
             tls.read_exact(&mut frame)
                 .await
                 .context("test upstream failed to read raw client frame")?;
@@ -932,7 +932,9 @@ mod tests {
                 tail
             );
 
-            tls.shutdown().await.ok();
+            tls.shutdown()
+                .await
+                .context("test upstream failed to shut down TLS")?;
             Ok::<(), anyhow::Error>(())
         });
 

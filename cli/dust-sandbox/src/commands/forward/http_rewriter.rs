@@ -77,11 +77,36 @@ pub(super) enum HttpRewriteError {
 // upgrade request. The response task sniffs the next response status line,
 // signals back through `accepted_tx` whether the upstream replied with 101
 // Switching Protocols, and the request task uses that signal to decide
-// whether to splice raw client→upstream frames (101) or tear the upstream
+// whether to splice raw client->upstream frames (101) or tear the upstream
 // write half down (non-101). The channel is `oneshot` because each upgrade
 // request gets exactly one verdict.
 pub(super) struct WebSocketUpgradeWatch {
     pub accepted_tx: oneshot::Sender<bool>,
+}
+
+enum UpgradeVerdict {
+    NotAnUpgrade,
+    AwaitingResponse(oneshot::Receiver<bool>),
+    ResponseTaskGone,
+    NoWatchWired,
+}
+
+async fn register_upgrade_verdict(
+    websocket_watch_tx: Option<&mpsc::Sender<WebSocketUpgradeWatch>>,
+) -> UpgradeVerdict {
+    let Some(tx) = websocket_watch_tx else {
+        return UpgradeVerdict::NoWatchWired;
+    };
+    let (accepted_tx, accepted_rx) = oneshot::channel();
+    if tx
+        .send(WebSocketUpgradeWatch { accepted_tx })
+        .await
+        .is_err()
+    {
+        UpgradeVerdict::ResponseTaskGone
+    } else {
+        UpgradeVerdict::AwaitingResponse(accepted_rx)
+    }
 }
 
 impl fmt::Display for HttpRewriteError {
@@ -171,27 +196,10 @@ where
         // by the time upstream's 101 (or non-101) reply arrives. Doing it
         // after forwarding would race in-flight upstream bytes against the
         // mpsc::send and the sniff could land on the wrong status line.
-        let upgrade_accepted_rx = if processed.websocket_upgrade {
-            match websocket_watch_tx {
-                Some(tx) => {
-                    let (accepted_tx, accepted_rx) = oneshot::channel();
-                    if tx
-                        .send(WebSocketUpgradeWatch { accepted_tx })
-                        .await
-                        .is_err()
-                    {
-                        // Response task has already exited; treat the upgrade
-                        // as rejected so we don't splice raw frames into a
-                        // half-closed connection.
-                        None
-                    } else {
-                        Some(accepted_rx)
-                    }
-                }
-                None => None,
-            }
+        let upgrade_verdict = if processed.websocket_upgrade {
+            register_upgrade_verdict(websocket_watch_tx).await
         } else {
-            None
+            UpgradeVerdict::NotAnUpgrade
         };
 
         reader.drain_front(header_len);
@@ -201,19 +209,30 @@ where
             .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
         forward_body(&mut reader, upstream, processed.body_kind, mode).await?;
 
-        if processed.websocket_upgrade {
-            let accepted = match upgrade_accepted_rx {
-                Some(accepted_rx) => accepted_rx.await.unwrap_or(false),
-                // No watch wired (unit tests that don't run the response
-                // copier). Preserve the message-loop-only behavior: splice raw.
-                None => websocket_watch_tx.is_none(),
-            };
-            if accepted {
-                copy_raw_client_to_upstream(&mut reader, upstream).await?;
-            } else {
-                shutdown_upstream(upstream).await?;
+        match upgrade_verdict {
+            UpgradeVerdict::NotAnUpgrade => continue,
+            UpgradeVerdict::AwaitingResponse(accepted_rx) => {
+                if accepted_rx.await.unwrap_or(false) {
+                    copy_raw_client_to_upstream(&mut reader, upstream).await?;
+                } else {
+                    shutdown_upstream(upstream).await?;
+                }
+                return Ok(());
             }
-            return Ok(());
+            UpgradeVerdict::ResponseTaskGone => {
+                // The response task has already exited (channel send failed),
+                // so we can't learn the 101 verdict. Tear down rather than
+                // splice raw frames into a half-closed connection.
+                shutdown_upstream(upstream).await?;
+                return Ok(());
+            }
+            UpgradeVerdict::NoWatchWired => {
+                // Unit tests that exercise the request rewriter without the
+                // response copier. Preserve the message-loop-only behavior
+                // (splice raw, let the test inspect what reached upstream).
+                copy_raw_client_to_upstream(&mut reader, upstream).await?;
+                return Ok(());
+            }
         }
     }
 }
@@ -1150,6 +1169,11 @@ struct UpgradeSniffState {
 }
 
 fn is_switching_protocols_response(status_line: &[u8]) -> bool {
+    // We only look at the very first status line. A WebSocket upgrade request
+    // does not include Expect: 100-continue, so a preceding `100 Continue`
+    // interim response should not occur in practice. If it ever does we treat
+    // it as not-101, the verdict is `rejected`, and we forward the bytes
+    // unchanged; clients see the real upstream reply either way.
     let Ok(text) = std::str::from_utf8(status_line) else {
         return false;
     };
