@@ -25,7 +25,10 @@ export type MemberUsageType = {
   image: string | null;
   seatType: MembershipSeatType | null;
   seatUsagePercent: number | null;
-  consumedWorkplacePoolCredits: number;
+  // Total user AWU consumption for the period (seat-covered + pool
+  // overflow). Matches the metric the per-user spend cap is configured
+  // against.
+  consumedAwuCredits: number;
   billingFrequency: BillingFrequency | null;
 };
 
@@ -189,12 +192,9 @@ app.get(
       const awuAllocation = seatData?.awuAllocation ?? 0;
 
       let seatUsagePercent: number | null = null;
-      let poolConsumedCredits = totalCredits;
-
       if (awuAllocation > 0) {
         const seatConsumed = Math.min(totalCredits, awuAllocation);
         seatUsagePercent = (seatConsumed / awuAllocation) * 100;
-        poolConsumedCredits = Math.max(0, totalCredits - awuAllocation);
       }
 
       return [
@@ -205,7 +205,7 @@ app.get(
           image: m.user.imageUrl ?? null,
           seatType: m.seatType ?? null,
           seatUsagePercent,
-          consumedWorkplacePoolCredits: poolConsumedCredits,
+          consumedAwuCredits: totalCredits,
           billingFrequency: seatData?.billingFrequency ?? null,
         },
       ];

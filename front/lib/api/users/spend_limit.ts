@@ -14,7 +14,7 @@ import {
   getMetronomePerUserCap,
   syncMetronomePerUserCapAlert,
 } from "@app/lib/metronome/per_user_alerts";
-import { fetchPerUserPoolUsage } from "@app/lib/metronome/per_user_usage";
+import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -119,7 +119,7 @@ async function resolveLocalCapState({
   if (!metronomeContractId) {
     return null;
   }
-  const usageResult = await fetchPerUserPoolUsage({
+  const usageResult = await fetchPerUserAwuUsage({
     metronomeCustomerId,
     metronomeContractId,
   });

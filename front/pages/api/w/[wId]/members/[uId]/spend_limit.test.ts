@@ -29,7 +29,7 @@ vi.mock("@app/lib/metronome/per_user_usage", async () => {
   );
   return {
     ...actual,
-    fetchPerUserPoolUsage: vi.fn(),
+    fetchPerUserAwuUsage: vi.fn(),
   };
 });
 
@@ -63,7 +63,7 @@ beforeEach(() => {
   vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValue(
     new Ok(null)
   );
-  vi.mocked(perUserUsage.fetchPerUserPoolUsage).mockResolvedValue(
+  vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValue(
     new Ok(new Map())
   );
   vi.mocked(creditStateDispatcher.dispatchPerUserCapReached).mockResolvedValue(
@@ -280,7 +280,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         role: "user",
       });
 
-      vi.mocked(perUserUsage.fetchPerUserPoolUsage).mockResolvedValueOnce(
+      vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValueOnce(
         new Ok(new Map([[targetUser.sId, 500]]))
       );
 
@@ -322,7 +322,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         role: "user",
       });
 
-      vi.mocked(perUserUsage.fetchPerUserPoolUsage).mockResolvedValueOnce(
+      vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValueOnce(
         new Ok(new Map([[targetUser.sId, 2000]]))
       );
 

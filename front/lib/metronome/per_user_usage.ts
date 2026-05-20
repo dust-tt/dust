@@ -9,17 +9,23 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 /**
- * Fetch per-user pool consumption for the current billing period.
+ * Fetch per-user AWU consumption for the current billing period.
  *
  * Returns a `Map<userSId, awuCreditsConsumed>` covering only events tagged
- * `usage_type === "user"` (i.e. workspace pool consumption — not
- * programmatic). Period is derived from the customer's current draft
- * invoice for the given contract.
+ * `usage_type === "user"` (i.e. attributed to a human user, regardless of
+ * whether the spend is seat-covered or overflowing into the workspace
+ * pool — programmatic usage is excluded). This matches the metric the
+ * per-user Metronome alert is configured against, so it's the value to
+ * compare a per-user spend cap against. To derive workspace-pool overflow
+ * specifically, subtract each user's seat allocation; see
+ * `buildSeatDataByUserId` in `lib/metronome/seats.ts`.
  *
- * Empty map (Ok) when there is no current draft invoice — the user
- * legitimately has no period yet. Err only when a Metronome call fails.
+ * Period is derived from the customer's current draft invoice for the
+ * given contract. Empty map (Ok) when there is no current draft invoice —
+ * the user legitimately has no period yet. Err only when a Metronome call
+ * fails.
  */
-export async function fetchPerUserPoolUsage({
+export async function fetchPerUserAwuUsage({
   metronomeCustomerId,
   metronomeContractId,
 }: {

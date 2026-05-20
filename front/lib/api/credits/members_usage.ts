@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { listMetronomePerUserCapsForWorkspace } from "@app/lib/metronome/per_user_alerts";
-import { fetchPerUserPoolUsage } from "@app/lib/metronome/per_user_usage";
+import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
@@ -22,8 +22,12 @@ export type MemberUsageType = {
   seatType: MembershipSeatType | null;
   // Percentage of seat allocation consumed (0–100), null when seat balances are unavailable.
   seatUsagePercent: number | null;
-  // Pool consumption only (AWU credits): total usage minus what was covered by the seat credit.
-  consumedWorkplacePoolCredits: number;
+  // Total user AWU consumption for the period, regardless of whether it
+  // was covered by the seat allocation or overflowed into the workspace
+  // pool. This is the value the per-user spend cap is compared against
+  // (the Metronome alert is configured on the same metric); to derive
+  // pool overflow, subtract the seat allocation client-side.
+  consumedAwuCredits: number;
   // Billing cadence for the seat subscription the user is assigned to; null when unknown.
   billingFrequency: BillingFrequency | null;
   // Set when a future seat change is scheduled (e.g. at the next credit refresh).
@@ -84,7 +88,7 @@ async function fetchPerUserUsageCreditsForMembersTable({
   if (!metronomeCustomerId || !metronomeContractId) {
     return new Map();
   }
-  const result = await fetchPerUserPoolUsage({
+  const result = await fetchPerUserAwuUsage({
     metronomeCustomerId,
     metronomeContractId,
   });
@@ -179,12 +183,9 @@ export async function handleGetMembersUsageRequest(
         const awuAllocation = seatData?.awuAllocation ?? 0;
 
         let seatUsagePercent: number | null = null;
-        let poolConsumedCredits = totalCredits;
-
         if (awuAllocation > 0) {
           const seatConsumed = Math.min(totalCredits, awuAllocation);
           seatUsagePercent = (seatConsumed / awuAllocation) * 100;
-          poolConsumedCredits = Math.max(0, totalCredits - awuAllocation);
         }
 
         const scheduled = scheduledByUserId.get(m.userId);
@@ -197,7 +198,7 @@ export async function handleGetMembersUsageRequest(
             image: m.user.imageUrl ?? null,
             seatType: m.seatType ?? null,
             seatUsagePercent,
-            consumedWorkplacePoolCredits: poolConsumedCredits,
+            consumedAwuCredits: totalCredits,
             billingFrequency: seatData?.billingFrequency ?? null,
             scheduledSeatType: scheduled?.seatType ?? null,
             scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
