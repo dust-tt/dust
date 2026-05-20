@@ -81,12 +81,6 @@ export const PLAN_CODE_CUSTOM_FIELD_KEY = "DUST_PLAN_CODE";
 // which can change on redeploy).
 export const SEAT_TYPE_CUSTOM_FIELD_KEY = "DUST_SEAT_TYPE";
 
-// Contract-level custom field naming the seat type to assign to newly
-// created memberships on that contract. Must reference a seat type that
-// the contract actually carries (i.e. one of its tagged subscriptions),
-// otherwise `createAndTrackMembership` refuses to create the row.
-export const DEFAULT_SEAT_TYPE_CUSTOM_FIELD_KEY = "DUST_DEFAULT_SEAT_TYPE";
-
 // AWU (Agentic Work Units) differs per environment.
 export const DEV_CREDIT_TYPE_AWU_ID = "eb003cc7-4935-467d-a41c-c1738c1c9dc2";
 export const PROD_CREDIT_TYPE_AWU_ID = "8dfc9846-a38e-44f8-a625-bd9372af681c";

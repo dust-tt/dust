@@ -9,7 +9,6 @@ import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   getDefaultSeatTypeForContract,
   getProductSeatTypes,
-  getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
 import {
   hasContractSeatSubscription,
@@ -57,9 +56,10 @@ async function syncSeatCountForWorkspace(
     return new Ok(undefined);
   }
 
+  const hasSeatSubscription = await hasContractSeatSubscription(contract);
   // Gate on seat subscription presence — contracts without a seat product (e.g. enterprise)
   // should not trigger a seat sync.
-  if (!(await hasContractSeatSubscription(contract))) {
+  if (!hasSeatSubscription) {
     return new Ok(undefined);
   }
 
@@ -74,19 +74,31 @@ async function syncSeatCountForWorkspace(
 
 /**
  * Resolve the seat type for a brand-new membership. For seat-billed
- * contracts, reads `DUST_DEFAULT_SEAT_TYPE` from the rate card (cached) and
- * validates it against the seat tiers actually present on the contract.
+ * contracts, picks the lowest-allowance seat tier billed on the contract,
+ * gated by the active plan's free-seat caps:
  *
- * Returns `undefined` for workspaces not on Metronome billing, or for
- * Metronome contracts that don't carry any seat subscription (e.g. enterprise
- * MAU plans). The caller passes `undefined` to `createMembership`, which
- * applies its built-in default.
+ *  - Returning member (already had a row in this workspace) → `free` is
+ *    skipped (one-shot starter tier).
+ *  - `useFreeSeat` is false → caller opted out of `free` directly.
+ *  - `plan.limits.users.maxFreeUsers` reached → `free` is skipped.
+ *  - `plan.limits.users.maxLifetimeFreeUsers` reached → `free` is skipped.
  *
- * Throws when the contract carries seat subscriptions but no valid default
- * — we never want to silently assign a seat type that isn't billed.
+ * In all three skip cases the resolver advances to the next billed tier
+ * and only fails when no tier is assignable.
+ *
+ * The workspace-wide active-member cap (`plan.limits.users.maxUsers`) is
+ * NOT checked here — it's enforced upstream by
+ * `evaluateWorkspaceSeatAvailability` (signup) and `invitation.ts` (invite
+ * creation).
+ *
+ * Returns `undefined` for workspaces not on Metronome billing. The caller
+ * passes `undefined` to `createMembership`, which applies its built-in
+ * default.
  */
 async function resolveSeatTypeForNewMembership(
-  workspace: LightWorkspaceType
+  user: UserResource,
+  workspace: LightWorkspaceType,
+  { useFreeSeat = true }: { useFreeSeat?: boolean } = {}
 ): Promise<MembershipSeatType | undefined> {
   if (!workspace.metronomeCustomerId) {
     return undefined;
@@ -101,18 +113,40 @@ async function resolveSeatTypeForNewMembership(
   if (!contract) {
     return undefined;
   }
-  const productSeatTypes = await getProductSeatTypes();
-  const seatTypesOnContract = getSeatSubscriptionsFromContract(
+  const planLimits = subscription.toJSON().plan.limits.users;
+  // `isReturningMember` is always queried — the one-shot rule (`free`
+  // cannot be re-granted to a user who already had a membership) holds
+  // independently of any configured cap. `freeSeatCounts` is only needed
+  // when at least one of the two caps is set; skip the count queries
+  // otherwise.
+  const limitsActive =
+    planLimits.maxFreeUsers !== -1 || planLimits.maxLifetimeFreeUsers !== -1;
+  const [productSeatTypes, isReturningMember, freeSeatCounts] =
+    await Promise.all([
+      getProductSeatTypes(),
+      MembershipResource.hasAnyMembershipOfUserInWorkspace({ user, workspace }),
+      limitsActive
+        ? MembershipResource.getFreeSeatCounts({ workspace })
+        : Promise.resolve(undefined),
+    ]);
+  const defaultSeatType = getDefaultSeatTypeForContract(
     contract,
-    productSeatTypes
+    productSeatTypes,
+    {
+      isReturningMember,
+      useFreeSeat,
+      freeSeatCounts,
+      freeSeatLimits: {
+        maxActiveFreeUsers: planLimits.maxFreeUsers,
+        maxLifetimeFreeUsers: planLimits.maxLifetimeFreeUsers,
+      },
+    }
   );
-  if (seatTypesOnContract.size === 0) {
-    return undefined;
+  if (!defaultSeatType) {
+    throw new Error(
+      `Cannot resolve a seat type for user ${user.sId} in workspace ${workspace.sId}: contract has seat subscriptions but no tier is assignable${isReturningMember ? " (returning user; `free` is one-shot)" : ""}.`
+    );
   }
-  const defaultSeatType = await getDefaultSeatTypeForContract(
-    contract,
-    productSeatTypes
-  );
   return defaultSeatType;
 }
 
@@ -120,21 +154,27 @@ async function resolveSeatTypeForNewMembership(
  * Create a membership with tracking, audit logging, and Metronome seat provisioning.
  *
  * For Metronome-billed workspaces with a seat-billed contract, the seat
- * type assigned to the new membership comes from the contract's
- * `DUST_DEFAULT_SEAT_TYPE` custom field. Refuses to create the row when
- * the contract carries seat subscriptions but no valid default — we never
- * assign a seat type that doesn't exist on the contract.
+ * type assigned to the new membership is the lowest-allowance tier billed
+ * on the contract (with `free` skipped for returning members, when
+ * `useFreeSeat` is false, or when the plan's free-seat caps are hit).
+ * Refuses to create the row when no tier is assignable.
+ *
+ * `useFreeSeat` (default `true`) lets the caller opt the new member out
+ * of `free` even when it would otherwise be available — e.g. an admin
+ * provisioning a new member directly onto a paid tier.
  */
 export async function createAndTrackMembership({
   user,
   workspace,
   role,
   origin,
+  useFreeSeat = true,
 }: {
   user: UserResource;
   workspace: WorkspaceResource | WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
   origin: MembershipOriginType;
+  useFreeSeat?: boolean;
 }) {
   const w =
     workspace instanceof WorkspaceModel ||
@@ -142,7 +182,9 @@ export async function createAndTrackMembership({
       ? renderLightWorkspaceType({ workspace })
       : workspace;
 
-  const seatType = await resolveSeatTypeForNewMembership(w);
+  const seatType = await resolveSeatTypeForNewMembership(user, w, {
+    useFreeSeat,
+  });
 
   const m = await MembershipResource.createMembership({
     role,
@@ -387,7 +429,7 @@ export async function updateMembershipSeatAndTrack({
       newSeatType: MembershipSeatType;
       scheduledSeatChangeAt: Date | undefined;
     },
-    { type: "not_found" | "metronome_error" }
+    { type: "not_found" | "metronome_error" | "free_seat_not_allowed" }
   >
 > {
   const membership =
@@ -400,6 +442,15 @@ export async function updateMembershipSeatAndTrack({
   }
 
   const previousSeatType = membership.seatType;
+
+  // `free` is a one-shot starter tier — only assignable when creating a
+  // user's first membership in the workspace. Any subsequent change to
+  // free is rejected, even for users who previously held a free seat
+  // (no twice-free). A free→free noop is unaffected: nothing is written.
+  if (newSeatType === "free" && previousSeatType !== "free") {
+    return new Err({ type: "free_seat_not_allowed" });
+  }
+
   const scheduledRow =
     await MembershipResource.getScheduledMembershipOfUserInWorkspace({
       user,

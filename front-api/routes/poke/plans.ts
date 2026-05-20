@@ -50,6 +50,8 @@ export const PlanTypeSchema = z.object({
     }),
     users: z.object({
       maxUsers: z.number(),
+      maxFreeUsers: z.number(),
+      maxLifetimeFreeUsers: z.number(),
       isSSOAllowed: z.boolean(),
       isSCIMAllowed: z.boolean(),
     }),
@@ -120,6 +122,8 @@ app.post(
       maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
       maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
       maxUsersInWorkspace: body.limits.users.maxUsers,
+      maxFreeUsersInWorkspace: body.limits.users.maxFreeUsers,
+      maxLifetimeFreeUsersInWorkspace: body.limits.users.maxLifetimeFreeUsers,
       maxVaultsInWorkspace: body.limits.vaults.maxVaults,
       trialPeriodDays: body.trialPeriodDays,
       canUseProduct: body.limits.canUseProduct,

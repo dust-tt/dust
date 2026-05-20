@@ -85,6 +85,8 @@ function createMockPlan(code: string): PlanType {
       },
       users: {
         maxUsers: 10,
+        maxFreeUsers: -1,
+        maxLifetimeFreeUsers: -1,
         isSSOAllowed: false,
         isSCIMAllowed: false,
       },

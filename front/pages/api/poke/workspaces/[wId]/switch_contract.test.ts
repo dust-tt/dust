@@ -98,6 +98,8 @@ async function ensureEnterprisePlan(): Promise<void> {
     isDeepDiveAllowed: true,
     maxImagesPerWeek: 1000,
     maxUsersInWorkspace: 1000,
+    maxFreeUsersInWorkspace: -1,
+    maxLifetimeFreeUsersInWorkspace: -1,
     maxVaultsInWorkspace: 100,
     isSlackbotAllowed: true,
     isManagedSlackAllowed: true,
