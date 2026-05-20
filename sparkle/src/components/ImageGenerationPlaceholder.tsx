@@ -14,7 +14,7 @@ interface AnimatedGridPatternProps {
   numSquares?: number;
   maxOpacity?: number;
   durationSeconds?: number;
-  repeatDelay?: number;
+  repeatDelaySeconds?: number;
 }
 
 type Square = { id: number; pos: [number, number]; iteration: number };
