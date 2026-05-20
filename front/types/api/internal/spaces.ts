@@ -38,6 +38,7 @@ export const PatchProjectMetadataBodySchema = z.object({
   archive: z.boolean().optional(),
   todoGenerationEnabled: z.boolean().optional(),
   initialTodoAnalysisLookback: z.enum(["now", "last_24h", "max"]).optional(),
+  pinnedFramePath: z.string().nullable().optional(),
 });
 
 export type PatchProjectMetadataBodyType = z.infer<

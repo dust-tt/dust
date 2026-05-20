@@ -192,12 +192,43 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       createdAt: expect.anything(),
       description: "Test project description",
       lastTodoAnalysisAt: null,
+      pinnedFramePath: null,
       sId: expect.anything(),
       spaceId: space.sId,
       todoGenerationEnabled: false,
       updatedAt: expect.anything(),
       members: [],
     });
+  });
+
+  it("should return pinnedFramePath when set", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      systemKey: true,
+      method: "GET",
+    });
+
+    const space = await SpaceFactory.project(workspace);
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    await ProjectMetadataResource.makeNew(adminAuth, space, {
+      description: "Pod with banner",
+      pinnedFramePath: "project/banner.html",
+    });
+
+    req.query.spaceId = space.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().metadata.pinnedFramePath).toBe(
+      "project/banner.html"
+    );
   });
 
   it("should return project metadata with members", async () => {
@@ -248,6 +279,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       createdAt: expect.anything(),
       description: "Test project with members",
       lastTodoAnalysisAt: null,
+      pinnedFramePath: null,
       sId: expect.anything(),
       spaceId: space.sId,
       todoGenerationEnabled: false,

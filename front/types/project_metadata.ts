@@ -7,4 +7,5 @@ export interface ProjectMetadataType {
   archivedAt: number | null;
   todoGenerationEnabled: boolean;
   lastTodoAnalysisAt: number | null;
+  pinnedFramePath: string | null;
 }

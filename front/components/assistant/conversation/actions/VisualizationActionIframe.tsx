@@ -383,7 +383,7 @@ export const VisualizationActionIframe = forwardRef<
       <div
         className={cn(
           "relative w-full overflow-hidden",
-          codeFullyGenerated && !isErrored && "min-h-96",
+          codeFullyGenerated && !isErrored && !isInDrawer && "min-h-96",
           errorMessage && "h-full",
           isInDrawer && "h-full"
         )}
@@ -416,7 +416,10 @@ export const VisualizationActionIframe = forwardRef<
                 >
                   <iframe
                     ref={combinedRef}
-                    className={cn("h-full w-full", !errorMessage && "min-h-96")}
+                    className={cn(
+                      "h-full w-full",
+                      !errorMessage && !isInDrawer && "min-h-96"
+                    )}
                     src={vizUrl}
                     sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                   />

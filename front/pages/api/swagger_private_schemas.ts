@@ -874,6 +874,10 @@
  *               type: integer
  *               nullable: true
  *               description: Unix timestamp (ms) of the last automatic todo suggestion scan, if any.
+ *             pinnedFramePath:
+ *               type: string
+ *               nullable: true
+ *               description: Scoped path to the frame file pinned as the Pod banner (e.g. project/banner.html).
  *     PrivateDataSourceView:
  *       type: object
  *       description: A view on a data source within a space.

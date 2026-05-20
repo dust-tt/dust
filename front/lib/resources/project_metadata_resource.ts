@@ -156,6 +156,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ initialTodoAnalysisLookback }, transaction);
   }
 
+  async updatePinnedFramePath(
+    pinnedFramePath: string | null,
+    transaction?: Transaction
+  ) {
+    await this.update({ pinnedFramePath }, transaction);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
@@ -183,6 +190,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       archivedAt: this.archivedAt?.getTime() ?? null,
       todoGenerationEnabled: this.todoGenerationEnabled,
       lastTodoAnalysisAt: this.lastTodoAnalysisAt?.getTime() ?? null,
+      pinnedFramePath: this.pinnedFramePath ?? null,
     };
   }
 }

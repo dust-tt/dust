@@ -34,6 +34,7 @@ export type ProjectType = SpaceType & {
   description: string | null;
   isMember: boolean;
   archivedAt: number | null;
+  pinnedFramePath?: string | null;
 };
 
 export type ProjectListItemType = ProjectType & {

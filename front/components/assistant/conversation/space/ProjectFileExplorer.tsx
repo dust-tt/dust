@@ -11,6 +11,7 @@ import type {
   ContentNodeEntry,
   FileEntry,
   FileExplorerEntry,
+  FileExplorerMenuAction,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import {
@@ -20,6 +21,7 @@ import {
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import type { ContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
@@ -35,15 +37,19 @@ import {
 } from "@app/lib/swr/projects";
 import { useSpaceDataSourceViews, useSpaces } from "@app/lib/swr/spaces";
 import { isManualProjectKnowledgeManagementAllowed } from "@app/lib/workspace_policies";
+import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types/data_source_view";
-import { getSupportedFileExtensions } from "@app/types/files";
-import type { ProjectType } from "@app/types/space";
+import {
+  getSupportedFileExtensions,
+  isInteractiveContentType,
+} from "@app/types/files";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  ActionMapPinIcon,
   Button,
   CloudArrowLeftRightIcon,
   CloudArrowUpIcon,
@@ -204,7 +210,7 @@ function NoCompanyDataDialog({
 
 interface ProjectFileExplorerProps {
   owner: WorkspaceType;
-  space: ProjectType;
+  space: RichSpaceType;
 }
 
 export function ProjectFileExplorer({
@@ -249,6 +255,40 @@ function ProjectFileExplorerContent({
 
   const podMountParentRelativePath = currentFolderPath;
   const isArchived = !!space.archivedAt;
+  const isEditor = space.isEditor;
+  const { togglePin, isPinned } = usePinPodBanner({
+    owner,
+    spaceId: space.sId,
+    pinnedFramePath: space.pinnedFramePath ?? null,
+    isEditor,
+  });
+
+  const getExtraFileMenuItems = useCallback(
+    (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
+      if (
+        !isEditor ||
+        isArchived ||
+        entry.kind !== "file" ||
+        !isInteractiveContentType(entry.contentType)
+      ) {
+        return [];
+      }
+
+      const pinned = isPinned(entry.path);
+      return [
+        {
+          label: pinned ? "Unpin from banner" : "Pin as Pod banner",
+          icon: ActionMapPinIcon,
+          onClick: (e) => {
+            e.stopPropagation();
+            void togglePin(entry.path, { displayName: entry.fileName });
+          },
+        },
+      ];
+    },
+    [isArchived, isEditor, isPinned, togglePin]
+  );
+
   const canManuallyManageProjectKnowledge =
     isManualProjectKnowledgeManagementAllowed(owner);
   const confirm = useContext(ConfirmContext);
@@ -711,6 +751,7 @@ function ProjectFileExplorerContent({
         onMoveFile={!isArchived ? onMoveFile : undefined}
         onRename={!isArchived ? onRename : undefined}
         onOpenInteractive={(entry) => setFrameFileId(entry.fileId)}
+        getExtraFileMenuItems={getExtraFileMenuItems}
         headerActions={addButton}
         isLoading={isLoading}
       />
