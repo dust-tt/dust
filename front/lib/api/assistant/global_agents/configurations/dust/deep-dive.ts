@@ -39,9 +39,9 @@ import {
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import {
   getMinimumReasoningEffort,
-  type ReasoningEffort,
   type ModelConfigurationType,
   type ModelProviderIdType,
+  type ReasoningEffort,
 } from "@app/types/assistant/models/types";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
