@@ -1,6 +1,6 @@
 import { listMetronomePerUserCapsForWorkspace } from "@app/lib/metronome/per_user_alerts";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
-import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
+import { buildSeatDataByUserId, type SeatData } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   MembershipResource,
@@ -93,6 +93,42 @@ async function fetchPerUserUsageCreditsForMembersTable({
   return result.value;
 }
 
+async function fetchSeatDataForMembersTable({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string | null;
+  metronomeContractId: string | null;
+}): Promise<Map<string, SeatData>> {
+  if (!metronomeCustomerId || !metronomeContractId) {
+    return new Map();
+  }
+  return buildSeatDataByUserId({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+  });
+}
+
+async function fetchPerUserSpendLimitsForMembersTable({
+  metronomeCustomerId,
+  workspaceSId,
+}: {
+  metronomeCustomerId: string | null;
+  workspaceSId: string;
+}): Promise<Map<string, number>> {
+  if (!metronomeCustomerId) {
+    return new Map();
+  }
+  const result = await listMetronomePerUserCapsForWorkspace({
+    metronomeCustomerId,
+    workspaceSId,
+  });
+  if (result.isErr()) {
+    return new Map();
+  }
+  return result.value;
+}
+
 // Mounted at /api/w/:wId/credits/members-usage.
 const app = new Hono();
 
@@ -122,7 +158,7 @@ app.get(
       membershipsResult,
       perUserTotalCredits,
       seatDataByUserId,
-      perUserSpendLimitsResult,
+      perUserSpendLimits,
     ] = await Promise.all([
       MembershipResource.getActiveMemberships({
         workspace,
@@ -132,24 +168,15 @@ app.get(
         metronomeCustomerId: metronomeCustomerId ?? null,
         metronomeContractId,
       }),
-      metronomeCustomerId && metronomeContractId
-        ? buildSeatDataByUserId({
-            metronomeCustomerId,
-            contractId: metronomeContractId,
-          })
-        : Promise.resolve(new Map()),
-      metronomeCustomerId
-        ? listMetronomePerUserCapsForWorkspace({
-            metronomeCustomerId,
-            workspaceSId: workspace.sId,
-          })
-        : Promise.resolve(null),
+      fetchSeatDataForMembersTable({
+        metronomeCustomerId: metronomeCustomerId ?? null,
+        metronomeContractId,
+      }),
+      fetchPerUserSpendLimitsForMembersTable({
+        metronomeCustomerId: metronomeCustomerId ?? null,
+        workspaceSId: workspace.sId,
+      }),
     ]);
-
-    const perUserSpendLimits =
-      perUserSpendLimitsResult && perUserSpendLimitsResult.isOk()
-        ? perUserSpendLimitsResult.value
-        : new Map<string, number>();
 
     const { memberships, total, nextPageParams } = membershipsResult;
 
