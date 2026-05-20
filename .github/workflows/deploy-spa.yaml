@@ -11,11 +11,12 @@ on:
           - poke
         required: true
       env:
-        description: "The environment to use for API endpoints (prod or edge)"
+        description: "The environment to use for API endpoints (prod, edge, or bleeding-edge)"
         type: choice
         options:
           - prod
           - edge
+          - bleeding-edge
         default: "prod"
         required: true
       region:
@@ -33,7 +34,7 @@ on:
         type: string
         required: true
       env:
-        description: "The environment to use for API endpoints (prod or edge)"
+        description: "The environment to use for API endpoints (prod, edge, or bleeding-edge)"
         type: string
         default: "prod"
         required: true
@@ -61,7 +62,7 @@ on:
         value: ${{ jobs.deploy.outputs.preview_url }}
 
 concurrency:
-  group: deploy-spa-${{ inputs.app }}-${{ github.ref_name }}
+  group: deploy-spa-${{ inputs.app }}-${{ inputs.env }}-${{ inputs.region }}-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -192,6 +193,7 @@ jobs:
           command: >-
             versions upload
             --config wrangler-${{ inputs.app }}.toml
+            ${{ inputs.env == 'bleeding-edge' && '--env bleeding-edge' || '' }}
             ${{ github.ref_name != 'main'
               && format('--preview-alias {0}', steps.branch.outputs.sanitized)
               || '' }}

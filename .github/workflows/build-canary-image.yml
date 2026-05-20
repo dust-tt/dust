@@ -22,7 +22,6 @@ on:
           - connectors
           - core
           - front
-          - front-api
           - prodbox
           - oauth
           - viz
