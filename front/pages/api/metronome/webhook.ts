@@ -18,7 +18,6 @@ import {
 import {
   getMetronomeClient,
   getMetronomeContractById,
-  listMetronomeBalances,
   listMetronomeContracts,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
@@ -704,13 +703,6 @@ async function handler(
             );
             await restoreWorkspaceAfterSubscription(auth);
 
-            const balance = await listMetronomeBalances();
-            if (balance.isErr()) {
-              logger.error(
-                { error: balance.error },
-                "[Metronome Webhook] contract.start: failed to get Metronome balance"
-              );
-            }
             logger.info(
               {
                 contractId,

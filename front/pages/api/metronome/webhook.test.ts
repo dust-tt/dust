@@ -21,6 +21,7 @@ import {
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
+import type { ContractV2 } from "@metronome/sdk/resources";
 import { createResponse } from "node-mocks-http";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -493,8 +494,8 @@ describe("Metronome webhook — contract.end", () => {
           id: OLD_CONTRACT_ID,
           starting_at: new Date(Date.now() - 10_000).toISOString(),
           ending_before: new Date().toISOString(),
-        },
-      ] as never)
+        } as unknown as ContractV2,
+      ])
     );
     vi.mocked(launchScheduleWorkspaceScrubWorkflow).mockResolvedValueOnce(
       new Err(new Error("Temporal unavailable"))
@@ -541,7 +542,7 @@ describe("Metronome webhook — idempotency", () => {
     mockUnwrap(event);
     // Force the contract fetch to fail — this is one of the 500-return paths.
     vi.mocked(getMetronomeContractById).mockResolvedValue(
-      new Err({ message: "boom" } as never)
+      new Err(new Error("boom"))
     );
 
     const { req, res } = makeWebhookRequest(event);
@@ -562,7 +563,7 @@ describe("Metronome webhook — idempotency", () => {
         customer_id: METRONOME_CUSTOMER_ID,
         starting_at: new Date().toISOString(),
         custom_fields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
-      } as never)
+      } as unknown as ContractV2)
     );
 
     const { req, res } = makeWebhookRequest(event);
