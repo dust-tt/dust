@@ -10,6 +10,7 @@ import {
   getPodsFilesBasePath,
   getProjectFilesBasePath,
   TOOL_OUTPUTS_FOLDER_NAME,
+  toPodsMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -753,6 +754,35 @@ export async function moveFile(
   const moveRes = await moveGCSMountFile({ sourceGcsPath, destGcsPath });
   if (moveRes.isErr()) {
     return moveRes;
+  }
+
+  // Dual-write to the pods/ side. Copy from the new canonical so this works even when the
+  // source was a non-project file (no pre-existing pods/ source to copy from).
+  const bucket = getPrivateUploadBucket();
+  if (destScope.useCase === "project") {
+    const podsPrefix = getPodsFilesBasePath({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      projectId: destScope.projectId,
+    });
+    const destPodsPath = `${podsPrefix}${destRelativeFilePath}`;
+    try {
+      await bucket.copyFile(destGcsPath, destPodsPath);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  }
+
+  // Clean up the pods/ mirror of the source if the source was a project mount path.
+  const sourcePodsPath = toPodsMountFilePath(sourceGcsPath);
+  if (sourcePodsPath) {
+    try {
+      await bucket.delete(sourcePodsPath, { ignoreNotFound: true });
+    } catch (err) {
+      logger.error(
+        { sourcePodsPath, err: normalizeError(err) },
+        "moveFile: source pods/ mirror delete failed after successful move"
+      );
+    }
   }
 
   if (file) {
