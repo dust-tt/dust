@@ -1,9 +1,9 @@
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
-import { dataSourceResource } from "@front-api/middleware/data_source_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withDataSource } from "@front-api/middleware/with_data_source";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 import documentId from "./[documentId]";
@@ -13,8 +13,8 @@ const app = new Hono();
 
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
+  withDataSource({ requireCanRead: true }),
   validate("json", PostDataSourceDocumentRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

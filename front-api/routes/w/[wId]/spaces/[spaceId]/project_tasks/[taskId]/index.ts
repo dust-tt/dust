@@ -1,9 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { PROJECT_TASK_STATUSES } from "@app/types/project_task";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -35,7 +35,7 @@ const app = new Hono();
 
 app.patch(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", PatchProjectTaskBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -135,7 +135,7 @@ app.patch(
   }
 );
 
-app.delete("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.delete("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
   const taskId = ctx.req.param("taskId") ?? "";

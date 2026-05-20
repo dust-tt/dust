@@ -10,8 +10,8 @@ import { credentialsFromProviders } from "@app/types/api/credentials";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isString } from "@app/types/shared/utils/general";
 import { sessionAuth } from "@front-api/middleware/session_auth";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
+import { withSpace } from "@front-api/middleware/with_space";
 import type { Context } from "hono";
 import { Hono } from "hono";
 
@@ -60,105 +60,97 @@ async function loadApp(
   return { appResource };
 }
 
-app.get(
-  "/",
-  sessionAuth,
-  spaceResource({ requireCanWrite: true }),
-  async (ctx) => {
-    const loaded = await loadApp(ctx);
-    if (loaded instanceof Response) {
-      return loaded;
-    }
-    const { appResource } = loaded;
-    const auth = ctx.get("auth");
-    const session = ctx.get("session");
-    const user = auth.getNonNullableUser();
+app.get("/", sessionAuth, withSpace({ requireCanWrite: true }), async (ctx) => {
+  const loaded = await loadApp(ctx);
+  if (loaded instanceof Response) {
+    return loaded;
+  }
+  const { appResource } = loaded;
+  const auth = ctx.get("auth");
+  const session = ctx.get("session");
+  const user = auth.getNonNullableUser();
 
-    let owner = auth.getNonNullableWorkspace();
-    const wIdTarget = ctx.req.query("wIdTarget");
-    if (wIdTarget && session) {
-      // Override `owner` when fetching runs created with an API key from
-      // another workspace. Dust super users only.
-      const target = await Authenticator.fromSuperUserSession(
-        session,
-        wIdTarget
-      );
-      if (!target.isAdmin() || !auth.isDustSuperUser()) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "wIdTarget is only available to Dust super users.",
-          },
-        });
-      }
-
-      const targetOwner = target.workspace();
-      if (!targetOwner) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "app_not_found",
-            message: "The app was not found.",
-          },
-        });
-      }
-
-      logger.info(
-        {
-          owner: owner.sId,
-          targetOwner: targetOwner.sId,
-          user: user.sId,
-          app: appResource.sId,
-        },
-        "wIdTarget access"
-      );
-
-      owner = targetOwner;
-    }
-
-    const limitStr = ctx.req.query("limit");
-    const limit = limitStr ? parseInt(limitStr) : 10;
-    const offsetStr = ctx.req.query("offset");
-    const offset = offsetStr ? parseInt(offsetStr) : 0;
-    const runType = ctx.req.query("runType") ?? "local";
-
-    const userRuns = await RunResource.listByAppAndRunType(
-      owner,
-      { appId: appResource.id, runType },
-      { limit, offset }
-    );
-
-    const totalNumberOfRuns = await RunResource.countByAppAndRunType(owner, {
-      appId: appResource.id,
-      runType,
-    });
-    const userDustRunIds = userRuns.map((r) => r.dustRunId);
-
-    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const dustRuns = await coreAPI.getRunsBatch({
-      projectId: appResource.dustAPIProjectId,
-      dustRunIds: userDustRunIds,
-    });
-
-    if (dustRuns.isErr()) {
+  let owner = auth.getNonNullableWorkspace();
+  const wIdTarget = ctx.req.query("wIdTarget");
+  if (wIdTarget && session) {
+    // Override `owner` when fetching runs created with an API key from
+    // another workspace. Dust super users only.
+    const target = await Authenticator.fromSuperUserSession(session, wIdTarget);
+    if (!target.isAdmin() || !auth.isDustSuperUser()) {
       return apiError(ctx, {
-        status_code: 500,
+        status_code: 404,
         api_error: {
-          type: "internal_server_error",
-          message: "Runs retrieval failed.",
+          type: "workspace_auth_error",
+          message: "wIdTarget is only available to Dust super users.",
         },
       });
     }
 
-    return ctx.json({
-      runs: userDustRunIds.map((dustRunId) => dustRuns.value.runs[dustRunId]),
-      total: totalNumberOfRuns,
+    const targetOwner = target.workspace();
+    if (!targetOwner) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "app_not_found",
+          message: "The app was not found.",
+        },
+      });
+    }
+
+    logger.info(
+      {
+        owner: owner.sId,
+        targetOwner: targetOwner.sId,
+        user: user.sId,
+        app: appResource.sId,
+      },
+      "wIdTarget access"
+    );
+
+    owner = targetOwner;
+  }
+
+  const limitStr = ctx.req.query("limit");
+  const limit = limitStr ? parseInt(limitStr) : 10;
+  const offsetStr = ctx.req.query("offset");
+  const offset = offsetStr ? parseInt(offsetStr) : 0;
+  const runType = ctx.req.query("runType") ?? "local";
+
+  const userRuns = await RunResource.listByAppAndRunType(
+    owner,
+    { appId: appResource.id, runType },
+    { limit, offset }
+  );
+
+  const totalNumberOfRuns = await RunResource.countByAppAndRunType(owner, {
+    appId: appResource.id,
+    runType,
+  });
+  const userDustRunIds = userRuns.map((r) => r.dustRunId);
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const dustRuns = await coreAPI.getRunsBatch({
+    projectId: appResource.dustAPIProjectId,
+    dustRunIds: userDustRunIds,
+  });
+
+  if (dustRuns.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Runs retrieval failed.",
+      },
     });
   }
-);
 
-app.post("/", spaceResource({ requireCanWrite: true }), async (ctx) => {
+  return ctx.json({
+    runs: userDustRunIds.map((dustRunId) => dustRuns.value.runs[dustRunId]),
+    total: totalNumberOfRuns,
+  });
+});
+
+app.post("/", withSpace({ requireCanWrite: true }), async (ctx) => {
   const loaded = await loadApp(ctx);
   if (loaded instanceof Response) {
     return loaded;

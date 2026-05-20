@@ -4,10 +4,10 @@ import {
   SortingParamsCodec,
 } from "@app/lib/api/pagination";
 import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
-import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -24,8 +24,8 @@ const app = new Hono();
 
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceViewResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({ requireCanReadOrAdministrate: true }),
   validate("json", ContentNodesBody),
   async (ctx) => {
     const dataSourceView = ctx.get("dataSourceView");

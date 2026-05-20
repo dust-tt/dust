@@ -2,9 +2,9 @@ import { isGCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mo
 import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
 import { createProjectFolder } from "@app/lib/api/projects/context";
 import { PostPodFolderRequestBodySchema } from "@app/lib/api/projects/pod_mount_schemas";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 import rel from "./[...rel]";
@@ -12,7 +12,7 @@ import rel from "./[...rel]";
 // Mounted under /api/w/:wId/spaces/:spaceId/files.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
 
@@ -36,7 +36,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
 
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", PostPodFolderRequestBodySchema),
   async (c) => {
     const auth = c.get("auth");

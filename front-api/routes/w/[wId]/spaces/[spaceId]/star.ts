@@ -1,7 +1,7 @@
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -14,7 +14,7 @@ const app = new Hono();
 
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostUserProjectStarBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

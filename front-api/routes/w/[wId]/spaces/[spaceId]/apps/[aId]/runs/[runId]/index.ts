@@ -1,7 +1,7 @@
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { AppType } from "@app/types/app";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 import blocks from "./blocks";
@@ -12,7 +12,7 @@ import status from "./status";
 const app = new Hono();
 
 // GET / — get a run.
-app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
   // Keep the dynamic import: `@app/lib/api/run` is loaded lazily to avoid
   // pulling its dependency tree at module init time.
   const { getRun } = await import("@app/lib/api/run");

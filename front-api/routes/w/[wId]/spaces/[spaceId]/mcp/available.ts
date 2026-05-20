@@ -2,7 +2,7 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 export type GetMCPServersResponseBody = {
@@ -17,7 +17,7 @@ export type GetMCPServersResponseBody = {
 // space.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
 

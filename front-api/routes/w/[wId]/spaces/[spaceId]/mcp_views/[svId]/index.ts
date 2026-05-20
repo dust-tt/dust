@@ -1,7 +1,7 @@
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceKind } from "@app/types/space";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views/:svId.
@@ -9,7 +9,7 @@ const app = new Hono();
 
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");

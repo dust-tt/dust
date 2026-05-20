@@ -9,7 +9,7 @@ declare module "hono" {
   }
 }
 
-interface DataSourceViewResourceOptions {
+interface WithDataSourceViewOptions {
   requireCanAdministrate?: boolean;
   requireCanReadOrAdministrate?: boolean;
   requireCanRead?: boolean;
@@ -19,7 +19,7 @@ interface DataSourceViewResourceOptions {
 function hasPermission(
   auth: Authenticator,
   view: DataSourceViewResource,
-  o: DataSourceViewResourceOptions
+  o: WithDataSourceViewOptions
 ): boolean {
   if (o.requireCanAdministrate && !view.canAdministrate(auth)) {
     return false;
@@ -38,13 +38,12 @@ function hasPermission(
 
 /**
  * Fetches `DataSourceViewResource` named by `:dsvId`, ensures it belongs to
- * the space already on context (set by `spaceResource`), enforces the
- * requested permission, and stashes it on `ctx.var.dataSourceView`.
- * Mirrors `withDataSourceViewFromRoute` in
- * `front/lib/api/resource_wrappers.ts`.
+ * the space already on context (set by `withSpace`), enforces the requested
+ * permission, and stashes it on `ctx.var.dataSourceView`. Mirrors
+ * `withDataSourceViewFromRoute` in `front/lib/api/resource_wrappers.ts`.
  */
-export function dataSourceViewResource(
-  options: DataSourceViewResourceOptions
+export function withDataSourceView(
+  options: WithDataSourceViewOptions
 ): MiddlewareHandler {
   return async (ctx, next) => {
     const auth = ctx.get("auth");

@@ -6,9 +6,9 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentNodeType } from "@app/types/core/content_node";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -59,7 +59,7 @@ function attachmentTitleMatchesQuery(title: string, q: string): boolean {
 // Mounted under /api/w/:wId/spaces/:spaceId/project_context.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
 
@@ -76,7 +76,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
 
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", PostProjectContextContentNodeBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

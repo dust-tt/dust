@@ -1,7 +1,7 @@
 import { removeContentNodesFromProject } from "@app/lib/api/projects/context";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -22,7 +22,7 @@ const app = new Hono();
 
 app.delete(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", DeleteContentNodeBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

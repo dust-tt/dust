@@ -1,8 +1,8 @@
 import { getFlattenedContentNodesOfViewTypeForDataSourceView } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
-import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
+import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import tableId from "./[tableId]";
 import search from "./search";
@@ -13,8 +13,8 @@ const app = new Hono();
 // GET / — list tables.
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceViewResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const dataSourceView = ctx.get("dataSourceView");
     const paginationRes = getCursorPaginationParams(ctx.req.query());

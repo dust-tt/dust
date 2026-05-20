@@ -2,14 +2,14 @@ import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/cancel.
 const app = new Hono();
 
-app.post("/", spaceResource({ requireCanWrite: true }), async (ctx) => {
+app.post("/", withSpace({ requireCanWrite: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
   const aId = ctx.req.param("aId") ?? "";

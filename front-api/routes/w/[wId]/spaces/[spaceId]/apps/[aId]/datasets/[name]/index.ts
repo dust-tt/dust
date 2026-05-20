@@ -6,9 +6,9 @@ import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isString } from "@app/types/shared/utils/general";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import type { Context } from "hono";
 import { Hono } from "hono";
 
@@ -92,7 +92,7 @@ async function loadAppAndDataset(ctx: Context): Promise<
   return { appResource, dataset, aId, name };
 }
 
-app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const loaded = await loadAppAndDataset(ctx);
   if (loaded instanceof Response) {
     return loaded;
@@ -116,7 +116,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
 
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", PostDatasetRequestBodySchema),
   async (ctx) => {
     const loaded = await loadAppAndDataset(ctx);
@@ -227,7 +227,7 @@ app.post(
   }
 );
 
-app.delete("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.delete("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const loaded = await loadAppAndDataset(ctx);
   if (loaded instanceof Response) {
     return loaded;

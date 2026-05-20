@@ -16,9 +16,9 @@ import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { AgentsUsageType } from "@app/types/data_source";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import uniqBy from "lodash/uniqBy";
 
@@ -47,131 +47,126 @@ type SpaceCategoryInfo = {
 // Mounted under /api/w/:wId/spaces/:spaceId. The bare `/` handles GET, PATCH,
 // and DELETE on the space resource itself. Per-space sub-resource sub-apps
 // live in their own sibling files; each sub-app applies its own
-// `spaceResource(...)` middleware so different permission options can be used
+// `withSpace(...)` middleware so different permission options can be used
 // per route.
 const app = new Hono();
 
-app.get(
-  "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
-    const auth = ctx.get("auth");
-    const space = ctx.get("space");
+app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
 
-    const dataSourceViewsList = await DataSourceViewResource.listBySpace(
-      auth,
-      space
+  const dataSourceViewsList = await DataSourceViewResource.listBySpace(
+    auth,
+    space
+  );
+  const appsList = await AppResource.listBySpace(auth, space);
+  const actions = await MCPServerViewResource.listBySpace(auth, space);
+  const actionsCount = actions.filter(
+    (a) => a.toJSON().server.availability === "manual"
+  ).length;
+
+  const categories: { [key: string]: SpaceCategoryInfo } = {};
+  for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
+    categories[category] = {
+      count: 0,
+      usage: { count: 0, agents: [] },
+    };
+
+    const dataSourceViewsInCategory = dataSourceViewsList.filter(
+      (view) => view.toJSON().category === category
     );
-    const appsList = await AppResource.listBySpace(auth, space);
-    const actions = await MCPServerViewResource.listBySpace(auth, space);
-    const actionsCount = actions.filter(
-      (a) => a.toJSON().server.availability === "manual"
-    ).length;
 
-    const categories: { [key: string]: SpaceCategoryInfo } = {};
-    for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
-      categories[category] = {
-        count: 0,
-        usage: { count: 0, agents: [] },
-      };
-
-      const dataSourceViewsInCategory = dataSourceViewsList.filter(
-        (view) => view.toJSON().category === category
-      );
-
-      // The usage call is expensive, so only run it when there are views.
-      if (dataSourceViewsInCategory.length > 0) {
-        const usages = await getDataSourceViewsUsageByCategory({
-          auth,
-          category,
-        });
-
-        for (const dsView of dataSourceViewsInCategory) {
-          categories[category].count += 1;
-          const usage = usages[dsView.id];
-          if (usage) {
-            categories[category].usage.agents = categories[
-              category
-            ].usage.agents.concat(usage.agents);
-            categories[category].usage.agents = uniqBy(
-              categories[category].usage.agents,
-              "sId"
-            );
-          }
-        }
-        categories[category].usage.count =
-          categories[category].usage.agents.length;
-      }
-    }
-
-    categories["apps"].count = appsList.length;
-    categories["actions"].count = actionsCount;
-
-    const shouldIncludeAllMembers =
-      ctx.req.query("includeAllMembers") === "true";
-
-    const { groupsToProcess, allGroupMemberships } =
-      await space.fetchManualGroupsMemberships(auth, {
-        shouldIncludeAllMembers,
+    // The usage call is expensive, so only run it when there are views.
+    if (dataSourceViewsInCategory.length > 0) {
+      const usages = await getDataSourceViewsUsageByCategory({
+        auth,
+        category,
       });
 
-    const membershipMap = new Map<number, Map<number, string>>();
-    for (const membership of allGroupMemberships) {
-      if (!membershipMap.has(membership.groupId)) {
-        membershipMap.set(membership.groupId, new Map());
+      for (const dsView of dataSourceViewsInCategory) {
+        categories[category].count += 1;
+        const usage = usages[dsView.id];
+        if (usage) {
+          categories[category].usage.agents = categories[
+            category
+          ].usage.agents.concat(usage.agents);
+          categories[category].usage.agents = uniqBy(
+            categories[category].usage.agents,
+            "sId"
+          );
+        }
       }
-      membershipMap
-        .get(membership.groupId)
-        ?.set(membership.userId, membership.startAt.toDateString());
+      categories[category].usage.count =
+        categories[category].usage.agents.length;
     }
-
-    const currentMembers: SpaceUserType[] = uniqBy(
-      (
-        await concurrentExecutor(
-          groupsToProcess,
-          async (group) => {
-            const groupMembers = shouldIncludeAllMembers
-              ? await group.getAllMembers(auth)
-              : await group.getActiveMembers(auth);
-            const groupMemberships = membershipMap.get(group.id);
-            return groupMembers.map((member) => ({
-              ...member.toJSON(),
-              // group_vaults tells us if the group is an editor group.
-              isEditor: group.group_vaults?.kind === "project_editor",
-              joinedAt: groupMemberships?.get(member.id),
-            }));
-          },
-          { concurrency: 10 }
-        )
-      ).flat(),
-      "sId"
-    );
-
-    const meta = space.isProject()
-      ? await ProjectMetadataResource.fetchBySpace(auth, space)
-      : undefined;
-
-    return ctx.json({
-      space: {
-        ...space.toJSON(),
-        categories,
-        canWrite: space.canWrite(auth),
-        canRead: space.canRead(auth),
-        isMember: space.isMember(auth),
-        isEditor: space.canAdministrate(auth),
-        members: currentMembers,
-        description: meta?.description ?? null,
-        archivedAt: meta?.archivedAt?.getTime() ?? null,
-        todoGenerationEnabled: meta?.todoGenerationEnabled ?? false,
-        lastTodoAnalysisAt: meta?.lastTodoAnalysisAt?.getTime() ?? null,
-      },
-    });
   }
-);
+
+  categories["apps"].count = appsList.length;
+  categories["actions"].count = actionsCount;
+
+  const shouldIncludeAllMembers = ctx.req.query("includeAllMembers") === "true";
+
+  const { groupsToProcess, allGroupMemberships } =
+    await space.fetchManualGroupsMemberships(auth, {
+      shouldIncludeAllMembers,
+    });
+
+  const membershipMap = new Map<number, Map<number, string>>();
+  for (const membership of allGroupMemberships) {
+    if (!membershipMap.has(membership.groupId)) {
+      membershipMap.set(membership.groupId, new Map());
+    }
+    membershipMap
+      .get(membership.groupId)
+      ?.set(membership.userId, membership.startAt.toDateString());
+  }
+
+  const currentMembers: SpaceUserType[] = uniqBy(
+    (
+      await concurrentExecutor(
+        groupsToProcess,
+        async (group) => {
+          const groupMembers = shouldIncludeAllMembers
+            ? await group.getAllMembers(auth)
+            : await group.getActiveMembers(auth);
+          const groupMemberships = membershipMap.get(group.id);
+          return groupMembers.map((member) => ({
+            ...member.toJSON(),
+            // group_vaults tells us if the group is an editor group.
+            isEditor: group.group_vaults?.kind === "project_editor",
+            joinedAt: groupMemberships?.get(member.id),
+          }));
+        },
+        { concurrency: 10 }
+      )
+    ).flat(),
+    "sId"
+  );
+
+  const meta = space.isProject()
+    ? await ProjectMetadataResource.fetchBySpace(auth, space)
+    : undefined;
+
+  return ctx.json({
+    space: {
+      ...space.toJSON(),
+      categories,
+      canWrite: space.canWrite(auth),
+      canRead: space.canRead(auth),
+      isMember: space.isMember(auth),
+      isEditor: space.canAdministrate(auth),
+      members: currentMembers,
+      description: meta?.description ?? null,
+      archivedAt: meta?.archivedAt?.getTime() ?? null,
+      todoGenerationEnabled: meta?.todoGenerationEnabled ?? false,
+      lastTodoAnalysisAt: meta?.lastTodoAnalysisAt?.getTime() ?? null,
+    },
+  });
+});
 
 app.patch(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PatchSpaceRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -254,7 +249,7 @@ app.patch(
 
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");

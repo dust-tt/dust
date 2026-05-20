@@ -14,9 +14,9 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
 import svId from "./[svId]";
@@ -103,96 +103,92 @@ async function notifyWorkspaceAdminsAboutAffectedAgents(
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views.
 const app = new Hono();
 
-app.get(
-  "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
-    const auth = ctx.get("auth");
-    const space = ctx.get("space");
+app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
 
-    const r = GetQueryParamsSchema.safeParse({
-      availability: ctx.req.query("availability"),
-    });
+  const r = GetQueryParamsSchema.safeParse({
+    availability: ctx.req.query("availability"),
+  });
 
-    if (!r.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid query parameters.",
-        },
-      });
-    }
-
-    const { availability = "manual" } = r.data;
-
-    const serverViews = (
-      await MCPServerViewResource.listBySpace(auth, space)
-    ).map((view) => view.toJSON());
-
-    const filteredServerViews = serverViews.filter(
-      (s) => availability === "all" || s.server.availability === availability
-    );
-
-    // Some OAuth providers require a workspace-level connection before users
-    // can set up personal connections. We enrich the authorization info so the
-    // client can block the OAuth popup and show an inline error instead.
-    // The DB query is only made for servers in the list that need it.
-    const mcpServerIdsRequiringWorkspaceConnection = [
-      ...new Set(
-        filteredServerViews
-          .filter(
-            (s) =>
-              s.server.authorization !== null &&
-              oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
-                s.server.authorization.provider
-              )
-          )
-          .map((s) => s.server.sId)
-      ),
-    ];
-
-    if (mcpServerIdsRequiringWorkspaceConnection.length === 0) {
-      return ctx.json({
-        success: true,
-        serverViews: filteredServerViews,
-      });
-    }
-
-    const workspaceConnections =
-      await MCPServerConnectionResource.listWorkspaceConnectionsByMCPServerIds(
-        auth,
-        {
-          mcpServerIds: mcpServerIdsRequiringWorkspaceConnection,
-        }
-      );
-    const workspaceConnectedMCPServerIds = new Set(
-      workspaceConnections.map((connection) => connection.mcpServerId)
-    );
-
-    return ctx.json({
-      success: true,
-      serverViews: filteredServerViews.map((serverView) => ({
-        ...serverView,
-        server: {
-          ...serverView.server,
-          authorization: withWorkspaceConnectionRequirement(
-            serverView.server.authorization,
-            {
-              isWorkspaceConnected: workspaceConnectedMCPServerIds.has(
-                serverView.server.sId
-              ),
-            }
-          ),
-        },
-      })),
+  if (!r.success) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters.",
+      },
     });
   }
-);
+
+  const { availability = "manual" } = r.data;
+
+  const serverViews = (
+    await MCPServerViewResource.listBySpace(auth, space)
+  ).map((view) => view.toJSON());
+
+  const filteredServerViews = serverViews.filter(
+    (s) => availability === "all" || s.server.availability === availability
+  );
+
+  // Some OAuth providers require a workspace-level connection before users
+  // can set up personal connections. We enrich the authorization info so the
+  // client can block the OAuth popup and show an inline error instead.
+  // The DB query is only made for servers in the list that need it.
+  const mcpServerIdsRequiringWorkspaceConnection = [
+    ...new Set(
+      filteredServerViews
+        .filter(
+          (s) =>
+            s.server.authorization !== null &&
+            oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
+              s.server.authorization.provider
+            )
+        )
+        .map((s) => s.server.sId)
+    ),
+  ];
+
+  if (mcpServerIdsRequiringWorkspaceConnection.length === 0) {
+    return ctx.json({
+      success: true,
+      serverViews: filteredServerViews,
+    });
+  }
+
+  const workspaceConnections =
+    await MCPServerConnectionResource.listWorkspaceConnectionsByMCPServerIds(
+      auth,
+      {
+        mcpServerIds: mcpServerIdsRequiringWorkspaceConnection,
+      }
+    );
+  const workspaceConnectedMCPServerIds = new Set(
+    workspaceConnections.map((connection) => connection.mcpServerId)
+  );
+
+  return ctx.json({
+    success: true,
+    serverViews: filteredServerViews.map((serverView) => ({
+      ...serverView,
+      server: {
+        ...serverView.server,
+        authorization: withWorkspaceConnectionRequirement(
+          serverView.server.authorization,
+          {
+            isWorkspaceConnected: workspaceConnectedMCPServerIds.has(
+              serverView.server.sId
+            ),
+          }
+        ),
+      },
+    })),
+  });
+});
 
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

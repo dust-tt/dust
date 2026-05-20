@@ -3,8 +3,8 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/leave.
@@ -12,7 +12,7 @@ const app = new Hono();
 
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");

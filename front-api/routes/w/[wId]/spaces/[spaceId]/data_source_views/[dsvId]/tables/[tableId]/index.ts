@@ -1,9 +1,9 @@
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
+import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted under
@@ -12,8 +12,8 @@ const app = new Hono();
 
 app.get(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceViewResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
+  withDataSourceView({ requireCanRead: true }),
   async (ctx) => {
     const dataSourceView = ctx.get("dataSourceView");
     const tableId = ctx.req.param("tableId") ?? "";

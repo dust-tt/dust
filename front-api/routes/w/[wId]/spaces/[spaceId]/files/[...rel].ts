@@ -11,9 +11,9 @@ import {
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import path from "path";
 
@@ -93,7 +93,7 @@ async function buildContext(ctx: any) {
   };
 }
 
-app.get("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.get("/:rel{.+}", withSpace({ requireCanRead: true }), async (ctx) => {
   const built = await buildContext(ctx);
   if ("error" in built) {
     return built.error;
@@ -139,7 +139,7 @@ app.get("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
   });
 });
 
-app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.patch("/:rel{.+}", withSpace({ requireCanRead: true }), async (ctx) => {
   const built = await buildContext(ctx);
   if ("error" in built) {
     return built.error;
@@ -192,47 +192,43 @@ app.patch("/:rel{.+}", spaceResource({ requireCanRead: true }), async (ctx) => {
   return ctx.json({});
 });
 
-app.delete(
-  "/:rel{.+}",
-  spaceResource({ requireCanRead: true }),
-  async (ctx) => {
-    const built = await buildContext(ctx);
-    if ("error" in built) {
-      return built.error;
-    }
-    const { auth, space, normalizedRelative } = built;
-
-    if (!space.canWrite(auth)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "You do not have write access to this project.",
-        },
-      });
-    }
-
-    const deleteResult = await deleteProjectFile(auth, {
-      space,
-      relativeFilePath: normalizedRelative,
-    });
-    if (deleteResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: deleteResult.error.message,
-        },
-      });
-    }
-
-    return ctx.json({});
+app.delete("/:rel{.+}", withSpace({ requireCanRead: true }), async (ctx) => {
+  const built = await buildContext(ctx);
+  if ("error" in built) {
+    return built.error;
   }
-);
+  const { auth, space, normalizedRelative } = built;
+
+  if (!space.canWrite(auth)) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "You do not have write access to this project.",
+      },
+    });
+  }
+
+  const deleteResult = await deleteProjectFile(auth, {
+    space,
+    relativeFilePath: normalizedRelative,
+  });
+  if (deleteResult.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: deleteResult.error.message,
+      },
+    });
+  }
+
+  return ctx.json({});
+});
 
 app.post(
   "/:rel{.+}",
-  spaceResource({ requireCanWrite: true }),
+  withSpace({ requireCanWrite: true }),
   validate("json", MoveMountFileRequestBodySchema),
   async (c) => {
     const ctx = await buildContext(c);

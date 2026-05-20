@@ -4,9 +4,9 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -21,21 +21,17 @@ const PostAppBodySchema = z.object({
 const app = new Hono();
 
 // GET / — list apps in space.
-app.get(
-  "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
-    const auth = ctx.get("auth");
-    const space = ctx.get("space");
-    const apps = await AppResource.listBySpace(auth, space);
-    return ctx.json({ apps: apps.map((a) => a.toJSON()) });
-  }
-);
+app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const apps = await AppResource.listBySpace(auth, space);
+  return ctx.json({ apps: apps.map((a) => a.toJSON()) });
+});
 
 // POST / — create app.
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostAppBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

@@ -56,7 +56,7 @@ Each leaf exports `export default app`:
 ```ts
 // front-api/routes/w/[wId]/spaces/[spaceId]/leave.ts
 const app = new Hono();
-app.post("/", spaceResource({ requireCanReadOrAdministrate: true }), ...);
+app.post("/", withSpace({ requireCanReadOrAdministrate: true }), ...);
 export default app;
 ```
 
@@ -117,15 +117,15 @@ once and stashes it on `c` so every route below can read it from
 
 ### [API5] Resource-fetching middleware is applied per-handler when options vary
 
-Resource middlewares like `spaceResource` carry permission options
+Resource-loading middlewares like `withSpace` carry permission options
 (`requireCanRead`, `requireCanWrite`, etc.) that vary per endpoint. Apply
 them on the individual handler, not on the parent's `index.ts`:
 
 ```ts
 // front-api/routes/w/[wId]/spaces/[spaceId]/mcp/available.ts
 const app = new Hono();
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const space = c.get("space");
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
+  const space = ctx.get("space");
   // …
 });
 export default app;
@@ -212,7 +212,7 @@ into `front/`:
 ```ts
 // front-api/routes/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search.ts
 import { validate } from "@front-api/middleware/validator";        // self
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { withSpace } from "@front-api/middleware/with_space";
 import { CoreAPI } from "@app/types/core/core_api";                // front
 ```
 

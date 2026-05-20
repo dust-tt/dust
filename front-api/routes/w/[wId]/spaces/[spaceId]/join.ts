@@ -5,8 +5,8 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/join.
@@ -14,7 +14,7 @@ const app = new Hono();
 
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");

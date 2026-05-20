@@ -5,10 +5,10 @@ import {
   ConnectorsAPI,
   UpdateConnectorConfigurationTypeSchema,
 } from "@app/types/connectors/connectors_api";
-import { dataSourceResource } from "@front-api/middleware/data_source_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withDataSource } from "@front-api/middleware/with_data_source";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/configuration.
@@ -18,8 +18,8 @@ const app = new Hono();
 
 app.get(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
+  withDataSource({ requireCanRead: true }),
   async (ctx) => {
     const dataSource = ctx.get("dataSource");
     if (!dataSource.connectorId || !isWebsite(dataSource)) {
@@ -55,8 +55,8 @@ app.get(
 
 app.patch(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
+  withDataSource({ requireCanRead: true }),
   validate("json", UpdateConnectorConfigurationTypeSchema),
   async (ctx) => {
     const auth = ctx.get("auth");

@@ -12,9 +12,9 @@ import {
   type ProjectTaskType,
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
 import taskId from "./[taskId]";
@@ -64,7 +64,7 @@ function parseProjectTasksPeopleMode(
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks.
 const app = new Hono();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");
 
@@ -156,7 +156,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (ctx) => {
 
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", PostProjectTaskBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

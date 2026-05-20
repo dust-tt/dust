@@ -1,8 +1,8 @@
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { SpaceKind } from "@app/types/space";
-import { spaceResource } from "@front-api/middleware/space_resource";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -15,23 +15,19 @@ const PostWebhookSourceViewBodySchema = z.object({
 // Mounted under /api/w/:wId/spaces/:spaceId/webhook_source_views.
 const app = new Hono();
 
-app.get(
-  "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
-    const auth = ctx.get("auth");
-    const space = ctx.get("space");
-    const views = await WebhookSourcesViewResource.listBySpace(auth, space);
-    return ctx.json({
-      success: true,
-      webhookSourceViews: views.map((v) => v.toJSON()),
-    });
-  }
-);
+app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const views = await WebhookSourcesViewResource.listBySpace(auth, space);
+  return ctx.json({
+    success: true,
+    webhookSourceViews: views.map((v) => v.toJSON()),
+  });
+});
 
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostWebhookSourceViewBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
