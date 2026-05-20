@@ -1,3 +1,8 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { GCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
 import {
@@ -7,8 +12,9 @@ import {
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
@@ -590,6 +596,66 @@ async function moveGCSMountFile({
   return new Ok(undefined);
 }
 
+async function emitGCSMountFileMovedAuditLog(
+  auth: Authenticator,
+  scope: GCSMountPoint,
+  {
+    relativeFilePath,
+    parentRelativePath,
+  }: {
+    relativeFilePath: string;
+    parentRelativePath: string;
+  }
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+  const targets = [buildAuditLogTarget("workspace", workspace)];
+  const metadata: Record<string, string> = {
+    relative_file_path: relativeFilePath,
+    parent_relative_path: parentRelativePath,
+    space_id: "",
+    conversation_id: "",
+  };
+
+  switch (scope.useCase) {
+    case "project": {
+      const space = await SpaceResource.fetchById(auth, scope.projectId);
+      if (!space) {
+        return;
+      }
+      targets.push(buildAuditLogTarget("space", space));
+      metadata.space_id = space.sId;
+      break;
+    }
+    case "conversation": {
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        scope.conversationId
+      );
+      if (!conversation) {
+        return;
+      }
+      targets.push(
+        buildAuditLogTarget("conversation", {
+          sId: conversation.sId,
+          name: conversation.title ?? "",
+        })
+      );
+      metadata.conversation_id = conversation.sId;
+      break;
+    }
+    default:
+      return assertNever(scope);
+  }
+
+  void emitAuditLogEvent({
+    auth,
+    action: "file.moved",
+    targets,
+    context: getAuditLogContext(auth),
+    metadata,
+  });
+}
+
 /**
  * Move a file in GCS and, when a FileResource is provided, keep its DB record in sync.
  * The DB update is skipped for plain GCS objects that have no FileResource record.
@@ -629,6 +695,19 @@ export async function moveFile(
       destUseCaseMetadata,
     });
   }
+
+  const prefix = resolvePrefix(auth.getNonNullableWorkspace(), destScope);
+  const relativeFilePath = sourceGcsPath.startsWith(prefix)
+    ? sourceGcsPath.slice(prefix.length)
+    : destRelativeFilePath;
+  const lastSlash = destRelativeFilePath.lastIndexOf("/");
+  const parentRelativePath =
+    lastSlash >= 0 ? destRelativeFilePath.slice(0, lastSlash) : "";
+
+  void emitGCSMountFileMovedAuditLog(auth, destScope, {
+    relativeFilePath,
+    parentRelativePath,
+  });
 
   return new Ok(undefined);
 }

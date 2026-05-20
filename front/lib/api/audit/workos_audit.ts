@@ -113,6 +113,8 @@ type AuditAction =
   | "datasource.deleted"
   | "datasource.deleted_admin"
   | "datasource.reauthorized"
+  // Files.
+  | "file.moved"
   // Audit Logs.
   | "audit_log.viewed"
   | "audit_log.export_configured"
