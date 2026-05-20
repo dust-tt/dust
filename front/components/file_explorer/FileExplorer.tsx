@@ -22,6 +22,7 @@ import {
   getFolderBreadcrumbSegments,
   getParentFolderRelativePath,
   getScopedRelativePath,
+  isFileExplorerMovableFile,
   ROOT_FOLDER_LABEL,
 } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -177,7 +178,12 @@ export function FileExplorer({
           },
         });
       }
-      if (onMoveFile && totalFolderCount > 0 && entry.kind === "file") {
+      if (
+        onMoveFile &&
+        totalFolderCount > 0 &&
+        entry.kind === "file" &&
+        isFileExplorerMovableFile(entry)
+      ) {
         items.push({
           label: "Move to…",
           icon: FolderOpenIcon,
@@ -250,7 +256,7 @@ export function FileExplorer({
 
       const relativePath = getScopedRelativePath(scopedFilePath);
       const entry = entryByRelativePath.get(relativePath);
-      if (entry?.kind !== "file") {
+      if (entry?.kind !== "file" || !isFileExplorerMovableFile(entry)) {
         return;
       }
 

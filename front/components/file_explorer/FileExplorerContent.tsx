@@ -13,6 +13,7 @@ import type {
   FileExplorerMenuAction,
   FileSystemTreeNode,
 } from "@app/components/file_explorer/types";
+import { isFileExplorerMovableFile } from "@app/components/file_explorer/utils";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { CardGrid, ScrollArea, Spinner } from "@dust-tt/sparkle";
 import type React from "react";
@@ -105,7 +106,7 @@ export function FileExplorerContent({
         return (
           <FileExplorerFileCard
             key={`file:${entry.path}`}
-            draggable={fileDragEnabled}
+            draggable={fileDragEnabled && isFileExplorerMovableFile(entry)}
             entry={entry}
             viewMode={viewMode}
             onOpen={onFileOpen}

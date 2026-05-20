@@ -6,6 +6,7 @@ import {
 } from "@app/types/files";
 
 import type {
+  FileEntry,
   FileExplorerBucket,
   FileExplorerEntry,
   FileExplorerSortMode,
@@ -79,6 +80,20 @@ export function getFileExplorerBucket(
     default:
       return null;
   }
+}
+
+/**
+ * Whether mount-relative move (drag-and-drop, "Move to…") is allowed in the file explorer.
+ *
+ * Frames and slideshows are still keyed by `fileId` (canonical storage at
+ * `files/w/{wId}/{fileId}/…`), not mount-path relocation. Until they are fully on the mount
+ * filesystem, disable move for those entries.
+ */
+export function isFileExplorerMovableFile(entry: FileEntry): boolean {
+  if (isInteractiveContentType(entry.contentType)) {
+    return false;
+  }
+  return true;
 }
 
 /** Display order: Company Data refs, then folders, then GCS files. */
