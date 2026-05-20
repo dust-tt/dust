@@ -161,6 +161,7 @@ export async function runModel(
   const localLogger = logger.child({
     workspaceId: conversation.owner.sId,
     conversationId: conversation.sId,
+    agentConfigurationId: agentConfiguration.sId,
     multiActionLoopIteration: step,
   });
 
