@@ -13,7 +13,7 @@ interface AnimatedGridPatternProps {
   strokeDasharray?: number;
   numSquares?: number;
   maxOpacity?: number;
-  duration?: number;
+  durationSeconds?: number;
   repeatDelay?: number;
 }
 
