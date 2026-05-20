@@ -1,7 +1,7 @@
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { SKILL_SUGGESTION_SOURCES } from "@app/types/suggestions/skill_suggestion";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -17,7 +17,7 @@ const DeleteSuggestionQuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/skills/:sId/suggestions.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<PokeListSkillSuggestions> => {
   const auth = ctx.get("auth");
   const sId = ctx.req.param("sId");
   if (!sId) {
@@ -39,10 +39,7 @@ app.get("/", async (ctx) => {
     }
   );
 
-  const body: PokeListSkillSuggestions = {
-    suggestions: suggestions.map((s) => s.toJSON()),
-  };
-  return ctx.json(body);
+  return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
 });
 
 app.delete("/", validate("query", DeleteSuggestionQuerySchema), async (ctx) => {

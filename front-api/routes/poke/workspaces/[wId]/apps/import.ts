@@ -1,10 +1,14 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApp } from "@app/lib/utils/apps";
 import type { AppType } from "@app/types/app";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
+
+type ImportAppResponseBody = {
+  app: AppType;
+};
 
 export const AppTypeSchema = z.object({
   sId: z.string(),
@@ -50,7 +54,7 @@ app.post(
   "/",
   validate("query", ImportQuerySchema),
   validate("json", ImportAppBody),
-  async (ctx) => {
+  async (ctx): HandlerResult<ImportAppResponseBody> => {
     const auth = ctx.get("auth");
     const { spaceId } = ctx.req.valid("query");
     const body = ctx.req.valid("json");
@@ -77,8 +81,7 @@ app.post(
       });
     }
 
-    const responseBody: { app: AppType } = { app: result.value.app.toJSON() };
-    return ctx.json(responseBody);
+    return ctx.json({ app: result.value.app.toJSON() });
   }
 );
 

@@ -1,7 +1,7 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type PokeGetSkillSuggestionDetails = {
@@ -13,7 +13,7 @@ export type PokeGetSkillSuggestionDetails = {
 // Mounted at /api/poke/workspaces/:wId/skill_suggestions/:suggestionId/details.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<PokeGetSkillSuggestionDetails> => {
   const auth = ctx.get("auth");
   const suggestionId = ctx.req.param("suggestionId");
   if (!suggestionId) {
@@ -47,12 +47,11 @@ app.get("/", async (ctx) => {
   );
 
   const skillJson = skill?.toJSON(auth);
-  const body: PokeGetSkillSuggestionDetails = {
+  return ctx.json({
     suggestion: suggestion.toJSON(),
     skillInstructionsHtml: skillJson?.instructionsHtml ?? null,
     skillAgentFacingDescription: skillJson?.agentFacingDescription ?? null,
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

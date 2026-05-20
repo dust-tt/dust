@@ -1,6 +1,6 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type PokeGetSkillVersions = {
@@ -10,7 +10,7 @@ export type PokeGetSkillVersions = {
 // Mounted at /api/poke/workspaces/:wId/skills/:sId/versions.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<PokeGetSkillVersions> => {
   const auth = ctx.get("auth");
   const sId = ctx.req.param("sId");
   if (!sId) {
@@ -36,13 +36,12 @@ app.get("/", async (ctx) => {
 
   const versions = await skill.listVersions(auth);
 
-  const body: PokeGetSkillVersions = {
+  return ctx.json({
     versions: versions.map((v) => ({
       ...v.toJSON(auth),
       version: v.version,
     })),
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

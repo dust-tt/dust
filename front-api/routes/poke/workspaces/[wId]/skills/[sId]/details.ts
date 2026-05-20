@@ -3,7 +3,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { SpaceType } from "@app/types/space";
 import type { UserType } from "@app/types/user";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type PokeGetSkillDetails = {
@@ -15,7 +15,7 @@ export type PokeGetSkillDetails = {
 // Mounted at /api/poke/workspaces/:wId/skills/:sId/details.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<PokeGetSkillDetails> => {
   const auth = ctx.get("auth");
   const sId = ctx.req.param("sId");
   if (!sId) {
@@ -46,12 +46,11 @@ app.get("/", async (ctx) => {
     serializedSkill.requestedSpaceIds
   );
 
-  const body: PokeGetSkillDetails = {
+  return ctx.json({
     skill: serializedSkill,
     editedByUser: editedByUser ? editedByUser.toJSON() : null,
     spaces: spaces.map((s) => s.toJSON()),
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

@@ -1,6 +1,6 @@
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type PokeGetTriggerExecutionStats = {
@@ -17,7 +17,7 @@ export type PokeGetTriggerExecutionStats = {
 // Mounted at /api/poke/workspaces/:wId/triggers/:tId/execution_stats.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<PokeGetTriggerExecutionStats> => {
   const auth = ctx.get("auth");
   const tId = ctx.req.param("tId");
   if (!tId) {
@@ -46,11 +46,10 @@ app.get("/", async (ctx) => {
     trigger.id
   );
 
-  const body: PokeGetTriggerExecutionStats = {
+  return ctx.json({
     statusBreakdown: stats.statusBreakdown,
     dailyVolume: stats.dailyVolume,
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;
