@@ -29,7 +29,7 @@ function AnimatedGridPattern({
   maxOpacity = 0.28,
   duration = 1.2,
   repeatDelay = 0,
-}: AnimatedGridPatternProps) {
+  repeatDelay: repeatDelaySeconds = 0,
   const shouldReduceMotion = useReducedMotion();
   const id = useId();
   const containerRef = useRef<SVGSVGElement | null>(null);
