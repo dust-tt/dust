@@ -30,6 +30,10 @@ export type FetchConversationMessageActionResponse =
   | CallToolPendingResponse
   | CallToolRejectedResponse;
 
+/**
+ * @ignoreswagger
+ * internal endpoint
+ */
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<

@@ -28,7 +28,6 @@ import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client"
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export type CreateSandboxChildActionResult = {
   actionId: string;
@@ -61,24 +60,28 @@ export async function createSandboxChildAction(
 ): Promise<Result<CreateSandboxChildActionResult, Error>> {
   const view = await MCPServerViewResource.fetchById(auth, serverViewId);
   if (!view) {
-    return new Err(normalizeError("MCP server view not found."));
+    return new Err(new Error("MCP server view not found."));
   }
 
-  const [agentConfiguration, conversationResult, parentAction] =
-    await Promise.all([
-      getAgentConfiguration(auth, { agentId, variant: "full" }),
-      getConversation(auth, conversationId),
-      AgentMCPActionResource.fetchById(auth, parentActionId),
-    ]);
-
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId,
+    variant: "full",
+  });
   if (!agentConfiguration) {
-    return new Err(normalizeError("Agent configuration not found."));
+    return new Err(new Error("Agent configuration not found."));
   }
+
+  const conversationResult = await getConversation(auth, conversationId);
   if (conversationResult.isErr()) {
-    return new Err(normalizeError("Conversation not found."));
+    return new Err(new Error("Conversation not found."));
   }
+
+  const parentAction = await AgentMCPActionResource.fetchById(
+    auth,
+    parentActionId
+  );
   if (!parentAction) {
-    return new Err(normalizeError("Parent action not found."));
+    return new Err(new Error("Parent action not found."));
   }
 
   const conversation = conversationResult.value;
@@ -90,7 +93,7 @@ export async function createSandboxChildAction(
         m.type === "agent_message" && m.sId === agentMessageId
     );
   if (!agentMessage) {
-    return new Err(normalizeError("Agent message not found."));
+    return new Err(new Error("Agent message not found."));
   }
 
   // JIT servers cover tools added via the conversation input bar.
@@ -109,7 +112,7 @@ export async function createSandboxChildAction(
 
   if (!serverSideConfig) {
     return new Err(
-      normalizeError("Tool is not available to this agent or conversation.")
+      new Error("Tool is not available to this agent or conversation.")
     );
   }
 
@@ -142,13 +145,13 @@ export async function createSandboxChildAction(
 
   if (!fullToolConfiguration) {
     return new Err(
-      normalizeError("Tool is not available to this agent or conversation.")
+      new Error("Tool is not available to this agent or conversation.")
     );
   }
 
   const validateInputsResult = validateToolInputs(rawInputs);
   if (validateInputsResult.isErr()) {
-    return new Err(normalizeError(validateInputsResult.error));
+    return validateInputsResult;
   }
 
   const { status } = await getExecutionStatusFromConfig(auth, {
@@ -180,7 +183,7 @@ export async function createSandboxChildAction(
     const internalMCPServerName = getInternalMCPServerNameFromSId(
       fullToolConfiguration.toolServerId
     );
-    const approvalEvent: MCPApproveExecutionEvent = {
+    const approvalRequirementEvent: MCPApproveExecutionEvent = {
       type: "tool_approve_execution",
       actionId: action.sId,
       configurationId: fullToolConfiguration.sId,
@@ -212,7 +215,7 @@ export async function createSandboxChildAction(
     };
 
     await updateResourceAndPublishEvent(auth, {
-      event: approvalEvent,
+      event: approvalRequirementEvent,
       agentMessage,
       conversation,
       step: parentAction.stepContent.step,
@@ -222,8 +225,7 @@ export async function createSandboxChildAction(
       messageId: agentMessage.sId,
     });
 
-    await launchSandboxChildToolWorkflow({
-      auth,
+    await launchSandboxChildToolWorkflow(auth, {
       agentLoopArgs: {
         agentMessageId: agentMessage.sId,
         agentMessageVersion: agentMessage.version,
@@ -235,7 +237,7 @@ export async function createSandboxChildAction(
         userMessageOrigin: userMessageInfo.userMessageOrigin,
         initialStartTime: Date.now(),
       },
-      action: action.toJSON(),
+      action,
       step: parentAction.stepContent.step,
     });
   }
