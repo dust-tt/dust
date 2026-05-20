@@ -324,7 +324,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG,
         name: "dust-goog",
-        description: "Same as dust but running Gemini 3 Pro.",
+        description: "Same as dust but running Gemini 3.5 Flash.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
@@ -332,6 +332,27 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
         name: "dust-goog-medium",
         description: "Same as dust-goog but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_GOOG_PRO:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO,
+        name: "dust-goog-pro",
+        description: "Same as dust but running Gemini 3.1 Pro.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM,
+        name: "dust-goog-pro-medium",
+        description: "Same as dust-goog-pro but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH,
+        name: "dust-goog-pro-high",
+        description: "Same as dust-goog-pro but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_ANT:

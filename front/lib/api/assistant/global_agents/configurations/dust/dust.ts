@@ -58,8 +58,9 @@ import {
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
 import {
+  GEMINI_3_1_PRO_MODEL_CONFIG,
+  GEMINI_3_5_FLASH_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
-  GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -807,7 +808,7 @@ export function _getDustGoogGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG,
     name: "dust-goog",
-    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -819,8 +820,44 @@ export function _getDustGoogMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
     name: "dust-goog-medium",
-    preferredModelConfiguration: GEMINI_3_PRO_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustGoogProGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO,
+    name: "dust-goog-pro",
+    preferredModelConfiguration: GEMINI_3_1_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustGoogProMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM,
+    name: "dust-goog-pro-medium",
+    preferredModelConfiguration: GEMINI_3_1_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustGoogProHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH,
+    name: "dust-goog-pro-high",
+    preferredModelConfiguration: GEMINI_3_1_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
   });
 }
 
