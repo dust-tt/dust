@@ -92,6 +92,11 @@ export function FrameRenderer({
   const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // The space to resolve `project/` file paths inside the viz.
+  // Priority: explicit project the frame was saved to -> the conversation's own project space
+  // (a conversation can belong to a project space even before the frame is saved there).
+  const frameSpaceId = projectId ?? conversation?.spaceId ?? null;
+
   // eslint-disable-next-line react-hooks/refs
   const panel = panelRef?.current;
 
@@ -354,6 +359,7 @@ export function FrameRenderer({
               }}
               key={`viz-${fileId}`}
               conversationId={conversation?.sId ?? null}
+              spaceId={frameSpaceId}
               isInDrawer={true}
               ref={iframeRef}
             />

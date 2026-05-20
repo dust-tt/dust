@@ -1249,7 +1249,8 @@ function AgentMessageContent({
         agentConfiguration.sId,
         conversationId,
         sId,
-        vizUrl
+        vizUrl,
+        spaceId
       ),
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
@@ -1266,6 +1267,7 @@ function AgentMessageContent({
       isLastMessage,
       handleToolSetupComplete,
       propsAdditionalMarkdownComponents,
+      spaceId,
     ]
   );
 

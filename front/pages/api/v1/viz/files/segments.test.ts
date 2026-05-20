@@ -100,6 +100,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     mockGcsFound();
@@ -130,6 +131,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     mockGcsFound();
@@ -151,6 +153,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -185,6 +188,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "workspace", // Changed from "public".
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -212,6 +216,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -245,6 +250,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -275,6 +281,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -325,6 +332,93 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     expect(res._getStatusCode()).toBe(405);
   });
 
+  it("should serve a GCS file for a project-scoped frame (spaceId in metadata)", async () => {
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      spaceId: "vlt_someSpaceId",
+    });
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["project", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+      file: frameFile,
+      content: "<html>Frame content</html>",
+      shareScope: "public",
+      conversationSpaceId: null,
+    });
+
+    mockGcsFound();
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should serve a GCS file for a conversation-scoped frame via conversationSpaceId", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["project", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+      file: frameFile,
+      content: "<html>Frame content</html>",
+      shareScope: "public",
+      conversationSpaceId: "vlt_derivedSpaceId",
+    });
+
+    mockGcsFound();
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("should reject project-scoped path when frame has no project context", async () => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const { frameFile, accessToken } = await makeFrameAndToken({
+      conversationId: conversation.sId,
+    });
+
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: "GET",
+      query: { segments: ["project", "chart.png"] },
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+
+    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+      file: frameFile,
+      content: "<html>Frame content</html>",
+      shareScope: "public",
+      conversationSpaceId: null,
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Frame has no project context for this path.",
+      },
+    });
+  });
+
   it("should reject non-frame files as the frame", async () => {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
@@ -354,6 +448,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: nonFrameFile,
       content: "",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);

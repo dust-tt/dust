@@ -2,6 +2,7 @@
 
 import {
   getConversationFilesBasePath,
+  getProjectFilesBasePath,
   scopedFilePathPrefixSchema,
 } from "@app/lib/api/files/mount_path";
 import { verifyVizAccessToken } from "@app/lib/api/viz/access_tokens";
@@ -108,7 +109,7 @@ async function handler(
     });
   }
 
-  const { file: frameFile, shareScope } = result;
+  const { file: frameFile, shareScope, conversationSpaceId } = result;
 
   // If current share scope differs from token scope, reject. It means share scope changed.
   if (shareScope !== tokenPayload.shareScope) {
@@ -183,14 +184,19 @@ async function handler(
     // endpoint can serve them.
     basePath = getConversationFilesBasePath({ workspaceId, conversationId });
   } else {
-    // TODO(2026-04-28 FILE SYSTEM): Add project scope support.
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Project scope is not yet supported.",
-      },
-    });
+    // Project-scoped frames have spaceId directly. Conversation-scoped frames that live in
+    // a project space get conversationSpaceId resolved by fetchByShareToken.
+    const projectId = frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
+    if (!isString(projectId)) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Frame has no project context for this path.",
+        },
+      });
+    }
+    basePath = getProjectFilesBasePath({ workspaceId, projectId });
   }
 
   const gcsPath = `${basePath}${normalizedRel}`;

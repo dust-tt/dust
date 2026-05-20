@@ -32,10 +32,17 @@ describe("extractFileRefs", () => {
     ]);
   });
 
-  it("extracts scoped paths from string literals", () => {
+  it("extracts scoped paths from string literals (conversation/)", () => {
     const code = `const path = "conversation/abc/file.csv";`;
     expect(extractFileRefs(code)).toEqual([
       { type: "path", scopedPath: "conversation/abc/file.csv" },
+    ]);
+  });
+
+  it("extracts scoped paths from string literals (project/)", () => {
+    const code = `const path = "project/abc/file.csv";`;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "path", scopedPath: "project/abc/file.csv" },
     ]);
   });
 
