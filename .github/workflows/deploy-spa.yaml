@@ -215,6 +215,17 @@ jobs:
           echo "version_prefix=${VERSION_PREFIX}" >> $GITHUB_OUTPUT
           echo "Extracted version ID: ${VERSION_ID} (prefix: ${VERSION_PREFIX})"
 
+      # Bleeding-edge promotion is inline (no need to wait for API rollout, unlike prod).
+      - name: Promote bleeding-edge to 100%
+        if: ${{ inputs.env == 'bleeding-edge' && github.ref_name == 'main' }}
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: front-spa
+          command: versions deploy ${{ steps.extract_version.outputs.version_id }}@100% --config wrangler-${{ inputs.app }}.toml --env bleeding-edge -y
+          wranglerVersion: "4.80.0"
+
       - name: Derive preview URL
         id: preview_url
         run: |

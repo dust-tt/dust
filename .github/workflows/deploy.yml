@@ -249,8 +249,6 @@ jobs:
           DEPLOY_SPA_POKE: ${{ inputs.deploy_spa_poke }}
           SPA_APP_VERSION_ID: ${{ needs.deploy-app.outputs.version_id }}
           SPA_POKE_VERSION_ID: ${{ needs.deploy-poke.outputs.version_id }}
-          SPA_APP_BLEEDING_EDGE_VERSION_ID: ${{ needs.deploy-app-bleeding-edge.outputs.version_id }}
-          SPA_POKE_BLEEDING_EDGE_VERSION_ID: ${{ needs.deploy-poke-bleeding-edge.outputs.version_id }}
           PLAYWRIGHT_SHA: ${{ github.sha }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
@@ -289,9 +287,6 @@ jobs:
                   slack_channel: process.env.SLACK_CHANNEL,
                   spa_app_version_id: process.env.SPA_APP_VERSION_ID,
                   spa_poke_version_id: process.env.SPA_POKE_VERSION_ID,
-                  // TODO(JD): exceeds GitHub's 10-property client_payload limit. Temporarily commented out.
-                  // spa_app_bleeding_edge_version_id: process.env.SPA_APP_BLEEDING_EDGE_VERSION_ID,
-                  // spa_poke_bleeding_edge_version_id: process.env.SPA_POKE_BLEEDING_EDGE_VERSION_ID,
                 },
               });
             }
