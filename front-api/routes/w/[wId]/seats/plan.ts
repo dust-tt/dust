@@ -4,20 +4,19 @@ import type {
 } from "@app/lib/api/credits/seat_plan";
 import { amountCents } from "@app/lib/metronome/amounts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
-import {
-  MAX_SEAT_CREDIT_NAME,
-  MAX_SEAT_PRODUCT_NAME,
-  PRO_SEAT_CREDIT_NAME,
-  PRO_SEAT_PRODUCT_NAME,
-} from "@app/lib/metronome/constants";
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import {
+  getAwuAllocationForSeatType,
+  getProductSeatTypes,
+  getSeatTypesByProductIdFromContract,
+  isMauContract,
+} from "@app/lib/metronome/seat_types";
 import logger from "@app/logger/logger";
+import type { MembershipSeatType } from "@app/types/memberships";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
-
-type PriceKey = "pro" | "max";
 
 // Mounted at /api/w/:wId/seats/plan.
 const app = new Hono();
@@ -58,17 +57,26 @@ app.get("/", async (c) => {
   }
   const { currency } = creditTypeResult.value;
 
-  const awuCreditsMap = new Map<PriceKey, number>();
-  for (const credit of contract.recurring_credits ?? []) {
-    if (credit.name === PRO_SEAT_CREDIT_NAME) {
-      awuCreditsMap.set("pro", credit.access_amount.unit_price);
-    } else if (credit.name === MAX_SEAT_CREDIT_NAME) {
-      awuCreditsMap.set("max", credit.access_amount.unit_price);
-    }
+  // MAU contracts don't bill per-seat — return an empty seat plan up-front.
+  if (isMauContract(contract)) {
+    const empty: SeatPlanResponseBody = {};
+    return c.json(empty);
   }
 
-  const monthlyPriceCentsMap = new Map<PriceKey, number>();
+  // Build `productId → seatType` from contract subscriptions so we can resolve
+  // rate-schedule entries without comparing product names or IDs.
+  const productSeatTypes = await getProductSeatTypes();
+  const seatTypesByProductId = getSeatTypesByProductIdFromContract(
+    contract,
+    productSeatTypes
+  );
+  if (seatTypesByProductId.size === 0) {
+    const empty: SeatPlanResponseBody = {};
+    return c.json(empty);
+  }
 
+  const monthlyPriceCentsBySeatType = new Map<MembershipSeatType, number>();
+  const nameBySeatType = new Map<MembershipSeatType, string>();
   try {
     const startingAt = new Date().toISOString();
     let nextPage: string | null | undefined = undefined;
@@ -84,23 +92,25 @@ app.get("/", async (c) => {
         if (!entry.entitled || entry.rate.price === undefined) {
           continue;
         }
-        const key: PriceKey | undefined =
-          entry.product_name === PRO_SEAT_PRODUCT_NAME
-            ? "pro"
-            : entry.product_name === MAX_SEAT_PRODUCT_NAME
-              ? "max"
-              : undefined;
-        if (!key) {
+        const seatType = seatTypesByProductId.get(entry.product_id);
+        if (!seatType) {
           continue;
         }
         // Metronome quotes prices in its per-currency native unit (USD in
         // cents, others in whole units); normalize to actual cents here.
         // TODO (https://github.com/dust-tt/tasks/issues/8072): Add annual pricing
-        monthlyPriceCentsMap.set(key, amountCents(entry.rate.price, currency));
+        monthlyPriceCentsBySeatType.set(
+          seatType,
+          amountCents(entry.rate.price, currency)
+        );
+        nameBySeatType.set(seatType, entry.product_name);
       }
 
       nextPage = rateSchedule.next_page;
-    } while (nextPage && monthlyPriceCentsMap.size < 2);
+    } while (
+      nextPage &&
+      monthlyPriceCentsBySeatType.size < seatTypesByProductId.size
+    );
   } catch (err) {
     const normalized = normalizeError(err);
     logger.warn(
@@ -124,23 +134,26 @@ app.get("/", async (c) => {
     );
   }
 
-  const buildSeatInfo = (key: PriceKey): SeatTypeInfo | null => {
-    const monthlyPriceCents = monthlyPriceCentsMap.get(key);
-    if (monthlyPriceCents === undefined) {
-      return null;
+  const response: SeatPlanResponseBody = {};
+  for (const seatType of seatTypesByProductId.values()) {
+    const priceCents = monthlyPriceCentsBySeatType.get(seatType);
+    const name = nameBySeatType.get(seatType);
+    if (priceCents === undefined || name === undefined) {
+      continue;
     }
-    return {
-      awuCredits: awuCreditsMap.get(key) ?? 0,
-      priceCents: monthlyPriceCents,
+    const info: SeatTypeInfo = {
+      name,
+      awuCredits: getAwuAllocationForSeatType(
+        contract,
+        seatType,
+        productSeatTypes
+      ),
+      priceCents,
       currency,
     };
-  };
-
-  const body: SeatPlanResponseBody = {
-    pro: buildSeatInfo("pro"),
-    max: buildSeatInfo("max"),
-  };
-  return c.json(body);
+    response[seatType] = info;
+  }
+  return c.json(response);
 });
 
 export default app;
