@@ -2270,35 +2270,45 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [["createdAt", "DESC"]],
     });
 
-    return Promise.all(
-      conversations.map(async (c) => {
-        const { actionRequired, lastReadAt } =
-          await ConversationResource.getActionRequiredAndLastReadAtForUser(
-            auth,
-            c.id
-          );
+    let participationByConversationId = new Map<ModelId, UserParticipation>();
+    let lastReadByConversationId = new Map<ModelId, Date>();
+    if (auth.user() && conversations.length > 0) {
+      const conversationIds = conversations.map((c) => c.id);
+      participationByConversationId =
+        await ConversationResource.fetchParticipationMapForUser(
+          auth,
+          conversationIds
+        );
+      lastReadByConversationId = await ConversationResource.fetchReadMapForUser(
+        auth,
+        conversationIds
+      );
+    }
 
-        return {
-          id: c.id,
-          created: c.createdAt.getTime(),
-          updated: c.updatedAt.getTime(),
-          sId: c.sId,
-          title: c.title,
-          triggerId: triggerId,
-          actionRequired,
-          unread: lastReadAt === null || c.updatedAt > lastReadAt,
-          lastReadMs: lastReadAt?.getTime() ?? null,
-          hasError: c.hasError,
-          requestedGroupIds: [],
-          requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
-          spaceId: c.space?.sId ?? null,
-          depth: c.depth,
-          metadata: c.metadata,
-          branchId: null,
-          isRunningAgentLoop: c.isRunningAgentLoop,
-        };
-      })
-    );
+    return conversations.map((c) => {
+      const participation = participationByConversationId.get(c.id);
+      const lastReadAt = lastReadByConversationId.get(c.id) ?? null;
+
+      return {
+        id: c.id,
+        created: c.createdAt.getTime(),
+        updated: c.updatedAt.getTime(),
+        sId: c.sId,
+        title: c.title,
+        triggerId: triggerId,
+        actionRequired: participation?.actionRequired ?? false,
+        unread: lastReadAt === null || c.updatedAt > lastReadAt,
+        lastReadMs: lastReadAt?.getTime() ?? null,
+        hasError: c.hasError,
+        requestedGroupIds: [],
+        requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
+        spaceId: c.space?.sId ?? null,
+        depth: c.depth,
+        metadata: c.metadata,
+        branchId: null,
+        isRunningAgentLoop: c.isRunningAgentLoop,
+      };
+    });
   }
 
   static async listSkillReinforcementConversations(
