@@ -16,6 +16,7 @@ import { expect } from "vitest";
 
 interface WorkspaceOverrides {
   whiteListedProviders?: ModelProviderIdType[] | null;
+  metronomeCustomerId?: string | null;
 }
 
 export class WorkspaceFactory {
@@ -53,6 +54,7 @@ export class WorkspaceFactory {
       name: faker.company.name(),
       description: workspaceDescription,
       workOSOrganizationId: faker.string.alpha(10),
+      metronomeCustomerId: overrides?.metronomeCustomerId ?? null,
       ...(overrides?.whiteListedProviders !== undefined && {
         whiteListedProviders: overrides.whiteListedProviders,
       }),
