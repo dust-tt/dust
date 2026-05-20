@@ -1,16 +1,11 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
-import {
-  isEntreprisePlanPrefix,
-  isFreePlan,
-  isFriendsAndFamilyPlan,
-  isOldFreePlan,
-  isProPlanPrefix,
-} from "@app/lib/plans/plan_codes";
+import { getPlanCodeSortPriority } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { tryParsePhoneNumber } from "@app/lib/plans/trial/phone";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -37,30 +32,6 @@ export type PokeWorkspaceType = LightWorkspaceType & {
 
 export type GetPokeWorkspacesResponseBody = {
   workspaces: PokeWorkspaceType[];
-};
-
-const getPlanPriority = (planCode: string) => {
-  if (isEntreprisePlanPrefix(planCode)) {
-    return 1;
-  }
-
-  if (isFriendsAndFamilyPlan(planCode)) {
-    return 2;
-  }
-
-  if (isProPlanPrefix(planCode)) {
-    return 3;
-  }
-
-  if (isFreePlan(planCode)) {
-    return 4;
-  }
-
-  if (isOldFreePlan(planCode)) {
-    return 5;
-  }
-
-  return 6;
 };
 
 async function handler(
@@ -205,11 +176,11 @@ async function handler(
         }
 
         let isSearchByPhone = false;
-        const e164 = tryParsePhoneNumber(searchTerm);
-        if (e164) {
+        const e164PhoneNumber = tryParsePhoneNumber(searchTerm);
+        if (e164PhoneNumber) {
           const workspaceModelId =
             await WorkspaceVerificationAttemptResource.findWorkspaceModelIdFromPhoneNumber(
-              e164
+              e164PhoneNumber
             );
           if (workspaceModelId) {
             isSearchByPhone = true;
@@ -279,10 +250,10 @@ async function handler(
         workspaces.sort((a, b) => {
           // Note: TypeScript may incorrectly assume that `subscriptions` is always defined.
           // Using optional chaining and default values to handle potential undefined cases.
-          const planAPriority = getPlanPriority(
+          const planAPriority = getPlanCodeSortPriority(
             a.subscriptions?.[0]?.plan?.code || ""
           );
-          const planBPriority = getPlanPriority(
+          const planBPriority = getPlanCodeSortPriority(
             b.subscriptions?.[0]?.plan?.code || ""
           );
 

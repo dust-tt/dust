@@ -21,6 +21,7 @@ import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
 import type { PokeItemBase } from "@app/types/poke";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import { validate as validateUuid } from "uuid";
 
@@ -190,14 +191,27 @@ async function searchPokeFrames(searchTerm: string): Promise<PokeItemBase[]> {
 async function searchByPhoneNumber(
   searchTerm: string
 ): Promise<PokeItemBase[]> {
-  const e164 = tryParsePhoneNumber(searchTerm);
-  if (!e164) {
+  let e164PhoneNumber: string | null;
+  try {
+    // `tryParsePhoneNumber` loads `libphonenumber-js`, whose CJS metadata
+    // `require()` breaks under the front-api dev runtime (tsx wraps the JSON
+    // in `{ default }`). Degrade gracefully — phone search is one of several
+    // search axes, and most search terms aren't phone numbers anyway.
+    e164PhoneNumber = tryParsePhoneNumber(searchTerm);
+  } catch (err) {
+    logger.warn(
+      { err: normalizeError(err) },
+      "Phone number parsing unavailable; skipping phone-search axis"
+    );
+    return [];
+  }
+  if (!e164PhoneNumber) {
     return [];
   }
 
   const workspaceModelId =
     await WorkspaceVerificationAttemptResource.findWorkspaceModelIdFromPhoneNumber(
-      e164
+      e164PhoneNumber
     );
   if (!workspaceModelId) {
     return [];
