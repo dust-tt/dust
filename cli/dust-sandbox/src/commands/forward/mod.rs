@@ -768,6 +768,230 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn mitm_session_completes_websocket_upgrade_when_upstream_returns_101() -> Result<()> {
+        let sni = "api.openai.com";
+        let mitm_ca = Arc::new(MitmCa::generate()?);
+        let (upstream_server_config, upstream_ca_der) = test_upstream_server_config(sni)?;
+        let mut runtime = test_runtime(Arc::clone(&mitm_ca), upstream_ca_der)?;
+        runtime.secret_table = Arc::new(secret_table(&[sni])?);
+
+        let (agent_client_io, agent_dsbx_io) = tokio::io::duplex(16 * 1024);
+        let (dsbx_proxy_io, upstream_server_io) = tokio::io::duplex(16 * 1024);
+
+        let upstream_task = tokio::spawn(async move {
+            let acceptor = TlsAcceptor::from(upstream_server_config);
+            let mut tls = acceptor
+                .accept(upstream_server_io)
+                .await
+                .context("test upstream failed to accept TLS")?;
+
+            let mut request = Vec::new();
+            loop {
+                let mut byte = [0_u8; 1];
+                tls.read_exact(&mut byte)
+                    .await
+                    .context("test upstream failed to read request byte")?;
+                request.push(byte[0]);
+                if request.ends_with(b"\r\n\r\n") {
+                    break;
+                }
+            }
+            let request_text = String::from_utf8(request).context("request should be utf8")?;
+            assert!(request_text.contains("Upgrade: websocket\r\n"));
+
+            tls.write_all(
+                b"HTTP/1.1 101 Switching Protocols\r\n\
+                  Upgrade: websocket\r\n\
+                  Connection: Upgrade\r\n\
+                  \r\n\
+                  server-frame",
+            )
+            .await
+            .context("test upstream failed to write 101")?;
+
+            let mut frame = [0_u8; 12];
+            tls.read_exact(&mut frame)
+                .await
+                .context("test upstream failed to read raw client frame")?;
+            assert_eq!(&frame, b"client-frame");
+
+            tls.shutdown()
+                .await
+                .context("test upstream failed to shut down TLS")?;
+            Ok::<(), anyhow::Error>(())
+        });
+
+        let agent_connector = test_tls_connector(
+            mitm_ca.ca_cert_der(),
+            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
+        )?;
+        let agent_task = tokio::spawn(async move {
+            let server_name =
+                ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
+            let mut tls = agent_connector
+                .connect(server_name, agent_client_io)
+                .await
+                .context("test agent failed to connect to dsbx MITM")?;
+
+            tls.write_all(
+                format!(
+                    "GET /realtime HTTP/1.1\r\nHost: {sni}\r\n\
+                     Connection: Upgrade\r\nUpgrade: websocket\r\n\r\n"
+                )
+                .as_bytes(),
+            )
+            .await
+            .context("test agent failed to write upgrade request")?;
+
+            let mut response = Vec::new();
+            let mut buffer = [0_u8; 256];
+            loop {
+                let bytes_read = tls
+                    .read(&mut buffer)
+                    .await
+                    .context("test agent failed to read response")?;
+                if bytes_read == 0 {
+                    break;
+                }
+                response.extend_from_slice(&buffer[..bytes_read]);
+                if response.ends_with(b"server-frame") {
+                    break;
+                }
+            }
+            let response_text =
+                String::from_utf8(response).context("upgrade response should be utf8")?;
+            assert!(response_text.starts_with("HTTP/1.1 101 Switching Protocols\r\n"));
+            assert!(response_text.ends_with("server-frame"));
+
+            tls.write_all(b"client-frame")
+                .await
+                .context("test agent failed to write raw frame")?;
+            tls.shutdown()
+                .await
+                .context("test agent failed to shut down TLS")?;
+            Ok::<(), anyhow::Error>(())
+        });
+
+        run_mitm_session(&runtime, sni, agent_dsbx_io, dsbx_proxy_io).await?;
+        agent_task.await.context("test agent task panicked")??;
+        upstream_task
+            .await
+            .context("test upstream task panicked")??;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn mitm_session_does_not_splice_client_frames_when_upgrade_rejected() -> Result<()> {
+        let sni = "api.openai.com";
+        let mitm_ca = Arc::new(MitmCa::generate()?);
+        let (upstream_server_config, upstream_ca_der) = test_upstream_server_config(sni)?;
+        let mut runtime = test_runtime(Arc::clone(&mitm_ca), upstream_ca_der)?;
+        runtime.secret_table = Arc::new(secret_table(&[sni])?);
+
+        let (agent_client_io, agent_dsbx_io) = tokio::io::duplex(16 * 1024);
+        let (dsbx_proxy_io, upstream_server_io) = tokio::io::duplex(16 * 1024);
+
+        let upstream_task = tokio::spawn(async move {
+            let acceptor = TlsAcceptor::from(upstream_server_config);
+            let mut tls = acceptor
+                .accept(upstream_server_io)
+                .await
+                .context("test upstream failed to accept TLS")?;
+
+            let mut request = Vec::new();
+            loop {
+                let mut byte = [0_u8; 1];
+                tls.read_exact(&mut byte)
+                    .await
+                    .context("test upstream failed to read request byte")?;
+                request.push(byte[0]);
+                if request.ends_with(b"\r\n\r\n") {
+                    break;
+                }
+            }
+
+            tls.write_all(
+                b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\nrejected",
+            )
+            .await
+            .context("test upstream failed to write 200")?;
+
+            // After the rejection, dsbx must shut down the upstream write
+            // half, so anything the agent tries to send afterwards must not
+            // arrive. Drain to EOF and assert nothing follows the upgrade
+            // request bytes already consumed.
+            let mut tail = Vec::new();
+            tls.read_to_end(&mut tail)
+                .await
+                .context("test upstream failed to read tail")?;
+            assert!(
+                tail.is_empty(),
+                "no client bytes should have been spliced after rejection, got {:?}",
+                tail
+            );
+
+            tls.shutdown().await.ok();
+            Ok::<(), anyhow::Error>(())
+        });
+
+        let agent_connector = test_tls_connector(
+            mitm_ca.ca_cert_der(),
+            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
+        )?;
+        let agent_task = tokio::spawn(async move {
+            let server_name =
+                ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
+            let mut tls = agent_connector
+                .connect(server_name, agent_client_io)
+                .await
+                .context("test agent failed to connect to dsbx MITM")?;
+
+            tls.write_all(
+                format!(
+                    "GET /realtime HTTP/1.1\r\nHost: {sni}\r\n\
+                     Connection: Upgrade\r\nUpgrade: websocket\r\n\r\n"
+                )
+                .as_bytes(),
+            )
+            .await
+            .context("test agent failed to write upgrade request")?;
+
+            let mut response = Vec::new();
+            let mut buffer = [0_u8; 256];
+            loop {
+                let bytes_read = tls
+                    .read(&mut buffer)
+                    .await
+                    .context("test agent failed to read rejection")?;
+                if bytes_read == 0 {
+                    break;
+                }
+                response.extend_from_slice(&buffer[..bytes_read]);
+                if response.ends_with(b"rejected") {
+                    break;
+                }
+            }
+            let response_text = String::from_utf8(response).context("rejection should be utf8")?;
+            assert!(response_text.starts_with("HTTP/1.1 200 OK\r\n"));
+
+            // The agent attempts to send post-upgrade frames; dsbx must drop
+            // them on the floor because upstream did not accept the upgrade.
+            let _ = tls.write_all(b"client-frame").await;
+            let _ = tls.shutdown().await;
+            Ok::<(), anyhow::Error>(())
+        });
+
+        run_mitm_session(&runtime, sni, agent_dsbx_io, dsbx_proxy_io).await?;
+        agent_task.await.context("test agent task panicked")??;
+        upstream_task
+            .await
+            .context("test upstream task panicked")??;
+
+        Ok(())
+    }
+
     // SNI-miss path: dsbx does not terminate, just splices. The agent's TLS
     // client must see the upstream's real cert chain (not the dsbx CA),
     // which is the load-bearing property of the splice branch.
