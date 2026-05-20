@@ -1,6 +1,7 @@
 "use client";
 
 import { Spinner } from "@viz/app/components/Components";
+import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
@@ -30,7 +31,7 @@ import { toBlob, toSvg } from "html-to-image";
 import * as lucideAll from "lucide-react";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
@@ -311,40 +312,6 @@ export function VisualizationWrapperWithErrorBoundary({
   );
 }
 
-interface HoverState {
-  top: number;
-  left: number;
-}
-
-// Tailwind class sets for editable span states.
-// Defined at module level so Tailwind's content scanner includes them in the build.
-const HOVER_CLS = [
-  "outline-dashed",
-  "outline-1",
-  "outline-blue-400/50",
-  "outline-offset-2",
-  "bg-blue-500/10",
-];
-const ACTIVE_CLS = [
-  "outline",
-  "outline-1",
-  "outline-blue-500/70",
-  "outline-offset-2",
-  "bg-blue-500/5",
-];
-const SAVED_CLS = [
-  "outline",
-  "outline-1",
-  "outline-green-500/70",
-  "outline-offset-2",
-];
-const FAILED_CLS = [
-  "outline",
-  "outline-1",
-  "outline-red-500/70",
-  "outline-offset-2",
-];
-
 // This component renders the generated code.
 // It gets the generated code via message passing to the host window.
 export function VisualizationWrapper({
@@ -364,10 +331,6 @@ export function VisualizationWrapper({
   const [vizReady, setVizReady] = useState(false);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
-
-  const [hoverState, setHoverState] = useState<HoverState | null>(null);
-  const hoveredSpanRef = useRef<HTMLElement | null>(null);
-  const isSavingRef = useRef(false);
 
   const {
     sendHeightToParent,
@@ -526,134 +489,6 @@ export function VisualizationWrapper({
     await displayCode();
   }, [displayCode]);
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isEditable) {
-        return;
-      }
-      const target = (e.target as Element).closest<HTMLElement>(
-        "[data-editable]"
-      );
-
-      if (hoveredSpanRef.current && hoveredSpanRef.current !== target) {
-        hoveredSpanRef.current.classList.remove(...HOVER_CLS);
-      }
-
-      if (target && target.contentEditable !== "true") {
-        if (hoveredSpanRef.current !== target) {
-          target.classList.add(...HOVER_CLS);
-          hoveredSpanRef.current = target;
-        }
-        const rect = target.getBoundingClientRect();
-        setHoverState({ top: rect.top - 32, left: rect.left + rect.width / 2 });
-      } else {
-        hoveredSpanRef.current = null;
-        setHoverState(null);
-      }
-    },
-    [isEditable]
-  );
-
-  const handleMouseLeave = useCallback(() => {
-    if (hoveredSpanRef.current) {
-      hoveredSpanRef.current.classList.remove(...HOVER_CLS);
-      hoveredSpanRef.current = null;
-    }
-    setHoverState(null);
-  }, []);
-
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (!isEditable) {
-        return;
-      }
-      const target = (e.target as Element).closest<HTMLElement>(
-        "[data-editable]"
-      );
-      if (!target || target.contentEditable === "true") {
-        return;
-      }
-      target.classList.remove(...HOVER_CLS);
-      hoveredSpanRef.current = null;
-      setHoverState(null);
-      target.classList.add(...ACTIVE_CLS);
-      target.dataset.originalText = target.textContent ?? "";
-      target.contentEditable = "true";
-      target.focus();
-    },
-    [isEditable]
-  );
-
-  const handleBlur = useCallback(
-    (e: React.FocusEvent) => {
-      const target = (e.target as Element).closest<HTMLElement>(
-        "[data-editable]"
-      );
-      if (!target || target.contentEditable !== "true") {
-        return;
-      }
-
-      const originalText = target.dataset.originalText ?? "";
-      const newText = target.textContent ?? "";
-
-      target.contentEditable = "inherit";
-      target.classList.remove(...ACTIVE_CLS);
-      delete target.dataset.originalText;
-
-      if (newText === originalText || isSavingRef.current) {
-        return;
-      }
-
-      const flash = (cls: string[]) => {
-        target.classList.add(...cls);
-        setTimeout(() => target.classList.remove(...cls), 800);
-      };
-
-      const editId = target.dataset.editId ?? "";
-      isSavingRef.current = true;
-      void editText(editId, originalText, newText)
-        .then((result) => {
-          if (result.success) {
-            flash(SAVED_CLS);
-          } else {
-            target.textContent = originalText;
-            flash(FAILED_CLS);
-          }
-        })
-        .finally(() => {
-          isSavingRef.current = false;
-        });
-    },
-    [editText]
-  );
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!isEditable) {
-        return;
-      }
-      const target = (e.target as Element).closest<HTMLElement>(
-        "[data-editable]"
-      );
-      if (!target || target.contentEditable !== "true") {
-        return;
-      }
-
-      // Prevent all key events from reaching frame components (e.g. slideshow
-      // arrow-key navigation) while a span is being edited.
-      e.stopPropagation();
-
-      if (e.key === "Enter") {
-        e.preventDefault();
-        target.blur();
-      } else if (e.key === "Escape") {
-        target.textContent = target.dataset.originalText ?? "";
-        target.blur();
-      }
-    },
-    [isEditable]
-  );
-
   // Add message listeners for export requests.
   useEffect(() => {
     const cleanups: (() => void)[] = [];
@@ -687,15 +522,29 @@ export function VisualizationWrapper({
 
   const shouldShowControls = !isFullHeight && !isPdfMode;
 
+  const runner = (
+    <div ref={ref}>
+      <Runner
+        code={runnerParams.code}
+        scope={runnerParams.scope}
+        onRendered={(error) => {
+          if (error) {
+            setErrorMessage(error);
+          } else {
+            // Set data-viz-ready attribute once fully rendered to enable screen capture.
+            // In PDF mode, delay to let Recharts animations complete (react-smooth is JS-based).
+            const delayMs = isPdfMode ? 5000 : 0;
+            setTimeout(() => setVizReady(true), delayMs);
+          }
+        }}
+      />
+    </div>
+  );
+
   return (
     <div
       className={`relative font-sans group/viz ${heightClass}`}
       data-viz-ready={vizReady}
-      onDoubleClick={isEditable ? handleDoubleClick : undefined}
-      onMouseMove={isEditable ? handleMouseMove : undefined}
-      onMouseLeave={isEditable ? handleMouseLeave : undefined}
-      onBlur={isEditable ? handleBlur : undefined}
-      onKeyDown={isEditable ? handleKeyDown : undefined}
     >
       {shouldShowControls && (
         <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
@@ -722,33 +571,9 @@ export function VisualizationWrapper({
           </button>
         </div>
       )}
-      <div ref={ref}>
-        <VizContext.Provider value={{ isPdfMode }}>
-          <Runner
-            code={runnerParams.code}
-            scope={runnerParams.scope}
-            onRendered={(error) => {
-              if (error) {
-                setErrorMessage(error);
-              } else {
-                // Set data-viz-ready attribute once fully rendered to enable screen capture.
-                // In PDF mode, delay to let Recharts animations complete (react-smooth is JS-based).
-                const delayMs = isPdfMode ? 5000 : 0;
-                setTimeout(() => setVizReady(true), delayMs);
-              }
-            }}
-          />
-        </VizContext.Provider>
-      </div>
-
-      {isEditable && hoverState && (
-        <div
-          style={{ top: hoverState.top, left: hoverState.left }}
-          className="pointer-events-none fixed z-50 -translate-x-1/2 rounded bg-black/70 px-2 py-1 font-sans text-xs font-normal text-white"
-        >
-          Double-click to edit
-        </div>
-      )}
+      <VizContext.Provider value={{ isPdfMode, editText }}>
+        {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
+      </VizContext.Provider>
     </div>
   );
 }
