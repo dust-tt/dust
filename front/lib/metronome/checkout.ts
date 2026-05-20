@@ -6,10 +6,15 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
+import {
+  createCouponCredit,
+  getCreditTypeFromPackage,
+} from "@app/lib/metronome/coupons";
 import { loadFirstPeriodCredit } from "@app/lib/metronome/credits";
 import { PlanModel } from "@app/lib/models/plan";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
-import { getStripeClient } from "@app/lib/plans/stripe";
+import type { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
+import type { CouponResource } from "@app/lib/resources/coupon_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -20,6 +25,7 @@ import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/
 import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * Provisions a Metronome subscription after the first-period payment has been collected.
@@ -29,26 +35,28 @@ import { Err, Ok } from "@app/types/shared/result";
  */
 export async function provisionMetronomeFirstPeriodSubscription({
   stripeCustomerId,
-  paymentMethodId,
-  subtotalCents,
   currency,
   workspaceId,
   userId,
   planCode,
   metronomePackageAlias,
+  coupon,
+  pendingRedemption,
   firstPeriodPaymentEnforced,
+  firstPeriodPaymentCents,
   uniquenessKey,
   now,
 }: {
   stripeCustomerId: string;
-  paymentMethodId: string;
-  subtotalCents: number;
   currency: string;
   workspaceId: string;
   userId: string;
   planCode: string;
   metronomePackageAlias: string;
+  coupon?: CouponResource;
+  pendingRedemption?: CouponRedemptionResource;
   firstPeriodPaymentEnforced: boolean;
+  firstPeriodPaymentCents: number;
   uniquenessKey: string;
   now: Date;
 }): Promise<Result<void, DustError>> {
@@ -73,14 +81,6 @@ export async function provisionMetronomeFirstPeriodSubscription({
     },
     "[Metronome] Handle metronome checkout"
   );
-
-  // Set the payment method as the customer's default for future Metronome-generated
-  // invoices (month 2+). Must be done before provisioning so the PM is in place
-  // before any invoice is attempted.
-  const stripe = getStripeClient();
-  await stripe.customers.update(stripeCustomerId, {
-    invoice_settings: { default_payment_method: paymentMethodId },
-  });
 
   const validCurrency = isSupportedCurrency(currency) ? currency : "usd";
   const resolvedPackageAlias = resolvePackageAliasForCurrency(
@@ -108,17 +108,72 @@ export async function provisionMetronomeFirstPeriodSubscription({
   }
   const { metronomeCustomerId } = customerResult.value;
 
-  const authAdmin = await Authenticator.internalAdminForWorkspace(
-    workspace.sId
-  );
+  if (coupon && pendingRedemption) {
+    const creditTypeResult =
+      await getCreditTypeFromPackage(resolvedPackageAlias);
+    if (creditTypeResult.isErr()) {
+      logger.error(
+        {
+          workspaceId,
+          couponCode: coupon.code,
+          redemptionId: pendingRedemption.sId,
+          error: normalizeError(creditTypeResult.error).message,
+        },
+        "[Checkout] Failed to get credit type for coupon in Metronome checkout"
+      );
+      return new Err(
+        new DustError("metronome_error", creditTypeResult.error.message)
+      );
+    }
+    const { creditTypeId, currency: couponCurrency } = creditTypeResult.value;
+    const creditResult = await createCouponCredit({
+      metronomeCustomerId,
+      coupon,
+      redemptionId: pendingRedemption.sId,
+      redeemedAt: pendingRedemption.redeemedAt,
+      creditTypeId,
+      currency: couponCurrency,
+    });
+    if (creditResult.isErr()) {
+      logger.error(
+        {
+          workspaceId,
+          couponCode: coupon.code,
+          redemptionId: pendingRedemption.sId,
+          error: normalizeError(creditResult.error).message,
+        },
+        "[Checkout] Failed to create coupon credit in Metronome checkout"
+      );
+      return new Err(
+        new DustError("metronome_error", creditResult.error.message)
+      );
+    }
+    const markActiveResult = await pendingRedemption.markActive(
+      creditResult.value
+    );
+    if (markActiveResult.isErr()) {
+      logger.error(
+        {
+          workspaceId,
+          couponCode: coupon.code,
+          redemptionId: pendingRedemption.sId,
+          error: normalizeError(markActiveResult.error).message,
+        },
+        "[Checkout] Failed to mark coupon redemption as active"
+      );
+      return new Err(
+        new DustError("metronome_error", markActiveResult.error.message)
+      );
+    }
+  }
 
   if (firstPeriodPaymentEnforced) {
     // Zero out the first Metronome-generated invoice. The customer already paid
-    // via the Stripe invoice. subtotalCents is pre-tax — exactly the amount that
+    // via the Stripe invoice. firstPeriodPaymentCents is pre-tax — exactly the amount that
     // Metronome will generate for the first period.
     const creditResult = await loadFirstPeriodCredit({
       metronomeCustomerId,
-      amountCents: subtotalCents,
+      amountCents: firstPeriodPaymentCents,
       currency: validCurrency,
       uniquenessKey,
       now,
@@ -166,8 +221,22 @@ export async function provisionMetronomeFirstPeriodSubscription({
     subscriptionStartAt: now,
   });
 
+  const authAdmin = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
   await restoreWorkspaceAfterSubscription(authAdmin);
-  await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({ workspaceId });
+  const workosWorkflowResult =
+    await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({ workspaceId });
+  if (workosWorkflowResult.isErr()) {
+    logger.error(
+      {
+        panic: true,
+        workspaceId,
+        error: normalizeError(workosWorkflowResult.error).message,
+      },
+      "[Checkout] Failed to launch WorkOS workspace subscription created workflow"
+    );
+  }
 
   logger.info(
     { workspaceId, metronomeContractId, uniquenessKey },

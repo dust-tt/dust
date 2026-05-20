@@ -24,7 +24,6 @@ import type {
   CouponResource,
   CouponValidationError,
 } from "@app/lib/resources/coupon_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { CouponDiscountType } from "@app/types/coupon";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -32,7 +31,6 @@ import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { addMonths } from "date-fns";
 
 async function getCreditTypeFromRateCardId(
@@ -225,20 +223,13 @@ export async function redeemCoupon(
   }
   const { creditTypeId, currency } = creditTypeIdResult.value;
 
-  let redemption: CouponRedemptionResource;
-  try {
-    redemption = await withTransaction(async (transaction) => {
-      const r = await CouponRedemptionResource.makeNew(
-        auth,
-        { coupon },
-        { transaction }
-      );
-      await coupon.incrementRedemptionCount({ transaction });
-      return r;
-    });
-  } catch (err) {
-    return new Err(normalizeError(err));
+  const pendingResult = await CouponRedemptionResource.createPending(auth, {
+    coupon,
+  });
+  if (pendingResult.isErr()) {
+    return new Err(pendingResult.error);
   }
+  const redemption = pendingResult.value;
 
   const creditResult = await createCouponCredit({
     metronomeCustomerId,
@@ -250,16 +241,25 @@ export async function redeemCoupon(
   });
 
   if (creditResult.isErr()) {
-    await coupon.decrementRedemptionCount();
-    await redemption.markFailed();
     logger.error(
       {
         err: creditResult.error,
         couponId: coupon.sId,
         workspaceId: workspace.sId,
       },
-      "[Metronome] Failed to create coupon credit — redemption marked failed"
+      "[Metronome] Failed to create coupon credit — rolling back redemption"
     );
+    const rollbackResult = await redemption.rollback(coupon);
+    if (rollbackResult.isErr()) {
+      logger.error(
+        {
+          err: rollbackResult.error,
+          couponId: coupon.sId,
+          workspaceId: workspace.sId,
+        },
+        "[Metronome] Failed to create coupon credit - failed to rollback coupon redemption"
+      );
+    }
     return new Err(creditResult.error);
   }
 

@@ -7,7 +7,10 @@ import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import {
   chargeFirstPeriodInvoice,
   getStripeClient,
+  setStripeCustomerDefaultPaymentMethod,
 } from "@app/lib/plans/stripe";
+import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
+import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { wakeLock } from "@app/lib/wake_lock";
@@ -31,7 +34,8 @@ export type PostCheckoutPaymentResponseBody =
         | "setup_failed"
         | "payment_failed"
         | "metronome_error"
-        | "internal_error";
+        | "internal_error"
+        | "invalid_coupon";
     };
 
 async function handler(
@@ -193,36 +197,119 @@ async function handler(
       const country = customer.address?.country ?? "US";
       const currency = getBillingCurrencyForCountry(country, true);
 
-      if (shouldEnforceFirstPeriodPayment) {
-        const chargeResult = await chargeFirstPeriodInvoice({
-          stripeCustomerId,
-          paymentMethodId,
-          subtotalCents,
-          seatCount,
-          setupSessionId,
-          workspaceId: owner.sId,
-          currency,
-        });
-        if (chargeResult.isErr()) {
-          return res.status(200).json({ error: "payment_failed" });
+      // Coupon: validate + create pending redemption before charging.
+      const couponCode = setupSession.metadata?.couponCode;
+      let coupon: CouponResource | undefined;
+      let pendingRedemption: CouponRedemptionResource | undefined;
+
+      if (couponCode) {
+        const found = await CouponResource.findByCode(couponCode);
+        if (!found) {
+          return res.status(200).json({ error: "invalid_coupon" });
         }
+        const validation = found.validateRedemption();
+        if (validation.isErr()) {
+          return res.status(200).json({ error: "invalid_coupon" });
+        }
+        const existing =
+          await CouponRedemptionResource.findActiveOrPendingByCouponAndWorkspace(
+            auth,
+            { coupon: found }
+          );
+        if (existing) {
+          return res.status(200).json({ error: "invalid_coupon" });
+        }
+        const pendingResult = await CouponRedemptionResource.createPending(
+          auth,
+          { coupon: found }
+        );
+        if (pendingResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: owner.sId,
+              couponCode,
+              error: pendingResult.error.message,
+            },
+            "[Checkout] Failed to create pending coupon redemption"
+          );
+          return res.status(200).json({ error: "invalid_coupon" });
+        }
+        pendingRedemption = pendingResult.value;
+        coupon = found;
       }
+
+      const couponAmountCents = coupon ? coupon.amount * 100 : 0;
+      const effectiveSubtotalCents = Math.max(
+        0,
+        subtotalCents - couponAmountCents
+      );
 
       const user = auth.getNonNullableUser();
       const planCode = setupSession.metadata?.planCode ?? "";
       const metronomePackageAlias =
         setupSession.metadata?.metronomePackageAlias ?? "";
 
+      // Set the payment method as the customer's Stripe default
+      // for future Metronome-generated invoices (month 2+).
+      const setDefaultPaymentMethodResult =
+        await setStripeCustomerDefaultPaymentMethod({
+          stripeCustomerId,
+          paymentMethodId,
+          workspaceId: owner.sId,
+        });
+      if (setDefaultPaymentMethodResult.isErr()) {
+        if (pendingRedemption && coupon) {
+          const rollbackResult = await pendingRedemption.rollback(coupon);
+          if (rollbackResult.isErr()) {
+            logger.error(
+              {
+                err: rollbackResult.error,
+                workspaceId: owner.sId,
+              },
+              "[Checkout] Failed to rollback coupon redemption after setDefaultPaymentMethod failure"
+            );
+          }
+        }
+        return res.status(200).json({ error: "payment_failed" });
+      }
+
+      if (shouldEnforceFirstPeriodPayment) {
+        const chargeResult = await chargeFirstPeriodInvoice({
+          stripeCustomerId,
+          paymentMethodId,
+          subtotalCents,
+          couponAmountCents,
+          seatCount,
+          setupSessionId,
+          workspaceId: owner.sId,
+          currency,
+          couponCode,
+        });
+        if (chargeResult.isErr()) {
+          if (pendingRedemption && coupon) {
+            const rollbackResult = await pendingRedemption.rollback(coupon);
+            if (rollbackResult.isErr()) {
+              logger.error(
+                { err: rollbackResult.error, workspaceId: owner.sId },
+                "[Checkout] Failed to rollback coupon redemption after chargeFirstPeriodInvoice failure"
+              );
+            }
+          }
+          return res.status(200).json({ error: "payment_failed" });
+        }
+      }
+
       const provisionResult = await provisionMetronomeFirstPeriodSubscription({
         stripeCustomerId,
-        paymentMethodId,
-        subtotalCents,
         currency,
         workspaceId: owner.sId,
         userId: user.sId,
         planCode,
         metronomePackageAlias,
+        coupon,
+        pendingRedemption,
         firstPeriodPaymentEnforced: shouldEnforceFirstPeriodPayment,
+        firstPeriodPaymentCents: effectiveSubtotalCents,
         uniquenessKey: setupSessionId,
         now: new Date(),
       });
@@ -233,6 +320,11 @@ async function handler(
             panic: true,
             workspaceId: owner.sId,
             error: normalizeError(provisionResult.error).message,
+            userId: user.sId,
+            planCode,
+            metronomePackageAlias,
+            firstPeriodPaymentEnforced: shouldEnforceFirstPeriodPayment,
+            uniquenessKey: setupSessionId,
           },
           "[Checkout] Payment succeeded but Metronome provisioning failed"
         );

@@ -160,6 +160,58 @@ describe("CouponResource.incrementRedemptionCount / decrementRedemptionCount", (
   });
 });
 
+describe("CouponRedemptionResource.createPending", () => {
+  it("creates a pending redemption and increments the coupon count atomically", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create();
+
+    const result = await CouponRedemptionResource.createPending(auth, {
+      coupon,
+    });
+
+    expect(result.isOk()).toBe(true);
+    const redemption = result.isOk() ? result.value : null;
+    expect(redemption?.status).toBe("pending");
+
+    const updated = await CouponResource.fetchByCouponId(coupon.sId);
+    expect(updated?.redemptionCount).toBe(1);
+  });
+
+  it("returns Err when the unique constraint is violated", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create();
+    await CouponRedemptionResource.makeNew(auth, { coupon });
+
+    const result = await CouponRedemptionResource.createPending(auth, {
+      coupon,
+    });
+
+    expect(result.isErr()).toBe(true);
+  });
+});
+
+describe("CouponRedemptionResource.rollback", () => {
+  it("marks redemption failed and decrements the coupon count", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create();
+    const pendingResult = await CouponRedemptionResource.createPending(auth, {
+      coupon,
+    });
+    expect(pendingResult.isOk()).toBe(true);
+    if (!pendingResult.isOk()) {
+      throw new Error("createPending failed");
+    }
+    const redemption = pendingResult.value;
+
+    const rollbackResult = await redemption.rollback(coupon);
+    expect(rollbackResult.isOk()).toBe(true);
+
+    expect(redemption.status).toBe("failed");
+    const updated = await CouponResource.fetchByCouponId(coupon.sId);
+    expect(updated?.redemptionCount).toBe(0);
+  });
+});
+
 describe("CouponRedemptionResource.delete", () => {
   it("removes the redemption", async () => {
     const { auth } = await makeWorkspaceWithUserAuth();
