@@ -27,6 +27,11 @@ const READ_CHUNK_BYTES: usize = 8 * 1024;
 const NON_HTTP_FALLBACK_BYTES: usize = 4 * 1024;
 const MAX_CHUNK_LINE_BYTES: usize = 8 * 1024;
 const MAX_TRAILER_BLOCK_BYTES: usize = 64 * 1024;
+// Cap how many bytes we stage while waiting for a CRLF on the upstream
+// response status line. A real `HTTP/1.x NNN ...` line is well under a few
+// hundred bytes; well past that we treat the upstream as non-HTTP and stop
+// sniffing rather than buffer responses indefinitely.
+const MAX_STATUS_LINE_BYTES: usize = 16 * 1024;
 
 const PLACEHOLDER_PREFIX: &[u8] = PLACEHOLDER_PREFIX_STR.as_bytes();
 const PLACEHOLDER_SUFFIX: &[u8] = PLACEHOLDER_SUFFIX_STR.as_bytes();
@@ -68,12 +73,36 @@ pub(super) enum HttpRewriteError {
     Io(anyhow::Error),
 }
 
-// Kept for API stability with the response-side websocket coordination that
-// lands in a follow-up PR. Nothing here sends on `accepted_tx` yet; the
-// upgrade path simply splices raw bytes once the request is forwarded.
-#[allow(dead_code)]
+// Sent by the request task to the response task after forwarding a WebSocket
+// upgrade request. The response task sniffs the next response status line,
+// signals back through `accepted_tx` whether the upstream replied with 101
+// Switching Protocols, and the request task uses that signal to decide
+// whether to splice raw client->upstream frames (101) or tear the upstream
+// write half down (non-101). The channel is `oneshot` because each upgrade
+// request gets exactly one verdict.
 pub(super) struct WebSocketUpgradeWatch {
     pub accepted_tx: oneshot::Sender<bool>,
+}
+
+enum UpgradeVerdict {
+    NotAnUpgrade,
+    AwaitingResponse(oneshot::Receiver<bool>),
+    ResponseTaskGone,
+}
+
+async fn register_upgrade_verdict(
+    websocket_watch_tx: &mpsc::Sender<WebSocketUpgradeWatch>,
+) -> UpgradeVerdict {
+    let (accepted_tx, accepted_rx) = oneshot::channel();
+    if websocket_watch_tx
+        .send(WebSocketUpgradeWatch { accepted_tx })
+        .await
+        .is_err()
+    {
+        UpgradeVerdict::ResponseTaskGone
+    } else {
+        UpgradeVerdict::AwaitingResponse(accepted_rx)
+    }
 }
 
 impl fmt::Display for HttpRewriteError {
@@ -118,7 +147,7 @@ pub(super) async fn forward_http1_requests<R, W>(
     upstream: &mut W,
     secret_table: &SecretTable,
     mode: HttpRewriteMode<'_>,
-    _websocket_watch_tx: Option<&mpsc::Sender<WebSocketUpgradeWatch>>,
+    websocket_watch_tx: &mpsc::Sender<WebSocketUpgradeWatch>,
 ) -> RewriteResult<()>
 where
     R: AsyncRead + Unpin,
@@ -158,6 +187,17 @@ where
         parsed_first_http_request = true;
         let processed = process_request(&request, secret_table, mode)?;
 
+        // For a WebSocket upgrade we register the response-side sniff BEFORE
+        // forwarding any bytes so the response task is already in sniff mode
+        // by the time upstream's 101 (or non-101) reply arrives. Doing it
+        // after forwarding would race in-flight upstream bytes against the
+        // mpsc::send and the sniff could land on the wrong status line.
+        let upgrade_verdict = if processed.websocket_upgrade {
+            register_upgrade_verdict(websocket_watch_tx).await
+        } else {
+            UpgradeVerdict::NotAnUpgrade
+        };
+
         reader.drain_front(header_len);
         upstream
             .write_all(&processed.header_bytes)
@@ -165,14 +205,23 @@ where
             .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
         forward_body(&mut reader, upstream, processed.body_kind, mode).await?;
 
-        if processed.websocket_upgrade {
-            // After a WebSocket upgrade request, the client switches to raw
-            // frames. The response-side 101 sniff and accept/reject path
-            // lands in a follow-up PR; here we splice the rest of the
-            // connection and let the response copier ship the 101 (or any
-            // other status) back unmodified.
-            copy_raw_client_to_upstream(&mut reader, upstream).await?;
-            return Ok(());
+        match upgrade_verdict {
+            UpgradeVerdict::NotAnUpgrade => continue,
+            UpgradeVerdict::AwaitingResponse(accepted_rx) => {
+                if accepted_rx.await.unwrap_or(false) {
+                    copy_raw_client_to_upstream(&mut reader, upstream).await?;
+                } else {
+                    shutdown_upstream(upstream).await?;
+                }
+                return Ok(());
+            }
+            UpgradeVerdict::ResponseTaskGone => {
+                // The response task has already exited (channel send failed),
+                // so we can't learn the 101 verdict. Tear down rather than
+                // splice raw frames into a half-closed connection.
+                shutdown_upstream(upstream).await?;
+                return Ok(());
+            }
         }
     }
 }
@@ -1002,27 +1051,129 @@ fn is_websocket_upgrade(request: &RequestParts) -> bool {
 pub(super) async fn copy_responses_with_websocket_watch<R, W>(
     upstream: &mut R,
     client: &mut W,
-    _websocket_watch_rx: mpsc::Receiver<WebSocketUpgradeWatch>,
+    mut websocket_watch_rx: mpsc::Receiver<WebSocketUpgradeWatch>,
 ) -> Result<(), anyhow::Error>
 where
     R: AsyncRead + Unpin,
     W: AsyncWrite + Unpin,
 {
-    // Responses are streamed through unmodified. The follow-up PR adds a 101
-    // sniff that consumes the watch channel to gate raw splice once both
-    // sides have agreed on the WebSocket upgrade.
-    match tokio::io::copy(upstream, client).await {
-        Ok(_) => Ok(()),
-        Err(error)
-            if matches!(
-                error.kind(),
-                ErrorKind::BrokenPipe | ErrorKind::ConnectionReset | ErrorKind::UnexpectedEof
-            ) =>
-        {
-            Ok(())
+    // Responses are streamed through unmodified except when the request task
+    // forwarded a WebSocket upgrade. In that case it sends a
+    // `WebSocketUpgradeWatch` over the channel, and we sniff the next
+    // response status line: a 101 reply means the upgrade was accepted and
+    // raw frames will flow afterward; anything else means upstream rejected
+    // it. Either way we forward the bytes we read and keep copying.
+    //
+    // This assumes no HTTP/1.1 pipelining (i.e. the upgrade request is the
+    // only one in flight when its response arrives). Clients in the wild that
+    // pipeline a regular request before an upgrade on the same connection are
+    // essentially unheard of, so we don't try to track per-response framing
+    // here.
+    let mut buffer = vec![0_u8; READ_CHUNK_BYTES];
+    let mut sniff_state: Option<UpgradeSniffState> = None;
+    let mut watch_closed = false;
+
+    loop {
+        tokio::select! {
+            biased;
+
+            watch = websocket_watch_rx.recv(), if sniff_state.is_none() && !watch_closed => {
+                match watch {
+                    Some(watch) => {
+                        sniff_state = Some(UpgradeSniffState {
+                            accepted_tx: watch.accepted_tx,
+                            staged: Vec::new(),
+                        });
+                    }
+                    None => {
+                        watch_closed = true;
+                    }
+                }
+            }
+
+            read_result = upstream.read(&mut buffer) => {
+                let bytes_read = match read_result {
+                    Ok(bytes_read) => bytes_read,
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            ErrorKind::BrokenPipe
+                                | ErrorKind::ConnectionReset
+                                | ErrorKind::UnexpectedEof,
+                        ) =>
+                    {
+                        if let Some(state) = sniff_state.take() {
+                            let _ = state.accepted_tx.send(false);
+                            if !state.staged.is_empty() {
+                                client.write_all(&state.staged).await?;
+                            }
+                        }
+                        return Ok(());
+                    }
+                    Err(error) => {
+                        if let Some(state) = sniff_state.take() {
+                            let _ = state.accepted_tx.send(false);
+                        }
+                        return Err(error.into());
+                    }
+                };
+
+                if bytes_read == 0 {
+                    if let Some(state) = sniff_state.take() {
+                        let _ = state.accepted_tx.send(false);
+                        if !state.staged.is_empty() {
+                            client.write_all(&state.staged).await?;
+                        }
+                    }
+                    return Ok(());
+                }
+
+                if let Some(mut state) = sniff_state.take() {
+                    state.staged.extend_from_slice(&buffer[..bytes_read]);
+                    if let Some(line_end) = find_subslice(&state.staged, b"\r\n") {
+                        let is_101 = is_switching_protocols_response(&state.staged[..line_end]);
+                        let _ = state.accepted_tx.send(is_101);
+                        client.write_all(&state.staged).await?;
+                    } else if state.staged.len() > MAX_STATUS_LINE_BYTES {
+                        // No CRLF in 16 KiB: upstream sent something that
+                        // isn't a status line. Treat as not-101 and flush the
+                        // bytes through so the agent sees whatever upstream
+                        // actually returned.
+                        let _ = state.accepted_tx.send(false);
+                        client.write_all(&state.staged).await?;
+                    } else {
+                        sniff_state = Some(state);
+                    }
+                } else {
+                    client.write_all(&buffer[..bytes_read]).await?;
+                }
+            }
         }
-        Err(error) => Err(error.into()),
     }
+}
+
+struct UpgradeSniffState {
+    accepted_tx: oneshot::Sender<bool>,
+    staged: Vec<u8>,
+}
+
+fn is_switching_protocols_response(status_line: &[u8]) -> bool {
+    // We only look at the very first status line. A WebSocket upgrade request
+    // does not include Expect: 100-continue, so a preceding `100 Continue`
+    // interim response should not occur in practice. If it ever does we treat
+    // it as not-101, the verdict is `rejected`, and we forward the bytes
+    // unchanged; clients see the real upstream reply either way.
+    let Ok(text) = std::str::from_utf8(status_line) else {
+        return false;
+    };
+    let rest = match text.strip_prefix("HTTP/1.1 ") {
+        Some(rest) => rest,
+        None => match text.strip_prefix("HTTP/1.0 ") {
+            Some(rest) => rest,
+            None => return false,
+        },
+    };
+    rest.split_whitespace().next() == Some("101")
 }
 
 fn header_value_eq_ascii(value: &[u8], expected: &str) -> bool {
@@ -1609,6 +1760,131 @@ mod tests {
     }
 
     #[test]
+    fn parses_switching_protocols_status_line() {
+        assert!(is_switching_protocols_response(
+            b"HTTP/1.1 101 Switching Protocols"
+        ));
+        assert!(is_switching_protocols_response(b"HTTP/1.0 101"));
+        assert!(!is_switching_protocols_response(b"HTTP/1.1 200 OK"));
+        assert!(!is_switching_protocols_response(
+            b"HTTP/1.1 1010 Bogus Status"
+        ));
+        assert!(!is_switching_protocols_response(b"HTTP/2 101"));
+        assert!(!is_switching_protocols_response(b"garbage"));
+    }
+
+    #[tokio::test]
+    async fn response_copier_signals_accepted_when_upstream_returns_101() -> Result<()> {
+        let (mut upstream_write, mut upstream_read) = tokio::io::duplex(16 * 1024);
+        let (mut client_write, mut client_read) = tokio::io::duplex(16 * 1024);
+        let (websocket_watch_tx, websocket_watch_rx) = mpsc::channel(1);
+
+        let copier_task = tokio::spawn(async move {
+            copy_responses_with_websocket_watch(
+                &mut upstream_read,
+                &mut client_write,
+                websocket_watch_rx,
+            )
+            .await
+        });
+
+        let (accepted_tx, accepted_rx) = oneshot::channel();
+        websocket_watch_tx
+            .send(WebSocketUpgradeWatch { accepted_tx })
+            .await
+            .expect("watch channel should accept");
+
+        upstream_write
+            .write_all(
+                b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\nframe-payload",
+            )
+            .await?;
+
+        let accepted = accepted_rx.await.expect("accepted_tx should fire");
+        assert!(accepted, "101 reply should be reported as accepted");
+
+        drop(upstream_write);
+        let mut received = Vec::new();
+        client_read.read_to_end(&mut received).await?;
+        let text = String::from_utf8(received)?;
+        assert!(text.starts_with("HTTP/1.1 101 Switching Protocols\r\n"));
+        assert!(text.ends_with("frame-payload"));
+
+        copier_task.await??;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn response_copier_signals_rejected_when_upstream_returns_non_101() -> Result<()> {
+        let (mut upstream_write, mut upstream_read) = tokio::io::duplex(16 * 1024);
+        let (mut client_write, mut client_read) = tokio::io::duplex(16 * 1024);
+        let (websocket_watch_tx, websocket_watch_rx) = mpsc::channel(1);
+
+        let copier_task = tokio::spawn(async move {
+            copy_responses_with_websocket_watch(
+                &mut upstream_read,
+                &mut client_write,
+                websocket_watch_rx,
+            )
+            .await
+        });
+
+        let (accepted_tx, accepted_rx) = oneshot::channel();
+        websocket_watch_tx
+            .send(WebSocketUpgradeWatch { accepted_tx })
+            .await
+            .expect("watch channel should accept");
+
+        upstream_write
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+            .await?;
+
+        let accepted = accepted_rx.await.expect("accepted_tx should fire");
+        assert!(!accepted, "200 reply should be reported as not accepted");
+
+        drop(upstream_write);
+        let mut received = Vec::new();
+        client_read.read_to_end(&mut received).await?;
+        let text = String::from_utf8(received)?;
+        assert!(text.starts_with("HTTP/1.1 200 OK\r\n"));
+        assert!(text.ends_with("\r\n\r\nok"));
+
+        copier_task.await??;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn response_copier_passes_bytes_through_when_no_watch_is_sent() -> Result<()> {
+        let (mut upstream_write, mut upstream_read) = tokio::io::duplex(16 * 1024);
+        let (mut client_write, mut client_read) = tokio::io::duplex(16 * 1024);
+        let (_websocket_watch_tx, websocket_watch_rx) = mpsc::channel::<WebSocketUpgradeWatch>(1);
+
+        let copier_task = tokio::spawn(async move {
+            copy_responses_with_websocket_watch(
+                &mut upstream_read,
+                &mut client_write,
+                websocket_watch_rx,
+            )
+            .await
+        });
+
+        upstream_write
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
+            .await?;
+        drop(upstream_write);
+
+        let mut received = Vec::new();
+        client_read.read_to_end(&mut received).await?;
+        assert_eq!(
+            received,
+            b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello"
+        );
+
+        copier_task.await??;
+        Ok(())
+    }
+
+    #[test]
     fn normalizes_host_for_default_ports() {
         assert_eq!(
             normalize_host("API.OpenAI.COM.:443", 443).ok(),
@@ -1637,8 +1913,30 @@ mod tests {
             Ok::<(), std::io::Error>(())
         });
 
-        let rewrite_result =
-            forward_http1_requests(&mut client_read, &mut upstream_write, table, mode, None).await;
+        // Tests don't run the response copier, so spawn an auto-accept task
+        // on the watch channel. This stands in for "upstream replied 101" so
+        // an upgrade request gets spliced raw, and otherwise the channel is
+        // never touched.
+        let (websocket_watch_tx, mut websocket_watch_rx) =
+            mpsc::channel::<WebSocketUpgradeWatch>(1);
+        let auto_accept_task = tokio::spawn(async move {
+            while let Some(watch) = websocket_watch_rx.recv().await {
+                let _ = watch.accepted_tx.send(true);
+            }
+        });
+
+        let rewrite_result = forward_http1_requests(
+            &mut client_read,
+            &mut upstream_write,
+            table,
+            mode,
+            &websocket_watch_tx,
+        )
+        .await;
+        drop(websocket_watch_tx);
+        auto_accept_task
+            .await
+            .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
         drop(upstream_write);
         // Drop client_read so a writer task still trying to push the tail of
         // an oversized input fails fast with BrokenPipe instead of hanging
