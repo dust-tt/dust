@@ -1,6 +1,6 @@
 import { TOOL_DEPLOY_INTERRUPTION_ERROR_TYPE } from "@app/lib/actions/tool_interruptions";
 import { DUST_WORKER_SHUTDOWN_ABORT_REASON } from "@app/lib/shutdown_signal";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { CancelledFailure } from "@temporalio/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -63,6 +63,10 @@ vi.mock("@dust-tt/client", async (importOriginal) => {
 });
 
 import { runAgent } from "@app/lib/api/actions/servers/run_agent";
+
+type RunAgentExtra = Parameters<typeof runAgent>[1];
+type RunAgentAuth = RunAgentExtra["auth"];
+type RunAgentLoopContext = RunAgentExtra["agentLoopContext"];
 
 const workspace = {
   id: 1,
@@ -134,8 +138,8 @@ function runAgentWithSignal(signal: AbortSignal) {
       query: "Run the child",
     },
     {
-      auth: auth as never,
-      agentLoopContext: agentLoopContext as never,
+      auth: auth as unknown as RunAgentAuth,
+      agentLoopContext: agentLoopContext as unknown as RunAgentLoopContext,
       childAgentBlob: {
         description: "Child description",
         name: "Child",
@@ -204,5 +208,19 @@ describe("runAgent interruption handling", () => {
     expect(mocks.getConversation).toHaveBeenCalledWith({
       conversationId: "conv-child",
     });
+  });
+
+  it("propagates deploy interruption when stream setup aborts", async () => {
+    const controller = new AbortController();
+    mocks.streamAgentAnswerEvents.mockImplementation(async () => {
+      controller.abort(DUST_WORKER_SHUTDOWN_ABORT_REASON);
+
+      return new Err(new Error("stream setup aborted"));
+    });
+
+    await expect(runAgentWithSignal(controller.signal)).rejects.toMatchObject({
+      type: TOOL_DEPLOY_INTERRUPTION_ERROR_TYPE,
+    });
+    expect(mocks.cancelAgentLoop).not.toHaveBeenCalled();
   });
 });

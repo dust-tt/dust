@@ -366,24 +366,33 @@ export const runAgent = async (
     }
   };
 
+  const maybeHandleAbortedSignal = (): Result<never, MCPError> | null => {
+    if (!abortSignal?.aborted) {
+      return null;
+    }
+
+    const abortClassification = classifyToolAbortSignal(abortSignal);
+
+    if (abortClassification === "deploy_interruption") {
+      throw makeRetryableToolDeployInterruptionError();
+    }
+
+    if (abortClassification === "user_cancellation") {
+      requestChildCancellation();
+      return new Err(
+        new MCPError(`Agent run cancelled, reason: ${abortSignal.reason}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    return null;
+  };
+
   if (abortSignal) {
-    if (abortSignal.aborted) {
-      const abortClassification = classifyToolAbortSignal(abortSignal);
-
-      if (abortClassification === "deploy_interruption") {
-        throw makeRetryableToolDeployInterruptionError();
-      }
-
-      if (abortClassification === "user_cancellation") {
-        requestChildCancellation();
-        return finalizeAndReturn(
-          new Err(
-            new MCPError(`Agent run cancelled, reason: ${abortSignal.reason}`, {
-              tracked: false,
-            })
-          )
-        );
-      }
+    const abortedSignalResult = maybeHandleAbortedSignal();
+    if (abortedSignalResult) {
+      return finalizeAndReturn(abortedSignalResult);
     }
 
     abortSignal.addEventListener(
@@ -557,6 +566,11 @@ export const runAgent = async (
   });
 
   if (streamRes.isErr()) {
+    const abortedSignalResult = maybeHandleAbortedSignal();
+    if (abortedSignalResult) {
+      return finalizeAndReturn(abortedSignalResult);
+    }
+
     const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;
     return finalizeAndReturn(new Err(new MCPError(errorMessage)));
   }
@@ -662,23 +676,9 @@ export const runAgent = async (
       }
     }
 
-    if (abortSignal?.aborted) {
-      const abortClassification = classifyToolAbortSignal(abortSignal);
-
-      if (abortClassification === "deploy_interruption") {
-        throw makeRetryableToolDeployInterruptionError();
-      }
-
-      if (abortClassification === "user_cancellation") {
-        requestChildCancellation();
-        return finalizeAndReturn(
-          new Err(
-            new MCPError(`Agent run cancelled, reason: ${abortSignal.reason}`, {
-              tracked: false,
-            })
-          )
-        );
-      }
+    const abortedSignalResult = maybeHandleAbortedSignal();
+    if (abortedSignalResult) {
+      return finalizeAndReturn(abortedSignalResult);
     }
 
     // Transient stream errors (network issues, reconnection exhaustion) should not
