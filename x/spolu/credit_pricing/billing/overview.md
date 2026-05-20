@@ -12,15 +12,38 @@ All paths below are relative to the hive worktree `~/code/dust/.hives/wk1/`.
 
 ---
 
-## 1. Feature gates
+## 1. The "show new Billing page" gate
 
-Two flags govern the new billing world. Both are declared in
-`front/types/shared/feature_flags.ts:267-325` and are `dust_only` stage.
+**The real gate (per Slack discussion):**
+
+```ts
+isSubscriptionMetronomeBilled(subscription) && !isLegacyPlan(subscription.plan)
+```
+
+- `isSubscriptionMetronomeBilled` is already defined in `front/types/plan.ts` — true when the
+  subscription has a `metronomeContractId` (and no `stripeSubscriptionId`).
+- `isLegacyPlan` is **not yet defined** — it needs to be introduced. It must return `true` for
+  current plan codes (`PRO_PLAN_SEAT_29`, `PRO_PLAN_SEAT_39`, `PRO_PLAN_LARGE_FILES`, any
+  existing `ENT_*` plans created before credit-pricing) and any contract on a `legacy-*`
+  Metronome package alias (`LEGACY_PRO_MONTHLY_PACKAGE_ALIAS` etc. in
+  `front/lib/metronome/types.ts:19-28`). The new credit-pricing plan codes — to be introduced
+  alongside the new Pro / Max / Business tiers — return `false`.
+
+When the gate is true → show the new `/w/:wId/billing` page and hide the old
+`/w/:wId/subscription` sidebar entry (or redirect from it). When false → keep the existing
+`SubscriptionPage` flow untouched. Many production workspaces are *Metronome-billed but still
+on legacy plans*; they must continue to see the current page until they're migrated.
+
+### Feature flags (separate from the gate, but needed for dev)
+
+Two flags declared in `front/types/shared/feature_flags.ts:267-325`, both `dust_only`. Neither
+flag is the source of truth for the Billing-page gate above; they exist to bootstrap Metronome
+billing on a workspace and to soft-gate the parallel Usage admin page.
 
 | Flag | What it controls |
 | --- | --- |
-| `metronome_billing` | **Critical for this work.** Required for a newly-created subscription to be backed by a Metronome contract instead of a Stripe-only subscription — without it, the workspace ends up on the Stripe path and the Metronome-backed endpoints (`/metronome/contract`, `/metronome/invoice`, `/seats/plan`) return null / 400. Also gates Metronome usage event emission (`llm_usage`, `tool_use`). Default-on logic at `front/lib/api/subscription.ts:15-23` (`isMetronomeBillingEnabled`): the `global_disable_metronome_billing` kill switch turns it off globally, this flag re-enables it per workspace. |
-| `metronome_billing_usage_page` | Gates the new "Usage" admin page (`UsagePage`) and its sidebar entry. Used at `front/components/navigation/config.ts:268` and inside `front/components/pages/workspace/UsagePage.tsx:152, 221`. The new "Billing" page (this work) will follow the same gating pattern. |
+| `metronome_billing` | **Critical for dev setup.** Required for a newly-created subscription to be backed by a Metronome contract instead of a Stripe-only subscription — without it, the workspace ends up on the Stripe path and the Metronome-backed endpoints (`/metronome/contract`, `/metronome/invoice`, `/seats/plan`) return null / 400. Also gates Metronome usage event emission (`llm_usage`, `tool_use`). Default-on logic at `front/lib/api/subscription.ts:15-23` (`isMetronomeBillingEnabled`): the `global_disable_metronome_billing` kill switch turns it off globally, this flag re-enables it per workspace. |
+| `metronome_billing_usage_page` | Gates the new "Usage" admin page (`UsagePage`) and its sidebar entry. Used at `front/components/navigation/config.ts:268` and inside `front/components/pages/workspace/UsagePage.tsx:152, 221`. Independent of the new Billing page — that one uses the contract-based gate above. |
 
 ### Enabling locally in dev
 
@@ -62,30 +85,30 @@ live at `scripts/provision_metronome_customers.ts` and `scripts/metronome_setup.
 
 ---
 
-## 2. Where the new "Billing" page should live
+## 2. Where the new "Billing" page lives
 
-The current routing of the admin pages is owned by the SPA at
-`front-spa/src/app/routes/adminRoutes.tsx` (the Next pages just shell the components in
-`front/components/pages/workspace/`).
+A **new** page at `/w/:wId/billing`, separate from the existing `SubscriptionPage`. We do not
+reuse or in-place-rewrite `SubscriptionPage` — that page must continue to serve workspaces that
+fail the gate (Stripe-billed, or Metronome-billed-but-legacy).
 
-Existing relevant routes:
+Routing is owned by the SPA at `front-spa/src/app/routes/adminRoutes.tsx`. New + existing
+routes:
 
 | Route | Component | File |
 | --- | --- | --- |
+| `/w/:wId/billing` *(new)* | `BillingPage` | `front/components/pages/workspace/billing/BillingPage.tsx` *(new)* |
 | `/w/:wId/subscription` | `SubscriptionPage` | `front/components/pages/workspace/subscription/SubscriptionPage.tsx` |
 | `/w/:wId/subscription/manage` | `ManageSubscriptionPage` | `front/components/pages/workspace/subscription/ManageSubscriptionPage.tsx` |
 | `/w/:wId/usage` | `UsagePage` (gated) | `front/components/pages/workspace/UsagePage.tsx` |
 
-Pragmatic options for the new Billing page (decide with the team):
+The sidebar shows exactly one of the two entries ("Billing" or "Subscription") depending on the
+gate. The `/subscription` route also redirects to `/billing` when the gate is true so bookmarks
+and external links keep working.
 
-- **Option A** — replace `SubscriptionPage.tsx` content when `metronome_billing_usage_page` is on.
-  Keeps the URL stable (`/w/:wId/subscription`) and the sidebar entry under "Subscription".
-- **Option B** — add a new "Billing" sidebar entry at `/w/:wId/billing` and keep `Subscription`
-  available for non-Metronome workspaces. This matches the design's "Billing" label literally.
-
-`SubscriptionPage.tsx:1-46` already imports `MetronomeSubscriptionPanel`,
+`SubscriptionPage.tsx` already wires `MetronomeSubscriptionPanel`,
 `isSubscriptionMetronomeBilled`, `usePerSeatPricing`, `useSubscriptionTrialInfo`,
-`useWorkspaceSeatsCount`. Most data wiring needed by the new design is already there.
+`useWorkspaceSeatsCount` — but those hooks live in `front/lib/swr/` and can be consumed
+directly from the new `BillingPage` without depending on the old one.
 
 ---
 
