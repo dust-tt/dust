@@ -22,8 +22,8 @@ export function RegionalModelsOnlyToggle({
             🇪🇺 EU only
           </span>
           <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Restrict available models to those whose endpoint is
-            hosted in the EU.
+            Restrict available models to those whose endpoint is hosted in the
+            EU.
           </span>
         </div>
         <SliderToggle

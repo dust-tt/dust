@@ -1,4 +1,7 @@
-import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
+import {
+  REASONING_MODEL_CONFIGS,
+  USED_MODEL_CONFIGS,
+} from "@app/components/providers/model_configs";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -12,6 +15,7 @@ import {
 } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -57,6 +61,42 @@ export async function getAvailableModelsForWorkspace(
     region,
     whitelistedProviders,
   });
+}
+
+/**
+ * Count active workspace agents whose model is not available in the
+ * current region. Used to gate enabling `regionalModelsOnly` on a
+ * workspace — admins must not strand existing agents.
+ */
+export async function countActiveAgentsUsingNonRegionalModels(
+  auth: Authenticator
+): Promise<number> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const region = regionConfig.getCurrentRegion();
+
+  const regionalModelKeys = new Set<string>();
+  for (const m of [
+    ...USED_MODEL_CONFIGS,
+    ...REASONING_MODEL_CONFIGS,
+    ...CUSTOM_MODEL_CONFIGS,
+  ]) {
+    if (m.regionalAvailability[region] === true) {
+      regionalModelKeys.add(`${m.providerId}:${m.modelId}`);
+    }
+  }
+
+  const activeAgents = await AgentConfigurationModel.findAll({
+    where: { workspaceId, status: "active" },
+    attributes: ["providerId", "modelId"],
+  });
+
+  let count = 0;
+  for (const agent of activeAgents) {
+    if (!regionalModelKeys.has(`${agent.providerId}:${agent.modelId}`)) {
+      count += 1;
+    }
+  }
+  return count;
 }
 
 /**

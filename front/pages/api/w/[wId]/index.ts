@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+import { countActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -217,6 +218,20 @@ async function handler(
 
         owner.ssoEnforced = body.ssoEnforced;
       } else if ("regionalModelsOnly" in body) {
+        if (body.regionalModelsOnly) {
+          const incompatibleAgentsCount =
+            await countActiveAgentsUsingNonRegionalModels(auth);
+          if (incompatibleAgentsCount > 0) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `${incompatibleAgentsCount} active agent(s) use a non-regional model. Update them first.`,
+              },
+            });
+          }
+        }
+
         await workspace.updateWorkspaceSettings({
           regionalModelsOnly: body.regionalModelsOnly,
         });
