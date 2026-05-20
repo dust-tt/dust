@@ -17,7 +17,6 @@ import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
 import type { ResolveMountFilePathError } from "@app/lib/api/files/mount_path";
 import {
   getPodFilesBasePath,
-  getProjectFilesBasePath,
   joinMountRelativePath,
   normalizeMountParentRelativePath,
   validateMountFolderName,
@@ -348,9 +347,9 @@ export async function addFileToProject(
   }
 
   const owner = auth.getNonNullableWorkspace();
-  const projectFilesPrefix = getProjectFilesBasePath({
+  const projectFilesPrefix = getPodFilesBasePath({
     workspaceId: owner.sId,
-    projectId: space.sId,
+    podId: space.sId,
   });
 
   // Files already mounted under the project prefix only need content-fragment sync.

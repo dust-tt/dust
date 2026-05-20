@@ -4,7 +4,7 @@ import {
 } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
-  getProjectFilesBasePath,
+  getPodFilesBasePath,
   normalizeAndValidateMountRelativeFilePath,
   type ResolveMountFilePathError,
   resolveMoveSourcePath,
@@ -24,9 +24,9 @@ function resolveMountPrefix(auth: Authenticator, scope: GCSMountPoint): string {
         conversationId: scope.conversationId,
       });
     case "pod":
-      return getProjectFilesBasePath({
+      return getPodFilesBasePath({
         workspaceId: owner.sId,
-        projectId: scope.podId,
+        podId: scope.podId,
       });
     default:
       return assertNever(scope);
