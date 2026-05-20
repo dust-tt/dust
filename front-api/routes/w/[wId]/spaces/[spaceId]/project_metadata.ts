@@ -1,3 +1,4 @@
+import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import {
   launchOrSignalProjectTodoWorkflow,
@@ -78,6 +79,23 @@ app.patch(
 
     const body = ctx.req.valid("json");
 
+    if (body.pinnedFramePath !== undefined) {
+      const validation = await validatePinnedFramePath(
+        auth,
+        space,
+        body.pinnedFramePath
+      );
+      if (validation.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: validation.error.message,
+          },
+        });
+      }
+    }
+
     let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
     const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
@@ -94,6 +112,7 @@ app.patch(
         archivedAt: body.archive ? new Date() : null,
         todoGenerationEnabled: body.todoGenerationEnabled ?? false,
         initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
+        pinnedFramePath: body.pinnedFramePath ?? null,
       });
       if (!body.archive) {
         void launchOrSignalProjectTodoWorkflow({
@@ -136,6 +155,9 @@ app.patch(
         await metadata.updateInitialTodoAnalysisLookback(
           body.initialTodoAnalysisLookback
         );
+      }
+      if (body.pinnedFramePath !== undefined) {
+        await metadata.updatePinnedFramePath(body.pinnedFramePath);
       }
       if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {
         void launchOrSignalProjectTodoWorkflow({

@@ -82,6 +82,10 @@
  *                           type: integer
  *                           nullable: true
  *                           description: Unix timestamp (ms) of the last automatic todo suggestion scan, if any.
+ *                         pinnedFramePath:
+ *                           type: string
+ *                           nullable: true
+ *                           description: Scoped path to the frame file pinned as the Pod banner.
  *       401:
  *         description: Unauthorized
  *   patch:
@@ -224,6 +228,7 @@ export type RichSpaceType = SpaceType & {
   /** Background todo suggestions from project activity (project spaces only). */
   todoGenerationEnabled: boolean;
   lastTodoAnalysisAt: number | null;
+  pinnedFramePath: string | null;
 };
 export type GetSpaceResponseBody = {
   space: RichSpaceType;
@@ -354,6 +359,7 @@ async function handler(
             projectMetadata?.todoGenerationEnabled ?? false,
           lastTodoAnalysisAt:
             projectMetadata?.lastTodoAnalysisAt?.getTime() ?? null,
+          pinnedFramePath: projectMetadata?.pinnedFramePath ?? null,
         },
       });
     }

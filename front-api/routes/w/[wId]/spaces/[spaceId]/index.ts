@@ -59,6 +59,7 @@ export type RichSpaceType = SpaceType & {
   /** Background todo suggestions from project activity (project spaces only). */
   todoGenerationEnabled: boolean;
   lastTodoAnalysisAt: number | null;
+  pinnedFramePath: string | null;
 };
 
 export type GetSpaceResponseBody = {
@@ -193,6 +194,7 @@ app.get(
         archivedAt: meta?.archivedAt?.getTime() ?? null,
         todoGenerationEnabled: meta?.todoGenerationEnabled ?? false,
         lastTodoAnalysisAt: meta?.lastTodoAnalysisAt?.getTime() ?? null,
+        pinnedFramePath: meta?.pinnedFramePath ?? null,
       },
     });
   }

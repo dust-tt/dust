@@ -115,6 +115,7 @@ describe("ProjectMetadataResource", () => {
       expect(typeof json.createdAt).toBe("number");
       expect(json.todoGenerationEnabled).toBe(false);
       expect(json.lastTodoAnalysisAt).toBeNull();
+      expect(json.pinnedFramePath).toBeNull();
     });
   });
 });

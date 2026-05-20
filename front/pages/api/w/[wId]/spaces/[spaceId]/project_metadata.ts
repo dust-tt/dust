@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -80,6 +81,23 @@ async function handler(
 
       const body = bodyValidation.data;
 
+      if (body.pinnedFramePath !== undefined) {
+        const validation = await validatePinnedFramePath(
+          auth,
+          space,
+          body.pinnedFramePath
+        );
+        if (validation.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: validation.error.message,
+            },
+          });
+        }
+      }
+
       let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
       const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
@@ -97,6 +115,7 @@ async function handler(
           archivedAt: body.archive ? new Date() : null,
           todoGenerationEnabled: body.todoGenerationEnabled ?? false,
           initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
+          pinnedFramePath: body.pinnedFramePath ?? null,
         });
         if (!body.archive) {
           void launchOrSignalProjectTodoWorkflow({
@@ -143,6 +162,9 @@ async function handler(
           await metadata.updateInitialTodoAnalysisLookback(
             body.initialTodoAnalysisLookback
           );
+        }
+        if (body.pinnedFramePath !== undefined) {
+          await metadata.updatePinnedFramePath(body.pinnedFramePath);
         }
         if (
           body.todoGenerationEnabled === true &&

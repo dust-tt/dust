@@ -2,6 +2,7 @@ import { InputBar } from "@app/components/assistant/conversation/input_bar/Input
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceLoadingConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceLoadingConversationListItem";
+import { PodPinnedBanner } from "@app/components/assistant/conversation/space/PodPinnedBanner";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
@@ -208,6 +209,8 @@ export function SpaceConversationsTab({
               />
             )}
           </div>
+
+          <PodPinnedBanner owner={owner} spaceInfo={spaceInfo} />
 
           {/* Suggestions for empty rooms */}
           {isProjectEmpty ? (

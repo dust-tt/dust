@@ -1031,15 +1031,19 @@ export function useUpdateProjectMetadata({
     void mutateSpaceInfoRegardlessOfQueryParams();
 
     const title =
-      updates.archive !== undefined
-        ? updates.archive
-          ? "Pod archived"
-          : "Pod unarchived"
-        : updates.todoGenerationEnabled !== undefined
-          ? updates.todoGenerationEnabled
-            ? "Automatic task suggestions turned on"
-            : "Automatic task suggestions turned off"
-          : "Pod updated";
+      updates.pinnedFramePath !== undefined
+        ? updates.pinnedFramePath
+          ? "Frame pinned as Pod banner"
+          : "Banner unpinned"
+        : updates.archive !== undefined
+          ? updates.archive
+            ? "Pod archived"
+            : "Pod unarchived"
+          : updates.todoGenerationEnabled !== undefined
+            ? updates.todoGenerationEnabled
+              ? "Automatic task suggestions turned on"
+              : "Automatic task suggestions turned off"
+            : "Pod updated";
 
     sendNotification({
       type: "success",

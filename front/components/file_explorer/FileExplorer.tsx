@@ -84,6 +84,9 @@ interface FileExplorerProps {
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
   onRename?: (entry: FileEntry) => void;
+  getExtraFileMenuItems?: (
+    entry: FileExplorerEntry
+  ) => FileExplorerMenuAction[];
 }
 
 export function FileExplorer({
@@ -104,6 +107,7 @@ export function FileExplorer({
   onMoveFile,
   onOpenInteractive,
   onRename,
+  getExtraFileMenuItems,
 }: FileExplorerProps) {
   const [currentFolderPath, setCurrentFolderPath] = useState("");
   const prevNavigationResetKey = useRef(navigationResetKey);
@@ -167,7 +171,8 @@ export function FileExplorer({
 
   const getMenuItems = useCallback(
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
-      const items: FileExplorerMenuAction[] = [];
+      const items: FileExplorerMenuAction[] =
+        getExtraFileMenuItems?.(entry) ?? [];
       if (onRename && entry.kind === "file") {
         items.push({
           label: "Rename",
@@ -207,7 +212,7 @@ export function FileExplorer({
       }
       return items;
     },
-    [onDelete, onMoveFile, onRename, totalFolderCount]
+    [getExtraFileMenuItems, onDelete, onMoveFile, onRename, totalFolderCount]
   );
 
   const handleMoveToFolder = useCallback(
@@ -369,7 +374,9 @@ export function FileExplorer({
             onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
             onNodeOpen={handleNodeOpen}
             getFileMenuItems={
-              onDelete || onRename || onMoveFile ? getMenuItems : undefined
+              onDelete || onRename || onMoveFile || getExtraFileMenuItems
+                ? getMenuItems
+                : undefined
             }
           />
         </div>

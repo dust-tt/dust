@@ -12,7 +12,14 @@ const scopedUIPreferencesSchemaByScope = {
       .unknown()
       .transform(normalizeTasksOwnerFilterFromPersistedBlob),
   }),
+  podPinnedBanner: z.object({
+    collapsed: z.boolean().default(false),
+  }),
 } as const;
+
+export type PodPinnedBannerScopedPreferences = z.infer<
+  (typeof scopedUIPreferencesSchemaByScope)["podPinnedBanner"]
+>;
 
 export type ProjectUIScopedPreferences = z.infer<
   (typeof scopedUIPreferencesSchemaByScope)["projectUI"]
