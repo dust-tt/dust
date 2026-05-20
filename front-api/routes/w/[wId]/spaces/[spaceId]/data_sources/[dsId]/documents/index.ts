@@ -1,9 +1,9 @@
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
-import { withDataSource } from "@front-api/middleware/with_data_source";
-import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withDataSource } from "@front-api/middleware/with_data_source";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 import documentId from "./[documentId]";

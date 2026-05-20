@@ -4,9 +4,9 @@ import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
+import { apiError } from "@front-api/middleware/utils";
 import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
 import { withSpace } from "@front-api/middleware/with_space";
-import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 // Mounted under

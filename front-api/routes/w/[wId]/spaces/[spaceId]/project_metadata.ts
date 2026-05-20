@@ -5,38 +5,34 @@ import {
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_task/client";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
-import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_metadata. All routes
 // require the space to be a project; this is checked inline per handler.
 const app = new Hono();
 
-app.get(
-  "/",
-  withSpace({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
-    const auth = ctx.get("auth");
-    const space = ctx.get("space");
+app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
 
-    if (!space.isProject()) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Project metadata is only available for project spaces.",
-        },
-      });
-    }
-
-    const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
-    return ctx.json({
-      projectMetadata: metadata ? metadata.toJSON() : null,
+  if (!space.isProject()) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Project metadata is only available for project spaces.",
+      },
     });
   }
-);
+
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+  return ctx.json({
+    projectMetadata: metadata ? metadata.toJSON() : null,
+  });
+});
 
 app.patch(
   "/",

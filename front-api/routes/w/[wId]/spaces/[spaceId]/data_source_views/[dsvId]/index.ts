@@ -6,10 +6,10 @@ import { PatchDataSourceViewSchema } from "@app/types/api/public/spaces";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
-import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 import contentNodes from "./content-nodes";

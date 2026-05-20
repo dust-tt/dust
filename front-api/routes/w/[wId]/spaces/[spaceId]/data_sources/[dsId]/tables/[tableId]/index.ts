@@ -2,10 +2,10 @@ import { upsertTable } from "@app/lib/api/data_sources";
 import { deleteTable } from "@app/lib/api/tables";
 import { PatchDataSourceTableRequestBodySchema } from "@app/types/api/public/data_sources";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { withDataSource } from "@front-api/middleware/with_data_source";
-import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withDataSource } from "@front-api/middleware/with_data_source";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/tables/:tableId.

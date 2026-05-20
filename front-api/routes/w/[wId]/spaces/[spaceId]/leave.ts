@@ -3,8 +3,8 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/leave.

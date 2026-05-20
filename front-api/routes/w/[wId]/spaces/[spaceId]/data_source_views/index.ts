@@ -10,9 +10,9 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ContentSchema } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
-import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 import dsvId from "./[dsvId]";
@@ -20,85 +20,81 @@ import dsvId from "./[dsvId]";
 // Mounted under /api/w/:wId/spaces/:spaceId/data_source_views.
 const app = new Hono();
 
-app.get(
-  "/",
-  withSpace({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
-    const auth = ctx.get("auth");
-    const space = ctx.get("space");
-    const category = ctx.req.query("category") as
-      | DataSourceViewCategory
-      | undefined;
-    const withDetails = ctx.req.query("withDetails");
-    const includeEditedBy = ctx.req.query("includeEditedBy");
+app.get("/", withSpace({ requireCanReadOrAdministrate: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const category = ctx.req.query("category") as
+    | DataSourceViewCategory
+    | undefined;
+  const withDetails = ctx.req.query("withDetails");
+  const includeEditedBy = ctx.req.query("includeEditedBy");
 
-    const dataSourceViews = (
-      await DataSourceViewResource.listBySpace(auth, space, {
-        includeEditedBy: !!includeEditedBy,
-      })
-    )
-      .map((ds) => ds.toJSON())
-      .filter((d) => !category || d.category === category);
+  const dataSourceViews = (
+    await DataSourceViewResource.listBySpace(auth, space, {
+      includeEditedBy: !!includeEditedBy,
+    })
+  )
+    .map((ds) => ds.toJSON())
+    .filter((d) => !category || d.category === category);
 
-    if (!withDetails) {
-      return ctx.json({ dataSourceViews });
-    }
+  if (!withDetails) {
+    return ctx.json({ dataSourceViews });
+  }
 
-    if (!category) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Cannot get details without specifying a category.",
-        },
-      });
-    }
+  if (!category) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Cannot get details without specifying a category.",
+      },
+    });
+  }
 
-    let usages: DataSourcesUsageByAgent = {};
-    if (space.isSystem()) {
-      // In system spaces, reflect usage by data sources themselves (across all
-      // spaces), then remap onto this space's views.
-      const usagesByDataSources = await getDataSourcesUsageByCategory({
-        auth,
-        category,
-      });
-      dataSourceViews.forEach((dsView) => {
-        usages[dsView.id] = usagesByDataSources[dsView.dataSource.id];
-      });
-    } else {
-      usages = await getDataSourceViewsUsageByCategory({ auth, category });
-    }
+  let usages: DataSourcesUsageByAgent = {};
+  if (space.isSystem()) {
+    // In system spaces, reflect usage by data sources themselves (across all
+    // spaces), then remap onto this space's views.
+    const usagesByDataSources = await getDataSourcesUsageByCategory({
+      auth,
+      category,
+    });
+    dataSourceViews.forEach((dsView) => {
+      usages[dsView.id] = usagesByDataSources[dsView.dataSource.id];
+    });
+  } else {
+    usages = await getDataSourceViewsUsageByCategory({ auth, category });
+  }
 
-    const enhancedDataSourceViews = await Promise.all(
-      dataSourceViews.map(async (dataSourceView) => {
-        const dataSource = dataSourceView.dataSource;
+  const enhancedDataSourceViews = await Promise.all(
+    dataSourceViews.map(async (dataSourceView) => {
+      const dataSource = dataSourceView.dataSource;
 
-        if (!isManaged(dataSource) && !isWebsite(dataSource)) {
-          return {
-            ...dataSourceView,
-            dataSource: {
-              ...dataSource,
-              connectorDetails: { connector: null, connectorId: null },
-              connector: null,
-              fetchConnectorError: false,
-              fetchConnectorErrorMessage: null,
-            },
-            usage: usages[dataSourceView.id] ?? { count: 0, agents: [] },
-          };
-        }
-
-        const augmentedDataSource =
-          await augmentDataSourceWithConnectorDetails(dataSource);
+      if (!isManaged(dataSource) && !isWebsite(dataSource)) {
         return {
           ...dataSourceView,
-          dataSource: augmentedDataSource,
+          dataSource: {
+            ...dataSource,
+            connectorDetails: { connector: null, connectorId: null },
+            connector: null,
+            fetchConnectorError: false,
+            fetchConnectorErrorMessage: null,
+          },
           usage: usages[dataSourceView.id] ?? { count: 0, agents: [] },
         };
-      })
-    );
-    return ctx.json({ dataSourceViews: enhancedDataSourceViews });
-  }
-);
+      }
+
+      const augmentedDataSource =
+        await augmentDataSourceWithConnectorDetails(dataSource);
+      return {
+        ...dataSourceView,
+        dataSource: augmentedDataSource,
+        usage: usages[dataSourceView.id] ?? { count: 0, agents: [] },
+      };
+    })
+  );
+  return ctx.json({ dataSourceViews: enhancedDataSourceViews });
+});
 
 app.post(
   "/",

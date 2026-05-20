@@ -1,6 +1,6 @@
 import { removeFileFromProject } from "@app/lib/api/projects/context";
-import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_context/files/:fileId.

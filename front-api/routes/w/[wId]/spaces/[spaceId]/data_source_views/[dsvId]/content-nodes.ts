@@ -4,10 +4,10 @@ import {
   SortingParamsCodec,
 } from "@app/lib/api/pagination";
 import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
-import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
-import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 import { z } from "zod";
 

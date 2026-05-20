@@ -1,6 +1,6 @@
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
-import { withSpace } from "@front-api/middleware/with_space";
 import { apiError } from "@front-api/middleware/utils";
+import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/mark_read.
