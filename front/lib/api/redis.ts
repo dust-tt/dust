@@ -57,6 +57,7 @@ export type RedisUsageTagsType =
   | "metronome_credit_cache"
   | "metronome_limit"
   | "metronome_webhook_dedup"
+  | "awu_purchase_status"
   | "message_events"
   | "notion_url_sync"
   | "poke_cache_invalidation"

@@ -4,6 +4,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetCreditPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/credits/purchase";
 import type { GetAwuPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/awu-purchase";
+import type { GetAwuPurchaseStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/awu-purchase-status";
 import type {
   GetCreditsResponseBody,
   PendingCreditData,
@@ -259,6 +260,42 @@ export function useAwuPoolSummary({
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
     mutateAwuPoolSummary: mutate,
+  };
+}
+
+// Polls the latest AWU purchase attempt status for a workspace. The dialog
+// drives `disabled` off its own "processing" state so we only poll while a
+// purchase is in flight.
+export function useAwuPurchaseStatus({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const statusFetcher: Fetcher<GetAwuPurchaseStatusResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/subscriptions/awu-purchase-status`,
+    statusFetcher,
+    {
+      disabled,
+      refreshInterval: (latest) => {
+        if (!latest?.attempt) {
+          return 2000;
+        }
+        return latest.attempt.status === "pending" ? 2000 : 0;
+      },
+    }
+  );
+
+  return {
+    attempt: data?.attempt ?? null,
+    isAwuPurchaseStatusLoading: !error && !data && !disabled,
+    isAwuPurchaseStatusValidating: isValidating,
+    isAwuPurchaseStatusError: error,
+    mutateAwuPurchaseStatus: mutate,
   };
 }
 

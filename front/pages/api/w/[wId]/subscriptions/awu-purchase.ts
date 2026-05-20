@@ -166,6 +166,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler, {
-  doesNotRequireCanUseProduct: true,
-});
+export default withSessionAuthenticationForWorkspace(handler);

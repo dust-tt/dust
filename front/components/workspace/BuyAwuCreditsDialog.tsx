@@ -9,6 +9,7 @@ import {
   awuCreditsToCurrency,
   currencyToAwuCredits,
 } from "@app/lib/metronome/amounts";
+import { useAwuPurchaseStatus } from "@app/lib/swr/credits";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
@@ -31,7 +32,7 @@ import {
   TabsTrigger,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type PurchaseState = "idle" | "processing" | "success" | "error";
 type TopUpTab = "one-time" | "automatic";
@@ -112,13 +113,53 @@ export function BuyAwuCreditsDialog({
   const [selectedTab, setSelectedTab] = useState<TopUpTab>("one-time");
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  // Ignore polled attempts older than the one we just started, so a cached
+  // "succeeded" entry from a previous purchase can't flash through.
+  const [purchaseStartedAtMs, setPurchaseStartedAtMs] = useState<number | null>(
+    null
+  );
   const { purchaseAwuCredits } = useAwuPurchase({ workspaceId });
+
+  // Poll the payment-gated commit status only while waiting on the webhook
+  // outcome. The Metronome -> Stripe payment is async, so the dialog can't
+  // know success/failure from the POST response alone.
+  const { attempt, mutateAwuPurchaseStatus } = useAwuPurchaseStatus({
+    workspaceId,
+    disabled: !isOpen || purchaseState !== "processing",
+  });
+
+  useEffect(() => {
+    if (purchaseState !== "processing" || !attempt) {
+      return;
+    }
+    if (
+      purchaseStartedAtMs !== null &&
+      attempt.createdAtMs < purchaseStartedAtMs
+    ) {
+      return;
+    }
+    switch (attempt.status) {
+      case "succeeded":
+        setPurchaseState("success");
+        onPurchaseSuccess?.();
+        break;
+      case "failed":
+        setErrorMessage(attempt.errorMessage ?? "Payment failed.");
+        setPurchaseState("error");
+        break;
+      case "pending":
+        break;
+      default:
+        assertNeverAndIgnore(attempt.status);
+    }
+  }, [attempt, purchaseState, purchaseStartedAtMs, onPurchaseSuccess]);
 
   const resetModalStateAndClose = useCallback(() => {
     setAmountInput("");
     setSelectedTab("one-time");
     setPurchaseState("idle");
     setErrorMessage("");
+    setPurchaseStartedAtMs(null);
     onClose();
   }, [onClose]);
 
@@ -164,13 +205,17 @@ export function BuyAwuCreditsDialog({
   const canPurchase = isValidAmount && !amountExceedsMax;
 
   const handlePurchase = async () => {
+    setPurchaseStartedAtMs(Date.now());
     setPurchaseState("processing");
     const amountCredits = Math.round(addedCredits);
     const result = await purchaseAwuCredits(amountCredits);
     switch (result.status) {
       case "success":
-        setPurchaseState("success");
-        onPurchaseSuccess?.();
+        // The Metronome commit is created but payment is still being
+        // attempted asynchronously. Stay in "processing" and let the
+        // status poll flip us to success or error based on the
+        // payment_gate.payment_status webhook outcome.
+        void mutateAwuPurchaseStatus();
         break;
       case "error":
         setErrorMessage(result.message);
@@ -188,7 +233,10 @@ export function BuyAwuCreditsDialog({
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Spinner size="lg" />
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Processing purchase...
+              Processing payment...
+            </p>
+            <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              This may take a few seconds.
             </p>
           </div>
         );

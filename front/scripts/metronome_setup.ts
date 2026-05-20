@@ -23,6 +23,7 @@ import {
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
+  STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import { invalidateProductSeatTypesCache } from "@app/lib/metronome/seat_types";
@@ -2488,6 +2489,12 @@ const CUSTOM_FIELD_KEYS: Array<{
   // entity type returned by `v1.contracts.products.list()` — `product` is a
   // legacy plan-product type and 404s on these IDs.
   { entity: "contract_product", key: SEAT_TYPE_CUSTOM_FIELD_KEY },
+  // Per-product Stripe product ID. Read by Metronome (via the
+  // `invoiceitem.price.product` mapping configured in Metronome's Stripe
+  // integration settings) when generating Stripe invoices for
+  // payment-gated commits. Populated manually in the Metronome UI per
+  // product — this entry only registers the field so the UI exposes it.
+  { entity: "contract_product", key: STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY },
 ];
 
 async function syncCustomFields(): Promise<void> {
