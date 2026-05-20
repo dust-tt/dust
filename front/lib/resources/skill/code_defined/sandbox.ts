@@ -22,9 +22,9 @@ function buildSandboxInstructionProse({
   hasDsbxTools: boolean;
 }): string {
   const instructions = [
-    `You have access to the conversation's Computer: a sandboxed Linux environment for running code, scripts, and shell commands. When talking to the user, refer to it as "the Computer" (or "the conversation's Computer"), never as "the sandbox". (Internally these instructions still use the word "sandbox" to describe the underlying environment — that is for your context only and must not leak into messages you send to the user.)
-
-Use \`bash\` to run commands and scripts. The Computer persists for the conversation duration.`,
+    'The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. Always call this environment "the Computer" in any text you send to the user.',
+    "Use `bash` to run commands and scripts.",
+    "The sandbox persists for the conversation duration.",
   ];
 
   if (hasDsbxTools) {
@@ -291,10 +291,9 @@ export const sandboxSkill = {
   userFacingDescription:
     "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment).",
   agentFacingDescription:
-    "Execute code and commands in the conversation's Computer (an isolated Linux sandbox). " +
-    "Useful to parse lengthy tool outputs, run code, process data, install packages, " +
-    "manipulate files, or perform any task requiring shell access. " +
-    "When talking to the user, refer to it as 'the Computer', never as 'the sandbox'.",
+    "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
+    "process data, install packages, manipulate files, or perform any task requiring shell access. " +
+    "Always call this environment 'the Computer' in any text you send to the user.",
   fetchInstructions: async (
     auth: Authenticator,
     {

@@ -465,9 +465,9 @@ export function EnvironmentSection() {
               <strong>HTTPS secrets (DSEC_)</strong> — for credentials and
               anything sensitive. Stored encrypted on the host. The dsbx
               forwarder injects the value only into outbound HTTPS requests to
-              the domains you whitelist; Computer code never sees the raw value.
-              Safe for API keys, tokens, and other secrets bound to a known
-              external service.
+              the domains you whitelist; code running in the Computer never sees
+              the raw value. Safe for API keys, tokens, and other secrets bound
+              to a known external service.
             </div>
             <div>
               <strong>Config ({SANDBOX_ENV_VAR_PREFIX})</strong> — for
@@ -480,8 +480,8 @@ export function EnvironmentSection() {
             <div>
               Values are write-only: they cannot be viewed after saving, only
               overwritten or deleted. Env vars are snapshotted when the Computer
-              starts, so running Computers keep their original values; new
-              Computers (new conversations, restarts) pick up the latest.
+              starts: an already-running Computer keeps its original values, and
+              any new Computer (new conversation, restart) picks up the latest.
             </div>
           </div>
         </ContentMessage>

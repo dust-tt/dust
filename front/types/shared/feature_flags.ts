@@ -209,7 +209,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   sandbox_tools: {
     description:
-      "Computer MCP tool for executing code in isolated Linux containers (a.k.a. sandbox)",
+      "Computer MCP tool for executing code in isolated Linux containers (sandbox)",
     stage: "dust_only",
   },
   sandbox_dsbx_tools: {
