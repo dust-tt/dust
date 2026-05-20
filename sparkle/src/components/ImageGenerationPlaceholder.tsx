@@ -2,9 +2,6 @@ import { cn } from "@sparkle/lib/utils";
 import { motion, useReducedMotion } from "framer-motion";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 
-// ─── AnimatedGridPattern ──────────────────────────────────────────────────────
-// Adapted from https://magicui.design/docs/components/animated-grid-pattern
-
 interface AnimatedGridPatternProps {
   width?: number;
   height?: number;
@@ -27,9 +24,9 @@ function AnimatedGridPattern({
   strokeDasharray = 0,
   numSquares = 30,
   maxOpacity = 0.28,
-  duration = 1.2,
-  duration: durationSeconds = 1.2,
-  repeatDelay: repeatDelaySeconds = 0,
+  durationSeconds = 1.2,
+  repeatDelaySeconds = 0,
+}: AnimatedGridPatternProps) {
   const shouldReduceMotion = useReducedMotion();
   const id = useId();
   const containerRef = useRef<SVGSVGElement | null>(null);
@@ -141,11 +138,11 @@ function AnimatedGridPattern({
               shouldReduceMotion
                 ? { duration: 0 }
                 : {
-                    duration,
+                    duration: durationSeconds,
                     repeat: 1,
                     delay: sid * 0.05,
                     repeatType: "reverse",
-                    repeatDelay,
+                    repeatDelay: repeatDelaySeconds,
                     ease: [0.645, 0.045, 0.355, 1],
                   }
             }
@@ -164,8 +161,6 @@ function AnimatedGridPattern({
     </svg>
   );
 }
-
-// ─── AnimatedDots ─────────────────────────────────────────────────────────────
 
 function AnimatedDots() {
   const [n, setN] = useState(1);
@@ -186,18 +181,10 @@ function AnimatedDots() {
   );
 }
 
-// ─── ImageGenerationPlaceholder ───────────────────────────────────────────────
-
 export interface ImageGenerationPlaceholderProps {
-  /**
-   * Image source URL. While undefined or null, the animated generating state
-   * is shown. Once set, the component crossfades into the image.
-   */
   src?: string | null;
   alt?: string;
-  /** Label shown while generating. Defaults to "Creating image". */
   label?: string;
-  /** Size in px for both width and height. Defaults to 260. */
   size?: number;
   className?: string;
 }
@@ -217,13 +204,11 @@ export function ImageGenerationPlaceholder({
   const [imgOpacity, setImgOpacity] = useState(0);
   const rafRef = useRef<number | null>(null);
 
-  // Trigger crossfade when src becomes available.
   useEffect(() => {
     if (!src) {
       return;
     }
     setGridOpacity(0);
-    // With reduced motion: mount image immediately with no transition overlap.
     const delay = shouldReduceMotion ? 0 : 120;
     const t = setTimeout(() => {
       setImgMounted(true);
@@ -246,7 +231,6 @@ export function ImageGenerationPlaceholder({
       )}
       style={{ width: size, height: size }}
     >
-      {/* Generating state — fades out when src arrives */}
       <div
         style={{
           position: "absolute",
@@ -272,7 +256,6 @@ export function ImageGenerationPlaceholder({
         <AnimatedGridPattern />
       </div>
 
-      {/* Image — fades in once src is available */}
       {imgMounted && src && (
         <img
           src={src}
