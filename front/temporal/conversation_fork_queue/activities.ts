@@ -8,10 +8,12 @@ export async function copyConversationGCSMountActivity({
   workspaceId,
   sourceConversationId,
   destConversationId,
+  sourceMessageTimestampMs,
 }: {
   workspaceId: string;
   sourceConversationId: string;
   destConversationId: string;
+  sourceMessageTimestampMs?: number;
 }): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
@@ -42,7 +44,11 @@ export async function copyConversationGCSMountActivity({
     return;
   }
 
-  const result = await copyConversationGCSMount(auth, { source, dest });
+  const result = await copyConversationGCSMount(auth, {
+    source,
+    dest,
+    sourceTimestampMs: sourceMessageTimestampMs,
+  });
   if (result.isErr()) {
     // GCS copy failed. Log and unblock anyway — permanently blocking the fork
     // is worse than letting the user post with potentially missing files.

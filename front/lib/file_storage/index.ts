@@ -285,13 +285,17 @@ export class FileStorage {
   async copyFile(
     srcPath: string,
     destPath: string,
-    destinationStorage: FileStorage = this
+    destinationStorage: FileStorage = this,
+    { sourceGeneration }: { sourceGeneration?: string } = {}
   ): Promise<void> {
     const destinationFile = destinationStorage.file(destPath);
+    const sourceFile = sourceGeneration
+      ? this.bucket.file(srcPath, { generation: sourceGeneration })
+      : this.file(srcPath);
 
     for (let attempt = 1; attempt <= GCS_COPY_MAX_RETRIES; attempt++) {
       try {
-        await this.file(srcPath).copy(destinationFile);
+        await sourceFile.copy(destinationFile);
         return;
       } catch (err) {
         if (attempt === GCS_COPY_MAX_RETRIES) {

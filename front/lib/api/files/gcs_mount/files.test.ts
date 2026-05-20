@@ -591,6 +591,156 @@ describe("copyConversationGCSMount", () => {
       expect(result.error.message).toContain("GCS copy unavailable");
     }
   });
+
+  describe("slow path (sourceTimestampMs)", () => {
+    let getSortedFileVersionsMock: ReturnType<typeof vi.fn>;
+    const forkMs = new Date("2025-06-01T12:00:00.000Z").getTime();
+    const beforeFork = "2025-06-01T11:59:00.000Z";
+    const afterFork = "2025-06-01T12:01:00.000Z";
+
+    beforeEach(() => {
+      getSortedFileVersionsMock = vi.fn().mockResolvedValue([]);
+      vi.mocked(getPrivateUploadBucket).mockReturnValue({
+        getFiles: getFilesMock,
+        copyFile: copyFileMock,
+        getSortedFileVersions: getSortedFileVersionsMock,
+      } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+    });
+
+    it("copies files predating the fork directly without fetching version history", async () => {
+      const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+      const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+      getFilesMock.mockResolvedValue([
+        { name: `${sourcePrefix}old.txt`, metadata: { updated: beforeFork } },
+      ]);
+
+      const result = await copyConversationGCSMount(auth, {
+        source,
+        dest,
+        sourceTimestampMs: forkMs,
+      });
+
+      assert(result.isOk());
+      expect(result.value.copiedCount).toBe(1);
+      expect(getSortedFileVersionsMock).not.toHaveBeenCalled();
+      expect(copyFileMock).toHaveBeenCalledOnce();
+      expect(copyFileMock).toHaveBeenCalledWith(
+        `${sourcePrefix}old.txt`,
+        `${destPrefix}old.txt`
+      );
+    });
+
+    it("fetches version history and copies the pre-fork generation for files written after the fork", async () => {
+      const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+      const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+      const filePath = `${sourcePrefix}modified.txt`;
+      getFilesMock.mockResolvedValue([
+        { name: filePath, metadata: { updated: afterFork } },
+      ]);
+      getSortedFileVersionsMock.mockResolvedValue([
+        { name: filePath, metadata: { updated: afterFork, generation: "456" } },
+        {
+          name: filePath,
+          metadata: { updated: beforeFork, generation: "123" },
+        },
+      ]);
+
+      const result = await copyConversationGCSMount(auth, {
+        source,
+        dest,
+        sourceTimestampMs: forkMs,
+      });
+
+      assert(result.isOk());
+      expect(result.value.copiedCount).toBe(1);
+      expect(getSortedFileVersionsMock).toHaveBeenCalledOnce();
+      expect(getSortedFileVersionsMock).toHaveBeenCalledWith({ filePath });
+      expect(copyFileMock).toHaveBeenCalledWith(
+        filePath,
+        `${destPrefix}modified.txt`,
+        undefined,
+        { sourceGeneration: "123" }
+      );
+    });
+
+    it("skips a file written after the fork when no pre-fork version exists", async () => {
+      const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+      const filePath = `${sourcePrefix}new-file.txt`;
+      getFilesMock.mockResolvedValue([
+        { name: filePath, metadata: { updated: afterFork } },
+      ]);
+      getSortedFileVersionsMock.mockResolvedValue([
+        { name: filePath, metadata: { updated: afterFork, generation: "456" } },
+      ]);
+
+      const result = await copyConversationGCSMount(auth, {
+        source,
+        dest,
+        sourceTimestampMs: forkMs,
+      });
+
+      assert(result.isOk());
+      expect(result.value.copiedCount).toBe(0);
+      expect(copyFileMock).not.toHaveBeenCalled();
+    });
+
+    it("handles a mix of unchanged, version-filtered, and skipped files", async () => {
+      const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+      const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+      const oldPath = `${sourcePrefix}old.txt`;
+      const modifiedPath = `${sourcePrefix}modified.txt`;
+      const newPath = `${sourcePrefix}new.txt`;
+
+      getFilesMock.mockResolvedValue([
+        { name: oldPath, metadata: { updated: beforeFork } },
+        { name: modifiedPath, metadata: { updated: afterFork } },
+        { name: newPath, metadata: { updated: afterFork } },
+      ]);
+      getSortedFileVersionsMock.mockImplementation(
+        ({ filePath }: { filePath: string }) => {
+          if (filePath === modifiedPath) {
+            return Promise.resolve([
+              {
+                name: modifiedPath,
+                metadata: { updated: afterFork, generation: "200" },
+              },
+              {
+                name: modifiedPath,
+                metadata: { updated: beforeFork, generation: "100" },
+              },
+            ]);
+          }
+          return Promise.resolve([
+            {
+              name: newPath,
+              metadata: { updated: afterFork, generation: "300" },
+            },
+          ]);
+        }
+      );
+
+      const result = await copyConversationGCSMount(auth, {
+        source,
+        dest,
+        sourceTimestampMs: forkMs,
+      });
+
+      assert(result.isOk());
+      expect(result.value.copiedCount).toBe(2);
+      expect(getSortedFileVersionsMock).toHaveBeenCalledTimes(2);
+      expect(copyFileMock).toHaveBeenCalledTimes(2);
+      expect(copyFileMock).toHaveBeenCalledWith(
+        oldPath,
+        `${destPrefix}old.txt`
+      );
+      expect(copyFileMock).toHaveBeenCalledWith(
+        modifiedPath,
+        `${destPrefix}modified.txt`,
+        undefined,
+        { sourceGeneration: "100" }
+      );
+    });
+  });
 });
 
 describe("copyMountFile", () => {

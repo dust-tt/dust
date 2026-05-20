@@ -17,14 +17,17 @@ export async function conversationForkWorkflow({
   workspaceId,
   sourceConversationId,
   destConversationId,
+  sourceMessageTimestampMs,
 }: {
   workspaceId: string;
   sourceConversationId: string;
   destConversationId: string;
+  sourceMessageTimestampMs?: number;
 }): Promise<void> {
   await copyConversationGCSMountActivity({
     workspaceId,
     sourceConversationId,
     destConversationId,
+    sourceMessageTimestampMs,
   });
 }
