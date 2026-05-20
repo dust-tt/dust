@@ -1,8 +1,9 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
-import type {
-  ResponseFormat,
-  ToolChoice,
+import {
+  ReasoningEffort,
+  type ResponseFormat,
+  type ToolChoice,
 } from "@mistralai/mistralai/models/components";
 import type { ToolChoiceEnum } from "@mistralai/mistralai/models/components/toolchoiceenum";
 
@@ -32,3 +33,12 @@ export function toResponseFormatParam(
     },
   };
 }
+
+export const MISTRAL_REASONING_EFFORT_MAPPING = {
+  none: ReasoningEffort.None,
+  // Mistral currently supports none and high
+  // light and medium are not selectable in the UI for mistral
+  light: ReasoningEffort.High,
+  medium: ReasoningEffort.High,
+  high: ReasoningEffort.High,
+};

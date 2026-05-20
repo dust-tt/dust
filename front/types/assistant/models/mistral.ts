@@ -88,7 +88,7 @@ export const MISTRAL_MEDIUM_3_5_MODEL_CONFIG: ModelConfigurationType = {
     none: true,
     light: false,
     medium: false,
-    high: false,
+    high: true,
   },
   defaultReasoningEffort: "none",
   tokenizer: { type: "sentence_piece", base: "model_v2" },

@@ -19,6 +19,7 @@ import type {
   ChatCompletionResponse,
   CompletionEvent,
   ContentChunk,
+  ThinkChunk,
   ToolCall,
   UsageInfo,
 } from "@mistralai/mistralai/models/components";
@@ -38,6 +39,7 @@ export async function* streamLLMEvents({
   // Mistral does not send a "report" with concatenated text chunks
   // So we have to aggregate it ourselves as we receive text chunks
   let textDelta = "";
+  let reasoningDelta = "";
   let hasYieldedResponseId = false;
 
   const aggregate = new SuccessAggregate();
@@ -46,9 +48,24 @@ export async function* streamLLMEvents({
     for (const event of events) {
       if (event.type === "text_delta") {
         textDelta += event.content.delta;
+      } else if (event.type === "reasoning_delta") {
+        reasoningDelta += event.content.delta;
       }
       aggregate.add(event);
       yield event;
+    }
+  }
+
+  function* flushReasoning() {
+    if (reasoningDelta.length > 0) {
+      yield* yieldEvents([
+        {
+          type: "reasoning_generated" as const,
+          content: { text: reasoningDelta },
+          metadata,
+        },
+      ]);
+      reasoningDelta = "";
     }
   }
 
@@ -89,6 +106,7 @@ export async function* streamLLMEvents({
 
     switch (choice.finishReason) {
       case CompletionResponseStreamChoiceFinishReason.ToolCalls: {
+        yield* flushReasoning();
         const textGeneratedEvent = {
           type: "text_generated" as const,
           content: { text: textDelta },
@@ -106,6 +124,7 @@ export async function* streamLLMEvents({
         // yield error event after all received events
         yield* yieldEvents(events);
         textDelta = "";
+        reasoningDelta = "";
         yield* yieldEvents([
           new EventError(
             {
@@ -123,6 +142,7 @@ export async function* streamLLMEvents({
         // yield error event after all received events
         yield* yieldEvents(events);
         textDelta = "";
+        reasoningDelta = "";
         yield* yieldEvents([
           new EventError(
             {
@@ -140,6 +160,7 @@ export async function* streamLLMEvents({
       // Streaming ends with a text response
       case CompletionResponseStreamChoiceFinishReason.Stop: {
         yield* yieldEvents(events);
+        yield* flushReasoning();
         const textGeneratedEvent = {
           type: "text_generated" as const,
           content: { text: textDelta },
@@ -293,10 +314,26 @@ function contentChunkToLLMEvent({
           }
         : null;
     }
+    case "thinking": {
+      const text = thinkingChunkToText(chunk.thinking);
+      return text.length > 0
+        ? {
+            type: "reasoning_delta",
+            content: { delta: text },
+            metadata,
+          }
+        : null;
+    }
     default:
-      // Only support text for now
+      // Only text and thinking chunks are surfaced as events.
       return null;
   }
+}
+
+function thinkingChunkToText(thinking: ThinkChunk["thinking"]): string {
+  return thinking
+    .map((chunk) => (chunk.type === "text" ? chunk.text : ""))
+    .join("");
 }
 
 /**
@@ -344,7 +381,14 @@ export function chatCompletionToLLMEvents(
       }
       const { content, toolCalls } = message;
       if (content) {
-        const text = batchContentToText(content);
+        const { text, reasoning } = batchContentToParts(content);
+        if (reasoning.length > 0) {
+          addEvent({
+            type: "reasoning_generated",
+            content: { text: reasoning },
+            metadata,
+          });
+        }
         if (text.length > 0) {
           addEvent({
             type: "text_generated",
@@ -414,11 +458,21 @@ export function chatCompletionToLLMEvents(
   return events;
 }
 
-function batchContentToText(content: string | Array<ContentChunk>): string {
+function batchContentToParts(content: string | Array<ContentChunk>): {
+  text: string;
+  reasoning: string;
+} {
   if (isString(content)) {
-    return content;
+    return { text: content, reasoning: "" };
   }
-  return content
-    .map((chunk) => (chunk.type == "text" ? chunk.text : ""))
-    .join("");
+  let text = "";
+  let reasoning = "";
+  for (const chunk of content) {
+    if (chunk.type === "text") {
+      text += chunk.text;
+    } else if (chunk.type === "thinking") {
+      reasoning += thinkingChunkToText(chunk.thinking);
+    }
+  }
+  return { text, reasoning };
 }
