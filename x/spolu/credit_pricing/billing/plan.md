@@ -2,8 +2,8 @@
 
 Companion to `overview.md`. Splits the work into small, independently mergeable PRs that ship a
 new `/w/:wId/billing` page **separate** from the existing `SubscriptionPage`. The new page is
-gated on `isSubscriptionMetronomeBilled(subscription) && !isLegacyPlan(plan)`; workspaces that
-fail the gate keep the existing Subscription page untouched.
+gated on `isSubscriptionMetronomeBilled(subscription) && !(await isLegacyPlan(workspace.sId))`;
+workspaces that fail the gate keep the existing Subscription page untouched.
 
 Each PR is sized to be reviewable in one sitting, lands behind the gate, and leaves the app in a
 working state for both gate-true and gate-false workspaces.
@@ -12,51 +12,49 @@ working state for both gate-true and gate-false workspaces.
 
 ## Guiding principles
 
-- **No edits to `SubscriptionPage.tsx` or `MetronomeSubscriptionPanel.tsx`** except trivial
-  re-exports of helpers we extract. The legacy flow keeps rendering bit-for-bit identically.
+- **Keep legacy UI stable**: the only planned edit to `SubscriptionPage.tsx` is the reverse
+  redirect for credit-pricing workspaces. Do not change `MetronomeSubscriptionPanel.tsx` except
+  trivial re-exports of helpers we extract, so the legacy flow stays bit-for-bit identical.
 - **One PR = one design block** where possible. The page assembles incrementally; until a block
   ships, render a skeleton/`<Spinner />` for that section.
 - **Backend before frontend**: any new endpoint ships in its own PR with a typed handler + test
   before the UI PR that consumes it. Per `[BACK16]/[BACK18]` keep handlers thin, put logic in
   `lib/api/billing/*` returning domain types — never `APIErrorWithStatusCode`.
 - **Don't introduce a feature flag for the page** — the gate is contract-based per the Slack
-  decision. Local dev still requires the `metronome_billing` flag on the workspace + the Poke
-  flip as documented in `overview.md`.
+  decision. Local dev only requires the `global_disable_metronome_billing` kill switch to be
+  disabled plus the Poke flip as documented in `overview.md`; `metronome_billing` is only a
+  per-workspace bypass when the global kill switch is active.
 - **Every PR is reviewable in isolation**: include a 1-2 line `## Tests` section in the PR
   body matching the template in `AGENTS.local.md`. Use `[TEST1]/[TEST2]` factory-based
   functional tests for endpoints; add Vitest unit tests for pure helpers.
 
 ---
 
-## PR 1 — `isLegacyPlan` + `isCreditPricingSubscription` helpers
+## PR 1 — Billing eligibility API + SWR helper
 
 **Goal:** give every caller a single place to ask "should this workspace see the new Billing
-page?". No UI changes, no routing, no endpoints.
+page?". No UI changes and no routing yet.
 
 **Changes**
-- `front/lib/plans/plan_codes.ts`
-  - Add `isLegacyPlan(plan: PlanType | null | undefined): boolean`. Returns `true` for any of
-    the currently-shipping plan codes (the existing `PRO_PLAN_SEAT_29_CODE`,
-    `PRO_PLAN_SEAT_39_CODE`, `PRO_PLAN_LARGE_FILES_CODE`, every `ENT_*` prefix, every `FREE_*`
-    code) — these are the codes that pre-date credit-pricing. Returns `false` for any new
-    credit-pricing plan codes (none exist yet — they'll arrive when sales/PM publish them, at
-    which point this function gets updated to know about the *new* codes too; until then
-    everything is legacy).
-  - Co-locate a brief comment explaining: "Legacy = pre-credit-pricing. New credit-pricing
-    Pro/Max/Business/Enterprise tiers will be added to the *exclusion list* of this function
-    as they're introduced."
-- `front/types/plan.ts`
-  - Export `isCreditPricingSubscription(subscription: SubscriptionType): boolean` that returns
-    `isSubscriptionMetronomeBilled(subscription) && !isLegacyPlan(subscription.plan)`. Single
-    canonical predicate the UI, sidebar, and route guards all use.
+- `front/lib/api/billing/eligibility.ts`
+  - Add `getBillingEligibility(auth): Promise<Result<BillingEligibility, BillingEligibilityError>>`.
+  - Compute `isCreditPricingBillingEnabled` from the active subscription plus the existing
+    `isLegacyPlan(owner.sId)` helper in `front/lib/metronome/plan_type.ts`.
+  - Keep the existing Metronome rate-card helper as the canonical source of truth. Do not add a
+    plan-code-based `isLegacyPlan` in `front/lib/plans/plan_codes.ts`.
+- `front/pages/api/w/[wId]/billing/eligibility.ts`
+  - Thin admin-only handler returning `{ isCreditPricingBillingEnabled: boolean }`.
+- `front/lib/swr/billing.ts`
+  - Add `useBillingEligibility({ workspaceId })` so the route guard, sidebar, and Usage page can
+    consume the same gate.
 
 **Tests**
-- Vitest unit tests for `isLegacyPlan` (each known code in/out) and
-  `isCreditPricingSubscription` (Metronome+legacy, Metronome+new, Stripe+legacy, Stripe+new).
+- Functional test for the endpoint: Metronome+legacy returns false, Metronome+credit-pricing
+  returns true, Stripe/no Metronome contract returns false, non-admin gets 403.
 
-**Risk:** None. Pure additions, no callers yet.
+**Risk:** Low. Pure additions, no callers yet.
 
-**Why first:** every later PR consumes this predicate. Landing it standalone means later PRs
+**Why first:** every later PR consumes this endpoint/hook. Landing it standalone means later PRs
 don't re-debate the gate.
 
 ---
@@ -68,9 +66,8 @@ don't re-debate the gate.
 **Changes**
 - New file `front/components/pages/workspace/billing/BillingPage.tsx`. Renders the page header
   ("Billing", "Change your subscription and edit your billing information") and `null` for
-  every section. Calls `useAuth()` to access the subscription; if
-  `!isCreditPricingSubscription(subscription)` calls `router.replace("/w/:wId/subscription")`
-  (mirroring the redirect pattern used by `UsagePage.tsx:151-155`).
+  every section. Calls `useBillingEligibility`; once loaded, if
+  `!isCreditPricingBillingEnabled`, calls `router.replace("/w/:wId/subscription")`.
 - New file `front/pages/w/[wId]/billing.tsx` (Next shell, matching the pattern used by
   `front/pages/w/[wId]/subscription.tsx`).
 - `front-spa/src/app/routes/adminRoutes.tsx` — register the lazy-loaded `BillingPage` at
@@ -92,22 +89,29 @@ don't re-debate the gate.
 
 **Changes**
 - `front/components/navigation/config.ts` (around `subscription` at line 285-290):
+  - Add `"billing"` to `SubNavigationAdminId` and `ADMIN_ROUTE_PATTERNS`.
+  - Thread an `isCreditPricingBillingEnabled` boolean into `subNavigationAdmin` from the layout
+    component that already has hook access. Keep `config.ts` as a pure config builder.
   - Add a `billing` menu entry above `subscription`, label "Billing", icon `CardIcon`, href
-    `/w/${owner.sId}/billing`. Render only when
-    `isCreditPricingSubscription(subscription)`.
+    `/w/${owner.sId}/billing`. Render only when `isCreditPricingBillingEnabled` is true.
   - Hide the existing `subscription` entry when the gate is true. The cleanest approach is a
     `hidden` boolean alongside `featureFlag` (extend the menu schema if it doesn't already
     support it) so the sidebar config stays declarative. If extending the schema feels heavy
     for one entry, filter the array at the bottom of the `if (isAdmin(owner)) { … }` block.
+  - Replace the temporary `metronome_billing_usage_page` feature-flag gate for the "Usage"
+    entry with the same billing-eligibility value. This is the follow-up task called out in the
+    review: Usage should be visible for `!isLegacyPlan(workspace.sId)`.
+- `front/components/pages/workspace/UsagePage.tsx` — replace the feature-flag redirect/null
+  checks with the same eligibility hook, redirecting ineligible workspaces to `/members`.
 - `front/components/pages/workspace/subscription/SubscriptionPage.tsx` — top of the component,
   add a `useEffect` that calls `router.replace("/w/:wId/billing")` when
-  `isCreditPricingSubscription(subscription)` is true. This is the *only* change to this file
-  in the whole plan; it makes the redirect symmetric so deep links from anywhere land on the
-  right page.
+  `isCreditPricingBillingEnabled` is true. This is the *only* change to this file in the whole
+  plan; it makes the redirect symmetric so deep links from anywhere land on the right page.
 
 **Tests**
 - Manual: credit-pricing workspace sees "Billing" in the sidebar, no "Subscription"; legacy
   workspace sees "Subscription", no "Billing"; visiting either URL on the wrong side bounces.
+  The Usage entry follows the same credit-pricing gate.
 
 **Risk:** Low. Sidebar is declarative; the redirect mirrors `UsagePage`'s existing pattern.
 
@@ -133,7 +137,7 @@ don't re-debate the gate.
   currency)`.
 - "Switch to yearly to save $XXX per year" subtext: render only when
   `invoice.billingPeriod === "monthly"`. CTA is **disabled with a tooltip** ("Annual pricing
-  rolling out soon") for now — the actual yearly switch arrives in PR 9 once
+  rolling out soon") for now — the actual yearly switch arrives in PR 11 once
   `seat_plan.ts:116` TODO lands.
 - Wire the card into `BillingPage.tsx` (replacing the `null` placeholder).
 
@@ -158,6 +162,8 @@ don't re-debate the gate.
   - `priceCents` per user formatted via `getPriceAsString`.
   - "N seats assigned" using `useWorkspaceSeatsCount` filtered by seat type.
   - "N,NNN credits per months" from `awuCredits`.
+- Do not render available/unassigned seat counts and do not call `useWorkspaceSeatAvailability`.
+  Credit pricing is moving to no unassigned/available seat pool.
 - Handle the `null` case of `useSeatPlan` (workspace not Metronome-billed). Since the page
   redirects in that case the cards should never see it, but render a safe empty state.
 - Wire into `BillingPage`.
@@ -225,7 +231,7 @@ buttons POST to `/api/stripe/portal` and redirect to the returned `portalUrl` (e
 endpoint at `front/pages/api/stripe/portal.ts`).
 
 **Changes**
-- New SWR hook `useBillingInfo` in `front/lib/swr/billing.ts` (new file) following the
+- New SWR hook `useBillingInfo` in `front/lib/swr/billing.ts` following the
   `[REACT2]` pattern — abstract the GET and the POST-to-portal as colocated hooks.
 - New `front/components/pages/workspace/billing/BillingInfoBlock.tsx` — renders the address
   card and the card-on-file row with two "Change" buttons. Loading state per `[REACT3]`.
@@ -336,9 +342,10 @@ PR.
 - **PR 11** depends on upstream rate-card work — track separately, land last.
 - **PR 12** rolls up cleanup at the end.
 
-If at any point the new credit-pricing plan codes (the Pro/Max/Business tiers in the design)
-land in `plan_codes.ts`, revisit `isLegacyPlan` from PR 1 to make sure they're correctly
-excluded.
+If plan-code naming changes land while this stream is open, do not update the Billing gate in
+`plan_codes.ts`. Re-check that `front/lib/metronome/plan_type.ts` still distinguishes legacy
+rate cards by the `Programmatic Usage` product and update that helper only if the Metronome
+contract signal changes.
 
 ---
 
