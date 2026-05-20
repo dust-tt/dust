@@ -7,14 +7,12 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import {
-  SKILL_VIEWS,
-  type SkillType,
-  type SkillViewType,
-  type SkillWithoutInstructionsAndToolsType,
-  type SkillWithRelationsType,
+import type {
+  SkillType,
+  SkillWithoutInstructionsAndToolsType,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
-import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
@@ -29,16 +27,12 @@ import reinforcementDailySpend from "./reinforcement_daily_spend";
 import reinforcementSpend from "./reinforcement_spend";
 import similar from "./similar";
 
-export type GetSkillsWithoutInstructionsAndToolsResponseBody = {
+export type GetSkillsResponseBody = {
   skills: SkillWithoutInstructionsAndToolsType[];
 };
 
-export type GetSkillsResponseBody = {
-  skills: SkillType[];
-};
-
 export type GetSkillsWithRelationsResponseBody = {
-  skills: SkillWithRelationsType[];
+  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
 };
 
 export type PostSkillResponseBody = {
@@ -48,10 +42,6 @@ export type PostSkillResponseBody = {
 const SkillStatusSchema = z
   .enum(["active", "archived", "suggested"])
   .optional();
-
-function isSkillViewType(value: string): value is SkillViewType {
-  return SKILL_VIEWS.some((skillViewType) => skillViewType === value);
-}
 
 // Schema for attached knowledge.
 export const AttachedKnowledgeSchema = z.object({
@@ -115,43 +105,17 @@ app.get(
   async (
     ctx
   ): HandlerResult<
-    | GetSkillsResponseBody
-    | GetSkillsWithRelationsResponseBody
-    | GetSkillsWithoutInstructionsAndToolsResponseBody
+    GetSkillsResponseBody | GetSkillsWithRelationsResponseBody
   > => {
     const auth = ctx.get("auth");
 
+    // @deprecated viewType query param is ignored — instructions and tools
+    // are never returned from the list endpoint. Use GET /skills/:sId for full details.
     const withRelations = ctx.req.query("withRelations");
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
     const isDefault = ctx.req.query("isDefault");
-    const viewType = ctx.req.query("viewType");
-
-    let skillView: SkillViewType = "full";
-    if (viewType !== undefined) {
-      if (!isString(viewType) || !isSkillViewType(viewType)) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid viewType: ${viewType}. Expected "full" or "summary".`,
-          },
-        });
-      }
-
-      skillView = viewType;
-    }
-
-    if (withRelations === "true" && skillView === "summary") {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "viewType=summary is incompatible with withRelations=true.",
-        },
-      });
-    }
 
     const statusValidation = SkillStatusSchema.safeParse(status);
     if (!statusValidation.success) {
@@ -170,8 +134,8 @@ app.get(
       globalSpaceOnly: globalSpaceOnly === "true",
       onlyCustom: onlyCustom === "true",
       isDefault: isDefault === "true" ? true : undefined,
-      withInstructions: skillView !== "summary",
-      withTools: skillView === "full",
+      withInstructions: false,
+      withTools: false,
     });
 
     if (withRelations === "true") {
@@ -184,12 +148,18 @@ app.get(
       const skillsWithRelations = await concurrentExecutor(
         skills,
         async (sc) => {
+          const {
+            instructions,
+            instructionsHtml,
+            tools,
+            ...skillWithoutInstructionsAndTools
+          } = sc.toJSON(auth);
           const usage = await sc.fetchUsage(auth);
           const editors = await sc.listEditors(auth);
           const editedByUser = await sc.fetchEditedByUser(auth);
 
           return {
-            ...sc.toJSON(auth),
+            ...skillWithoutInstructionsAndTools,
             relations: {
               usage,
               editors: editors ? editors.map((e) => e.toJSON()) : null,
@@ -199,7 +169,7 @@ app.get(
                   null)
                 : null,
             },
-          } satisfies SkillWithRelationsType;
+          } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
         },
         { concurrency: 10 }
       );
@@ -207,23 +177,17 @@ app.get(
       return ctx.json({ skills: skillsWithRelations });
     }
 
-    if (skillView === "summary") {
-      return ctx.json({
-        skills: skills.map((sc) => {
-          const {
-            instructions,
-            instructionsHtml,
-            tools,
-            ...skillWithoutInstructionsAndTools
-          } = sc.toJSON(auth);
-
-          return skillWithoutInstructionsAndTools;
-        }),
-      });
-    }
-
     return ctx.json({
-      skills: skills.map((sc) => sc.toJSON(auth)),
+      skills: skills.map((sc) => {
+        const {
+          instructions,
+          instructionsHtml,
+          tools,
+          ...skillWithoutInstructionsAndTools
+        } = sc.toJSON(auth);
+
+        return skillWithoutInstructionsAndTools;
+      }),
     });
   }
 );

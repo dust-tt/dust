@@ -111,9 +111,7 @@ export function useSkills({
 } {
   const { fetcher } = useFetcher();
 
-  const queryParams = new URLSearchParams({
-    viewType: "summary",
-  });
+  const queryParams = new URLSearchParams();
   if (status) {
     queryParams.set("status", status);
   }
