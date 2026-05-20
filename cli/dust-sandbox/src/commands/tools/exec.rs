@@ -28,35 +28,36 @@ pub async fn cmd_exec(
 
     let arguments = parse_args(raw_args)?;
 
-    let resp = client
-        .call_tool(&view.space_id, &view.s_id, tool_name, arguments)
-        .await?;
+    let resp = client.call_tool(&view.s_id, tool_name, arguments).await?;
 
+    // All content blocks (text and sentinel markers) go to stdout so a caller
+    // capturing stdout sees the full tool output. stderr is reserved for
+    // ambient diagnostics.
     for block in &resp.result.content {
         match block {
             ContentBlock::Text { text } => {
                 println!("{text}");
             }
             ContentBlock::Image { mime_type, .. } => {
-                eprintln!("[image: {mime_type}]");
+                println!("[image: {mime_type}]");
             }
             ContentBlock::Audio { mime_type, .. } => {
-                eprintln!("[audio: {mime_type}]");
+                println!("[audio: {mime_type}]");
             }
             ContentBlock::Resource { resource } => {
                 if let Some(text) = &resource.text {
                     println!("{text}");
                 } else if resource.blob.is_some() {
-                    eprintln!("[binary resource: {}]", resource.uri);
+                    println!("[binary resource: {}]", resource.uri);
                 } else {
-                    eprintln!("[resource: {}]", resource.uri);
+                    println!("[resource: {}]", resource.uri);
                 }
             }
             ContentBlock::ResourceLink { uri, name } => {
                 if let Some(name) = name {
-                    eprintln!("[resource link: {name} — {uri}]");
+                    println!("[resource link: {name} - {uri}]");
                 } else {
-                    eprintln!("[resource link: {uri}]");
+                    println!("[resource link: {uri}]");
                 }
             }
             ContentBlock::Unknown => {}
