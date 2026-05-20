@@ -32,16 +32,13 @@ export async function getPokeConversation(
       .flat()
       .filter((m): m is PokeAgentMessageType => m.type === "agent_message");
 
-    const agentMessagesWithRunIds =
-      agentMessages.length > 0
-        ? await AgentMessageModel.findAll({
-            where: {
-              id: [...new Set(agentMessages.map((m) => m.agentMessageId))],
-              workspaceId: owner.id,
-            },
-            attributes: ["id", "runIds"],
-          })
-        : [];
+    const agentMessagesWithRunIds = await AgentMessageModel.findAll({
+      where: {
+        id: [...new Set(agentMessages.map((m) => m.agentMessageId))],
+        workspaceId: owner.id,
+      },
+      attributes: ["id", "runIds"],
+    });
     const runIdsByAgentMessageId = new Map(
       agentMessagesWithRunIds.map((m) => [m.id, m.runIds])
     );
