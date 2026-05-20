@@ -254,7 +254,11 @@ function flushPendingSegment({
     const cotToFlush = chainOfThought.current;
     chainOfThought.current = "";
     return {
-      steps: appendThinkingStep(steps, cotToFlush, `thinking-${suffix}`),
+      steps: appendThinkingStep(
+        steps,
+        cotToFlush,
+        `thinking-${suffix}`
+      ),
       contentCleared: false,
     };
   }
@@ -349,6 +353,10 @@ export function useAgentMessageStream({
   // thinking (chain_of_thought) and writing (tokens), flushing completed
   // segments as activity steps on each switch.
   const lastClassification = useRef<"tokens" | "chain_of_thought" | null>(null);
+  // Tracks the runId of the last CoT event. When it changes (Temporal activity
+  // retry boundary), chainOfThought.current is reset so retry CoT doesn't
+  // accumulate on top of the previous attempt's CoT.
+  const lastCoTRunId = useRef<string | null>(null);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -405,6 +413,7 @@ export function useAgentMessageStream({
           ) {
             content.current = "";
             chainOfThought.current = "";
+            lastCoTRunId.current = null;
             methods.data.map((m) => {
               if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                 return m;
@@ -426,6 +435,25 @@ export function useAgentMessageStream({
             classification === "tokens" ||
             classification === "chain_of_thought"
           ) {
+            // When a CoT event arrives with a new runId, the Temporal activity
+            // was retried. Reset both accumulators BEFORE the transition check
+            // so the stale content from the previous attempt is not flushed as
+            // an activity step at the transition boundary.
+            if (classification === "chain_of_thought") {
+              const newRunId = generationTokens.runId;
+              if (
+                newRunId &&
+                lastCoTRunId.current !== null &&
+                newRunId !== lastCoTRunId.current
+              ) {
+                chainOfThought.current = "";
+                content.current = "";
+              }
+              if (newRunId) {
+                lastCoTRunId.current = newRunId;
+              }
+            }
+
             // Detect classification transitions and flush completed segments.
             if (
               lastClassification.current !== null &&
