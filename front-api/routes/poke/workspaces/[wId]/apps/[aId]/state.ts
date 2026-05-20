@@ -1,11 +1,19 @@
 import { AppResource } from "@app/lib/resources/app_resource";
-import {
-  PostStateRequestBodySchema,
-  type PostStateResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/state";
+import type { AppType } from "@app/types/app";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
+import { z } from "zod";
+
+const PostStateRequestBodySchema = z.object({
+  specification: z.string(),
+  config: z.string(),
+  run: z.string().optional(),
+});
+
+type PostStateResponseBody = {
+  app: AppType;
+};
 
 // Mounted at /api/poke/workspaces/:wId/apps/:aId/state.
 const app = new Hono();
