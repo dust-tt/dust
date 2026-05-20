@@ -26,7 +26,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { Octokit } from "@octokit/core";
 import path from "path";
 
-const IMPORT_CONCURRENCY = 4;
+const FILE_IMPORT_CONCURRENCY = 4;
 
 type ImportSkillsResult = {
   imported: SkillResource[];
@@ -104,125 +104,121 @@ export async function importSkillsFromGitHub(
   const updated: SkillResource[] = [];
   const skipped: { name: string; message: string }[] = [];
 
-  await concurrentExecutor(
-    selectedSkills,
-    async (skill) => {
-      const existing = existingSkillsMap.get(skill.name) ?? null;
+  for (const skill of selectedSkills) {
+    const existing = existingSkillsMap.get(skill.name) ?? null;
 
-      if (existing && !isSkillFromGitHubRepo(existing, { repoUrl })) {
-        skipped.push({
-          name: skill.name,
-          message: `A different skill named "${skill.name}" already exists.`,
-        });
-        return;
-      }
+    if (existing && !isSkillFromGitHubRepo(existing, { repoUrl })) {
+      skipped.push({
+        name: skill.name,
+        message: `A different skill named "${skill.name}" already exists.`,
+      });
+      continue;
+    }
 
-      let fileAttachments: FileResource[] = [];
+    let fileAttachments: FileResource[] = [];
+    if (allowFileAttachments) {
+      const skillDirPath = path.dirname(skill.skillMdPath);
+      const uploadResults = await concurrentExecutor(
+        skill.attachments,
+        (attachment) =>
+          uploadAttachment(auth, {
+            octokit,
+            owner,
+            repo,
+            attachment,
+            skillDirPath,
+          }),
+        { concurrency: FILE_IMPORT_CONCURRENCY }
+      );
+
+      fileAttachments = uploadResults.filter(
+        (r): r is FileResource => r !== null
+      );
+    }
+
+    if (existing) {
+      const attachedKnowledge = await existing.getAttachedKnowledge(auth);
+
+      await existing.updateSkill(auth, {
+        name: skill.name,
+        agentFacingDescription: skill.description,
+        userFacingDescription: skill.description,
+        instructions: skill.instructions,
+        icon: existing.icon,
+        mcpServerViews: existing.mcpServerViews,
+        attachedKnowledge,
+        requestedSpaceIds: existing.requestedSpaceIds,
+        ...(allowFileAttachments ? { fileAttachments } : {}),
+        source: "github",
+        sourceMetadata: {
+          repoUrl,
+          filePath: skill.skillMdPath,
+        },
+      });
+
       if (allowFileAttachments) {
-        const skillDirPath = path.dirname(skill.skillMdPath);
-        const uploadResults = await concurrentExecutor(
-          skill.attachments,
-          (attachment) =>
-            uploadAttachment(auth, {
-              octokit,
-              owner,
-              repo,
-              attachment,
-              skillDirPath,
-            }),
-          { concurrency: IMPORT_CONCURRENCY }
-        );
+        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+          skillId: existing.sId,
+        });
+      }
 
-        fileAttachments = uploadResults.filter(
-          (r): r is FileResource => r !== null
+      updated.push(existing);
+    } else {
+      let icon: string | null = null;
+      const iconResult = await getSkillIconSuggestion(auth, {
+        name: skill.name,
+        instructions: skill.instructions,
+        agentFacingDescription: skill.description,
+      });
+      if (iconResult.isOk()) {
+        icon = iconResult.value;
+      } else {
+        logger.warn(
+          { error: iconResult.error, skillName: skill.name },
+          "Failed to generate icon suggestion for imported skill"
         );
       }
 
-      if (existing) {
-        const attachedKnowledge = await existing.getAttachedKnowledge(auth);
+      const detectedMCPServerViews = await suggestMCPServersForDetectedSkill(
+        auth,
+        skill
+      );
 
-        await existing.updateSkill(auth, {
+      const skillResource = await SkillResource.makeNew(
+        auth,
+        {
+          status: "active",
           name: skill.name,
           agentFacingDescription: skill.description,
           userFacingDescription: skill.description,
           instructions: skill.instructions,
-          icon: existing.icon,
-          mcpServerViews: existing.mcpServerViews,
-          attachedKnowledge,
-          requestedSpaceIds: existing.requestedSpaceIds,
-          ...(allowFileAttachments ? { fileAttachments } : {}),
+          instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
+          editedBy: user.id,
+          requestedSpaceIds: [],
+          extendedSkillId: null,
+          icon,
           source: "github",
           sourceMetadata: {
             repoUrl,
             filePath: skill.skillMdPath,
           },
+          isDefault: false,
+        },
+        {
+          mcpServerViews: detectedMCPServerViews,
+          ...(allowFileAttachments ? { fileAttachments } : {}),
+        }
+      );
+
+      if (allowFileAttachments) {
+        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+          skillId: skillResource.sId,
         });
-
-        if (allowFileAttachments) {
-          await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-            skillId: existing.sId,
-          });
-        }
-
-        updated.push(existing);
-      } else {
-        let icon: string | null = null;
-        const iconResult = await getSkillIconSuggestion(auth, {
-          name: skill.name,
-          instructions: skill.instructions,
-          agentFacingDescription: skill.description,
-        });
-        if (iconResult.isOk()) {
-          icon = iconResult.value;
-        } else {
-          logger.warn(
-            { error: iconResult.error, skillName: skill.name },
-            "Failed to generate icon suggestion for imported skill"
-          );
-        }
-
-        const detectedMCPServerViews = await suggestMCPServersForDetectedSkill(
-          auth,
-          skill
-        );
-
-        const skillResource = await SkillResource.makeNew(
-          auth,
-          {
-            status: "active",
-            name: skill.name,
-            agentFacingDescription: skill.description,
-            userFacingDescription: skill.description,
-            instructions: skill.instructions,
-            instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
-            editedBy: user.id,
-            requestedSpaceIds: [],
-            extendedSkillId: null,
-            icon,
-            source: "github",
-            sourceMetadata: {
-              repoUrl,
-              filePath: skill.skillMdPath,
-            },
-            isDefault: false,
-          },
-          {
-            mcpServerViews: detectedMCPServerViews,
-            ...(allowFileAttachments ? { fileAttachments } : {}),
-          }
-        );
-
-        if (allowFileAttachments) {
-          await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-            skillId: skillResource.sId,
-          });
-        }
-
-        imported.push(skillResource);
       }
-    },
-    { concurrency: IMPORT_CONCURRENCY }
-  );
+
+      imported.push(skillResource);
+    }
+  }
 
   return new Ok({ imported, updated, skipped });
 }

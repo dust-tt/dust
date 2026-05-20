@@ -20,7 +20,7 @@ import type formidable from "formidable";
 import { readFile, unlink } from "fs/promises";
 import path from "path";
 
-const IMPORT_CONCURRENCY = 4;
+const FILE_IMPORT_CONCURRENCY = 4;
 
 const IMPORT_CONFLICT_STRATEGIES = ["error", "skip", "override"] as const;
 
@@ -141,129 +141,125 @@ export async function importSkillsFromFiles(
 
   const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
-  await concurrentExecutor(
-    selectedSkills,
-    async (skill) => {
-      const existing = existingSkillsMap.get(skill.name) ?? null;
+  for (const skill of selectedSkills) {
+    const existing = existingSkillsMap.get(skill.name) ?? null;
 
-      if (existing && existing.source !== source && onConflict !== "override") {
+    if (existing && existing.source !== source && onConflict !== "override") {
+      skipped.push({
+        name: skill.name,
+        message: `A different skill named "${skill.name}" already exists.`,
+      });
+      continue;
+    }
+
+    let fileAttachments: FileResource[] = [];
+    if (allowFileAttachments) {
+      const readEntry = readerBySkill.get(skill);
+      if (!readEntry) {
         skipped.push({
           name: skill.name,
-          message: `A different skill named "${skill.name}" already exists.`,
+          message: "Internal error: no zip reader for skill.",
         });
-        return;
+        continue;
       }
 
-      let fileAttachments: FileResource[] = [];
+      const skillDirPath = path.dirname(skill.skillMdPath);
+      const uploadResults = await concurrentExecutor(
+        skill.attachments,
+        (attachment) =>
+          uploadAttachment(auth, {
+            originalEntryName: attachment.originalEntryName,
+            contentType: attachment.contentType,
+            fileName: path.relative(skillDirPath, attachment.path),
+            readEntry,
+          }),
+        { concurrency: FILE_IMPORT_CONCURRENCY }
+      );
+
+      fileAttachments = uploadResults.filter(
+        (r): r is FileResource => r !== null
+      );
+    }
+
+    if (existing) {
+      const attachedKnowledge = await existing.getAttachedKnowledge(auth);
+
+      await existing.updateSkill(auth, {
+        name: skill.name,
+        agentFacingDescription: skill.description,
+        userFacingDescription: skill.description,
+        instructions: skill.instructions,
+        instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
+        icon: existing.icon,
+        mcpServerViews: existing.mcpServerViews,
+        attachedKnowledge,
+        requestedSpaceIds: existing.requestedSpaceIds,
+        ...(allowFileAttachments ? { fileAttachments } : {}),
+        source,
+        sourceMetadata: { filePath: skill.skillMdPath },
+      });
+
       if (allowFileAttachments) {
-        const readEntry = readerBySkill.get(skill);
-        if (!readEntry) {
-          skipped.push({
-            name: skill.name,
-            message: "Internal error: no zip reader for skill.",
-          });
-          return;
-        }
+        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+          skillId: existing.sId,
+        });
+      }
 
-        const skillDirPath = path.dirname(skill.skillMdPath);
-        const uploadResults = await concurrentExecutor(
-          skill.attachments,
-          (attachment) =>
-            uploadAttachment(auth, {
-              originalEntryName: attachment.originalEntryName,
-              contentType: attachment.contentType,
-              fileName: path.relative(skillDirPath, attachment.path),
-              readEntry,
-            }),
-          { concurrency: IMPORT_CONCURRENCY }
-        );
-
-        fileAttachments = uploadResults.filter(
-          (r): r is FileResource => r !== null
+      updated.push(existing);
+    } else {
+      let icon: string | null = null;
+      const iconResult = await getSkillIconSuggestion(auth, {
+        name: skill.name,
+        instructions: skill.instructions,
+        agentFacingDescription: skill.description,
+      });
+      if (iconResult.isOk()) {
+        icon = iconResult.value;
+      } else {
+        logger.warn(
+          { error: iconResult.error, skillName: skill.name },
+          "Failed to generate icon suggestion for imported skill"
         );
       }
 
-      if (existing) {
-        const attachedKnowledge = await existing.getAttachedKnowledge(auth);
+      const suggestedMCPServerViews = await suggestMCPServersForDetectedSkill(
+        auth,
+        skill
+      );
 
-        await existing.updateSkill(auth, {
+      const skillResource = await SkillResource.makeNew(
+        auth,
+        {
+          status: "active",
           name: skill.name,
           agentFacingDescription: skill.description,
           userFacingDescription: skill.description,
           instructions: skill.instructions,
           instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
-          icon: existing.icon,
-          mcpServerViews: existing.mcpServerViews,
-          attachedKnowledge,
-          requestedSpaceIds: existing.requestedSpaceIds,
-          ...(allowFileAttachments ? { fileAttachments } : {}),
+          editedBy: user?.id ?? null,
+          requestedSpaceIds: [],
+          extendedSkillId: null,
+          icon,
           source,
           sourceMetadata: { filePath: skill.skillMdPath },
+          isDefault: false,
+        },
+        {
+          mcpServerViews: suggestedMCPServerViews,
+          ...(allowFileAttachments ? { fileAttachments } : {}),
+          addCurrentUserAsEditor: auth.user() !== null,
+        }
+      );
+
+      if (allowFileAttachments) {
+        await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
+          skillId: skillResource.sId,
         });
-
-        if (allowFileAttachments) {
-          await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-            skillId: existing.sId,
-          });
-        }
-
-        updated.push(existing);
-      } else {
-        let icon: string | null = null;
-        const iconResult = await getSkillIconSuggestion(auth, {
-          name: skill.name,
-          instructions: skill.instructions,
-          agentFacingDescription: skill.description,
-        });
-        if (iconResult.isOk()) {
-          icon = iconResult.value;
-        } else {
-          logger.warn(
-            { error: iconResult.error, skillName: skill.name },
-            "Failed to generate icon suggestion for imported skill"
-          );
-        }
-
-        const suggestedMCPServerViews = await suggestMCPServersForDetectedSkill(
-          auth,
-          skill
-        );
-
-        const skillResource = await SkillResource.makeNew(
-          auth,
-          {
-            status: "active",
-            name: skill.name,
-            agentFacingDescription: skill.description,
-            userFacingDescription: skill.description,
-            instructions: skill.instructions,
-            instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
-            editedBy: user?.id ?? null,
-            requestedSpaceIds: [],
-            extendedSkillId: null,
-            icon,
-            source,
-            sourceMetadata: { filePath: skill.skillMdPath },
-            isDefault: false,
-          },
-          {
-            mcpServerViews: suggestedMCPServerViews,
-            ...(allowFileAttachments ? { fileAttachments } : {}),
-            addCurrentUserAsEditor: auth.user() !== null,
-          }
-        );
-
-        if (allowFileAttachments) {
-          await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
-            skillId: skillResource.sId,
-          });
-        }
-
-        imported.push(skillResource);
       }
-    },
-    { concurrency: IMPORT_CONCURRENCY }
-  );
+
+      imported.push(skillResource);
+    }
+  }
 
   return new Ok({ imported, updated, skipped });
 }
