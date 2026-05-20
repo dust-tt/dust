@@ -103,6 +103,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
@@ -172,6 +173,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
@@ -243,6 +245,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       content: "<html>Frame content</html>",
       // Current share scope is now 'workspace'.
       shareScope: "workspace",
+      conversationSpaceId: null,
     });
 
     vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
@@ -317,6 +320,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -401,6 +405,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         file: frameFile,
         content: "<html>Frame content</html>",
         shareScope: "public",
+        conversationSpaceId: null,
       });
 
       vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
@@ -463,6 +468,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         file: frameFile,
         content: "<html>Frame content</html>",
         shareScope: "public",
+        conversationSpaceId: null,
       });
 
       vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
@@ -519,6 +525,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         file: frameFile,
         content: "<html>Frame content</html>",
         shareScope: "public",
+        conversationSpaceId: null,
       });
 
       await handler(req, res);
@@ -584,6 +591,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         file: frameFile,
         content: "<html>Frame content</html>",
         shareScope: "public",
+        conversationSpaceId: null,
       });
 
       await handler(req, res);
@@ -653,6 +661,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -716,6 +725,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -982,6 +992,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         file: frameFile,
         content: "<html>Frame content</html>",
         shareScope: "public",
+        conversationSpaceId: null,
       });
 
       vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
@@ -1120,6 +1131,7 @@ describe("/api/v1/viz/files/[fileId] security tests", () => {
         file: frameFile,
         content: "<html>Frame content</html>",
         shareScope: "public",
+        conversationSpaceId: null,
       });
 
       vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(

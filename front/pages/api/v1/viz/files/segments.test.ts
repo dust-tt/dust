@@ -100,6 +100,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     mockGcsFound();
@@ -130,6 +131,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     mockGcsFound();
@@ -151,6 +153,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -185,6 +188,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "workspace", // Changed from "public".
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -212,6 +216,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -245,6 +250,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -275,6 +281,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: frameFile,
       content: "<html>Frame content</html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -354,6 +361,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
       file: nonFrameFile,
       content: "",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);

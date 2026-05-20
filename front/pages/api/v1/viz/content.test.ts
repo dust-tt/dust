@@ -59,6 +59,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
       file: frameFile,
       content: "<html><h1>Interactive Frame</h1></html>",
       shareScope: "public",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);
@@ -274,6 +275,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
       file: frameFile,
       content: "<html><h1>Workspace Frame</h1></html>",
       shareScope: "workspace",
+      conversationSpaceId: null,
     });
 
     await handler(req, res);

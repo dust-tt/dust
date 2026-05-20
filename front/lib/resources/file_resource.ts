@@ -182,13 +182,14 @@ export class FileResource extends BaseResource<FileModel> {
     file: FileResource;
     content: string;
     shareScope: FileShareScope;
+    conversationSpaceId: string | null;
   } | null> {
     const r = await this.fetchByShareToken(token);
     if (r.isErr()) {
       return null;
     }
 
-    const { file, shareScope, workspace } = r.value;
+    const { file, shareScope, workspace, conversationSpaceId } = r.value;
     const content = await file.getFileContent(workspace, "original");
     if (!content) {
       return null;
@@ -198,6 +199,7 @@ export class FileResource extends BaseResource<FileModel> {
       file,
       content,
       shareScope,
+      conversationSpaceId,
     };
   }
 
@@ -208,6 +210,8 @@ export class FileResource extends BaseResource<FileModel> {
         shareScope: FileShareScope;
         shareableFileId: ModelId;
         workspace: LightWorkspaceType;
+        // sId of the project space the frame's conversation belongs to, if any.
+        conversationSpaceId: string | null;
       },
       DustError
     >
@@ -247,6 +251,7 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     // Check if associated conversation still exist (not soft-deleted).
+    let conversationSpaceId: string | null = null;
     if (
       fileRes.useCase === "conversation" &&
       fileRes.useCaseMetadata?.conversationId
@@ -271,6 +276,14 @@ export class FileResource extends BaseResource<FileModel> {
           new DustError("conversation_not_found", "Conversation not found")
         );
       }
+
+      // Derive the project space sId from the conversation's spaceId.
+      if (conversation.spaceId) {
+        conversationSpaceId = SpaceResource.modelIdToSId({
+          id: conversation.spaceId,
+          workspaceId: workspace.id,
+        });
+      }
     }
 
     return new Ok({
@@ -278,6 +291,7 @@ export class FileResource extends BaseResource<FileModel> {
       workspace: renderLightWorkspaceType({ workspace }),
       shareScope: shareableFile.shareScope,
       shareableFileId: shareableFile.id,
+      conversationSpaceId,
     });
   }
 

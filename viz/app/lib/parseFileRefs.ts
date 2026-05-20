@@ -6,8 +6,7 @@ export type FileRef =
   | { type: "path"; scopedPath: string };
 
 function isScopedPath(value: string): boolean {
-  // TODO(20260428 FILE SYSTEM) Add support for project.
-  return value.startsWith("conversation/");
+  return value.startsWith("conversation/") || value.startsWith("project/");
 }
 
 export function extractFileRefs(code: string): FileRef[] {
@@ -26,7 +25,7 @@ export function extractFileRefs(code: string): FileRef[] {
   };
 
   try {
-    // TypeScript's parser is tolerant by design It produces a (partial) AST even for code with
+    // TypeScript's parser is tolerant by design. It produces a (partial) AST even for code with
     // syntax errors (errors are reported via parseDiagnostics rather than thrown), which is what
     // we want for AI-generated frame code.
     const sourceFile = ts.createSourceFile(

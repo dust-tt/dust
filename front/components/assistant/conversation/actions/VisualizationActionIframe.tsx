@@ -276,6 +276,7 @@ export const VisualizationActionIframe = forwardRef<
     conversationId,
     isInDrawer = false,
     isPublic = false,
+    spaceId,
     visualization,
     workspaceId,
   } = props;
@@ -288,9 +289,12 @@ export const VisualizationActionIframe = forwardRef<
         if (!conversationId) {
           return null;
         }
-
-        // TODO(20260428 FILE_SYSTEM): implement space files content endpoint when project-scoped files are added.
         url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/files/${fileId}`;
+      } else if (fileId.startsWith("project/")) {
+        if (!spaceId) {
+          return null;
+        }
+        url = `/api/w/${workspaceId}/spaces/${spaceId}/files/${fileId}`;
       } else {
         url = `/api/w/${workspaceId}/files/${fileId}?action=view`;
       }
@@ -306,7 +310,7 @@ export const VisualizationActionIframe = forwardRef<
         type: response.headers.get("Content-Type") ?? undefined,
       });
     },
-    [workspaceId, conversationId]
+    [workspaceId, conversationId, spaceId]
   );
 
   useVisualizationDataHandler({
