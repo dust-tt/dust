@@ -193,10 +193,12 @@ async function searchByPhoneNumber(
 ): Promise<PokeItemBase[]> {
   let e164PhoneNumber: string | null;
   try {
-    // `tryParsePhoneNumber` loads `libphonenumber-js`, whose CJS metadata
-    // `require()` breaks under the front-api dev runtime (tsx wraps the JSON
-    // in `{ default }`). Degrade gracefully — phone search is one of several
-    // search axes, and most search terms aren't phone numbers anyway.
+    // `tryParsePhoneNumber` loads `libphonenumber-js`. Production is fine
+    // (front-api's esbuild config bundles it inline; see `ESM_ONLY_PACKAGES`
+    // in front-api/esbuild.server.ts), but the front-api dev runtime (tsx)
+    // can still hit the CJS metadata interop issue. Degrade gracefully so
+    // the other search axes work in dev — most search terms aren't phone
+    // numbers anyway.
     e164PhoneNumber = tryParsePhoneNumber(searchTerm);
   } catch (err) {
     logger.warn(
