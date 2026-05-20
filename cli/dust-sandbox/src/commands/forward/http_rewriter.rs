@@ -550,17 +550,20 @@ fn rewrite_basic_auth(
 }
 
 fn strip_basic_prefix(value: &str) -> Option<&str> {
-    if value.len() < "basic".len() {
+    // Operate on bytes: `value.split_at("basic".len())` panics when the first
+    // 5 bytes don't sit on a char boundary (e.g. `Authorization: ééééé`).
+    let bytes = value.as_bytes();
+    if bytes.len() <= "basic".len() {
         return None;
     }
-    let (scheme, rest) = value.split_at("basic".len());
-    if !scheme.eq_ignore_ascii_case("basic") {
+    let (scheme, rest) = bytes.split_at("basic".len());
+    if !scheme.eq_ignore_ascii_case(b"basic") {
         return None;
     }
-    if rest.is_empty() || !rest.as_bytes()[0].is_ascii_whitespace() {
+    if !rest[0].is_ascii_whitespace() {
         return None;
     }
-    Some(rest)
+    std::str::from_utf8(rest).ok()
 }
 
 fn substitute_placeholders(
@@ -593,10 +596,13 @@ fn substitute_placeholders(
             .by_placeholder
             .get(placeholder)
             .ok_or_else(|| {
+                // Leave `secret_name` as None: the formatter substitutes
+                // "unknown" so the deny log stays distinguishable from a real
+                // secret literally named "unknown".
                 HttpRewriteError::denied(
                     mode,
                     DenyReason::PlaceholderOnNonAllowed,
-                    Some("unknown"),
+                    None,
                     Some(host),
                 )
             })?;
@@ -622,19 +628,9 @@ fn validate_secret_for_host(
     host: &str,
     mode: HttpRewriteMode<'_>,
 ) -> RewriteResult<()> {
-    if secret
-        .value
-        .bytes()
-        .any(|byte| byte.is_ascii_control() || byte == 0x7f)
-    {
-        return Err(HttpRewriteError::denied(
-            mode,
-            DenyReason::ValueControlChar,
-            Some(&secret.name),
-            Some(host),
-        ));
-    }
-
+    // In TLS mode `normalized_single_host` has already pinned `host == SNI`,
+    // so a single allowlist check covers both. Plain HTTP has no SNI so the
+    // host check is all we have.
     if !secret.allowed_domains.matches(host) {
         return Err(HttpRewriteError::denied(
             mode,
@@ -642,17 +638,6 @@ fn validate_secret_for_host(
             Some(&secret.name),
             Some(host),
         ));
-    }
-
-    if let HttpRewriteMode::Tls { sni } = mode {
-        if !secret.allowed_domains.matches(sni) {
-            return Err(HttpRewriteError::denied(
-                mode,
-                DenyReason::PlaceholderOnNonAllowed,
-                Some(&secret.name),
-                Some(host),
-            ));
-        }
     }
 
     Ok(())
@@ -1131,6 +1116,7 @@ mod tests {
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
     use crate::egress_secrets::DomainSet;
+    use base64::{engine::general_purpose, Engine as _};
 
     use super::*;
 
@@ -1422,6 +1408,206 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn substitutes_placeholder_in_header_value() -> Result<()> {
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        let table = table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "sk-real",
+            &["api.openai.com"],
+        )?;
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: Bearer {placeholder}\r\n\r\n"
+        );
+
+        let output = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(text.contains("Authorization: Bearer sk-real\r\n"));
+        assert!(!text.contains(placeholder));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn substitutes_placeholder_inside_basic_auth_base64() -> Result<()> {
+        let placeholder = "__DSEC_aabbccddeeff00112233445566778899__";
+        let table = table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "sk-real",
+            &["api.openai.com"],
+        )?;
+        let encoded = general_purpose::STANDARD.encode(format!("user:{placeholder}"));
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: Basic {encoded}\r\n\r\n"
+        );
+
+        let output = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+        let expected = general_purpose::STANDARD.encode("user:sk-real");
+
+        assert!(
+            text.contains(&format!("Authorization: Basic {expected}\r\n")),
+            "expected re-encoded credential, got: {text}"
+        );
+        assert!(!text.contains(placeholder));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn substitutes_multiple_placeholders_in_one_value() -> Result<()> {
+        let placeholder = "__DSEC_11111111111111112222222222222222__";
+        let table = table_with_secret("X", placeholder, "AB", &["api.openai.com"])?;
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nX-Header: {placeholder}-and-{placeholder}\r\n\r\n"
+        );
+
+        let output = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(text.contains("X-Header: AB-and-AB\r\n"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_unknown_placeholder_in_header_value() -> Result<()> {
+        let table = table_with_secret(
+            "OTHER",
+            "__DSEC_ffffffffffffffffffffffffffffffff__",
+            "sk-other",
+            &["api.openai.com"],
+        )?;
+        let unknown = "__DSEC_99999999999999999999999999999999__";
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: Bearer {unknown}\r\n\r\n"
+        );
+
+        let error = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("unknown placeholder should be denied");
+        assert_deny_reason(error, DenyReason::PlaceholderOnNonAllowed);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_placeholder_for_secret_not_allowed_on_host() -> Result<()> {
+        let placeholder = "__DSEC_33333333333333334444444444444444__";
+        // Secret is allowed only on api.openai.com, but the request is sent
+        // to a different host whose SNI happens to also be MITM-allowlisted.
+        let mut table = table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "sk-real",
+            &["api.openai.com"],
+        )?;
+        table.sni_match_set = DomainSet::from_patterns(&[
+            "api.openai.com".to_string(),
+            "api.anthropic.com".to_string(),
+        ])?;
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.anthropic.com\r\nAuthorization: Bearer {placeholder}\r\n\r\n"
+        );
+
+        let error = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.anthropic.com",
+            },
+        )
+        .await
+        .expect_err("placeholder used outside its allowlist should be denied");
+        assert_deny_reason(error, DenyReason::PlaceholderOnNonAllowed);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_placeholder_on_url_line_in_tls_mode() -> Result<()> {
+        let placeholder = "__DSEC_55555555555555556666666666666666__";
+        let table = table_with_secret("X", placeholder, "sk-real", &["api.openai.com"])?;
+        let input = format!("GET /v1/{placeholder}/items HTTP/1.1\r\nHost: api.openai.com\r\n\r\n");
+
+        let error = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("placeholder in URL line should be denied on TLS");
+        assert_deny_reason(error, DenyReason::UrlLinePlaceholder);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_placeholder_on_plain_http_in_header_value() -> Result<()> {
+        let placeholder = "__DSEC_77777777777777778888888888888888__";
+        let table = table_with_secret("X", placeholder, "sk-real", &["example.com"])?;
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: example.com\r\nAuthorization: Bearer {placeholder}\r\n\r\n"
+        );
+
+        let error = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "example.com",
+            },
+        )
+        .await
+        .expect_err("plain HTTP must never substitute placeholders");
+        assert_deny_reason(error, DenyReason::Port80Placeholder);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn does_not_panic_on_non_ascii_authorization_header() -> Result<()> {
+        // Regression: `Authorization: ééééé` used to panic the rewriter task
+        // because the Basic-prefix detector called `split_at("basic".len())`
+        // on a string whose first 5 bytes are inside a multi-byte char.
+        let table = empty_table()?;
+        let output = rewrite_once(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: ééééé\r\n\r\n".as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+        assert!(text.contains("Authorization: ééééé\r\n"));
+        Ok(())
+    }
+
     #[test]
     fn normalizes_host_for_default_ports() {
         assert_eq!(
@@ -1487,6 +1673,31 @@ mod tests {
         Ok(SecretTable {
             by_placeholder: HashMap::new(),
             sni_match_set: DomainSet::from_patterns(&[])?,
+        })
+    }
+
+    fn table_with_secret(
+        name: &str,
+        placeholder: &str,
+        value: &str,
+        patterns: &[&str],
+    ) -> Result<SecretTable> {
+        let allowed_domains = patterns
+            .iter()
+            .map(|pattern| (*pattern).to_string())
+            .collect::<Vec<_>>();
+        let domain_set = DomainSet::from_patterns(&allowed_domains)?;
+        let secret = Secret {
+            name: name.to_string(),
+            placeholder: placeholder.to_string(),
+            value: value.to_string(),
+            allowed_domains: domain_set,
+        };
+        let mut by_placeholder = HashMap::new();
+        by_placeholder.insert(placeholder.to_string(), secret);
+        Ok(SecretTable {
+            by_placeholder,
+            sni_match_set: DomainSet::from_patterns(&allowed_domains)?,
         })
     }
 

@@ -203,6 +203,13 @@ impl Secret {
             raw.name
         );
         ensure!(
+            !raw.value
+                .bytes()
+                .any(|byte| byte.is_ascii_control() || byte == 0x7f),
+            "egress secret {} value contains control bytes that would break HTTP framing",
+            raw.name
+        );
+        ensure!(
             !raw.allowed_domains.is_empty(),
             "egress secret {} has no allowedDomains",
             raw.name
@@ -441,6 +448,23 @@ mod tests {
         match SecretTable::parse(contents) {
             Ok(_) => panic!("empty value unexpectedly parsed"),
             Err(error) => assert!(format!("{:#}", error).contains("empty value")),
+        }
+    }
+
+    #[test]
+    fn parse_rejects_value_with_control_bytes() {
+        let contents = r#"[
+          {
+            "name": "A",
+            "placeholder": "__DSEC_0123456789abcdef0123456789abcdef__",
+            "value": "sk-\nbroken",
+            "allowedDomains": ["api.openai.com"]
+          }
+        ]"#;
+
+        match SecretTable::parse(contents) {
+            Ok(_) => panic!("control-byte value unexpectedly parsed"),
+            Err(error) => assert!(format!("{:#}", error).contains("control bytes")),
         }
     }
 
