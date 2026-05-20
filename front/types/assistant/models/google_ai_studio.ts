@@ -180,8 +180,8 @@ export const GEMINI_3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 64,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
-  description: "Google's previous fast large context model (1m context).",
-  shortDescription: "Google's previous fast model.",
+  description: "Google's fast large context model (1m context).",
+  shortDescription: "Google's fast model.",
   isLegacy: false,
   isLatest: false,
   generationTokensCount: 64_000,
@@ -198,6 +198,7 @@ export const GEMINI_3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": false,
   },
 };
+
 export const GEMINI_3_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_3_5_FLASH_MODEL_ID,

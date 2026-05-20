@@ -234,6 +234,7 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 3.0,
     cache_read_input_tokens: 0.05,
   },
+  // Flat pricing as of 2026-05-19 launch (no <=/>200k tiered SKU).
   "gemini-3.5-flash": {
     input: 1.5,
     output: 9.0,
