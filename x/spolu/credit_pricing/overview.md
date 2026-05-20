@@ -19,40 +19,46 @@ Two flags govern the new billing world. Both are declared in
 
 | Flag | What it controls |
 | --- | --- |
-| `metronome_billing` | Per-workspace re-enable of Metronome usage event emission (`llm_usage`, `tool_use`). Metronome billing is enabled by default for all workspaces — see `isMetronomeBillingEnabled` at `front/lib/api/subscription.ts:15-23`. It is only off when the `global_disable_metronome_billing` kill switch is ON; this flag re-enables a workspace when the kill switch is on. |
+| `metronome_billing` | **Critical for this work.** Required for a newly-created subscription to be backed by a Metronome contract instead of a Stripe-only subscription — without it, the workspace ends up on the Stripe path and the Metronome-backed endpoints (`/metronome/contract`, `/metronome/invoice`, `/seats/plan`) return null / 400. Also gates Metronome usage event emission (`llm_usage`, `tool_use`). Default-on logic at `front/lib/api/subscription.ts:15-23` (`isMetronomeBillingEnabled`): the `global_disable_metronome_billing` kill switch turns it off globally, this flag re-enables it per workspace. |
 | `metronome_billing_usage_page` | Gates the new "Usage" admin page (`UsagePage`) and its sidebar entry. Used at `front/components/navigation/config.ts:268` and inside `front/components/pages/workspace/UsagePage.tsx:152, 221`. The new "Billing" page (this work) will follow the same gating pattern. |
 
 ### Enabling locally in dev
 
-The kill switch is normally OFF in dev, so Metronome billing is already on by default for any
-workspace. The two practical knobs are:
+The full setup to get a Metronome-backed subscription on a dev workspace:
 
-1. **Enable `metronome_billing_usage_page` on your dev workspace** (so the new admin entry shows
-   and the page renders):
+1. **Enable `metronome_billing` on the workspace** so subscription creation goes through the
+   Metronome path. Also enable `metronome_billing_usage_page` the same way to see the new admin
+   UI:
 
    ```bash
    # from the hive root
    npm -w front run script -- toggle_feature_flags \
      --enable \
-     --featureFlag metronome_billing_usage_page \
+     --featureFlag metronome_billing \
      --workspaceIds <wId> \
      --execute
    ```
 
    The script lives at `front/scripts/toggle_feature_flags.ts`. Without `--execute` it dry-runs.
 
-2. **(Optional) Verify Metronome billing is on** — `hasFeatureFlag(auth, "metronome_billing")` OR
-   `!KillSwitchResource.isKillSwitchEnabled("global_disable_metronome_billing")`. The kill switch
-   is managed from Poke (`front/components/poke/pages/KillPage.tsx`).
+2. **Upgrade through Stripe** from the current `/w/<wId>/subscription` page — Stripe is still
+   the checkout collector even on the Metronome path, so this is how a Metronome customer +
+   contract get provisioned for the workspace.
 
-3. **Env vars** (already in dev `.env` if Metronome works locally — confirm with `apiConfig`):
+3. **Switch the workspace to its Metronome contract in Poke** — flip `metronomeContractId` on
+   the workspace so reads pick the Metronome path (`isSubscriptionMetronomeBilled` flips to
+   true). After this step `useMetronomeContract`/`useMetronomeInvoice`/`useSeatPlan` return
+   data and the new Billing page has something to render.
+
+4. **Env vars** (already in dev `.env` if Metronome works locally — confirm via `apiConfig`):
    - `METRONOME_API_KEY` → `apiConfig.getMetronomeApiKey()` (`front/lib/api/config.ts:588-593`)
    - `METRONOME_WEBHOOK_SECRET` → `apiConfig.getMetronomeWebhookSecret()`
 
 If the workspace has no active Metronome contract yet, `getActiveContract(workspace.sId)` returns
-null and several endpoints (`/seats/plan`, `/metronome/contract`, etc.) return `null` or 400.
-Provisioning lives in `scripts/provision_metronome_customers.ts` and
-`scripts/metronome_setup.ts`.
+null and several endpoints (`/seats/plan`, `/metronome/contract`, etc.) return `null` or 400 —
+typically the symptom of step 3 not having been done. The `global_disable_metronome_billing` kill
+switch is managed from Poke (`front/components/poke/pages/KillPage.tsx`); provisioning helpers
+live at `scripts/provision_metronome_customers.ts` and `scripts/metronome_setup.ts`.
 
 ---
 
