@@ -6,7 +6,10 @@ import type {
 import { resolveMountByUseCase } from "@app/lib/api/actions/servers/files/tools/utils";
 import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
 import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
-import { stripMimeParameters } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import partition from "lodash/partition";
 
@@ -114,7 +117,16 @@ export async function listHandler(
     const annotation = sourcePath
       ? ` (processed version of ${sourcePath})`
       : "";
-    lines.push(`${file.path} (${mimeType}, ${kb} KB)${annotation}`);
+    // Frames are created and updated via the interactive_content MCP server, which
+    // identifies them by file ID rather than path. Exposing the ID here lets the agent
+    // reference the correct frame when calling those tools.
+    const fileIdSuffix =
+      isInteractiveContentType(mimeType) && file.fileId
+        ? ` [id: ${file.fileId}]`
+        : "";
+    lines.push(
+      `${file.path} (${mimeType}, ${kb} KB)${fileIdSuffix}${annotation}`
+    );
   }
 
   return new Ok([{ type: "text", text: lines.join("\n") }]);
