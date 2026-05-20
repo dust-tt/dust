@@ -675,7 +675,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "wakeups": {
     "cancel_wakeup": "never_ask",
     "list_wakeups": "never_ask",
-    "schedule_wakeup": "never_ask",
+    "schedule_wakeup": "high",
   },
   "web_search_&_browse": {
     "webbrowser": "never_ask",
