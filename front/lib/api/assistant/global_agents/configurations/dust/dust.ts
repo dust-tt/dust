@@ -62,6 +62,7 @@ import {
   GEMINI_3_5_FLASH_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_MEDIUM_3_5_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
@@ -786,6 +787,30 @@ export function _getDustDeepseekGlobalAgent(
     name: "dust-deepseek",
     preferredModelConfiguration: FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
     preferredReasoningEffort: "none",
+  });
+}
+
+export function _getDustMistralMediumNoneGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE,
+    name: "dust-mistral-medium-none",
+    preferredModelConfiguration: MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
+    preferredReasoningEffort: "none",
+  });
+}
+
+export function _getDustMistralMediumHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH,
+    name: "dust-mistral-medium-high",
+    preferredModelConfiguration: MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
   });
 }
 

@@ -469,6 +469,22 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust but running DeepSeek V4 Pro.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE,
+        name: "dust-mistral-medium-none",
+        description:
+          "Same as dust but running Mistral Medium 3.5 with no reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_HIGH,
+        name: "dust-mistral-medium-high",
+        description:
+          "Same as dust but running Mistral Medium 3.5 with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
