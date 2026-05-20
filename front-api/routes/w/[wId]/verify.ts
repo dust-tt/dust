@@ -2,6 +2,7 @@ import { resolveCountryCode } from "@app/lib/geo/country-detection";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
@@ -39,7 +40,7 @@ async function detectCountryFromIP(ctx: Context): Promise<Country> {
 // Mounted at /api/w/:wId/verify.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetVerifyResponseBody> => {
   const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
@@ -55,11 +56,10 @@ app.get("/", async (ctx) => {
   const isEligibleForTrial = await isWorkspaceEligibleForTrial(auth);
   const initialCountryCode = await detectCountryFromIP(ctx);
 
-  const body: GetVerifyResponseBody = {
+  return ctx.json({
     isEligibleForTrial,
     initialCountryCode,
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

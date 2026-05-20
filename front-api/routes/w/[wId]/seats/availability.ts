@@ -1,5 +1,6 @@
 import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
 
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -10,7 +11,7 @@ export type GetSeatAvailabilityResponseBody = {
 // Mounted at /api/w/:wId/seats/availability.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetSeatAvailabilityResponseBody> => {
   const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
@@ -25,8 +26,7 @@ app.get("/", async (ctx) => {
   }
 
   const hasAvailableSeats = await checkWorkspaceSeatAvailabilityUsingAuth(auth);
-  const body: GetSeatAvailabilityResponseBody = { hasAvailableSeats };
-  return ctx.json(body);
+  return ctx.json({ hasAvailableSeats });
 });
 
 export default app;

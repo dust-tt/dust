@@ -1,6 +1,7 @@
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import type { ProviderType } from "@app/types/provider";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -20,7 +21,7 @@ function redactConfig(config: string) {
 // Mounted at /api/w/:wId/providers.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetProvidersResponseBody> => {
   const auth = ctx.get("auth");
 
   if (!auth.isBuilder()) {
@@ -41,13 +42,12 @@ app.get("/", async (ctx) => {
     },
   });
 
-  const body: GetProvidersResponseBody = {
+  return ctx.json({
     providers: providers.map((p) => ({
       providerId: p.providerId,
       config: redactConfig(p.config),
     })),
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

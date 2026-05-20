@@ -15,6 +15,7 @@ import {
   getSeatTypesByProductIdFromContract,
 } from "@app/lib/metronome/seat_types";
 import { buildSeatDataByUserId } from "@app/lib/metronome/seats";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -28,7 +29,7 @@ export type AwuPoolSummaryResponseBody = {
 // Mounted at /api/w/:wId/credits/awu-pool-summary.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
   const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
@@ -95,13 +96,12 @@ app.get("/", async (ctx) => {
   });
 
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
-    const emptyBody: AwuPoolSummaryResponseBody = {
+    return ctx.json({
       totalCredits: 0,
       consumedByUsersCredits: 0,
       consumedByProgrammaticCredits: 0,
       resetDate: "",
-    };
-    return ctx.json(emptyBody);
+    });
   }
 
   const resetDate = ceilToMidnightUTC(
@@ -196,13 +196,12 @@ app.get("/", async (ctx) => {
     consumedByUsersCredits += Math.max(0, userCredits - seatAllocation);
   }
 
-  const body: AwuPoolSummaryResponseBody = {
+  return ctx.json({
     totalCredits,
     consumedByUsersCredits,
     consumedByProgrammaticCredits,
     resetDate,
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

@@ -1,5 +1,6 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SpaceType } from "@app/types/space";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type GetPublicSpacesResponseBody = {
@@ -10,16 +11,15 @@ export type GetPublicSpacesResponseBody = {
 // v1 workspace sub-app, so ctx.get("auth") is always available here.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetPublicSpacesResponseBody> => {
   const auth = ctx.get("auth");
 
   const allSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
   const spaces = allSpaces.filter((space) => space.kind !== "conversations");
 
-  const body: GetPublicSpacesResponseBody = {
+  return ctx.json({
     spaces: spaces.map((space) => space.toJSON()),
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

@@ -1,9 +1,19 @@
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import type { APIErrorWithStatusCode } from "@app/types/error";
-import type { Context } from "hono";
+import type {
+  APIErrorResponse,
+  APIErrorWithStatusCode,
+} from "@app/types/error";
+import type { Context, TypedResponse } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+
+/**
+ * Return type for a Hono JSON handler. Wraps the success body type with the
+ * shared API error envelope so `ctx.json(...)` success returns and
+ * `apiError(...)` returns are both assignable.
+ */
+export type HandlerResult<T> = Promise<TypedResponse<T | APIErrorResponse>>;
 
 /**
  * Returns a JSON error response from an `APIErrorWithStatusCode` and emits

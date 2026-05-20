@@ -1,6 +1,7 @@
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -13,7 +14,7 @@ export type GetSkillsSpendResponseBody = {
 // Mounted at /api/w/:wId/skills/reinforcement_spend.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetSkillsSpendResponseBody> => {
   const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {

@@ -11,15 +11,14 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { APIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import type { TypedResponse } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import svId from "./[svId]";
@@ -119,11 +118,7 @@ const app = new Hono();
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  async (
-    ctx
-  ): Promise<
-    TypedResponse<GetMCPServerViewsResponseBody | APIErrorResponse>
-  > => {
+  async (ctx): HandlerResult<GetMCPServerViewsResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
@@ -211,11 +206,7 @@ app.post(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostBodySchema),
-  async (
-    ctx
-  ): Promise<
-    TypedResponse<PostMCPServerViewResponseBody | APIErrorResponse>
-  > => {
+  async (ctx): HandlerResult<PostMCPServerViewResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 

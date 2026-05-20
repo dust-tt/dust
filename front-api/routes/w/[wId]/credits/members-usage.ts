@@ -12,6 +12,7 @@ import {
   type MembershipsPaginationParams,
 } from "@app/lib/resources/membership_resource";
 import type { MembershipSeatType } from "@app/types/memberships";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -136,83 +137,86 @@ async function fetchPerUserUsageCredits({
 // Mounted at /api/w/:wId/credits/members-usage.
 const app = new Hono();
 
-app.get("/", validate("query", MembersUsagePaginationSchema), async (ctx) => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  validate("query", MembersUsagePaginationSchema),
+  async (ctx): HandlerResult<GetMembersUsageResponseBody> => {
+    const auth = ctx.get("auth");
 
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Only workspace admins can access the members usage list.",
-      },
+    if (!auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only workspace admins can access the members usage list.",
+        },
+      });
+    }
+
+    const paginationParams = ctx.req.valid("query");
+    const workspace = auth.getNonNullableWorkspace();
+    const subscription = auth.subscription();
+    const { metronomeCustomerId } = workspace;
+    const metronomeContractId = subscription?.metronomeContractId ?? null;
+
+    const [membershipsResult, perUserTotalCredits, seatDataByUserId] =
+      await Promise.all([
+        MembershipResource.getActiveMemberships({
+          workspace,
+          paginationParams,
+        }),
+        fetchPerUserUsageCredits({
+          metronomeCustomerId: metronomeCustomerId ?? null,
+          metronomeContractId,
+        }),
+        metronomeCustomerId && metronomeContractId
+          ? buildSeatDataByUserId({
+              metronomeCustomerId,
+              contractId: metronomeContractId,
+            })
+          : Promise.resolve(new Map()),
+      ]);
+
+    const { memberships, total, nextPageParams } = membershipsResult;
+
+    const membersUsage: MemberUsageType[] = memberships.flatMap((m) => {
+      if (!m.user) {
+        return [];
+      }
+      const userId = m.user.sId;
+      const totalCredits = perUserTotalCredits.get(userId) ?? 0;
+      const seatData = seatDataByUserId.get(userId);
+      const awuAllocation = seatData?.awuAllocation ?? 0;
+
+      let seatUsagePercent: number | null = null;
+      let poolConsumedCredits = totalCredits;
+
+      if (awuAllocation > 0) {
+        const seatConsumed = Math.min(totalCredits, awuAllocation);
+        seatUsagePercent = (seatConsumed / awuAllocation) * 100;
+        poolConsumedCredits = Math.max(0, totalCredits - awuAllocation);
+      }
+
+      return [
+        {
+          sId: userId,
+          name: m.user.name,
+          email: m.user.email ?? null,
+          image: m.user.imageUrl ?? null,
+          seatType: m.seatType ?? null,
+          seatUsagePercent,
+          consumedWorkplacePoolCredits: poolConsumedCredits,
+          billingFrequency: seatData?.billingFrequency ?? null,
+        },
+      ];
+    });
+
+    return ctx.json({
+      members: membersUsage,
+      total,
+      nextPageUrl: buildUrlWithParams(ctx.req.url, nextPageParams),
     });
   }
-
-  const paginationParams = ctx.req.valid("query");
-  const workspace = auth.getNonNullableWorkspace();
-  const subscription = auth.subscription();
-  const { metronomeCustomerId } = workspace;
-  const metronomeContractId = subscription?.metronomeContractId ?? null;
-
-  const [membershipsResult, perUserTotalCredits, seatDataByUserId] =
-    await Promise.all([
-      MembershipResource.getActiveMemberships({
-        workspace,
-        paginationParams,
-      }),
-      fetchPerUserUsageCredits({
-        metronomeCustomerId: metronomeCustomerId ?? null,
-        metronomeContractId,
-      }),
-      metronomeCustomerId && metronomeContractId
-        ? buildSeatDataByUserId({
-            metronomeCustomerId,
-            contractId: metronomeContractId,
-          })
-        : Promise.resolve(new Map()),
-    ]);
-
-  const { memberships, total, nextPageParams } = membershipsResult;
-
-  const membersUsage: MemberUsageType[] = memberships.flatMap((m) => {
-    if (!m.user) {
-      return [];
-    }
-    const userId = m.user.sId;
-    const totalCredits = perUserTotalCredits.get(userId) ?? 0;
-    const seatData = seatDataByUserId.get(userId);
-    const awuAllocation = seatData?.awuAllocation ?? 0;
-
-    let seatUsagePercent: number | null = null;
-    let poolConsumedCredits = totalCredits;
-
-    if (awuAllocation > 0) {
-      const seatConsumed = Math.min(totalCredits, awuAllocation);
-      seatUsagePercent = (seatConsumed / awuAllocation) * 100;
-      poolConsumedCredits = Math.max(0, totalCredits - awuAllocation);
-    }
-
-    return [
-      {
-        sId: userId,
-        name: m.user.name,
-        email: m.user.email ?? null,
-        image: m.user.imageUrl ?? null,
-        seatType: m.seatType ?? null,
-        seatUsagePercent,
-        consumedWorkplacePoolCredits: poolConsumedCredits,
-        billingFrequency: seatData?.billingFrequency ?? null,
-      },
-    ];
-  });
-
-  const body: GetMembersUsageResponseBody = {
-    members: membersUsage,
-    total,
-    nextPageUrl: buildUrlWithParams(ctx.req.url, nextPageParams),
-  };
-  return ctx.json(body);
-});
+);
 
 export default app;

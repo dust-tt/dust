@@ -3,6 +3,7 @@ import {
   BUILDER_GROUP_NAME,
   GroupResource,
 } from "@app/lib/resources/group_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type GetProvisioningStatusResponseBody = {
@@ -13,17 +14,16 @@ export type GetProvisioningStatusResponseBody = {
 // Mounted at /api/w/:wId/provisioning-status.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetProvisioningStatusResponseBody> => {
   const auth = ctx.get("auth");
 
   const groups =
     await GroupResource.listRoleProvisioningGroupsForWorkspace(auth);
 
-  const body: GetProvisioningStatusResponseBody = {
+  return ctx.json({
     hasAdminGroup: groups.some((g) => g.name === ADMIN_GROUP_NAME),
     hasBuilderGroup: groups.some((g) => g.name === BUILDER_GROUP_NAME),
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

@@ -45,6 +45,7 @@ import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
@@ -90,7 +91,7 @@ app.post(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostDataSourceRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PostSpaceDataSourceResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const owner = auth.getNonNullableWorkspace();
@@ -215,7 +216,7 @@ async function handleDataSourceWithProvider({
   owner: WorkspaceType;
   space: SpaceResource;
   body: z.infer<typeof PostDataSourceWithProviderRequestBodySchema>;
-}) {
+}): HandlerResult<PostSpaceDataSourceResponseBody> {
   const { provider, name, connectionId, relatedCredentialId, extraConfig } =
     body;
 

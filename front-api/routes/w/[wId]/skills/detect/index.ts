@@ -9,6 +9,7 @@ import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -23,7 +24,7 @@ const app = new Hono();
 
 app.route("/upload", upload);
 
-app.post("/", async (ctx) => {
+app.post("/", async (ctx): HandlerResult<DetectSkillsResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 

@@ -1,5 +1,6 @@
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -10,7 +11,7 @@ export type GetSubscriptionPricingResponseBody = {
 // Mounted at /api/w/:wId/subscriptions/pricing.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetSubscriptionPricingResponseBody> => {
   const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
@@ -26,13 +27,11 @@ app.get("/", async (ctx) => {
 
   const subscriptionResource = auth.subscriptionResource();
   if (!subscriptionResource) {
-    const body: GetSubscriptionPricingResponseBody = { perSeatPricing: null };
-    return ctx.json(body);
+    return ctx.json({ perSeatPricing: null });
   }
 
   const perSeatPricing = await subscriptionResource.getPerSeatPricing();
-  const body: GetSubscriptionPricingResponseBody = { perSeatPricing };
-  return ctx.json(body);
+  return ctx.json({ perSeatPricing });
 });
 
 export default app;

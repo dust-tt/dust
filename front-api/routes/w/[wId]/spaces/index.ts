@@ -9,6 +9,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ProjectType, SpaceType } from "@app/types/space";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -52,7 +53,7 @@ export type PostSpacesResponseBody = {
 // workspace sub-app, so ctx.get("auth") is always available here.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetSpacesResponseBody> => {
   const auth = ctx.get("auth");
   const role = ctx.req.query("role");
   const kind = ctx.req.query("kind");
@@ -79,93 +80,96 @@ app.get("/", async (ctx) => {
     projectSpaces
   );
 
-  const body: GetSpacesResponseBody = {
+  return ctx.json({
     spaces: [...nonProjectsJson, ...projectsJson],
-  };
-  return ctx.json(body);
+  });
 });
 
-app.post("/", validate("json", PostSpaceRequestBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const requestBody = ctx.req.valid("json");
-  const owner = auth.getNonNullableWorkspace();
+app.post(
+  "/",
+  validate("json", PostSpaceRequestBodySchema),
+  async (ctx): HandlerResult<PostSpacesResponseBody> => {
+    const auth = ctx.get("auth");
+    const requestBody = ctx.req.valid("json");
+    const owner = auth.getNonNullableWorkspace();
 
-  if (
-    requestBody.spaceKind === "project" &&
-    !requestBody.isRestricted &&
-    !areOpenProjectsAllowed(owner)
-  ) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Open projects are disabled by your workspace admin. Create a private project instead.",
+    if (
+      requestBody.spaceKind === "project" &&
+      !requestBody.isRestricted &&
+      !areOpenProjectsAllowed(owner)
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Open projects are disabled by your workspace admin. Create a private project instead.",
+        },
+      });
+    }
+
+    const spaceRes = await createSpaceAndGroup(auth, requestBody);
+    if (spaceRes.isErr()) {
+      switch (spaceRes.error.code) {
+        case "limit_reached":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "plan_limit_error",
+              message:
+                "Limit of spaces allowed for your plan reached. Contact support to upgrade.",
+            },
+          });
+        case "space_already_exists":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "space_already_exists",
+              message: "Space with that name already exists.",
+            },
+          });
+        case "internal_error":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: spaceRes.error.message,
+            },
+          });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "Only users that are `admins` can create regular spaces.",
+            },
+          });
+        default:
+          assertNever(spaceRes.error.code);
+      }
+    }
+
+    const space = spaceRes.value;
+
+    void emitAuditLogEvent({
+      auth,
+      action: "space.created",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("space", space),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        space_name: space.name,
+        space_kind: space.kind,
+        is_restricted: String(requestBody.isRestricted),
       },
     });
+
+    return ctx.json({ space: space.toJSON() }, 201);
   }
-
-  const spaceRes = await createSpaceAndGroup(auth, requestBody);
-  if (spaceRes.isErr()) {
-    switch (spaceRes.error.code) {
-      case "limit_reached":
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "plan_limit_error",
-            message:
-              "Limit of spaces allowed for your plan reached. Contact support to upgrade.",
-          },
-        });
-      case "space_already_exists":
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "space_already_exists",
-            message: "Space with that name already exists.",
-          },
-        });
-      case "internal_error":
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: spaceRes.error.message,
-          },
-        });
-      case "unauthorized":
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "Only users that are `admins` can create regular spaces.",
-          },
-        });
-      default:
-        assertNever(spaceRes.error.code);
-    }
-  }
-
-  const space = spaceRes.value;
-
-  void emitAuditLogEvent({
-    auth,
-    action: "space.created",
-    targets: [
-      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      buildAuditLogTarget("space", space),
-    ],
-    context: getAuditLogContext(auth),
-    metadata: {
-      space_name: space.name,
-      space_kind: space.kind,
-      is_restricted: String(requestBody.isRestricted),
-    },
-  });
-
-  const responseBody: PostSpacesResponseBody = { space: space.toJSON() };
-  return ctx.json(responseBody, 201);
-});
+);
 
 // Register static paths BEFORE `/:spaceId` so the param route does not
 // swallow these names as ids.

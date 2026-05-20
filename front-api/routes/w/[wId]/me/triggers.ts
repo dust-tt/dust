@@ -2,6 +2,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type GetUserTriggersResponseBody = {
@@ -15,7 +16,7 @@ export type GetUserTriggersResponseBody = {
 // Mounted at /api/w/:wId/me/triggers.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetUserTriggersResponseBody> => {
   const auth = ctx.get("auth");
 
   const editorTriggers = await TriggerResource.listByUserEditor(
@@ -49,8 +50,7 @@ app.get("/", async (ctx) => {
     })
   );
 
-  const body: GetUserTriggersResponseBody = { triggers };
-  return ctx.json(body);
+  return ctx.json({ triggers });
 });
 
 export default app;

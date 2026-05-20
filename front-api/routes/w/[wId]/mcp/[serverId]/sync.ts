@@ -1,6 +1,7 @@
 import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -13,7 +14,7 @@ export type SyncMCPServerResponseBody = {
 // metadata for a remote MCP server.
 const app = new Hono();
 
-app.post("/", async (ctx) => {
+app.post("/", async (ctx): HandlerResult<SyncMCPServerResponseBody> => {
   const auth = ctx.get("auth");
   const serverId = ctx.req.param("serverId") ?? "";
 
