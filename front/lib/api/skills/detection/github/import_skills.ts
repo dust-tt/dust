@@ -23,6 +23,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Octokit } from "@octokit/core";
 import path from "path";
 
@@ -131,9 +132,7 @@ export async function importSkillsFromGitHub(
         { concurrency: FILE_IMPORT_CONCURRENCY }
       );
 
-      fileAttachments = uploadResults.filter(
-        (r): r is FileResource => r !== null
-      );
+      fileAttachments = removeNulls(uploadResults);
     }
 
     if (existing) {

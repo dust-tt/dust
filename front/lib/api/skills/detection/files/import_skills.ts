@@ -16,6 +16,7 @@ import logger from "@app/logger/logger";
 import type { SkillSourceType } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type formidable from "formidable";
 import { readFile, unlink } from "fs/promises";
 import path from "path";
@@ -176,9 +177,7 @@ export async function importSkillsFromFiles(
         { concurrency: FILE_IMPORT_CONCURRENCY }
       );
 
-      fileAttachments = uploadResults.filter(
-        (r): r is FileResource => r !== null
-      );
+      fileAttachments = removeNulls(uploadResults);
     }
 
     if (existing) {
