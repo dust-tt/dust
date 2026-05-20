@@ -3,10 +3,14 @@ use std::fmt;
 use std::io::ErrorKind;
 
 use anyhow::{anyhow, Context};
+use base64::{engine::general_purpose, Engine as _};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::egress_secrets::SecretTable;
+use crate::egress_secrets::{
+    Secret, SecretTable, PLACEHOLDER_HEX_LEN, PLACEHOLDER_PREFIX as PLACEHOLDER_PREFIX_STR,
+    PLACEHOLDER_SUFFIX as PLACEHOLDER_SUFFIX_STR,
+};
 
 use super::deny_log::{DenyLogEntry, DenyReason};
 
@@ -23,6 +27,11 @@ const READ_CHUNK_BYTES: usize = 8 * 1024;
 const NON_HTTP_FALLBACK_BYTES: usize = 4 * 1024;
 const MAX_CHUNK_LINE_BYTES: usize = 8 * 1024;
 const MAX_TRAILER_BLOCK_BYTES: usize = 64 * 1024;
+
+const PLACEHOLDER_PREFIX: &[u8] = PLACEHOLDER_PREFIX_STR.as_bytes();
+const PLACEHOLDER_SUFFIX: &[u8] = PLACEHOLDER_SUFFIX_STR.as_bytes();
+const PLACEHOLDER_LEN: usize =
+    PLACEHOLDER_PREFIX_STR.len() + PLACEHOLDER_HEX_LEN + PLACEHOLDER_SUFFIX_STR.len();
 
 #[derive(Clone, Copy, Debug)]
 pub(super) enum HttpRewriteMode<'a> {
@@ -85,12 +94,17 @@ impl HttpRewriteError {
         Self::Io(error.into())
     }
 
-    fn denied(mode: HttpRewriteMode<'_>, reason: DenyReason, host: Option<&str>) -> Self {
+    fn denied(
+        mode: HttpRewriteMode<'_>,
+        reason: DenyReason,
+        secret_name: Option<&str>,
+        host: Option<&str>,
+    ) -> Self {
         Self::Denied(DenyLogEntry::mitm(
             reason,
             mode.domain(),
             mode.port(),
-            None,
+            secret_name,
             mode.sni(),
             host,
         ))
@@ -102,7 +116,7 @@ type RewriteResult<T> = std::result::Result<T, HttpRewriteError>;
 pub(super) async fn forward_http1_requests<R, W>(
     client: &mut R,
     upstream: &mut W,
-    _secret_table: &SecretTable,
+    secret_table: &SecretTable,
     mode: HttpRewriteMode<'_>,
     _websocket_watch_tx: Option<&mpsc::Sender<WebSocketUpgradeWatch>>,
 ) -> RewriteResult<()>
@@ -142,7 +156,7 @@ where
 
         let request = parse_request(&reader.buffer[..header_len], mode)?;
         parsed_first_http_request = true;
-        let processed = process_request(&request, mode)?;
+        let processed = process_request(&request, secret_table, mode)?;
 
         reader.drain_front(header_len);
         upstream
@@ -192,6 +206,7 @@ where
                         mode,
                         DenyReason::MalformedHeaders,
                         None,
+                        None,
                     ));
                 }
                 return Ok(HeaderRead::Header(header_len));
@@ -201,6 +216,7 @@ where
                 return Err(HttpRewriteError::denied(
                     mode,
                     DenyReason::MalformedHeaders,
+                    None,
                     None,
                 ));
             }
@@ -234,6 +250,7 @@ where
                     mode,
                     DenyReason::MalformedHeaders,
                     None,
+                    None,
                 ));
             }
             self.buffer.extend_from_slice(&chunk[..bytes_read]);
@@ -253,6 +270,7 @@ where
                         mode,
                         DenyReason::MalformedHeaders,
                         None,
+                        None,
                     ));
                 }
                 let line = self.buffer[..line_len].to_vec();
@@ -264,6 +282,7 @@ where
                 return Err(HttpRewriteError::denied(
                     mode,
                     DenyReason::MalformedHeaders,
+                    None,
                     None,
                 ));
             }
@@ -278,6 +297,7 @@ where
                 return Err(HttpRewriteError::denied(
                     mode,
                     DenyReason::MalformedHeaders,
+                    None,
                     None,
                 ));
             }
@@ -324,30 +344,32 @@ fn parse_request(bytes: &[u8], mode: HttpRewriteMode<'_>) -> RewriteResult<Reque
     let mut request = httparse::Request::new(&mut headers);
     let status = request
         .parse(bytes)
-        .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
+        .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None))?;
 
     if !status.is_complete() {
         return Err(HttpRewriteError::denied(
             mode,
             DenyReason::MalformedHeaders,
             None,
+            None,
         ));
     }
 
     let method = request
         .method
-        .ok_or_else(|| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
+        .ok_or_else(|| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None))?;
     let uri = request
         .path
-        .ok_or_else(|| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
+        .ok_or_else(|| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None))?;
     let version = request
         .version
-        .ok_or_else(|| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
+        .ok_or_else(|| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None))?;
 
     if version != 1 {
         return Err(HttpRewriteError::denied(
             mode,
             DenyReason::MalformedHeaders,
+            None,
             None,
         ));
     }
@@ -370,6 +392,7 @@ fn parse_request(bytes: &[u8], mode: HttpRewriteMode<'_>) -> RewriteResult<Reque
 
 fn process_request(
     request: &RequestParts,
+    secret_table: &SecretTable,
     mode: HttpRewriteMode<'_>,
 ) -> RewriteResult<ProcessedRequest> {
     // CONNECT requests-inside an already-established session ask the receiver
@@ -382,34 +405,53 @@ fn process_request(
             mode,
             DenyReason::ConnectMethodForbidden,
             None,
+            None,
         ));
+    }
+
+    let request_line = format!("{} {} HTTP/1.1", request.method, request.uri);
+    if contains_placeholder(request_line.as_bytes()) {
+        return Err(match mode {
+            HttpRewriteMode::PlainHttp { .. } => HttpRewriteError::denied(
+                mode,
+                DenyReason::Port80Placeholder,
+                None,
+                normalized_host_for_log(request, mode).as_deref(),
+            ),
+            HttpRewriteMode::Tls { .. } => HttpRewriteError::denied(
+                mode,
+                DenyReason::UrlLinePlaceholder,
+                None,
+                normalized_host_for_log(request, mode).as_deref(),
+            ),
+        });
     }
 
     let host = normalized_single_host(request, mode)?;
     validate_absolute_uri_authority(&request.uri, &host, mode)?;
 
     let mut header_bytes = Vec::new();
-    header_bytes.extend_from_slice(request.method.as_bytes());
-    header_bytes.extend_from_slice(b" ");
-    header_bytes.extend_from_slice(request.uri.as_bytes());
-    header_bytes.extend_from_slice(b" HTTP/1.1\r\n");
+    header_bytes.extend_from_slice(request_line.as_bytes());
+    header_bytes.extend_from_slice(b"\r\n");
 
     let body_kind = body_kind(request, mode, Some(&host))?;
     let websocket_upgrade = is_websocket_upgrade(request);
 
     for header in &request.headers {
-        let line_len = header.name.len() + 2 + header.value.len() + 2;
+        let rewritten_value = rewrite_header_value(header, &host, secret_table, mode)?;
+        let line_len = header.name.len() + 2 + rewritten_value.len() + 2;
         if line_len > MAX_HEADER_LINE_BYTES {
             return Err(HttpRewriteError::denied(
                 mode,
                 DenyReason::HeaderSizeExceeded,
+                None,
                 Some(&host),
             ));
         }
 
         header_bytes.extend_from_slice(header.name.as_bytes());
         header_bytes.extend_from_slice(b": ");
-        header_bytes.extend_from_slice(&header.value);
+        header_bytes.extend_from_slice(&rewritten_value);
         header_bytes.extend_from_slice(b"\r\n");
     }
 
@@ -418,6 +460,7 @@ fn process_request(
         return Err(HttpRewriteError::denied(
             mode,
             DenyReason::HeaderSizeExceeded,
+            None,
             Some(&host),
         ));
     }
@@ -427,6 +470,199 @@ fn process_request(
         body_kind,
         websocket_upgrade,
     })
+}
+
+fn normalized_host_for_log(request: &RequestParts, mode: HttpRewriteMode<'_>) -> Option<String> {
+    request
+        .headers
+        .iter()
+        .find(|header| header.name.eq_ignore_ascii_case("host"))
+        .and_then(|header| {
+            std::str::from_utf8(&header.value)
+                .ok()
+                .and_then(|value| normalize_host(value, mode.port()).ok())
+        })
+}
+
+fn rewrite_header_value(
+    header: &HeaderPart,
+    host: &str,
+    secret_table: &SecretTable,
+    mode: HttpRewriteMode<'_>,
+) -> RewriteResult<Vec<u8>> {
+    if matches!(mode, HttpRewriteMode::PlainHttp { .. }) && contains_placeholder(&header.value) {
+        return Err(HttpRewriteError::denied(
+            mode,
+            DenyReason::Port80Placeholder,
+            None,
+            Some(host),
+        ));
+    }
+
+    if header.name.eq_ignore_ascii_case("authorization") {
+        if let Some(value) = rewrite_basic_auth(&header.value, host, secret_table, mode)? {
+            return Ok(value);
+        }
+    }
+
+    match substitute_placeholders(&header.value, host, secret_table, mode)? {
+        Some(rewritten) => Ok(rewritten),
+        None => Ok(header.value.clone()),
+    }
+}
+
+fn rewrite_basic_auth(
+    value: &[u8],
+    host: &str,
+    secret_table: &SecretTable,
+    mode: HttpRewriteMode<'_>,
+) -> RewriteResult<Option<Vec<u8>>> {
+    let Ok(value_text) = std::str::from_utf8(value) else {
+        return Ok(None);
+    };
+    let trimmed = value_text.trim();
+    let Some(rest) = strip_basic_prefix(trimmed) else {
+        return Ok(None);
+    };
+
+    // If base64 decode fails (malformed Basic auth value), fall back to the
+    // general substitution path so any placeholder in the raw header bytes
+    // still gets rewritten on TLS, or rejected by the plain-HTTP guard above.
+    let Ok(decoded) = general_purpose::STANDARD.decode(rest.trim()) else {
+        return Ok(None);
+    };
+
+    if matches!(mode, HttpRewriteMode::PlainHttp { .. }) && contains_placeholder(&decoded) {
+        return Err(HttpRewriteError::denied(
+            mode,
+            DenyReason::Port80Placeholder,
+            None,
+            Some(host),
+        ));
+    }
+
+    let Some(rewritten_decoded) = substitute_placeholders(&decoded, host, secret_table, mode)?
+    else {
+        return Ok(None);
+    };
+    let encoded = general_purpose::STANDARD.encode(rewritten_decoded);
+    Ok(Some(format!("Basic {encoded}").into_bytes()))
+}
+
+fn strip_basic_prefix(value: &str) -> Option<&str> {
+    // Operate on bytes: `value.split_at("basic".len())` panics when the first
+    // 5 bytes don't sit on a char boundary (e.g. `Authorization: ééééé`).
+    let bytes = value.as_bytes();
+    if bytes.len() <= "basic".len() {
+        return None;
+    }
+    let (scheme, rest) = bytes.split_at("basic".len());
+    if !scheme.eq_ignore_ascii_case(b"basic") {
+        return None;
+    }
+    if !rest[0].is_ascii_whitespace() {
+        return None;
+    }
+    std::str::from_utf8(rest).ok()
+}
+
+fn substitute_placeholders(
+    input: &[u8],
+    host: &str,
+    secret_table: &SecretTable,
+    mode: HttpRewriteMode<'_>,
+) -> RewriteResult<Option<Vec<u8>>> {
+    let mut output = Vec::with_capacity(input.len());
+    let mut last_copied = 0;
+    let mut cursor = 0;
+    let mut changed = false;
+
+    while cursor + PLACEHOLDER_LEN <= input.len() {
+        if !input[cursor..].starts_with(PLACEHOLDER_PREFIX) {
+            cursor += 1;
+            continue;
+        }
+
+        let candidate_end = cursor + PLACEHOLDER_LEN;
+        if !is_valid_placeholder_bytes(&input[cursor..candidate_end]) {
+            cursor += 1;
+            continue;
+        }
+
+        let placeholder = std::str::from_utf8(&input[cursor..candidate_end]).map_err(|_| {
+            HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, Some(host))
+        })?;
+        let secret = secret_table
+            .by_placeholder
+            .get(placeholder)
+            .ok_or_else(|| {
+                // Leave `secret_name` as None: the formatter substitutes
+                // "unknown" so the deny log stays distinguishable from a real
+                // secret literally named "unknown".
+                HttpRewriteError::denied(
+                    mode,
+                    DenyReason::PlaceholderOnNonAllowed,
+                    None,
+                    Some(host),
+                )
+            })?;
+
+        validate_secret_for_host(secret, host, mode)?;
+        output.extend_from_slice(&input[last_copied..cursor]);
+        output.extend_from_slice(secret.value.as_bytes());
+        changed = true;
+        cursor = candidate_end;
+        last_copied = candidate_end;
+    }
+
+    if !changed {
+        return Ok(None);
+    }
+
+    output.extend_from_slice(&input[last_copied..]);
+    Ok(Some(output))
+}
+
+fn validate_secret_for_host(
+    secret: &Secret,
+    host: &str,
+    mode: HttpRewriteMode<'_>,
+) -> RewriteResult<()> {
+    // In TLS mode `normalized_single_host` has already pinned `host == SNI`,
+    // so a single allowlist check covers both. Plain HTTP has no SNI so the
+    // host check is all we have.
+    if !secret.allowed_domains.matches(host) {
+        return Err(HttpRewriteError::denied(
+            mode,
+            DenyReason::PlaceholderOnNonAllowed,
+            Some(&secret.name),
+            Some(host),
+        ));
+    }
+
+    Ok(())
+}
+
+fn contains_placeholder(bytes: &[u8]) -> bool {
+    let mut cursor = 0;
+    while cursor + PLACEHOLDER_LEN <= bytes.len() {
+        if bytes[cursor..].starts_with(PLACEHOLDER_PREFIX)
+            && is_valid_placeholder_bytes(&bytes[cursor..cursor + PLACEHOLDER_LEN])
+        {
+            return true;
+        }
+        cursor += 1;
+    }
+    false
+}
+
+fn is_valid_placeholder_bytes(value: &[u8]) -> bool {
+    value.len() == PLACEHOLDER_LEN
+        && value.starts_with(PLACEHOLDER_PREFIX)
+        && value.ends_with(PLACEHOLDER_SUFFIX)
+        && value[PLACEHOLDER_PREFIX.len()..PLACEHOLDER_PREFIX.len() + PLACEHOLDER_HEX_LEN]
+            .iter()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte))
 }
 
 fn normalized_single_host(
@@ -444,6 +680,7 @@ fn normalized_single_host(
             mode,
             DenyReason::MissingHost,
             None,
+            None,
         ));
     }
     if hosts.len() > 1 {
@@ -451,22 +688,24 @@ fn normalized_single_host(
             mode,
             DenyReason::DuplicateHost,
             None,
+            None,
         ));
     }
 
     let host_value = std::str::from_utf8(&hosts[0].value)
-        .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
+        .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None))?;
     let host = normalize_host(host_value, mode.port())
-        .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
+        .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None))?;
 
     if let HttpRewriteMode::Tls { sni } = mode {
         let normalized_sni = normalize_host(sni, 443).map_err(|_| {
-            HttpRewriteError::denied(mode, DenyReason::HostSniMismatch, Some(&host))
+            HttpRewriteError::denied(mode, DenyReason::HostSniMismatch, None, Some(&host))
         })?;
         if normalized_sni != host {
             return Err(HttpRewriteError::denied(
                 mode,
                 DenyReason::HostSniMismatch,
+                None,
                 Some(&host),
             ));
         }
@@ -484,7 +723,12 @@ fn validate_absolute_uri_authority(
         return Ok(());
     };
     let normalized_authority = normalize_host(authority, default_port).map_err(|_| {
-        HttpRewriteError::denied(mode, DenyReason::AbsoluteUriAuthorityMismatch, Some(host))
+        HttpRewriteError::denied(
+            mode,
+            DenyReason::AbsoluteUriAuthorityMismatch,
+            None,
+            Some(host),
+        )
     })?;
     // `host` was already verified to equal SNI by `normalized_single_host` in
     // TLS mode, so comparing `normalized_authority == host` is sufficient.
@@ -492,6 +736,7 @@ fn validate_absolute_uri_authority(
         return Err(HttpRewriteError::denied(
             mode,
             DenyReason::AbsoluteUriAuthorityMismatch,
+            None,
             Some(host),
         ));
     }
@@ -528,20 +773,22 @@ fn body_kind(
                 return Err(HttpRewriteError::denied(
                     mode,
                     DenyReason::MalformedHeaders,
+                    None,
                     host,
                 ));
             }
             seen_content_length = true;
-            let value = std::str::from_utf8(&header.value)
-                .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, host))?;
-            let parsed = value
-                .trim()
-                .parse::<usize>()
-                .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, host))?;
+            let value = std::str::from_utf8(&header.value).map_err(|_| {
+                HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, host)
+            })?;
+            let parsed = value.trim().parse::<usize>().map_err(|_| {
+                HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, host)
+            })?;
             content_length = Some(parsed);
         } else if header.name.eq_ignore_ascii_case("transfer-encoding") {
-            let value = std::str::from_utf8(&header.value)
-                .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, host))?;
+            let value = std::str::from_utf8(&header.value).map_err(|_| {
+                HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, host)
+            })?;
             transfer_encoding_values.push(value.to_ascii_lowercase());
         }
     }
@@ -554,6 +801,7 @@ fn body_kind(
         return Err(HttpRewriteError::denied(
             mode,
             DenyReason::MalformedHeaders,
+            None,
             host,
         ));
     }
@@ -570,6 +818,7 @@ fn body_kind(
         Err(HttpRewriteError::denied(
             mode,
             DenyReason::MalformedHeaders,
+            None,
             host,
         ))
     }
@@ -626,6 +875,7 @@ where
                 mode,
                 DenyReason::MalformedHeaders,
                 None,
+                None,
             ));
         }
         upstream
@@ -652,8 +902,9 @@ where
             .write_all(&line)
             .await
             .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
-        let chunk_size = parse_chunk_size(&line)
-            .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
+        let chunk_size = parse_chunk_size(&line).map_err(|_| {
+            HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None)
+        })?;
 
         if chunk_size == 0 {
             let mut trailer_bytes = 0_usize;
@@ -663,7 +914,7 @@ where
                     .checked_add(trailer_line.len())
                     .filter(|total| *total <= MAX_TRAILER_BLOCK_BYTES)
                     .ok_or_else(|| {
-                        HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None)
+                        HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None)
                     })?;
                 let done = trailer_line == b"\r\n";
                 upstream
@@ -676,9 +927,9 @@ where
             }
         }
 
-        let chunk_with_crlf = chunk_size
-            .checked_add(2)
-            .ok_or_else(|| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None))?;
+        let chunk_with_crlf = chunk_size.checked_add(2).ok_or_else(|| {
+            HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None)
+        })?;
         forward_exact(reader, upstream, chunk_with_crlf, mode).await?;
     }
 }
@@ -865,6 +1116,7 @@ mod tests {
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
     use crate::egress_secrets::DomainSet;
+    use base64::{engine::general_purpose, Engine as _};
 
     use super::*;
 
@@ -1156,6 +1408,206 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn substitutes_placeholder_in_header_value() -> Result<()> {
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        let table = table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "sk-real",
+            &["api.openai.com"],
+        )?;
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: Bearer {placeholder}\r\n\r\n"
+        );
+
+        let output = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(text.contains("Authorization: Bearer sk-real\r\n"));
+        assert!(!text.contains(placeholder));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn substitutes_placeholder_inside_basic_auth_base64() -> Result<()> {
+        let placeholder = "__DSEC_aabbccddeeff00112233445566778899__";
+        let table = table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "sk-real",
+            &["api.openai.com"],
+        )?;
+        let encoded = general_purpose::STANDARD.encode(format!("user:{placeholder}"));
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: Basic {encoded}\r\n\r\n"
+        );
+
+        let output = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+        let expected = general_purpose::STANDARD.encode("user:sk-real");
+
+        assert!(
+            text.contains(&format!("Authorization: Basic {expected}\r\n")),
+            "expected re-encoded credential, got: {text}"
+        );
+        assert!(!text.contains(placeholder));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn substitutes_multiple_placeholders_in_one_value() -> Result<()> {
+        let placeholder = "__DSEC_11111111111111112222222222222222__";
+        let table = table_with_secret("X", placeholder, "AB", &["api.openai.com"])?;
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nX-Header: {placeholder}-and-{placeholder}\r\n\r\n"
+        );
+
+        let output = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+
+        assert!(text.contains("X-Header: AB-and-AB\r\n"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_unknown_placeholder_in_header_value() -> Result<()> {
+        let table = table_with_secret(
+            "OTHER",
+            "__DSEC_ffffffffffffffffffffffffffffffff__",
+            "sk-other",
+            &["api.openai.com"],
+        )?;
+        let unknown = "__DSEC_99999999999999999999999999999999__";
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: Bearer {unknown}\r\n\r\n"
+        );
+
+        let error = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("unknown placeholder should be denied");
+        assert_deny_reason(error, DenyReason::PlaceholderOnNonAllowed);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_placeholder_for_secret_not_allowed_on_host() -> Result<()> {
+        let placeholder = "__DSEC_33333333333333334444444444444444__";
+        // Secret is allowed only on api.openai.com, but the request is sent
+        // to a different host whose SNI happens to also be MITM-allowlisted.
+        let mut table = table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "sk-real",
+            &["api.openai.com"],
+        )?;
+        table.sni_match_set = DomainSet::from_patterns(&[
+            "api.openai.com".to_string(),
+            "api.anthropic.com".to_string(),
+        ])?;
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: api.anthropic.com\r\nAuthorization: Bearer {placeholder}\r\n\r\n"
+        );
+
+        let error = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.anthropic.com",
+            },
+        )
+        .await
+        .expect_err("placeholder used outside its allowlist should be denied");
+        assert_deny_reason(error, DenyReason::PlaceholderOnNonAllowed);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_placeholder_on_url_line_in_tls_mode() -> Result<()> {
+        let placeholder = "__DSEC_55555555555555556666666666666666__";
+        let table = table_with_secret("X", placeholder, "sk-real", &["api.openai.com"])?;
+        let input = format!("GET /v1/{placeholder}/items HTTP/1.1\r\nHost: api.openai.com\r\n\r\n");
+
+        let error = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("placeholder in URL line should be denied on TLS");
+        assert_deny_reason(error, DenyReason::UrlLinePlaceholder);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_placeholder_on_plain_http_in_header_value() -> Result<()> {
+        let placeholder = "__DSEC_77777777777777778888888888888888__";
+        let table = table_with_secret("X", placeholder, "sk-real", &["example.com"])?;
+        let input = format!(
+            "GET / HTTP/1.1\r\nHost: example.com\r\nAuthorization: Bearer {placeholder}\r\n\r\n"
+        );
+
+        let error = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::PlainHttp {
+                domain: "example.com",
+            },
+        )
+        .await
+        .expect_err("plain HTTP must never substitute placeholders");
+        assert_deny_reason(error, DenyReason::Port80Placeholder);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn does_not_panic_on_non_ascii_authorization_header() -> Result<()> {
+        // Regression: `Authorization: ééééé` used to panic the rewriter task
+        // because the Basic-prefix detector called `split_at("basic".len())`
+        // on a string whose first 5 bytes are inside a multi-byte char.
+        let table = empty_table()?;
+        let output = rewrite_once(
+            "GET / HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: ééééé\r\n\r\n".as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await?;
+        let text = String::from_utf8(output)?;
+        assert!(text.contains("Authorization: ééééé\r\n"));
+        Ok(())
+    }
+
     #[test]
     fn normalizes_host_for_default_ports() {
         assert_eq!(
@@ -1221,6 +1673,31 @@ mod tests {
         Ok(SecretTable {
             by_placeholder: HashMap::new(),
             sni_match_set: DomainSet::from_patterns(&[])?,
+        })
+    }
+
+    fn table_with_secret(
+        name: &str,
+        placeholder: &str,
+        value: &str,
+        patterns: &[&str],
+    ) -> Result<SecretTable> {
+        let allowed_domains = patterns
+            .iter()
+            .map(|pattern| (*pattern).to_string())
+            .collect::<Vec<_>>();
+        let domain_set = DomainSet::from_patterns(&allowed_domains)?;
+        let secret = Secret {
+            name: name.to_string(),
+            placeholder: placeholder.to_string(),
+            value: value.to_string(),
+            allowed_domains: domain_set,
+        };
+        let mut by_placeholder = HashMap::new();
+        by_placeholder.insert(placeholder.to_string(), secret);
+        Ok(SecretTable {
+            by_placeholder,
+            sni_match_set: DomainSet::from_patterns(&allowed_domains)?,
         })
     }
 

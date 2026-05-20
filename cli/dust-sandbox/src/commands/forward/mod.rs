@@ -566,7 +566,7 @@ mod tests {
     use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName};
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
-    use crate::egress_secrets::DomainSet;
+    use crate::egress_secrets::{DomainSet, Secret};
 
     use super::*;
 
@@ -674,6 +674,100 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn mitm_session_substitutes_http_headers() -> Result<()> {
+        let sni = "api.openai.com";
+        let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
+        let mitm_ca = Arc::new(MitmCa::generate()?);
+        let (upstream_server_config, upstream_ca_der) = test_upstream_server_config(sni)?;
+        let mut runtime = test_runtime(Arc::clone(&mitm_ca), upstream_ca_der)?;
+        runtime.secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "sk-real",
+            &["api.openai.com"],
+        )?);
+
+        let (agent_client_io, agent_dsbx_io) = tokio::io::duplex(16 * 1024);
+        let (dsbx_proxy_io, upstream_server_io) = tokio::io::duplex(16 * 1024);
+
+        let upstream_task = tokio::spawn(async move {
+            let acceptor = TlsAcceptor::from(upstream_server_config);
+            let mut tls = acceptor
+                .accept(upstream_server_io)
+                .await
+                .context("test upstream failed to accept TLS")?;
+
+            let mut request = Vec::new();
+            loop {
+                let mut byte = [0_u8; 1];
+                tls.read_exact(&mut byte)
+                    .await
+                    .context("test upstream failed to read request byte")?;
+                request.push(byte[0]);
+                if request.ends_with(b"\r\n\r\n") {
+                    break;
+                }
+            }
+
+            let request_text = String::from_utf8(request).context("request should be utf8")?;
+            assert!(request_text.contains("Authorization: Bearer sk-real\r\n"));
+            assert!(!request_text.contains(placeholder));
+
+            tls.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
+                .await
+                .context("test upstream failed to write response")?;
+            tls.shutdown()
+                .await
+                .context("test upstream failed to shut down TLS")?;
+            Ok::<(), anyhow::Error>(())
+        });
+
+        let agent_connector = test_tls_connector(
+            mitm_ca.ca_cert_der(),
+            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
+        )?;
+        let request =
+            format!("GET / HTTP/1.1\r\nHost: {sni}\r\nAuthorization: Bearer {placeholder}\r\n\r\n");
+        let agent_task = tokio::spawn(async move {
+            let server_name =
+                ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
+            let mut tls = agent_connector
+                .connect(server_name, agent_client_io)
+                .await
+                .context("test agent failed to connect to dsbx MITM")?;
+            tls.write_all(request.as_bytes())
+                .await
+                .context("test agent failed to write request")?;
+
+            let mut response = Vec::new();
+            let mut buffer = [0_u8; 1024];
+            loop {
+                let bytes_read = tls
+                    .read(&mut buffer)
+                    .await
+                    .context("test agent failed to read response")?;
+                if bytes_read == 0 {
+                    break;
+                }
+                response.extend_from_slice(&buffer[..bytes_read]);
+                if response.ends_with(b"\r\n\r\nok") {
+                    break;
+                }
+            }
+            assert!(String::from_utf8(response)?.contains("\r\n\r\nok"));
+            Ok::<(), anyhow::Error>(())
+        });
+
+        run_mitm_session(&runtime, sni, agent_dsbx_io, dsbx_proxy_io).await?;
+        agent_task.await.context("test agent task panicked")??;
+        upstream_task
+            .await
+            .context("test upstream task panicked")??;
+
+        Ok(())
+    }
+
     // SNI-miss path: dsbx does not terminate, just splices. The agent's TLS
     // client must see the upstream's real cert chain (not the dsbx CA),
     // which is the load-bearing property of the splice branch.
@@ -769,6 +863,31 @@ mod tests {
             .collect::<Vec<_>>();
         Ok(SecretTable {
             by_placeholder: HashMap::new(),
+            sni_match_set: DomainSet::from_patterns(&allowed_domains)?,
+        })
+    }
+
+    fn secret_table_with_secret(
+        name: &str,
+        placeholder: &str,
+        value: &str,
+        patterns: &[&str],
+    ) -> Result<SecretTable> {
+        let allowed_domains = patterns
+            .iter()
+            .map(|pattern| (*pattern).to_string())
+            .collect::<Vec<_>>();
+        let domain_set = DomainSet::from_patterns(&allowed_domains)?;
+        let secret = Secret {
+            name: name.to_string(),
+            placeholder: placeholder.to_string(),
+            value: value.to_string(),
+            allowed_domains: domain_set,
+        };
+        let mut by_placeholder = HashMap::new();
+        by_placeholder.insert(placeholder.to_string(), secret);
+        Ok(SecretTable {
+            by_placeholder,
             sni_match_set: DomainSet::from_patterns(&allowed_domains)?,
         })
     }
