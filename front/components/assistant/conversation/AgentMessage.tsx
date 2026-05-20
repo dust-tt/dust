@@ -1267,6 +1267,7 @@ function AgentMessageContent({
       isLastMessage,
       handleToolSetupComplete,
       propsAdditionalMarkdownComponents,
+      spaceId,
     ]
   );
 

@@ -186,8 +186,7 @@ async function handler(
   } else {
     // Project-scoped frames have spaceId directly. Conversation-scoped frames that live in
     // a project space get conversationSpaceId resolved by fetchByShareToken.
-    const projectId =
-      frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
+    const projectId = frameFile.useCaseMetadata?.spaceId ?? conversationSpaceId;
     if (!isString(projectId)) {
       return apiError(req, res, {
         status_code: 400,
