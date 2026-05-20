@@ -12,9 +12,9 @@ now runs through `dsbx forward`.
 ## What it covers
 
 - **Matrix** (6 cases): valid JWT + allowed domain (ALLOW), valid JWT + denied
-  domain (DENY + deny log entry with `reason: proxy_denied`), expired JWT,
+  domain (DENY + JSON deny log entry with `reason: proxy_denied`), expired JWT,
   wrong `iss`, wrong `aud`, bad signature. All DENY cases additionally verify
-  `/tmp/dust-egress-denied.log` contains a correctly-formatted line for the
+  `/tmp/dust-egress-denied.log` contains a structured JSON entry for the
   denied target.
 - **Streaming**: real agent call — POST a "write a short poem" message to the
   Dust agent (`sId=dust` by default) on your workspace, iterate the streamed
@@ -80,5 +80,4 @@ inside the container.
   it tears down and respawns `dsbx forward` so the new token is picked up
   (token-file hot-reload is out of scope in the forwarder for now).
 - For every DENY case, `smoke.ts` reads `/tmp/dust-egress-denied.log` and
-  asserts the expected `DENIED <domain>:<port> (reason: proxy_denied)` entry
-  is present.
+  asserts the expected structured JSON entry is present.

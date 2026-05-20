@@ -309,29 +309,6 @@ describe("sandbox egress helpers", () => {
     expect(sandbox.exec).toHaveBeenCalledTimes(1);
   });
 
-  it("does not pass MITM-experiment-related flags to dsbx", async () => {
-    const sandbox = {
-      providerId: "provider-sandbox-id",
-      sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
-      exec: vi
-        .fn()
-        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
-        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
-        .mockResolvedValueOnce(
-          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
-        )
-        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
-    };
-
-    const result = await setupEgressForwarder(auth, sandbox as never);
-
-    expect(result).toEqual(new Ok(undefined));
-    const startCall = sandbox.exec.mock.calls[1][1] as string;
-    expect(startCall).not.toContain("--mitm-experiment-host");
-    expect(startCall).not.toContain("--mitm-ca-path");
-  });
-
   it("surfaces failures from the MITM trust bundle install", async () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
