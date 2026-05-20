@@ -2,9 +2,9 @@
 //
 // Two scoped mounts are supported:
 //   - "conversation": files scoped to a single conversation, mounted at /files/conversation
-//   - "project":      files scoped to a project (space), mounted at /files/project when the
-//                     conversation belongs to a project. Persistent across conversations within
-//                     the same project.
+//   - "pod":          files scoped to a Pod (project space), mounted at /files/pod when the
+//                     conversation belongs to a Pod. Persistent across conversations within
+//                     the same Pod.
 
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { AllSupportedFileContentType } from "@app/types/files";
@@ -67,12 +67,12 @@ export function getProjectFilesBasePath({
 
 export function getPodFilesBasePath({
   workspaceId,
-  projectId,
+  podId,
 }: {
   workspaceId: string;
-  projectId: string;
+  podId: string;
 }): string {
-  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${projectId}/files/`;
+  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/files/`;
 }
 
 /**
@@ -169,7 +169,7 @@ export function parseProcessedFilename(
   return { isProcessed: true, sourceBaseName: fileName.slice(0, idx) };
 }
 
-export const scopedFilePathPrefixSchema = z.enum(["conversation", "project"]);
+export const scopedFilePathPrefixSchema = z.enum(["conversation", "pod"]);
 export type ScopedFilePathPrefix = z.infer<typeof scopedFilePathPrefixSchema>;
 
 export type ScopedFilePath = {
@@ -178,7 +178,7 @@ export type ScopedFilePath = {
 };
 
 /**
- * Parse a scoped file path like "conversation/chart.png" or "project/report.pdf".
+ * Parse a scoped file path like "conversation/chart.png" or "pod/report.pdf".
  * Returns null if the path is missing a valid scope prefix.
  */
 export function parseScopedFilePath(filePath: string): ScopedFilePath | null {

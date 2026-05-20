@@ -35,8 +35,8 @@ const LIST_DESCRIPTION_PREFIX =
   `Read the sibling with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to access the content of binary sources.`;
 
 // `list` tool variants. The conversation-only build takes no parameter and always lists
-// conversation files. The project-aware build accepts `scope: "conversation" | "project"` and is
-// only registered when the conversation belongs to a project.
+// conversation files. The project-aware build accepts `scope: "conversation" | "pod"` and is
+// only registered when the conversation belongs to a Pod.
 const LIST_CONVERSATION_ONLY_TOOL = {
   description: `${LIST_DESCRIPTION_PREFIX} Lists the conversation's files.`,
   schema: {},
@@ -50,14 +50,14 @@ const LIST_CONVERSATION_ONLY_TOOL = {
 const LIST_PROJECT_AWARE_TOOL = {
   description:
     `${LIST_DESCRIPTION_PREFIX} ` +
-    "Defaults to the conversation's files. Pass `scope: \"project\"` to list the Pod's " +
+    "Defaults to the conversation's files. Pass `scope: \"pod\"` to list the Pod's " +
     "shared files (visible to every conversation in the same Pod) instead.",
   schema: {
     scope: z
-      .enum(["conversation", "project"])
+      .enum(["conversation", "pod"])
       .optional()
       .describe(
-        "Which file system to list. Defaults to `conversation`. Pass `project` to list the Pod's shared files."
+        "Which file system to list. Defaults to `conversation`. Pass `pod` to list the Pod's shared files."
       ),
   },
   stake: "never_ask" as const,
@@ -108,18 +108,18 @@ const COPY_PROJECT_AWARE_TOOL = {
   description:
     `${COPY_DESCRIPTION_BASE} ` +
     "Since this conversation belongs to a Pod, you can also copy between scopes, " +
-    "e.g. `conversation/report.pdf` -> `project/report.pdf` to promote a file into the Pod, " +
-    "or `project/spec.md` -> `conversation/spec.md` to pull it into the conversation.",
+    "e.g. `conversation/report.pdf` -> `pod/report.pdf` to promote a file into the Pod, " +
+    "or `pod/spec.md` -> `conversation/spec.md` to pull it into the conversation.",
   schema: {
     source: z
       .string()
       .describe(
-        "Scoped path of the file to copy from (e.g. `conversation/report.pdf` or `project/spec.md`)."
+        "Scoped path of the file to copy from (e.g. `conversation/report.pdf` or `pod/spec.md`)."
       ),
     dest: z
       .string()
       .describe(
-        "Scoped path of the destination (e.g. `project/report.pdf` or `conversation/archive/report.pdf`)."
+        "Scoped path of the destination (e.g. `pod/report.pdf` or `conversation/archive/report.pdf`)."
       ),
   },
   stake: "never_ask" as const,
@@ -180,7 +180,7 @@ const FILES_TOOLS_COMMON_METADATA = {
   [FILES_RESOLVE_ACTION_NAME]: {
     description:
       "Resolve a file ID (e.g. `fil_abc123`) to its scoped file system path " +
-      "(e.g. `conversation/report.pdf` or `project/data.csv`). " +
+      "(e.g. `conversation/report.pdf` or `pod/data.csv`). " +
       "Use this when you have a raw file identifier but need the path accepted by other tools " +
       "such as `" +
       getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME) +

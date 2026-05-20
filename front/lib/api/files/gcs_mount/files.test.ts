@@ -912,11 +912,11 @@ describe("renameGCSMountFile", () => {
   it("copies to the new path, deletes the old path, and returns the new GCS path", async () => {
     const result = await renameGCSMountFile(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "proj123" },
       { relativeFilePath: "report.pdf", newFileName: "final.pdf" }
     );
 
-    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    const prefix = `w/${workspaceId}/pods/proj123/files/`;
     expect(result.isOk()).toBe(true);
     expect(copyFileMock).toHaveBeenCalledWith(
       `${prefix}report.pdf`,
@@ -931,11 +931,11 @@ describe("renameGCSMountFile", () => {
   it("preserves directory structure when renaming a nested file", async () => {
     await renameGCSMountFile(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "proj123" },
       { relativeFilePath: "reports/q1.csv", newFileName: "q1-final.csv" }
     );
 
-    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    const prefix = `w/${workspaceId}/pods/proj123/files/`;
     expect(copyFileMock).toHaveBeenCalledWith(
       `${prefix}reports/q1.csv`,
       `${prefix}reports/q1-final.csv`
@@ -948,7 +948,7 @@ describe("renameGCSMountFile", () => {
 
     const result = await renameGCSMountFile(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "proj123" },
       { relativeFilePath: "report.pdf", newFileName: "final.pdf" }
     );
 
@@ -1109,11 +1109,11 @@ describe("deleteGCSMountFile", () => {
   it("calls bucket.delete with the correct GCS path and ignoreNotFound", async () => {
     const result = await deleteGCSMountFile(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "proj123" },
       { relativeFilePath: "archive/old.pdf" }
     );
 
-    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    const prefix = `w/${workspaceId}/pods/proj123/files/`;
     expect(result.isOk()).toBe(true);
     expect(deleteMock).toHaveBeenCalledWith(`${prefix}archive/old.pdf`, {
       ignoreNotFound: true,
@@ -1125,7 +1125,7 @@ describe("deleteGCSMountFile", () => {
 
     const result = await deleteGCSMountFile(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "proj123" },
       { relativeFilePath: "file.pdf" }
     );
 

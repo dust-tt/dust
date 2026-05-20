@@ -51,11 +51,11 @@ async function setupProjectConversation(
 }
 
 describe("copyHandler", () => {
-  it("copies a file from conversation to project mount", async () => {
+  it("copies a file from conversation to Pod mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const result = await copyHandler(
-      { source: "conversation/report.pdf", dest: "project/report.pdf" },
+      { source: "conversation/report.pdf", dest: "pod/report.pdf" },
       makeExtra(auth, conversation)
     );
 
@@ -66,16 +66,16 @@ describe("copyHandler", () => {
     expect(result.value).toEqual([
       {
         type: "text",
-        text: "Copied `conversation/report.pdf` to `project/report.pdf`.",
+        text: "Copied `conversation/report.pdf` to `pod/report.pdf`.",
       },
     ]);
   });
 
-  it("copies a file from project to conversation mount", async () => {
+  it("copies a file from Pod to conversation mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const result = await copyHandler(
-      { source: "project/spec.md", dest: "conversation/spec.md" },
+      { source: "pod/spec.md", dest: "conversation/spec.md" },
       makeExtra(auth, conversation)
     );
 
@@ -97,7 +97,7 @@ describe("copyHandler", () => {
     );
 
     const result = await copyHandler(
-      { source: "conversation/missing.pdf", dest: "project/missing.pdf" },
+      { source: "conversation/missing.pdf", dest: "pod/missing.pdf" },
       makeExtra(auth, conversation)
     );
 
@@ -159,14 +159,14 @@ describe("copyHandler", () => {
     const { auth, conversation } = await setupProjectConversation();
 
     const result = await copyHandler(
-      { source: "other/foo.md", dest: "project/foo.md" },
+      { source: "other/foo.md", dest: "pod/foo.md" },
       makeExtra(auth, conversation)
     );
 
     expect(result.isErr()).toBe(true);
   });
 
-  it("returns Err for a project path in a non-project conversation", async () => {
+  it("returns Err for a Pod path in a non-Pod conversation", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
 
     const conversation = await createConversation(auth, {
@@ -176,7 +176,7 @@ describe("copyHandler", () => {
     });
 
     const result = await copyHandler(
-      { source: "conversation/x.md", dest: "project/x.md" },
+      { source: "conversation/x.md", dest: "pod/x.md" },
       makeExtra(auth, conversation)
     );
 
@@ -184,7 +184,7 @@ describe("copyHandler", () => {
     if (!result.isErr()) {
       return;
     }
-    expect(result.error.message).toContain("project conversations");
+    expect(result.error.message).toContain("Pod conversations");
   });
 
   it("dual-writes to the pods/ mirror when copying to a project mount", async () => {

@@ -36,7 +36,7 @@ function makeExtra(
 async function setupProjectConversation(): Promise<{
   auth: Authenticator;
   conversation: ConversationType;
-  projectId: string;
+  podId: string;
 }> {
   const { authenticator: auth, workspace } = await createResourceTest({
     role: "admin",
@@ -58,7 +58,7 @@ async function setupProjectConversation(): Promise<{
     spaceId: space.id,
   });
 
-  return { auth: projectAuth, conversation, projectId: space.sId };
+  return { auth: projectAuth, conversation, podId: space.sId };
 }
 
 describe("listHandler", () => {
@@ -107,18 +107,18 @@ describe("listHandler", () => {
     });
   });
 
-  it("lists the project mount when scope=project in a project conversation", async () => {
-    const { auth, conversation, projectId } = await setupProjectConversation();
+  it("lists the Pod mount when scope=pod in a Pod conversation", async () => {
+    const { auth, conversation, podId } = await setupProjectConversation();
 
     const result = await listHandler(
-      { scope: "project" },
+      { scope: "pod" },
       makeExtra(auth, conversation)
     );
 
     expect(result.isOk()).toBe(true);
     expect(mockListGCSMountFiles.mock.calls[0][1]).toEqual({
-      useCase: "project",
-      projectId: projectId,
+      useCase: "pod",
+      podId,
     });
   });
 
@@ -175,7 +175,7 @@ describe("listHandler", () => {
     expect(text.text).not.toContain("[id: fil_pdfdef456]");
   });
 
-  it("returns Err when scope=project in a non-project conversation", async () => {
+  it("returns Err when scope=pod in a non-Pod conversation", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
 
     const conversation = await createConversation(auth, {
@@ -185,7 +185,7 @@ describe("listHandler", () => {
     });
 
     const result = await listHandler(
-      { scope: "project" },
+      { scope: "pod" },
       makeExtra(auth, conversation)
     );
 
@@ -193,7 +193,7 @@ describe("listHandler", () => {
     if (!result.isErr()) {
       return;
     }
-    expect(result.error.message).toContain("project conversations");
+    expect(result.error.message).toContain("Pod conversations");
     expect(mockListGCSMountFiles).not.toHaveBeenCalled();
   });
 });

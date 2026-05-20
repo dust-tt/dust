@@ -6,7 +6,7 @@ import type {
 import { getScopedPathFromGCSPath } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
-  getProjectFilesBasePath,
+  getPodFilesBasePath,
 } from "@app/lib/api/files/mount_path";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -78,7 +78,7 @@ export async function resolveHandler(
     if (!isProjectConversation(conversation)) {
       return new Err(
         new MCPError(
-          `File \`${file_id}\` is a project file but this is not a project conversation.`,
+          `File \`${file_id}\` is a Pod file but this is not a Pod conversation.`,
           { tracked: false }
         )
       );
@@ -88,7 +88,7 @@ export async function resolveHandler(
     if (!spaceId || spaceId !== conversation.spaceId) {
       return new Err(
         new MCPError(
-          `File \`${file_id}\` does not belong to the project of this conversation.`,
+          `File \`${file_id}\` does not belong to the Pod of this conversation.`,
           { tracked: false }
         )
       );
@@ -98,24 +98,27 @@ export async function resolveHandler(
     if (!space || !space.canRead(extra.auth)) {
       return new Err(
         new MCPError(
-          "You do not have read access to the project containing this file.",
+          "You do not have read access to the Pod containing this file.",
           { tracked: false }
         )
       );
     }
 
+    // The file's mount path might still use the old "project" prefix
+    const gcsPath = file.mountFilePath.replace("project/", "pod/");
+
     const scopedPath = getScopedPathFromGCSPath({
-      prefix: getProjectFilesBasePath({
+      prefix: getPodFilesBasePath({
         workspaceId: owner.sId,
-        projectId: spaceId,
+        podId: spaceId,
       }),
-      gcsPath: file.mountFilePath,
-      useCase: "project",
+      gcsPath,
+      useCase: "pod",
     });
     if (!scopedPath) {
       return new Err(
         new MCPError(
-          `File \`${file_id}\` does not belong to the project of this conversation.`,
+          `File \`${file_id}\` does not belong to the Pod of this conversation.`,
           { tracked: false }
         )
       );

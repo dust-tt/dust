@@ -7,7 +7,7 @@ import {
 } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
-  getProjectFilesBasePath,
+  getPodsFilesBasePath,
   parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
@@ -50,24 +50,23 @@ function buildConversationMountPoint(
   };
 }
 
-async function buildProjectMountPoint(
+async function buildPodMountPoint(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
   { access }: { access: Access }
 ): Promise<Result<MountPoint, MCPError>> {
   if (!isProjectConversation(conversation)) {
     return new Err(
-      new MCPError(
-        "Project file paths are only available in project conversations.",
-        { tracked: false }
-      )
+      new MCPError("Pod file paths are only available in Pod conversations.", {
+        tracked: false,
+      })
     );
   }
 
   const space = await SpaceResource.fetchById(auth, conversation.spaceId);
   if (!space) {
     return new Err(
-      new MCPError("Project not found for this conversation.", {
+      new MCPError("Pod not found for this conversation.", {
         tracked: false,
       })
     );
@@ -79,8 +78,8 @@ async function buildProjectMountPoint(
     return new Err(
       new MCPError(
         access === "write"
-          ? "You do not have write permissions for this project."
-          : "You do not have read permissions for this project.",
+          ? "You do not have write permissions for this Pod."
+          : "You do not have read permissions for this Pod.",
         { tracked: false }
       )
     );
@@ -88,17 +87,17 @@ async function buildProjectMountPoint(
 
   const owner = auth.getNonNullableWorkspace();
   return new Ok({
-    scope: { useCase: "project", projectId: space.sId },
-    prefix: getProjectFilesBasePath({
+    scope: { useCase: "pod", podId: space.sId },
+    prefix: getPodsFilesBasePath({
       workspaceId: owner.sId,
-      projectId: space.sId,
+      podId: space.sId,
     }),
   });
 }
 
 /**
  * Resolve the mount point a scoped path belongs to. Dispatches by the path's `conversation/` or
- * `project/` prefix, looks up the parent project space when needed, and verifies the requested
+ * `pod/` prefix, looks up the parent Pod space when needed, and verifies the requested
  * access level.
  */
 export async function resolveMountPoint(
@@ -110,7 +109,7 @@ export async function resolveMountPoint(
   if (!parsed) {
     return new Err(
       new MCPError(
-        `Invalid path: \`${scopedPath}\` must start with \`conversation/\` or \`project/\`.`,
+        `Invalid path: \`${scopedPath}\` must start with \`conversation/\` or \`pod/\`.`,
         { tracked: false }
       )
     );
@@ -135,8 +134,8 @@ export async function resolveMountByUseCase(
     case "conversation":
       return new Ok(buildConversationMountPoint(auth, conversation));
 
-    case "project":
-      return buildProjectMountPoint(auth, conversation, { access });
+    case "pod":
+      return buildPodMountPoint(auth, conversation, { access });
 
     default:
       assertNever(useCase);
@@ -144,7 +143,7 @@ export async function resolveMountByUseCase(
 }
 
 /**
- * List the files mounted under a project's GCS prefix. Verifies `space.canRead(auth)` before
+ * List the files mounted under a Pod's GCS prefix. Verifies `space.canRead(auth)` before
  * touching the bucket. Use this from callers that already hold a `SpaceResource` so the
  * file-listing path stays funneled through the same helper as `files__list`.
  */
@@ -153,20 +152,20 @@ export async function listProjectFiles(
   space: SpaceResource
 ): Promise<Result<GCSMountEntry[], MCPError>> {
   if (!space.isProject) {
-    return new Err(new MCPError("Space is not a project.", { tracked: false }));
+    return new Err(new MCPError("Space is not a Pod.", { tracked: false }));
   }
 
   if (!space.canRead(auth)) {
     return new Err(
-      new MCPError("You do not have read permissions for this project.", {
+      new MCPError("You do not have read permissions for this Pod.", {
         tracked: false,
       })
     );
   }
 
   const entries = await listGCSMountFiles(auth, {
-    useCase: "project",
-    projectId: space.sId,
+    useCase: "pod",
+    podId: space.sId,
   });
 
   return new Ok(entries);

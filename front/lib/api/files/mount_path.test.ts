@@ -98,9 +98,9 @@ describe("mount_path helpers", () => {
       });
     });
 
-    it("parses a project path", () => {
-      expect(parseScopedFilePath("project/notes/2026/draft.md")).toEqual({
-        prefix: "project",
+    it("parses a Pod path", () => {
+      expect(parseScopedFilePath("pod/notes/2026/draft.md")).toEqual({
+        prefix: "pod",
         rel: "notes/2026/draft.md",
       });
     });
