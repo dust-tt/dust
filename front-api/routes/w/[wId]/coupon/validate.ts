@@ -71,8 +71,7 @@ app.get("/", validate("query", GetCouponValidateQuerySchema), async (ctx) => {
     });
   }
 
-  const body: GetCouponValidateResponseBody = { coupon: coupon.toJSON() };
-  return ctx.json(body);
+  return ctx.json({ coupon: coupon.toJSON() });
 });
 
 export default app;

@@ -4,6 +4,7 @@ import {
   getAccessibleSourcesAndAppsForActions,
 } from "@app/lib/agent_builder/server_side_props_helpers";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -14,7 +15,7 @@ export type GetActionsResponseBody = {
 // Mounted at /api/w/:wId/builder/assistants/:aId/actions.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetActionsResponseBody> => {
   const auth = ctx.get("auth");
   const aId = ctx.req.param("aId") ?? "";
 

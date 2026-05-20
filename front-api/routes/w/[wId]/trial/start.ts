@@ -3,6 +3,7 @@ import {
   isWorkspaceEligibleForTrial,
 } from "@app/lib/plans/trial";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -13,7 +14,7 @@ export type PostTrialVerifyResponseBody = {
 // Mounted at /api/w/:wId/trial/start.
 const app = new Hono();
 
-app.post("/", async (ctx) => {
+app.post("/", async (ctx): HandlerResult<PostTrialVerifyResponseBody> => {
   const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
@@ -52,8 +53,7 @@ app.post("/", async (ctx) => {
 
   await activatePhoneTrial(auth);
 
-  const body: PostTrialVerifyResponseBody = { success: true };
-  return ctx.json(body);
+  return ctx.json({ success: true });
 });
 
 export default app;

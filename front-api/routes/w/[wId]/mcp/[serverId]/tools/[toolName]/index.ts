@@ -1,6 +1,7 @@
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -32,7 +33,7 @@ const app = new Hono();
 app.patch(
   "/",
   validate("json", UpdateMCPToolSettingsBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchMCPServerToolsPermissionsResponseBody> => {
     const auth = ctx.get("auth");
     const serverId = ctx.req.param("serverId") ?? "";
     const toolName = ctx.req.param("toolName") ?? "";

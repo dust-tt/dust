@@ -3,6 +3,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ProjectListItemType } from "@app/types/space";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 import spaceId from "./[spaceId]";
@@ -37,7 +38,7 @@ export function sortSpacesSummary<T extends { id: number }>(
 // Mounted under /api/w/:wId/assistant/conversations/spaces.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
   const auth = ctx.get("auth");
 
   const { nonArchivedSpaces, metadataMap } =
@@ -101,7 +102,7 @@ app.get("/", async (ctx) => {
   const filteredSpaces = nonArchivedSpaces.filter(
     (space) => space.kind === "project" || conversationsBySpace.has(space.id)
   );
-  const response: GetBySpacesSummaryResponseBody = {
+  return ctx.json({
     summary: sortSpacesSummary(
       filteredSpaces,
       conversationsBySpace,
@@ -121,9 +122,7 @@ app.get("/", async (ctx) => {
         conversationsBySpace.get(space.id)?.nonParticipantUnreadConversations ??
         [],
     })),
-  };
-
-  return ctx.json(response);
+  });
 });
 
 app.route("/:spaceId", spaceId);

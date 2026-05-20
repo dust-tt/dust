@@ -1,8 +1,13 @@
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceKind } from "@app/types/space";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
 import { Hono } from "hono";
+
+export type DeleteMCPServerViewResponseBody = {
+  deleted: boolean;
+};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views/:svId.
 const app = new Hono();
@@ -10,7 +15,7 @@ const app = new Hono();
 app.delete(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),
-  async (ctx) => {
+  async (ctx): HandlerResult<DeleteMCPServerViewResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const serverViewId = ctx.req.param("svId") ?? "";

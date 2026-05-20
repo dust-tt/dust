@@ -1,4 +1,5 @@
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type GetExtensionConfigResponseBody = {
@@ -8,15 +9,14 @@ export type GetExtensionConfigResponseBody = {
 // Mounted at /api/w/:wId/extension/config.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetExtensionConfigResponseBody> => {
   const auth = ctx.get("auth");
 
   const config = await ExtensionConfigurationResource.fetchForWorkspace(auth);
 
-  const body: GetExtensionConfigResponseBody = {
+  return ctx.json({
     blacklistedDomains: config?.blacklistedDomains ?? [],
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

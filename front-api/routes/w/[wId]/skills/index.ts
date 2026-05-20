@@ -16,6 +16,7 @@ import {
 } from "@app/types/assistant/skill_configuration";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -109,333 +110,352 @@ app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
 app.route("/similar", similar);
 
-app.get("/", async (ctx) => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  async (
+    ctx
+  ): HandlerResult<
+    | GetSkillsResponseBody
+    | GetSkillsWithRelationsResponseBody
+    | GetSkillsWithoutInstructionsAndToolsResponseBody
+  > => {
+    const auth = ctx.get("auth");
 
-  const withRelations = ctx.req.query("withRelations");
-  const status = ctx.req.query("status");
-  const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
-  const onlyCustom = ctx.req.query("onlyCustom");
-  const isDefault = ctx.req.query("isDefault");
-  const viewType = ctx.req.query("viewType");
+    const withRelations = ctx.req.query("withRelations");
+    const status = ctx.req.query("status");
+    const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
+    const onlyCustom = ctx.req.query("onlyCustom");
+    const isDefault = ctx.req.query("isDefault");
+    const viewType = ctx.req.query("viewType");
 
-  let skillView: SkillViewType = "full";
-  if (viewType !== undefined) {
-    if (!isString(viewType) || !isSkillViewType(viewType)) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Invalid viewType: ${viewType}. Expected "full" or "summary".`,
-        },
-      });
-    }
-
-    skillView = viewType;
-  }
-
-  if (withRelations === "true" && skillView === "summary") {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "viewType=summary is incompatible with withRelations=true.",
-      },
-    });
-  }
-
-  const statusValidation = SkillStatusSchema.safeParse(status);
-  if (!statusValidation.success) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid status: ${status}. Expected "active", "archived", or "suggested".`,
-      },
-    });
-  }
-  const skillStatus = statusValidation.data;
-
-  const skills = await SkillResource.listByWorkspace(auth, {
-    status: skillStatus,
-    globalSpaceOnly: globalSpaceOnly === "true",
-    onlyCustom: onlyCustom === "true",
-    isDefault: isDefault === "true" ? true : undefined,
-    withInstructions: skillView !== "summary",
-    withTools: skillView === "full",
-  });
-
-  if (withRelations === "true") {
-    const extendedSkills = await SkillResource.fetchByIds(
-      auth,
-      removeNulls(uniq(skills.map((s) => s.extendedSkillId)))
-    );
-    const extendedSkillsMap = new Map(extendedSkills.map((s) => [s.sId, s]));
-
-    const skillsWithRelations = await concurrentExecutor(
-      skills,
-      async (sc) => {
-        const usage = await sc.fetchUsage(auth);
-        const editors = await sc.listEditors(auth);
-        const editedByUser = await sc.fetchEditedByUser(auth);
-
-        return {
-          ...sc.toJSON(auth),
-          relations: {
-            usage,
-            editors: editors ? editors.map((e) => e.toJSON()) : null,
-            editedByUser: editedByUser ? editedByUser.toJSON() : null,
-            extendedSkill: sc.extendedSkillId
-              ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
-                null)
-              : null,
-          },
-        } satisfies SkillWithRelationsType;
-      },
-      { concurrency: 10 }
-    );
-
-    return ctx.json({ skills: skillsWithRelations });
-  }
-
-  if (skillView === "summary") {
-    return ctx.json({
-      skills: skills.map((sc) => {
-        const {
-          instructions,
-          instructionsHtml,
-          tools,
-          ...skillWithoutInstructionsAndTools
-        } = sc.toJSON(auth);
-
-        return skillWithoutInstructionsAndTools;
-      }),
-    });
-  }
-
-  return ctx.json({
-    skills: skills.map((sc) => sc.toJSON(auth)),
-  });
-});
-
-app.post("/", validate("json", PostSkillRequestBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
-
-  if (!isBuilder(owner)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: { type: "app_auth_error", message: "User is not a builder." },
-    });
-  }
-
-  const user = auth.getNonNullableUser();
-
-  const body = ctx.req.valid("json");
-  const name = body.name.trim();
-
-  if (!name) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Skill name cannot be empty.",
-      },
-    });
-  }
-
-  const existingSkill = await SkillResource.fetchActiveByName(auth, name);
-
-  if (existingSkill) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `A skill with the name "${name}" already exists.`,
-      },
-    });
-  }
-
-  // Validate all MCP server views exist before creating anything.
-  const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
-  const mcpServerViews = await MCPServerViewResource.fetchByIds(
-    auth,
-    mcpServerViewIds
-  );
-
-  if (mcpServerViewIds.length !== mcpServerViews.length) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "invalid_request_error",
-        message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
-      },
-    });
-  }
-
-  const { attachedKnowledge, fileAttachments } = body;
-
-  const dataSourceViewIds = uniq(
-    attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
-  );
-
-  const dataSourceViews = await DataSourceViewResource.fetchByIds(
-    auth,
-    dataSourceViewIds
-  );
-  if (dataSourceViews.length !== dataSourceViewIds.length) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
-      },
-    });
-  }
-
-  const dataSourceViewIdMap = new Map(
-    dataSourceViews.map((dsv) => [dsv.sId, dsv])
-  );
-
-  const attachedKnowledgeWithDataSourceViews = attachedKnowledge.map(
-    (attachment) => ({
-      dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
-      nodeId: attachment.nodeId,
-    })
-  );
-
-  const computedRequestedSpaceIds =
-    await SkillResource.computeRequestedSpaceIds(auth, {
-      mcpServerViews,
-      attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-    });
-
-  const additionalRequestedSpaceIdsRes =
-    await resolveAdditionalRequestedSpaceModelIds(
-      auth,
-      body.additionalRequestedSpaceIds
-    );
-
-  if (additionalRequestedSpaceIdsRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: additionalRequestedSpaceIdsRes.error.message,
-      },
-    });
-  }
-
-  const requestedSpaceIds = uniq([
-    ...computedRequestedSpaceIds,
-    ...additionalRequestedSpaceIdsRes.value,
-  ]);
-
-  const extendedSkill = body.extendedSkillId
-    ? await SkillResource.fetchById(auth, body.extendedSkillId)
-    : null;
-
-  // Only global skills can be extended.
-  if (extendedSkill !== null && !extendedSkill.isExtendable) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `The extended skill with id "${body.extendedSkillId}" cannot be extended.`,
-      },
-    });
-  }
-
-  // Validate file attachments if provided (gated behind sandbox_tools).
-  let files: FileResource[] | undefined;
-  if (fileAttachments) {
-    const featureFlags = await getFeatureFlags(auth);
-    if (!featureFlags.includes("sandbox_tools") && fileAttachments.length > 0) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "File attachments are not supported.",
-        },
-      });
-    }
-
-    const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
-    files = await FileResource.fetchByIds(auth, fileAttachmentIds);
-    if (files.length !== fileAttachmentIds.length) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "invalid_request_error",
-          message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
-        },
-      });
-    }
-
-    for (const file of files) {
-      if (!file.isReady || file.useCase !== "skill_attachment") {
+    let skillView: SkillViewType = "full";
+    if (viewType !== undefined) {
+      if (!isString(viewType) || !isSkillViewType(viewType)) {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `File ${file.sId} is not ready or not a skill_attachment.`,
+            message: `Invalid viewType: ${viewType}. Expected "full" or "summary".`,
           },
         });
       }
-    }
-  }
 
-  // Generate icon suggestion if not provided.
-  let icon = body.icon;
-  if (!icon) {
-    const iconResult = await getSkillIconSuggestion(auth, {
-      name,
-      instructions: body.instructions,
-      agentFacingDescription: body.agentFacingDescription,
+      skillView = viewType;
+    }
+
+    if (withRelations === "true" && skillView === "summary") {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "viewType=summary is incompatible with withRelations=true.",
+        },
+      });
+    }
+
+    const statusValidation = SkillStatusSchema.safeParse(status);
+    if (!statusValidation.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid status: ${status}. Expected "active", "archived", or "suggested".`,
+        },
+      });
+    }
+    const skillStatus = statusValidation.data;
+
+    const skills = await SkillResource.listByWorkspace(auth, {
+      status: skillStatus,
+      globalSpaceOnly: globalSpaceOnly === "true",
+      onlyCustom: onlyCustom === "true",
+      isDefault: isDefault === "true" ? true : undefined,
+      withInstructions: skillView !== "summary",
+      withTools: skillView === "full",
     });
-    if (iconResult.isOk()) {
-      icon = iconResult.value;
-    } else {
-      logger.warn(
-        { error: iconResult.error },
-        "Failed to generate icon suggestion for skill"
+
+    if (withRelations === "true") {
+      const extendedSkills = await SkillResource.fetchByIds(
+        auth,
+        removeNulls(uniq(skills.map((s) => s.extendedSkillId)))
       );
-    }
-  }
+      const extendedSkillsMap = new Map(extendedSkills.map((s) => [s.sId, s]));
 
-  const newSkill = await SkillResource.makeNew(
-    auth,
-    {
-      status: "active",
-      name,
-      agentFacingDescription: body.agentFacingDescription,
-      userFacingDescription: body.userFacingDescription,
-      instructions: body.instructions,
-      instructionsHtml: body.instructionsHtml,
-      editedBy: user.id,
-      requestedSpaceIds,
-      extendedSkillId: body.extendedSkillId,
-      icon,
-      source: body.source ?? "web_app",
-      sourceMetadata: body.sourceMetadata ?? null,
-      isDefault: body.isDefault ?? false,
-    },
-    {
-      mcpServerViews,
-      attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-      fileAttachments: files,
-    }
-  );
+      const skillsWithRelations = await concurrentExecutor(
+        skills,
+        async (sc) => {
+          const usage = await sc.fetchUsage(auth);
+          const editors = await sc.listEditors(auth);
+          const editedByUser = await sc.fetchEditedByUser(auth);
 
-  // Update file useCaseMetadata with the newly created skill's sId.
-  if (files) {
-    await FileResource.bulkSetUseCaseMetadata(auth, files, {
-      skillId: newSkill.sId,
+          return {
+            ...sc.toJSON(auth),
+            relations: {
+              usage,
+              editors: editors ? editors.map((e) => e.toJSON()) : null,
+              editedByUser: editedByUser ? editedByUser.toJSON() : null,
+              extendedSkill: sc.extendedSkillId
+                ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
+                  null)
+                : null,
+            },
+          } satisfies SkillWithRelationsType;
+        },
+        { concurrency: 10 }
+      );
+
+      return ctx.json({ skills: skillsWithRelations });
+    }
+
+    if (skillView === "summary") {
+      return ctx.json({
+        skills: skills.map((sc) => {
+          const {
+            instructions,
+            instructionsHtml,
+            tools,
+            ...skillWithoutInstructionsAndTools
+          } = sc.toJSON(auth);
+
+          return skillWithoutInstructionsAndTools;
+        }),
+      });
+    }
+
+    return ctx.json({
+      skills: skills.map((sc) => sc.toJSON(auth)),
     });
   }
+);
 
-  return ctx.json({ skill: newSkill.toJSON(auth) });
-});
+app.post(
+  "/",
+  validate("json", PostSkillRequestBodySchema),
+  async (ctx): HandlerResult<PostSkillResponseBody> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
+
+    if (!isBuilder(owner)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "User is not a builder.",
+        },
+      });
+    }
+
+    const user = auth.getNonNullableUser();
+
+    const body = ctx.req.valid("json");
+    const name = body.name.trim();
+
+    if (!name) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Skill name cannot be empty.",
+        },
+      });
+    }
+
+    const existingSkill = await SkillResource.fetchActiveByName(auth, name);
+
+    if (existingSkill) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `A skill with the name "${name}" already exists.`,
+        },
+      });
+    }
+
+    // Validate all MCP server views exist before creating anything.
+    const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
+    const mcpServerViews = await MCPServerViewResource.fetchByIds(
+      auth,
+      mcpServerViewIds
+    );
+
+    if (mcpServerViewIds.length !== mcpServerViews.length) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
+        },
+      });
+    }
+
+    const { attachedKnowledge, fileAttachments } = body;
+
+    const dataSourceViewIds = uniq(
+      attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
+    );
+
+    const dataSourceViews = await DataSourceViewResource.fetchByIds(
+      auth,
+      dataSourceViewIds
+    );
+    if (dataSourceViews.length !== dataSourceViewIds.length) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
+        },
+      });
+    }
+
+    const dataSourceViewIdMap = new Map(
+      dataSourceViews.map((dsv) => [dsv.sId, dsv])
+    );
+
+    const attachedKnowledgeWithDataSourceViews = attachedKnowledge.map(
+      (attachment) => ({
+        dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
+        nodeId: attachment.nodeId,
+      })
+    );
+
+    const computedRequestedSpaceIds =
+      await SkillResource.computeRequestedSpaceIds(auth, {
+        mcpServerViews,
+        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+      });
+
+    const additionalRequestedSpaceIdsRes =
+      await resolveAdditionalRequestedSpaceModelIds(
+        auth,
+        body.additionalRequestedSpaceIds
+      );
+
+    if (additionalRequestedSpaceIdsRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: additionalRequestedSpaceIdsRes.error.message,
+        },
+      });
+    }
+
+    const requestedSpaceIds = uniq([
+      ...computedRequestedSpaceIds,
+      ...additionalRequestedSpaceIdsRes.value,
+    ]);
+
+    const extendedSkill = body.extendedSkillId
+      ? await SkillResource.fetchById(auth, body.extendedSkillId)
+      : null;
+
+    // Only global skills can be extended.
+    if (extendedSkill !== null && !extendedSkill.isExtendable) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `The extended skill with id "${body.extendedSkillId}" cannot be extended.`,
+        },
+      });
+    }
+
+    // Validate file attachments if provided (gated behind sandbox_tools).
+    let files: FileResource[] | undefined;
+    if (fileAttachments) {
+      const featureFlags = await getFeatureFlags(auth);
+      if (
+        !featureFlags.includes("sandbox_tools") &&
+        fileAttachments.length > 0
+      ) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "File attachments are not supported.",
+          },
+        });
+      }
+
+      const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
+      files = await FileResource.fetchByIds(auth, fileAttachmentIds);
+      if (files.length !== fileAttachmentIds.length) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
+          },
+        });
+      }
+
+      for (const file of files) {
+        if (!file.isReady || file.useCase !== "skill_attachment") {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `File ${file.sId} is not ready or not a skill_attachment.`,
+            },
+          });
+        }
+      }
+    }
+
+    // Generate icon suggestion if not provided.
+    let icon = body.icon;
+    if (!icon) {
+      const iconResult = await getSkillIconSuggestion(auth, {
+        name,
+        instructions: body.instructions,
+        agentFacingDescription: body.agentFacingDescription,
+      });
+      if (iconResult.isOk()) {
+        icon = iconResult.value;
+      } else {
+        logger.warn(
+          { error: iconResult.error },
+          "Failed to generate icon suggestion for skill"
+        );
+      }
+    }
+
+    const newSkill = await SkillResource.makeNew(
+      auth,
+      {
+        status: "active",
+        name,
+        agentFacingDescription: body.agentFacingDescription,
+        userFacingDescription: body.userFacingDescription,
+        instructions: body.instructions,
+        instructionsHtml: body.instructionsHtml,
+        editedBy: user.id,
+        requestedSpaceIds,
+        extendedSkillId: body.extendedSkillId,
+        icon,
+        source: body.source ?? "web_app",
+        sourceMetadata: body.sourceMetadata ?? null,
+        isDefault: body.isDefault ?? false,
+      },
+      {
+        mcpServerViews,
+        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        fileAttachments: files,
+      }
+    );
+
+    // Update file useCaseMetadata with the newly created skill's sId.
+    if (files) {
+      await FileResource.bulkSetUseCaseMetadata(auth, files, {
+        skillId: newSkill.sId,
+      });
+    }
+
+    return ctx.json({ skill: newSkill.toJSON(auth) });
+  }
+);
 
 // Per-skill operations: mounted at /:sId so child routes can read it.
 app.route("/:sId", skill);

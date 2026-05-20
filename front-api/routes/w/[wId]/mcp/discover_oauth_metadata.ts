@@ -4,6 +4,7 @@ import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -34,62 +35,66 @@ const app = new Hono();
 //
 // Note: callers should not invoke this frequently — the remote server is
 // likely to rate-limit.
-app.post("/", validate("json", PostBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const { url, customHeaders } = ctx.req.valid("json");
+app.post(
+  "/",
+  validate("json", PostBodySchema),
+  async (ctx): HandlerResult<DiscoverOAuthMetadataResponseBody> => {
+    const auth = ctx.get("auth");
+    const { url, customHeaders } = ctx.req.valid("json");
 
-  try {
-    new URL(url);
-  } catch {
+    try {
+      new URL(url);
+    } catch {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid URL format. Please provide a valid URL.",
+        },
+      });
+    }
+
+    const headers = headersArrayToRecord(customHeaders);
+
+    // Try a direct connection without auth first.
+    const directConnectRes = await connectToMCPServer(auth, {
+      params: {
+        type: "remoteMCPServerUrl",
+        remoteMCPServerUrl: url,
+        headers,
+      },
+    });
+
+    if (directConnectRes.isOk()) {
+      return ctx.json({ oauthRequired: false });
+    }
+
+    // Direct connect failed — try discovery.
+    const defaultServerConfig = getDefaultRemoteMCPServerByURL(url);
+    const extraScopes = defaultServerConfig?.scope;
+
+    const discoveryRes = await RemoteMCPServerResource.discoverOAuthMetadata({
+      serverUrl: url,
+      provider: new MCPOAuthProvider(),
+      customHeaders: headers,
+      extraScopes,
+    });
+
+    if (discoveryRes.isOk()) {
+      return ctx.json({
+        oauthRequired: true,
+        connectionMetadata: discoveryRes.value,
+      });
+    }
+
     return apiError(ctx, {
-      status_code: 400,
+      status_code: 500,
       api_error: {
-        type: "invalid_request_error",
-        message: "Invalid URL format. Please provide a valid URL.",
+        type: "internal_server_error",
+        message: discoveryRes.error.message,
       },
     });
   }
-
-  const headers = headersArrayToRecord(customHeaders);
-
-  // Try a direct connection without auth first.
-  const directConnectRes = await connectToMCPServer(auth, {
-    params: {
-      type: "remoteMCPServerUrl",
-      remoteMCPServerUrl: url,
-      headers,
-    },
-  });
-
-  if (directConnectRes.isOk()) {
-    return ctx.json({ oauthRequired: false });
-  }
-
-  // Direct connect failed — try discovery.
-  const defaultServerConfig = getDefaultRemoteMCPServerByURL(url);
-  const extraScopes = defaultServerConfig?.scope;
-
-  const discoveryRes = await RemoteMCPServerResource.discoverOAuthMetadata({
-    serverUrl: url,
-    provider: new MCPOAuthProvider(),
-    customHeaders: headers,
-    extraScopes,
-  });
-
-  if (discoveryRes.isOk()) {
-    return ctx.json({
-      oauthRequired: true,
-      connectionMetadata: discoveryRes.value,
-    });
-  }
-
-  return apiError(ctx, {
-    status_code: 500,
-    api_error: {
-      type: "internal_server_error",
-      message: discoveryRes.error.message,
-    },
-  });
-});
+);
 
 export default app;

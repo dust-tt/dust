@@ -3,6 +3,7 @@ import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check"
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { SkillSuggestionSchema } from "@app/types/suggestions/skill_suggestion";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -51,7 +52,7 @@ export type PatchSkillSuggestionResponseBody = z.infer<
 // middleware, which also enforces canWrite.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
   const auth = ctx.get("auth");
   const skill = ctx.get("skill");
 
@@ -107,7 +108,7 @@ app.get("/", async (ctx) => {
 app.patch(
   "/",
   validate("json", PatchSkillSuggestionRequestBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchSkillSuggestionResponseBody> => {
     const auth = ctx.get("auth");
     const skill = ctx.get("skill");
 

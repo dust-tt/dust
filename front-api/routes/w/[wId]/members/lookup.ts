@@ -1,6 +1,7 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { UserType } from "@app/types/user";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -23,47 +24,48 @@ export type MembersLookupResponseBody = {
 // Mounted at /api/w/:wId/members/lookup.
 const app = new Hono();
 
-app.get("/", validate("query", MembersLookupQuerySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const { ids: rawIds } = ctx.req.valid("query");
-  const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+app.get(
+  "/",
+  validate("query", MembersLookupQuerySchema),
+  async (ctx): HandlerResult<MembersLookupResponseBody> => {
+    const auth = ctx.get("auth");
+    const { ids: rawIds } = ctx.req.valid("query");
+    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
 
-  if (ids.length === 0) {
-    const body: MembersLookupResponseBody = { users: [] };
-    return ctx.json(body);
-  }
+    if (ids.length === 0) {
+      return ctx.json({ users: [] });
+    }
 
-  if (ids.length > MEMBERS_LOOKUP_MAX_IDS) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Too many ids provided. Maximum is ${MEMBERS_LOOKUP_MAX_IDS}.`,
-      },
+    if (ids.length > MEMBERS_LOOKUP_MAX_IDS) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Too many ids provided. Maximum is ${MEMBERS_LOOKUP_MAX_IDS}.`,
+        },
+      });
+    }
+
+    const uniqueIds = Array.from(new Set(ids));
+    const users = await UserResource.fetchByModelIds(uniqueIds);
+
+    if (users.length === 0) {
+      return ctx.json({ users: [] });
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const { memberships } = await MembershipResource.getLatestMemberships({
+      users,
+      workspace: owner,
+    });
+
+    const validUserIds = new Set(memberships.map((m) => m.userId));
+    const filteredUsers = users.filter((user) => validUserIds.has(user.id));
+
+    return ctx.json({
+      users: filteredUsers.map((user) => user.toJSON()),
     });
   }
-
-  const uniqueIds = Array.from(new Set(ids));
-  const users = await UserResource.fetchByModelIds(uniqueIds);
-
-  if (users.length === 0) {
-    const body: MembersLookupResponseBody = { users: [] };
-    return ctx.json(body);
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-  const { memberships } = await MembershipResource.getLatestMemberships({
-    users,
-    workspace: owner,
-  });
-
-  const validUserIds = new Set(memberships.map((m) => m.userId));
-  const filteredUsers = users.filter((user) => validUserIds.has(user.id));
-
-  const body: MembersLookupResponseBody = {
-    users: filteredUsers.map((user) => user.toJSON()),
-  };
-  return ctx.json(body);
-});
+);
 
 export default app;

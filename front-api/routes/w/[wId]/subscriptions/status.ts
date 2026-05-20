@@ -1,6 +1,7 @@
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type GetSubscriptionStatusResponseBody = {
@@ -11,17 +12,16 @@ export type GetSubscriptionStatusResponseBody = {
 // Mounted at /api/w/:wId/subscriptions/status.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetSubscriptionStatusResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
   // Only admins can be redirected to trial-ended page.
   if (!auth.isAdmin()) {
-    const body: GetSubscriptionStatusResponseBody = {
+    return ctx.json({
       shouldRedirect: false,
       redirectUrl: null,
-    };
-    return ctx.json(body);
+    });
   }
 
   const subscription = auth.subscription();
@@ -30,11 +30,10 @@ app.get("/", async (ctx) => {
     try {
       const { count, limit } = await getMessageUsageCount(auth);
       if (limit !== -1 && count >= limit) {
-        const body: GetSubscriptionStatusResponseBody = {
+        return ctx.json({
           shouldRedirect: true,
           redirectUrl: `/w/${owner.sId}/trial-ended`,
-        };
-        return ctx.json(body);
+        });
       }
     } catch {
       // If we can't check message usage, don't redirect.
@@ -49,19 +48,17 @@ app.get("/", async (ctx) => {
       isFreeTrialPhonePlan(lastSubscription.getPlan().code) &&
       lastSubscription.toJSON().status === "ended"
     ) {
-      const body: GetSubscriptionStatusResponseBody = {
+      return ctx.json({
         shouldRedirect: true,
         redirectUrl: `/w/${owner.sId}/trial-ended`,
-      };
-      return ctx.json(body);
+      });
     }
   }
 
-  const body: GetSubscriptionStatusResponseBody = {
+  return ctx.json({
     shouldRedirect: false,
     redirectUrl: null,
-  };
-  return ctx.json(body);
+  });
 });
 
 export default app;

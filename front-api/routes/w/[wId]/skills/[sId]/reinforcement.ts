@@ -7,6 +7,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { SKILL_REINFORCEMENT_MODES } from "@app/types/assistant/skill_configuration";
 import { isString } from "@app/types/shared/utils/general";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -41,7 +42,7 @@ const app = new Hono();
 app.patch(
   "/",
   validate("json", PatchSkillReinforcementBodySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<PatchSkillReinforcementResponseBody> => {
     const auth = ctx.get("auth");
     const sId = ctx.req.param("sId");
 

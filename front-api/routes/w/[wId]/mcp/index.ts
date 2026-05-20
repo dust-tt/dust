@@ -5,6 +5,7 @@ import {
   createRemoteMCPServer,
   listMCPServersWithViews,
 } from "@app/lib/api/mcp/servers";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -69,7 +70,7 @@ const PostBodySchema = z.discriminatedUnion("serverType", [
 // workspace sub-app.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
   const auth = ctx.get("auth");
   const servers = await listMCPServersWithViews(auth);
   return ctx.json({ success: true, servers });
