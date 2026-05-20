@@ -1,13 +1,11 @@
+import { getUserFromSession } from "@app/lib/iam/session";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { validate } from "@front-api/middleware/validator";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { Op } from "sequelize";
 import { z } from "zod";
-
-import { getUserFromSession } from "@app/lib/iam/session";
-import { UserResource } from "@app/lib/resources/user_resource";
-
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
 
 const PostUserMetadataBodySchema = z.object({
   value: z.string(),

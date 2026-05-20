@@ -1,8 +1,7 @@
-import { Hono } from "hono";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 
 import { apiError } from "@front-api/middleware/utils";
-
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/check-name.
 const app = new Hono();

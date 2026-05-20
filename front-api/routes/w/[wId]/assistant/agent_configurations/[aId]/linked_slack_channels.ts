@@ -1,15 +1,13 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PatchLinkedSlackChannelsRequestBodySchema = z.object({
   slack_channel_internal_ids: z.array(z.string()),

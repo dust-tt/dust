@@ -1,9 +1,3 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { Context } from "hono";
-import { Hono } from "hono";
-import uniq from "lodash/uniq";
-import { z } from "zod";
-
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { getFeatureFlags } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -20,8 +14,12 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
 import { isString } from "@app/types/shared/utils/general";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import type { Context } from "hono";
+import { Hono } from "hono";
+import uniq from "lodash/uniq";
+import { z } from "zod";
 
 import editors from "./editors";
 import filesRoute from "./files/[fileId]/content";
@@ -119,7 +117,9 @@ app.get("/", async (c) => {
   const auth = c.get("auth");
 
   const loaded = await loadSkill(c);
-  if (loaded instanceof Response) return loaded;
+  if (loaded instanceof Response) {
+    return loaded;
+  }
   const { skill } = loaded;
 
   const withRelations = c.req.query("withRelations");
@@ -154,7 +154,9 @@ app.patch("/", validate("json", PatchSkillRequestBodySchema), async (c) => {
   const owner = auth.getNonNullableWorkspace();
 
   const loaded = await loadSkill(c);
-  if (loaded instanceof Response) return loaded;
+  if (loaded instanceof Response) {
+    return loaded;
+  }
   const { skill } = loaded;
 
   const body = c.req.valid("json");
@@ -381,7 +383,9 @@ app.delete("/", async (c) => {
   const owner = auth.getNonNullableWorkspace();
 
   const loaded = await loadSkill(c);
-  if (loaded instanceof Response) return loaded;
+  if (loaded instanceof Response) {
+    return loaded;
+  }
   const { skill } = loaded;
 
   // Check if user can write.

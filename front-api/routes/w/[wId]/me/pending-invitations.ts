@@ -1,8 +1,7 @@
-import { Hono } from "hono";
-
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
+import { Hono } from "hono";
 
 export type GetPendingInvitationsResponseBody = {
   pendingInvitations: PendingInvitationOption[];

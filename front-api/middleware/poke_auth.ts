@@ -1,9 +1,7 @@
-import type { MiddlewareHandler } from "hono";
-
 import { Authenticator } from "@app/lib/auth";
-
 import { resolveSession } from "@front-api/middleware/session_resolution";
 import { apiError } from "@front-api/middleware/utils";
+import type { MiddlewareHandler } from "hono";
 
 /**
  * Authenticates a Poke (super-user) request and stores the resolved

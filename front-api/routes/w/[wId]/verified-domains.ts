@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WorkspaceDomain } from "@app/types/workspace";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export type GetWorkspaceVerifiedDomainsResponseBody = {
   verifiedDomains: WorkspaceDomain[];

@@ -1,11 +1,9 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { getSkillDescriptionSuggestion } from "@app/lib/api/skills/description_suggestion";
 
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PostSkillSuggestionsRequestBodySchema = z.object({
   instructions: z.string(),

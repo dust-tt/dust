@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
 import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import {
@@ -10,8 +5,10 @@ import {
   createRemoteMCPServer,
   listMCPServersWithViews,
 } from "@app/lib/api/mcp/servers";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 import server from "./[serverId]";
 import available from "./available";

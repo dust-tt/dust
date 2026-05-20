@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import {
   addContentNodeToProject,
   listProjectContextAttachments,
@@ -11,9 +6,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentNodeType } from "@app/types/core/content_node";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 import contentNodes from "./content_nodes";
 import files from "./files";

@@ -1,5 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import {
   ConversationModel,
   ConversationParticipantModel,
@@ -7,8 +5,8 @@ import {
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-
 import { honoApp } from "@front-api/app";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 async function createConversationWithTitle(
   auth: Parameters<typeof ConversationFactory.create>[0],

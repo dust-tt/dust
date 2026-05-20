@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -22,8 +20,8 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { MembershipRoleType } from "@app/types/memberships";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it, vi } from "vitest";
 
 async function setupTest(role: MembershipRoleType = "builder") {
   return createPrivateApiMockRequest({ role });

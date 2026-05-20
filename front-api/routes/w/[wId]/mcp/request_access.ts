@@ -1,16 +1,14 @@
-import { apiError } from "@front-api/middleware/utils";
-import { escape } from "html-escaper";
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { escape } from "html-escaper";
+import { z } from "zod";
 
 export const PostRequestActionsAccessBodySchema = z.object({
   emailMessage: z.string(),

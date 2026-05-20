@@ -1,8 +1,7 @@
-import { Hono } from "hono";
-
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { Hono } from "hono";
 
 export type GetSubscriptionStatusResponseBody = {
   shouldRedirect: boolean;

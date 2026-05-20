@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -12,8 +7,10 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { SKILL_REINFORCEMENT_MODES } from "@app/types/assistant/skill_configuration";
 import { isString } from "@app/types/shared/utils/general";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PatchSkillReinforcementBodySchema = z
   .object({

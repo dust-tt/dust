@@ -1,10 +1,8 @@
-import { Hono } from "hono";
-import differenceWith from "lodash/differenceWith";
-
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { removeNulls } from "@app/types/shared/utils/general";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { Hono } from "hono";
+import differenceWith from "lodash/differenceWith";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views/not_activated.
 const app = new Hono();

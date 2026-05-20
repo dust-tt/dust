@@ -1,10 +1,7 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { removeFileFromProject } from "@app/lib/api/projects/context";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_context/files/:fileId.
 //

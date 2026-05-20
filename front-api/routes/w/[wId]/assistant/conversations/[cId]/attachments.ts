@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/attachments.
 const app = new Hono();

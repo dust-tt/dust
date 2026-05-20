@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
@@ -17,13 +12,14 @@ import {
   type ProjectTaskType,
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-
+import { Hono } from "hono";
+import { z } from "zod";
+import taskId from "./[taskId]";
 import bulkActions from "./bulk-actions";
 import markRead from "./mark_read";
-import taskId from "./[taskId]";
 
 const PostProjectTaskBodySchema = z.object({
   text: z

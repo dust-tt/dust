@@ -1,10 +1,8 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { updateAgentConfigurationsScope } from "@app/lib/api/assistant/configuration/agent";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const BatchUpdateAgentScopeRequestBodySchema = z.object({
   agentIds: z.array(z.string()),

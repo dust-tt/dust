@@ -1,10 +1,8 @@
-import { describe, expect, it } from "vitest";
-
 import { computeSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 function getUser() {
   return honoApp.request(`/api/user`);

@@ -1,10 +1,9 @@
-import { Hono } from "hono";
-
 import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
   GroupResource,
 } from "@app/lib/resources/group_resource";
+import { Hono } from "hono";
 
 export type GetProvisioningStatusResponseBody = {
   hasAdminGroup: boolean;

@@ -1,13 +1,10 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
-
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const UpdateMCPToolSettingsBodySchema = z
   .object({

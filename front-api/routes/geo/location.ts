@@ -1,10 +1,9 @@
-import { Hono } from "hono";
-
 import { resolveCountryCode } from "@app/lib/geo/country-detection";
 import { isGDPRCountry } from "@app/lib/geo/eu-detection";
 import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Hono } from "hono";
 
 export type GeoLocationResponse = {
   isGDPR: boolean;

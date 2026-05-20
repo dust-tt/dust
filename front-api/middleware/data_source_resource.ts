@@ -1,8 +1,7 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { MiddlewareHandler } from "hono";
-
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { apiError } from "@front-api/middleware/utils";
+import type { MiddlewareHandler } from "hono";
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -22,11 +21,18 @@ function hasPermission(
   ds: DataSourceResource,
   o: DataSourceResourceOptions
 ): boolean {
-  if (o.requireCanAdministrate && !ds.canAdministrate(auth)) return false;
-  if (o.requireCanReadOrAdministrate && !ds.canReadOrAdministrate(auth))
+  if (o.requireCanAdministrate && !ds.canAdministrate(auth)) {
     return false;
-  if (o.requireCanRead && !ds.canRead(auth)) return false;
-  if (o.requireCanWrite && !ds.canWrite(auth)) return false;
+  }
+  if (o.requireCanReadOrAdministrate && !ds.canReadOrAdministrate(auth)) {
+    return false;
+  }
+  if (o.requireCanRead && !ds.canRead(auth)) {
+    return false;
+  }
+  if (o.requireCanWrite && !ds.canWrite(auth)) {
+    return false;
+  }
   return true;
 }
 

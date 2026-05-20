@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -8,8 +6,8 @@ import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
   agentConfigurationWasUpdatedBy: vi.fn(),

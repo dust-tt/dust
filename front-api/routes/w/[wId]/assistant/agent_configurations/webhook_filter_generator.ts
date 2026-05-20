@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
 import {
   WEBHOOK_PRESETS,
   WEBHOOK_PROVIDERS,
 } from "@app/types/triggers/webhooks";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PostWebhookFilterGeneratorRequestBodySchema = z.object({
   naturalDescription: z.string(),

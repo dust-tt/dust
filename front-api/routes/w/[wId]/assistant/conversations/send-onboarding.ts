@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
 import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
 import { isString } from "@app/types/shared/utils/general";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/conversations/send-onboarding.
 const app = new Hono();

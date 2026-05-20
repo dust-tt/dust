@@ -1,6 +1,5 @@
-import { Hono } from "hono";
-
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
+import { Hono } from "hono";
 
 export type GetTrialMessageUsageResponseType = {
   count: number;

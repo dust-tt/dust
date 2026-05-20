@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
 import {
@@ -19,12 +14,13 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-
-import notActivated from "./not_activated";
+import { Hono } from "hono";
+import { z } from "zod";
 import svId from "./[svId]";
+import notActivated from "./not_activated";
 
 const GetQueryParamsSchema = z.object({
   availability: z

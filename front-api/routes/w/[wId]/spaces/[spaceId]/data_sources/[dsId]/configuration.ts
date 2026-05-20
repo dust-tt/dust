@@ -1,7 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import config from "@app/lib/api/config";
 import { isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
@@ -9,10 +5,11 @@ import {
   ConnectorsAPI,
   UpdateConnectorConfigurationTypeSchema,
 } from "@app/types/connectors/connectors_api";
-
 import { dataSourceResource } from "@front-api/middleware/data_source_resource";
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/configuration.
 // Only Slack and Webcrawler connectors have configurations; Slack is set from

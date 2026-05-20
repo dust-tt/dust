@@ -1,13 +1,11 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import {
   buildInitialActions,
   getAccessibleSourcesAndAppsForActions,
 } from "@app/lib/agent_builder/server_side_props_helpers";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export type GetActionsResponseBody = {
   actions: AgentBuilderMCPConfiguration[];

@@ -1,9 +1,3 @@
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
-import { isConnectorsAPIError } from "@dust-tt/client";
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -22,8 +16,11 @@ import {
 } from "@app/types/connectors/connectors_api";
 import { isAPIError } from "@app/types/error";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
-
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { isConnectorsAPIError } from "@dust-tt/client";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/update.
 const app = new Hono();

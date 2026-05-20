@@ -1,9 +1,8 @@
+import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
 import { Hono } from "hono";
-
-import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 
 // Mounted at /api/w/:wId/mcp/connections/:connectionType/:cId.
 const app = new Hono();

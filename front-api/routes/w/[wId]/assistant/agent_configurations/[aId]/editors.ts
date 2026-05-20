@@ -1,6 +1,3 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import {
   getAgentConfiguration,
   updateAgentPermissions,
@@ -8,9 +5,10 @@ import {
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PatchAgentEditorsRequestBodySchema = z
   .object({

@@ -1,14 +1,13 @@
-import { Hono } from "hono";
-
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { buildOnboardingFollowUpPrompt } from "@app/lib/api/assistant/onboarding";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isString } from "@app/types/shared/utils/general";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 
 import { apiError } from "@front-api/middleware/utils";
-import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/onboarding-followup.
 const app = new Hono();

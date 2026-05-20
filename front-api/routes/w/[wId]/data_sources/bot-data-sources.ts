@@ -1,8 +1,7 @@
-import { Hono } from "hono";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 
 import { apiError } from "@front-api/middleware/utils";
-
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/data_sources/bot-data-sources.
 const app = new Hono();

@@ -1,10 +1,8 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const GetLookupRequestSchema = z.object({
   handle: z.string(),

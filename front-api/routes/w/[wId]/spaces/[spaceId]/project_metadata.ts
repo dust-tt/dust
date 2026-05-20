@@ -1,7 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import {
   launchOrSignalProjectTodoWorkflow,
@@ -9,9 +5,10 @@ import {
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_task/client";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_metadata. All routes
 // require the space to be a project; this is checked inline per handler.

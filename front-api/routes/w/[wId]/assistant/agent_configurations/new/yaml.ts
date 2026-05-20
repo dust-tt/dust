@@ -1,10 +1,8 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { importAgentConfigurationFromYAMLString } from "@app/lib/api/assistant/configuration/yaml_import";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PostAgentConfigurationFromYAMLRequestBodySchema = z.object({
   yamlContent: z.string(),

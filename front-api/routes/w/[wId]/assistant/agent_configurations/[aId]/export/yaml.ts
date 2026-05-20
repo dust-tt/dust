@@ -1,8 +1,6 @@
-import { Hono } from "hono";
-
 import { exportAgentConfigurationAsYAML } from "@app/lib/api/assistant/configuration/yaml_export";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/export/yaml.
 const app = new Hono();

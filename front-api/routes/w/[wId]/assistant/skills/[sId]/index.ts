@@ -1,8 +1,7 @@
-import { Hono } from "hono";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 
 import { apiError } from "@front-api/middleware/utils";
-
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { Hono } from "hono";
 
 import suggestions from "./suggestions";
 

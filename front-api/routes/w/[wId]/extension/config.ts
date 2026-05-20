@@ -1,6 +1,5 @@
-import { Hono } from "hono";
-
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { Hono } from "hono";
 
 export type GetExtensionConfigResponseBody = {
   blacklistedDomains: string[];

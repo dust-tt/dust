@@ -1,7 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import type {
   SeatPlanResponseBody,
   SeatTypeInfo,
@@ -18,6 +14,8 @@ import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 type PriceKey = "pro" | "max";
 

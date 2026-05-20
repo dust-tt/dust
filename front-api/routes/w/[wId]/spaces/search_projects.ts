@@ -1,11 +1,9 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/search_projects.
 const app = new Hono();

@@ -1,13 +1,11 @@
-import { Hono } from "hono";
-import { fromError } from "zod-validation-error";
-
 import {
   getAgentConfiguration,
   listsAgentConfigurationVersions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { GetAgentConfigurationsHistoryQuerySchema } from "@app/types/api/internal/agent_configuration";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
+import { fromError } from "zod-validation-error";
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/history.
 const app = new Hono();

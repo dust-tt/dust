@@ -1,12 +1,10 @@
-import { Hono } from "hono";
-
 import {
   getAgentConfiguration,
   restoreAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/restore.
 const app = new Hono();

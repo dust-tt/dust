@@ -1,7 +1,6 @@
-import { Hono } from "hono";
-
 import type { MCPServersUsageByAgent } from "@app/lib/api/agent_actions";
 import { getToolsUsage } from "@app/lib/api/agent_actions";
+import { Hono } from "hono";
 
 export type GetMCPServersUsageResponseBody = {
   usage: MCPServersUsageByAgent;

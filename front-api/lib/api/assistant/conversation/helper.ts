@@ -1,9 +1,7 @@
-import type { Context } from "hono";
-
 import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import { ConversationError } from "@app/types/assistant/conversation";
-
 import { apiError } from "@front-api/middleware/utils";
+import type { Context } from "hono";
 
 /**
  * Hono counterpart of `apiErrorForConversation` in

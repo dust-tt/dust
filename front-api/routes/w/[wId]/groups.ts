@@ -1,11 +1,9 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import { GroupKindCodec } from "@app/types/groups";
-
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 export type GetGroupsResponseBody = {
   groups: (GroupType & { memberCount: number })[];

@@ -1,11 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { expectArrayOfObjectsWithSpecificLength } from "@app/tests/utils/utils";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 describe("GET /api/v1/w/:wId/spaces", () => {
   it("returns an empty list when no spaces exist", async () => {

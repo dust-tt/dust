@@ -1,6 +1,5 @@
-import { Hono } from "hono";
-
 import { getStatsDClient } from "@app/lib/utils/statsd";
+import { Hono } from "hono";
 
 export const healthzApp = new Hono();
 

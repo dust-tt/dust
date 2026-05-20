@@ -1,9 +1,7 @@
-import { describe, expect, it } from "vitest";
-
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 function createPending(workspace: { sId: string }) {
   return honoApp.request(

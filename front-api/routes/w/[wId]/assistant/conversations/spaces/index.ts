@@ -1,10 +1,9 @@
-import { Hono } from "hono";
-
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ProjectListItemType } from "@app/types/space";
+import { Hono } from "hono";
 
 import spaceId from "./[spaceId]";
 

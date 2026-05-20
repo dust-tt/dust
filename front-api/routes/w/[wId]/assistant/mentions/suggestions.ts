@@ -1,6 +1,5 @@
-import { Hono } from "hono";
-
 import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/mention_suggestions";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/mentions/suggestions.
 const app = new Hono();

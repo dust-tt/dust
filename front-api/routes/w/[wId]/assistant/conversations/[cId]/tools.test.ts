@@ -1,5 +1,3 @@
-import { assert, describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -8,8 +6,8 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { MembershipRoleType } from "@app/types/memberships";
-
 import { honoApp } from "@front-api/app";
+import { assert, describe, expect, it } from "vitest";
 
 async function setupTest(role: MembershipRoleType = "admin") {
   const { workspace, auth, globalSpace, systemSpace } =

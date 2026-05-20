@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -17,8 +15,8 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 let testAgents: LightAgentConfigurationType[];
 

@@ -1,9 +1,7 @@
+import { parseMentionsInMarkdown } from "@app/lib/api/assistant/parse_mentions";
+import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
-
-import { parseMentionsInMarkdown } from "@app/lib/api/assistant/parse_mentions";
-
-import { validate } from "@front-api/middleware/validator";
 
 const ParseMentionsRequestBodySchema = z.object({
   markdown: z.string(),

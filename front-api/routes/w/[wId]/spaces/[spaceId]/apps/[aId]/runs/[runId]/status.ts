@@ -1,13 +1,10 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/status.
 const app = new Hono();
@@ -34,7 +31,9 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
       },
     });
   }
-  if (runId === "saved") runId = found.savedRun;
+  if (runId === "saved") {
+    runId = found.savedRun;
+  }
   if (!runId || runId.length === 0) {
     return c.json({ run: null });
   }

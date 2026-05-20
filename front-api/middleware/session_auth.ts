@@ -1,8 +1,6 @@
-import type { MiddlewareHandler } from "hono";
-
 import type { SessionWithUser } from "@app/lib/iam/provider";
-
 import { resolveSession } from "@front-api/middleware/session_resolution";
+import type { MiddlewareHandler } from "hono";
 
 declare module "hono" {
   interface ContextVariableMap {

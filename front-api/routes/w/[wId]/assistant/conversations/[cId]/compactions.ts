@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isProviderWhitelisted } from "@app/lib/assistant";
 import { isSupportedModel } from "@app/types/assistant/assistant";
-
-import { apiError } from "@front-api/middleware/utils";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PostConversationCompactionsBodySchema = z.object({
   model: z.object({

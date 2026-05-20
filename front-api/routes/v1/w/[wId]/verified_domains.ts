@@ -1,8 +1,7 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
-import { Hono } from "hono";
-
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Re-exported so SWR hooks and other consumers can import the response type
 // from the Hono route file, matching the convention of our other routes.

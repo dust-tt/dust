@@ -1,13 +1,11 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import {
   archiveAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
-
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const PostAgentConfigurationArchiveSchema = z.object({
   agentConfigurationIds: z.array(z.string()),

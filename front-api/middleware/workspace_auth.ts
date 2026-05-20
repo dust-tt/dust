@@ -1,10 +1,8 @@
-import type { MiddlewareHandler } from "hono";
-
 import { Authenticator } from "@app/lib/auth";
 import { getClientIp } from "@app/lib/utils/request";
-
 import { resolveSession } from "@front-api/middleware/session_resolution";
 import { apiError } from "@front-api/middleware/utils";
+import type { MiddlewareHandler } from "hono";
 
 declare module "hono" {
   interface ContextVariableMap {

@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { UserResource } from "@app/lib/resources/user_resource";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/last_author.
 const app = new Hono();

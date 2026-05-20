@@ -1,6 +1,5 @@
-import { Hono } from "hono";
-
 import { workspaceAuth } from "@front-api/middleware/workspace_auth";
+import { Hono } from "hono";
 
 import analytics from "./analytics";
 import assistant from "./assistant";

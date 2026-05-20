@@ -1,7 +1,6 @@
-import { Hono } from "hono";
-
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SpaceType } from "@app/types/space";
+import { Hono } from "hono";
 
 export type GetPublicSpacesResponseBody = {
   spaces: SpaceType[];

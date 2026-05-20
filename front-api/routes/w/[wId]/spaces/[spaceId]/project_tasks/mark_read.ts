@@ -1,10 +1,7 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
-
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/mark_read.
 const app = new Hono();

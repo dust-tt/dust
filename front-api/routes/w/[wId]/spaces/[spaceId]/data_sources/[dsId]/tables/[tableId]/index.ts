@@ -1,15 +1,12 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { upsertTable } from "@app/lib/api/data_sources";
 import { deleteTable } from "@app/lib/api/tables";
 import { PatchDataSourceTableRequestBodySchema } from "@app/types/api/public/data_sources";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
 import { dataSourceResource } from "@front-api/middleware/data_source_resource";
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/tables/:tableId.
 const app = new Hono();

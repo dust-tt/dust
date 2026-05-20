@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -11,10 +6,12 @@ import {
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-
 import { dataSourceResource } from "@front-api/middleware/data_source_resource";
 import { spaceResource } from "@front-api/middleware/space_resource";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 import configuration from "./configuration";
 import documents from "./documents";

@@ -1,5 +1,3 @@
-import type { Context, MiddlewareHandler } from "hono";
-
 import { verifySandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
 import {
   Authenticator,
@@ -13,6 +11,7 @@ import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import { getUserEmailFromHeaders } from "@app/types/user";
+import type { Context, MiddlewareHandler } from "hono";
 
 import { apiError } from "./utils";
 

@@ -1,11 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 function getFeatureFlags(workspace: { sId: string }, key: { secret: string }) {
   return honoApp.request(`/api/v1/w/${workspace.sId}/feature_flags`, {

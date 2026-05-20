@@ -1,9 +1,7 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/projects-lookup.
 const app = new Hono();

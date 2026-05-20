@@ -1,12 +1,10 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import {
   activatePhoneTrial,
   isWorkspaceEligibleForTrial,
 } from "@app/lib/plans/trial";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export type PostTrialVerifyResponseBody = {
   success: boolean;

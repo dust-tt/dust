@@ -1,8 +1,7 @@
-import { Hono } from "hono";
-
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
+import { Hono } from "hono";
 
 export type GetWelcomeResponseBody = {
   isFirstAdmin: boolean;

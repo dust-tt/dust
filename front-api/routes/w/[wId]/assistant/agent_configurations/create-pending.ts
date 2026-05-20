@@ -1,8 +1,6 @@
-import { Hono } from "hono";
-
 import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-
 import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/create-pending.
 const app = new Hono();

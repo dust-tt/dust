@@ -1,14 +1,11 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { isString } from "@app/types/shared/utils/general";
-
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
+import { Hono } from "hono";
+import { z } from "zod";
 
 const ConversationToolActionRequestSchema = z.object({
   action: z.enum(["add", "delete"]),
