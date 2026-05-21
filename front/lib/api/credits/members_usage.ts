@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { listMetronomePerUserCapsForWorkspace } from "@app/lib/metronome/per_user_alerts";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { buildSeatDataByUserId, type SeatData } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
@@ -17,13 +18,17 @@ export type MemberUsageType = {
   seatType: MembershipSeatType | null;
   // Percentage of seat allocation consumed (0–100), null when seat balances are unavailable.
   seatUsagePercent: number | null;
-  // Pool consumption only (AWU credits): total usage minus what was covered by the seat credit.
-  consumedWorkplacePoolCredits: number;
+  // Total user AWU consumption for the period, regardless of whether it
+  // was covered by the seat allocation or overflowed into the workspace
+  // pool.
+  consumedAwuCredits: number;
   // Billing cadence for the seat subscription the user is assigned to; null when unknown.
   billingFrequency: BillingFrequency | null;
   // Set when a future seat change is scheduled (e.g. at the next credit refresh).
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
+  // Per-user total spend cap in AWU credits for the billing period
+  spendLimitAwuCredits: number | null;
 };
 
 export type GetMembersUsageResponseBody = {
@@ -105,6 +110,26 @@ async function fetchSeatDataForMembersTable({
   });
 }
 
+async function fetchPerUserSpendLimitsForMembersTable({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string | null;
+  workspaceId: string;
+}): Promise<Map<string, number>> {
+  if (!metronomeCustomerId) {
+    return new Map();
+  }
+  const result = await listMetronomePerUserCapsForWorkspace({
+    metronomeCustomerId,
+    workspaceId,
+  });
+  if (result.isErr()) {
+    return new Map();
+  }
+  return result.value;
+}
+
 export async function getMembersUsage({
   auth,
   paginationParams,
@@ -119,21 +144,29 @@ export async function getMembersUsage({
   const { metronomeCustomerId } = workspace;
   const metronomeContractId = subscription?.metronomeContractId ?? null;
 
-  const [membershipsResult, perUserTotalCredits, seatDataByUserId] =
-    await Promise.all([
-      MembershipResource.getActiveMemberships({
-        workspace,
-        paginationParams,
-      }),
-      fetchPerUserUsageCreditsForMembersTable({
-        metronomeCustomerId: metronomeCustomerId ?? null,
-        metronomeContractId,
-      }),
-      fetchSeatDataForMembersTable({
-        metronomeCustomerId: metronomeCustomerId ?? null,
-        metronomeContractId,
-      }),
-    ]);
+  const [
+    membershipsResult,
+    perUserTotalCredits,
+    seatDataByUserId,
+    perUserSpendLimits,
+  ] = await Promise.all([
+    MembershipResource.getActiveMemberships({
+      workspace,
+      paginationParams,
+    }),
+    fetchPerUserUsageCreditsForMembersTable({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      metronomeContractId,
+    }),
+    fetchSeatDataForMembersTable({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      metronomeContractId,
+    }),
+    fetchPerUserSpendLimitsForMembersTable({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      workspaceId: workspace.sId,
+    }),
+  ]);
 
   const { memberships, total, nextPageParams } = membershipsResult;
 
@@ -153,12 +186,9 @@ export async function getMembersUsage({
     const awuAllocation = seatData?.awuAllocation ?? 0;
 
     let seatUsagePercent: number | null = null;
-    let poolConsumedCredits = totalCredits;
-
     if (awuAllocation > 0) {
       const seatConsumed = Math.min(totalCredits, awuAllocation);
       seatUsagePercent = (seatConsumed / awuAllocation) * 100;
-      poolConsumedCredits = Math.max(0, totalCredits - awuAllocation);
     }
 
     const scheduled = scheduledByUserId.get(m.userId);
@@ -171,10 +201,11 @@ export async function getMembersUsage({
         image: m.user.imageUrl ?? null,
         seatType: m.seatType ?? null,
         seatUsagePercent,
-        consumedWorkplacePoolCredits: poolConsumedCredits,
+        consumedAwuCredits: totalCredits,
         billingFrequency: seatData?.billingFrequency ?? null,
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
+        spendLimitAwuCredits: perUserSpendLimits.get(userId) ?? null,
       },
     ];
   });
