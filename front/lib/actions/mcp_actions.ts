@@ -11,7 +11,6 @@ import {
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
-  RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type {
@@ -58,6 +57,12 @@ import {
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
+import {
+  classifyToolAbortSignal,
+  isToolInterruptionError,
+  makeToolInterruptionError,
+  shouldRetryToolInterruption,
+} from "@app/lib/actions/tool_interruptions";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContextType,
@@ -87,7 +92,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { isInShutdown } from "@app/lib/shutdown_signal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
@@ -531,10 +535,14 @@ export async function* tryCallMCPTool(
       logger.info(toolLogContext, "MCP tool promise resolved");
     } catch (toolError) {
       if (abortSignal?.aborted) {
+        const abortClassification = classifyToolAbortSignal(abortSignal);
+
+        if (abortClassification === "deploy_interruption") {
+          throw makeToolInterruptionError();
+        }
+
         return makeMCPToolExit({
-          message: isInShutdown()
-            ? TOOL_EXECUTION_INTERRUPTED_MESSAGE
-            : TOOL_EXECUTION_CANCELLED_MESSAGE,
+          message: TOOL_EXECUTION_CANCELLED_MESSAGE,
           isError: true,
         });
       }
@@ -544,6 +552,44 @@ export async function* tryCallMCPTool(
 
     return postProcessMCPToolResult(toolCallResult, toolConfiguration);
   } catch (error) {
+    const isWorkerShutdownInterruptionError = isToolInterruptionError(error);
+    const isMCPTimeoutError = isMcpTimeoutError(error);
+    const isInterruptError =
+      isWorkerShutdownInterruptionError || isMCPTimeoutError;
+
+    if (isInterruptError) {
+      const retryPolicy =
+        getRetryPolicyFromToolConfiguration(toolConfiguration);
+      const info = Context.current().info;
+
+      if (
+        shouldRetryToolInterruption({
+          isInterruption: isInterruptError,
+          attempt: info.attempt,
+          retryPolicy,
+        })
+      ) {
+        if (isWorkerShutdownInterruptionError) {
+          throw error;
+        }
+
+        const normalizedError = normalizeError(error);
+        throw new Error(
+          `The tool execution timed out, error: ${normalizedError.message}`,
+          { cause: error }
+        );
+      }
+
+      // If the tool should not be retried on interrupt, the error is returned
+      // to the agent as a tool error instead of failing the workflow.
+      if (isWorkerShutdownInterruptionError) {
+        return makeMCPToolExit({
+          message: TOOL_EXECUTION_INTERRUPTED_MESSAGE,
+          isError: true,
+        });
+      }
+    }
+
     logger.error(
       {
         conversationId,
@@ -554,27 +600,6 @@ export async function* tryCallMCPTool(
       },
       "Exception calling MCP tool in tryCallMCPTool()"
     );
-
-    const isMCPTimeoutError = isMcpTimeoutError(error);
-
-    if (isMCPTimeoutError) {
-      // If the tool should not be retried on interrupt, the error is returned
-      // to the model, to let it decide what to do. If the tool should be
-      // retried on interrupt, we throw an error so the workflow retries the
-      // `runTool` activity, unless it's the last attempt.
-      const retryPolicy =
-        getRetryPolicyFromToolConfiguration(toolConfiguration);
-      if (retryPolicy === "retry_on_interrupt") {
-        const info = Context.current().info;
-        const isLastAttempt = info.attempt >= RETRY_ON_INTERRUPT_MAX_ATTEMPTS;
-        if (!isLastAttempt) {
-          throw new Error(
-            `The tool execution timed out, error: ${error.message}`,
-            { cause: error }
-          );
-        }
-      }
-    }
 
     // When the MCP SDK receives a 401/403 from the remote server during a
     // tool call (e.g., StreamableHTTP where each call is a separate HTTP

@@ -12,6 +12,9 @@ let isShuttingDown = false;
 const shutdownController = new AbortController();
 let shutdownAbortTimeout: NodeJS.Timeout | undefined;
 
+export const DUST_WORKER_SHUTDOWN_ABORT_REASON =
+  "DUST_WORKER_SHUTDOWN_ABORT" as const;
+
 /**
  * Marks the pod as shutting down.
  */
@@ -55,5 +58,5 @@ function abortShutdownSignal(): void {
     return;
   }
 
-  shutdownController.abort();
+  shutdownController.abort(DUST_WORKER_SHUTDOWN_ABORT_REASON);
 }

@@ -14,6 +14,11 @@ import {
   makeMCPToolExit,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import {
+  classifyToolAbortSignal,
+  type HandledToolAbortClassification,
+  makeToolInterruptionError,
+} from "@app/lib/actions/tool_interruptions";
 import type {
   ActionGeneratedFileType,
   AgentLoopContextType,
@@ -73,7 +78,6 @@ import assert from "assert";
 import maxBy from "lodash/maxBy";
 import type z from "zod";
 
-const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
 const UNTRACKED_CHILD_AGENT_ERROR_CATEGORIES = [
   "retryable_model_error",
   "context_window_exceeded",
@@ -363,32 +367,43 @@ const runAgent = async (
     }
   };
 
-  if (abortSignal) {
-    if (
-      abortSignal.aborted &&
-      abortSignal.reason === ABORT_SIGNAL_CANCEL_REASON
-    ) {
-      requestChildCancellation();
-      return finalizeAndReturn(
-        new Err(
-          new MCPError(`Agent run cancelled, reason: ${abortSignal.reason}`, {
-            tracked: false,
-          })
-        )
-      );
-    }
+  const handleAbortedSignal = (
+    abortClassification: HandledToolAbortClassification
+  ): Promise<Result<never, MCPError>> => {
+    switch (abortClassification) {
+      case "deploy_interruption":
+        throw makeToolInterruptionError();
 
+      case "user_cancellation":
+        requestChildCancellation();
+        assert(abortSignal);
+        return finalizeAndReturn(
+          new Err(
+            new MCPError(`Agent run cancelled, reason: ${abortSignal.reason}`, {
+              tracked: false,
+            })
+          )
+        );
+
+      default:
+        assertNever(abortClassification);
+    }
+  };
+
+  const abortClassification = classifyToolAbortSignal(abortSignal);
+  if (abortClassification !== "none") {
+    return handleAbortedSignal(abortClassification);
+  }
+
+  if (abortSignal) {
     abortSignal.addEventListener(
       "abort",
       () => {
-        // Run_agent is retryable and resumable on interrupt, so it
-        // endures timeouts, deploys, etc. To cancel tools, we passed an
-        // abort signal in PR XXX. On trigger, the signal cancels the.
-        // This signal aborts the tool both on unintended interruptions
-        // and on requested cancellations. But for run agent, behaviour
-        // differs on those cases: on 1 we want to retry, while on 2. we
-        // do want to cancel.
-        if (abortSignal.reason === ABORT_SIGNAL_CANCEL_REASON) {
+        // run_agent is retryable and resumable on interruptions such as
+        // timeouts, deploys, etc. The abort signal is used for both these
+        // unintended interruptions and requested cancellations. For interruptions
+        // we let the activity retry/resume; for cancellations we cancel the child.
+        if (classifyToolAbortSignal(abortSignal) === "user_cancellation") {
           requestChildCancellation();
         }
       },
@@ -556,6 +571,11 @@ const runAgent = async (
   });
 
   if (streamRes.isErr()) {
+    const abortClassification = classifyToolAbortSignal(abortSignal);
+    if (abortClassification !== "none") {
+      return handleAbortedSignal(abortClassification);
+    }
+
     const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;
     return finalizeAndReturn(new Err(new MCPError(errorMessage)));
   }
@@ -659,6 +679,11 @@ const runAgent = async (
           )
         );
       }
+    }
+
+    const abortClassification = classifyToolAbortSignal(abortSignal);
+    if (abortClassification !== "none") {
+      return handleAbortedSignal(abortClassification);
     }
 
     // Transient stream errors (network issues, reconnection exhaustion) should not
