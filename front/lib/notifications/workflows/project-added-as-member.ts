@@ -9,7 +9,7 @@ import {
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { getProjectRoute } from "@app/lib/utils/router";
+import { getPodRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { PROJECT_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
 import type { Result } from "@app/types/shared/result";
@@ -124,7 +124,7 @@ export const projectAddedAsMemberWorkflow = workflow(
           primaryAction: {
             label: "View",
             redirect: {
-              url: getProjectRoute(payload.workspaceId, payload.projectId),
+              url: getPodRoute(payload.workspaceId, payload.projectId),
             },
           },
           data: {
@@ -143,7 +143,7 @@ export const projectAddedAsMemberWorkflow = workflow(
       async () => {
         const projectUrl =
           config.getAppUrl() +
-          getProjectRoute(payload.workspaceId, payload.projectId);
+          getPodRoute(payload.workspaceId, payload.projectId);
 
         const baseMessage = `${details.userThatAddedYouFullname} added you to project "${details.projectName}"`;
 
@@ -185,7 +185,7 @@ export const projectAddedAsMemberWorkflow = workflow(
             label: "View project",
             url:
               config.getAppUrl() +
-              getProjectRoute(payload.workspaceId, payload.projectId),
+              getPodRoute(payload.workspaceId, payload.projectId),
           },
         });
         return {

@@ -21,7 +21,7 @@ import { executeWithLock } from "@app/lib/lock";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { getProjectRoute } from "@app/lib/utils/router";
+import { getPodRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -193,8 +193,7 @@ export async function createDataSourceAndConnectorForProject(
         parentId: null,
         parents: [PROJECT_CONTEXT_FOLDER_ID],
         mimeType: INTERNAL_MIME_TYPES.DUST_PROJECT.CONTEXT_FOLDER,
-        sourceUrl:
-          config.getAppUrl() + getProjectRoute(workspace.sId, space.sId),
+        sourceUrl: config.getAppUrl() + getPodRoute(workspace.sId, space.sId),
         timestamp: null,
         providerVisibility: null,
         title: PROJECT_CONTEXT_FOLDER_NAME,

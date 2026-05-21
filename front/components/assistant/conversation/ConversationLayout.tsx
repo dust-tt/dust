@@ -1,4 +1,4 @@
-import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { AssistantLayout } from "@app/components/assistant/AssistantLayout";
 import {
   ConversationErrorDisplay,
   ErrorDisplay,
@@ -8,21 +8,15 @@ import { ConversationSidePanelProvider } from "@app/components/assistant/convers
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import {
   useSetHasTitle,
-  useSetNavChildren,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
-import { useURLSheet } from "@app/hooks/useURLSheet";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { useAppRouter } from "@app/lib/platform";
@@ -31,7 +25,6 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
-import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import type React from "react";
@@ -67,30 +60,11 @@ const ConversationLayoutContent = ({
   isAdmin,
 }: ConversationLayoutContentProps) => {
   const router = useAppRouter();
-  const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
-  const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
   const activeConversationId = useActiveConversationId();
-  const activeSpaceId = useActiveSpaceId();
   const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
   });
-
-  const agentId = useMemo(() => {
-    const sid = router.query.agentDetails ?? [];
-    if (isString(sid)) {
-      return sid;
-    }
-    return null;
-  }, [router.query.agentDetails]);
-
-  const userId = useMemo(() => {
-    const sid = router.query.userDetails ?? [];
-    if (isString(sid)) {
-      return sid;
-    }
-    return null;
-  }, [router.query.userDetails]);
 
   // Logic for the welcome tour guide. We display it if the welcome query param is set to true.
   const { startConversationRef, spaceMenuButtonRef, createAgentButtonRef } =
@@ -116,30 +90,11 @@ const ConversationLayoutContent = ({
     ? `Dust - ${getConversationDisplayTitle(conversation)}`
     : "Dust - New Conversation";
 
-  const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
-    [owner]
-  );
-
-  useSetHasTitle(!!activeConversationId || !!activeSpaceId);
+  useSetHasTitle(!!activeConversationId);
   useSetPageTitle(pageTitle);
-  useSetNavChildren(navChildren);
 
   return (
-    <BlockedActionsProvider owner={owner} conversation={conversation}>
-      <AgentDetailsSheet
-        owner={owner}
-        user={user}
-        agentId={agentId}
-        onClose={() => onOpenChangeAgentModal(false)}
-      />
-
-      <MemberDetails
-        owner={owner}
-        userId={userId}
-        onClose={() => onOpenChangeUserModal(false)}
-      />
-
+    <AssistantLayout owner={owner} user={user} conversation={conversation}>
       <ConversationSidePanelProvider>
         <ConversationInnerLayout
           activeConversationId={activeConversationId}
@@ -161,7 +116,7 @@ const ConversationLayoutContent = ({
           onTourGuideEnd={onTourGuideEnd}
         />
       )}
-    </BlockedActionsProvider>
+    </AssistantLayout>
   );
 };
 

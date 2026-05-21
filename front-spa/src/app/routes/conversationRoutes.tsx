@@ -12,13 +12,6 @@ const ConversationPage = withSuspense(
   () => import("@dust-tt/front/components/pages/conversation/ConversationPage"),
   "ConversationPage"
 );
-const SpaceConversationsPage = withSuspense(
-  () =>
-    import(
-      "@dust-tt/front/components/pages/conversation/SpaceConversationsPage"
-    ),
-  "SpaceConversationsPage"
-);
 
 export const conversationRoutes: RouteObject[] = [
   // Workspace index redirects to conversation/new
@@ -29,12 +22,6 @@ export const conversationRoutes: RouteObject[] = [
   {
     path: "conversation",
     element: <ConversationRouterLayout />,
-    children: [
-      { path: ":cId", element: <ConversationPage /> },
-      {
-        path: "space/:spaceId",
-        element: <SpaceConversationsPage />,
-      },
-    ],
+    children: [{ path: ":cId", element: <ConversationPage /> }],
   },
 ];

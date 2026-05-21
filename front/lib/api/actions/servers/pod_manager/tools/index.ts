@@ -47,7 +47,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
+import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import {
   isUserMessageType,
@@ -295,7 +295,7 @@ export function createProjectManagerTools(
         ).length;
 
         // Construct project URL
-        const projectPath = getProjectRoute(owner.sId, space.sId);
+        const projectPath = getPodRoute(owner.sId, space.sId);
         const projectUrl = `${config.getAppUrl()}${projectPath}`;
 
         return new Ok(
@@ -576,7 +576,7 @@ export function createProjectManagerTools(
           }
         }
 
-        const projectUrl = `${config.getAppUrl()}${getProjectRoute(
+        const projectUrl = `${config.getAppUrl()}${getPodRoute(
           owner.sId,
           projectSpace.sId
         )}`;

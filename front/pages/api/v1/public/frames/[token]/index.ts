@@ -9,7 +9,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
+import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -233,8 +233,7 @@ async function handler(
         )
       : null,
     // Only return the project URL if the user can read the project.
-    projectUrl:
-      canRead && spaceId ? getProjectRoute(workspace.sId, spaceId) : null,
+    projectUrl: canRead && spaceId ? getPodRoute(workspace.sId, spaceId) : null,
   });
 }
 

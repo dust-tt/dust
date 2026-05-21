@@ -9,11 +9,11 @@ import { useParams } from "react-router-dom";
 
 export const ProjectMainPage = () => {
   const { workspace } = useAuth();
-  const { spaceId } = useParams<{ spaceId: string }>();
+  const { podId } = useParams<{ podId: string }>();
 
   const { spaceInfo } = useSpaceInfo({
     workspaceId: workspace.sId,
-    spaceId: spaceId ?? null,
+    spaceId: podId ?? null,
   });
 
   return (

@@ -12,7 +12,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
+import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
@@ -77,7 +77,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
       icon: isMobile ? undefined : ArrowLeftIcon,
       label: spaceInfo.name,
       onClick: () => {
-        void router.push(getProjectRoute(owner.sId, spaceId), undefined, {
+        void router.push(getPodRoute(owner.sId, spaceId), undefined, {
           shallow: true,
         });
       },

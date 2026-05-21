@@ -25,7 +25,7 @@ export const routes = [
         element: <SubscribePage />,
       },
       {
-        path: "/w/:wId/conversation/space/:spaceId",
+        path: "/w/:wId/pods/:podId",
         element: <ProjectMainPage />,
       },
       {

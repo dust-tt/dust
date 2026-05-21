@@ -9,7 +9,7 @@ import { useConversation } from "@app/hooks/conversations/useConversation";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { getProjectRoute } from "@app/lib/utils/router";
+import { getPodRoute } from "@app/lib/utils/router";
 import { AttachmentIcon, Button, MoreIcon } from "@dust-tt/sparkle";
 import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
@@ -54,7 +54,7 @@ export const MainPage = () => {
       title={headerTitle}
       backHref={
         conversation?.spaceId
-          ? getProjectRoute(workspace.sId, conversation.spaceId)
+          ? getPodRoute(workspace.sId, conversation.spaceId)
           : undefined
       }
       rightActions={

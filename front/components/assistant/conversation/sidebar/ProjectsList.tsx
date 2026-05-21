@@ -9,7 +9,7 @@ import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
-import { getProjectRoute } from "@app/lib/utils/router";
+import { getPodRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SpaceType } from "@app/types/space";
@@ -40,7 +40,7 @@ const ProjectListItem = memo(
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
     const dropZoneRef = useRef<HTMLDivElement>(null);
 
-    const spacePath = getProjectRoute(owner.sId, space.sId);
+    const spacePath = getPodRoute(owner.sId, space.sId);
 
     const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
       useProjectMenu();

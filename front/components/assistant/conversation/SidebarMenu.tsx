@@ -24,7 +24,7 @@ import {
   useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
+import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
@@ -46,7 +46,7 @@ import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
-  getProjectRoute,
+  getPodRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import { formatWakeUpSidebarLabel } from "@app/lib/utils/wakeup_description";
@@ -153,7 +153,7 @@ function SearchProjectItem({
       className={cn(!isMember && "italic")}
       onClick={async () => {
         setSidebarOpen(false);
-        await router.push(getProjectRoute(owner.sId, space.sId));
+        await router.push(getPodRoute(owner.sId, space.sId));
       }}
       suffix={
         isArchived ? (
@@ -415,7 +415,7 @@ export function AgentSidebarMenu({
 }: AgentSidebarMenuProps) {
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
-  const activeSpaceId = useActiveSpaceId();
+  const activeSpaceId = useActivePodId();
   const { hasFeature } = useFeatureFlags();
   const moveConversationToProject = useMoveConversationToProject(owner);
 
