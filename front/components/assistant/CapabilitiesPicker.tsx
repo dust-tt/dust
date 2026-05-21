@@ -404,7 +404,6 @@ export function CapabilitiesPicker({
     status: "active",
     globalSpaceOnly: true,
     disabled: !shouldFetchToolsData,
-    viewType: "summary",
   });
 
   const isSkillsDataReady = !isSkillsLoading;

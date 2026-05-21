@@ -3,11 +3,7 @@ import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type {
-  GetSkillsResponseBody,
-  GetSkillsWithoutInstructionsAndToolsResponseBody,
-  GetSkillsWithRelationsResponseBody,
-} from "@app/pages/api/w/[wId]/skills";
+import type { GetSkillsWithRelationsResponseBody } from "@app/pages/api/w/[wId]/skills";
 import type {
   GetSkillResponseBody,
   GetSkillWithRelationsResponseBody,
@@ -20,7 +16,7 @@ import type {
   SkillReinforcementMode,
   SkillStatus,
   SkillType,
-  SkillViewType,
+  SkillWithoutInstructionsAndToolsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { isAPIErrorResponse } from "@app/types/error";
@@ -33,21 +29,6 @@ import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
-
-type SkillsResponseByViewType = {
-  full: GetSkillsResponseBody;
-  summary: GetSkillsWithoutInstructionsAndToolsResponseBody;
-};
-
-type SkillsByViewType<TViewType extends SkillViewType> =
-  SkillsResponseByViewType[TViewType]["skills"];
-
-type UseSkillsResult<TViewType extends SkillViewType> = {
-  skills: SkillsByViewType<TViewType>;
-  isSkillsError: boolean;
-  isSkillsLoading: boolean;
-  mutateSkills: () => void;
-};
 
 export function useSkill(options: {
   workspaceId: string;
@@ -110,25 +91,29 @@ export function useSkill({
   };
 }
 
-export function useSkills<TViewType extends SkillViewType = "full">({
+export function useSkills({
   owner,
   disabled,
   status,
   globalSpaceOnly,
   isDefault,
-  viewType,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
   isDefault?: boolean;
-  viewType?: TViewType;
-}): UseSkillsResult<TViewType> {
+}): {
+  skills: SkillWithoutInstructionsAndToolsType[];
+  isSkillsError: boolean;
+  isSkillsLoading: boolean;
+  mutateSkills: () => void;
+} {
   const { fetcher } = useFetcher();
-  const requestedViewType: SkillViewType = viewType ?? "full";
 
-  const queryParams = new URLSearchParams();
+  const queryParams = new URLSearchParams({
+    viewType: "summary",
+  });
   if (status) {
     queryParams.set("status", status);
   }
@@ -137,9 +122,6 @@ export function useSkills<TViewType extends SkillViewType = "full">({
   }
   if (isDefault) {
     queryParams.set("isDefault", "true");
-  }
-  if (requestedViewType === "summary") {
-    queryParams.set("viewType", requestedViewType);
   }
   const queryString = queryParams.toString();
 
@@ -150,7 +132,7 @@ export function useSkills<TViewType extends SkillViewType = "full">({
   );
 
   return {
-    skills: data?.skills ?? emptyArray<SkillsByViewType<TViewType>[number]>(),
+    skills: data?.skills ?? emptyArray<SkillWithoutInstructionsAndToolsType>(),
     isSkillsError: !!error,
     isSkillsLoading: isLoading,
     mutateSkills: mutate,
@@ -229,7 +211,7 @@ export function useArchiveSkill({
   skill,
 }: {
   owner: LightWorkspaceType;
-  skill: SkillType;
+  skill: SkillWithoutInstructionsAndToolsType;
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
@@ -341,7 +323,7 @@ export function useRestoreSkill({
   skill,
 }: {
   owner: LightWorkspaceType;
-  skill: SkillType;
+  skill: SkillWithoutInstructionsAndToolsType;
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();

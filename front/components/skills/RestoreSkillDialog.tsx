@@ -1,5 +1,5 @@
 import { useRestoreSkill } from "@app/lib/swr/skill_configurations";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
@@ -13,7 +13,7 @@ import {
 import { useState } from "react";
 
 interface RestoreSkillDialogProps {
-  skill: SkillType;
+  skill: SkillWithoutInstructionsAndToolsType;
   isOpen: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;

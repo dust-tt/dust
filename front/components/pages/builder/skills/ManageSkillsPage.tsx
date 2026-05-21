@@ -15,7 +15,7 @@ import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
@@ -71,13 +71,17 @@ function isValidTab(tab: string): tab is SkillManagerTabType {
   return SKILL_MANAGER_TABS.some((t) => t.id === tab);
 }
 
-function getSkillSearchString(skill: SkillWithRelationsType): string {
+function getSkillSearchString(
+  skill: SkillWithoutInstructionsAndToolsWithRelationsType
+): string {
   const skillEditorNames =
     skill.relations.editors?.map((e) => e.fullName) ?? [];
   return [skill.name].concat(skillEditorNames).join(" ").toLowerCase();
 }
 
-function sortSkillsByName(skills: SkillWithRelationsType[]) {
+function sortSkillsByName(
+  skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
+) {
   return [...skills].sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -85,7 +89,7 @@ export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
   const [selectedSkill, setSelectedSkill] =
-    useState<SkillWithRelationsType | null>(null);
+    useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
@@ -177,7 +181,7 @@ export function ManageSkillsPage() {
   }, [skillIdParam, activeSkills, isActiveLoading, selectedSkill?.sId]);
 
   const handleSkillSelect = useCallback(
-    (skill: SkillWithRelationsType | null) => {
+    (skill: SkillWithoutInstructionsAndToolsWithRelationsType | null) => {
       setSelectedSkill(skill);
       setSkillIdParam(skill?.sId);
     },

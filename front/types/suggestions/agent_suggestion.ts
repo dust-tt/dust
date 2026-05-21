@@ -2,7 +2,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { z } from "zod";
 
@@ -202,7 +202,7 @@ export interface SubAgentSuggestionRelations {
 }
 
 export interface SkillSuggestionRelations {
-  skill: SkillType;
+  skill: SkillWithoutInstructionsAndToolsType;
 }
 
 export interface ModelSuggestionRelations {
