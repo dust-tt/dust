@@ -3,6 +3,7 @@ import {
   useUpdateUserSpendLimit,
   useUserSpendLimit,
 } from "@app/lib/swr/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ActionCreditCoinsIcon,
@@ -66,12 +67,17 @@ export function EditSpendLimitModal({
     if (!spendLimit) {
       return;
     }
-    if (spendLimit.kind === "limited") {
-      setKind("limited");
-      setCreditsInput(String(spendLimit.awuCredits));
-    } else {
-      setKind("unlimited");
-      setCreditsInput("");
+    switch (spendLimit.kind) {
+      case "limited":
+        setKind("limited");
+        setCreditsInput(String(spendLimit.awuCredits));
+        break;
+      case "unlimited":
+        setKind("unlimited");
+        setCreditsInput("");
+        break;
+      default:
+        assertNeverAndIgnore(spendLimit);
     }
     setValidationMessage(null);
   }, [isOpen, spendLimit]);
@@ -89,23 +95,29 @@ export function EditSpendLimitModal({
   }
 
   function validate(): { ok: true; awuCredits: number } | { ok: false } {
-    if (kind === "unlimited") {
-      return { ok: true, awuCredits: 0 };
+    switch (kind) {
+      case "unlimited":
+        return { ok: true, awuCredits: 0 };
+      case "limited": {
+        const parsed = Number(creditsInput);
+        if (!Number.isInteger(parsed) || parsed < MIN_AWU_CREDITS) {
+          setValidationMessage(
+            `Enter a whole number of credits between ${MIN_AWU_CREDITS.toLocaleString("en-US")} and ${MAX_AWU_CREDITS.toLocaleString("en-US")}.`
+          );
+          return { ok: false };
+        }
+        if (parsed > MAX_AWU_CREDITS) {
+          setValidationMessage(
+            `Credits cannot exceed ${MAX_AWU_CREDITS.toLocaleString("en-US")}.`
+          );
+          return { ok: false };
+        }
+        return { ok: true, awuCredits: parsed };
+      }
+      default:
+        assertNeverAndIgnore(kind);
+        return { ok: false };
     }
-    const parsed = Number(creditsInput);
-    if (!Number.isInteger(parsed) || parsed < MIN_AWU_CREDITS) {
-      setValidationMessage(
-        `Enter a whole number of credits between ${MIN_AWU_CREDITS.toLocaleString("en-US")} and ${MAX_AWU_CREDITS.toLocaleString("en-US")}.`
-      );
-      return { ok: false };
-    }
-    if (parsed > MAX_AWU_CREDITS) {
-      setValidationMessage(
-        `Credits cannot exceed ${MAX_AWU_CREDITS.toLocaleString("en-US")}.`
-      );
-      return { ok: false };
-    }
-    return { ok: true, awuCredits: parsed };
   }
 
   async function handleValidate() {
@@ -116,10 +128,20 @@ export function EditSpendLimitModal({
 
     setIsSaving(true);
     try {
-      const limit =
-        kind === "unlimited"
-          ? ({ kind: "unlimited" } as const)
-          : ({ kind: "limited", awuCredits: result.awuCredits } as const);
+      let limit:
+        | { kind: "unlimited" }
+        | { kind: "limited"; awuCredits: number };
+      switch (kind) {
+        case "unlimited":
+          limit = { kind: "unlimited" };
+          break;
+        case "limited":
+          limit = { kind: "limited", awuCredits: result.awuCredits };
+          break;
+        default:
+          assertNeverAndIgnore(kind);
+          return;
+      }
       const body = await doUpdateSpendLimit({
         memberId: member.sId,
         memberName: member.name,

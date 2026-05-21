@@ -14,6 +14,7 @@ import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/s
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
@@ -363,13 +364,22 @@ export function useUpdateUserSpendLimit({
       }
 
       const body = PutUserSpendLimitResponseSchema.parse(await res.json());
+      let description: string;
+      switch (limit.kind) {
+        case "unlimited":
+          description = `${memberName}'s spend limit has been removed.`;
+          break;
+        case "limited":
+          description = `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`;
+          break;
+        default:
+          assertNeverAndIgnore(limit);
+          description = "";
+      }
       sendNotification({
         type: "success",
         title: "Spend limit updated",
-        description:
-          limit.kind === "unlimited"
-            ? `${memberName}'s spend limit has been removed.`
-            : `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`,
+        description,
       });
 
       await mutate(spendLimitUrl(workspaceId, memberId));
