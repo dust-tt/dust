@@ -1,12 +1,21 @@
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 import template from "./[tId]";
 
+export type AssistantTemplateListType = ReturnType<
+  TemplateResource["toListJSON"]
+>;
+
+export interface FetchAssistantTemplatesResponse {
+  templates: AssistantTemplateListType[];
+}
+
 // Mounted at /api/templates.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<FetchAssistantTemplatesResponse> => {
   const templates = await TemplateResource.listAll({
     visibility: "published",
   });

@@ -9,14 +9,23 @@ import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { isString } from "@app/types/shared/utils/general";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+interface EnrichmentResponse {
+  success: boolean;
+  companySize?: number;
+  companyName?: string;
+  redirectUrl: string;
+  error?: string;
+}
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
 
 // Mounted at /api/enrichment/company.
 const app = new Hono();
 
-app.post("/", async (ctx) => {
+app.post("/", async (ctx): HandlerResult<EnrichmentResponse> => {
   const body = await ctx.req.json().catch(() => ({}));
   const { email } = body ?? {};
 

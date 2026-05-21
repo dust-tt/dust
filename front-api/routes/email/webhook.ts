@@ -29,8 +29,12 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type PostResponseBody = {
+  success: boolean;
+};
 
 // SendGrid Parse limits inbound mail to ~30MB; matches the original
 // `SENDGRID_PARSE_WEBHOOK_MAX_SIZE = "30mb"` enforced by `raw-body`.
@@ -47,7 +51,7 @@ function headersToNodeHeaders(webHeaders: Headers): EmailWebhookHeaders {
 // Mounted at /api/email/webhook.
 const app = new Hono();
 
-app.post("/", async (ctx) => {
+app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
   const headers = headersToNodeHeaders(ctx.req.raw.headers);
   const authHeader = isString(headers.authorization)
     ? headers.authorization
