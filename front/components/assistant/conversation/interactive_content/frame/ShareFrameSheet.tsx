@@ -3,6 +3,7 @@ import {
   useShareInteractiveContentFile,
   useSharingGrants,
 } from "@app/lib/swr/files";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isEmailValid } from "@app/lib/utils";
 import {
   type FileShareScope,
@@ -131,6 +132,7 @@ interface ShareFrameSheetProps {
 }
 
 export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const { AwaitableDialog, showDialog } = useAwaitableDialog();
@@ -207,7 +209,8 @@ export function ShareFrameSheet({ fileId, owner }: ShareFrameSheetProps) {
       <AwaitableDialog />
       <Button
         variant="ghost"
-        label="Share"
+        label={isMobile ? undefined : "Share"}
+        tooltip={isMobile ? "Share" : undefined}
         icon={ArrowUpOnSquareIcon}
         onClick={() => setIsOpen(true)}
       />

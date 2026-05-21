@@ -281,7 +281,7 @@ function ProjectFileExplorerContent({
           icon: ActionMapPinIcon,
           onClick: (e) => {
             e.stopPropagation();
-            void togglePin(entry.path, { displayName: entry.fileName });
+            void togglePin(entry.path, { fileName: entry.fileName });
           },
         },
       ];

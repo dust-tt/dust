@@ -1,11 +1,10 @@
-import { getFrameDisplayTitle } from "@app/components/assistant/conversation/space/frame_display_title";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useUpdateProjectMetadata } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useContext } from "react";
 
 type PinPodBannerOptions = {
-  displayName?: string;
+  fileName?: string;
 };
 
 export function usePinPodBanner({
@@ -31,9 +30,7 @@ export function usePinPodBanner({
         return;
       }
 
-      const label =
-        options?.displayName ??
-        getFrameDisplayTitle(path.split("/").pop() ?? path);
+      const label = options?.fileName ?? path.split("/").pop() ?? path;
 
       const confirmed = await confirm({
         title: "Pin as Pod banner?",
@@ -56,8 +53,8 @@ export function usePinPodBanner({
         return;
       }
 
-      const label = options?.displayName
-        ? `"${options.displayName}"`
+      const label = options?.fileName
+        ? `"${options.fileName}"`
         : "The pinned banner";
 
       const confirmed = await confirm({

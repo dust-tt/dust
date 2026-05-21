@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { useExportFrameAsPdf } from "@app/lib/swr/frames";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { LightWorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
@@ -31,8 +32,11 @@ export function ExportContentDropdown({
   fileContent,
   fileName,
 }: ExportContentDropdownProps) {
+  const isMobile = useIsMobile();
   const exportAsPdf = useExportFrameAsPdf({ owner });
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const exportLabel = isExportingPdf ? "Exporting..." : "Export";
 
   const handleExportAsPng = () => {
     if (fileContent) {
@@ -71,7 +75,8 @@ export function ExportContentDropdown({
         <Button
           icon={ArrowDownOnSquareIcon}
           isSelect
-          label={isExportingPdf ? "Exporting..." : "Export"}
+          label={isMobile ? undefined : exportLabel}
+          tooltip={isMobile ? exportLabel : undefined}
           variant="ghost"
           disabled={isExportingPdf}
         />
