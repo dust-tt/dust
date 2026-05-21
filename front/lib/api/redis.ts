@@ -56,6 +56,7 @@ export type RedisUsageTagsType =
   | "stripe_checkout_status"
   | "metronome_credit_cache"
   | "metronome_limit"
+  | "metronome_webhook_dedup"
   | "message_events"
   | "notion_url_sync"
   | "poke_cache_invalidation"

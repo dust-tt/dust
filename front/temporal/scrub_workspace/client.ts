@@ -9,7 +9,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
+import {
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 import {
   DOWNGRADE_FREE_ENDED_WORKSPACES_WORKFLOW_ID,
@@ -42,6 +45,16 @@ export async function launchScheduleWorkspaceScrubWorkflow({
     );
     return new Ok(workflowId);
   } catch (e) {
+    // Idempotency: if a previous call already started this workflow
+    // (concurrent webhook deliveries, retry after partial success), treat
+    // it as a successful no-op rather than a failure.
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.info(
+        { workflowId },
+        "Scrub workspace workflow already started, treating as success."
+      );
+      return new Ok(workflowId);
+    }
     logger.error(
       {
         workflowId,
