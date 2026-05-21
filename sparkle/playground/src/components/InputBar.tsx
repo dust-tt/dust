@@ -33,7 +33,7 @@ interface InputBarProps {
 }
 
 export function InputBar({
-  placeholder = "Get work done";
+  placeholder = "Get work done",
   className,
   instructionReference,
   onInstructionInserted,
