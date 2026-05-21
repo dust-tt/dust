@@ -369,23 +369,30 @@ const runAgent = async (
 
   const handleAbortedSignal = (
     abortClassification: HandledToolAbortClassification
-  ): Result<never, MCPError> => {
-    if (abortClassification === "deploy_interruption") {
-      throw makeToolInterruptionError();
-    }
+  ): Promise<Result<never, MCPError>> => {
+    switch (abortClassification) {
+      case "deploy_interruption":
+        throw makeToolInterruptionError();
 
-    requestChildCancellation();
-    assert(abortSignal);
-    return new Err(
-      new MCPError(`Agent run cancelled, reason: ${abortSignal.reason}`, {
-        tracked: false,
-      })
-    );
+      case "user_cancellation":
+        requestChildCancellation();
+        assert(abortSignal);
+        return finalizeAndReturn(
+          new Err(
+            new MCPError(`Agent run cancelled, reason: ${abortSignal.reason}`, {
+              tracked: false,
+            })
+          )
+        );
+
+      default:
+        assertNever(abortClassification);
+    }
   };
 
   const abortClassification = classifyToolAbortSignal(abortSignal);
   if (abortClassification !== "none") {
-    return finalizeAndReturn(handleAbortedSignal(abortClassification));
+    return handleAbortedSignal(abortClassification);
   }
 
   if (abortSignal) {
@@ -566,7 +573,7 @@ const runAgent = async (
   if (streamRes.isErr()) {
     const abortClassification = classifyToolAbortSignal(abortSignal);
     if (abortClassification !== "none") {
-      return finalizeAndReturn(handleAbortedSignal(abortClassification));
+      return handleAbortedSignal(abortClassification);
     }
 
     const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;
@@ -676,7 +683,7 @@ const runAgent = async (
 
     const abortClassification = classifyToolAbortSignal(abortSignal);
     if (abortClassification !== "none") {
-      return finalizeAndReturn(handleAbortedSignal(abortClassification));
+      return handleAbortedSignal(abortClassification);
     }
 
     // Transient stream errors (network issues, reconnection exhaustion) should not
