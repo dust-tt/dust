@@ -303,6 +303,13 @@ describe("nodeCandidateFromUrl", () => {
 
       expect(result).toBeNull();
     });
+
+    it("should not match non-Gong hostnames ending with app.gong.io", () => {
+      const url = "https://notapp.gong.io/call?id=12345";
+      const result = nodeCandidateFromUrl(url);
+
+      expect(result).toBeNull();
+    });
   });
 
   describe("Zendesk", () => {
@@ -340,6 +347,13 @@ describe("nodeCandidateFromUrl", () => {
         expect(result.url).toBe("https://example.zendesk.com/tickets/12345");
         expect(result.provider).toBe("zendesk");
       }
+    });
+
+    it("should not match non-Zendesk hostnames ending with zendesk.com", () => {
+      const url = "https://notzendesk.com/tickets/12345";
+      const result = nodeCandidateFromUrl(url);
+
+      expect(result).toBeNull();
     });
   });
 
@@ -380,6 +394,13 @@ describe("nodeCandidateFromUrl", () => {
         expect(result.url).toBe("https://app.intercom.com/a/inbox/12345");
         expect(result.provider).toBe("intercom");
       }
+    });
+
+    it("should not match non-Intercom app hostnames", () => {
+      const url = "https://appnotintercom.com/a/inbox/12345";
+      const result = nodeCandidateFromUrl(url);
+
+      expect(result).toBeNull();
     });
   });
 
@@ -563,9 +584,56 @@ describe("normalizeUrlForSourceUrlSearch", () => {
     );
   });
 
-  it("should preserve non-GitHub URL candidate search queries", () => {
+  it("should normalize Zendesk agent URLs", () => {
+    expect(
+      normalizeUrlForSourceUrlSearch(
+        "https://example.zendesk.com/agent/tickets/12345?foo=bar#comment"
+      )
+    ).toBe("https://example.zendesk.com/tickets/12345");
+  });
+
+  it("should normalize Intercom app URLs", () => {
+    expect(
+      normalizeUrlForSourceUrlSearch(
+        "https://app.eu.intercom.com/a/inbox/workspace/inbox/conversation/123?view=conversation#part"
+      )
+    ).toBe(
+      "https://app.eu.intercom.com/a/inbox/workspace/inbox/conversation/123"
+    );
+  });
+
+  it("should preserve Intercom custom help center URLs", () => {
+    const url = "https://help.example.com/articles/article-123?foo=bar#section";
+
+    expect(normalizeUrlForSourceUrlSearch(url)).toBe(url);
+  });
+
+  it("should normalize Gong call URLs", () => {
+    expect(
+      normalizeUrlForSourceUrlSearch(
+        "https://us-5302.app.gong.io/call?id=12345&foo=bar#section"
+      )
+    ).toBe("https://us-5302.app.gong.io/call?id=12345");
+  });
+
+  it("should normalize Dust project URLs", () => {
+    expect(
+      normalizeUrlForSourceUrlSearch(
+        "https://app.dust.tt/w/workspace123/conversation/conv456?utm=value#message"
+      )
+    ).toBe("https://app.dust.tt/w/workspace123/conversation/conv456");
+  });
+
+  it("should preserve non-opted URL candidate search queries", () => {
     const confluenceUrl = "https://example.atlassian.net/wiki/spaces/SPACE";
 
     expect(normalizeUrlForSourceUrlSearch(confluenceUrl)).toBe(confluenceUrl);
+  });
+
+  it("should preserve URLs handled through node candidates", () => {
+    const slackUrl =
+      "https://dust4ai.slack.com/archives/C05V0P20A72/p1748353621866279?thread_ts=1748353030.562719&cid=C05V0P20A72";
+
+    expect(normalizeUrlForSourceUrlSearch(slackUrl)).toBe(slackUrl);
   });
 });
