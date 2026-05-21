@@ -1,6 +1,6 @@
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
@@ -18,6 +18,7 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
+import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowCircleIcon,
@@ -41,7 +42,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 
 interface FrameRendererProps {
   conversation?: ConversationWithoutContentType;
@@ -153,7 +153,7 @@ export function FrameRenderer({
       } catch (e) {
         return {
           success: false,
-          error: normalizeAsInternalDustError(e),
+          error: normalizeAsInternalDustError(e).message,
         };
       }
     },
