@@ -169,6 +169,38 @@ export class RunResource extends BaseResource<RunModel> {
     return runs.map((r) => new this(this.model, r.get()));
   }
 
+  static async listRunUsagesForRuns(
+    auth: Authenticator,
+    {
+      runs,
+    }: {
+      runs: RunResource[];
+    }
+  ): Promise<RunUsageType[]> {
+    const runModelIds = runs.map((run) => run.id);
+    if (runModelIds.length === 0) {
+      return [];
+    }
+
+    const usages = await RunUsageModel.findAll({
+      where: {
+        runId: { [Op.in]: runModelIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return usages.map((usage) => ({
+      completionTokens: usage.completionTokens,
+      modelId: usage.modelId as ModelIdType,
+      promptTokens: usage.promptTokens,
+      providerId: usage.providerId as ModelProviderIdType,
+      cachedTokens: usage.cachedTokens,
+      cacheCreationTokens: usage.cacheCreationTokens,
+      costMicroUsd: usage.costMicroUsd,
+      isBatch: usage.isBatch,
+    }));
+  }
+
   static async fetchByDustRunId(
     auth: Authenticator,
     { dustRunId }: { dustRunId: string }
@@ -380,23 +412,7 @@ export class RunResource extends BaseResource<RunModel> {
   }
 
   async listRunUsages(auth: Authenticator): Promise<RunUsageType[]> {
-    const usages = await RunUsageModel.findAll({
-      where: {
-        runId: this.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-
-    return usages.map((usage) => ({
-      completionTokens: usage.completionTokens,
-      modelId: usage.modelId as ModelIdType,
-      promptTokens: usage.promptTokens,
-      providerId: usage.providerId as ModelProviderIdType,
-      cachedTokens: usage.cachedTokens,
-      cacheCreationTokens: usage.cacheCreationTokens,
-      costMicroUsd: usage.costMicroUsd,
-      isBatch: usage.isBatch,
-    }));
+    return RunResource.listRunUsagesForRuns(auth, { runs: [this] });
   }
 }
 

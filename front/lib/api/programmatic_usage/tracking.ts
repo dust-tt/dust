@@ -13,7 +13,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
@@ -304,13 +303,7 @@ export async function trackProgrammaticCost(
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
 
   // Compute the token usage for each run.
-  const runUsages = await concurrentExecutor(
-    runs,
-    async (run) => {
-      return run.listRunUsages(auth);
-    },
-    { concurrency: 10 }
-  );
+  const runUsages = await RunResource.listRunUsagesForRuns(auth, { runs });
 
   // There is a race condition where the run is not created before we emit the event.
   if (runUsages.length === 0 && dustRunIds.length > 0) {
@@ -318,9 +311,10 @@ export async function trackProgrammaticCost(
   }
 
   // Compute the price for all the runs.
-  const runsCostMicroUsd = runUsages
-    .flat()
-    .reduce((acc, usage) => acc + usage.costMicroUsd, 0);
+  const runsCostMicroUsd = runUsages.reduce(
+    (acc, usage) => acc + usage.costMicroUsd,
+    0
+  );
 
   const costWithMarkupMicroUsd = Math.ceil(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
