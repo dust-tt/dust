@@ -48,6 +48,7 @@ interface EditableFrameProps {
 export function EditableFrame({ children }: EditableFrameProps) {
   const { editText } = useVizContext();
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
+  const lastHoverPosRef = useRef<HoverState | null>(null);
   const hoveredSpanRef = useRef<HTMLElement | null>(null);
   const isSavingRef = useRef(false);
 
@@ -67,7 +68,9 @@ export function EditableFrame({ children }: EditableFrameProps) {
       }
 
       const rect = target.getBoundingClientRect();
-      setHoverState({ top: rect.top, left: rect.left + rect.width / 2 });
+      const pos = { top: rect.top, left: rect.left + rect.width / 2 };
+      lastHoverPosRef.current = pos;
+      setHoverState(pos);
     } else {
       hoveredSpanRef.current = null;
       setHoverState(null);
@@ -185,6 +188,8 @@ export function EditableFrame({ children }: EditableFrameProps) {
     }
   }, []);
 
+  const anchorPos = hoverState ?? lastHoverPosRef.current;
+
   return (
     <>
       <div
@@ -199,11 +204,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
       <Tooltip open={!!hoverState}>
         <TooltipTrigger asChild>
           <span
-            style={
-              hoverState
-                ? { top: hoverState.top, left: hoverState.left }
-                : undefined
-            }
+            style={anchorPos ? { top: anchorPos.top, left: anchorPos.left } : undefined}
             className="pointer-events-none fixed size-px"
           />
         </TooltipTrigger>
