@@ -14,7 +14,10 @@ import {
   frameSlideshowContentType,
   isInteractiveContentType,
 } from "@app/types/files";
-import type { PdfOptions, PdfOrientation } from "@app/types/shared/document_renderer";
+import type {
+  PdfOptions,
+  PdfOrientation,
+} from "@app/types/shared/document_renderer";
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -37,7 +40,10 @@ export async function exportInteractiveContentFileAsPdf(
 ): Promise<Result<{ buffer: Buffer; fileName: string }, FrameExportError>> {
   const documentRendererUrl = config.getDocumentRendererUrl();
   if (!documentRendererUrl) {
-    return new Err({ type: "render_failed", message: "PDF export is not configured." });
+    return new Err({
+      type: "render_failed",
+      message: "PDF export is not configured.",
+    });
   }
 
   const file = await FileResource.fetchById(auth, fileId);
@@ -67,7 +73,10 @@ export async function exportInteractiveContentFileAsPdf(
 
   const shareInfo = await file.getShareInfo();
   if (!shareInfo) {
-    return new Err({ type: "invalid_request", message: "File is not shareable." });
+    return new Err({
+      type: "invalid_request",
+      message: "File is not shareable.",
+    });
   }
 
   const shareUrlParts = shareInfo.shareUrl.split("/");
@@ -132,7 +141,10 @@ export async function exportInteractiveContentFileAsPdf(
   );
 
   if (result.isErr()) {
-    return new Err({ type: "render_failed", message: "Failed to generate PDF." });
+    return new Err({
+      type: "render_failed",
+      message: "Failed to generate PDF.",
+    });
   }
 
   const fileName = file.fileName?.replace(/\.[^.]+$/, ".pdf") || "frame.pdf";
