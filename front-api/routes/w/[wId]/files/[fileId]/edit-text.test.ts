@@ -17,11 +17,7 @@ function url(workspace: { sId: string }, fileId: string) {
   return `/api/w/${workspace.sId}/files/${fileId}/edit-text`;
 }
 
-function postEdit(
-  workspace: { sId: string },
-  fileId: string,
-  body: unknown
-) {
+function postEdit(workspace: { sId: string }, fileId: string, body: unknown) {
   return honoApp.request(url(workspace, fileId), {
     method: "POST",
     headers: { "Content-Type": "application/json" },

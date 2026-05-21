@@ -2,7 +2,10 @@ import { editClientExecutableFile } from "@app/lib/api/files/client_executable";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { isConversationFileUseCase, isInteractiveContentType } from "@app/types/files";
+import {
+  isConversationFileUseCase,
+  isInteractiveContentType,
+} from "@app/types/files";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";

@@ -65,7 +65,7 @@ export function transformEditableText(code: string): string {
         `className="cursor-text rounded-sm"`,
         `>`,
       ].join(" ") +
-      rawText.trim() +
+      rawText.replace(/^\s*\n\s*/, "").replace(/\s*\n\s*$/, "") +
       `</span>` +
       result.slice(end);
   }
