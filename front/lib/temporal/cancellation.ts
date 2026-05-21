@@ -47,9 +47,7 @@ export function classifyTemporalAbortReason(
 ): TemporalAbortClassification {
   const reasonTexts = getAbortReasonTexts(reason);
 
-  if (
-    reasonTexts.some((text) => WORKER_SHUTDOWN_REASON_TEXTS.includes(text))
-  ) {
+  if (reasonTexts.some((text) => WORKER_SHUTDOWN_REASON_TEXTS.includes(text))) {
     return "worker_shutdown";
   }
 
