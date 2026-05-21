@@ -81,6 +81,11 @@ export type SkillWithRelationsType = SkillType & {
   relations: SkillRelations;
 };
 
+export type SkillWithoutInstructionsAndToolsWithRelationsType =
+  SkillWithoutInstructionsAndToolsType & {
+    relations: SkillRelations;
+  };
+
 export type SkillWithVersionType = SkillType & {
   version: number;
 };

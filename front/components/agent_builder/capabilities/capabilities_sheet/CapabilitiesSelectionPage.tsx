@@ -6,15 +6,15 @@ import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/Cap
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { SearchInput, Spinner } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
 
 type CapabilitiesSelectionPageProps = {
   onStateChange: (state: SheetState) => void;
-  handleSkillToggle: (skill: SkillType) => void;
-  filteredSkills: SkillType[];
+  handleSkillToggle: (skill: SkillWithoutInstructionsAndToolsType) => void;
+  filteredSkills: SkillWithoutInstructionsAndToolsType[];
   searchQuery: string;
   selectedSkillIds: Set<string>;
   setSearchQuery: (query: string) => void;

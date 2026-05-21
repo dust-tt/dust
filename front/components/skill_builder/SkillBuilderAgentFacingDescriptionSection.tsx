@@ -33,7 +33,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     });
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
-  const { skills } = useSkills({ owner, viewType: "summary" });
+  const { skills } = useSkills({ owner });
 
   const [similarSkills, setSimilarSkills] = useState<
     SkillWithoutInstructionsAndToolsType[]

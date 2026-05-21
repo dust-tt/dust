@@ -6,7 +6,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
@@ -149,9 +149,11 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 };
 
 type SkillsTableProps = {
-  skills: SkillWithRelationsType[];
+  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
   owner: LightWorkspaceType;
-  onSkillClick: (skill: SkillWithRelationsType) => void;
+  onSkillClick: (
+    skill: SkillWithoutInstructionsAndToolsWithRelationsType
+  ) => void;
   onAgentClick: (agentId: string) => void;
 };
 
@@ -164,7 +166,7 @@ export function SkillsTable({
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
   const [skillToArchive, setSkillToArchive] =
-    useState<SkillWithRelationsType | null>(null);
+    useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(

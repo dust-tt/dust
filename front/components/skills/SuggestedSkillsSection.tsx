@@ -3,7 +3,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
@@ -16,7 +16,7 @@ import {
 import { useState } from "react";
 
 type SuggestedSkillCardProps = {
-  skill: SkillWithRelationsType;
+  skill: SkillWithoutInstructionsAndToolsWithRelationsType;
   onMoreInfoClick: () => void;
   owner: LightWorkspaceType;
   user: UserType;
@@ -102,8 +102,10 @@ function SuggestedSkillCard({
 }
 
 type SuggestedSkillsSectionProps = {
-  skills: SkillWithRelationsType[];
-  onSkillClick: (skill: SkillWithRelationsType) => void;
+  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
+  onSkillClick: (
+    skill: SkillWithoutInstructionsAndToolsWithRelationsType
+  ) => void;
   owner: LightWorkspaceType;
   user: UserType;
 };

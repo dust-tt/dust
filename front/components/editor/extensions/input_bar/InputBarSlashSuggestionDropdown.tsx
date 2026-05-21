@@ -132,7 +132,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       owner,
       status: "active",
       globalSpaceOnly: true,
-      viewType: "summary",
     });
     const { serverViews, isLoading: isServerViewsLoading } =
       useMCPServerViewsFromSpaces(owner, globalSpaces, { disabled: !isOpen });

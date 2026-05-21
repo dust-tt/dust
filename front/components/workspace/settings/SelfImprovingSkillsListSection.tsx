@@ -7,7 +7,7 @@ import { useSkillsSelfImprovingSpend } from "@app/lib/swr/useSelfImprovingSkills
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillReinforcementMode,
-  SkillWithRelationsType,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -364,47 +364,49 @@ export function SelfImprovingSkillsListSection({
 
   const rows: RowData[] = useMemo(
     () =>
-      sortedSkills.map((skill: SkillWithRelationsType) => {
-        const enabled = isReinforcementEnabled(skill.reinforcement);
-        const lock = skill.selfImprovementLock;
-        const savedCapMicroUsd = skill.selfImprovementCostsCapMicroUsd;
-        const capInput =
-          capInputBySkillId[skill.sId] ??
-          (savedCapMicroUsd !== null
-            ? formatDollars(microUsdToDollars(savedCapMicroUsd))
-            : "");
+      sortedSkills.map(
+        (skill: SkillWithoutInstructionsAndToolsWithRelationsType) => {
+          const enabled = isReinforcementEnabled(skill.reinforcement);
+          const lock = skill.selfImprovementLock;
+          const savedCapMicroUsd = skill.selfImprovementCostsCapMicroUsd;
+          const capInput =
+            capInputBySkillId[skill.sId] ??
+            (savedCapMicroUsd !== null
+              ? formatDollars(microUsdToDollars(savedCapMicroUsd))
+              : "");
 
-        return {
-          sId: skill.sId,
-          name: skill.name,
-          icon: skill.icon,
-          editors: skill.relations.editors,
-          enabled,
-          pendingEnabled: pendingEnabledBySkillId[skill.sId] ?? null,
-          isEnabledUpdating: enabledUpdatingBySkillId[skill.sId] ?? false,
-          lock,
-          pendingLock: pendingLockBySkillId[skill.sId] ?? null,
-          isLockUpdating: lockUpdatingBySkillId[skill.sId] ?? false,
-          currentSpentDollars: microUsdToDollars(
-            spentMicroUsdBySkillId[skill.sId] ?? 0
-          ),
-          capInputValue: capInput,
-          capPlaceholder: defaultCapPlaceholder,
-          isCapUpdating: capUpdatingBySkillId[skill.sId] ?? false,
-          onToggleEnabled: () => {
-            void handleToggleEnabled(skill.sId, enabled);
-          },
-          onToggleLock: () => {
-            void handleToggleLock(skill.sId, lock);
-          },
-          onCapChange: (value: string) => {
-            setCapInputBySkillId((prev) => ({ ...prev, [skill.sId]: value }));
-          },
-          onCapCommit: () => {
-            void handleCapCommit(skill.sId, savedCapMicroUsd);
-          },
-        };
-      }),
+          return {
+            sId: skill.sId,
+            name: skill.name,
+            icon: skill.icon,
+            editors: skill.relations.editors,
+            enabled,
+            pendingEnabled: pendingEnabledBySkillId[skill.sId] ?? null,
+            isEnabledUpdating: enabledUpdatingBySkillId[skill.sId] ?? false,
+            lock,
+            pendingLock: pendingLockBySkillId[skill.sId] ?? null,
+            isLockUpdating: lockUpdatingBySkillId[skill.sId] ?? false,
+            currentSpentDollars: microUsdToDollars(
+              spentMicroUsdBySkillId[skill.sId] ?? 0
+            ),
+            capInputValue: capInput,
+            capPlaceholder: defaultCapPlaceholder,
+            isCapUpdating: capUpdatingBySkillId[skill.sId] ?? false,
+            onToggleEnabled: () => {
+              void handleToggleEnabled(skill.sId, enabled);
+            },
+            onToggleLock: () => {
+              void handleToggleLock(skill.sId, lock);
+            },
+            onCapChange: (value: string) => {
+              setCapInputBySkillId((prev) => ({ ...prev, [skill.sId]: value }));
+            },
+            onCapCommit: () => {
+              void handleCapCommit(skill.sId, savedCapMicroUsd);
+            },
+          };
+        }
+      ),
     [
       sortedSkills,
       defaultCapPlaceholder,
