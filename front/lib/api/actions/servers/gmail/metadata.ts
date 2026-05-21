@@ -28,12 +28,12 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_draft: {
-    description: `Create a new email draft in Gmail, or a reply draft to an existing thread.
+    description: `Create a new email draft in Gmail, or a reply draft to an existing message.
 - The draft will be saved in the user's Gmail account and can be reviewed and sent later.
 - If replyToMessageId is provided, the draft will be created as a reply in the existing thread, with the original message quoted.
 - The draft will include proper email headers and formatting.`,
     schema: {
-      to: z.array(z.string()).describe("The email addresses of the recipients"),
+      to: z.array(z.string()).optional().describe("The email addresses of the recipients. Optional if replyToMessageId is provided then Dust will automatically use the recipients from the original message."),
       cc: z.array(z.string()).optional().describe("The email addresses to CC"),
       bcc: z
         .array(z.string())
@@ -170,12 +170,12 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     description: `Send an email directly via Gmail.
 - The email will be sent immediately without creating a draft.
 - Use this to send emails when you have all the required information.
+- If replyToMessageId is provided, the email will be sent as a reply in the existing thread, with the original message quoted.
 - The email will include proper headers and formatting.`,
     schema: {
       to: z
-        .array(z.string())
-        .min(1)
-        .describe("The email addresses of the recipients"),
+        .array(z.string()).optional()
+        .describe("The email addresses of the recipients. Optional if replyToMessageId is provided then Dust will automatically use the recipients from the original message."),
       cc: z.array(z.string()).optional().describe("The email addresses to CC"),
       bcc: z
         .array(z.string())
@@ -197,7 +197,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "Optional. The ID of the message to reply to. If provided, the email will be sent as a reply in the existing thread."
+          "Optional. The ID of the message to reply to. If provided, the email will be sent as a reply in the existing thread, with proper threading headers and the original message quoted."
         ),
     },
     stake: "high",
@@ -217,8 +217,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "getting Gmail thread",
-      done: "Get Gmail messages",
+      running: "Getting Gmail thread",
+      done: "Get Gmail thread",
     },
   },
 });

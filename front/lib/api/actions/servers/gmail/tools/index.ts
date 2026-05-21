@@ -82,7 +82,7 @@ function buildAndEncodeEmail(params: {
     params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
     params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
     `Subject: ${encodedSubject}`,
-    `Content-Type: text/html; charset=UTF-8`,
+    `Content-Type: ${params.contentType}; charset=UTF-8`,
     "MIME-Version: 1.0",
     ...(params.threadingHeaders ?? []),
     "",
@@ -167,6 +167,10 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     let threadingHeaders: string[] = [];
     let threadId: string | undefined = undefined;
     let fullBody: string | undefined = undefined;
+    let replyTo : string | undefined = undefined;
+    let replyCc : string | undefined = undefined;
+    let originalSubject : string | undefined = undefined;
+    let replyBcc : string | undefined = undefined;
 
     if (replyToMessageId) {
       const messageResponse = await fetchFromGmail(
@@ -189,15 +193,29 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
           )
         );
       }
-
       const originalMessage: GmailMessage = await messageResponse.json();
       threadId = originalMessage.threadId;
-
+      
+      // Determine recipients
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const headers = originalMessage.payload?.headers || [];
       const originalFrom = getHeaderValue(headers, "From");
       const originalDate = getHeaderValue(headers, "Date");
       const originalBody = decodeMessageBody(originalMessage.payload);
+      const originalTo = getHeaderValue(headers, "To");
+      const originalCc = getHeaderValue(headers, "Cc");
+      const originalBcc = getHeaderValue(headers, "Bcc");
+      originalSubject = getHeaderValue(headers, "Subject")
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
+      replyCc = cc?.length ? cc.join(", ") : originalCc;
+      replyBcc = bcc?.length ? bcc.join(", ") : originalBcc;
+
+      if (!replyTo?.trim()) {
+        return new Err(
+          new MCPError("Cannot determine reply-to address from original message")
+        );
+      }
 
       fullBody = buildReplyBody(
         body,
@@ -217,13 +235,21 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         originalReferences
       );
     }
+    if (!replyToMessageId && !to?.length) {
+      return new Err(new MCPError("At least one recipient is required"));
+    }
 
     // Build and encode the email message
     const encodedMessageResult = buildAndEncodeEmail({
-      to,
-      cc,
-      bcc,
-      subject,
+      to: replyToMessageId && replyTo ? [replyTo] : (to ?? []),
+      cc: replyToMessageId && replyCc ? [replyCc] : cc,
+      bcc: replyToMessageId && replyBcc ? [replyBcc] : bcc,
+      subject: replyToMessageId
+      ? subject
+      ?? (originalSubject?.startsWith("Re: ")
+      ? originalSubject : `Re: ${originalSubject ?? "No Subject"}`
+    )
+    : subject,
       contentType: replyToMessageId ? "text/html" : contentType,
       body: fullBody ?? body,
       threadingHeaders,
@@ -349,10 +375,10 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const result = await response.json();
 
     return new Ok([
-      { type: "text" as const, text: "thread fetched successfully" },
+      { type: "text" as const, text: "Thread fetched successfully" },
       {
         type: "text" as const,
-        text: JSON.stringify({ thread: result ?? [] }, null, 2),
+        text: JSON.stringify({ thread: result ?? {} }, null, 2),
       },
     ]);
   },
@@ -689,6 +715,10 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     let threadingHeaders: string[] = [];
     let threadId: string | undefined = undefined;
     let fullBody: string | undefined = undefined;
+    let replyTo : string | undefined = undefined;
+    let replyCc : string | undefined = undefined;
+    let originalSubject : string | undefined = undefined;
+    let replyBcc : string | undefined = undefined;
 
     if (replyToMessageId) {
       const messageResponse = await fetchFromGmail(
@@ -696,7 +726,6 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         accessToken,
         { method: "GET" }
       );
-
       if (!messageResponse.ok) {
         const errorText = await getErrorText(messageResponse);
         if (messageResponse.status === 404) {
@@ -713,13 +742,28 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         );
       }
       const originalMessage: GmailMessage = await messageResponse.json();
-
       threadId = originalMessage.threadId;
+    
+      // Determine recipients
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const headers = originalMessage.payload?.headers || [];
       const originalFrom = getHeaderValue(headers, "From");
       const originalDate = getHeaderValue(headers, "Date");
       const originalBody = decodeMessageBody(originalMessage.payload);
+      const originalTo = getHeaderValue(headers, "To");
+      const originalCc = getHeaderValue(headers, "Cc");
+      const originalBcc = getHeaderValue(headers, "Bcc");
+      originalSubject = getHeaderValue(headers, "Subject");
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
+      replyCc = cc?.length ? cc.join(", ") : originalCc;
+      replyBcc = bcc?.length ? bcc.join(", ") : originalBcc;
+
+      if (!replyTo?.trim()) {
+        return new Err(
+          new MCPError("Cannot determine reply-to address from original message")
+        );
+      }
 
       fullBody = buildReplyBody(
         body,
@@ -728,6 +772,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         originalDate,
         originalFrom
       );
+
       // Extract header values
       const originalMessageIdHeader = getHeaderValue(headers, "Message-ID");
       const originalReferences = getHeaderValue(headers, "References");
@@ -738,13 +783,24 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         originalReferences
       );
     }
+
+    if (!replyToMessageId && !to?.length) {
+      return new Err(new MCPError("At least one recipient is required"));
+    }
+
     // Build and encode the email message
     const encodedMessageResult = buildAndEncodeEmail({
-      to,
-      cc,
-      bcc,
+      to: replyToMessageId && replyTo ? [replyTo] : (to ?? []),
+      cc: replyToMessageId && replyCc ? [replyCc] : cc,
+      bcc: replyToMessageId && replyBcc ? [replyBcc] : bcc,
       from,
-      subject,
+      subject: replyToMessageId
+      ? subject 
+      ?? (
+        originalSubject?.startsWith("Re:") ? originalSubject
+        : `Re: ${originalSubject ?? "No Subject"}`
+      )
+      : subject,
       contentType: replyToMessageId ? "text/html" : contentType,
       body: fullBody ?? body,
       threadingHeaders,
@@ -756,6 +812,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
 
     const encodedMessage = encodedMessageResult.value;
 
+    // Make the API call to send email in Gmail.
     const response = await fetchFromGmail(
       "/gmail/v1/users/me/messages/send",
       accessToken,
