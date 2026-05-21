@@ -7,7 +7,7 @@ import {
 } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
-  getPodsFilesBasePath,
+  getPodFilesBasePath,
   parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
@@ -88,7 +88,7 @@ async function buildPodMountPoint(
   const owner = auth.getNonNullableWorkspace();
   return new Ok({
     scope: { useCase: "pod", podId: space.sId },
-    prefix: getPodsFilesBasePath({
+    prefix: getPodFilesBasePath({
       workspaceId: owner.sId,
       podId: space.sId,
     }),

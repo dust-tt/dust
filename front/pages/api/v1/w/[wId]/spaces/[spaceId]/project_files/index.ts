@@ -7,7 +7,7 @@ import {
   getGCSPathFromScopedPath,
   listGCSMountFiles,
 } from "@app/lib/api/files/gcs_mount/files";
-import { getPodsFilesBasePath } from "@app/lib/api/files/mount_path";
+import { getPodFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -103,7 +103,7 @@ async function handler(
       }
 
       const owner = auth.getNonNullableWorkspace();
-      const gcsPrefix = getPodsFilesBasePath({
+      const gcsPrefix = getPodFilesBasePath({
         workspaceId: owner.sId,
         podId: space.sId,
       });

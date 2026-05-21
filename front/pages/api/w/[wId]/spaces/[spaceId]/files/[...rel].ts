@@ -2,11 +2,9 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
-  getProjectFilesBasePath,
   isResolveMountFilePathError,
   resolveScopedMountFilePath,
   getPodFilesBasePath,
-  parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
 import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
 import {

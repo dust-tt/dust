@@ -53,7 +53,7 @@ describe("mount_path helpers", () => {
   describe("getPodFilesBasePath", () => {
     it("should return full pod files path", () => {
       expect(
-        getPodFilesBasePath({ workspaceId: "ws1", projectId: "spc1" })
+        getPodFilesBasePath({ workspaceId: "ws1", podId: "spc1" })
       ).toBe("w/ws1/pods/spc1/files/");
     });
   });
@@ -249,12 +249,12 @@ describe("mount_path helpers", () => {
   });
 
   describe("resolveScopedMountFilePath", () => {
-    const mountBasePath = "w/ws123/projects/proj456/files/";
+    const mountBasePath = "w/ws123/pods/pod456/files/";
 
     it("rejects invalid scope prefix", () => {
       const result = resolveScopedMountFilePath({
         relPath: "conversation/file.txt",
-        expectedPrefix: "project",
+        expectedPrefix: "pod",
         mountBasePath,
       });
       expect(result.isErr()).toBe(true);
@@ -276,8 +276,8 @@ describe("mount_path helpers", () => {
 
     it("rejects path traversal", () => {
       const result = resolveScopedMountFilePath({
-        relPath: "project/../other/file.txt",
-        expectedPrefix: "project",
+        relPath: "pod/../other/file.txt",
+        expectedPrefix: "pod",
         mountBasePath,
       });
       expect(result.isErr()).toBe(true);
@@ -299,8 +299,8 @@ describe("mount_path helpers", () => {
 
     it("returns normalized relative and GCS paths", () => {
       const result = resolveScopedMountFilePath({
-        relPath: "project/reports/../reports/file.txt",
-        expectedPrefix: "project",
+        relPath: "pod/reports/../reports/file.txt",
+        expectedPrefix: "pod",
         mountBasePath,
       });
       expect(result.isOk()).toBe(true);
@@ -314,12 +314,12 @@ describe("mount_path helpers", () => {
   });
 
   describe("resolveMoveSourcePath", () => {
-    const mountBasePath = "w/ws123/projects/proj1/files/";
+    const mountBasePath = "w/ws123/pods/pod1/files/";
 
     it("resolves a scoped listing path", () => {
       const result = resolveMoveSourcePath({
-        sourcePath: "project/reports/report_fil_abc.pdf",
-        expectedPrefix: "project",
+        sourcePath: "pod/reports/report_fil_abc.pdf",
+        expectedPrefix: "pod",
         mountBasePath,
       });
       expect(result.isOk()).toBe(true);
@@ -333,7 +333,7 @@ describe("mount_path helpers", () => {
     it("resolves a mount-relative path", () => {
       const result = resolveMoveSourcePath({
         sourcePath: "reports/file.txt",
-        expectedPrefix: "project",
+        expectedPrefix: "pod",
         mountBasePath,
       });
       expect(result.isOk()).toBe(true);
@@ -347,7 +347,7 @@ describe("mount_path helpers", () => {
     it("rejects a scoped path with the wrong prefix", () => {
       const result = resolveMoveSourcePath({
         sourcePath: "conversation/file.txt",
-        expectedPrefix: "project",
+        expectedPrefix: "pod",
         mountBasePath,
       });
       expect(result.isErr()).toBe(true);
