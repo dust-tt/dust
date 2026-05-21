@@ -31,11 +31,13 @@ export async function validateAction(
     approvalState,
     messageId,
     resumeAncestorConversations = false,
+    updatedInputs,
   }: {
     actionId: string;
     approvalState: ActionApprovalStateType;
     messageId: string;
     resumeAncestorConversations?: boolean;
+    updatedInputs?: Record<string, unknown>;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -89,6 +91,14 @@ export async function validateAction(
         `Action is not blocked: ${action.status}`
       )
     );
+  }
+
+  if (
+    updatedInputs &&
+    approvalState !== "rejected" &&
+    Object.keys(updatedInputs).length > 0
+  ) {
+    await action.updateAugmentedInputs(updatedInputs);
   }
 
   const [updatedCount] = await action.updateStatus(

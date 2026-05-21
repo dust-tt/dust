@@ -9,6 +9,7 @@ const ValidateActionSchema = z.object({
   actionId: z.string(),
   approved: z.enum(["approved", "rejected", "always_approved"]),
   resumeAncestorConversations: z.boolean().optional(),
+  updatedInputs: z.record(z.unknown()).optional(),
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/validate-action.
@@ -30,7 +31,7 @@ app.post("/", validate("json", ValidateActionSchema), async (ctx) => {
     });
   }
 
-  const { actionId, approved, resumeAncestorConversations } =
+  const { actionId, approved, resumeAncestorConversations, updatedInputs } =
     ctx.req.valid("json");
 
   const result = await validateAction(auth, conversation, {
@@ -38,6 +39,7 @@ app.post("/", validate("json", ValidateActionSchema), async (ctx) => {
     approvalState: approved,
     messageId: mId,
     resumeAncestorConversations,
+    updatedInputs,
   });
 
   if (result.isErr()) {

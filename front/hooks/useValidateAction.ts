@@ -18,9 +18,11 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
     async ({
       validationRequest,
       approved,
+      updatedInputs,
     }: {
       validationRequest: MCPActionValidationRequest;
       approved: MCPValidationOutputType;
+      updatedInputs?: Record<string, unknown>;
     }) => {
       setIsValidating(true);
 
@@ -38,6 +40,7 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
               actionId: validationRequest.actionId,
               approved,
               resumeAncestorConversations: true,
+              updatedInputs,
             }),
           }
         );

@@ -13,6 +13,7 @@ export const ValidateActionSchema = z.object({
   actionId: z.string(),
   approved: z.enum(["approved", "rejected", "always_approved"]),
   resumeAncestorConversations: z.boolean().optional(),
+  updatedInputs: z.record(z.unknown()).optional(),
 });
 
 export type ValidateActionResponse = {
@@ -72,13 +73,15 @@ async function handler(
     });
   }
 
-  const { actionId, approved, resumeAncestorConversations } = parseResult.data;
+  const { actionId, approved, resumeAncestorConversations, updatedInputs } =
+    parseResult.data;
 
   const result = await validateAction(auth, conversation, {
     actionId,
     approvalState: approved,
     messageId: mId,
     resumeAncestorConversations,
+    updatedInputs,
   });
 
   if (result.isErr()) {

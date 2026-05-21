@@ -1175,6 +1175,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  async updateAugmentedInputs(
+    augmentedInputs: Record<string, unknown>
+  ): Promise<[affectedCount: number]> {
+    return this.update({
+      augmentedInputs,
+    });
+  }
+
   async markAsErrored({
     executionDurationMs,
   }: {

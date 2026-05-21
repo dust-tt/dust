@@ -1,8 +1,10 @@
+import { EmailComposerValidation } from "@app/components/assistant/conversation/EmailComposerValidation";
 import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
 import { UserAnswerRequired } from "@app/components/assistant/conversation/UserAnswerRequired";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { isEmailComposeTool } from "@app/lib/actions/mcp_email_tools";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
@@ -28,6 +30,20 @@ export function BlockedAction({
 }: BlockedActionProps) {
   switch (blockedAction.status) {
     case "blocked_validation_required":
+      if (
+        isEmailComposeTool(
+          blockedAction.metadata.mcpServerName,
+          blockedAction.metadata.toolName
+        )
+      ) {
+        return (
+          <EmailComposerValidation
+            triggeringUser={triggeringUser}
+            owner={owner}
+            blockedAction={blockedAction}
+          />
+        );
+      }
       return (
         <MCPToolValidationRequired
           triggeringUser={triggeringUser}
