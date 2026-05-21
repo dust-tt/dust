@@ -5,6 +5,8 @@ import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDial
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
+import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -233,7 +235,7 @@ export function UsagePage() {
         currentBalanceCredits={currentBalanceCredits}
       />
 
-      <Page.Vertical gap="xl" align="stretch">
+      <div className="flex flex-col items-stretch gap-10 pb-20">
         <Page.Vertical gap="xs">
           <Icon
             visual={ActionPieChartIcon}
@@ -305,8 +307,12 @@ export function UsagePage() {
           )}
         </Page.Vertical>
 
+        <UsageSettingsCard workspaceId={owner.sId} />
+
+        <UsageNotificationsCard workspaceId={owner.sId} />
+
         <Page.Vertical gap="sm" align="stretch">
-          <span className="text-[16px] font-medium leading-[24px] tracking-[-0.32px] text-foreground dark:text-foreground-night">
+          <span className="heading-2xl text-foreground dark:text-foreground-night">
             Members
           </span>
           <div className="flex flex-row gap-2">
@@ -405,13 +411,7 @@ export function UsagePage() {
           member={editSpendLimitMember}
           owner={owner}
         />
-
-        {/* TODO: Settings section*/}
-        <div />
-
-        {/* TODO: Notifications section */}
-        <div />
-      </Page.Vertical>
+      </div>
     </>
   );
 }
