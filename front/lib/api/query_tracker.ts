@@ -10,9 +10,10 @@ export interface QueryTrackerStore {
  *
  * Usage:
  * - `withLogging` wraps each request handler in `queryTracker.run(store, ...)`.
+ * - `ActivityInboundLogInterceptor` wraps each Temporal activity execution the same way.
  * - `SequelizeWithComments.query()` increments/decrements `store.concurrent` around
  *   every query and updates `store.peak`.
- * - At request completion, `store.peak` is logged as `peakConcurrentQueries` to help
- *   identify endpoints that hold many connections simultaneously.
+ * - At request/activity completion, `store.peak` is logged as `peakConcurrentQueries`
+ *   to help identify code paths that hold many connections simultaneously.
  */
 export const queryTracker = new AsyncLocalStorage<QueryTrackerStore>();
