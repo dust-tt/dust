@@ -1,11 +1,7 @@
-// @migration-status: MIGRATED_TO_HONO
-/** @ignoreswagger */
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
-import { apiError } from "@app/logger/withlogging";
-import type { APIErrorResponse } from "@app/types/error";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 import { QueryTypes } from "sequelize";
 
 export type GetWorkspaceAnalyticsResponse = {
@@ -24,13 +20,14 @@ export type GetWorkspaceAnalyticsResponse = {
   };
 };
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<GetWorkspaceAnalyticsResponse | APIErrorResponse>,
-  auth: Authenticator
-): Promise<void> {
+// Mounted at /api/w/:wId/workspace-analytics.
+const app = new Hono();
+
+app.get("/", async (ctx): HandlerResult<GetWorkspaceAnalyticsResponse> => {
+  const auth = ctx.get("auth");
+
   if (!auth.isAdmin()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -40,24 +37,11 @@ async function handler(
     });
   }
 
-  switch (req.method) {
-    case "GET":
-      const analytics = await getAnalytics(auth);
-      res.status(200).json(analytics);
-      return;
+  const analytics = await getAnalytics(auth);
+  return ctx.json(analytics);
+});
 
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
-  }
-}
-
-export default withSessionAuthenticationForWorkspace(handler);
+export default app;
 
 async function getAnalytics(
   auth: Authenticator
@@ -79,13 +63,13 @@ async function getAnalytics(
       SELECT COUNT(DISTINCT "userId") AS member_count
       FROM memberships
       WHERE "workspaceId" = :workspace_id
-        AND "startAt" <= NOW() 
+        AND "startAt" <= NOW()
         AND ("endAt" IS NULL OR "endAt" >= NOW())
     ),
     user_activity AS (
       SELECT
         "userId",
-        DATE(TIMEZONE('UTC', "createdAt")) as day -- WARNING we use full capital functions and constants as the index we want to use is declared in capital letters, and indices are case-sensitive  
+        DATE(TIMEZONE('UTC', "createdAt")) as day -- WARNING we use full capital functions and constants as the index we want to use is declared in capital letters, and indices are case-sensitive
       FROM user_messages
       WHERE "workspaceId" = :workspace_id
         -- WARNING we use full capital functions and constants as the index we want to use is declared in capital letters, and indices are case-sensitive
@@ -102,20 +86,20 @@ async function getAnalytics(
       SELECT
         COUNT(DISTINCT CASE WHEN day >= CURRENT_DATE - INTERVAL '7 days' THEN "userId" END) AS weekly_active,
         COUNT(DISTINCT CASE WHEN day >= CURRENT_DATE - INTERVAL '30 days' THEN "userId" END) AS monthly_active,
-        COUNT(DISTINCT CASE WHEN day < CURRENT_DATE - INTERVAL '7 days' 
+        COUNT(DISTINCT CASE WHEN day < CURRENT_DATE - INTERVAL '7 days'
                             AND day >= CURRENT_DATE - INTERVAL '14 days' THEN "userId" END) AS prev_weekly_active,
-        COUNT(DISTINCT CASE WHEN day < CURRENT_DATE - INTERVAL '30 days' 
+        COUNT(DISTINCT CASE WHEN day < CURRENT_DATE - INTERVAL '30 days'
                             AND day >= CURRENT_DATE - INTERVAL '60 days' THEN "userId" END) AS prev_monthly_active
       FROM user_activity
     ),
     daily_averages AS (
       SELECT
         COALESCE(AVG(CASE WHEN day >= CURRENT_DATE - INTERVAL '7 days' THEN daily_users END), 0) AS avg_daily_active,
-        COALESCE(AVG(CASE WHEN day < CURRENT_DATE - INTERVAL '7 days' 
+        COALESCE(AVG(CASE WHEN day < CURRENT_DATE - INTERVAL '7 days'
                           AND day >= CURRENT_DATE - INTERVAL '14 days' THEN daily_users END), 0) AS prev_avg_daily_active
       FROM daily_activity
     )
-    SELECT 
+    SELECT
       m.member_count,
       a.weekly_active,
       a.monthly_active,
