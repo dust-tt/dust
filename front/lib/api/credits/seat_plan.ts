@@ -6,6 +6,7 @@ import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   getAwuAllocationForSeatType,
   getProductSeatTypes,
+  getSeatSubscriptionsFromContract,
   getSeatTypesByProductIdFromContract,
   isMauContract,
 } from "@app/lib/metronome/seat_types";
@@ -17,6 +18,8 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+export type SeatBillingFrequency = "monthly" | "annual";
+
 export interface SeatTypeInfo {
   // Human-readable plan name surfaced by Metronome (e.g. "Pro Seat") — use
   // for display so the UI doesn't need to know about specific seat types.
@@ -24,6 +27,9 @@ export interface SeatTypeInfo {
   awuCredits: number;
   priceCents: number;
   currency: SupportedCurrency;
+  // `priceCents` is the amount billed per `billingFrequency` (per month for
+  // monthly, per year for annual).
+  billingFrequency: SeatBillingFrequency;
 }
 
 // Dynamic seat-type → info map. The list of seat types is driven by the
@@ -97,6 +103,27 @@ export async function handleSeatPlanRequest(
     return res.status(200).json({});
   }
 
+  // Resolve each seat's billing frequency from the matching subscription on
+  // the contract. Default to "monthly" if the subscription declares anything
+  // other than ANNUAL — Metronome's enum has WEEKLY / QUARTERLY too, but we
+  // only ship monthly and annual seats.
+  const billingFrequencyBySeatType = new Map<
+    MembershipSeatType,
+    SeatBillingFrequency
+  >();
+  const seatSubscriptions = getSeatSubscriptionsFromContract(
+    contract,
+    productSeatTypes
+  );
+  for (const [seatType, sub] of seatSubscriptions) {
+    billingFrequencyBySeatType.set(
+      seatType,
+      sub.subscription_rate.billing_frequency === "ANNUAL"
+        ? "annual"
+        : "monthly"
+    );
+  }
+
   const monthlyPriceCentsBySeatType = new Map<MembershipSeatType, number>();
   const nameBySeatType = new Map<MembershipSeatType, string>();
   try {
@@ -167,6 +194,7 @@ export async function handleSeatPlanRequest(
       ),
       priceCents,
       currency,
+      billingFrequency: billingFrequencyBySeatType.get(seatType) ?? "monthly",
     };
   }
   return res.status(200).json(response);

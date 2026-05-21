@@ -55,6 +55,7 @@ const getOverageAwuRate = (currency: SupportedCurrency) => {
 const WORKSPACE_SEAT_PRODUCT_NAME = "Workspace Seat";
 const PRO_SEAT_PRODUCT_NAME = "Pro Seat";
 const MAX_SEAT_PRODUCT_NAME = "Max Seat";
+const YEARLY_SUFFIX = " (Yearly)";
 const FREE_SEAT_PRODUCT_NAME = "Free Seat";
 const PRO_SEAT_CREDIT_NAME = "Pro Seat Credits";
 const MAX_SEAT_CREDIT_NAME = "Max Seat Credits";
@@ -400,6 +401,11 @@ const PRODUCTS: ProductDef[] = [
     type: "SUBSCRIPTION",
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "workspace" },
   },
+  {
+    name: WORKSPACE_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+    type: "SUBSCRIPTION",
+    custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "workspace_yearly" },
+  },
   // Pro Seat / Max Seat — SUBSCRIPTION products for the new Business / Enterprise
   // seat-based plans. Used as SEAT_BASED subscriptions in packages with per-seat
   // INDIVIDUAL recurring credits (Pro: 8000 AWU/mo, Max: 40000 AWU/mo).
@@ -409,10 +415,21 @@ const PRODUCTS: ProductDef[] = [
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "pro" },
   },
   {
+    name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+    type: "SUBSCRIPTION",
+    custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "pro_yearly" },
+  },
+  {
     name: MAX_SEAT_PRODUCT_NAME,
     type: "SUBSCRIPTION",
     custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "max" },
   },
+  {
+    name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+    type: "SUBSCRIPTION",
+    custom_fields: { [SEAT_TYPE_CUSTOM_FIELD_KEY]: "max_yearly" },
+  },
+
   // Free Seat — SUBSCRIPTION product priced at $0/seat. Carries a one-shot
   // lifetime AWU credit (300 AWU per seat) so free users have a small drawdown
   // pool without being billed.
@@ -872,6 +889,15 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
+          product_name: WORKSPACE_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          billing_frequency: "ANNUAL",
+          price: 24000,
+          credit_type_id: CREDIT_TYPE_USD_ID,
+        },
+        {
           product_name: PRO_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
@@ -881,12 +907,30 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
+          product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: false,
+          rate_type: "FLAT",
+          billing_frequency: "ANNUAL",
+          price: 528000,
+          credit_type_id: CREDIT_TYPE_USD_ID,
+        },
+        {
           product_name: MAX_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
           billing_frequency: "MONTHLY",
           price: 14000,
+          credit_type_id: CREDIT_TYPE_USD_ID,
+        },
+        {
+          product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: false,
+          rate_type: "FLAT",
+          billing_frequency: "ANNUAL",
+          price: 168000,
           credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
@@ -930,6 +974,15 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
+          product_name: WORKSPACE_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          billing_frequency: "ANNUAL",
+          price: 240,
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
           product_name: PRO_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
@@ -939,12 +992,30 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
+          product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: false,
+          rate_type: "FLAT",
+          billing_frequency: "ANNUAL",
+          price: 528,
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
           product_name: MAX_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: false,
           rate_type: "FLAT",
           billing_frequency: "MONTHLY",
           price: 140,
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
+          product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: false,
+          rate_type: "FLAT",
+          billing_frequency: "ANNUAL",
+          price: 1680,
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
@@ -988,12 +1059,30 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
+          product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          billing_frequency: "ANNUAL",
+          price: 28800,
+          credit_type_id: CREDIT_TYPE_USD_ID,
+        },
+        {
           product_name: MAX_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
           billing_frequency: "MONTHLY",
           price: 15000,
+          credit_type_id: CREDIT_TYPE_USD_ID,
+        },
+        {
+          product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          billing_frequency: "ANNUAL",
+          price: 144000,
           credit_type_id: CREDIT_TYPE_USD_ID,
         },
         {
@@ -1035,12 +1124,30 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
+          product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          billing_frequency: "ANNUAL",
+          price: 288,
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
           product_name: MAX_SEAT_PRODUCT_NAME,
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
           billing_frequency: "MONTHLY",
           price: 150,
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
+          product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          billing_frequency: "ANNUAL",
+          price: 1440,
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
@@ -1092,8 +1199,14 @@ function getRateCards(): RateCardDef[] {
 function buildSeatEntitlementFlipOverrides(): PackageOverrideDef[] {
   return [
     { product_name: WORKSPACE_SEAT_PRODUCT_NAME, entitled: false },
+    {
+      product_name: WORKSPACE_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+      entitled: false,
+    },
     { product_name: PRO_SEAT_PRODUCT_NAME, entitled: true },
+    { product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX, entitled: true },
     { product_name: MAX_SEAT_PRODUCT_NAME, entitled: true },
+    { product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX, entitled: true },
     { product_name: FREE_SEAT_PRODUCT_NAME, entitled: true },
   ];
 }
@@ -1201,14 +1314,24 @@ const WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION: PackageSubscription = {
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
   },
 };
+const WORKSPACE_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
+  temporary_id: "workspace-seat-annual-sub",
+  product_name: WORKSPACE_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+  billing_frequency: "ANNUAL",
+  collection_schedule: "ADVANCE",
+  quantity_management_mode: "QUANTITY_ONLY",
+  initial_quantity: 1,
+  proration: {
+    is_prorated: true,
+    invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
+  },
+};
 
 // SEAT_BASED subscriptions for the Business (and seat-based Enterprise) plans.
 // Seat group key is `user_id` — usage events carrying that property draw down
 // only the credits attached to the matching seat. The seat count is controlled
 // by add_seat_ids / remove_seat_ids via the contract edit API.
 const PRO_SEAT_SUBSCRIPTION_TEMPORARY_ID = "pro-seat-sub";
-const MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID = "max-seat-sub";
-
 const PRO_SEAT_SUBSCRIPTION: PackageSubscription = {
   temporary_id: PRO_SEAT_SUBSCRIPTION_TEMPORARY_ID,
   product_name: PRO_SEAT_PRODUCT_NAME,
@@ -1222,10 +1345,39 @@ const PRO_SEAT_SUBSCRIPTION: PackageSubscription = {
   },
 };
 
+const PRO_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID = "pro-seat-annual-sub";
+const PRO_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
+  temporary_id: PRO_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
+  product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+  billing_frequency: "ANNUAL",
+  collection_schedule: "ADVANCE",
+  quantity_management_mode: "SEAT_BASED",
+  seat_config: { seat_group_key: "user_id" },
+  proration: {
+    is_prorated: true,
+    invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
+  },
+};
+
+const MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID = "max-seat-sub";
 const MAX_SEAT_SUBSCRIPTION: PackageSubscription = {
   temporary_id: MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID,
   product_name: MAX_SEAT_PRODUCT_NAME,
   billing_frequency: "MONTHLY",
+  collection_schedule: "ADVANCE",
+  quantity_management_mode: "SEAT_BASED",
+  seat_config: { seat_group_key: "user_id" },
+  proration: {
+    is_prorated: true,
+    invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
+  },
+};
+
+const MAX_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID = "max-seat-annual-sub";
+const MAX_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
+  temporary_id: MAX_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
+  product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX,
+  billing_frequency: "ANNUAL",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "SEAT_BASED",
   seat_config: { seat_group_key: "user_id" },
@@ -1442,7 +1594,10 @@ function getPackages(): PackageDef[] {
       name: "Enterprise Pooled USD",
       aliases: [{ name: "enterprise-usd" }],
       rate_card_name: "Enterprise USD",
-      subscriptions: [WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION],
+      subscriptions: [
+        WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION,
+        WORKSPACE_SEAT_ANNUAL_SUBSCRIPTION,
+      ],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
         getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
@@ -1453,7 +1608,10 @@ function getPackages(): PackageDef[] {
       name: "Enterprise Pooled EUR",
       aliases: [{ name: "enterprise-eur" }],
       rate_card_name: "Enterprise EUR",
-      subscriptions: [WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION],
+      subscriptions: [
+        WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION,
+        WORKSPACE_SEAT_ANNUAL_SUBSCRIPTION,
+      ],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
         getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
@@ -1466,11 +1624,33 @@ function getPackages(): PackageDef[] {
       rate_card_name: "Enterprise USD",
       subscriptions: [
         PRO_SEAT_SUBSCRIPTION,
+        PRO_SEAT_ANNUAL_SUBSCRIPTION,
         MAX_SEAT_SUBSCRIPTION,
+        MAX_SEAT_ANNUAL_SUBSCRIPTION,
         FREE_SEAT_SUBSCRIPTION,
       ],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
+        getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
+          name: MAX_SEAT_CREDIT_NAME,
+        }),
+        getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: PRO_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: PRO_SEAT_MONTHLY_AWU_CREDITS,
+          name: PRO_SEAT_CREDIT_NAME,
+        }),
+        getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: PRO_SEAT_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: PRO_SEAT_MONTHLY_AWU_CREDITS,
+          name: PRO_SEAT_CREDIT_NAME,
+        }),
+        getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: MAX_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
+          name: MAX_SEAT_CREDIT_NAME,
+        }),
         getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
       ],
       overrides: buildSeatEntitlementFlipOverrides(),
@@ -1482,11 +1662,33 @@ function getPackages(): PackageDef[] {
       rate_card_name: "Enterprise EUR",
       subscriptions: [
         PRO_SEAT_SUBSCRIPTION,
+        PRO_SEAT_ANNUAL_SUBSCRIPTION,
         MAX_SEAT_SUBSCRIPTION,
+        MAX_SEAT_ANNUAL_SUBSCRIPTION,
         FREE_SEAT_SUBSCRIPTION,
       ],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
+        getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: PRO_SEAT_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: PRO_SEAT_MONTHLY_AWU_CREDITS,
+          name: PRO_SEAT_CREDIT_NAME,
+        }),
+        getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: PRO_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: PRO_SEAT_MONTHLY_AWU_CREDITS,
+          name: PRO_SEAT_CREDIT_NAME,
+        }),
+        getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
+          name: MAX_SEAT_CREDIT_NAME,
+        }),
+        getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: MAX_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
+          name: MAX_SEAT_CREDIT_NAME,
+        }),
         getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
       ],
       overrides: buildSeatEntitlementFlipOverrides(),
@@ -1502,7 +1704,9 @@ function getPackages(): PackageDef[] {
       rate_card_name: "Business USD",
       subscriptions: [
         PRO_SEAT_SUBSCRIPTION,
+        PRO_SEAT_ANNUAL_SUBSCRIPTION,
         MAX_SEAT_SUBSCRIPTION,
+        MAX_SEAT_ANNUAL_SUBSCRIPTION,
         FREE_SEAT_SUBSCRIPTION,
       ],
       scheduled_charges_on_usage_invoices: "ALL",
@@ -1513,7 +1717,17 @@ function getPackages(): PackageDef[] {
           name: PRO_SEAT_CREDIT_NAME,
         }),
         getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: PRO_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: PRO_SEAT_MONTHLY_AWU_CREDITS,
+          name: PRO_SEAT_CREDIT_NAME,
+        }),
+        getPerSeatIndividualAwuCredits({
           subscriptionTemporaryId: MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
+          name: MAX_SEAT_CREDIT_NAME,
+        }),
+        getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: MAX_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
           quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
           name: MAX_SEAT_CREDIT_NAME,
         }),
@@ -1528,7 +1742,9 @@ function getPackages(): PackageDef[] {
       rate_card_name: "Business EUR",
       subscriptions: [
         PRO_SEAT_SUBSCRIPTION,
+        PRO_SEAT_ANNUAL_SUBSCRIPTION,
         MAX_SEAT_SUBSCRIPTION,
+        MAX_SEAT_ANNUAL_SUBSCRIPTION,
         FREE_SEAT_SUBSCRIPTION,
       ],
       scheduled_charges_on_usage_invoices: "ALL",
@@ -1539,7 +1755,17 @@ function getPackages(): PackageDef[] {
           name: PRO_SEAT_CREDIT_NAME,
         }),
         getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: PRO_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: PRO_SEAT_MONTHLY_AWU_CREDITS,
+          name: PRO_SEAT_CREDIT_NAME,
+        }),
+        getPerSeatIndividualAwuCredits({
           subscriptionTemporaryId: MAX_SEAT_SUBSCRIPTION_TEMPORARY_ID,
+          quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
+          name: MAX_SEAT_CREDIT_NAME,
+        }),
+        getPerSeatIndividualAwuCredits({
+          subscriptionTemporaryId: MAX_SEAT_ANNUAL_SUBSCRIPTION_TEMPORARY_ID,
           quantityPerSeat: MAX_SEAT_MONTHLY_AWU_CREDITS,
           name: MAX_SEAT_CREDIT_NAME,
         }),
