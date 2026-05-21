@@ -191,13 +191,11 @@ export async function editClientExecutableFile(
       }
       const { fileResource, content: currentContent } = fileContentResult.value;
 
-      const result = getUpdatedContentAndOccurrences({
+      const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
         oldString,
         newString,
         currentContent,
       });
-
-      const { occurrences, updatedContent } = result;
 
       if (occurrences === 0) {
         return new Err({

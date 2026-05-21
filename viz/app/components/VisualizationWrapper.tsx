@@ -507,6 +507,11 @@ export function VisualizationWrapper({
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [addEventListener, handleScreenshotDownload, handleSVGDownload]);
 
+  const vizContextValue = useMemo(
+    () => ({ isPdfMode, editText }),
+    [isPdfMode, editText]
+  );
+
   if (errored) {
     // Throw the error to the ErrorBoundary.
     throw errored;
@@ -570,7 +575,7 @@ export function VisualizationWrapper({
           </button>
         </div>
       )}
-      <VizContext.Provider value={{ isPdfMode, editText }}>
+      <VizContext.Provider value={vizContextValue}>
         {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
       </VizContext.Provider>
     </div>
