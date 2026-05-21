@@ -173,7 +173,7 @@ export default function ChapterPage({
       void mutateCourseProgress();
     } else if (browserId) {
       void (async () => {
-        await clientFetch("/api/academy/progress/visit", {
+        await clientFetch("/m/api/academy/progress/visit", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
