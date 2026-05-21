@@ -7,6 +7,15 @@ const TEMPORAL_WORKER_SHUTDOWN_REASON = "WORKER_SHUTDOWN";
 const TEMPORAL_WORKER_SHUTDOWN_ERROR = "CancelledFailure: WORKER_SHUTDOWN";
 const TEMPORAL_USER_CANCELLATION_REASON = "CANCELLED";
 const TEMPORAL_USER_CANCELLATION_ERROR = "CancelledFailure: CANCELLED";
+const DEPLOY_INTERRUPTION_REASON_TEXTS: readonly string[] = [
+  DUST_WORKER_SHUTDOWN_ABORT_REASON,
+  TEMPORAL_WORKER_SHUTDOWN_REASON,
+  TEMPORAL_WORKER_SHUTDOWN_ERROR,
+];
+const USER_CANCELLATION_REASON_TEXTS: readonly string[] = [
+  TEMPORAL_USER_CANCELLATION_REASON,
+  TEMPORAL_USER_CANCELLATION_ERROR,
+];
 
 export const TOOL_DEPLOY_INTERRUPTION_ERROR_TYPE = "ToolDeployInterruption";
 
@@ -16,13 +25,13 @@ export type ToolAbortClassification =
   | "unknown";
 export type ToolInterruptionType = "deploy_interruption" | "timeout";
 
-function getAbortReasonMessage(reason: unknown): string | null {
+function getAbortReasonTexts(reason: unknown): string[] {
   if (typeof reason === "string") {
-    return reason;
+    return [reason];
   }
 
   if (reason instanceof Error) {
-    return reason.message;
+    return [reason.message, reason.toString()];
   }
 
   if (
@@ -31,45 +40,25 @@ function getAbortReasonMessage(reason: unknown): string | null {
     "message" in reason &&
     typeof reason.message === "string"
   ) {
-    return reason.message;
+    return [reason.message];
   }
 
-  return null;
-}
-
-function getAbortReasonText(reason: unknown): string | null {
-  if (typeof reason === "string") {
-    return reason;
-  }
-
-  if (reason instanceof Error) {
-    return reason.toString();
-  }
-
-  return null;
+  return [];
 }
 
 export function classifyToolAbortReason(
   reason: unknown
 ): ToolAbortClassification {
-  const message = getAbortReasonMessage(reason);
-  const text = getAbortReasonText(reason);
+  const reasonTexts = getAbortReasonTexts(reason);
 
   if (
-    message === DUST_WORKER_SHUTDOWN_ABORT_REASON ||
-    message === TEMPORAL_WORKER_SHUTDOWN_REASON ||
-    message === TEMPORAL_WORKER_SHUTDOWN_ERROR ||
-    text === DUST_WORKER_SHUTDOWN_ABORT_REASON ||
-    text === TEMPORAL_WORKER_SHUTDOWN_REASON ||
-    text === TEMPORAL_WORKER_SHUTDOWN_ERROR
+    reasonTexts.some((text) => DEPLOY_INTERRUPTION_REASON_TEXTS.includes(text))
   ) {
     return "deploy_interruption";
   }
 
   if (
-    message === TEMPORAL_USER_CANCELLATION_REASON ||
-    message === TEMPORAL_USER_CANCELLATION_ERROR ||
-    text === TEMPORAL_USER_CANCELLATION_ERROR
+    reasonTexts.some((text) => USER_CANCELLATION_REASON_TEXTS.includes(text))
   ) {
     return "user_cancellation";
   }

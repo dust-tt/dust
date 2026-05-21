@@ -152,7 +152,7 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   return new Ok(match[2]);
 }
 
-export const runAgent = async (
+const runAgent = async (
   {
     query,
     childAgent: { uri },
