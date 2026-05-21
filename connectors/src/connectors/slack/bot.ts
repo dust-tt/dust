@@ -4,8 +4,11 @@ import {
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
 import { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
-import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
+import {
+  SLACK_USER_ACTION_IDLE_TIMEOUT_MS,
+  streamConversationToSlack,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+} from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
   getBotUserIdResponse,
   getUserInfo,
@@ -70,6 +73,7 @@ import {
   isSupportedAudioContentType,
   isSupportedFileContentType,
   isSupportedImageContentType,
+  normalizeError,
   Ok,
   removeNulls,
 } from "@dust-tt/client";
@@ -88,6 +92,8 @@ const MAX_IMAGE_FILE_SIZE_TO_UPLOAD = 20 * 1024 * 1024; // 20 MB
 const MAX_AUDIO_FILE_SIZE_TO_UPLOAD = 100 * 1024 * 1024; // 100 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
+const SLACK_PENDING_PROMOTION_RECONNECT_DELAY_MS = 1_000;
+const SLACK_PENDING_PROMOTION_RECONNECT_ATTEMPT_BUFFER = 2;
 
 function getMaxFileSizeToUpload(contentType: SupportedFileContentType): number {
   if (isSupportedImageContentType(contentType)) {
@@ -112,6 +118,234 @@ type BotAnswerParams = {
   slackMessageTs: string;
   slackThreadTs?: string;
 };
+
+type SlackPendingConversation = {
+  sId: string;
+  content: {
+    type: "user_message" | "agent_message" | "content_fragment";
+    sId?: string;
+    visibility?: UserMessageType["visibility"];
+    parentMessageId?: string | null;
+  }[][];
+};
+
+type SlackPendingUserMessageDustAPI<
+  TConversation extends SlackPendingConversation,
+> = Pick<DustAPI, "streamConversationEvents"> & {
+  getConversation: (params: {
+    conversationId: string;
+  }) => Promise<Result<TConversation, APIError>>;
+};
+
+type SlackPendingUserMessageResult = "promoted" | "timed_out";
+
+function getSlackPendingUserMessageFallbackText(
+  conversationUrl: string | null
+): string {
+  const urlPart = conversationUrl
+    ? ` <${conversationUrl}|Continue on Dust>.`
+    : "";
+
+  return `:hourglass_flowing_sand: _Dust is still finishing the previous request, so this Slack reply could not start in time.${urlPart}_`;
+}
+
+function hasAgentMessageForUserMessage(
+  conversation: SlackPendingConversation,
+  userMessageId: string
+): boolean {
+  for (const messageVersions of conversation.content) {
+    const message = messageVersions[messageVersions.length - 1];
+    if (!message) {
+      continue;
+    }
+
+    if (
+      message.type === "agent_message" &&
+      message.parentMessageId === userMessageId
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function waitForSlackUserMessagePromotion({
+  dustAPI,
+  conversationId,
+  timeoutMs,
+  userMessageId,
+}: {
+  dustAPI: Pick<DustAPI, "streamConversationEvents">;
+  conversationId: string;
+  timeoutMs: number;
+  userMessageId: string;
+}): Promise<Result<SlackPendingUserMessageResult, Error | APIError>> {
+  const abortController = new AbortController();
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    abortController.abort();
+  }, timeoutMs);
+  timeout.unref?.();
+
+  try {
+    const streamRes = await dustAPI.streamConversationEvents({
+      conversationId,
+      signal: abortController.signal,
+      options: {
+        maxReconnectAttempts:
+          Math.ceil(timeoutMs / SLACK_PENDING_PROMOTION_RECONNECT_DELAY_MS) +
+          SLACK_PENDING_PROMOTION_RECONNECT_ATTEMPT_BUFFER,
+        reconnectDelay: SLACK_PENDING_PROMOTION_RECONNECT_DELAY_MS,
+      },
+    });
+    if (streamRes.isErr()) {
+      if (timedOut || abortController.signal.aborted) {
+        return new Ok("timed_out");
+      }
+      return new Err(normalizeError(streamRes.error));
+    }
+
+    try {
+      for await (const event of streamRes.value.eventStream) {
+        if (
+          event.type === "user_message_promoted" &&
+          event.messageId === userMessageId
+        ) {
+          return new Ok("promoted");
+        }
+      }
+    } catch (error) {
+      if (timedOut || abortController.signal.aborted) {
+        return new Ok("timed_out");
+      }
+      return new Err(normalizeError(error));
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  return new Ok("timed_out");
+}
+
+export async function resolveSlackPendingUserMessage<
+  TConversation extends SlackPendingConversation = ConversationPublicType,
+>({
+  connector,
+  conversation,
+  dustAPI,
+  slack,
+  streamHandler,
+  timeoutMs,
+  userMessage,
+}: {
+  connector: Pick<ConnectorResource, "id" | "workspaceId">;
+  conversation: TConversation;
+  dustAPI: SlackPendingUserMessageDustAPI<TConversation>;
+  slack: {
+    slackChannelId: string;
+    slackClient: { chat: Pick<WebClient["chat"], "postMessage"> };
+    slackMessageTs: string;
+  };
+  streamHandler: Pick<SlackStreamHandler, "stop">;
+  timeoutMs: number;
+  userMessage: Pick<UserMessageType, "sId" | "visibility">;
+}): Promise<Result<TConversation | null, Error | APIError>> {
+  if (userMessage.visibility !== "pending") {
+    return new Ok(conversation);
+  }
+  if (hasAgentMessageForUserMessage(conversation, userMessage.sId)) {
+    return new Ok(conversation);
+  }
+
+  logger.info(
+    {
+      connectorId: connector.id,
+      conversationId: conversation.sId,
+      userMessageId: userMessage.sId,
+    },
+    "Slack user message is pending, waiting for promotion before streaming."
+  );
+
+  const waitRes = await waitForSlackUserMessagePromotion({
+    dustAPI,
+    conversationId: conversation.sId,
+    timeoutMs,
+    userMessageId: userMessage.sId,
+  });
+  if (waitRes.isErr()) {
+    return waitRes;
+  }
+
+  const conversationRes = await dustAPI.getConversation({
+    conversationId: conversation.sId,
+  });
+
+  if (
+    conversationRes.isOk() &&
+    hasAgentMessageForUserMessage(conversationRes.value, userMessage.sId)
+  ) {
+    return new Ok(conversationRes.value);
+  }
+
+  if (conversationRes.isErr()) {
+    logger.warn(
+      {
+        error: conversationRes.error,
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        userMessageId: userMessage.sId,
+      },
+      "Failed to refetch Slack conversation after pending user message timeout."
+    );
+  }
+
+  await streamHandler.stop();
+
+  const conversationUrl = makeConversationUrl(
+    connector.workspaceId,
+    conversation.sId
+  );
+  const fallbackText = getSlackPendingUserMessageFallbackText(conversationUrl);
+
+  try {
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "chat.postMessage",
+      channelId: slack.slackChannelId,
+      useCase: "bot",
+    });
+    await slack.slackClient.chat.postMessage({
+      channel: slack.slackChannelId,
+      text: fallbackText,
+      blocks: makeMarkdownBlock(fallbackText),
+      thread_ts: slack.slackMessageTs,
+      unfurl_links: false,
+    });
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        userMessageId: userMessage.sId,
+      },
+      "Failed to post Slack pending user message fallback."
+    );
+  }
+
+  logger.info(
+    {
+      connectorId: connector.id,
+      conversationId: conversation.sId,
+      userMessageId: userMessage.sId,
+    },
+    "Posted Slack pending user message fallback after promotion timeout."
+  );
+
+  return new Ok(null);
+}
 
 export async function getSlackConnector(params: BotAnswerParams) {
   const { slackTeamId } = params;
@@ -1164,6 +1398,7 @@ async function answerMessage(
       | "getConversation"
       | "createConversation"
       | "postUserMessage"
+      | "waitForUserMessagePromotion"
       | "streamConversationToSlack"
   ) => {
     logger.error(
@@ -1287,6 +1522,30 @@ async function answerMessage(
     slackChatBotMessage.conversationId = conversation.sId;
     await slackChatBotMessage.save();
   }
+
+  const pendingUserMessageRes = await resolveSlackPendingUserMessage({
+    connector,
+    conversation,
+    dustAPI,
+    slack: {
+      slackChannelId: slackChannel,
+      slackClient,
+      slackMessageTs,
+    },
+    streamHandler,
+    timeoutMs: SLACK_USER_ACTION_IDLE_TIMEOUT_MS,
+    userMessage,
+  });
+  if (pendingUserMessageRes.isErr()) {
+    return buildSlackMessageError(
+      pendingUserMessageRes,
+      "waitForUserMessagePromotion"
+    );
+  }
+  if (pendingUserMessageRes.value === null) {
+    return new Ok(undefined);
+  }
+  conversation = pendingUserMessageRes.value;
 
   const streamRes = await streamConversationToSlack(dustAPI, {
     assistantName: mention.agentName,
