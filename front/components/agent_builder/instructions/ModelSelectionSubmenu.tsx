@@ -31,14 +31,14 @@ interface ModelRadioItemProps {
   modelConfig: ModelConfigurationType;
   isDark: boolean;
   onModelSelection: (modelConfig: ModelConfigurationType) => void;
-  endComponent?: React.ReactNode | null;
+  regionalComponent?: React.ReactNode | null;
 }
 
 function ModelRadioItem({
   modelConfig,
   isDark,
   onModelSelection,
-  endComponent,
+  regionalComponent,
 }: ModelRadioItemProps) {
   return (
     <DropdownMenuRadioItem
@@ -47,7 +47,7 @@ function ModelRadioItem({
       description={modelConfig.shortDescription}
       label={modelConfig.displayName}
       onClick={() => onModelSelection(modelConfig)}
-      endComponent={endComponent}
+      endComponent={regionalComponent}
     />
   );
 }
@@ -79,7 +79,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
     hasFeature("use_vertex_for_anthropic_models") &&
     SHOULD_DISPLAY_FLAG[regionInfo.name];
 
-  const modelRadioItemEndComponent = showRegionalFlag ? (
+  const flag = showRegionalFlag ? (
     <RegionalFlag region={regionInfo.name} />
   ) : null;
 
@@ -118,9 +118,9 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                   modelConfig={selectedModel}
                   isDark={isDark}
                   onModelSelection={handleModelSelection}
-                  endComponent={
+                  regionalComponent={
                     selectedModel.regionalAvailability[regionInfo.name]
-                      ? modelRadioItemEndComponent
+                      ? flag
                       : null
                   }
                 />
@@ -136,9 +136,9 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                 modelConfig={modelConfig}
                 isDark={isDark}
                 onModelSelection={handleModelSelection}
-                endComponent={
+                regionalComponent={
                   modelConfig.regionalAvailability[regionInfo.name]
-                    ? modelRadioItemEndComponent
+                    ? flag
                     : null
                 }
               />
@@ -166,11 +166,11 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               modelConfig={modelConfig}
                               isDark={isDark}
                               onModelSelection={handleModelSelection}
-                              endComponent={
+                              regionalComponent={
                                 modelConfig.regionalAvailability[
                                   regionInfo.name
                                 ]
-                                  ? modelRadioItemEndComponent
+                                  ? flag
                                   : null
                               }
                             />
@@ -192,11 +192,11 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               modelConfig={modelConfig}
                               isDark={isDark}
                               onModelSelection={handleModelSelection}
-                              endComponent={
+                              regionalComponent={
                                 modelConfig.regionalAvailability[
                                   regionInfo.name
                                 ]
-                                  ? modelRadioItemEndComponent
+                                  ? flag
                                   : null
                               }
                             />
