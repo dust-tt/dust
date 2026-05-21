@@ -79,6 +79,23 @@ procs:
       exec ../node_modules/.bin/tsx ./server.ts
     autostart: false
 
+  front-hono-only:
+    cwd: "<CONFIG_DIR>/../front-api"
+    shell: |
+      set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
+      echo "Node $(node --version)"
+      READY_FILE="../sdks/js/dist/client.esm.js.map"
+      echo "Waiting for sdks-js to compile..."
+      echo "Expecting file: $READY_FILE"
+      while [ ! -f "$READY_FILE" ]; do sleep 1; done
+      echo "sdks-js ready. Starting front-api (Hono only, no Next)."
+      export NODE_ENV=development
+      exec ../node_modules/.bin/tsx ./server-hono.ts
+    autostart: false
+
   front-workers:
     cwd: "<CONFIG_DIR>/../front"
     shell: |

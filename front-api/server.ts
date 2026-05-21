@@ -53,17 +53,6 @@ async function main() {
       "Custom server listening (Hono strangler enabled)"
     );
   });
-
-  // Without this, SIGTERM (e.g. from mprocs/docker/k8s stop) causes Node to
-  // exit with code 143, which npm reports as a lifecycle script failure.
-  const shutdown = (signal: string) => {
-    logger.info({ signal }, "Received signal, shutting down");
-    server.close(() => process.exit(0));
-    // Don't wait forever for connections to drain.
-    setTimeout(() => process.exit(0), 5000).unref();
-  };
-  process.on("SIGTERM", () => shutdown("SIGTERM"));
-  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 void main().catch((err) => {
