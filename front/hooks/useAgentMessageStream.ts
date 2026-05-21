@@ -354,9 +354,9 @@ export function useAgentMessageStream({
   // thinking (chain_of_thought) and writing (tokens), flushing completed
   // segments as activity steps on each switch.
   const lastClassification = useRef<"tokens" | "chain_of_thought" | null>(null);
-  // Tracks the runId of the last CoT event to detect Temporal retry boundaries.
-  const lastCoTRunId = useRef<string | null>(null);
-  // Shadow buffer for retry CoT suppression. When a new runId arrives, CoT
+  // Tracks the traceId of the last CoT event to detect Temporal retry boundaries.
+  const lastCoTTraceId = useRef<string | null>(null);
+  // Shadow buffer for retry CoT suppression. When a new traceId arrives, CoT
   // tokens are accumulated here instead of directly into chainOfThought.current.
   // As long as the buffer is a prefix of the existing CoT, display is unchanged
   // (no blank/refill). Once it diverges, chainOfThought.current is replaced with
@@ -418,7 +418,7 @@ export function useAgentMessageStream({
           ) {
             content.current = "";
             chainOfThought.current = "";
-            lastCoTRunId.current = null;
+            lastCoTTraceId.current = null;
             retryCoTBuffer.current = null;
             methods.data.map((m) => {
               if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
@@ -441,24 +441,24 @@ export function useAgentMessageStream({
             classification === "tokens" ||
             classification === "chain_of_thought"
           ) {
-            // When a CoT event arrives with a new runId, the Temporal activity
+            // When a CoT event arrives with a new traceId, the Temporal activity
             // was retried. Reset content.current (prevents stale tokens from
             // being flushed at the transition boundary) and enter shadow-buffer
             // mode: new CoT tokens are compared against what's already shown
             // rather than appended, so an identical retry is invisible to the
             // user.
             if (classification === "chain_of_thought") {
-              const newRunId = generationTokens.runId;
+              const newTraceId = generationTokens.traceId;
               if (
-                newRunId &&
-                lastCoTRunId.current !== null &&
-                newRunId !== lastCoTRunId.current
+                newTraceId &&
+                lastCoTTraceId.current !== null &&
+                newTraceId !== lastCoTTraceId.current
               ) {
                 content.current = "";
                 retryCoTBuffer.current = "";
               }
-              if (newRunId) {
-                lastCoTRunId.current = newRunId;
+              if (newTraceId) {
+                lastCoTTraceId.current = newTraceId;
               }
             }
 

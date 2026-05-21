@@ -590,7 +590,7 @@ describe("useAgentMessageStream", () => {
     const action = makeStreamAction();
 
     act(() => {
-      // Retry 1: CoT → tokens → retry fails (runId=attempt-1)
+      // Retry 1: CoT → tokens → retry fails (traceId=attempt-1)
       onEventCallback!(
         JSON.stringify({
           eventId: "1-0",
@@ -601,7 +601,7 @@ describe("useAgentMessageStream", () => {
             messageId: currentMessage.sId,
             text: "I need to enable the toolset first.",
             classification: "chain_of_thought",
-            runId: "attempt-1",
+            traceId: "attempt-1",
           },
         })
       );
@@ -618,8 +618,8 @@ describe("useAgentMessageStream", () => {
           },
         })
       );
-      // Retry 2: different CoT → tokens → retry fails (runId=attempt-2)
-      // The new runId resets both accumulators before the tokens→CoT transition
+      // Retry 2: different CoT → tokens → retry fails (traceId=attempt-2)
+      // The new traceId resets both accumulators before the tokens→CoT transition
       // fires, so "Enabling now." is never flushed as a stale content step.
       onEventCallback!(
         JSON.stringify({
@@ -631,7 +631,7 @@ describe("useAgentMessageStream", () => {
             messageId: currentMessage.sId,
             text: "I should enable the Create Files toolset.",
             classification: "chain_of_thought",
-            runId: "attempt-2",
+            traceId: "attempt-2",
           },
         })
       );
@@ -648,7 +648,7 @@ describe("useAgentMessageStream", () => {
           },
         })
       );
-      // Retry 3: final CoT → tool_params succeeds (runId=attempt-3)
+      // Retry 3: final CoT → tool_params succeeds (traceId=attempt-3)
       onEventCallback!(
         JSON.stringify({
           eventId: "5-0",
@@ -659,7 +659,7 @@ describe("useAgentMessageStream", () => {
             messageId: currentMessage.sId,
             text: "I need to enable the Create Files toolset first.",
             classification: "chain_of_thought",
-            runId: "attempt-3",
+            traceId: "attempt-3",
           },
         })
       );
@@ -681,7 +681,7 @@ describe("useAgentMessageStream", () => {
 
     // Each retry produced different CoT, so each appears as its own thinking
     // step. Stale tokens ("Enabling now.", "Let me enable it.") were discarded
-    // by the runId-based reset before they could be flushed as content steps.
+    // by the traceId-based reset before they could be flushed as content steps.
     expect(currentMessage.streaming.inlineActivitySteps).toEqual([
       {
         type: "thinking",
@@ -756,11 +756,11 @@ describe("useAgentMessageStream", () => {
             messageId: currentMessage.sId,
             text: "I need to search the web.",
             classification: "chain_of_thought",
-            runId: "attempt-1",
+            traceId: "attempt-1",
           },
         })
       );
-      // Retry 2: identical CoT restarts from the beginning (new runId).
+      // Retry 2: identical CoT restarts from the beginning (new traceId).
       // The shadow buffer suppresses updates while tokens match what's shown.
       onEventCallback!(
         JSON.stringify({
@@ -772,7 +772,7 @@ describe("useAgentMessageStream", () => {
             messageId: currentMessage.sId,
             text: "I need to search the web.",
             classification: "chain_of_thought",
-            runId: "attempt-2",
+            traceId: "attempt-2",
           },
         })
       );

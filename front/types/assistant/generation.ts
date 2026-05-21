@@ -126,7 +126,7 @@ export type GenerationTokensEvent = {
   text: string;
   // Identifies the specific LLM call that produced this event. Changes on
   // Temporal activity retries so the client can detect retry boundaries.
-  runId?: string;
+  traceId?: string;
 } & (
   | {
       classification: TokensClassification;
