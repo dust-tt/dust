@@ -44,18 +44,6 @@ function linkLabelForUrlOnly(url: string): string {
   }
 }
 
-function mergeKickoffCustomMessage(
-  stored: string | null | undefined,
-  userProvided: string | undefined
-): string | undefined {
-  const s = stored?.trim();
-  const u = userProvided?.trim();
-  if (s && u) {
-    return `${s}\n\n${u}`;
-  }
-  return u ?? s ?? undefined;
-}
-
 function formatTaskSourcesMarkdown(sources: ProjectTaskSourceInfo[]): string {
   const lines = sources
     .map((s) => {
@@ -84,13 +72,14 @@ function buildTaskKickoffPrompt({
   taskId,
   taskText,
   sources,
-  customMessage,
+  agentInstructions,
 }: {
   taskId: string;
   taskText: string;
   sources: ProjectTaskSourceInfo[];
-  customMessage?: string;
+  agentInstructions: string | null;
 }): string {
+  const trimmedAgentInstructions = agentInstructions?.trim();
   const sourcesBlock = formatTaskSourcesMarkdown(sources);
 
   const taskDirective = serializeProjectTaskDirective({
@@ -120,6 +109,9 @@ function buildTaskKickoffPrompt({
     'Once there is explicit acceptance in this chat (e.g. "ok good for me", "looks good", "perfect", "works for me", "thanks that\'s what I needed", or any unequivocal statement of satisfaction or task completion), mark the task as done in the same turn using the project task management tools. Verbal approval in chat is required; do not assume closure will only happen via the UI. A prompt acknowledgment is sufficient, but always mark the task as done upon clear approval.',
     "",
     "If further changes are requested, if feedback indicates the work is not complete, or if the user instructs to keep the task open, do not mark it as done.",
+    ...(trimmedAgentInstructions
+      ? ["", "## Task-specific guidance", "", trimmedAgentInstructions]
+      : []),
   ].join("\n");
 }
 
@@ -185,10 +177,7 @@ export async function startAgentForProjectTask(
     taskId: task.sId,
     taskText: task.text,
     sources,
-    customMessage: mergeKickoffCustomMessage(
-      task.agentInstructions,
-      customMessage
-    ),
+    agentInstructions: task.agentInstructions,
   });
 
   let conversationId = await task.getLatestConversationId(auth);
