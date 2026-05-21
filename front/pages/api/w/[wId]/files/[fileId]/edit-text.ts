@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { editClientExecutableFile } from "@app/lib/api/files/client_executable";
