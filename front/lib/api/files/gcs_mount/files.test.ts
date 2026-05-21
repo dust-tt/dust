@@ -126,6 +126,47 @@ describe("createGCSMountFile", () => {
     assert(entryRes.isOk());
     expect(entryRes.value.thumbnailUrl).toBeNull();
   });
+
+  it("dual-writes to the pods/ mirror for project use-case", async () => {
+    const content = Buffer.from("hello");
+
+    await createGCSMountFile(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeFilePath: "report.txt", content, contentType: "text/plain" }
+    );
+
+    const bucket = vi.mocked(getPrivateUploadBucket)();
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${workspaceId}/projects/proj123/files/report.txt`
+    );
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${workspaceId}/pods/proj123/files/report.txt`
+    );
+    expect(saveMock).toHaveBeenCalledTimes(2);
+    expect(saveMock).toHaveBeenNthCalledWith(1, content, {
+      contentType: "text/plain",
+    });
+    expect(saveMock).toHaveBeenNthCalledWith(2, content, {
+      contentType: "text/plain",
+    });
+  });
+
+  it("does not write to pods/ for conversation use-case", async () => {
+    await createGCSMountFile(
+      auth,
+      { useCase: "conversation", conversationId },
+      {
+        relativeFilePath: "report.txt",
+        content: Buffer.from("hello"),
+        contentType: "text/plain",
+      }
+    );
+
+    const bucket = vi.mocked(getPrivateUploadBucket)();
+    expect(bucket.file).toHaveBeenCalledTimes(1);
+    expect(saveMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("createGCSMountDirectory", () => {
@@ -607,6 +648,32 @@ describe("copyMountFile", () => {
       expect(result.error.message).toContain("GCS copy unavailable");
     }
   });
+
+  it("mirrors the destination write on pods/ when dest is a project", async () => {
+    const result = await copyMountFile(auth, {
+      source: {
+        scope: { useCase: "conversation", conversationId: "src-conv" },
+        relativeFilePath: "report.pdf",
+      },
+      dest: {
+        scope: { useCase: "project", projectId: "proj123" },
+        relativeFilePath: "report.pdf",
+      },
+    });
+
+    assert(result.isOk());
+    const sourcePath = `w/${workspaceId}/conversations/src-conv/files/report.pdf`;
+    const destProjectPath = `w/${workspaceId}/projects/proj123/files/report.pdf`;
+    const destPodsPath = `w/${workspaceId}/pods/proj123/files/report.pdf`;
+
+    expect(copyFileMock).toHaveBeenCalledTimes(2);
+    expect(copyFileMock).toHaveBeenNthCalledWith(
+      1,
+      sourcePath,
+      destProjectPath
+    );
+    expect(copyFileMock).toHaveBeenNthCalledWith(2, sourcePath, destPodsPath);
+  });
 });
 
 describe("renameGCSMountFile", () => {
@@ -681,6 +748,49 @@ describe("renameGCSMountFile", () => {
     }
     expect(deleteMock).not.toHaveBeenCalled();
   });
+
+  it("mirrors rename on pods/ for project use-case using the new canonical as source", async () => {
+    await renameGCSMountFile(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeFilePath: "report.pdf", newFileName: "final.pdf" }
+    );
+
+    const projectPrefix = `w/${workspaceId}/projects/proj123/files/`;
+    const podsPrefix = `w/${workspaceId}/pods/proj123/files/`;
+
+    expect(copyFileMock).toHaveBeenCalledTimes(2);
+    expect(copyFileMock).toHaveBeenNthCalledWith(
+      1,
+      `${projectPrefix}report.pdf`,
+      `${projectPrefix}final.pdf`
+    );
+    // Pods mirror copies from the NEW canonical (not from an old pods/ source,
+    // which may not exist for files predating the dual-write).
+    expect(copyFileMock).toHaveBeenNthCalledWith(
+      2,
+      `${projectPrefix}final.pdf`,
+      `${podsPrefix}final.pdf`
+    );
+
+    expect(deleteMock).toHaveBeenCalledTimes(2);
+    expect(deleteMock).toHaveBeenNthCalledWith(1, `${projectPrefix}report.pdf`);
+    expect(deleteMock).toHaveBeenNthCalledWith(2, `${podsPrefix}report.pdf`, {
+      ignoreNotFound: true,
+    });
+  });
+
+  it("does not mirror rename on pods/ for conversation use-case", async () => {
+    const result = await renameGCSMountFile(
+      auth,
+      { useCase: "conversation", conversationId: "conv-rename" },
+      { relativeFilePath: "report.pdf", newFileName: "final.pdf" }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(copyFileMock).toHaveBeenCalledTimes(1);
+    expect(deleteMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("deleteGCSMountFile", () => {
@@ -726,6 +836,35 @@ describe("deleteGCSMountFile", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("delete failed");
     }
+  });
+
+  it("mirrors delete on pods/ for project use-case", async () => {
+    await deleteGCSMountFile(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeFilePath: "archive/old.pdf" }
+    );
+
+    const projectPath = `w/${workspaceId}/projects/proj123/files/archive/old.pdf`;
+    const podsPath = `w/${workspaceId}/pods/proj123/files/archive/old.pdf`;
+
+    expect(deleteMock).toHaveBeenCalledTimes(2);
+    expect(deleteMock).toHaveBeenNthCalledWith(1, projectPath, {
+      ignoreNotFound: true,
+    });
+    expect(deleteMock).toHaveBeenNthCalledWith(2, podsPath, {
+      ignoreNotFound: true,
+    });
+  });
+
+  it("does not mirror delete on pods/ for conversation use-case", async () => {
+    await deleteGCSMountFile(
+      auth,
+      { useCase: "conversation", conversationId: "conv-del" },
+      { relativeFilePath: "old.pdf" }
+    );
+
+    expect(deleteMock).toHaveBeenCalledTimes(1);
   });
 });
 

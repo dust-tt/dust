@@ -7,7 +7,7 @@ import {
   getConversationFilePath,
   getProjectFilesBasePath,
   makeProcessedMountFileName,
-  toPodsMountFilePath,
+  toPodMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import {
   getProcessedContentType,
@@ -947,7 +947,7 @@ export class FileResource extends BaseResource<FileModel> {
       });
 
       // Double-write to the pods/ path for project mount paths.
-      const podsMountFilePath = toPodsMountFilePath(this.mountFilePath);
+      const podsMountFilePath = toPodMountFilePath(this.mountFilePath);
       if (podsMountFilePath) {
         await getPrivateUploadBucket().uploadRawContentToBucket({
           content,
@@ -1089,7 +1089,7 @@ export class FileResource extends BaseResource<FileModel> {
     await bucket.copyFile(srcOriginalPath, mountFilePath);
 
     // Double-write to the pods/ path for project mount paths.
-    const podsMountFilePath = toPodsMountFilePath(mountFilePath);
+    const podsMountFilePath = toPodMountFilePath(mountFilePath);
     if (podsMountFilePath) {
       await bucket.copyFile(srcOriginalPath, podsMountFilePath);
     }
@@ -1103,7 +1103,7 @@ export class FileResource extends BaseResource<FileModel> {
       });
       await bucket.copyFile(srcProcessedPath, processedMountPath);
 
-      const processedPodsMountPath = toPodsMountFilePath(processedMountPath);
+      const processedPodsMountPath = toPodMountFilePath(processedMountPath);
       if (processedPodsMountPath) {
         await bucket.copyFile(srcProcessedPath, processedPodsMountPath);
       }
@@ -1133,7 +1133,7 @@ export class FileResource extends BaseResource<FileModel> {
     await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
 
     // Mirror delete on the pods/ side for project files (double-write counterpart).
-    const podsMountFilePath = toPodsMountFilePath(this.mountFilePath);
+    const podsMountFilePath = toPodMountFilePath(this.mountFilePath);
     if (podsMountFilePath) {
       await bucket.delete(podsMountFilePath, { ignoreNotFound: true });
     }
@@ -1152,7 +1152,7 @@ export class FileResource extends BaseResource<FileModel> {
     });
     await bucket.delete(processedMountPath, { ignoreNotFound: true });
 
-    const processedPodsMountPath = toPodsMountFilePath(processedMountPath);
+    const processedPodsMountPath = toPodMountFilePath(processedMountPath);
     if (processedPodsMountPath) {
       await bucket.delete(processedPodsMountPath, { ignoreNotFound: true });
     }

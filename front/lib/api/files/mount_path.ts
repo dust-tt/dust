@@ -65,7 +65,7 @@ export function getProjectFilesBasePath({
   return `${getBaseMountPathForWorkspace({ workspaceId })}projects/${projectId}/files/`;
 }
 
-export function getPodsFilesBasePath({
+export function getPodFilesBasePath({
   workspaceId,
   projectId,
 }: {
@@ -79,7 +79,7 @@ export function getPodsFilesBasePath({
  * Convert a project mount file path (`w/{wId}/projects/{pId}/files/...`) to its pods/ counterpart
  * (`w/{wId}/pods/{pId}/files/...`). Returns `null` if the input is not a project mount path.
  */
-export function toPodsMountFilePath(
+export function toPodMountFilePath(
   projectMountFilePath: string
 ): string | null {
   const match = projectMountFilePath.match(/^(w\/[^/]+\/)projects\/(.+)$/);
