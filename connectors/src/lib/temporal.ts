@@ -140,6 +140,20 @@ export async function getConnectorId(
         null;
     }
 
+    // If we still don't have a connector ID, look it up in the arguments of the workflow.
+    if (connectorId === null) {
+      const args = await getTemporalWorkflowArguments({ workflowId });
+
+      if (
+        typeof args[0] === "object" &&
+        args[0] !== null &&
+        "connectorId" in args[0] &&
+        typeof args[0].connectorId === "number"
+      ) {
+        connectorId = args[0].connectorId;
+      }
+    }
+
     if (connectorId !== null) {
       CONNECTOR_ID_CACHE[workflowId] = connectorId;
     }
