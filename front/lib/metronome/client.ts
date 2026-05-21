@@ -1309,6 +1309,7 @@ export async function addPaymentGatedCommitToContract({
           },
           payment_gate_config: {
             payment_gate_type: "STRIPE",
+            tax_type: "STRIPE",
             stripe_config: {
               payment_type: "INVOICE",
               invoice_metadata: stripeInvoiceMetadata,

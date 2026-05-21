@@ -9,6 +9,10 @@ import {
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import {
+  markAwuPurchaseAttemptFailed,
+  markAwuPurchaseAttemptSucceeded,
+} from "@app/lib/credits/awu_purchase_status";
+import {
   calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
   grantFreeCreditFromMetronomeSegment,
@@ -315,6 +319,14 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
           { customerId, contractId, invoiceId, paymentStatus },
           "[Metronome Webhook] Payment-gated commit paid"
         );
+        // Resolve the AWU purchase attempt the UI is polling for. The
+        // store ignores the call if no attempt is pending on this
+        // contract (e.g. a non-AWU payment-gated commit).
+        await markAwuPurchaseAttemptSucceeded({
+          workspaceId: workspace.sId,
+          contractId,
+          invoiceId,
+        });
       } else {
         logger.warn(
           {
@@ -326,6 +338,12 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
           },
           "[Metronome Webhook] Payment-gated commit payment failed"
         );
+        await markAwuPurchaseAttemptFailed({
+          workspaceId: workspace.sId,
+          contractId,
+          errorMessage: errorMessage ?? "Payment failed",
+          invoiceId: invoiceId || undefined,
+        });
       }
       break;
     }

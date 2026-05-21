@@ -1,6 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycle } from "@app/lib/client/subscription";
 import {
+  recordAwuPurchaseAttemptSyncFailure,
+  setAwuPurchaseAttemptPending,
+} from "@app/lib/credits/awu_purchase_status";
+import {
   AWU_PRICE_PER_CREDIT,
   metronomeAmount,
 } from "@app/lib/metronome/amounts";
@@ -279,6 +283,18 @@ export async function purchaseAwuCredits(
   const oneYearFromNow = new Date(now);
   oneYearFromNow.setUTCFullYear(oneYearFromNow.getUTCFullYear() + 1);
 
+  const uniquenessKey = `awuPurchase-${workspace.sId}-${now.getTime()}`;
+
+  // Record the attempt as pending BEFORE calling Metronome so the
+  // `payment_gate.payment_status` webhook can update it on arrival —
+  // the webhook can race ahead of this function returning.
+  await setAwuPurchaseAttemptPending({
+    workspaceId: workspace.sId,
+    contractId: metronomeContractId,
+    uniquenessKey,
+    amountCredits,
+  });
+
   const editResult = await addPaymentGatedCommitToContract({
     metronomeCustomerId,
     metronomeContractId,
@@ -293,7 +309,7 @@ export async function purchaseAwuCredits(
     invoiceTimestamp: now,
     priority: AWU_PRIORITY_PURCHASED_COMMIT,
     name: `Credit top-up: ${amountCredits.toLocaleString()} credits`,
-    uniquenessKey: `awuPurchase-${workspace.sId}-${now.getTime()}`,
+    uniquenessKey,
     // Stamped on the Stripe invoice Metronome pushes downstream so the
     // existing eligibility check (`isAwuPurchaseInvoice`) still recognises
     // pending AWU purchases.
@@ -313,6 +329,12 @@ export async function purchaseAwuCredits(
       },
       "[AWU Purchase] Failed to add payment-gated commit"
     );
+    // No webhook will fire for an edit that never landed in Metronome —
+    // flip the attempt to failed so the UI can show the error immediately.
+    await recordAwuPurchaseAttemptSyncFailure({
+      workspaceId: workspace.sId,
+      errorMessage: editResult.error.message,
+    });
     return new Err({
       code: "purchase_failed",
       message: editResult.error.message,

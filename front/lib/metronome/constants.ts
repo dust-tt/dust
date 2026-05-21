@@ -81,6 +81,15 @@ export const PLAN_CODE_CUSTOM_FIELD_KEY = "DUST_PLAN_CODE";
 // which can change on redeploy).
 export const SEAT_TYPE_CUSTOM_FIELD_KEY = "DUST_SEAT_TYPE";
 
+// Product-level custom field carrying the Stripe product ID Metronome
+// should reference when invoicing this product. Populated manually in the
+// Metronome UI per product; read by Metronome (via the
+// `invoiceitem.price.product` mapping in the Stripe integration settings)
+// when generating Stripe invoices for payment-gated commits — without it,
+// the payment-gate workflow fails with "Failed to get Stripe product ID
+// for Metronome Product '…'".
+export const STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY = "STRIPE_PRODUCT_ID";
+
 // AWU (Agentic Work Units) differs per environment.
 export const DEV_CREDIT_TYPE_AWU_ID = "eb003cc7-4935-467d-a41c-c1738c1c9dc2";
 export const PROD_CREDIT_TYPE_AWU_ID = "8dfc9846-a38e-44f8-a625-bd9372af681c";
