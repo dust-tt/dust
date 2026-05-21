@@ -16,7 +16,6 @@ import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 const MICROSOFT_SENSITIVITY_LABELS_CONFIG_KEY =
   "microsoftSensitivityLabelsToInclude";
@@ -56,16 +55,25 @@ const SourceQuerySchema = z
     }
   );
 
-const PostBodySchema = z.object({
-  dataSourceId: z.string().optional(),
-  internalMCPServerId: z.string().optional(),
-  allowedLabels: z.array(z.string()),
-});
+const PostBodySchema = z
+  .object({
+    dataSourceId: z.string().optional(),
+    internalMCPServerId: z.string().optional(),
+    allowedLabels: z.array(z.string()),
+  })
+  .refine(
+    ({ dataSourceId, internalMCPServerId }) =>
+      !!dataSourceId !== !!internalMCPServerId,
+    {
+      message:
+        "Exactly one of dataSourceId or internalMCPServerId must be provided.",
+    }
+  );
 
 // Mounted at /api/w/:wId/data-classification-labels.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", validate("query", SourceQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
@@ -89,18 +97,9 @@ app.get("/", async (ctx) => {
     });
   }
 
-  const sourceValidation = SourceQuerySchema.safeParse(ctx.req.query());
-  if (!sourceValidation.success) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: fromError(sourceValidation.error).toString(),
-      },
-    });
-  }
+  const source = ctx.req.valid("query");
 
-  const sourceResult = await resolveLabelSource(auth, sourceValidation.data);
+  const sourceResult = await resolveLabelSource(auth, source);
   if (sourceResult.isErr()) {
     const { type, message } = sourceResult.error;
     return apiError(ctx, resolveSourceErrorToApiError(type, message));
@@ -209,18 +208,7 @@ app.post("/", validate("json", PostBodySchema), async (ctx) => {
 
   const body = ctx.req.valid("json");
 
-  const sourceValidation = SourceQuerySchema.safeParse(body);
-  if (!sourceValidation.success) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: fromError(sourceValidation.error).toString(),
-      },
-    });
-  }
-
-  const sourceResult = await resolveLabelSource(auth, sourceValidation.data);
+  const sourceResult = await resolveLabelSource(auth, body);
   if (sourceResult.isErr()) {
     const { type, message } = sourceResult.error;
     return apiError(ctx, resolveSourceErrorToApiError(type, message));
