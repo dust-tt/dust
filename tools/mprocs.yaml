@@ -72,14 +72,14 @@ procs:
       echo "Waiting for sdks-js to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting front-api (Hono strangler)."
+      echo "sdks-js ready. Starting front-api (Hono only, no Next)."
       # exec replaces this shell with tsx so mprocs's signals reach node
       # directly (npm doesn't reliably forward signals to its child).
       export NODE_ENV=development
       exec ../node_modules/.bin/tsx ./server.ts
     autostart: false
 
-  front-hono-only:
+  front-strangler:
     cwd: "<CONFIG_DIR>/../front-api"
     shell: |
       set -euo pipefail
@@ -91,9 +91,9 @@ procs:
       echo "Waiting for sdks-js to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting front-api (Hono only, no Next)."
+      echo "sdks-js ready. Starting front-api (Hono strangler with Next fallback)."
       export NODE_ENV=development
-      exec ../node_modules/.bin/tsx ./server-hono.ts
+      exec ../node_modules/.bin/tsx ./server-strangler.ts
     autostart: false
 
   front-workers:
