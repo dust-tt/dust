@@ -38,7 +38,6 @@ import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shar
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { makeSId } from "@app/lib/resources/string_ids";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentLoopArgs,
@@ -258,13 +257,11 @@ async function collectTokenUsage(
   const runResources = await RunResource.listByDustRunIds(auth, {
     dustRunIds: agentMessage.runIds,
   });
-  const runUsages = await concurrentExecutor(
-    runResources,
-    async (runResource) => runResource.listRunUsages(auth),
-    { concurrency: 5 }
-  );
+  const runUsages = await RunResource.listRunUsagesForRuns(auth, {
+    runs: runResources,
+  });
 
-  return runUsages.flat().reduce(
+  return runUsages.reduce(
     (acc, usage) => {
       return {
         prompt: acc.prompt + usage.promptTokens,

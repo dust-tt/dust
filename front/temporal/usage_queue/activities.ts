@@ -300,15 +300,7 @@ export async function emitMetronomeUsageEventsActivity(
   const runs = await RunResource.listByDustRunIds(auth, {
     dustRunIds: effectiveRunIds,
   });
-  const runUsages = (
-    await concurrentExecutor(
-      runs,
-      (run) => {
-        return run.listRunUsages(auth);
-      },
-      { concurrency: 10 }
-    )
-  ).flat();
+  const runUsages = await RunResource.listRunUsagesForRuns(auth, { runs });
 
   // Get MCP actions — filter to this execution's steps if startStep is available,
   // and only include actions with a final status (succeeded/errored/denied).

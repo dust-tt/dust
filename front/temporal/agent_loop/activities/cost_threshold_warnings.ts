@@ -5,7 +5,6 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -117,13 +116,11 @@ async function getCumulativeCostMicroUsd(
   }
 
   const runResources = await RunResource.listByDustRunIds(auth, { dustRunIds });
-  const runUsages = await concurrentExecutor(
-    runResources,
-    async (runResource) => runResource.listRunUsages(auth),
-    { concurrency: 5 }
-  );
+  const runUsages = await RunResource.listRunUsagesForRuns(auth, {
+    runs: runResources,
+  });
 
-  return runUsages.flat().reduce((acc, usage) => acc + usage.costMicroUsd, 0);
+  return runUsages.reduce((acc, usage) => acc + usage.costMicroUsd, 0);
 }
 
 /**
