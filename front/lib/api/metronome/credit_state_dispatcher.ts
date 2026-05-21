@@ -1,9 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/payg";
-import {
-  clearUserCapBlocked,
-  setUserCapBlocked,
-} from "@app/lib/metronome/user_block";
+import { clearUserCapBlocked } from "@app/lib/metronome/user_block";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
 import { transitionWorkspaceCreditState } from "@app/lib/metronome/workspace_credit_state_machine";
@@ -48,11 +45,6 @@ export async function dispatchPerUserCapReached({
     return;
   }
 
-  if (membership.seatType !== "workspace") {
-    await setUserCapBlocked(workspace.sId, userId);
-    return;
-  }
-
   await transitionUserCreditState(
     membership,
     { type: "per_user_cap_reached" },
@@ -89,11 +81,6 @@ export async function dispatchPerUserCapResolved({
       { workspaceId: workspace.sId, userId },
       "[CreditStateDispatcher] per_user_cap_resolved: no active membership, clearing legacy block"
     );
-    await clearUserCapBlocked(workspace.sId, userId);
-    return;
-  }
-
-  if (membership.seatType !== "workspace") {
     await clearUserCapBlocked(workspace.sId, userId);
     return;
   }
