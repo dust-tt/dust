@@ -32,13 +32,24 @@ async function handler(
     });
   }
 
-  const claims = await verifySandboxExecToken(req.headers.authorization ?? "");
-  if (!claims) {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) {
     return apiError(req, res, {
-      status_code: 403,
+      status_code: 401,
       api_error: {
         type: "not_authenticated",
-        message: "The authentication token is invalid.",
+        message: "The request does not have valid authentication credentials.",
+      },
+    });
+  }
+
+  const claims = await verifySandboxExecToken(token);
+  if (!claims) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "invalid_sandbox_token_error",
+        message: "The sandbox token is invalid or expired.",
       },
     });
   }
