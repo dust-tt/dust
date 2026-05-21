@@ -1,0 +1,27 @@
+front/types/files.ts
+  h_2e74e3b901ec70 249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "54d676eeabb87ebde5fad9101c12fe29ca4f4a68",
+  "prompts": {
+    "4b53826f919ad722": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d285472-9e21-4b63-a8d9-3b99f547062b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>",
+      "total_additions": 173,
+      "total_deletions": 12,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_2e74e3b901ec70": {
+      "author": "Zeid Marouf <4321056+zmarouf@users.noreply.github.com>"
+    }
+  }
+}
