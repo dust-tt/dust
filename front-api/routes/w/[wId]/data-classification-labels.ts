@@ -236,8 +236,11 @@ app.post(
       return apiError(ctx, resolveSourceErrorToApiError(type, message));
     }
 
-    const { sourceType, sourceId, connectorId: resolvedConnectorId } =
-      sourceResult.value;
+    const {
+      sourceType,
+      sourceId,
+      connectorId: resolvedConnectorId,
+    } = sourceResult.value;
 
     const { allowedLabels } = body;
 
@@ -277,10 +280,11 @@ app.post(
       });
     }
 
-    const updated = await WorkspaceSensitivityLabelConfigResource.upsert(
-      auth,
-      { sourceType, sourceId, allowedLabels }
-    );
+    const updated = await WorkspaceSensitivityLabelConfigResource.upsert(auth, {
+      sourceType,
+      sourceId,
+      allowedLabels,
+    });
 
     return ctx.json({ config: updated.toJSON() });
   }

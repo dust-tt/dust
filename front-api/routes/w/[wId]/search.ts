@@ -169,26 +169,30 @@ app.get("/", async (ctx) => {
   });
 });
 
-app.post("/", validate("json", SearchRequestBody), async (ctx): HandlerResult<SearchResult> => {
-  const auth = ctx.get("auth");
-  const body = ctx.req.valid("json");
+app.post(
+  "/",
+  validate("json", SearchRequestBody),
+  async (ctx): HandlerResult<SearchResult> => {
+    const auth = ctx.get("auth");
+    const body = ctx.req.valid("json");
 
-  // Build a query-string-like object for handleSearch (cursor pagination).
-  const reqQuery: Record<string, string | undefined> = {
-    cursor: ctx.req.query("cursor"),
-    limit: ctx.req.query("limit"),
-  };
+    // Build a query-string-like object for handleSearch (cursor pagination).
+    const reqQuery: Record<string, string | undefined> = {
+      cursor: ctx.req.query("cursor"),
+      limit: ctx.req.query("limit"),
+    };
 
-  const searchResult = await handleSearch(reqQuery, auth, body);
+    const searchResult = await handleSearch(reqQuery, auth, body);
 
-  if (searchResult.isErr()) {
-    return apiError(ctx, {
-      status_code: searchResult.error.status,
-      api_error: searchResult.error.error,
-    });
+    if (searchResult.isErr()) {
+      return apiError(ctx, {
+        status_code: searchResult.error.status,
+        api_error: searchResult.error.error,
+      });
+    }
+
+    return ctx.json(searchResult.value);
   }
-
-  return ctx.json(searchResult.value);
-});
+);
 
 export default app;

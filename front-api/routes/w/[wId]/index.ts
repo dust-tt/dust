@@ -209,260 +209,279 @@ app.get("/", async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
   return ctx.json({ workspace: owner });
 });
 
-app.post("/", validate("json", PostWorkspaceRequestBodySchema), async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
+app.post(
+  "/",
+  validate("json", PostWorkspaceRequestBodySchema),
+  async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
-  if (!auth.isAdmin()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can access this endpoint.",
-      },
-    });
-  }
-
-  const body = ctx.req.valid("json");
-
-  const workspace = await WorkspaceResource.fetchByModelId(owner.id);
-  if (!workspace) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to modify was not found.",
-      },
-    });
-  }
-
-  if ("name" in body) {
-    const newName = escape(body.name);
-    const renameRes = await renameWorkspace(owner, newName);
-    if (renameRes.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: renameRes.error.message,
-        },
-      });
-    }
-    owner.name = newName;
-  } else if ("ssoEnforced" in body) {
-    await workspace.updateWorkspaceSettings({
-      ssoEnforced: body.ssoEnforced,
-    });
-
-    owner.ssoEnforced = body.ssoEnforced;
-  } else if ("regionalModelsOnly" in body) {
-    await workspace.updateWorkspaceSettings({
-      regionalModelsOnly: body.regionalModelsOnly,
-    });
-
-    owner.regionalModelsOnly = body.regionalModelsOnly;
-  } else if (
-    "whiteListedProviders" in body &&
-    "defaultEmbeddingProvider" in body
-  ) {
-    await workspace.updateWorkspaceSettings({
-      whiteListedProviders: body.whiteListedProviders,
-      defaultEmbeddingProvider: body.defaultEmbeddingProvider,
-    });
-    owner.whiteListedProviders = body.whiteListedProviders;
-    owner.defaultEmbeddingProvider = workspace.defaultEmbeddingProvider;
-  } else if ("workOSOrganizationId" in body) {
-    await workspace.updateWorkspaceSettings({
-      workOSOrganizationId: body.workOSOrganizationId,
-    });
-    owner.workOSOrganizationId = body.workOSOrganizationId;
-  } else if ("allowContentCreationFileSharing" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      allowContentCreationFileSharing: body.allowContentCreationFileSharing,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-
-    // if public sharing is disabled, downgrade share scope of all public files
-    if (!body.allowContentCreationFileSharing) {
-      await FileResource.revokePublicSharingInWorkspace(auth, {
-        newPolicy: "workspace_and_emails",
-      });
-    }
-  } else if ("sharingPolicy" in body) {
-    await workspace.updateWorkspaceSettings({
-      sharingPolicy: body.sharingPolicy,
-    });
-
-    // If the new policy restricts public sharing, downgrade existing public frames.
-    if (body.sharingPolicy !== "all_scopes") {
-      await FileResource.revokePublicSharingInWorkspace(auth, {
-        newPolicy: body.sharingPolicy,
-      });
-    }
-  } else if ("allowVoiceTranscription" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      allowVoiceTranscription: body.allowVoiceTranscription,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-  } else if ("privateConversationUrlsByDefault" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      privateConversationUrlsByDefault: body.privateConversationUrlsByDefault,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-  } else if ("allowEmailAgents" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      allowEmailAgents: body.allowEmailAgents,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-  } else if ("allowReinforcement" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      allowReinforcement: body.allowReinforcement,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-
-    void emitAuditLogEvent({
-      auth,
-      action: "self_improvement.enabled",
-      targets: [buildAuditLogTarget("workspace", owner)],
-      context: getAuditLogContext(auth),
-      metadata: {
-        enabled: String(body.allowReinforcement),
-      },
-    });
-  } else if ("allowReinforcementBatchMode" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      allowReinforcementBatchMode: body.allowReinforcementBatchMode,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-
-    void emitAuditLogEvent({
-      auth,
-      action: "self_improvement.batch_mode_updated",
-      targets: [buildAuditLogTarget("workspace", owner)],
-      context: getAuditLogContext(auth),
-      metadata: {
-        enabled: String(body.allowReinforcementBatchMode),
-      },
-    });
-  } else if ("disableExtensionMcpTools" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      disableExtensionMcpTools: body.disableExtensionMcpTools,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-  } else if ("allowOpenProjects" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      allowOpenProjects: body.allowOpenProjects,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-  } else if ("allowManualProjectKnowledgeManagement" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      allowManualProjectKnowledgeManagement:
-        body.allowManualProjectKnowledgeManagement,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-  } else if ("reinforcementCapMicroUsd" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      reinforcementCapMicroUsd: body.reinforcementCapMicroUsd,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-  } else if ("selfImprovementCapPerSkillMicroUsd" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      selfImprovementCapPerSkillMicroUsd:
-        body.selfImprovementCapPerSkillMicroUsd,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-  } else if ("sandboxAllowAgentEgressRequests" in body) {
-    if (!(await hasFeatureFlag(auth, "sandbox_workspace_admin"))) {
+    if (!auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "feature_flag_not_found",
+          type: "workspace_auth_error",
           message:
-            "Sandbox workspace admin configuration is not enabled for this workspace.",
+            "Only users that are `admins` for the current workspace can access this endpoint.",
         },
       });
     }
 
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      sandboxAllowAgentEgressRequests: body.sandboxAllowAgentEgressRequests,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
+    const body = ctx.req.valid("json");
 
-    void emitAuditLogEvent({
-      auth,
-      action: "sandbox_egress_policy.agent_requests_setting_updated",
-      targets: [
-        buildAuditLogTarget("workspace", owner),
-        {
-          type: "sandbox_egress_policy",
-          id: owner.sId,
-          name: "Sandbox egress policy",
+    const workspace = await WorkspaceResource.fetchByModelId(owner.id);
+    if (!workspace) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "workspace_not_found",
+          message: "The workspace you're trying to modify was not found.",
         },
-      ],
-      context: getAuditLogContext(auth),
-      metadata: {
-        enabled: String(body.sandboxAllowAgentEgressRequests),
-      },
-    });
-  } else if ("disableAuditLogs" in body) {
-    const previousMetadata = owner.metadata ?? {};
-    const newMetadata = {
-      ...previousMetadata,
-      disableAuditLogs: body.disableAuditLogs,
-    };
-    await workspace.updateWorkspaceSettings({ metadata: newMetadata });
-    owner.metadata = newMetadata;
-    void emitAuditLogEvent({
-      auth,
-      action: "workspace.audit_logs_updated",
-      targets: [buildAuditLogTarget("workspace", owner)],
-      context: getAuditLogContext(auth),
-      metadata: {
-        enabled: String(!body.disableAuditLogs),
-      },
-    });
-  } else if ("domainUpdates" in body) {
-    for (const update of body.domainUpdates) {
+      });
+    }
+
+    if ("name" in body) {
+      const newName = escape(body.name);
+      const renameRes = await renameWorkspace(owner, newName);
+      if (renameRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: renameRes.error.message,
+          },
+        });
+      }
+      owner.name = newName;
+    } else if ("ssoEnforced" in body) {
+      await workspace.updateWorkspaceSettings({
+        ssoEnforced: body.ssoEnforced,
+      });
+
+      owner.ssoEnforced = body.ssoEnforced;
+    } else if ("regionalModelsOnly" in body) {
+      await workspace.updateWorkspaceSettings({
+        regionalModelsOnly: body.regionalModelsOnly,
+      });
+
+      owner.regionalModelsOnly = body.regionalModelsOnly;
+    } else if (
+      "whiteListedProviders" in body &&
+      "defaultEmbeddingProvider" in body
+    ) {
+      await workspace.updateWorkspaceSettings({
+        whiteListedProviders: body.whiteListedProviders,
+        defaultEmbeddingProvider: body.defaultEmbeddingProvider,
+      });
+      owner.whiteListedProviders = body.whiteListedProviders;
+      owner.defaultEmbeddingProvider = workspace.defaultEmbeddingProvider;
+    } else if ("workOSOrganizationId" in body) {
+      await workspace.updateWorkspaceSettings({
+        workOSOrganizationId: body.workOSOrganizationId,
+      });
+      owner.workOSOrganizationId = body.workOSOrganizationId;
+    } else if ("allowContentCreationFileSharing" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowContentCreationFileSharing: body.allowContentCreationFileSharing,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      // if public sharing is disabled, downgrade share scope of all public files
+      if (!body.allowContentCreationFileSharing) {
+        await FileResource.revokePublicSharingInWorkspace(auth, {
+          newPolicy: "workspace_and_emails",
+        });
+      }
+    } else if ("sharingPolicy" in body) {
+      await workspace.updateWorkspaceSettings({
+        sharingPolicy: body.sharingPolicy,
+      });
+
+      // If the new policy restricts public sharing, downgrade existing public frames.
+      if (body.sharingPolicy !== "all_scopes") {
+        await FileResource.revokePublicSharingInWorkspace(auth, {
+          newPolicy: body.sharingPolicy,
+        });
+      }
+    } else if ("allowVoiceTranscription" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowVoiceTranscription: body.allowVoiceTranscription,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("privateConversationUrlsByDefault" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        privateConversationUrlsByDefault: body.privateConversationUrlsByDefault,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("allowEmailAgents" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowEmailAgents: body.allowEmailAgents,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("allowReinforcement" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowReinforcement: body.allowReinforcement,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "self_improvement.enabled",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowReinforcement),
+        },
+      });
+    } else if ("allowReinforcementBatchMode" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowReinforcementBatchMode: body.allowReinforcementBatchMode,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "self_improvement.batch_mode_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowReinforcementBatchMode),
+        },
+      });
+    } else if ("disableExtensionMcpTools" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        disableExtensionMcpTools: body.disableExtensionMcpTools,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("allowOpenProjects" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowOpenProjects: body.allowOpenProjects,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("allowManualProjectKnowledgeManagement" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowManualProjectKnowledgeManagement:
+          body.allowManualProjectKnowledgeManagement,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("reinforcementCapMicroUsd" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        reinforcementCapMicroUsd: body.reinforcementCapMicroUsd,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("selfImprovementCapPerSkillMicroUsd" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        selfImprovementCapPerSkillMicroUsd:
+          body.selfImprovementCapPerSkillMicroUsd,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("sandboxAllowAgentEgressRequests" in body) {
+      if (!(await hasFeatureFlag(auth, "sandbox_workspace_admin"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_flag_not_found",
+            message:
+              "Sandbox workspace admin configuration is not enabled for this workspace.",
+          },
+        });
+      }
+
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        sandboxAllowAgentEgressRequests: body.sandboxAllowAgentEgressRequests,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "sandbox_egress_policy.agent_requests_setting_updated",
+        targets: [
+          buildAuditLogTarget("workspace", owner),
+          {
+            type: "sandbox_egress_policy",
+            id: owner.sId,
+            name: "Sandbox egress policy",
+          },
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.sandboxAllowAgentEgressRequests),
+        },
+      });
+    } else if ("disableAuditLogs" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        disableAuditLogs: body.disableAuditLogs,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.audit_logs_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(!body.disableAuditLogs),
+        },
+      });
+    } else if ("domainUpdates" in body) {
+      for (const update of body.domainUpdates) {
+        const updateResult = await workspace.updateDomainAutoJoinEnabled({
+          domainAutoJoinEnabled: update.domainAutoJoinEnabled,
+          domain: update.domain,
+        });
+        if (updateResult.isErr()) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: updateResult.error.message,
+            },
+          });
+        }
+      }
+    } else {
+      const { domain, domainAutoJoinEnabled } = body;
       const updateResult = await workspace.updateDomainAutoJoinEnabled({
-        domainAutoJoinEnabled: update.domainAutoJoinEnabled,
-        domain: update.domain,
+        domainAutoJoinEnabled,
+        domain,
       });
       if (updateResult.isErr()) {
         return apiError(ctx, {
@@ -474,25 +493,10 @@ app.post("/", validate("json", PostWorkspaceRequestBodySchema), async (ctx): Han
         });
       }
     }
-  } else {
-    const { domain, domainAutoJoinEnabled } = body;
-    const updateResult = await workspace.updateDomainAutoJoinEnabled({
-      domainAutoJoinEnabled,
-      domain,
-    });
-    if (updateResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: updateResult.error.message,
-        },
-      });
-    }
-  }
 
-  return ctx.json({ workspace: owner });
-});
+    return ctx.json({ workspace: owner });
+  }
+);
 
 app.route("/analytics", analytics);
 app.route("/assistant", assistant);
