@@ -85,7 +85,7 @@ function urlToString(url: string | UrlObject): string {
     }
   }
   if (url.hash) {
-    result += url.hash;
+    result += url.hash.startsWith("#") ? url.hash : `#${url.hash}`;
   }
   return result;
 }
