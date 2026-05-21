@@ -135,6 +135,34 @@ describe("nodeCandidateFromUrl", () => {
         expect(result.provider).toBe("github");
       }
     });
+
+    it("should remove fragments from GitHub URLs", () => {
+      const result = nodeCandidateFromUrl(
+        "https://github.com/dust-tt/decisions/issues/797#issuecomment-4325601982"
+      );
+
+      expect(result).not.toBeNull();
+      expect(isUrlCandidate(result)).toBe(true);
+      if (isUrlCandidate(result)) {
+        expect(result.url).toBe(
+          "https://github.com/dust-tt/decisions/issues/797"
+        );
+        expect(result.provider).toBe("github");
+      }
+    });
+
+    it("should remove query parameters from GitHub URLs", () => {
+      const result = nodeCandidateFromUrl(
+        "https://github.com/dust-tt/dust/pull/123?notification_referrer_id=abc"
+      );
+
+      expect(result).not.toBeNull();
+      expect(isUrlCandidate(result)).toBe(true);
+      if (isUrlCandidate(result)) {
+        expect(result.url).toBe("https://github.com/dust-tt/dust/pull/123");
+        expect(result.provider).toBe("github");
+      }
+    });
   });
 
   describe("Notion", () => {

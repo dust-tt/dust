@@ -183,7 +183,11 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       return url.hostname.endsWith("github.com");
     },
     urlNormalizer: (url: URL): UrlCandidate => {
-      return { url: url.toString(), provider: "github" };
+      const normalizedUrl = new URL(url.toString());
+      normalizedUrl.search = "";
+      normalizedUrl.hash = "";
+
+      return { url: normalizedUrl.toString(), provider: "github" };
     },
   },
   notion: {
