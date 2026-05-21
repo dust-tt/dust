@@ -176,7 +176,10 @@ async function handler(
       });
       if (userRes.isErr()) {
         if (
-          shouldRelayToOtherRegion({ headers: req.headers, error: userRes.error })
+          shouldRelayToOtherRegion({
+            headers: req.headers,
+            error: userRes.error,
+          })
         ) {
           const relayRes = await relayEmailToOtherRegion(email);
           if (relayRes.isOk()) {

@@ -3,8 +3,8 @@ import {
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/api/email";
-import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { storeStripeCheckoutSessionStatus } from "@app/lib/api/stripe/checkout_status";
+import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -56,9 +56,9 @@ import logger from "@app/logger/logger";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -988,7 +988,8 @@ export async function processStripeWebhookEvent({
     }
 
     case "customer.subscription.created": {
-      const stripeSubscriptionCreated = event.data.object as Stripe.Subscription;
+      const stripeSubscriptionCreated = event.data
+        .object as Stripe.Subscription;
       const priceId =
         stripeSubscriptionCreated.items.data.length > 0
           ? stripeSubscriptionCreated.items.data[0].price?.id
@@ -1310,8 +1311,7 @@ export async function processStripeWebhookEvent({
       }
 
       // on the odd chance the change is not compatible with our logic, we panic
-      const validStatus =
-        assertStripeSubscriptionIsValid(stripeSubscription);
+      const validStatus = assertStripeSubscriptionIsValid(stripeSubscription);
       if (validStatus.isErr()) {
         getStatsDClient().increment("stripe.subscription.invalid", 1, [
           "event_type:customer.subscription.updated",

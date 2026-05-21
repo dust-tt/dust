@@ -1,5 +1,5 @@
-import inspector from "node:inspector/promises";
 import fs from "node:fs/promises";
+import inspector from "node:inspector/promises";
 import os from "node:os";
 import path from "node:path";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
