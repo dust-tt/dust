@@ -3,12 +3,17 @@
 
 import { trackPageview } from "@app/lib/api/track_pageview";
 import { getClientIp } from "@app/lib/utils/request";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type PostTrackPageviewResponseBody = {
+  ok: boolean;
+};
 
 // Mounted at /api/t/pv.
 const app = new Hono();
 
-app.post("/", async (ctx) => {
+app.post("/", async (ctx): HandlerResult<PostTrackPageviewResponseBody> => {
   const headers: Record<string, string | string[] | undefined> = {};
   ctx.req.raw.headers.forEach((value, key) => {
     headers[key] = value;
