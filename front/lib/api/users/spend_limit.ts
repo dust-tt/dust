@@ -12,7 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   clearMetronomePerUserCapAlert,
   getMetronomePerUserCap,
-  syncMetronomePerUserCapAlert,
+  upsertMetronomePerUserCapAlert,
 } from "@app/lib/metronome/per_user_alerts";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -212,15 +212,15 @@ export async function setUserSpendLimit(
       break;
     }
     case "limited": {
-      const syncResult = await syncMetronomePerUserCapAlert({
+      const upsertResult = await upsertMetronomePerUserCapAlert({
         metronomeCustomerId: workspace.metronomeCustomerId,
         workspaceId: workspace.sId,
         userId: user.sId,
         awuCredits: limit.awuCredits,
       });
-      if (syncResult.isErr()) {
+      if (upsertResult.isErr()) {
         return new Err(
-          new UserSpendLimitError("metronome_error", syncResult.error.message)
+          new UserSpendLimitError("metronome_error", upsertResult.error.message)
         );
       }
       transitionedTo = await resolveLocalCapState({

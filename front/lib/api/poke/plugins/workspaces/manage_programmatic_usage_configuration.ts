@@ -16,7 +16,7 @@ import {
 } from "@app/lib/credits/payg";
 import {
   clearMetronomePaygCapAlert,
-  syncMetronomePaygCapAlert,
+  upsertMetronomePaygCapAlert,
 } from "@app/lib/metronome/payg_alerts";
 import { PAYG_ELIGIBLE_TIERS } from "@app/lib/metronome/types";
 import {
@@ -397,10 +397,10 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
           }
         }
         if (workspace.metronomeCustomerId) {
-          const alertResult = await syncMetronomePaygCapAlert({
+          const alertResult = await upsertMetronomePaygCapAlert({
             metronomeCustomerId: workspace.metronomeCustomerId,
             paygCapDollars,
-            workspaceSId: workspace.sId,
+            workspaceId: workspace.sId,
           });
           if (alertResult.isErr()) {
             return alertResult;
@@ -435,7 +435,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
           if (workspace.metronomeCustomerId) {
             const alertResult = await clearMetronomePaygCapAlert({
               metronomeCustomerId: workspace.metronomeCustomerId,
-              workspaceSId: workspace.sId,
+              workspaceId: workspace.sId,
             });
             if (alertResult.isErr()) {
               return alertResult;

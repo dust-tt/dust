@@ -1,3 +1,8 @@
+import {
+  clearMetronomeAlert,
+  findMetronomeAlert,
+  upsertMetronomeAlert,
+} from "@app/lib/metronome/alerts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
@@ -18,35 +23,6 @@ function perUserAlertUniquenessKey(
   return `${perUserAlertUniquenessKeyPrefix(workspaceId)}${userId}`;
 }
 
-async function findExistingPerUserAlert({
-  metronomeCustomerId,
-  workspaceId,
-  userId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  userId: string;
-}): Promise<Result<{ id: string; threshold: number } | null, Error>> {
-  const target = perUserAlertUniquenessKey(workspaceId, userId);
-  try {
-    const client = getMetronomeClient();
-    for await (const entry of client.v1.customers.alerts.list({
-      customer_id: metronomeCustomerId,
-      alert_statuses: ["ENABLED", "DISABLED"],
-    })) {
-      if (entry.alert.uniqueness_key === target) {
-        return new Ok({
-          id: entry.alert.id,
-          threshold: entry.alert.threshold,
-        });
-      }
-    }
-    return new Ok(null);
-  } catch (err) {
-    return new Err(normalizeError(err));
-  }
-}
-
 /**
  * Look up the current per-user cap (if any) for a workspace/user pair by
  * matching `uniqueness_key`. Returns the alert id and threshold, or
@@ -61,10 +37,9 @@ export async function getMetronomePerUserCap({
   workspaceId: string;
   userId: string;
 }): Promise<Result<{ alertId: string; threshold: number } | null, Error>> {
-  const findResult = await findExistingPerUserAlert({
+  const findResult = await findMetronomeAlert({
     metronomeCustomerId,
-    workspaceId,
-    userId,
+    uniquenessKey: perUserAlertUniquenessKey(workspaceId, userId),
   });
   if (findResult.isErr()) {
     return new Err(findResult.error);
@@ -94,7 +69,7 @@ export async function listMetronomePerUserCapsForWorkspace({
     const client = getMetronomeClient();
     for await (const entry of client.v1.customers.alerts.list({
       customer_id: metronomeCustomerId,
-      alert_statuses: ["ENABLED", "DISABLED"],
+      alert_statuses: ["ENABLED"],
     })) {
       const key = entry.alert.uniqueness_key;
       if (!key || !key.startsWith(prefix)) {
@@ -118,7 +93,7 @@ export async function listMetronomePerUserCapsForWorkspace({
  * with a different threshold already exists, it's archived (with key
  * release) and recreated.
  */
-export async function syncMetronomePerUserCapAlert({
+export async function upsertMetronomePerUserCapAlert({
   metronomeCustomerId,
   workspaceId,
   userId,
@@ -129,56 +104,30 @@ export async function syncMetronomePerUserCapAlert({
   userId: string;
   awuCredits: number;
 }): Promise<Result<{ alertId: string }, Error>> {
-  const findResult = await findExistingPerUserAlert({
-    metronomeCustomerId,
-    workspaceId,
-    userId,
+  const upsertResult = await upsertMetronomeAlert({
+    alert_type: "spend_threshold_reached",
+    name: `Per-user cap ${workspaceId}-${userId} (${awuCredits} AWU)`,
+    threshold: awuCredits,
+    credit_type_id: getCreditTypeAwuId(),
+    customer_id: metronomeCustomerId,
+    group_values: [{ key: USER_ID_GROUP_KEY, value: userId }],
+    uniqueness_key: perUserAlertUniquenessKey(workspaceId, userId),
   });
-  if (findResult.isErr()) {
-    return new Err(findResult.error);
-  }
-  const existing = findResult.value;
-
-  if (existing && existing.threshold === awuCredits) {
-    return new Ok({ alertId: existing.id });
+  if (upsertResult.isErr()) {
+    return new Err(upsertResult.error);
   }
 
-  const client = getMetronomeClient();
-  if (existing) {
-    try {
-      await client.v1.alerts.archive({
-        id: existing.id,
-        release_uniqueness_key: true,
-      });
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
-  }
-
-  try {
-    const created = await client.v1.alerts.create({
-      alert_type: "spend_threshold_reached",
-      name: `Per-user cap (${userId})`,
-      threshold: awuCredits,
-      credit_type_id: getCreditTypeAwuId(),
-      customer_id: metronomeCustomerId,
-      group_values: [{ key: USER_ID_GROUP_KEY, value: userId }],
-      uniqueness_key: perUserAlertUniquenessKey(workspaceId, userId),
-    });
-    logger.info(
-      {
-        workspaceId: workspaceId,
-        userId: userId,
-        metronomeCustomerId,
-        alertId: created.data.id,
-        awuCredits,
-      },
-      "[Metronome PerUserCap] Synced per-user cap alert"
-    );
-    return new Ok({ alertId: created.data.id });
-  } catch (err) {
-    return new Err(normalizeError(err));
-  }
+  logger.info(
+    {
+      workspaceId,
+      userId,
+      metronomeCustomerId,
+      alertId: upsertResult.value.alertId,
+      awuCredits,
+    },
+    "[Metronome PerUserCap] Synced per-user cap alert"
+  );
+  return new Ok({ alertId: upsertResult.value.alertId });
 }
 
 /**
@@ -194,36 +143,24 @@ export async function clearMetronomePerUserCapAlert({
   workspaceId: string;
   userId: string;
 }): Promise<Result<void, Error>> {
-  const findResult = await findExistingPerUserAlert({
+  const result = await clearMetronomeAlert({
     metronomeCustomerId,
-    workspaceId,
-    userId,
+    uniquenessKey: perUserAlertUniquenessKey(workspaceId, userId),
   });
-  if (findResult.isErr()) {
-    return new Err(findResult.error);
-  }
-  const existing = findResult.value;
-  if (!existing) {
-    return new Ok(undefined);
+  if (result.isErr()) {
+    return new Err(result.error);
   }
 
-  try {
-    const client = getMetronomeClient();
-    await client.v1.alerts.archive({
-      id: existing.id,
-      release_uniqueness_key: true,
-    });
+  if (result.value) {
     logger.info(
       {
-        workspaceId: workspaceId,
-        userId: userId,
+        workspaceId,
+        userId,
         metronomeCustomerId,
-        alertId: existing.id,
+        alertId: result.value.alertId,
       },
       "[Metronome PerUserCap] Cleared per-user cap alert"
     );
-    return new Ok(undefined);
-  } catch (err) {
-    return new Err(normalizeError(err));
   }
+  return new Ok(undefined);
 }
