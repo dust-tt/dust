@@ -242,17 +242,22 @@ function flushPendingSegment({
   content,
   steps,
   suffix,
+  retryCoTBuffer,
 }: {
   lastClassification: { current: "tokens" | "chain_of_thought" | null };
   chainOfThought: { current: string };
   content: { current: string };
   steps: InlineActivityStep[];
   suffix: string;
+  retryCoTBuffer?: { current: string | null };
 }): { steps: InlineActivityStep[]; contentCleared: boolean } {
   const cls = lastClassification.current;
   if (cls === "chain_of_thought" && chainOfThought.current) {
     const cotToFlush = chainOfThought.current;
     chainOfThought.current = "";
+    if (retryCoTBuffer) {
+      retryCoTBuffer.current = null;
+    }
     return {
       steps: appendThinkingStep(steps, cotToFlush, `thinking-${suffix}`),
       contentCleared: false,
@@ -349,6 +354,14 @@ export function useAgentMessageStream({
   // thinking (chain_of_thought) and writing (tokens), flushing completed
   // segments as activity steps on each switch.
   const lastClassification = useRef<"tokens" | "chain_of_thought" | null>(null);
+  // Tracks the traceId of the last CoT event to detect Temporal retry boundaries.
+  const lastCoTTraceId = useRef<string | null>(null);
+  // Shadow buffer for retry CoT suppression. When a new traceId arrives, CoT
+  // tokens are accumulated here instead of directly into chainOfThought.current.
+  // As long as the buffer is a prefix of the existing CoT, display is unchanged
+  // (no blank/refill). Once it diverges, chainOfThought.current is replaced with
+  // the new content. Null means normal (non-retry) accumulation mode.
+  const retryCoTBuffer = useRef<string | null>(null);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -405,6 +418,8 @@ export function useAgentMessageStream({
           ) {
             content.current = "";
             chainOfThought.current = "";
+            lastCoTTraceId.current = null;
+            retryCoTBuffer.current = null;
             methods.data.map((m) => {
               if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                 return m;
@@ -426,6 +441,27 @@ export function useAgentMessageStream({
             classification === "tokens" ||
             classification === "chain_of_thought"
           ) {
+            // When a CoT event arrives with a new traceId, the Temporal activity
+            // was retried. Reset content.current (prevents stale tokens from
+            // being flushed at the transition boundary) and enter shadow-buffer
+            // mode: new CoT tokens are compared against what's already shown
+            // rather than appended, so an identical retry is invisible to the
+            // user.
+            if (classification === "chain_of_thought") {
+              const newTraceId = generationTokens.traceId;
+              if (
+                newTraceId &&
+                lastCoTTraceId.current !== null &&
+                newTraceId !== lastCoTTraceId.current
+              ) {
+                content.current = "";
+                retryCoTBuffer.current = "";
+              }
+              if (newTraceId) {
+                lastCoTTraceId.current = newTraceId;
+              }
+            }
+
             // Detect classification transitions and flush completed segments.
             if (
               lastClassification.current !== null &&
@@ -444,6 +480,7 @@ export function useAgentMessageStream({
                   content,
                   steps: m.streaming.inlineActivitySteps,
                   suffix: `pre-${Date.now()}`,
+                  retryCoTBuffer,
                 });
                 return {
                   ...m,
@@ -473,17 +510,34 @@ export function useAgentMessageStream({
 
             lastClassification.current = classification;
 
+            let suppressUpdate = false;
             if (classification === "tokens") {
               content.current += generationTokens.text;
             } else if (classification === "chain_of_thought") {
-              chainOfThought.current += generationTokens.text;
+              if (retryCoTBuffer.current !== null) {
+                retryCoTBuffer.current += generationTokens.text;
+                if (
+                  !chainOfThought.current.startsWith(retryCoTBuffer.current)
+                ) {
+                  // Retry's CoT diverged — switch to showing the new content.
+                  chainOfThought.current = retryCoTBuffer.current;
+                  retryCoTBuffer.current = null;
+                } else {
+                  // Still reproducing content already shown — suppress update.
+                  suppressUpdate = true;
+                }
+              } else {
+                chainOfThought.current += generationTokens.text;
+              }
             }
-            updateMessageThrottled({
-              chainOfThought: chainOfThought.current,
-              content: content.current,
-              methods,
-              sId,
-            });
+            if (!suppressUpdate) {
+              updateMessageThrottled({
+                chainOfThought: chainOfThought.current,
+                content: content.current,
+                methods,
+                sId,
+              });
+            }
           }
           break;
 
@@ -546,6 +600,7 @@ export function useAgentMessageStream({
               content,
               steps: m.streaming.inlineActivitySteps,
               suffix: `toolparams-${Date.now()}`,
+              retryCoTBuffer,
             });
             return {
               ...updateMessageWithAction(m, toolParams.action),
@@ -615,6 +670,7 @@ export function useAgentMessageStream({
               content,
               steps: m.streaming.inlineActivitySteps,
               suffix: `error-${Date.now()}`,
+              retryCoTBuffer,
             });
             return {
               ...m,
@@ -659,6 +715,7 @@ export function useAgentMessageStream({
               content,
               steps: m.streaming.inlineActivitySteps,
               suffix: `cancel-${Date.now()}`,
+              retryCoTBuffer,
             });
             return {
               ...m,
@@ -684,6 +741,7 @@ export function useAgentMessageStream({
           // becomes the message body via the server's canonical message).
           const cotAtSuccess = chainOfThought.current;
           chainOfThought.current = "";
+          retryCoTBuffer.current = null;
           // content.current tracks only the final text segment (intermediate
           // segments were flushed to content steps). The server's full message
           // includes ALL text, so we override with the tracked final segment.
