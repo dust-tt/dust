@@ -16,6 +16,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -60,6 +61,7 @@ export function FrameRenderer({
   contentHash,
 }: FrameRendererProps) {
   const { vizUrl } = useAuth();
+  const isMobile = useIsMobile();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
@@ -316,7 +318,7 @@ export function FrameRenderer({
                 icon={CheckCircleIcon}
                 variant="ghost"
                 disabled={true}
-                label="Saved"
+                label={isMobile ? undefined : "Saved"}
                 tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
               />
             )}
@@ -324,7 +326,9 @@ export function FrameRenderer({
               <Button
                 icon={CloudArrowUpIcon}
                 variant="ghost"
-                label={isSavingToProject ? "Saving…" : "Save"}
+                label={
+                  isMobile ? undefined : isSavingToProject ? "Saving…" : "Save"
+                }
                 isLoading={isSavingToProject}
                 tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
                 onClick={handleSaveToProject}

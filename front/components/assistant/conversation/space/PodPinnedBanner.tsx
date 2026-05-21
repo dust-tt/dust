@@ -1,5 +1,4 @@
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { getFrameDisplayTitle } from "@app/components/assistant/conversation/space/frame_display_title";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import { useScopedUIPreferences } from "@app/hooks/useScopedUIPreferences";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -9,12 +8,13 @@ import logger from "@app/logger/logger";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  ActionMapPinIcon,
   Button,
   cn,
+  EyeSlashIcon,
   FullscreenExitIcon,
   FullscreenIcon,
   Spinner,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -63,6 +63,93 @@ function PodPinnedBannerFrame({
   );
 }
 
+interface PodPinnedBannerControlsProps {
+  isEditor: boolean;
+  isFullscreen?: boolean;
+  onHide: () => void;
+  onUnpin: () => void;
+  onToggleFullscreen: () => void;
+}
+
+function PodPinnedBannerControls({
+  isEditor,
+  isFullscreen = false,
+  onHide,
+  onUnpin,
+  onToggleFullscreen,
+}: PodPinnedBannerControlsProps) {
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute right-2 top-2 z-10 opacity-0 transition-opacity",
+        "group-hover/banner:opacity-100 group-focus-within/banner:opacity-100"
+      )}
+    >
+      <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm dark:border-border-night/60 dark:bg-background-night/95">
+        <Button
+          icon={EyeSlashIcon}
+          variant="ghost"
+          size="xs"
+          tooltip="Hide banner"
+          onClick={onHide}
+        />
+        {isEditor && (
+          <Button
+            icon={ActionMapPinIcon}
+            variant="ghost"
+            size="xs"
+            tooltip="Unpin"
+            onClick={onUnpin}
+          />
+        )}
+        <Button
+          icon={isFullscreen ? FullscreenExitIcon : FullscreenIcon}
+          variant="ghost"
+          size="xs"
+          tooltip={isFullscreen ? "Exit full screen" : "Open in full screen"}
+          onClick={onToggleFullscreen}
+        />
+      </div>
+    </div>
+  );
+}
+
+interface PodPinnedBannerCollapsedAffordanceProps {
+  fileName: string;
+  onShow: () => void;
+  onOpenFullscreen: () => void;
+}
+
+function PodPinnedBannerCollapsedAffordance({
+  fileName,
+  onShow,
+  onOpenFullscreen,
+}: PodPinnedBannerCollapsedAffordanceProps) {
+  return (
+    <div className="mb-2 flex min-w-0 items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <ActionMapPinIcon className="h-3.5 w-3.5 shrink-0" />
+      <span className="shrink-0">Frame</span>
+      <span aria-hidden className="shrink-0 text-muted-foreground/50">
+        ·
+      </span>
+      <span className="min-w-0 truncate">{fileName}</span>
+      <span aria-hidden className="shrink-0 text-muted-foreground/50">
+        ·
+      </span>
+      <Button label="Show" variant="ghost" size="xs" onClick={onShow} />
+      <div className="ml-auto flex items-center gap-0.5">
+        <Button
+          icon={FullscreenIcon}
+          variant="ghost"
+          size="xs"
+          tooltip="Open in full screen"
+          onClick={onOpenFullscreen}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
   const { vizUrl } = useAuth();
   const pinnedFramePath = spaceInfo.pinnedFramePath;
@@ -76,11 +163,13 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
   const isCollapsed = bannerPreferences.collapsed;
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const toggleCollapsed = useCallback(() => {
-    setBannerPreferences({
-      collapsed: !bannerPreferences.collapsed,
-    });
-  }, [bannerPreferences.collapsed, setBannerPreferences]);
+  const showBanner = useCallback(() => {
+    setBannerPreferences({ collapsed: false });
+  }, [setBannerPreferences]);
+
+  const hideBanner = useCallback(() => {
+    setBannerPreferences({ collapsed: true });
+  }, [setBannerPreferences]);
 
   const { unpinFrame } = usePinPodBanner({
     owner,
@@ -148,6 +237,15 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isFullscreen]);
 
+  const unpinLabel =
+    pinnedFile && !pinnedFile.isDirectory
+      ? pinnedFile.fileName
+      : pinnedFramePath;
+
+  const handleUnpin = useCallback(() => {
+    void unpinFrame({ fileName: unpinLabel ?? undefined });
+  }, [unpinFrame, unpinLabel]);
+
   if (!pinnedFramePath) {
     return null;
   }
@@ -164,12 +262,6 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
     return null;
   }
 
-  const fileName =
-    pinnedFile && !pinnedFile.isDirectory
-      ? pinnedFile.fileName
-      : pinnedFramePath;
-  const displayTitle = getFrameDisplayTitle(fileName, fileContent);
-
   const frameProps = {
     owner,
     spaceId: spaceInfo.sId,
@@ -178,87 +270,55 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
     vizUrl,
   };
 
+  const controlsProps = {
+    isEditor: spaceInfo.isEditor,
+    onHide: hideBanner,
+    onUnpin: handleUnpin,
+    onToggleFullscreen: () => setIsFullscreen((prev) => !prev),
+  };
+
+  const fullscreenOverlay =
+    isFullscreen &&
+    typeof document !== "undefined" &&
+    createPortal(
+      <div className="group/banner fixed inset-0 z-50 bg-background dark:bg-background-night">
+        <PodPinnedBannerControls
+          {...controlsProps}
+          isFullscreen
+          onToggleFullscreen={() => setIsFullscreen(false)}
+        />
+        <div className="h-full p-4 pt-12">
+          <div className="h-full overflow-hidden rounded-xl">
+            <PodPinnedBannerFrame key={`banner-fs-${fileId}`} {...frameProps} />
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+
+  if (isCollapsed) {
+    return (
+      <>
+        <PodPinnedBannerCollapsedAffordance
+          fileName={unpinLabel ?? "Frame"}
+          onShow={showBanner}
+          onOpenFullscreen={() => setIsFullscreen(true)}
+        />
+        {fullscreenOverlay}
+      </>
+    );
+  }
+
   return (
     <>
-      <div className="mb-4 overflow-hidden rounded-xl ring-1 ring-border/60 dark:ring-border-night/60">
-        <div className="flex items-center gap-2 border-b border-border/60 bg-muted-background/40 px-3 py-1.5 dark:border-border-night/60 dark:bg-muted-background-night/40">
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground dark:text-foreground-night">
-            {displayTitle}
-          </span>
-          <Button
-            label={isCollapsed ? "Show" : "Hide"}
-            variant="ghost"
-            size="xs"
-            onClick={toggleCollapsed}
-          />
-          {spaceInfo.isEditor && (
-            <Button
-              label="Unpin"
-              variant="ghost"
-              size="xs"
-              onClick={() => void unpinFrame({ displayName: displayTitle })}
-            />
-          )}
-          <Button
-            icon={FullscreenIcon}
-            variant="ghost"
-            size="xs"
-            tooltip="Open in full screen"
-            onClick={() => setIsFullscreen(true)}
-          />
-        </div>
-        {!isCollapsed && (
-          <div
-            className="bg-background dark:bg-background-night"
-            style={{ height: BANNER_HEIGHT_PX }}
-          >
-            <PodPinnedBannerFrame key={`banner-${fileId}`} {...frameProps} />
-          </div>
-        )}
+      <div
+        className="group/banner relative mb-4 overflow-hidden rounded-xl bg-background ring-1 ring-border/60 dark:bg-background-night dark:ring-border-night/60"
+        style={{ height: BANNER_HEIGHT_PX }}
+      >
+        <PodPinnedBannerControls {...controlsProps} />
+        <PodPinnedBannerFrame key={`banner-${fileId}`} {...frameProps} />
       </div>
-
-      {isFullscreen &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div className="fixed inset-0 z-50 flex flex-col bg-background dark:bg-background-night">
-            <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2 dark:border-border-night">
-              <span className="min-w-0 flex-1 truncate heading-lg">
-                {displayTitle}
-              </span>
-              {spaceInfo.isEditor && (
-                <Button
-                  label="Unpin"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void unpinFrame({ displayName: displayTitle })}
-                />
-              )}
-              <Button
-                icon={FullscreenExitIcon}
-                variant="ghost"
-                size="sm"
-                tooltip="Exit full screen"
-                onClick={() => setIsFullscreen(false)}
-              />
-              <Button
-                icon={XMarkIcon}
-                variant="ghost"
-                size="sm"
-                tooltip="Close"
-                onClick={() => setIsFullscreen(false)}
-              />
-            </div>
-            <div className="min-h-0 flex-1 p-4">
-              <div className={cn("h-full overflow-hidden rounded-xl")}>
-                <PodPinnedBannerFrame
-                  key={`banner-fs-${fileId}`}
-                  {...frameProps}
-                />
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      {fullscreenOverlay}
     </>
   );
 }
