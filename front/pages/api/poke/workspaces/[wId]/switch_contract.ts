@@ -20,7 +20,7 @@ import {
 } from "@app/lib/metronome/contracts";
 import {
   clearMetronomePaygCapAlert,
-  syncMetronomePaygCapAlert,
+  upsertMetronomePaygCapAlert,
 } from "@app/lib/metronome/payg_alerts";
 import {
   isPaygEligibleTier,
@@ -425,14 +425,14 @@ async function handler(
   if (owner.metronomeCustomerId) {
     const alertResult =
       body.paygEnabled && body.paygCapDollars !== undefined
-        ? await syncMetronomePaygCapAlert({
+        ? await upsertMetronomePaygCapAlert({
             metronomeCustomerId: owner.metronomeCustomerId,
             paygCapDollars: body.paygCapDollars,
-            workspaceSId: owner.sId,
+            workspaceId: owner.sId,
           })
         : await clearMetronomePaygCapAlert({
             metronomeCustomerId: owner.metronomeCustomerId,
-            workspaceSId: owner.sId,
+            workspaceId: owner.sId,
           });
     if (alertResult.isErr()) {
       const errorMessage = `Failed to sync Metronome PAYG cap alert: ${alertResult.error.message}`;

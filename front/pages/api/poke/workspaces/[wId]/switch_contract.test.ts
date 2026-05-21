@@ -6,7 +6,7 @@ import {
 } from "@app/lib/metronome/contracts";
 import {
   clearMetronomePaygCapAlert,
-  syncMetronomePaygCapAlert,
+  upsertMetronomePaygCapAlert,
 } from "@app/lib/metronome/payg_alerts";
 import { PlanModel } from "@app/lib/models/plan";
 import {
@@ -55,7 +55,7 @@ vi.mock("@app/lib/metronome/payg_alerts", async () => {
   >("@app/lib/metronome/payg_alerts");
   return {
     ...actual,
-    syncMetronomePaygCapAlert: vi.fn(),
+    upsertMetronomePaygCapAlert: vi.fn(),
     clearMetronomePaygCapAlert: vi.fn(),
   };
 });
@@ -221,7 +221,7 @@ beforeEach(() => {
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
     new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
-  vi.mocked(syncMetronomePaygCapAlert).mockResolvedValue(
+  vi.mocked(upsertMetronomePaygCapAlert).mockResolvedValue(
     new Ok({ alertId: "alert_test" })
   );
   vi.mocked(clearMetronomePaygCapAlert).mockResolvedValue(new Ok(undefined));
@@ -570,11 +570,11 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
       );
     expect(config?.paygCapMicroUsd).toBe(500 * 1_000_000);
 
-    expect(syncMetronomePaygCapAlert).toHaveBeenCalledWith(
+    expect(upsertMetronomePaygCapAlert).toHaveBeenCalledWith(
       expect.objectContaining({
         metronomeCustomerId: METRONOME_CUSTOMER_ID,
         paygCapDollars: 500,
-        workspaceSId: workspace.sId,
+        workspaceId: workspace.sId,
       })
     );
   });
@@ -672,7 +672,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     expect(clearMetronomePaygCapAlert).toHaveBeenCalledWith(
       expect.objectContaining({
         metronomeCustomerId: METRONOME_CUSTOMER_ID,
-        workspaceSId: workspace.sId,
+        workspaceId: workspace.sId,
       })
     );
   });

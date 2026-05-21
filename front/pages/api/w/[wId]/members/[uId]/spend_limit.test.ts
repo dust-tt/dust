@@ -17,7 +17,7 @@ vi.mock("@app/lib/metronome/per_user_alerts", async () => {
   );
   return {
     ...actual,
-    syncMetronomePerUserCapAlert: vi.fn(),
+    upsertMetronomePerUserCapAlert: vi.fn(),
     clearMetronomePerUserCapAlert: vi.fn(),
     getMetronomePerUserCap: vi.fn(),
   };
@@ -54,7 +54,7 @@ async function makeMetronomeWorkspaceWithCustomer(): Promise<WorkspaceType> {
 }
 
 beforeEach(() => {
-  vi.mocked(perUserAlerts.syncMetronomePerUserCapAlert).mockResolvedValue(
+  vi.mocked(perUserAlerts.upsertMetronomePerUserCapAlert).mockResolvedValue(
     new Ok({ alertId: TEST_ALERT_ID })
   );
   vi.mocked(perUserAlerts.clearMetronomePerUserCapAlert).mockResolvedValue(
@@ -270,7 +270,9 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       ).toHaveBeenCalledWith(
         expect.objectContaining({ userId: targetUser.sId })
       );
-      expect(perUserAlerts.syncMetronomePerUserCapAlert).not.toHaveBeenCalled();
+      expect(
+        perUserAlerts.upsertMetronomePerUserCapAlert
+      ).not.toHaveBeenCalled();
     });
 
     it("syncs alert + dispatches resolved when usage is below cap", async () => {
@@ -299,7 +301,7 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         limit: { kind: "limited", awuCredits: 1500 },
         transitionedTo: "resolved",
       });
-      expect(perUserAlerts.syncMetronomePerUserCapAlert).toHaveBeenCalledWith(
+      expect(perUserAlerts.upsertMetronomePerUserCapAlert).toHaveBeenCalledWith(
         expect.objectContaining({
           metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
           workspaceId: workspace.sId,
