@@ -398,6 +398,8 @@ export const runAgent = async (
     abortSignal.addEventListener(
       "abort",
       () => {
+        // run_agent can resume child conversations after deploy interruptions; only explicit
+        // user cancellation should cancel the child.
         if (classifyToolAbortSignal(abortSignal) === "user_cancellation") {
           requestChildCancellation();
         }

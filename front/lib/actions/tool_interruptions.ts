@@ -14,6 +14,7 @@ export type ToolAbortClassification =
   | "deploy_interruption"
   | "user_cancellation"
   | "unknown";
+export type ToolInterruptionType = "deploy_interruption" | "timeout";
 
 function getAbortReasonMessage(reason: unknown): string | null {
   if (typeof reason === "string") {
@@ -86,17 +87,17 @@ export function classifyToolAbortSignal(
   return classifyToolAbortReason(signal.reason);
 }
 
-export function shouldRetryToolOnDeployInterruption({
-  abortClassification,
+export function shouldRetryToolInterruption({
+  interruptionType,
   attempt,
   retryPolicy,
 }: {
-  abortClassification: ToolAbortClassification;
+  interruptionType: ToolInterruptionType | null;
   attempt: number;
   retryPolicy: MCPToolRetryPolicyType;
 }): boolean {
   return (
-    abortClassification === "deploy_interruption" &&
+    interruptionType !== null &&
     retryPolicy === "retry_on_interrupt" &&
     attempt < RETRY_ON_INTERRUPT_MAX_ATTEMPTS
   );

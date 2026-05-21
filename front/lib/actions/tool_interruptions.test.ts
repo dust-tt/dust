@@ -2,7 +2,7 @@ import { RETRY_ON_INTERRUPT_MAX_ATTEMPTS } from "@app/lib/actions/constants";
 import {
   classifyToolAbortReason,
   makeRetryableToolDeployInterruptionError,
-  shouldRetryToolOnDeployInterruption,
+  shouldRetryToolInterruption,
   TOOL_DEPLOY_INTERRUPTION_ERROR_TYPE,
 } from "@app/lib/actions/tool_interruptions";
 import { DUST_WORKER_SHUTDOWN_ABORT_REASON } from "@app/lib/shutdown_signal";
@@ -17,8 +17,8 @@ describe("tool interruptions", () => {
 
     expect(abortClassification).toBe("user_cancellation");
     expect(
-      shouldRetryToolOnDeployInterruption({
-        abortClassification,
+      shouldRetryToolInterruption({
+        interruptionType: null,
         attempt: 1,
         retryPolicy: "retry_on_interrupt",
       })
@@ -36,28 +36,38 @@ describe("tool interruptions", () => {
 
   it("retries deploy interruption only for retry_on_interrupt non-final attempts", () => {
     expect(
-      shouldRetryToolOnDeployInterruption({
-        abortClassification: "deploy_interruption",
+      shouldRetryToolInterruption({
+        interruptionType: "deploy_interruption",
         attempt: RETRY_ON_INTERRUPT_MAX_ATTEMPTS - 1,
         retryPolicy: "retry_on_interrupt",
       })
     ).toBe(true);
 
     expect(
-      shouldRetryToolOnDeployInterruption({
-        abortClassification: "deploy_interruption",
+      shouldRetryToolInterruption({
+        interruptionType: "deploy_interruption",
         attempt: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
         retryPolicy: "retry_on_interrupt",
       })
     ).toBe(false);
 
     expect(
-      shouldRetryToolOnDeployInterruption({
-        abortClassification: "deploy_interruption",
+      shouldRetryToolInterruption({
+        interruptionType: "deploy_interruption",
         attempt: 1,
         retryPolicy: "no_retry",
       })
     ).toBe(false);
+  });
+
+  it("uses the same retry decision for timeout interruptions", () => {
+    expect(
+      shouldRetryToolInterruption({
+        interruptionType: "timeout",
+        attempt: RETRY_ON_INTERRUPT_MAX_ATTEMPTS - 1,
+        retryPolicy: "retry_on_interrupt",
+      })
+    ).toBe(true);
   });
 
   it("creates a typed retryable deploy interruption failure", () => {
