@@ -190,7 +190,8 @@ export async function handleTextExtraction(
           prefix: prefix
             ? `\n${prefix}: ${page.pageNumber}/${pages.length}\n`
             : null,
-          content: page.content,
+          // Collapse consecutive line breaks as they do not have much semantic meaning and cause overhead in chunking.
+          content: page.content.replace(/\n{5,}/g, "\n\n"),
           sections: [],
         })),
       })
