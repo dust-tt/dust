@@ -52,9 +52,9 @@ describe("mount_path helpers", () => {
 
   describe("getPodFilesBasePath", () => {
     it("should return full pod files path", () => {
-      expect(
-        getPodFilesBasePath({ workspaceId: "ws1", podId: "spc1" })
-      ).toBe("w/ws1/pods/spc1/files/");
+      expect(getPodFilesBasePath({ workspaceId: "ws1", podId: "spc1" })).toBe(
+        "w/ws1/pods/spc1/files/"
+      );
     });
   });
 
