@@ -16,7 +16,8 @@ import {
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import {
   classifyToolAbortSignal,
-  makeRetryableToolDeployInterruptionError,
+  type HandledToolAbortClassification,
+  makeToolInterruptionError,
 } from "@app/lib/actions/tool_interruptions";
 import type {
   ActionGeneratedFileType,
@@ -366,40 +367,35 @@ const runAgent = async (
     }
   };
 
-  const maybeHandleAbortedSignal = (): Result<never, MCPError> | null => {
-    if (!abortSignal?.aborted) {
-      return null;
-    }
-
-    const abortClassification = classifyToolAbortSignal(abortSignal);
-
+  const handleAbortedSignal = (
+    abortClassification: HandledToolAbortClassification
+  ): Result<never, MCPError> => {
     if (abortClassification === "deploy_interruption") {
-      throw makeRetryableToolDeployInterruptionError();
+      throw makeToolInterruptionError();
     }
 
-    if (abortClassification === "user_cancellation") {
-      requestChildCancellation();
-      return new Err(
-        new MCPError(`Agent run cancelled, reason: ${abortSignal.reason}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    return null;
+    requestChildCancellation();
+    assert(abortSignal);
+    return new Err(
+      new MCPError(`Agent run cancelled, reason: ${abortSignal.reason}`, {
+        tracked: false,
+      })
+    );
   };
 
-  if (abortSignal) {
-    const abortedSignalResult = maybeHandleAbortedSignal();
-    if (abortedSignalResult) {
-      return finalizeAndReturn(abortedSignalResult);
-    }
+  const abortClassification = classifyToolAbortSignal(abortSignal);
+  if (abortClassification !== "none") {
+    return finalizeAndReturn(handleAbortedSignal(abortClassification));
+  }
 
+  if (abortSignal) {
     abortSignal.addEventListener(
       "abort",
       () => {
-        // run_agent can resume child conversations after deploy interruptions; only explicit
-        // user cancellation should cancel the child.
+        // run_agent is retryable and resumable on interruptions such as
+        // timeouts, deploys, etc. The abort signal is used for both these
+        // unintended interruptions and requested cancellations. For interruptions
+        // we let the activity retry/resume; for cancellations we cancel the child.
         if (classifyToolAbortSignal(abortSignal) === "user_cancellation") {
           requestChildCancellation();
         }
@@ -568,9 +564,9 @@ const runAgent = async (
   });
 
   if (streamRes.isErr()) {
-    const abortedSignalResult = maybeHandleAbortedSignal();
-    if (abortedSignalResult) {
-      return finalizeAndReturn(abortedSignalResult);
+    const abortClassification = classifyToolAbortSignal(abortSignal);
+    if (abortClassification !== "none") {
+      return finalizeAndReturn(handleAbortedSignal(abortClassification));
     }
 
     const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;
@@ -678,9 +674,9 @@ const runAgent = async (
       }
     }
 
-    const abortedSignalResult = maybeHandleAbortedSignal();
-    if (abortedSignalResult) {
-      return finalizeAndReturn(abortedSignalResult);
+    const abortClassification = classifyToolAbortSignal(abortSignal);
+    if (abortClassification !== "none") {
+      return finalizeAndReturn(handleAbortedSignal(abortClassification));
     }
 
     // Transient stream errors (network issues, reconnection exhaustion) should not

@@ -57,11 +57,10 @@ import {
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
-import type { ToolInterruptionType } from "@app/lib/actions/tool_interruptions";
 import {
   classifyToolAbortSignal,
-  isRetryableToolDeployInterruptionError,
-  makeRetryableToolDeployInterruptionError,
+  isToolInterruptionError,
+  makeToolInterruptionError,
   shouldRetryToolInterruption,
 } from "@app/lib/actions/tool_interruptions";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
@@ -539,7 +538,7 @@ export async function* tryCallMCPTool(
         const abortClassification = classifyToolAbortSignal(abortSignal);
 
         if (abortClassification === "deploy_interruption") {
-          throw makeRetryableToolDeployInterruptionError();
+          throw makeToolInterruptionError();
         }
 
         return makeMCPToolExit({
@@ -553,29 +552,24 @@ export async function* tryCallMCPTool(
 
     return postProcessMCPToolResult(toolCallResult, toolConfiguration);
   } catch (error) {
-    const isDeployInterruptionError =
-      isRetryableToolDeployInterruptionError(error);
+    const isWorkerShutdownInterruptionError = isToolInterruptionError(error);
     const isMCPTimeoutError = isMcpTimeoutError(error);
-    const interruptionType: ToolInterruptionType | null =
-      isDeployInterruptionError
-        ? "deploy_interruption"
-        : isMCPTimeoutError
-          ? "timeout"
-          : null;
+    const isInterruptError =
+      isWorkerShutdownInterruptionError || isMCPTimeoutError;
 
-    if (interruptionType) {
+    if (isInterruptError) {
       const retryPolicy =
         getRetryPolicyFromToolConfiguration(toolConfiguration);
       const info = Context.current().info;
 
       if (
         shouldRetryToolInterruption({
-          interruptionType,
+          isInterruption: isInterruptError,
           attempt: info.attempt,
           retryPolicy,
         })
       ) {
-        if (isDeployInterruptionError) {
+        if (isWorkerShutdownInterruptionError) {
           throw error;
         }
 
@@ -586,7 +580,9 @@ export async function* tryCallMCPTool(
         );
       }
 
-      if (isDeployInterruptionError) {
+      // If the tool should not be retried on interrupt, the error is returned
+      // to the agent as a tool error instead of failing the workflow.
+      if (isWorkerShutdownInterruptionError) {
         return makeMCPToolExit({
           message: TOOL_EXECUTION_INTERRUPTED_MESSAGE,
           isError: true,

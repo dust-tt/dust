@@ -17,13 +17,16 @@ const USER_CANCELLATION_REASON_TEXTS: readonly string[] = [
   TEMPORAL_USER_CANCELLATION_ERROR,
 ];
 
-export const TOOL_DEPLOY_INTERRUPTION_ERROR_TYPE = "ToolDeployInterruption";
+export const TOOL_INTERRUPTION_ERROR_TYPE = "ToolInterruption";
 
 export type ToolAbortClassification =
   | "deploy_interruption"
   | "user_cancellation"
-  | "unknown";
-export type ToolInterruptionType = "deploy_interruption" | "timeout";
+  | "none";
+export type HandledToolAbortClassification = Exclude<
+  ToolAbortClassification,
+  "none"
+>;
 
 function getAbortReasonTexts(reason: unknown): string[] {
   if (typeof reason === "string") {
@@ -63,47 +66,45 @@ export function classifyToolAbortReason(
     return "user_cancellation";
   }
 
-  return "unknown";
+  return "none";
 }
 
 export function classifyToolAbortSignal(
-  signal: AbortSignal
+  signal?: AbortSignal | null
 ): ToolAbortClassification {
-  if (!signal.aborted) {
-    return "unknown";
+  if (!signal?.aborted) {
+    return "none";
   }
 
   return classifyToolAbortReason(signal.reason);
 }
 
 export function shouldRetryToolInterruption({
-  interruptionType,
+  isInterruption,
   attempt,
   retryPolicy,
 }: {
-  interruptionType: ToolInterruptionType | null;
+  isInterruption: boolean;
   attempt: number;
   retryPolicy: MCPToolRetryPolicyType;
 }): boolean {
   return (
-    interruptionType !== null &&
+    isInterruption &&
     retryPolicy === "retry_on_interrupt" &&
     attempt < RETRY_ON_INTERRUPT_MAX_ATTEMPTS
   );
 }
 
-export function makeRetryableToolDeployInterruptionError(): ApplicationFailure {
+export function makeToolInterruptionError(): ApplicationFailure {
   return ApplicationFailure.retryable(
     "Tool execution interrupted by worker shutdown",
-    TOOL_DEPLOY_INTERRUPTION_ERROR_TYPE
+    TOOL_INTERRUPTION_ERROR_TYPE
   );
 }
 
-export function isRetryableToolDeployInterruptionError(
-  error: unknown
-): boolean {
+export function isToolInterruptionError(error: unknown): boolean {
   return (
     error instanceof ApplicationFailure &&
-    error.type === TOOL_DEPLOY_INTERRUPTION_ERROR_TYPE
+    error.type === TOOL_INTERRUPTION_ERROR_TYPE
   );
 }
