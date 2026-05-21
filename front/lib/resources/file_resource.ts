@@ -780,10 +780,11 @@ export class FileResource extends BaseResource<FileModel> {
     const filePath = this.getCloudStoragePath(auth, "original");
     const fileStorage = getPrivateUploadBucket();
 
-    return fileStorage.getSortedFileVersions({
-      filePath,
-      maxResults,
-    });
+    try {
+      return await fileStorage.getSortedFileVersions({ filePath, maxResults });
+    } catch {
+      return [];
+    }
   }
 
   /**
