@@ -26,6 +26,8 @@ export const RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
   "rename_interactive_content_file";
 export const GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME =
   "get_interactive_content_file_share_url";
+export const EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
+  "export_interactive_content_file";
 
 export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
   [CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
@@ -218,6 +220,38 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Getting share URL",
       done: "Get share URL",
+    },
+  },
+  [EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME]: {
+    description:
+      "Export an Interactive Content file as a PNG screenshot or PDF document. " +
+      "PNG returns a visual snapshot of the rendered frame. " +
+      "PDF renders the frame with optional orientation (portrait/landscape for regular frames, " +
+      "landscape by default for slideshows).",
+    schema: {
+      file_id: z
+        .string()
+        .describe(
+          "The ID of the Interactive Content file to export (e.g., 'fil_abc123')"
+        ),
+      format: z
+        .enum(["png", "pdf"])
+        .describe(
+          "Export format: 'png' for a screenshot, 'pdf' for a paginated document."
+        ),
+      orientation: z
+        .enum(["portrait", "landscape"])
+        .optional()
+        .describe(
+          "PDF orientation. Only used when format is 'pdf'. " +
+            "Defaults to 'landscape' for slideshows and 'portrait' for regular frames."
+        ),
+    },
+    enableAlerting: false,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Exporting Frame",
+      done: "Export Frame",
     },
   },
 });
