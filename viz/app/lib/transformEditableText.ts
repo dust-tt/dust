@@ -2,11 +2,11 @@ import logger from "@viz/app/lib/logger";
 import ts from "typescript";
 
 interface JSXTextReplacement {
-  start: number;
+  ctxAfter: string;
+  ctxBefore: string;
   end: number;
   rawText: string;
-  ctxBefore: string;
-  ctxAfter: string;
+  start: number;
 }
 
 // Characters of surrounding source stored in each span so the server can do a unique string match

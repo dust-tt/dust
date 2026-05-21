@@ -147,7 +147,7 @@ describe("POST /api/w/[wId]/files/[fileId]/edit-text", () => {
     expect(res._getJSONData()).toEqual({ success: true });
   });
 
-  it("should return 403 for non-builder editing non-conversation frames", async () => {
+  it("should return 404 for frames not linked to a conversation or space", async () => {
     const { req, res, auth, user } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
@@ -166,12 +166,11 @@ describe("POST /api/w/[wId]/files/[fileId]/edit-text", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(403);
+    expect(res._getStatusCode()).toBe(404);
     expect(res._getJSONData()).toEqual({
       error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `builders` for the current workspace can modify files.",
+        type: "file_not_found",
+        message: "File not found.",
       },
     });
   });

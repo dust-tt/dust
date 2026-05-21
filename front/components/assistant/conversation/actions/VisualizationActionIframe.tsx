@@ -4,6 +4,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
   CommandResultMap,
+  EditTextFn,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
@@ -88,10 +89,7 @@ function useVisualizationDataHandler({
   vizIframeRef,
 }: {
   getFileBlob: (fileId: string) => Promise<Blob | null>;
-  onEditText?: (
-    oldText: string,
-    newText: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   setContentHeight: (v: SetStateAction<number>) => void;
   setErrorMessage: (v: SetStateAction<string | null>) => void;
@@ -188,10 +186,21 @@ function useVisualizationDataHandler({
           break;
 
         case "editText": {
-          const editResult = onEditText
-            ? await onEditText(data.params.oldText, data.params.newText)
-            : { success: false, error: "Editing is not supported here" };
-          sendResponseToIframe(data, editResult, event.source);
+          if (onEditText) {
+            const editResult = await onEditText({
+              newText: data.params.newText,
+              oldText: data.params.oldText,
+            });
+
+            sendResponseToIframe(data, editResult, event.source);
+          } else {
+            sendResponseToIframe(
+              data,
+              { success: false, error: "Editing is not supported here" },
+              event.source
+            );
+          }
+
           break;
         }
 
@@ -252,11 +261,8 @@ interface VisualizationActionIframeProps {
   isEditable?: boolean;
   isInDrawer?: boolean;
   isPublic?: boolean;
-  onEditText?: (
-    oldText: string,
-    newText: string
-  ) => Promise<{ success: boolean; error?: string }>;
-  spaceId?: string | null;
+  onEditText?: EditTextFn;
+  spaceId?: string;
   visualization: Visualization;
   vizUrl: string;
   workspaceId: string;

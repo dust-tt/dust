@@ -1,7 +1,11 @@
 "use client";
 
 import { useVizContext } from "@viz/app/components/VizContext";
-import { cn } from "@viz/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@viz/components/ui/tooltip";
 import type { ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 
@@ -29,6 +33,8 @@ const FAILED_CLS = [
   "outline-offset-2",
   "outline-red-500/70",
 ];
+
+const FLASH_DURATION_MS = 800;
 
 interface HoverState {
   left: number;
@@ -59,8 +65,9 @@ export function EditableFrame({ children }: EditableFrameProps) {
         target.classList.add(...HOVER_CLS);
         hoveredSpanRef.current = target;
       }
+
       const rect = target.getBoundingClientRect();
-      setHoverState({ top: rect.top - 32, left: rect.left + rect.width / 2 });
+      setHoverState({ top: rect.top, left: rect.left + rect.width / 2 });
     } else {
       hoveredSpanRef.current = null;
       setHoverState(null);
@@ -72,6 +79,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
       hoveredSpanRef.current.classList.remove(...HOVER_CLS);
       hoveredSpanRef.current = null;
     }
+
     setHoverState(null);
   }, []);
 
@@ -79,12 +87,15 @@ export function EditableFrame({ children }: EditableFrameProps) {
     const target = (e.target as Element).closest<HTMLElement>(
       EDITABLE_SELECTOR
     );
+
     if (!target || target.contentEditable === "true") {
       return;
     }
+
     target.classList.remove(...HOVER_CLS);
     hoveredSpanRef.current = null;
     setHoverState(null);
+
     target.classList.add(...ACTIVE_CLS);
     target.dataset.originalText = target.textContent ?? "";
     target.contentEditable = "true";
@@ -96,6 +107,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
       const target = (e.target as Element).closest<HTMLElement>(
         EDITABLE_SELECTOR
       );
+
       if (!target || target.contentEditable !== "true") {
         return;
       }
@@ -117,7 +129,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
 
       const flash = (cls: string[]) => {
         target.classList.add(...cls);
-        setTimeout(() => target.classList.remove(...cls), 800);
+        setTimeout(() => target.classList.remove(...cls), FLASH_DURATION_MS);
       };
 
       // Wrap rawText with surrounding source context so the server string-search is unique.
@@ -133,7 +145,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
       const newText = ctxBefore + newRawText + ctxAfter;
 
       isSavingRef.current = true;
-      void editText(oldText, newText)
+      void editText({ oldText, newText })
         .then((result) => {
           if (!result.success) {
             target.textContent = originalVisibleText;
@@ -183,17 +195,21 @@ export function EditableFrame({ children }: EditableFrameProps) {
       >
         {children}
       </div>
-      {hoverState && (
-        <div
-          style={{ top: hoverState.top, left: hoverState.left }}
-          className={cn(
-            "pointer-events-none fixed z-50 -translate-x-1/2 rounded bg-black/70 px-2 py-1",
-            "font-sans text-xs font-normal text-white"
-          )}
-        >
+      <Tooltip open={!!hoverState}>
+        <TooltipTrigger asChild>
+          <span
+            style={
+              hoverState
+                ? { top: hoverState.top, left: hoverState.left }
+                : undefined
+            }
+            className="pointer-events-none fixed size-px"
+          />
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={4}>
           Double-click to edit
-        </div>
-      )}
+        </TooltipContent>
+      </Tooltip>
     </>
   );
 }

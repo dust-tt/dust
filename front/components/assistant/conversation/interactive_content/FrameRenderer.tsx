@@ -128,7 +128,7 @@ export function FrameRenderer({
   const [showCode, setShowCode] = React.useState(false);
 
   const handleEditText = useCallback(
-    async (oldText: string, newText: string) => {
+    async ({ newText, oldText }: { newText: string; oldText: string }) => {
       const response = await clientFetch(
         `/api/w/${owner.sId}/files/${fileId}/edit-text`,
         {
@@ -146,6 +146,7 @@ export function FrameRenderer({
       await mutateFileContent(
         `/api/w/${owner.sId}/files/${fileId}?action=view`
       );
+
       return { success: true };
     },
     [owner.sId, fileId, mutateFileContent]
@@ -384,7 +385,7 @@ export function FrameRenderer({
               key={`viz-${fileId}`}
               conversationId={conversation?.sId ?? null}
               isEditable={true}
-              spaceId={frameSpaceId}
+              spaceId={frameSpaceId ?? undefined}
               isInDrawer={true}
               onEditText={handleEditText}
               ref={iframeRef}

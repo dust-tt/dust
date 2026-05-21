@@ -1,12 +1,11 @@
 "use client";
 
+import type { EditTextFn } from "@viz/app/lib/visualization-api";
 import { createContext, useContext } from "react";
 
 interface VizContextValue {
   isPdfMode: boolean;
-  editText:
-    | ((oldText: string, newText: string) => Promise<{ success: boolean }>)
-    | null;
+  editText: EditTextFn | null;
 }
 
 export const VizContext = createContext<VizContextValue>({

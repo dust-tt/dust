@@ -71,11 +71,15 @@ const DisplayCodeRequestSchema = VisualizationRPCRequestBaseSchema.extend({
 });
 
 const EditTextParamsSchema = z.object({
-  oldText: z.string(),
   newText: z.string(),
+  oldText: z.string(),
 });
 
 type EditTextParams = z.infer<typeof EditTextParamsSchema>;
+
+export type EditTextFn = (
+  params: EditTextParams
+) => Promise<{ success: boolean; error?: string }>;
 
 const EditTextRequestSchema = VisualizationRPCRequestBaseSchema.extend({
   command: z.literal("editText"),

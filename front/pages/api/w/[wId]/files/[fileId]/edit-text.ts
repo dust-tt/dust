@@ -4,16 +4,20 @@ import { editClientExecutableFile } from "@app/lib/api/files/client_executable";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isInteractiveContentType } from "@app/types/files";
+import {
+  isConversationFileUseCase,
+  isInteractiveContentType,
+} from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 const EditTextRequestBodySchema = z.object({
-  oldText: z.string().min(1, "oldText must be a non-empty string"),
   newText: z.string(),
+  oldText: z.string().min(1, "oldText must be a non-empty string"),
 });
 
 export type EditTextResponseBody = {
@@ -57,32 +61,35 @@ async function handler(
     });
   }
 
-  // Check access: conversation files are accessible to workspace members;
-  // other files require builder access.
-  if (file.useCase === "conversation") {
-    if (file.useCaseMetadata?.conversationId) {
-      const conversation = await ConversationResource.fetchById(
-        auth,
-        file.useCaseMetadata.conversationId
-      );
-      if (!conversation) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "file_not_found",
-            message: "File not found.",
-          },
-        });
-      }
+  if (
+    isConversationFileUseCase(file.useCase) &&
+    file.useCaseMetadata?.conversationId
+  ) {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      file.useCaseMetadata.conversationId
+    );
+    if (!conversation) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
     }
-  } else if (!auth.isBuilder()) {
+  } else if (file.useCaseMetadata?.spaceId) {
+    const space = await SpaceResource.fetchById(
+      auth,
+      file.useCaseMetadata.spaceId
+    );
+    if (!space || !space.canRead(auth)) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    }
+  } else {
     return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `builders` for the current workspace can modify files.",
-      },
+      status_code: 404,
+      api_error: { type: "file_not_found", message: "File not found." },
     });
   }
 

@@ -90,7 +90,7 @@ export function ProjectFrameSheet({
                 }}
                 key={`viz-${fileId}`}
                 conversationId={null}
-                spaceId={fileMetadata?.useCaseMetadata.spaceId ?? null}
+                spaceId={fileMetadata?.useCaseMetadata.spaceId}
                 isInDrawer={true}
                 ref={iframeRef}
               />

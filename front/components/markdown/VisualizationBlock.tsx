@@ -72,7 +72,7 @@ export function getVisualizationPlugin(
           key={`viz-${messageId}-${lineStart}`}
           conversationId={conversationId}
           agentConfigurationId={agentConfigurationId}
-          spaceId={spaceId}
+          spaceId={spaceId ?? undefined}
         />
       );
     },

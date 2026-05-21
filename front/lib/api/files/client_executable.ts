@@ -197,21 +197,21 @@ export async function editClientExecutableFile(
         currentContent,
       });
 
-      if (result.occurrences === 0) {
+      const { occurrences, updatedContent } = result;
+
+      if (occurrences === 0) {
         return new Err({
           message: `String not found in file: "${oldString}"`,
           tracked: false,
         });
       }
 
-      if (result.occurrences !== expectedReplacements) {
+      if (occurrences !== expectedReplacements) {
         return new Err({
-          message: `Expected ${expectedReplacements} replacements, but found ${result.occurrences} occurrences`,
+          message: `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
           tracked: false,
         });
       }
-
-      const updatedContent = result.updatedContent;
 
       // Update metadata to track the editing agent
       if (editedByAgentConfigurationId) {
@@ -247,7 +247,7 @@ export async function editClientExecutableFile(
       // Upload the updated content (version is incremented inside uploadContent).
       await fileResource.uploadContent(auth, updatedContent);
 
-      return new Ok({ fileResource, replacementCount: 1, warnings });
+      return new Ok({ fileResource, replacementCount: occurrences, warnings });
     });
   } catch (error) {
     return new Err({
