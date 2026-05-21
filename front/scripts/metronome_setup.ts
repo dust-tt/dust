@@ -1056,6 +1056,31 @@ function getRateCards(): RateCardDef[] {
         ...buildAwuToolUsageRates(),
       ],
     },
+    {
+      name: "Free plan",
+      description: "Free plan.",
+      aliases: [{ name: "free-plan" }],
+      fiat_credit_type_id: CREDIT_TYPE_USD_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeAwuId(),
+          fiat_per_custom_credit: 0,
+        },
+      ],
+      rates: [
+        {
+          product_name: FREE_SEAT_PRODUCT_NAME,
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
+          price: 0,
+          credit_type_id: CREDIT_TYPE_USD_ID,
+        },
+        ...buildAwuAiUsageRates(),
+        ...buildAwuToolUsageRates(),
+      ],
+    },
   ];
 }
 
@@ -1521,6 +1546,16 @@ function getPackages(): PackageDef[] {
         getFreeSeatLifetimeAwuCredits(),
         getFreeExcessRecurringCredits(getCreditTypeAwuId(), 5_000),
       ],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    // Free plan — entitles only the Free Seat
+    {
+      name: "Free plan",
+      aliases: [{ name: "free-plan" }],
+      rate_card_name: "Free plan",
+      subscriptions: [FREE_SEAT_SUBSCRIPTION],
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [getFreeSeatLifetimeAwuCredits()],
       ...BILLING_CYCLE_CONFIG,
     },
   ];
