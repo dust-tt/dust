@@ -39,6 +39,7 @@ type AuditAction =
   | "invitation.role_updated"
   | "member.bulk_invited"
   | "member.bulk_revoked"
+  | "member.spend_limit_updated"
   // Domains & SSO.
   | "domain.verified"
   | "domain.verification_failed"

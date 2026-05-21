@@ -364,7 +364,7 @@ export function MembersUsageTable({
     image: m.image,
     seatType: m.seatType,
     seatUsagePercent: m.seatUsagePercent,
-    consumedWorkplacePoolCredits: m.consumedWorkplacePoolCredits,
+    consumedWorkplacePoolCredits: m.consumedAwuCredits,
     billingFrequency: m.billingFrequency,
     scheduledSeatType: m.scheduledSeatType,
     scheduledSeatChangeAt: m.scheduledSeatChangeAt,

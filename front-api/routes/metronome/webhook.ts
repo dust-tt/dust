@@ -149,7 +149,28 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
           );
           break;
         }
-        await dispatchPerUserCapReached({ workspace, userId });
+        const dispatchResult = await dispatchPerUserCapReached({
+          workspace,
+          userId,
+        });
+        if (dispatchResult.isErr()) {
+          logger.error(
+            {
+              eventId: event.id,
+              workspaceId: workspace.sId,
+              userId,
+              err: dispatchResult.error,
+            },
+            "[Metronome Webhook] spend_threshold_reached: per_user dispatch failed"
+          );
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Error dispatching per-user cap reached: ${dispatchResult.error.message}`,
+            },
+          });
+        }
         logger.info(
           {
             eventId: event.id,
@@ -188,7 +209,28 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
           break;
         }
 
-        await dispatchPerUserCapResolved({ workspace, userId });
+        const dispatchResult = await dispatchPerUserCapResolved({
+          workspace,
+          userId,
+        });
+        if (dispatchResult.isErr()) {
+          logger.error(
+            {
+              eventId: event.id,
+              workspaceId: workspace.sId,
+              userId,
+              err: dispatchResult.error,
+            },
+            "[Metronome Webhook] spend_threshold_resolved: per-user dispatch failed"
+          );
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Error dispatching per-user cap resolved: ${dispatchResult.error.message}`,
+            },
+          });
+        }
         logger.info(
           {
             eventId: event.id,

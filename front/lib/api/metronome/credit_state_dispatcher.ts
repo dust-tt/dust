@@ -9,6 +9,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 async function isPaygEnabled(workspace: WorkspaceResource): Promise<boolean> {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -21,14 +23,14 @@ export async function dispatchPerUserCapReached({
 }: {
   workspace: WorkspaceResource;
   userId: string;
-}): Promise<void> {
+}): Promise<Result<void, Error>> {
   const user = await UserResource.fetchById(userId);
   if (!user) {
     logger.warn(
       { workspaceId: workspace.sId, userId },
       "[CreditStateDispatcher] per_user_cap_reached: user not found, skipping"
     );
-    return;
+    return new Ok(undefined);
   }
 
   const lightWorkspace = renderLightWorkspaceType({ workspace });
@@ -42,14 +44,18 @@ export async function dispatchPerUserCapReached({
       { workspaceId: workspace.sId, userId },
       "[CreditStateDispatcher] per_user_cap_reached: no active membership, skipping"
     );
-    return;
+    return new Ok(undefined);
   }
 
-  await transitionUserCreditState(
+  const result = await transitionUserCreditState(
     membership,
     { type: "per_user_cap_reached" },
     { workspaceId: workspace.sId, userId }
   );
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(undefined);
 }
 
 export async function dispatchPerUserCapResolved({
@@ -58,7 +64,7 @@ export async function dispatchPerUserCapResolved({
 }: {
   workspace: WorkspaceResource;
   userId: string;
-}): Promise<void> {
+}): Promise<Result<void, Error>> {
   const user = await UserResource.fetchById(userId);
   if (!user) {
     logger.warn(
@@ -66,7 +72,7 @@ export async function dispatchPerUserCapResolved({
       "[CreditStateDispatcher] per_user_cap_resolved: user not found, clearing legacy block"
     );
     await clearUserCapBlocked(workspace.sId, userId);
-    return;
+    return new Ok(undefined);
   }
 
   const lightWorkspace = renderLightWorkspaceType({ workspace });
@@ -82,14 +88,18 @@ export async function dispatchPerUserCapResolved({
       "[CreditStateDispatcher] per_user_cap_resolved: no active membership, clearing legacy block"
     );
     await clearUserCapBlocked(workspace.sId, userId);
-    return;
+    return new Ok(undefined);
   }
 
-  await transitionUserCreditState(
+  const result = await transitionUserCreditState(
     membership,
     { type: "per_user_cap_resolved" },
     { workspaceId: workspace.sId, userId }
   );
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(undefined);
 }
 
 export async function dispatchPoolExhausted({
