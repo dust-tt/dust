@@ -1,6 +1,6 @@
 import {
   makeProcessedMountFileName,
-  toPodsMountFilePath,
+  toPodMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import { getProcessedContentType } from "@app/lib/api/files/processing";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
@@ -207,7 +207,7 @@ makeScript(
                 file.mountFilePath,
                 "file.mountFilePath is set by SQL filter"
               );
-              const destMountFilePath = toPodsMountFilePath(file.mountFilePath);
+              const destMountFilePath = toPodMountFilePath(file.mountFilePath);
               assert(
                 destMountFilePath,
                 `expected project mount path, got ${file.mountFilePath}`
