@@ -6,7 +6,7 @@ import { useStartProjectTaskConversation } from "@app/lib/swr/projects";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
-import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
+import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import type { GetWorkspaceProjectTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
@@ -162,7 +162,7 @@ function TaskDirectivePopoverBodyLoaded({
   onTaskUpdated?: () => void;
 }) {
   const { task, space } = data;
-  const projectHref = getProjectRoute(owner.sId, space.sId);
+  const projectHref = getPodRoute(owner.sId, space.sId);
   const assignee = task.user;
   const dotStatus: ConversationDotStatus =
     task.conversationSidebarStatus ?? "idle";

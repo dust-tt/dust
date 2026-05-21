@@ -26,7 +26,7 @@ import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
-  getProjectRoute,
+  getPodRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
 import {
@@ -298,7 +298,7 @@ export function ConversationMenu({
       if (isConversationDisplayed && res) {
         const redirectRoute =
           conversation && isProjectConversation(conversation)
-            ? getProjectRoute(owner.sId, conversation.spaceId)
+            ? getPodRoute(owner.sId, conversation.spaceId)
             : getConversationRoute(owner.sId);
         void router.push(redirectRoute);
       }

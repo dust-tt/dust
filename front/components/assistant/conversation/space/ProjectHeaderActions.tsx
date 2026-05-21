@@ -1,7 +1,7 @@
 import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
 import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useAppRouter } from "@app/lib/platform";
-import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
+import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import type {
   LightWorkspaceType,
   SpaceUserType,
@@ -46,7 +46,7 @@ export function ProjectHeaderActions({
     if (isRestricted) {
       void router.push(getConversationRoute(owner.sId));
     } else {
-      void router.push(getProjectRoute(owner.sId, spaceId));
+      void router.push(getPodRoute(owner.sId, spaceId));
     }
   }, [isRestricted, owner.sId, router, spaceId]);
 

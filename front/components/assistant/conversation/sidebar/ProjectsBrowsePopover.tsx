@@ -2,7 +2,7 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSearchProjects } from "@app/hooks/useSearchProjects";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { getProjectRoute } from "@app/lib/utils/router";
+import { getPodRoute } from "@app/lib/utils/router";
 import type { ProjectType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -135,9 +135,7 @@ export function ProjectsBrowsePopover({ owner }: ProjectsBrowsePopoverProps) {
                     onClick={async () => {
                       setIsOpen(false);
                       setSearchQuery("");
-                      await router.push(
-                        getProjectRoute(owner.sId, project.sId)
-                      );
+                      await router.push(getPodRoute(owner.sId, project.sId));
                     }}
                   />
                 ))}

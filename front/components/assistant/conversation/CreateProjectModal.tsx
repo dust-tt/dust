@@ -2,7 +2,7 @@ import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
 import { useCheckProjectName } from "@app/lib/swr/projects";
 import { useCreateSpace } from "@app/lib/swr/spaces";
-import { getProjectRoute } from "@app/lib/utils/router";
+import { getPodRoute } from "@app/lib/utils/router";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -112,7 +112,7 @@ export function CreateProjectModal({
       void mutateSpaceSummary();
       onCreated();
       handleClose();
-      void router.push(getProjectRoute(owner.sId, createdSpace.sId));
+      void router.push(getPodRoute(owner.sId, createdSpace.sId));
     }
   }, [
     projectName,

@@ -9,7 +9,7 @@ import { SpaceTasksTab } from "@app/components/assistant/conversation/space/Spac
 
 import { useSpaceConversations } from "@app/hooks/conversations";
 import type { SpaceConversationListFilter } from "@app/hooks/conversations/useSpaceConversations";
-import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
+import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useScopedUIPreferences } from "@app/hooks/useScopedUIPreferences";
@@ -56,7 +56,7 @@ export function SpaceConversationsPage() {
   const { user } = useAuth();
   const clientType = useClientType();
   const router = useAppRouter();
-  const spaceId = useActiveSpaceId();
+  const spaceId = useActivePodId();
   const sendNotification = useSendNotification();
 
   const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError, mutateSpaceInfo } =

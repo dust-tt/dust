@@ -10,7 +10,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo, useStarProject } from "@app/lib/swr/spaces";
 import {
   getConversationRoute,
-  getProjectRoute,
+  getPodRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
 import type { SpaceType } from "@app/types/space";
@@ -156,7 +156,7 @@ export function ProjectMenu({
   });
 
   const shareLink = activeSpaceId
-    ? `${config.getApiBaseUrl()}${getProjectRoute(owner.sId, activeSpaceId)}`
+    ? `${config.getApiBaseUrl()}${getPodRoute(owner.sId, activeSpaceId)}`
     : undefined;
 
   const spaceName = space?.name ?? spaceInfo?.name ?? "";
