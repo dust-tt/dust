@@ -12,12 +12,12 @@ import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 
 // Mounted at /api/w/:wId/sso.
 const app = new Hono();
 
-async function checkAccess(ctx: import("hono").Context) {
+async function checkAccess(ctx: Context) {
   const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
