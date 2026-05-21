@@ -118,7 +118,11 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                   modelConfig={selectedModel}
                   isDark={isDark}
                   onModelSelection={handleModelSelection}
-                  endComponent={modelRadioItemEndComponent}
+                  endComponent={
+                    selectedModel.regionalAvailability[regionInfo.name]
+                      ? modelRadioItemEndComponent
+                      : null
+                  }
                 />
               </DropdownMenuRadioGroup>
             </>
@@ -132,7 +136,11 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                 modelConfig={modelConfig}
                 isDark={isDark}
                 onModelSelection={handleModelSelection}
-                endComponent={modelRadioItemEndComponent}
+                endComponent={
+                  modelConfig.regionalAvailability[regionInfo.name]
+                    ? modelRadioItemEndComponent
+                    : null
+                }
               />
             ))}
           </DropdownMenuRadioGroup>
@@ -158,7 +166,13 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               modelConfig={modelConfig}
                               isDark={isDark}
                               onModelSelection={handleModelSelection}
-                              endComponent={modelRadioItemEndComponent}
+                              endComponent={
+                                modelConfig.regionalAvailability[
+                                  regionInfo.name
+                                ]
+                                  ? modelRadioItemEndComponent
+                                  : null
+                              }
                             />
                           ))}
                         </DropdownMenuRadioGroup>
@@ -178,7 +192,13 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               modelConfig={modelConfig}
                               isDark={isDark}
                               onModelSelection={handleModelSelection}
-                              endComponent={modelRadioItemEndComponent}
+                              endComponent={
+                                modelConfig.regionalAvailability[
+                                  regionInfo.name
+                                ]
+                                  ? modelRadioItemEndComponent
+                                  : null
+                              }
                             />
                           ))}
                         </DropdownMenuRadioGroup>
