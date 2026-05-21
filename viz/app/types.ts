@@ -22,7 +22,6 @@ interface SetErrorMessageParams {
 }
 
 interface EditTextParams {
-  editId: string;
   oldText: string;
   newText: string;
 }

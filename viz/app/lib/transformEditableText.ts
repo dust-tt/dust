@@ -4,18 +4,15 @@ import ts from "typescript";
 interface JSXTextReplacement {
   start: number;
   end: number;
-  editId: string;
   rawText: string;
+  ctxBefore: string;
+  ctxAfter: string;
 }
 
-/**
- * Transforms JsxText nodes in a Frame's TSX source by wrapping them with
- * `<span data-editable="true" data-edit-id="line:col">…</span>`.
- *
- * Position-based IDs (line:col) allow the host to locate the exact source
- * node when writing back the user's edit, even when the same text appears
- * multiple times.  Whitespace-only JsxText nodes are left untouched.
- */
+// Characters of surrounding source stored in each span so the server can do a unique string match
+// even when the same visible text appears multiple times in the file (e.g. repeated table labels).
+const CONTEXT_CHARS = 60;
+
 export function transformEditableText(code: string): string {
   const replacements: JSXTextReplacement[] = [];
 
@@ -30,18 +27,13 @@ export function transformEditableText(code: string): string {
 
     const visit = (node: ts.Node): void => {
       if (ts.isJsxText(node) && node.text.trim() !== "") {
-        const start = node.pos;
-        const end = node.end;
-        const { line, character } = ts.getLineAndCharacterOfPosition(
-          sourceFile,
-          start
-        );
-        const editId = `${line + 1}:${character}`;
+        const { pos, end } = node;
         replacements.push({
-          start,
+          start: pos,
           end,
-          editId,
-          rawText: code.slice(start, end),
+          rawText: code.slice(pos, end),
+          ctxBefore: code.slice(Math.max(0, pos - CONTEXT_CHARS), pos),
+          ctxAfter: code.slice(end, Math.min(code.length, end + CONTEXT_CHARS)),
         });
       }
       ts.forEachChild(node, visit);
@@ -61,10 +53,20 @@ export function transformEditableText(code: string): string {
   replacements.sort((a, b) => b.start - a.start);
 
   let result = code;
-  for (const { start, end, editId, rawText } of replacements) {
+  for (const { start, end, rawText, ctxBefore, ctxAfter } of replacements) {
     result =
       result.slice(0, start) +
-      `<span data-editable="true" data-edit-id="${editId}" className="cursor-text rounded-sm">${rawText}</span>` +
+      [
+        `<span`,
+        `data-editable="true"`,
+        `data-raw-text="${encodeURIComponent(rawText)}"`,
+        `data-ctx-before="${encodeURIComponent(ctxBefore)}"`,
+        `data-ctx-after="${encodeURIComponent(ctxAfter)}"`,
+        `className="cursor-text rounded-sm"`,
+        `>`,
+      ].join(" ") +
+      rawText.trim() +
+      `</span>` +
       result.slice(end);
   }
 

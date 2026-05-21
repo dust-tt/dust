@@ -128,13 +128,13 @@ export function FrameRenderer({
   const [showCode, setShowCode] = React.useState(false);
 
   const handleEditText = useCallback(
-    async (editId: string, oldText: string, newText: string) => {
+    async (oldText: string, newText: string) => {
       const response = await clientFetch(
         `/api/w/${owner.sId}/files/${fileId}/edit-text`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ editId, oldText, newText }),
+          body: JSON.stringify({ oldText, newText }),
         }
       );
 

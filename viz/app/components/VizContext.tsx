@@ -5,11 +5,7 @@ import { createContext, useContext } from "react";
 interface VizContextValue {
   isPdfMode: boolean;
   editText:
-    | ((
-        editId: string,
-        oldText: string,
-        newText: string
-      ) => Promise<{ success: boolean }>)
+    | ((oldText: string, newText: string) => Promise<{ success: boolean }>)
     | null;
 }
 

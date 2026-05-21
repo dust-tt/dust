@@ -171,9 +171,8 @@ export function useVisualizationAPI(
   }, [sendCrossDocumentMessage]);
 
   const editText = useCallback(
-    async (editId: string, oldText: string, newText: string) => {
+    async (oldText: string, newText: string) => {
       return await sendCrossDocumentMessage("editText", {
-        editId,
         oldText,
         newText,
       });

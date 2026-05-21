@@ -12,7 +12,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 const EditTextRequestBodySchema = z.object({
-  editId: z.string().regex(/^\d+:\d+$/, "editId must be in line:col format"),
   oldText: z.string().min(1, "oldText must be a non-empty string"),
   newText: z.string(),
 });
@@ -100,11 +99,10 @@ async function handler(
         });
       }
 
-      const { editId, oldText, newText } = bodyResult.data;
+      const { oldText, newText } = bodyResult.data;
 
       const editResult = await editClientExecutableFile(auth, {
         fileId,
-        editId,
         oldString: oldText,
         newString: newText,
       });

@@ -89,7 +89,6 @@ function useVisualizationDataHandler({
 }: {
   getFileBlob: (fileId: string) => Promise<Blob | null>;
   onEditText?: (
-    editId: string,
     oldText: string,
     newText: string
   ) => Promise<{ success: boolean; error?: string }>;
@@ -190,11 +189,7 @@ function useVisualizationDataHandler({
 
         case "editText": {
           const editResult = onEditText
-            ? await onEditText(
-                data.params.editId,
-                data.params.oldText,
-                data.params.newText
-              )
+            ? await onEditText(data.params.oldText, data.params.newText)
             : { success: false, error: "Editing is not supported here" };
           sendResponseToIframe(data, editResult, event.source);
           break;
@@ -258,7 +253,6 @@ interface VisualizationActionIframeProps {
   isInDrawer?: boolean;
   isPublic?: boolean;
   onEditText?: (
-    editId: string,
     oldText: string,
     newText: string
   ) => Promise<{ success: boolean; error?: string }>;

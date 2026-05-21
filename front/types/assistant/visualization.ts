@@ -71,7 +71,6 @@ const DisplayCodeRequestSchema = VisualizationRPCRequestBaseSchema.extend({
 });
 
 const EditTextParamsSchema = z.object({
-  editId: z.string(),
   oldText: z.string(),
   newText: z.string(),
 });

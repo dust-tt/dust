@@ -100,14 +100,18 @@ export function EditableFrame({ children }: EditableFrameProps) {
         return;
       }
 
-      const originalText = target.dataset.originalText ?? "";
-      const newText = target.textContent ?? "";
+      const originalVisibleText = target.dataset.originalText ?? "";
+      const newVisibleText = target.textContent ?? "";
 
       target.contentEditable = "inherit";
       target.classList.remove(...ACTIVE_CLS);
       delete target.dataset.originalText;
 
-      if (newText === originalText || isSavingRef.current || !editText) {
+      if (
+        newVisibleText === originalVisibleText ||
+        isSavingRef.current ||
+        !editText
+      ) {
         return;
       }
 
@@ -116,13 +120,27 @@ export function EditableFrame({ children }: EditableFrameProps) {
         setTimeout(() => target.classList.remove(...cls), 800);
       };
 
-      const editId = target.dataset.editId ?? "";
+      // Wrap rawText with surrounding source context so the server string-search is unique.
+      const rawText = decodeURIComponent(target.dataset.rawText ?? "");
+      const ctxBefore = decodeURIComponent(target.dataset.ctxBefore ?? "");
+      const ctxAfter = decodeURIComponent(target.dataset.ctxAfter ?? "");
+      // rawText is the source node and includes surrounding \n+indent that the browser trims from
+      // textContent. Re-attach that whitespace so the file replacement matches the exact source bytes.
+      const leadingWs = rawText.match(/^\s*/)?.[0] ?? "";
+      const trailingWs = rawText.match(/\s*$/)?.[0] ?? "";
+      const newRawText = leadingWs + newVisibleText + trailingWs;
+      const oldText = ctxBefore + rawText + ctxAfter;
+      const newText = ctxBefore + newRawText + ctxAfter;
+
       isSavingRef.current = true;
-      void editText(editId, originalText, newText)
+      void editText(oldText, newText)
         .then((result) => {
           if (!result.success) {
-            target.textContent = originalText;
+            target.textContent = originalVisibleText;
             flash(FAILED_CLS);
+          } else {
+            // Keep data-raw-text in sync so chained edits on the same span stay correct.
+            target.dataset.rawText = encodeURIComponent(newRawText);
           }
         })
         .finally(() => {

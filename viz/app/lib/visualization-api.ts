@@ -27,7 +27,6 @@ export interface VisualizationUIAPI {
   displayCode: () => Promise<void>;
   downloadFile: (blob: Blob, filename?: string) => Promise<void>;
   editText: (
-    editId: string,
     oldText: string,
     newText: string
   ) => Promise<{ success: boolean; error?: string }>;
