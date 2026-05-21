@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { startVerification } from "@app/lib/api/workspace_verification";
+import { verifyTurnstileToken } from "@app/lib/api/workspace_verification/turnstile";
 import type { Authenticator } from "@app/lib/auth";
 import { PHONE_REGEXP } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -27,6 +28,7 @@ export function getStatusCodeForError(type: VerificationErrorType): number {
       return 429;
     case "invalid_request_error":
     case "verification_error":
+    case "invalid_captcha":
       return 400;
     case "phone_already_used_error":
       return 403;
@@ -37,6 +39,7 @@ export function getStatusCodeForError(type: VerificationErrorType): number {
 
 const PostStartVerificationRequestBody = z.object({
   phoneNumber: E164PhoneNumber,
+  captchaToken: z.string().min(1),
 });
 
 async function handler(
@@ -73,7 +76,20 @@ async function handler(
         });
       }
 
-      const { phoneNumber } = bodyValidation.data;
+      const { phoneNumber, captchaToken } = bodyValidation.data;
+
+      const captchaResult = await verifyTurnstileToken({
+        token: captchaToken,
+        remoteIp: auth.clientIp(),
+      });
+      if (captchaResult.isErr()) {
+        return res.status(getStatusCodeForError("invalid_captcha")).json({
+          error: {
+            type: "invalid_captcha",
+            message: "Captcha verification failed. Please try again.",
+          },
+        });
+      }
 
       const result = await startVerification(auth, phoneNumber);
 
