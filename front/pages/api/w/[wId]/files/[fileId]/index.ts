@@ -171,7 +171,7 @@ function resolveUploadMountScopedPath(
         projectId: file.useCaseMetadata.spaceId,
       }),
       gcsPath: file.mountFilePath,
-      useCase: "project",
+      useCase: "pod",
     });
   }
 

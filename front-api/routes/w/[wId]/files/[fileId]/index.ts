@@ -329,14 +329,14 @@ app.post("/", async (ctx) => {
         contentType: file.contentType,
         useCase: file.useCase,
         useCaseMetadata: file.useCaseMetadata,
-        message: "Failed to add the file to the project.",
+        message: "Failed to add the file to the Pod.",
         error: addFileToProjectRes.error,
       });
       return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: "Failed to add the file to the project.",
+          message: "Failed to add the file to the Pod.",
         },
       });
     }
@@ -405,7 +405,7 @@ async function checkFileAccess(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Space is not a project",
+          message: "Space is not a Pod",
         },
       });
     }

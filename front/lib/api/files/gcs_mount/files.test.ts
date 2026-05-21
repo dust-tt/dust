@@ -1083,7 +1083,7 @@ describe("scoped path ↔ GCS path", () => {
     const gcsPath = getGCSPathFromScopedPath({
       prefix,
       scopedPath,
-      useCase: "project",
+      useCase: "pod",
     });
     expect(gcsPath).toBe(`${prefix}reports/report_fil_abc.pdf`);
 
@@ -1091,7 +1091,7 @@ describe("scoped path ↔ GCS path", () => {
       getScopedPathFromGCSPath({
         prefix,
         gcsPath: gcsPath!,
-        useCase: "project",
+        useCase: "pod",
       })
     ).toBe(scopedPath);
   });
@@ -1101,7 +1101,7 @@ describe("scoped path ↔ GCS path", () => {
       getScopedPathFromGCSPath({
         prefix,
         gcsPath: "w/ws1/projects/other/files/file.txt",
-        useCase: "project",
+        useCase: "pod",
       })
     ).toBeNull();
   });

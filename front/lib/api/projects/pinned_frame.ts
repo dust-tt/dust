@@ -27,11 +27,11 @@ export async function validatePinnedFramePath(
   const gcsPath = getGCSPathFromScopedPath({
     prefix,
     scopedPath: pinnedFramePath,
-    useCase: "project",
+    useCase: "pod",
   });
   if (!gcsPath) {
     return new Err(
-      new Error("Path must start with project/ and be a valid file path.")
+      new Error("Path must start with pod/ and be a valid file path.")
     );
   }
 

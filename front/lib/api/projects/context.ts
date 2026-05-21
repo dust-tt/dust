@@ -342,7 +342,7 @@ export async function addFileToProject(
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
-      message: "Space is not a project.",
+      message: "Space is not a Pod.",
     });
   }
 
@@ -361,7 +361,7 @@ export async function addFileToProject(
       return new Err({
         name: "dust_error",
         code: "invalid_request_error",
-        message: "File has no mount path and cannot be moved to the project.",
+        message: "File has no mount path and cannot be moved to the Pod.",
       });
     }
 
