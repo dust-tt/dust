@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
