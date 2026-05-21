@@ -269,7 +269,9 @@ async function main() {
   // Seed pro plans so they're available before parallel test workers start.
   // This avoids deadlocks from concurrent upserts in WorkspaceFactory.
   const { upsertProPlans } = await import("@app/lib/plans/pro_plans");
+  const { upsertCreditPricedPlans } = await import("@app/lib/plans/credit_priced_plans");
   await upsertProPlans();
+  await upsertCreditPricedPlans();
 
   process.exit(0);
 }
