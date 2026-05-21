@@ -1,15 +1,11 @@
-/** @ignoreswagger */
-// @migration-status: MIGRATED_TO_HONO
 import config from "@app/lib/api/config";
 import { DUST_COOKIES_ACCEPTED } from "@app/lib/cookies";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { readAnonymousIdFromCookies } from "@app/lib/utils/anonymous_id";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { parseCookieHeader } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 import { PostHog } from "posthog-node";
 
 const POSTHOG_HOST = "https://eu.i.posthog.com";
@@ -30,39 +26,16 @@ function getClient(): PostHog | null {
   return posthogClient;
 }
 
-function getClientIp(req: NextApiRequest): string | undefined {
-  const forwarded = req.headers["x-forwarded-for"];
-  return isString(forwarded)
-    ? forwarded.split(",")[0].trim()
-    : req.socket.remoteAddress;
-}
+// Mounted at /api/t/pv.
+const app = new Hono();
 
-function getCookieValue(req: NextApiRequest, name: string): string | undefined {
-  const cookies = req.headers.cookie;
-  if (!cookies) {
-    return undefined;
-  }
-  const prefix = `${name}=`;
-  const match = cookies.split("; ").find((c) => c.startsWith(prefix));
-  return match ? decodeURIComponent(match.slice(prefix.length)) : undefined;
-}
-
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<{ ok: boolean }>>,
-  _context: { session: SessionWithUser | null }
-): Promise<void> {
-  if (req.method !== "POST") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "Only POST is supported.",
-      },
-    });
-  }
-
-  const ip = getClientIp(req);
+app.post("/", async (ctx) => {
+  const headers: Record<string, string | string[] | undefined> = {};
+  ctx.req.raw.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+  const ipRaw = getClientIp({ headers });
+  const ip = ipRaw === "internal" ? undefined : ipRaw;
 
   // Rate limit: max 4 requests per 2 seconds per IP.
   if (ip) {
@@ -73,36 +46,36 @@ async function handler(
       logger,
     });
     if (remaining <= 0) {
-      res.status(429).json({ ok: false });
-      return;
+      return ctx.json({ ok: false }, 429);
     }
   }
 
   const client = getClient();
   if (!client) {
-    res.status(200).json({ ok: true });
-    return;
+    return ctx.json({ ok: true });
   }
 
-  const body = req.body;
+  const body = await ctx.req.json().catch(() => ({}));
   const page_url =
     typeof body?.page_url === "string" ? body.page_url : undefined;
   const referrer =
     typeof body?.referrer === "string" ? body.referrer : undefined;
 
   // Read anonymous ID from body or cookie fallback.
+  const cookieHeader = ctx.req.header("cookie");
   const anonymousIdFromBody =
     typeof body?.anonymous_id === "string" ? body.anonymous_id : undefined;
   const anonymousId =
     anonymousIdFromBody ??
-    readAnonymousIdFromCookies(req.headers.cookie) ??
+    readAnonymousIdFromCookies(cookieHeader) ??
     undefined;
 
   // Determine consent status from cookie.
-  const consentCookie = getCookieValue(req, DUST_COOKIES_ACCEPTED);
+  const cookies = parseCookieHeader(cookieHeader);
+  const consentCookie = cookies[DUST_COOKIES_ACCEPTED];
   const hasConsent = consentCookie === "true" || consentCookie === "auto";
 
-  const userAgent = req.headers["user-agent"] ?? undefined;
+  const userAgent = ctx.req.header("user-agent") ?? undefined;
 
   // The anonymous device ID is the primary identifier. If the user is logged
   // in, the PostHog alias created at login time will link events to their
@@ -126,7 +99,7 @@ async function handler(
     logger.error({ err }, "Failed to capture server_pageview on PostHog");
   }
 
-  res.status(200).json({ ok: true });
-}
+  return ctx.json({ ok: true });
+});
 
-export default withLogging(handler);
+export default app;
