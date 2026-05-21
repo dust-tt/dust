@@ -29,6 +29,7 @@ import {
 } from "@app/lib/metronome/types";
 import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
 import {
+  CREDIT_PRICED_BUSINESS_PLAN_CODE,
   isEntreprisePlanPrefix,
   isProPlanPrefix,
   PRO_PLAN_SEAT_39_CODE,
@@ -81,7 +82,10 @@ function classifyPlanCode(planCode: string): PlanTier {
   if (isEntreprisePlanPrefix(planCode)) {
     return "enterprise";
   }
-  if (planCode === PRO_PLAN_SEAT_39_CODE) {
+  if (
+    planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE ||
+    planCode === PRO_PLAN_SEAT_39_CODE
+  ) {
     return "business";
   }
   if (isProPlanPrefix(planCode)) {
