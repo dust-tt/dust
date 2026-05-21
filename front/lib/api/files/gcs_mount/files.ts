@@ -626,26 +626,12 @@ export async function copyConversationGCSMount(
       throw new Error("GCS mount copy hit the max files cap");
     }
 
-    if (sourceTimestampMs === undefined) {
-      // Fast path: full-conversation or latest-message branch — copy current versions as-is.
-      await concurrentExecutor(
-        currentFiles,
-        async (gcsFile) => {
-          const relativePath = gcsFile.name.slice(sourcePrefix.length);
-          const destPath = `${destPrefix}${relativePath}`;
-          await bucket.copyFile(gcsFile.name, destPath);
-        },
-        { concurrency: GCS_MOUNT_COPY_CONCURRENCY }
-      );
-
-      return new Ok({ copiedCount: currentFiles.length });
-    }
-
-    // Slow path: mid-conversation branch.
-    // For each file: if the current version predates the fork, copy directly.
-    // Otherwise fetch per-file version history to find the most recent pre-fork
-    // generation, or skip if the file didn't exist yet.
-    // All files run in a single concurrent pass to avoid waterfall between the two cases.
+    // Single path for both cases. Using `Date.now()` as the cutoff when no
+    // timestamp is given means every live file predates it, so all pass the
+    // `isUnchanged` check and are copied directly — no version lookups needed.
+    // When branching from a specific message, files unchanged since the fork
+    // are copied directly while modified files get a per-file version lookup.
+    const forkTimestampMs = sourceTimestampMs ?? Date.now();
     let copiedCount = 0;
 
     await concurrentExecutor(
@@ -656,7 +642,7 @@ export async function copyConversationGCSMount(
 
         const isUnchanged =
           isString(gcsFile.metadata.updated) &&
-          new Date(gcsFile.metadata.updated).getTime() <= sourceTimestampMs;
+          new Date(gcsFile.metadata.updated).getTime() <= forkTimestampMs;
 
         if (isUnchanged) {
           await bucket.copyFile(gcsFile.name, destPath);
@@ -682,7 +668,7 @@ export async function copyConversationGCSMount(
             );
             return false;
           }
-          return new Date(v.metadata.updated).getTime() <= sourceTimestampMs;
+          return new Date(v.metadata.updated).getTime() <= forkTimestampMs;
         });
         if (!preFork) {
           return; // file didn't exist before the fork point

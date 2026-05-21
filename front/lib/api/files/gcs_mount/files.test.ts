@@ -519,10 +519,14 @@ describe("copyConversationGCSMount", () => {
   it("copies every file under the source prefix to the dest prefix", async () => {
     const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
     const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+    const past = "2020-01-01T00:00:00.000Z";
     getFilesMock.mockResolvedValue([
-      { name: `${sourcePrefix}report.pdf` },
-      { name: `${sourcePrefix}.tool_outputs/chart.png` },
-      { name: `${sourcePrefix}data/foo.csv` },
+      { name: `${sourcePrefix}report.pdf`, metadata: { updated: past } },
+      {
+        name: `${sourcePrefix}.tool_outputs/chart.png`,
+        metadata: { updated: past },
+      },
+      { name: `${sourcePrefix}data/foo.csv`, metadata: { updated: past } },
     ]);
 
     const result = await copyConversationGCSMount(auth, { source, dest });
@@ -581,7 +585,12 @@ describe("copyConversationGCSMount", () => {
 
   it("returns Err when a copy fails", async () => {
     const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
-    getFilesMock.mockResolvedValue([{ name: `${sourcePrefix}report.pdf` }]);
+    getFilesMock.mockResolvedValue([
+      {
+        name: `${sourcePrefix}report.pdf`,
+        metadata: { updated: "2020-01-01T00:00:00.000Z" },
+      },
+    ]);
     copyFileMock.mockRejectedValue(new Error("GCS copy unavailable"));
 
     const result = await copyConversationGCSMount(auth, { source, dest });
