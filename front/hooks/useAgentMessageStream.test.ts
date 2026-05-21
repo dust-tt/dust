@@ -235,27 +235,27 @@ describe("removePendingToolCallForAction", () => {
 describe("appendThinkingStep", () => {
   it("appends a thinking step when none exists", () => {
     const steps: InlineActivityStep[] = [];
-    expect(appendThinkingStep(steps, "Enable the toolset", "thinking-1")).toEqual(
-      [{ type: "thinking", content: "Enable the toolset", id: "thinking-1" }]
-    );
+    expect(
+      appendThinkingStep(steps, "Enable the toolset", "thinking-1")
+    ).toEqual([
+      { type: "thinking", content: "Enable the toolset", id: "thinking-1" },
+    ]);
   });
 
   it("deduplicates when the same content is offered again", () => {
     const steps: InlineActivityStep[] = [
       { type: "thinking", content: "Enable the toolset", id: "thinking-1" },
     ];
-    expect(
-      appendThinkingStep(steps, "Enable the toolset", "thinking-2")
-    ).toBe(steps);
+    expect(appendThinkingStep(steps, "Enable the toolset", "thinking-2")).toBe(
+      steps
+    );
   });
 
   it("appends a new step when the content differs from the last thinking step", () => {
     const steps: InlineActivityStep[] = [
       { type: "thinking", content: "First attempt", id: "thinking-1" },
     ];
-    expect(
-      appendThinkingStep(steps, "Second attempt", "thinking-2")
-    ).toEqual([
+    expect(appendThinkingStep(steps, "Second attempt", "thinking-2")).toEqual([
       { type: "thinking", content: "First attempt", id: "thinking-1" },
       { type: "thinking", content: "Second attempt", id: "thinking-2" },
     ]);
@@ -679,10 +679,9 @@ describe("useAgentMessageStream", () => {
       );
     });
 
-    // Each retry's CoT appears as its own thinking step (appendThinkingStep
-    // deduplicates only exact matches). Stale tokens ("Enabling now.",
-    // "Let me enable it.") were discarded by the runId-based reset before
-    // they could be flushed as content steps.
+    // Each retry produced different CoT, so each appears as its own thinking
+    // step. Stale tokens ("Enabling now.", "Let me enable it.") were discarded
+    // by the runId-based reset before they could be flushed as content steps.
     expect(currentMessage.streaming.inlineActivitySteps).toEqual([
       {
         type: "thinking",
@@ -698,6 +697,114 @@ describe("useAgentMessageStream", () => {
         type: "thinking",
         content: "I need to enable the Create Files toolset first.",
         id: expect.stringContaining("thinking-toolparams-"),
+      },
+    ]);
+  });
+
+  it("suppresses the re-stream when a Temporal retry produces identical CoT mid-stream", () => {
+    // This test covers the case where an activity fails mid-CoT (no flush
+    // between retries). The shadow buffer suppresses the re-stream so the
+    // user never sees the thinking bubble go blank and refill.
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    const chainOfThoughtSnapshots: string[] = [];
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue({
+      data: {
+        map: (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          if (currentMessage.chainOfThought !== null) {
+            chainOfThoughtSnapshots.push(currentMessage.chainOfThought);
+          }
+          return [currentMessage];
+        },
+      },
+    });
+
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+
+    act(() => {
+      // Retry 1: partial CoT (activity fails mid-stream, no flush)
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "1-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "I need to search the web.",
+            classification: "chain_of_thought",
+            runId: "attempt-1",
+          },
+        })
+      );
+      // Retry 2: identical CoT restarts from the beginning (new runId).
+      // The shadow buffer suppresses updates while tokens match what's shown.
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "2-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "I need to search the web.",
+            classification: "chain_of_thought",
+            runId: "attempt-2",
+          },
+        })
+      );
+      // Retry 2 completes successfully.
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "3-0",
+          data: {
+            type: "agent_message_success",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            message: {
+              ...makeLightAgentMessage({
+                content: null,
+                chainOfThought: "I need to search the web.",
+              }),
+              actions: [],
+            },
+          },
+        })
+      );
+    });
+
+    // chainOfThought never went blank — no empty string between the two runs.
+    expect(chainOfThoughtSnapshots).not.toContain("");
+    // appendThinkingStep deduplicates exact matches — only one thinking step.
+    expect(currentMessage.streaming.inlineActivitySteps).toEqual([
+      {
+        type: "thinking",
+        content: "I need to search the web.",
+        id: expect.stringContaining("thinking-final-"),
       },
     ]);
   });
