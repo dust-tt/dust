@@ -12,7 +12,6 @@ import { PlanModel } from "@app/lib/models/plan";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
-  PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getStripeCustomer } from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
