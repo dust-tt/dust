@@ -23,7 +23,7 @@ import {
   SeatMaxIcon,
   SeatProIcon,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Per-seat-type display icon. The label / name comes from the API
 // (`SeatTypeInfo.name`) so adding a new seat tier only requires tagging the
@@ -109,7 +109,7 @@ function SeatCard({
 interface ChangeSeatModalProps {
   isOpen: boolean;
   onClose: () => void;
-  member: MemberUsageType;
+  member: MemberUsageType | null;
   owner: WorkspaceType;
   seatPlans: SeatPlanResponseBody;
 }
@@ -121,10 +121,21 @@ export function ChangeSeatModal({
   owner,
   seatPlans,
 }: ChangeSeatModalProps) {
+  // Keep the last non-null member so the dialog can render its content through
+  // the exit animation after the parent has cleared `member`.
+  const lastMemberRef = useRef<MemberUsageType | null>(null);
+  if (member) {
+    lastMemberRef.current = member;
+  }
+  const displayedMember = member ?? lastMemberRef.current;
+
   const seatTypes = sortSeatTypes(
     Object.keys(seatPlans).filter(isMembershipSeatType)
   );
-  const currentSeatType: MembershipSeatType | null = member.seatType;
+  const firstSeatType = seatTypes[0] ?? null;
+  const displayedMemberId = displayedMember?.sId ?? null;
+  const displayedMemberSeatType = displayedMember?.seatType ?? null;
+  const currentSeatType: MembershipSeatType | null = displayedMemberSeatType;
   const [selectedSeat, setSelectedSeat] = useState<MembershipSeatType | null>(
     currentSeatType ?? seatTypes[0] ?? null
   );
@@ -132,6 +143,30 @@ export function ChangeSeatModal({
   const { doUpdateSeatType } = useUpdateMemberSeatType({
     workspaceId: owner.sId,
   });
+  const initializedMemberIdRef = useRef<string | null>(null);
+
+  // Reset transient state when the dialog closes and initialize the selected
+  // seat once per member open. Do not re-run on seat plan refetches.
+  useEffect(() => {
+    if (!isOpen || !displayedMemberId) {
+      initializedMemberIdRef.current = null;
+      setIsSaving(false);
+      return;
+    }
+
+    if (initializedMemberIdRef.current === displayedMemberId) {
+      return;
+    }
+
+    const nextSelectedSeat = displayedMemberSeatType ?? firstSeatType;
+    if (nextSelectedSeat === null) {
+      return;
+    }
+
+    setSelectedSeat(nextSelectedSeat);
+    initializedMemberIdRef.current = displayedMemberId;
+    setIsSaving(false);
+  }, [displayedMemberId, displayedMemberSeatType, firstSeatType, isOpen]);
 
   function getBadge(
     seatType: MembershipSeatType,
@@ -153,10 +188,10 @@ export function ChangeSeatModal({
 
   // Member has a scheduled seat change and is re-selecting their current seat to cancel it.
   const isCancellingScheduledChange =
-    !!member.scheduledSeatType && selectedSeat === currentSeatType;
+    !!displayedMember?.scheduledSeatType && selectedSeat === currentSeatType;
 
   async function handleValidate() {
-    if (!selectedSeat) {
+    if (!selectedSeat || !displayedMember) {
       return;
     }
     if (selectedSeat === currentSeatType && !isCancellingScheduledChange) {
@@ -167,8 +202,8 @@ export function ChangeSeatModal({
     setIsSaving(true);
     try {
       const ok = await doUpdateSeatType({
-        memberId: member.sId,
-        memberName: member.name,
+        memberId: displayedMember.sId,
+        memberName: displayedMember.name,
         seatType: selectedSeat,
         isCancellingScheduledChange,
       });
@@ -189,13 +224,15 @@ export function ChangeSeatModal({
         <DialogHeader>
           <div className="flex items-center gap-3">
             <Avatar
-              visual={member.image ?? undefined}
-              name={member.name}
+              visual={displayedMember?.image ?? undefined}
+              name={displayedMember?.name}
               size="md"
               isRounded
             />
             <div>
-              <DialogTitle>Change Seat Type for {member.name}</DialogTitle>
+              <DialogTitle>
+                Change Seat Type for {displayedMember?.name}
+              </DialogTitle>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 They will be able to consume this amount from the pool after
                 reaching their plan usage limit.
@@ -237,7 +274,9 @@ export function ChangeSeatModal({
             {isCancellingScheduledChange && (
               <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                 Scheduled change to{" "}
-                <span className="capitalize">{member.scheduledSeatType}</span>{" "}
+                <span className="capitalize">
+                  {displayedMember?.scheduledSeatType}
+                </span>{" "}
                 will be cancelled.
               </p>
             )}

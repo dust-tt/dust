@@ -22,7 +22,8 @@ type RowData = {
   image: string | null;
   seatType: MembershipSeatType | null;
   seatUsagePercent: number | null;
-  consumedWorkplacePoolCredits: number;
+  consumedAwuCredits: number;
+  spendLimitAwuCredits: number | null;
   billingFrequency: BillingFrequency | null;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
@@ -103,12 +104,12 @@ function formatCredits(credits: number): string {
   return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
-interface WorkspaceUsageBarProps {
+interface AwuUsageBarProps {
   consumed: number;
   limit: number | null;
 }
 
-function WorkspaceUsageBar({ consumed, limit }: WorkspaceUsageBarProps) {
+function AwuUsageBar({ consumed, limit }: AwuUsageBarProps) {
   const percentage =
     limit !== null && limit > 0 ? Math.min((consumed / limit) * 100, 100) : 0;
 
@@ -259,20 +260,20 @@ const seatUsagePercentColumn: ColumnDef<RowData, string> = {
     (a.original.seatUsagePercent ?? -1) - (b.original.seatUsagePercent ?? -1),
 };
 
-const consumedWorkplacePoolCreditsColumn: ColumnDef<RowData, string> = {
-  id: "consumedWorkplacePoolCredits" as const,
+const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
+  id: "consumedAwuCredits" as const,
   header: () => (
     <span className="flex items-center gap-1.5">
       <Icon visual={ActionCreditCoinsIcon} size="xs" />
-      Workspace usage
+      AWU usage
     </span>
   ),
-  accessorFn: (row) => row.consumedWorkplacePoolCredits.toString(),
+  accessorFn: (row) => row.consumedAwuCredits.toString(),
   cell: (info: Info) => (
     <div className="w-full pr-3">
-      <WorkspaceUsageBar
-        consumed={info.row.original.consumedWorkplacePoolCredits}
-        limit={null}
+      <AwuUsageBar
+        consumed={info.row.original.consumedAwuCredits}
+        limit={info.row.original.spendLimitAwuCredits}
       />
     </div>
   ),
@@ -281,8 +282,7 @@ const consumedWorkplacePoolCreditsColumn: ColumnDef<RowData, string> = {
   },
   enableSorting: true,
   sortingFn: (a, b) =>
-    a.original.consumedWorkplacePoolCredits -
-    b.original.consumedWorkplacePoolCredits,
+    a.original.consumedAwuCredits - b.original.consumedAwuCredits,
 };
 
 const actionsColumn: ColumnDef<RowData, string> = {
@@ -303,7 +303,7 @@ function buildColumns(showSeatColumns: boolean): ColumnDef<RowData, string>[] {
     ...(showSeatColumns
       ? [seatTypeColumn, billingFrequencyColumn, seatUsagePercentColumn]
       : []),
-    consumedWorkplacePoolCreditsColumn,
+    consumedAwuCreditsColumn,
     ...(showSeatColumns ? [actionsColumn] : []),
   ];
 }
@@ -315,6 +315,7 @@ interface MembersUsageTableProps {
   seatTypeFilter: MembershipSeatType | "none" | null;
   showSeatColumns: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
+  onEditSpendLimit: (member: MemberUsageType) => void;
 }
 
 export function MembersUsageTable({
@@ -324,6 +325,7 @@ export function MembersUsageTable({
   seatTypeFilter,
   showSeatColumns,
   onChangeSeat,
+  onEditSpendLimit,
 }: MembersUsageTableProps) {
   if (isLoading) {
     return (
@@ -364,7 +366,8 @@ export function MembersUsageTable({
     image: m.image,
     seatType: m.seatType,
     seatUsagePercent: m.seatUsagePercent,
-    consumedWorkplacePoolCredits: m.consumedAwuCredits,
+    consumedAwuCredits: m.consumedAwuCredits,
+    spendLimitAwuCredits: m.spendLimitAwuCredits,
     billingFrequency: m.billingFrequency,
     scheduledSeatType: m.scheduledSeatType,
     scheduledSeatChangeAt: m.scheduledSeatChangeAt,
@@ -373,6 +376,11 @@ export function MembersUsageTable({
         kind: "item" as const,
         label: "Change Seat Type",
         onClick: () => onChangeSeat(m),
+      },
+      {
+        kind: "item" as const,
+        label: "Update User Spend Limit",
+        onClick: () => onEditSpendLimit(m),
       },
     ],
   }));
