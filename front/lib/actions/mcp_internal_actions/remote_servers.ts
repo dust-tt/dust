@@ -1498,6 +1498,128 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10020,
+    name: "Contentsquare",
+    description:
+      "Contentsquare tools for digital experience analytics — explore site metrics, funnels, journeys, page comparisons, and top errors across your projects.",
+    url: "https://api.contentsquare.com/mcp",
+    icon: "ContentsquareLogo",
+    documentationUrl: "https://docs.dust.tt/docs/remote-mcp-server",
+    connectionInstructions:
+      "Contentsquare uses OAuth. You will be prompted to sign in with your Contentsquare account. Access is scoped to the projects you have permission to view.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      "list-projects": "never_ask",
+      searchMappings: "never_ask",
+      searchGoals: "never_ask",
+      searchSegments: "never_ask",
+      recommendMappings: "never_ask",
+      recommendGoals: "never_ask",
+      recommendPageGroups: "never_ask",
+      recommendSegments: "never_ask",
+      getPageGroupsForMapping: "never_ask",
+      computeSiteMetrics: "never_ask",
+      computeFunnel: "never_ask",
+      computeImpact: "never_ask",
+      computeJourney: "never_ask",
+      computePageComparison: "never_ask",
+      computePageGroupMetrics: "never_ask",
+      getTopErrorsBySessionsWithErrors: "never_ask",
+      getTopErrorsByImpactOnGoal: "never_ask",
+      getTopErrorsByMissedOpportunity: "never_ask",
+      getTopPageGroupsByLostConversions: "never_ask",
+      getTopPagesBySessionsWithErrors: "never_ask",
+      submitMcpFeedback: "low",
+    },
+    toolDisplayLabels: {
+      "list-projects": {
+        running: "Listing projects on Contentsquare",
+        done: "Listed projects on Contentsquare",
+      },
+      searchMappings: {
+        running: "Searching mappings on Contentsquare",
+        done: "Searched mappings on Contentsquare",
+      },
+      searchGoals: {
+        running: "Searching goals on Contentsquare",
+        done: "Searched goals on Contentsquare",
+      },
+      searchSegments: {
+        running: "Searching segments on Contentsquare",
+        done: "Searched segments on Contentsquare",
+      },
+      recommendMappings: {
+        running: "Recommending mappings on Contentsquare",
+        done: "Recommended mappings on Contentsquare",
+      },
+      recommendGoals: {
+        running: "Recommending goals on Contentsquare",
+        done: "Recommended goals on Contentsquare",
+      },
+      recommendPageGroups: {
+        running: "Recommending page groups on Contentsquare",
+        done: "Recommended page groups on Contentsquare",
+      },
+      recommendSegments: {
+        running: "Recommending segments on Contentsquare",
+        done: "Recommended segments on Contentsquare",
+      },
+      getPageGroupsForMapping: {
+        running: "Fetching page groups from Contentsquare",
+        done: "Fetched page groups from Contentsquare",
+      },
+      computeSiteMetrics: {
+        running: "Computing site metrics on Contentsquare",
+        done: "Computed site metrics on Contentsquare",
+      },
+      computeFunnel: {
+        running: "Computing funnel on Contentsquare",
+        done: "Computed funnel on Contentsquare",
+      },
+      computeImpact: {
+        running: "Computing impact on Contentsquare",
+        done: "Computed impact on Contentsquare",
+      },
+      computeJourney: {
+        running: "Computing journey on Contentsquare",
+        done: "Computed journey on Contentsquare",
+      },
+      computePageComparison: {
+        running: "Comparing pages on Contentsquare",
+        done: "Compared pages on Contentsquare",
+      },
+      computePageGroupMetrics: {
+        running: "Computing page group metrics on Contentsquare",
+        done: "Computed page group metrics on Contentsquare",
+      },
+      getTopErrorsBySessionsWithErrors: {
+        running: "Fetching top errors by sessions from Contentsquare",
+        done: "Fetched top errors by sessions from Contentsquare",
+      },
+      getTopErrorsByImpactOnGoal: {
+        running: "Fetching top errors by goal impact from Contentsquare",
+        done: "Fetched top errors by goal impact from Contentsquare",
+      },
+      getTopErrorsByMissedOpportunity: {
+        running: "Fetching top errors by missed opportunity from Contentsquare",
+        done: "Fetched top errors by missed opportunity from Contentsquare",
+      },
+      getTopPageGroupsByLostConversions: {
+        running:
+          "Fetching top page groups by lost conversions from Contentsquare",
+        done: "Fetched top page groups by lost conversions from Contentsquare",
+      },
+      getTopPagesBySessionsWithErrors: {
+        running: "Fetching top pages by session errors from Contentsquare",
+        done: "Fetched top pages by session errors from Contentsquare",
+      },
+      submitMcpFeedback: {
+        running: "Submitting feedback to Contentsquare",
+        done: "Submitted feedback to Contentsquare",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {
