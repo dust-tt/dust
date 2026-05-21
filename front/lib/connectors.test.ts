@@ -137,6 +137,12 @@ describe("nodeCandidateFromUrl", () => {
       }
     });
 
+    it("should not match lookalike GitHub domains", () => {
+      const result = nodeCandidateFromUrl("https://notgithub.com/user/repo");
+
+      expect(result).toBeNull();
+    });
+
     it("should remove fragments from GitHub URLs", () => {
       const result = nodeCandidateFromUrl(
         "https://github.com/dust-tt/decisions/issues/797#issuecomment-4325601982"

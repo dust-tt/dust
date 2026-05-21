@@ -180,7 +180,9 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
   },
   github: {
     matcher: (url: URL): boolean => {
-      return url.hostname.endsWith("github.com");
+      return (
+        url.hostname === "github.com" || url.hostname.endsWith(".github.com")
+      );
     },
     urlNormalizer: (url: URL): UrlCandidate => {
       const normalizedUrl = new URL(url.toString());
