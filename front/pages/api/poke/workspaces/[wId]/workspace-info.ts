@@ -1,49 +1,17 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import config from "@app/lib/api/config";
-import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
-import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import {
+  getPokeWorkspaceInfo,
+  type PokeWorkspaceInfo,
+} from "@app/lib/api/poke/workspace_info";
+import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
-import { getCustomerId, getStripeSubscription } from "@app/lib/plans/stripe";
-import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ExtensionConfigurationType } from "@app/types/extension";
-import type { SubscriptionType } from "@app/types/plan";
-import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
-import type { WorkspaceDomain } from "@app/types/workspace";
-import { format } from "date-fns/format";
 import type { NextApiRequest, NextApiResponse } from "next";
-import type Stripe from "stripe";
 
-export type PokeGetWorkspaceInfo = {
-  activeSubscription: SubscriptionType;
-  baseUrl: string;
-  extensionConfig: ExtensionConfigurationType | null;
-  hasDummyFeature: boolean;
-  hasMetronomeFeature: boolean;
-  membersCount: number;
-  metronomeCustomerId: string | null;
-  pendingSubscription: SubscriptionType | null;
-  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
-  stripeCustomerId: string | null;
-  stripeSubscription: Stripe.Subscription | null;
-  subscriptions: SubscriptionType[];
-  whitelistableFeatures: WhitelistableFeature[];
-  temporalFrontNamespace: string;
-  workspaceCreationDay: string;
-  workspaceVerifiedDomains: WorkspaceDomain[];
-  workosEnvironmentId: string;
-};
+export type PokeGetWorkspaceInfo = PokeWorkspaceInfo;
 
 async function handler(
   req: NextApiRequest,
@@ -63,9 +31,8 @@ async function handler(
 
   const auth = await Authenticator.fromSuperUserSession(session, wId);
   const owner = auth.workspace();
-  const activeSubscription = auth.subscription();
 
-  if (!owner || !activeSubscription || !auth.isDustSuperUser()) {
+  if (!owner || !auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -76,13 +43,9 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
-      const subscriptionResources =
-        await SubscriptionResource.fetchByAuthenticator(auth);
-      const subscriptions = subscriptionResources.map((s) => s.toJSON());
-
-      const workspaceResource = await WorkspaceResource.fetchById(owner.sId);
-      if (!workspaceResource) {
+    case "GET": {
+      const result = await getPokeWorkspaceInfo(auth);
+      if (result.isErr()) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -91,84 +54,8 @@ async function handler(
           },
         });
       }
-      const workspaceVerifiedDomains =
-        await workspaceResource.getVerifiedDomains();
-
-      const workspaceCreationDay = await getWorkspaceCreationDate(owner.sId);
-
-      const extensionConfig =
-        await ExtensionConfigurationResource.fetchForWorkspace(auth);
-
-      const programmaticUsageConfig =
-        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-
-      const hasDummyFeature = await hasFeatureFlag(
-        auth,
-        "dummy_feature_for_flag_testing"
-      );
-
-      const hasMetronomeFeature = await isMetronomeBillingEnabled(auth);
-
-      const pendingSubscriptionResource =
-        await SubscriptionResource.fetchPendingByWorkspaceModelId(
-          workspaceResource.id
-        );
-      const pendingSubscription = pendingSubscriptionResource?.toJSON() ?? null;
-
-      const membersCount = await MembershipResource.getMembersCountForWorkspace(
-        {
-          workspace: owner,
-          activeOnly: true,
-        }
-      );
-
-      let stripeSubscription: Stripe.Subscription | null = null;
-      if (activeSubscription.stripeSubscriptionId) {
-        stripeSubscription = await getStripeSubscription(
-          activeSubscription.stripeSubscriptionId
-        );
-      }
-
-      let stripeCustomerId: string | null = null;
-      if (stripeSubscription) {
-        stripeCustomerId = getCustomerId(stripeSubscription);
-      } else if (workspaceResource.metronomeCustomerId) {
-        const lookup = await getMetronomeCustomerStripeCustomerId(
-          workspaceResource.metronomeCustomerId
-        );
-        if (lookup.isOk()) {
-          stripeCustomerId = lookup.value;
-        } else {
-          logger.warn(
-            {
-              workspaceId: owner.sId,
-              metronomeCustomerId: workspaceResource.metronomeCustomerId,
-              error: lookup.error.message,
-            },
-            "[Poke workspace-info] Failed to resolve Stripe customer ID from Metronome billing config"
-          );
-        }
-      }
-
-      return res.status(200).json({
-        activeSubscription,
-        hasDummyFeature,
-        hasMetronomeFeature,
-        membersCount,
-        metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
-        pendingSubscription,
-        stripeCustomerId,
-        stripeSubscription,
-        subscriptions,
-        whitelistableFeatures: WHITELISTABLE_FEATURES,
-        workspaceVerifiedDomains,
-        workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
-        extensionConfig: extensionConfig?.toJSON() ?? null,
-        programmaticUsageConfig: programmaticUsageConfig?.toJSON() ?? null,
-        baseUrl: config.getApiBaseUrl(),
-        workosEnvironmentId: config.getWorkOSEnvironmentId(),
-        temporalFrontNamespace: config.getTemporalFrontNamespace() ?? "",
-      });
+      return res.status(200).json(result.value);
+    }
 
     default:
       return apiError(req, res, {
