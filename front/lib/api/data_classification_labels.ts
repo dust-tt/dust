@@ -1,11 +1,14 @@
+import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import config from "@app/lib/api/config";
 import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -91,6 +94,106 @@ export async function getMCPConnectionAccessToken(
   return null;
 }
 
+export type ResolveSourceErrorType =
+  | "data_source_not_found"
+  | "not_microsoft_connector"
+  | "unsupported_mcp_server";
+
+export type ResolvedLabelSourceError = {
+  type: ResolveSourceErrorType;
+  message: string;
+};
+
+export type ResolvedLabelSource =
+  | {
+      sourceType: "connector";
+      sourceId: string;
+      connectorId: string | null;
+      accessToken: string | null;
+    }
+  | {
+      sourceType: "mcp_connection";
+      sourceId: string;
+      connectorId: null;
+      accessToken: string | null;
+    };
+
+export async function resolveLabelSource(
+  auth: Authenticator,
+  source: { dataSourceId?: string; internalMCPServerId?: string }
+): Promise<Result<ResolvedLabelSource, ResolvedLabelSourceError>> {
+  const { dataSourceId, internalMCPServerId } = source;
+
+  if (dataSourceId) {
+    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+    if (!dataSource) {
+      return new Err({
+        type: "data_source_not_found",
+        message: "The data source was not found.",
+      });
+    }
+
+    if (dataSource.connectorProvider !== "microsoft") {
+      return new Err({
+        type: "not_microsoft_connector",
+        message:
+          "Data classification labels are only supported for Microsoft connectors.",
+      });
+    }
+
+    const accessToken = await getConnectorAccessToken(dataSource);
+    if (!accessToken) {
+      logger.warn(
+        { dataSourceId },
+        "No access token for connector label fetch"
+      );
+    }
+
+    return new Ok({
+      sourceType: "connector",
+      sourceId: dataSource.sId,
+      connectorId: dataSource.connectorId ?? null,
+      accessToken,
+    });
+  }
+
+  // MCP connection path.
+  if (!internalMCPServerId) {
+    return new Err({
+      type: "unsupported_mcp_server",
+      message: "No data source or MCP server ID provided.",
+    });
+  }
+
+  const resolvedProvider =
+    getSensitivityLabelProviderForServerId(internalMCPServerId);
+
+  if (!resolvedProvider) {
+    return new Err({
+      type: "unsupported_mcp_server",
+      message: `Unsupported MCP server for data classification: ${internalMCPServerId}`,
+    });
+  }
+
+  const accessToken = await getMCPConnectionAccessToken(
+    auth,
+    internalMCPServerId
+  );
+  if (!accessToken) {
+    logger.warn(
+      { internalMCPServerId },
+      "No access token for MCP connection label fetch"
+    );
+  }
+
+  return new Ok({
+    sourceType: "mcp_connection",
+    sourceId: internalMCPServerId,
+    connectorId: null,
+    accessToken,
+  });
+}
+
 export async function getMicrosoftSensitivityLabels(
   accessToken: string
 ): Promise<MicrosoftSensitivityLabel[]> {
@@ -106,9 +209,9 @@ export async function getMicrosoftSensitivityLabels(
     res?.value ?? [];
 
   return rawLabels
-    .filter((l) => l.id)
+    .filter((l): l is typeof l & { id: string } => !!l.id)
     .map((l) => ({
-      id: l.id as string,
-      name: l.name ?? l.displayName ?? l.id ?? "",
+      id: l.id,
+      name: l.name ?? l.displayName ?? l.id,
     }));
 }
