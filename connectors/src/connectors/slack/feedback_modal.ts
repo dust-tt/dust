@@ -78,7 +78,7 @@ export async function openFeedbackModal({
             type: "section",
             text: {
               type: "mrkdwn",
-              text: "Help us improve by sharing your feedback about this response.",
+              text: "Share whether this helped you get things done.",
             },
           },
           {
@@ -86,7 +86,7 @@ export async function openFeedbackModal({
             block_id: "feedback_rating",
             label: {
               type: "plain_text",
-              text: "How was this response?",
+              text: "Did this help you in your work?",
             },
             element: {
               type: "radio_buttons",
