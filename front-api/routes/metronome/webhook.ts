@@ -35,16 +35,24 @@ import logger from "@app/logger/logger";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 import { z } from "zod";
+
+type ResponseBody = {
+  success: boolean;
+  message?: string;
+};
 
 // Mounted at /api/metronome/webhook.
 const app = new Hono();
 
-app.get("/", (ctx) => ctx.json({ success: true }));
+app.get(
+  "/",
+  async (ctx): HandlerResult<ResponseBody> => ctx.json({ success: true })
+);
 
-app.post("/", async (ctx) => {
+app.post("/", async (ctx): HandlerResult<ResponseBody> => {
   // Read the raw body bytes once. Metronome's SDK signature verification
   // works on the exact string representation of the JSON body.
   const bodyString = await ctx.req.text();

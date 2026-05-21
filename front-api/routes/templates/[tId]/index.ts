@@ -1,11 +1,13 @@
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
+
+export type FetchAgentTemplateResponse = ReturnType<TemplateResource["toJSON"]>;
 
 // Mounted at /api/templates/:tId.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<FetchAgentTemplateResponse> => {
   const templateId = ctx.req.param("tId");
   if (!templateId) {
     return apiError(ctx, {
