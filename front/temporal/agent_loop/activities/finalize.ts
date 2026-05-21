@@ -11,7 +11,7 @@ import {
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
-import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
+import { conversationUnreadNotification } from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
 import {
   launchEmitMetronomeUsageEvents,
@@ -27,15 +27,16 @@ export async function finalizeSuccessfulAgentLoopActivity(
   if (authResult.isErr()) {
     return;
   }
+  const auth = authResult.value;
 
   await Promise.all([
-    snapshotAgentMessageSkills(authType, agentLoopArgs),
-    launchAgentMessageAnalytics(authType, agentLoopArgs),
-    launchTrackProgrammaticUsage(authType, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
-    conversationUnreadNotificationActivity(authType, agentLoopArgs),
-    handleMentions(authType, agentLoopArgs),
-    sendEmailReplyOnCompletion(authType, agentLoopArgs),
+    snapshotAgentMessageSkills(auth, agentLoopArgs),
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    conversationUnreadNotification(auth, agentLoopArgs),
+    handleMentions(auth, agentLoopArgs),
+    sendEmailReplyOnCompletion(auth, agentLoopArgs),
   ]);
 }
 
@@ -51,14 +52,20 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
 ): Promise<void> {
   await finalizeGracefulStop(authType, agentLoopArgs);
 
-  await Promise.all([
-    snapshotAgentMessageSkills(authType, agentLoopArgs),
-    launchAgentMessageAnalytics(authType, agentLoopArgs),
-    launchTrackProgrammaticUsage(authType, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    return;
+  }
+  const auth = authResult.value;
 
-    conversationUnreadNotificationActivity(authType, agentLoopArgs),
-    handleMentions(authType, agentLoopArgs),
+  await Promise.all([
+    snapshotAgentMessageSkills(auth, agentLoopArgs),
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+
+    conversationUnreadNotification(auth, agentLoopArgs),
+    handleMentions(auth, agentLoopArgs),
   ]);
 }
 
@@ -76,13 +83,19 @@ export async function finalizeInterruptedAgentLoopActivity(
 ): Promise<void> {
   await finalizeInterruption(authType, agentLoopArgs);
 
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    return;
+  }
+  const auth = authResult.value;
+
   await Promise.all([
-    snapshotAgentMessageSkills(authType, agentLoopArgs),
-    launchAgentMessageAnalytics(authType, agentLoopArgs),
-    launchTrackProgrammaticUsage(authType, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
-    conversationUnreadNotificationActivity(authType, agentLoopArgs),
-    handleMentions(authType, agentLoopArgs),
+    snapshotAgentMessageSkills(auth, agentLoopArgs),
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    conversationUnreadNotification(auth, agentLoopArgs),
+    handleMentions(auth, agentLoopArgs),
   ]);
 }
 
@@ -92,13 +105,19 @@ export async function finalizeCancelledAgentLoopActivity(
 ): Promise<void> {
   await finalizeCancellation(authType, agentLoopArgs);
 
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    return;
+  }
+  const auth = authResult.value;
+
   await Promise.all([
-    snapshotAgentMessageSkills(authType, agentLoopArgs),
-    launchAgentMessageAnalytics(authType, agentLoopArgs),
-    launchTrackProgrammaticUsage(authType, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
+    snapshotAgentMessageSkills(auth, agentLoopArgs),
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     sendEmailReplyOnError(
-      authType,
+      auth,
       agentLoopArgs,
       "Agent execution was cancelled."
     ),
@@ -112,13 +131,19 @@ export async function finalizeErroredAgentLoopActivity(
 ): Promise<void> {
   await notifyWorkflowError(authType, agentLoopArgs, error);
 
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    return;
+  }
+  const auth = authResult.value;
+
   await Promise.all([
-    snapshotAgentMessageSkills(authType, agentLoopArgs),
-    launchAgentMessageAnalytics(authType, agentLoopArgs),
-    launchTrackProgrammaticUsage(authType, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
+    snapshotAgentMessageSkills(auth, agentLoopArgs),
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     sendEmailReplyOnError(
-      authType,
+      auth,
       agentLoopArgs,
       `Agent execution failed: ${error.message}`
     ),

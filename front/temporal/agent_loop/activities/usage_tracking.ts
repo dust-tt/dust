@@ -1,5 +1,4 @@
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import type { AuthenticatorType } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import {
   launchEmitMetronomeUsageEventsWorkflow,
@@ -11,21 +10,11 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
  * Launch agent message analytics workflow in fire-and-forget mode.
  */
 export async function launchTrackProgrammaticUsage(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  // Use `getWorkspaceInfos` for lightweight workspace info.
-  const owner = await getWorkspaceInfos(authType.workspaceId);
-  if (!owner) {
-    logger.warn(
-      { workspaceId: authType.workspaceId },
-      "Failed to fetch workspace infos for agent message analytics"
-    );
-    return;
-  }
-
   const result = await launchTrackProgrammaticUsageWorkflow({
-    authType,
+    authType: auth.toJSON(),
     agentLoopArgs,
   });
 
@@ -34,7 +23,7 @@ export async function launchTrackProgrammaticUsage(
       {
         agentMessageId: agentLoopArgs.agentMessageId,
         error: result.error,
-        workspaceId: authType.workspaceId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
       "Failed to launch agent message analytics workflow"
     );
@@ -46,16 +35,15 @@ export async function launchTrackProgrammaticUsage(
  * Only starts if the workspace has a metronomeCustomerId (i.e. is provisioned in Metronome).
  */
 export async function launchEmitMetronomeUsageEvents(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const owner = await getWorkspaceInfos(authType.workspaceId);
-  if (!owner?.metronomeCustomerId) {
+  if (!auth.getNonNullableWorkspace().metronomeCustomerId) {
     return;
   }
 
   const result = await launchEmitMetronomeUsageEventsWorkflow({
-    authType,
+    authType: auth.toJSON(),
     agentLoopArgs,
   });
 
@@ -64,7 +52,7 @@ export async function launchEmitMetronomeUsageEvents(
       {
         agentMessageId: agentLoopArgs.agentMessageId,
         error: result.error,
-        workspaceId: authType.workspaceId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
       "[Metronome] Failed to launch usage events workflow"
     );

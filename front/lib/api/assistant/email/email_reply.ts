@@ -11,13 +11,13 @@ import {
   storeEmailReplyContext,
 } from "@app/lib/api/assistant/email/email_trigger";
 import config from "@app/lib/api/config";
-import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import { getAgentLoopDataWithAuth } from "@app/types/assistant/agent_run";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 
@@ -54,18 +54,11 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
  * Duplicates the webhook handler check in case Redis data is manipulated or
  * context is stored incorrectly.
  */
-async function isEmailAgentsEnabled(
-  authType: AuthenticatorType
-): Promise<boolean> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    logger.warn("[email] Failed to create authenticator for email reply check");
-    return false;
-  }
-  const workspace = authResult.value.getNonNullableWorkspace();
+async function isEmailAgentsEnabled(auth: Authenticator): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
   if (workspace.metadata?.allowEmailAgents !== true) {
     logger.info(
-      { workspaceId: authType.workspaceId },
+      { workspaceId: workspace.sId },
       "[email] allowEmailAgents not enabled in workspace metadata, skipping reply"
     );
     return false;
@@ -160,9 +153,10 @@ async function handleBlockedValidation(
  * Fire-and-forget: failures are logged but don't throw.
  */
 export async function sendEmailReplyOnCompletion(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
   try {
     // Only process email-originated messages.
     if (agentLoopArgs.userMessageOrigin !== "email") {
@@ -171,7 +165,7 @@ export async function sendEmailReplyOnCompletion(
 
     // Read without deleting — only delete after actually sending the final reply.
     const context = await getEmailReplyContext(
-      authType.workspaceId,
+      workspaceId,
       agentLoopArgs.agentMessageId
     );
     if (!context) {
@@ -183,7 +177,7 @@ export async function sendEmailReplyOnCompletion(
     }
 
     // Get the completed agent message data.
-    const dataRes = await getAgentLoopData(authType, agentLoopArgs);
+    const dataRes = await getAgentLoopDataWithAuth(auth, agentLoopArgs);
     if (dataRes.isErr()) {
       logger.warn(
         {
@@ -195,19 +189,17 @@ export async function sendEmailReplyOnCompletion(
       return;
     }
 
-    const { auth, agentMessage, conversation } = dataRes.value;
+    const { agentMessage, conversation } = dataRes.value;
 
-    if (!(await isEmailAgentsEnabled(authType))) {
-      await deleteEmailReplyContext(
-        authType.workspaceId,
-        agentLoopArgs.agentMessageId
-      );
+    const isEnabled = await isEmailAgentsEnabled(auth);
+    if (!isEnabled) {
+      await deleteEmailReplyContext(workspaceId, agentLoopArgs.agentMessageId);
       return;
     }
 
     if (agentMessage.status === "failed") {
       await sendEmailReplyOnError(
-        authType,
+        auth,
         agentLoopArgs,
         agentMessage.error?.message ?? "Agent execution failed."
       );
@@ -225,10 +217,7 @@ export async function sendEmailReplyOnCompletion(
     }
 
     // No blocked actions — send the normal reply and delete the context.
-    await deleteEmailReplyContext(
-      authType.workspaceId,
-      agentLoopArgs.agentMessageId
-    );
+    await deleteEmailReplyContext(workspaceId, agentLoopArgs.agentMessageId);
 
     // Get agent configuration for the reply sender name.
     const agentConfiguration = await getAgentConfiguration(auth, {
@@ -298,17 +287,18 @@ export async function sendEmailReplyOnCompletion(
  * Fire-and-forget: failures are logged but don't throw.
  */
 export async function sendEmailReplyOnError(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   agentLoopArgs: AgentLoopArgs,
   errorMessage: string
 ): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
   try {
     if (agentLoopArgs.userMessageOrigin !== "email") {
       return;
     }
 
     const context = await getEmailReplyContext(
-      authType.workspaceId,
+      workspaceId,
       agentLoopArgs.agentMessageId
     );
     if (!context) {
@@ -319,12 +309,10 @@ export async function sendEmailReplyOnError(
       return;
     }
 
-    await deleteEmailReplyContext(
-      authType.workspaceId,
-      agentLoopArgs.agentMessageId
-    );
+    await deleteEmailReplyContext(workspaceId, agentLoopArgs.agentMessageId);
 
-    if (!(await isEmailAgentsEnabled(authType))) {
+    const isEnabled = await isEmailAgentsEnabled(auth);
+    if (!isEnabled) {
       return;
     }
 
