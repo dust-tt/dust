@@ -2386,27 +2386,22 @@ async function checkMessagesLimit(
     return new Ok(undefined);
   }
 
-  // Block users flagged by the Metronome `alerts.spend_threshold_reached`
-  // webhook. The flag is set per (workspace, user) in Redis and is only
-  // checked for non-legacy Metronome plans.
+  // Block users flagged by the Metronome `alerts.spend_threshold_reached` webhook. The flag is set
+  // per (workspace, user) in Redis and is only checked for non-legacy Metronome plans.
   const owner = auth.getNonNullableWorkspace();
-  if (owner.metronomeCustomerId) {
-    const onLegacyPlan = await isLegacyPlan(owner.sId);
-    if (!onLegacyPlan) {
-      const user = auth.user();
-      if (user) {
-        const blocked = await isUserBlocked(owner.sId, user.sId);
-        if (blocked) {
-          return new Err({
-            status_code: 403,
-            api_error: {
-              type: "credits_exhausted",
-              message:
-                "Your workspace has run out of credits. Please purchase more credits to continue.",
-            },
-          });
-        }
-      }
+  const plan = auth.subscription()?.plan;
+  const user = auth.user();
+  if (owner.metronomeCustomerId && plan && !isLegacyPlan(plan) && user) {
+    const blocked = await isUserBlocked(owner.sId, user.sId);
+    if (blocked) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "credits_exhausted",
+          message:
+            "Your workspace has run out of credits. Please purchase more credits to continue.",
+        },
+      });
     }
   }
 

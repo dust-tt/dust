@@ -126,8 +126,7 @@ async function checkAwuPurchaseEligibility(
     return new Err({ code: "not_metronome_billed" });
   }
 
-  const onLegacyPlan = await isLegacyPlan(workspace.sId);
-  if (onLegacyPlan) {
+  if (isLegacyPlan(subscription.plan)) {
     return new Err({ code: "legacy_plan" });
   }
 
