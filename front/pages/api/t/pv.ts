@@ -24,11 +24,7 @@ async function handler(
     });
   }
 
-  const ip =
-    getClientIp({
-      headers: req.headers as Record<string, string | string[] | undefined>,
-      socket: req.socket,
-    }) || undefined;
+  const ip = getClientIp({ headers: req.headers, socket: req.socket });
   const normalizedIp = ip === "internal" ? undefined : ip;
 
   const result = await trackPageview({
