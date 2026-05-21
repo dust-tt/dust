@@ -86,9 +86,9 @@ AgentStepContentToolExecutionModel.init(
         name: "agent_step_content_tool_executions_conversation_id",
       },
       {
-        fields: ["workspaceId", "agentMessageId"],
+        fields: ["agentMessageId"],
         concurrently: true,
-        name: "agent_sc_te_workspace_message",
+        name: "agent_step_content_tool_executions_agent_message_id",
       },
     ],
   }
