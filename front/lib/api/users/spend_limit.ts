@@ -194,17 +194,16 @@ export async function setUserSpendLimit(
           new UserSpendLimitError("metronome_error", clearResult.error.message)
         );
       }
-      try {
-        await dispatchPerUserCapResolved({
-          workspace: workspaceResource,
-          userId: user.sId,
-        });
-      } catch (error) {
+      const dispatchResult = await dispatchPerUserCapResolved({
+        workspace: workspaceResource,
+        userId: user.sId,
+      });
+      if (dispatchResult.isErr()) {
         logger.warn(
           {
             workspaceId: workspace.sId,
             userId: user.sId,
-            err: error,
+            err: dispatchResult.error,
           },
           "[Metronome PerUserCap] dispatchPerUserCapResolved failed after spend-limit update; continuing"
         );
@@ -230,28 +229,38 @@ export async function setUserSpendLimit(
         userId: user.sId,
         awuCapCredits: limit.awuCredits,
       });
-      try {
-        if (transitionedTo === "reached") {
-          await dispatchPerUserCapReached({
-            workspace: workspaceResource,
-            userId: user.sId,
-          });
-        } else if (transitionedTo === "resolved") {
-          await dispatchPerUserCapResolved({
-            workspace: workspaceResource,
-            userId: user.sId,
-          });
+      if (transitionedTo === "reached") {
+        const dispatchResult = await dispatchPerUserCapReached({
+          workspace: workspaceResource,
+          userId: user.sId,
+        });
+        if (dispatchResult.isErr()) {
+          logger.warn(
+            {
+              workspaceId: workspace.sId,
+              userId: user.sId,
+              transitionedTo,
+              err: dispatchResult.error,
+            },
+            "[Metronome PerUserCap] dispatch after spend-limit update failed; continuing"
+          );
         }
-      } catch (error) {
-        logger.warn(
-          {
-            workspaceId: workspace.sId,
-            userId: user.sId,
-            transitionedTo,
-            err: error,
-          },
-          "[Metronome PerUserCap] dispatch after spend-limit update failed; continuing"
-        );
+      } else if (transitionedTo === "resolved") {
+        const dispatchResult = await dispatchPerUserCapResolved({
+          workspace: workspaceResource,
+          userId: user.sId,
+        });
+        if (dispatchResult.isErr()) {
+          logger.warn(
+            {
+              workspaceId: workspace.sId,
+              userId: user.sId,
+              transitionedTo,
+              err: dispatchResult.error,
+            },
+            "[Metronome PerUserCap] dispatch after spend-limit update failed; continuing"
+          );
+        }
       }
       // transitionedTo === null: usage unavailable — let webhook reconcile.
       break;

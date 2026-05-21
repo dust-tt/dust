@@ -67,10 +67,10 @@ beforeEach(() => {
     new Ok(new Map())
   );
   vi.mocked(creditStateDispatcher.dispatchPerUserCapReached).mockResolvedValue(
-    undefined
+    new Ok(undefined)
   );
   vi.mocked(creditStateDispatcher.dispatchPerUserCapResolved).mockResolvedValue(
-    undefined
+    new Ok(undefined)
   );
 });
 
@@ -261,8 +261,8 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect(perUserAlerts.clearMetronomePerUserCapAlert).toHaveBeenCalledWith(
         expect.objectContaining({
           metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
-          workspaceSId: workspace.sId,
-          userSId: targetUser.sId,
+          workspaceId: workspace.sId,
+          userId: targetUser.sId,
         })
       );
       expect(
@@ -302,8 +302,8 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect(perUserAlerts.syncMetronomePerUserCapAlert).toHaveBeenCalledWith(
         expect.objectContaining({
           metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
-          workspaceSId: workspace.sId,
-          userSId: targetUser.sId,
+          workspaceId: workspace.sId,
+          userId: targetUser.sId,
           awuCredits: 1500,
         })
       );
