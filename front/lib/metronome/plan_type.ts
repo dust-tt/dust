@@ -1,11 +1,11 @@
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import { SubscriptionModel } from "@app/lib/models/plan";
+import { isCreditPricedPlan } from "@app/lib/plans/plan_codes";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { PlanType } from "@app/types/plan";
 import type { ContractV2 } from "@metronome/sdk/resources";
-import { isCreditPricedPlan } from "../plans/plan_codes";
 
 // Commits and credits are stripped before caching — their balances/ledgers change
 // every billing cycle and are never read here.
