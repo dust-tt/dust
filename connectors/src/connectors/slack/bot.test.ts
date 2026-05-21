@@ -1,6 +1,5 @@
 import type { ConversationEvent } from "@dust-tt/client";
 import { Ok } from "@dust-tt/client";
-import type { WebClient } from "@slack/web-api";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@connectors/lib/bot/conversation_utils", () => ({
@@ -9,22 +8,9 @@ vi.mock("@connectors/lib/bot/conversation_utils", () => ({
 
 import { resolveSlackPendingUserMessage } from "./bot";
 
-type PendingUserMessage = {
-  sId: string;
-  type: "user_message";
-  visibility: "pending" | "visible";
-};
-
-type PendingConversation = {
-  sId: string;
-  content: (
-    | PendingUserMessage
-    | {
-        type: "agent_message";
-        parentMessageId: string;
-      }
-  )[][];
-};
+type PendingMessage =
+  | { sId: string; type: "user_message"; visibility: "pending" | "visible" }
+  | { type: "agent_message"; parentMessageId: string };
 
 const connector = {
   id: 123,
@@ -32,17 +18,11 @@ const connector = {
 };
 
 const slackMessageTs = "1700000000.000001";
-const pendingUserMessage: PendingUserMessage = {
+const pendingUserMessage = {
   sId: "user_msg_1",
   type: "user_message",
   visibility: "pending",
-};
-
-async function* neverPromotedEventStream(signal?: AbortSignal) {
-  await new Promise<void>((resolve) => {
-    signal?.addEventListener("abort", () => resolve(), { once: true });
-  });
-}
+} satisfies PendingMessage;
 
 const promotedEvent = {
   type: "user_message_promoted",
@@ -50,27 +30,23 @@ const promotedEvent = {
   messageId: pendingUserMessage.sId,
 } satisfies ConversationEvent;
 
-async function* promotedEventStream() {
-  yield promotedEvent;
-}
-
-function makeConversation(content: PendingConversation["content"] = []) {
+function makeConversation(content: PendingMessage[][] = []) {
   return { sId: "conv_1", content };
 }
 
 async function resolvePending({
-  eventStream = neverPromotedEventStream,
+  events = [],
   refetchedConversation = makeConversation([[pendingUserMessage]]),
   timeoutMs = 100,
 }: {
-  eventStream?: (signal?: AbortSignal) => AsyncGenerator<ConversationEvent>;
-  refetchedConversation?: PendingConversation;
+  events?: ConversationEvent[];
+  refetchedConversation?: ReturnType<typeof makeConversation>;
   timeoutMs?: number;
 } = {}) {
   const dustAPI = {
     streamConversationEvents: vi.fn(
       async ({ signal }: { signal?: AbortSignal }) => {
-        return new Ok({ eventStream: eventStream(signal) });
+        return new Ok({ eventStream: pendingEventsStream(events, signal) });
       }
     ),
     getConversation: vi.fn(async () => {
@@ -79,7 +55,7 @@ async function resolvePending({
   };
   const slackClient = {
     chat: {
-      postMessage: vi.fn<WebClient["chat"]["postMessage"]>(async () => ({
+      postMessage: vi.fn(async () => ({
         ok: true,
         ts: "fallback_ts",
       })),
@@ -103,24 +79,37 @@ async function resolvePending({
     userMessage: pendingUserMessage,
   });
 
-  return { dustAPI, res, slackClient, streamHandler };
+  return { res, slackClient, streamHandler };
+}
+
+async function* pendingEventsStream(
+  events: ConversationEvent[],
+  signal?: AbortSignal
+) {
+  if (events.length === 0) {
+    await new Promise<void>((resolve) => {
+      signal?.addEventListener("abort", () => resolve(), { once: true });
+    });
+  }
+
+  yield* events;
 }
 
 describe("resolveSlackPendingUserMessage", () => {
-  it("refetches the conversation and streams normally after promotion", async () => {
+  it("continues after the pending message is promoted", async () => {
     const promotedConversation = makeConversation([
       [{ ...pendingUserMessage, visibility: "visible" }],
       [{ type: "agent_message", parentMessageId: pendingUserMessage.sId }],
     ]);
     const ctx = await resolvePending({
-      eventStream: promotedEventStream,
+      events: [promotedEvent],
       refetchedConversation: promotedConversation,
     });
 
     expect(ctx.res).toEqual(new Ok(promotedConversation));
   });
 
-  it("posts a controlled fallback when the pending message is not promoted", async () => {
+  it("posts a fallback when the pending message is not promoted", async () => {
     const ctx = await resolvePending({ timeoutMs: 1 });
 
     expect(ctx.res).toEqual(new Ok(null));

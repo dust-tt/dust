@@ -123,8 +123,6 @@ type SlackPendingConversation = {
   sId: string;
   content: {
     type: "user_message" | "agent_message" | "content_fragment";
-    sId?: string;
-    visibility?: UserMessageType["visibility"];
     parentMessageId?: string | null;
   }[][];
 };
@@ -137,37 +135,17 @@ type SlackPendingUserMessageDustAPI<
   }) => Promise<Result<TConversation, APIError>>;
 };
 
-type SlackPendingUserMessageResult = "promoted" | "timed_out";
-
-function getSlackPendingUserMessageFallbackText(
-  conversationUrl: string | null
-): string {
-  const urlPart = conversationUrl
-    ? ` <${conversationUrl}|Continue on Dust>.`
-    : "";
-
-  return `:hourglass_flowing_sand: _Dust is still finishing the previous request, so this Slack reply could not start in time.${urlPart}_`;
-}
-
 function hasAgentMessageForUserMessage(
   conversation: SlackPendingConversation,
   userMessageId: string
 ): boolean {
-  for (const messageVersions of conversation.content) {
-    const message = messageVersions[messageVersions.length - 1];
-    if (!message) {
-      continue;
-    }
-
-    if (
-      message.type === "agent_message" &&
+  return conversation.content.some((messageVersions) => {
+    const message = messageVersions.at(-1);
+    return (
+      message?.type === "agent_message" &&
       message.parentMessageId === userMessageId
-    ) {
-      return true;
-    }
-  }
-
-  return false;
+    );
+  });
 }
 
 async function waitForSlackUserMessagePromotion({
@@ -180,14 +158,16 @@ async function waitForSlackUserMessagePromotion({
   conversationId: string;
   timeoutMs: number;
   userMessageId: string;
-}): Promise<Result<SlackPendingUserMessageResult, Error | APIError>> {
+}): Promise<Result<undefined, Error | APIError>> {
   const abortController = new AbortController();
-  let timedOut = false;
   const timeout = setTimeout(() => {
-    timedOut = true;
     abortController.abort();
   }, timeoutMs);
   timeout.unref?.();
+  const handleStreamError = (error: unknown) =>
+    abortController.signal.aborted
+      ? new Ok(undefined)
+      : new Err(normalizeError(error));
 
   try {
     const streamRes = await dustAPI.streamConversationEvents({
@@ -201,10 +181,7 @@ async function waitForSlackUserMessagePromotion({
       },
     });
     if (streamRes.isErr()) {
-      if (timedOut || abortController.signal.aborted) {
-        return new Ok("timed_out");
-      }
-      return new Err(normalizeError(streamRes.error));
+      return handleStreamError(streamRes.error);
     }
 
     try {
@@ -213,20 +190,17 @@ async function waitForSlackUserMessagePromotion({
           event.type === "user_message_promoted" &&
           event.messageId === userMessageId
         ) {
-          return new Ok("promoted");
+          return new Ok(undefined);
         }
       }
     } catch (error) {
-      if (timedOut || abortController.signal.aborted) {
-        return new Ok("timed_out");
-      }
-      return new Err(normalizeError(error));
+      return handleStreamError(error);
     }
   } finally {
     clearTimeout(timeout);
   }
 
-  return new Ok("timed_out");
+  return new Ok(undefined);
 }
 
 export async function resolveSlackPendingUserMessage<
@@ -307,7 +281,9 @@ export async function resolveSlackPendingUserMessage<
     connector.workspaceId,
     conversation.sId
   );
-  const fallbackText = getSlackPendingUserMessageFallbackText(conversationUrl);
+  const fallbackText = `:hourglass_flowing_sand: _Dust is still finishing the previous request, so this Slack reply could not start in time.${
+    conversationUrl ? ` <${conversationUrl}|Continue on Dust>.` : ""
+  }_`;
 
   try {
     reportSlackUsage({
