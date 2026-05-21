@@ -5,8 +5,8 @@ import {
   getMicrosoftSensitivityLabels,
   type MicrosoftSensitivityLabel,
   parseAllowedLabelsConfig,
-  resolveLabelSource,
   type ResolveSourceErrorType,
+  resolveLabelSource,
 } from "@app/lib/api/data_classification_labels";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
