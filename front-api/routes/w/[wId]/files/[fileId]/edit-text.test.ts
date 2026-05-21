@@ -3,6 +3,7 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
@@ -13,11 +14,15 @@ vi.mock("@app/lib/api/files/client_executable", () => ({
   }),
 }));
 
-function url(workspace: { sId: string }, fileId: string) {
+function url(workspace: LightWorkspaceType, fileId: string) {
   return `/api/w/${workspace.sId}/files/${fileId}/edit-text`;
 }
 
-function postEdit(workspace: { sId: string }, fileId: string, body: unknown) {
+function postEdit(
+  workspace: LightWorkspaceType,
+  fileId: string,
+  body: unknown
+) {
   return honoApp.request(url(workspace, fileId), {
     method: "POST",
     headers: { "Content-Type": "application/json" },

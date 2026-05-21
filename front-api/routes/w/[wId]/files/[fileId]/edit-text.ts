@@ -60,7 +60,7 @@ app.post("/", validate("json", EditTextRequestBodySchema), async (ctx) => {
       auth,
       file.useCaseMetadata.spaceId
     );
-    if (!space || !space.canRead(auth)) {
+    if (!space || !space.canWrite(auth)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },

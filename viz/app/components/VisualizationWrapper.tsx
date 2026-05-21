@@ -36,6 +36,9 @@ import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
 
+// Delay before marking the viz as ready in PDF mode, to let Recharts animations complete.
+const PDF_MODE_READY_DELAY_MS = 5000;
+
 const FRAME_MIME_TYPES = new Set([
   "application/vnd.dust.frame",
   "application/vnd.dust.frame.slideshow",
@@ -537,7 +540,7 @@ export function VisualizationWrapper({
           } else {
             // Set data-viz-ready attribute once fully rendered to enable screen capture.
             // In PDF mode, delay to let Recharts animations complete (react-smooth is JS-based).
-            const delayMs = isPdfMode ? 5000 : 0;
+            const delayMs = isPdfMode ? PDF_MODE_READY_DELAY_MS : 0;
             setTimeout(() => setVizReady(true), delayMs);
           }
         }}

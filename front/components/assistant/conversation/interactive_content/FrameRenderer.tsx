@@ -41,6 +41,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 
 interface FrameRendererProps {
   conversation?: ConversationWithoutContentType;
@@ -129,25 +130,32 @@ export function FrameRenderer({
 
   const handleEditText = useCallback(
     async ({ newText, oldText }: { newText: string; oldText: string }) => {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/files/${fileId}/edit-text`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ oldText, newText }),
+      try {
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/files/${fileId}/edit-text`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ oldText, newText }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await getErrorFromResponse(response);
+          return { success: false, error: errorData.message };
         }
-      );
 
-      if (!response.ok) {
-        const errorData = await getErrorFromResponse(response);
-        return { success: false, error: errorData.message };
+        await mutateFileContent(
+          `/api/w/${owner.sId}/files/${fileId}?action=view`
+        );
+
+        return { success: true };
+      } catch (e) {
+        return {
+          success: false,
+          error: normalizeAsInternalDustError(e),
+        };
       }
-
-      await mutateFileContent(
-        `/api/w/${owner.sId}/files/${fileId}?action=view`
-      );
-
-      return { success: true };
     },
     [owner.sId, fileId, mutateFileContent]
   );
