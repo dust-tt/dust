@@ -52,7 +52,7 @@ export async function loadFirstPeriodCredit({
     amount,
     startingAt,
     endingBefore,
-    name: "First period subscription credit",
+    name: "Initial payment on subscription",
     idempotencyKey: `first-period-${uniquenessKey}`,
     priority: 0,
   });

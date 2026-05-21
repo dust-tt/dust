@@ -167,7 +167,11 @@ export async function provisionMetronomeFirstPeriodSubscription({
     }
   }
 
-  if (firstPeriodPaymentEnforced) {
+  if (
+    firstPeriodPaymentEnforced &&
+    firstPeriodPaymentCents &&
+    firstPeriodPaymentCents > 0
+  ) {
     // Zero out the first Metronome-generated invoice. The customer already paid
     // via the Stripe invoice. firstPeriodPaymentCents is pre-tax — exactly the amount that
     // Metronome will generate for the first period.
