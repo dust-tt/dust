@@ -8,6 +8,7 @@ import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import { isString } from "@app/types/shared/utils/general";
 import { Hono } from "hono";
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
@@ -19,7 +20,7 @@ app.post("/", async (ctx) => {
   const body = await ctx.req.json().catch(() => ({}));
   const { email } = body ?? {};
 
-  if (!email || typeof email !== "string") {
+  if (!isString(email)) {
     return ctx.json(
       {
         success: false,

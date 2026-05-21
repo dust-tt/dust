@@ -1,8 +1,8 @@
 // @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import {
-  enrichCompanyFromDomain,
   ENTERPRISE_THRESHOLD,
+  enrichCompanyFromDomain,
 } from "@app/lib/api/enrichment/company";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -10,6 +10,7 @@ import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
@@ -37,7 +38,7 @@ export default async function handler(
 
   const { email } = req.body;
 
-  if (!email || typeof email !== "string") {
+  if (!isString(email)) {
     return res.status(400).json({
       success: false,
       redirectUrl: "/home/pricing",

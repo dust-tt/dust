@@ -5,6 +5,7 @@ import { profileCPU, profileHeap } from "@app/lib/api/debug/profiler";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetProfilerResponse {
@@ -30,7 +31,7 @@ export default async function handler(
   const { secret } = req.query;
   const debugSecret = config.getProfilerSecret();
 
-  if (!debugSecret || typeof secret !== "string" || secret !== debugSecret) {
+  if (!debugSecret || !isString(secret) || secret !== debugSecret) {
     return apiError(req, res, {
       status_code: 401,
       api_error: {
