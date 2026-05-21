@@ -14,10 +14,26 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import type formidable from "formidable";
 import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+
+// Subset of `formidable.File` that poke plugins consume from file args
+// (the plugin Zod schema declares files as `z.any()`, so this is the
+// runtime contract). Used to bridge Web `File` to formidable-style on the
+// multipart path without an `as` cast.
+interface BridgedFormidableFile {
+  filepath: string;
+  originalFilename: string | null;
+  size: number;
+  newFilename: string;
+  mimetype: string | null;
+  hash: null;
+  hashAlgorithm: false;
+  mtime: null;
+  toJSON: () => Record<string, never>;
+  toString: () => string;
+}
 
 const RunPluginQuerySchema = z.object({
   resourceType: z.enum(supportedResourceTypes),
@@ -83,11 +99,14 @@ app.post(
       : null;
 
     const contentType = ctx.req.header("content-type") ?? "";
-    let formData: Record<string, unknown>;
+    // Typed as `unknown` because the real validation boundary is
+    // `pluginSchema.safeParse` below — no point pretending the JSON body
+    // is more structured than it is at this point.
+    let formData: unknown;
 
     if (contentType.includes("application/json")) {
       try {
-        formData = (await ctx.req.json()) as Record<string, unknown>;
+        formData = await ctx.req.json();
       } catch {
         return apiError(ctx, {
           status_code: 400,
@@ -116,7 +135,7 @@ app.post(
 
       // Bridge Web `File` instances to a formidable.File-like shape so
       // existing plugins that read `file.filepath` keep working unchanged.
-      const bridged: Record<string, unknown> = {};
+      const bridged: Record<string, BridgedFormidableFile | string> = {};
       let tmpDir: string | null = null;
       let fileIndex = 0;
       for (const [key, value] of Object.entries(parsed)) {
@@ -136,9 +155,9 @@ app.post(
             hash: null,
             hashAlgorithm: false,
             mtime: null,
-            toJSON: () => ({}) as never,
+            toJSON: () => ({}),
             toString: () => filepath,
-          } as unknown as formidable.File;
+          };
         } else {
           bridged[key] = value;
         }

@@ -1,11 +1,8 @@
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
-import type {
-  AsyncEnumValues,
-  EnumValues,
-  SupportedResourceType,
-} from "@app/types/poke/plugins";
+import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
+import { supportedResourceTypes } from "@app/types/poke/plugins";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -19,7 +16,7 @@ export interface PokeGetPluginAsyncArgsResponseBody {
 }
 
 const AsyncArgsQuerySchema = z.object({
-  resourceType: z.string(),
+  resourceType: z.enum(supportedResourceTypes),
   resourceId: z.string().optional(),
   workspaceId: z.string().optional(),
 });
@@ -87,11 +84,7 @@ app.get(
 
     let resource = null;
     if (resourceId) {
-      resource = await fetchPluginResource(
-        auth,
-        resourceType as SupportedResourceType,
-        resourceId
-      );
+      resource = await fetchPluginResource(auth, resourceType, resourceId);
       if (!resource) {
         return apiError(ctx, {
           status_code: 404,
