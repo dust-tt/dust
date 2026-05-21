@@ -63,7 +63,7 @@ function buildUrlWithParams(
   if (!newParams) {
     return undefined;
   }
-  const url = new URL(currentUrl, "http://placeholder");
+  const url = new URL(currentUrl);
   Object.entries(newParams).forEach(([key, value]) => {
     if (value === null || value === undefined) {
       url.searchParams.delete(key);
