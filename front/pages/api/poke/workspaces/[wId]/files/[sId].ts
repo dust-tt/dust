@@ -1,11 +1,13 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { readInteractiveContentFile } from "@app/lib/api/files/read";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { FileTypeWithMetadata } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -52,40 +54,34 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
-      const file = await FileResource.fetchById(auth, sId);
-      if (!file) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "file_not_found",
-            message: "File not found.",
-          },
-        });
+    case "GET": {
+      const result = await readInteractiveContentFile(auth, sId);
+      if (result.isErr()) {
+        const err = result.error;
+        switch (err) {
+          case "file_not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "file_not_found",
+                message: "File not found.",
+              },
+            });
+          case "not_interactive_content":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Only interactive content files can be viewed.",
+              },
+            });
+          default:
+            return assertNever(err);
+        }
       }
 
-      // Only allow access to interactive content files (frames).
-      if (!file.isInteractiveContent) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Only interactive content files can be viewed.",
-          },
-        });
-      }
-
-      const readStream = file.getReadStream({ auth, version: "original" });
-      const chunks: Buffer[] = [];
-      for await (const chunk of readStream) {
-        chunks.push(chunk);
-      }
-      const content = Buffer.concat(chunks).toString("utf-8");
-
-      return res.status(200).json({
-        file: file.toJSONWithMetadata(auth),
-        content,
-      });
+      return res.status(200).json(result.value);
+    }
 
     default:
       return apiError(req, res, {

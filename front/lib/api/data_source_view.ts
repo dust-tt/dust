@@ -1,3 +1,4 @@
+import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import {
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
@@ -10,12 +11,14 @@ import type {
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { PatchDataSourceViewType } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type { CoreAPIDatasourceViewFilter } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { AgentsUsageType } from "@app/types/data_source";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
@@ -327,4 +330,36 @@ export async function handlePatchDataSourceView(
   await dataSourceView.setEditedBy(auth);
 
   return new Ok(dataSourceView);
+}
+
+export type DataSourceViewWithUsage = DataSourceViewType & {
+  usage: AgentsUsageType | null;
+};
+
+/**
+ * Every data source view in the workspace, each enriched with its agent
+ * usage. Usage fetches run concurrently with bounded parallelism. Used by
+ * the poke admin UI.
+ */
+export async function listDataSourceViewsWithUsage(
+  auth: Authenticator
+): Promise<DataSourceViewWithUsage[]> {
+  const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth, {
+    includeEditedBy: true,
+  });
+
+  return concurrentExecutor(
+    dataSourceViews,
+    async (dsv) => {
+      const usageResult = await getDataSourceViewUsage({
+        auth,
+        dataSourceView: dsv,
+      });
+      return {
+        ...dsv.toJSON(),
+        usage: usageResult.isOk() ? usageResult.value : null,
+      };
+    },
+    { concurrency: 4 }
+  );
 }

@@ -1,10 +1,9 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { listWebhookSourcesWithCounts } from "@app/lib/api/webhook_source";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
-import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -48,31 +47,8 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const sources = await WebhookSourceResource.listByWorkspace(auth);
-      const results: PokeListWebhookSources["webhookSources"] = [];
-
-      for (const source of sources) {
-        const views = await WebhookSourcesViewResource.listByWebhookSource(
-          auth,
-          source.id
-        );
-        let triggerCount = 0;
-        for (const view of views) {
-          const triggers = await TriggerResource.listByWebhookSourceViewId(
-            auth,
-            view.id
-          );
-          triggerCount += triggers.length;
-        }
-
-        results.push({
-          ...source.toJSON(),
-          viewCount: views.length,
-          triggerCount,
-        });
-      }
-
-      return res.status(200).json({ webhookSources: results });
+      const webhookSources = await listWebhookSourcesWithCounts(auth);
+      return res.status(200).json({ webhookSources });
     }
 
     default:

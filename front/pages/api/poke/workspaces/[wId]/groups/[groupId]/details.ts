@@ -1,6 +1,7 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { getMembers } from "@app/lib/api/workspace";
+import { getGroupMembersWithWorkspaces } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -58,19 +59,10 @@ async function handler(
       }
 
       const group = groupRes.value;
-
-      const groupMembers = await group.getActiveMembers(auth);
-      const memberships = await getMembers(auth);
-
-      const memberById = new Map(memberships.members.map((m) => [m.sId, m]));
-
-      const userWithWorkspaces = groupMembers.flatMap((user) => {
-        const member = memberById.get(user.sId);
-        return member ? [member] : [];
-      });
+      const members = await getGroupMembersWithWorkspaces(auth, group);
 
       return res.status(200).json({
-        members: userWithWorkspaces,
+        members,
         group: group.toJSON(),
       });
 
