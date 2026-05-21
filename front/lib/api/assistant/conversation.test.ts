@@ -4351,6 +4351,7 @@ describe("conversation fetch forkingData", () => {
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
           user: auth.getNonNullableUser().toJSON(),
+          fileCopyStatus: "pending",
         },
       });
     }
@@ -4369,6 +4370,7 @@ describe("conversation fetch forkingData", () => {
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
           user: auth.getNonNullableUser().toJSON(),
+          fileCopyStatus: "pending",
         },
       });
     }

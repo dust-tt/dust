@@ -36,6 +36,7 @@ function createForkedData(user: NonNullable<UserMessageType["user"]>) {
       sourceMessageId: "msg_parent_source",
       branchedAt: Date.now(),
       user,
+      fileCopyStatus: "done" as const,
     },
   };
 }
