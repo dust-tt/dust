@@ -1,9 +1,8 @@
-import { UsageSettingRow } from "@app/components/workspace/usage/UsageSettingRow";
 import {
   useUpdateUsageNotifications,
   useUsageNotifications,
 } from "@app/lib/swr/usage_settings";
-import { Input, Page, SliderToggle } from "@dust-tt/sparkle";
+import { Input, Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 interface UsageNotificationsCardProps {
@@ -85,9 +84,8 @@ export function UsageNotificationsCard({
           Customize when and how you receive usage based notification
         </Page.P>
       </div>
-      <div className="rounded-2xl border border-border dark:border-border-night">
-        <UsageSettingRow
-          isFirst
+      <SettingsList>
+        <SettingsList.Row
           title="Credit usage alert"
           description="Get an email when your workspace has used a percentage of its allocated credits."
           action={
@@ -110,7 +108,7 @@ export function UsageNotificationsCard({
             </div>
           }
         />
-        <UsageSettingRow
+        <SettingsList.Row
           title="Credit cap warning"
           description="Get an email before your workspace hits its credit cap. Sent to all workspace admins."
           action={
@@ -121,7 +119,7 @@ export function UsageNotificationsCard({
             />
           }
         />
-        <UsageSettingRow
+        <SettingsList.Row
           title="Upgrade request"
           description="Receive an email when a user of your workspace is requesting an upgrade"
           action={
@@ -132,7 +130,7 @@ export function UsageNotificationsCard({
             />
           }
         />
-      </div>
+      </SettingsList>
     </Page.Vertical>
   );
 }

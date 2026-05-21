@@ -204,6 +204,8 @@ export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
 export { Separator } from "./Separator";
+export type { SettingsListProps, SettingsListRowProps } from "./SettingsList";
+export { SettingsList } from "./SettingsList";
 export {
   Sheet,
   SheetClose,

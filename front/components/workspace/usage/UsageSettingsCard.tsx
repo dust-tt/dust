@@ -1,4 +1,3 @@
-import { UsageSettingRow } from "@app/components/workspace/usage/UsageSettingRow";
 import {
   useUpdateUsageSettings,
   useUsageSettings,
@@ -8,6 +7,7 @@ import {
   Icon,
   Input,
   Page,
+  SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
@@ -77,9 +77,8 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
       <span className="heading-2xl text-foreground dark:text-foreground-night">
         Settings
       </span>
-      <div className="rounded-2xl border border-border dark:border-border-night">
-        <UsageSettingRow
-          isFirst
+      <SettingsList>
+        <SettingsList.Row
           title="Upgrade request"
           description="Allow users to request plan upgrades and limit increase"
           action={
@@ -90,7 +89,7 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
             />
           }
         />
-        <UsageSettingRow
+        <SettingsList.Row
           title="Auto upgrade Free to Pro"
           description="Automatically upgrade free users to pro plan when they reach their limit"
           action={
@@ -101,7 +100,7 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
             />
           }
         />
-        <UsageSettingRow
+        <SettingsList.Row
           title="Default usage limit"
           description="Define the default usage limit for all the users in your workspace"
           action={
@@ -124,7 +123,7 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
             </div>
           }
         />
-      </div>
+      </SettingsList>
     </Page.Vertical>
   );
 }
