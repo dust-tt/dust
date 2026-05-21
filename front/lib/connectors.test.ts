@@ -4,6 +4,7 @@ import {
   isNodeCandidate,
   isUrlCandidate,
   nodeCandidateFromUrl,
+  normalizeUrlForSourceUrlSearch,
 } from "./connectors";
 
 // Mock the config module before importing
@@ -538,5 +539,21 @@ describe("nodeCandidateFromUrl", () => {
         expect(result.url).toBe(url);
       }
     });
+  });
+});
+
+describe("normalizeUrlForSourceUrlSearch", () => {
+  it("should normalize GitHub URL candidates", () => {
+    expect(
+      normalizeUrlForSourceUrlSearch(
+        "https://github.com/dust-tt/decisions/issues/797#issuecomment-4325601982"
+      )
+    ).toBe("https://github.com/dust-tt/decisions/issues/797");
+  });
+
+  it("should preserve non-URL search queries", () => {
+    expect(normalizeUrlForSourceUrlSearch("quarterly planning")).toBe(
+      "quarterly planning"
+    );
   });
 });

@@ -382,6 +382,16 @@ export function nodeCandidateFromUrl(
   }
 }
 
+export function normalizeUrlForSourceUrlSearch(query: string): string {
+  const candidate = nodeCandidateFromUrl(query.trim());
+
+  if (isUrlCandidate(candidate) && candidate.url) {
+    return candidate.url;
+  }
+
+  return query;
+}
+
 // Notion databases have 2 entries in core:
 // - one of type "table" starting with "notion-";
 // - one of type "document" starting with "notion-database-".
