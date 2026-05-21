@@ -139,6 +139,10 @@ export function EditableFrame({ children }: EditableFrameProps) {
       const rawText = decodeURIComponent(target.dataset.rawText ?? "");
       const ctxBefore = decodeURIComponent(target.dataset.ctxBefore ?? "");
       const ctxAfter = decodeURIComponent(target.dataset.ctxAfter ?? "");
+      const rawFileId = target.dataset.fileId;
+      const targetFileId = rawFileId?.startsWith("edit:")
+        ? rawFileId.slice(5)
+        : undefined;
       // rawText may start/end with \n+indent (multi-line JSX) that the browser strips from
       // textContent. Re-attach only that newline-based whitespace so the file replacement matches
       // the exact source bytes. Inline spaces are already present in textContent, so we skip them.
@@ -149,7 +153,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
       const newText = ctxBefore + newRawText + ctxAfter;
 
       isSavingRef.current = true;
-      void editText({ oldText, newText })
+      void editText({ oldText, newText, targetFileId })
         .then((result) => {
           if (!result.success) {
             target.textContent = originalVisibleText;
@@ -204,11 +208,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
       <Tooltip open={!!hoverState}>
         <TooltipTrigger asChild>
           <span
-            style={
-              anchorPos
-                ? { top: anchorPos.top, left: anchorPos.left }
-                : undefined
-            }
+            style={anchorPos ? { top: anchorPos.top, left: anchorPos.left } : undefined}
             className="pointer-events-none fixed size-px"
           />
         </TooltipTrigger>

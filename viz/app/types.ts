@@ -24,6 +24,7 @@ interface SetErrorMessageParams {
 interface EditTextParams {
   oldText: string;
   newText: string;
+  targetFileId?: string;
 }
 
 // Define a mapped type to extend the base with specific parameters.

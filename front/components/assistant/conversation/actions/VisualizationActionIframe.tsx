@@ -190,6 +190,7 @@ function useVisualizationDataHandler({
             const editResult = await onEditText({
               newText: data.params.newText,
               oldText: data.params.oldText,
+              targetFileId: data.params.targetFileId,
             });
 
             sendResponseToIframe(data, editResult, event.source);

@@ -22,6 +22,7 @@ export interface VisualizationDataAPI {
 export type EditTextFn = (params: {
   newText: string;
   oldText: string;
+  targetFileId?: string;
 }) => Promise<{ success: boolean; error?: string }>;
 
 export interface VisualizationUIAPI {
