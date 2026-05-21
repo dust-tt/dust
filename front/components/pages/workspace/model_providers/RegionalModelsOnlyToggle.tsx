@@ -1,9 +1,9 @@
 import { useUpdateWorkspaceRegionalModelsOnly } from "@app/lib/swr/workspaces";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import { SliderToggle } from "@dust-tt/sparkle";
 
 interface RegionalModelsOnlyToggleProps {
-  workspace: WorkspaceType;
+  workspace: LightWorkspaceType;
 }
 
 export function RegionalModelsOnlyToggle({
