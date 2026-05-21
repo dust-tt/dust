@@ -2079,6 +2079,7 @@ interface ExistingPackage {
     };
     quantity_management_mode?: string;
     seat_config?: { seat_group_key: string };
+    initial_quantity?: number;
   }>;
   recurring_credits?: Array<{
     product: { id: string };
@@ -2181,6 +2182,24 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
     ) {
       console.log(
         `    [diff] ${desired.name}: ${desiredSub.product_name} quantity_management_mode ${matchingSub.quantity_management_mode} → ${desiredSub.quantity_management_mode}`
+      );
+      return false;
+    }
+    if (
+      (desiredSub.initial_quantity ?? undefined) !==
+      (matchingSub.initial_quantity ?? undefined)
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: ${desiredSub.product_name} initial_quantity ${matchingSub.initial_quantity} → ${desiredSub.initial_quantity}`
+      );
+      return false;
+    }
+    if (
+      (desiredSub.seat_config?.seat_group_key ?? undefined) !==
+      (matchingSub.seat_config?.seat_group_key ?? undefined)
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: ${desiredSub.product_name} seat_config.seat_group_key ${matchingSub.seat_config?.seat_group_key} → ${desiredSub.seat_config?.seat_group_key}`
       );
       return false;
     }
