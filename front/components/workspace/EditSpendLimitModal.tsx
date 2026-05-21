@@ -8,12 +8,14 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   ActionCreditCoinsIcon,
   Avatar,
+  ContentMessage,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ExclamationCircleIcon,
   Icon,
   Input,
   RadioGroup,
@@ -44,7 +46,12 @@ export function EditSpendLimitModal({
   member,
   owner,
 }: EditSpendLimitModalProps) {
-  const { spendLimit, isSpendLimitLoading } = useUserSpendLimit({
+  const {
+    spendLimit,
+    isSpendLimitLoading,
+    isSpendLimitError,
+    mutateSpendLimit,
+  } = useUserSpendLimit({
     workspaceId: owner.sId,
     memberId: member.sId,
     disabled: !isOpen,
@@ -159,6 +166,9 @@ export function EditSpendLimitModal({
     isSaving ||
     isSpendLimitLoading ||
     (kind === "limited" && creditsInput.length === 0);
+  const primaryDisabled = isSpendLimitError
+    ? isSaving || isSpendLimitLoading
+    : validateDisabled;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -181,7 +191,18 @@ export function EditSpendLimitModal({
           </div>
         </DialogHeader>
         <DialogContainer>
-          {isSpendLimitLoading ? (
+          {isSpendLimitError ? (
+            <ContentMessage
+              title="Failed to load spend limit"
+              icon={ExclamationCircleIcon}
+              variant="warning"
+            >
+              <p>
+                We couldn’t load the current spend limit. Please retry before
+                making changes.
+              </p>
+            </ContentMessage>
+          ) : isSpendLimitLoading ? (
             <div className="flex justify-center py-6">
               <Spinner />
             </div>
@@ -246,10 +267,12 @@ export function EditSpendLimitModal({
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Validate",
+            label: isSpendLimitError ? "Retry" : "Validate",
             variant: "primary",
-            disabled: validateDisabled,
-            onClick: handleValidate,
+            disabled: primaryDisabled,
+            onClick: isSpendLimitError
+              ? () => void mutateSpendLimit()
+              : handleValidate,
           }}
         />
       </DialogContent>
