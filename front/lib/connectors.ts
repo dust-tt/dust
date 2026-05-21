@@ -385,7 +385,13 @@ export function nodeCandidateFromUrl(
 export function normalizeUrlForSourceUrlSearch(query: string): string {
   const candidate = nodeCandidateFromUrl(query.trim());
 
-  if (isUrlCandidate(candidate) && candidate.url) {
+  // This endpoint-level normalization only exists for GitHub anchors/notification
+  // parameters; other connectors keep their existing source URL search behavior.
+  if (
+    isUrlCandidate(candidate) &&
+    candidate.provider === "github" &&
+    candidate.url
+  ) {
     return candidate.url;
   }
 

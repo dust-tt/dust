@@ -556,4 +556,10 @@ describe("normalizeUrlForSourceUrlSearch", () => {
       "quarterly planning"
     );
   });
+
+  it("should preserve non-GitHub URL candidate search queries", () => {
+    const confluenceUrl = "https://example.atlassian.net/wiki/spaces/SPACE";
+
+    expect(normalizeUrlForSourceUrlSearch(confluenceUrl)).toBe(confluenceUrl);
+  });
 });
