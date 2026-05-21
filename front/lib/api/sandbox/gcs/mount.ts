@@ -1,6 +1,6 @@
 import {
   getConversationFilesBasePath,
-  getPodsFilesBasePath,
+  getPodFilesBasePath,
 } from "@app/lib/api/files/mount_path";
 import { mintDownscopedGcsToken } from "@app/lib/api/sandbox/gcs/token";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
@@ -53,7 +53,7 @@ function buildMountTargets(
   if (isProjectConversation(conversation)) {
     targets.push({
       label: "pod",
-      prefix: getPodsFilesBasePath({
+      prefix: getPodFilesBasePath({
         workspaceId,
         podId: conversation.spaceId,
       }).replace(/\/$/, ""),
