@@ -1955,9 +1955,7 @@ export function GroupConversationView({
                     </h3>
                   </div>
                 )}
-                <InputBar
-                  placeholder={`Start a conversation in ${space.name}`}
-                />
+                <InputBar placeholder={`Get work done in ${space.name}`} />
                 {hasHistory && (
                   <div className="s-flex s-w-full s-gap-2 s-px-4">
                     <SearchInputWithPopover

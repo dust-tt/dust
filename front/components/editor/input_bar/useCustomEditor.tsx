@@ -36,6 +36,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
+const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done";
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -324,7 +325,7 @@ export const buildEditorExtensions = ({
         if (node.type.name !== "paragraph") {
           return "";
         }
-        return placeholderOverride ?? "Ask a question";
+        return placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
       },
       emptyNodeClass:
         "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",

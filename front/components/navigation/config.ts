@@ -168,7 +168,7 @@ export const getTopNavigationTabs = (
 
   nav.push({
     id: "conversations",
-    label: "Chat",
+    label: "Work",
     href: getConversationRoute(owner.sId),
     icon: ChatBubbleLeftRightIcon,
     sizing: "hug",
