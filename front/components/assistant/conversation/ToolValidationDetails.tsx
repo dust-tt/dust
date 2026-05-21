@@ -214,8 +214,8 @@ function AshbyReferralDetails({
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        {/* Safe to show: this component only renders for the user who
-            triggered the action (isTriggeredByCurrentUser guard in parent). */}
+        {/* Safe to show: this component only renders for users authorized to
+            respond (canCurrentUserRespond guard in parent). */}
         <>
           The referral will be credited to&nbsp;
           <span className="font-medium text-foreground dark:text-foreground-night">

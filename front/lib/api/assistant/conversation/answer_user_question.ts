@@ -1,6 +1,7 @@
 import { isToolAskUserQuestionEvent } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -54,7 +55,12 @@ export async function registerUserAnswer(
     messageId,
   });
 
-  if (userMessageUserId !== user?.id) {
+  if (
+    !canCurrentUserRespondToParentUserMessage({
+      parentUserId: userMessageUserId,
+      currentUserId: user?.id,
+    })
+  ) {
     return new Err(
       new DustError(
         "unauthorized",

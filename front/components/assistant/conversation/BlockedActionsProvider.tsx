@@ -1,5 +1,6 @@
 import { useConversations } from "@app/hooks/conversations";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useBlockedActions } from "@app/lib/swr/blocked_actions";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -200,7 +201,10 @@ export function BlockedActionsProvider({
       return blockedActionsQueue.some(
         (action) =>
           action.blockedAction.status === "blocked_validation_required" &&
-          action.blockedAction.userId === userId
+          canCurrentUserRespondToParentUserMessage({
+            parentUserId: action.blockedAction.userId,
+            currentUserId: userId,
+          })
       );
     },
     [blockedActionsQueue]
@@ -208,17 +212,14 @@ export function BlockedActionsProvider({
 
   const getBlockedActions = useCallback(
     (userId: string) => {
-      return (
-        blockedActionsQueue
-          // Either actions associated to the user or actions created through the Public API and not
-          // associated to any user.
-          .filter(
-            (action) =>
-              action.blockedAction.userId === userId ||
-              !action.blockedAction.userId
-          )
-          .map((action) => action.blockedAction)
-      );
+      return blockedActionsQueue
+        .filter((action) =>
+          canCurrentUserRespondToParentUserMessage({
+            parentUserId: action.blockedAction.userId,
+            currentUserId: userId,
+          })
+        )
+        .map((action) => action.blockedAction);
     },
     [blockedActionsQueue]
   );

@@ -21,12 +21,14 @@ vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import { registerUserAnswer } from "@app/lib/api/assistant/conversation/answer_user_question";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   createUserMentions,
   dismissMention,
 } from "@app/lib/api/assistant/conversation/mentions";
 import { createAgentMessages } from "@app/lib/api/assistant/conversation/messages";
+import { resolveAuthentication } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import {
   publishAgentMessagesEvents,
@@ -40,6 +42,7 @@ import {
   AgentMessageModel,
   MentionModel,
   MessageModel,
+  UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -815,6 +818,7 @@ describe("validateAction", () => {
       citationsAllocated: 0,
       augmentedInputs: {},
       toolConfiguration,
+      stepContentId: stepContent.id,
       stepContext: {
         citationsCount: 0,
         citationsOffset: 0,
@@ -838,6 +842,53 @@ describe("validateAction", () => {
     });
 
     return { action, actionId, stepContent };
+  }
+
+  async function createAgentMessageWithNullUserParent() {
+    const userMessageRow = await UserMessageModel.create({
+      userId: null,
+      workspaceId: workspace.id,
+      content: "Message without user",
+      userContextUsername: "api-user",
+      userContextTimezone: "UTC",
+      userContextFullName: null,
+      userContextEmail: null,
+      userContextProfilePictureUrl: null,
+      userContextOrigin: "api",
+      clientSideMCPServerIds: [],
+    });
+
+    const messageRow = await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      conversationId: conversation.id,
+      rank: 0,
+      parentId: null,
+      userMessageId: userMessageRow.id,
+    });
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
+
+    const agentMessageRow = await AgentMessageModel.create({
+      workspaceId: workspace.id,
+      status: "created",
+      agentConfigurationId: agentConfig.sId,
+      agentConfigurationVersion: 0,
+      skipToolsValidation: false,
+    });
+
+    const agentMessageMessage = await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      conversationId: conversation.id,
+      rank: 1,
+      parentId: messageRow.id,
+      agentMessageId: agentMessageRow.id,
+    });
+
+    return { agentMessageMessage, agentMessageRow };
   }
 
   describe("authorization", () => {
@@ -910,6 +961,116 @@ describe("validateAction", () => {
       if (result.isErr()) {
         expect(result.error.code).toBe("unauthorized");
       }
+    });
+
+    it("should allow validation when parent user message has no user", async () => {
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const { agentMessageMessage, agentMessageRow } =
+        await createAgentMessageWithNullUserParent();
+
+      const { actionId } = await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await validateAction(
+        otherUserAuth,
+        conversationResource!,
+        {
+          actionId,
+          approvalState: "approved",
+          messageId: agentMessageMessage.sId,
+        }
+      );
+
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("should allow resolving authentication when parent user message has no user", async () => {
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const { agentMessageMessage, agentMessageRow } =
+        await createAgentMessageWithNullUserParent();
+
+      const { actionId } = await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+        status: "blocked_authentication_required",
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await resolveAuthentication(
+        otherUserAuth,
+        conversationResource!,
+        {
+          actionId,
+          messageId: agentMessageMessage.sId,
+          outcome: "denied",
+        }
+      );
+
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("should allow answering user questions when parent user message has no user", async () => {
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const { agentMessageMessage, agentMessageRow } =
+        await createAgentMessageWithNullUserParent();
+
+      const { actionId } = await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+        status: "blocked_user_answer_required",
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await registerUserAnswer(
+        otherUserAuth,
+        conversationResource!,
+        {
+          actionId,
+          messageId: agentMessageMessage.sId,
+          answer: { selectedOptions: [0] },
+        }
+      );
+
+      expect(result.isOk()).toBe(true);
     });
 
     it("should successfully validate action when user is authorized", async () => {

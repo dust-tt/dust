@@ -3,6 +3,7 @@ import {
   isToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
@@ -94,7 +95,12 @@ export async function resolveAuthentication(
     messageId,
   });
 
-  if (userMessageUserId !== user?.id) {
+  if (
+    !canCurrentUserRespondToParentUserMessage({
+      parentUserId: userMessageUserId,
+      currentUserId: user?.id,
+    })
+  ) {
     return new Err(
       new DustError(
         "unauthorized",
