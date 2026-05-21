@@ -6,6 +6,7 @@ import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { z } from "zod";
 
+import analytics from "./analytics";
 import apps from "./apps";
 import assistants from "./assistants";
 import authContext from "./auth-context";
@@ -67,6 +68,7 @@ app.patch(
   }
 );
 
+app.route("/analytics", analytics);
 app.route("/apps", apps);
 app.route("/assistants", assistants);
 app.route("/data_retention", dataRetention);
