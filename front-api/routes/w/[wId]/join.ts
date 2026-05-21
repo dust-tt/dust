@@ -22,12 +22,16 @@ interface GetJoinResponseBody {
   userExists: boolean;
 }
 
+interface GetJoinErrorBody {
+  redirectUrl: string;
+}
+
 // Mounted at /api/w/:wId/join (no workspace auth — public endpoint).
 const app = new Hono();
 
 app.get(
   "/",
-  async (ctx): HandlerResult<GetJoinResponseBody | { redirectUrl: string }> => {
+  async (ctx): HandlerResult<GetJoinResponseBody | GetJoinErrorBody> => {
     const wId = ctx.req.param("wId");
     const { t, cId } = ctx.req.query();
 
