@@ -9,7 +9,6 @@ import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -104,27 +103,6 @@ export type ResolvedLabelSourceError = {
   type: ResolveSourceErrorType;
   message: string;
 };
-
-export function resolveSourceErrorToApiError(
-  errorType: ResolveSourceErrorType,
-  message: string
-) {
-  switch (errorType) {
-    case "data_source_not_found":
-      return {
-        status_code: 404 as const,
-        api_error: { type: "data_source_not_found" as const, message },
-      };
-    case "not_microsoft_connector":
-    case "unsupported_mcp_server":
-      return {
-        status_code: 400 as const,
-        api_error: { type: "invalid_request_error" as const, message },
-      };
-    default:
-      assertNever(errorType);
-  }
-}
 
 export type ResolvedLabelSource =
   | {

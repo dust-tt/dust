@@ -6,7 +6,7 @@ import {
   type MicrosoftSensitivityLabel,
   parseAllowedLabelsConfig,
   resolveLabelSource,
-  resolveSourceErrorToApiError,
+  type ResolveSourceErrorType,
 } from "@app/lib/api/data_classification_labels";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -17,12 +17,34 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const MICROSOFT_SENSITIVITY_LABELS_CONFIG_KEY =
   "microsoftSensitivityLabelsToInclude";
+
+function resolveSourceErrorToApiError(
+  errorType: ResolveSourceErrorType,
+  message: string
+) {
+  switch (errorType) {
+    case "data_source_not_found":
+      return {
+        status_code: 404 as const,
+        api_error: { type: "data_source_not_found" as const, message },
+      };
+    case "not_microsoft_connector":
+    case "unsupported_mcp_server":
+      return {
+        status_code: 400 as const,
+        api_error: { type: "invalid_request_error" as const, message },
+      };
+    default:
+      assertNever(errorType);
+  }
+}
 
 // Re-exported so existing consumers (`components/shared/labels/types.ts`)
 // keep importing from the route file.
