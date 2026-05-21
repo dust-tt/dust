@@ -158,9 +158,15 @@ export async function resolveLabelSource(
   }
 
   // MCP connection path.
-  const resolvedProvider = getSensitivityLabelProviderForServerId(
-    internalMCPServerId as string
-  );
+  if (!internalMCPServerId) {
+    return new Err({
+      type: "unsupported_mcp_server",
+      message: "No data source or MCP server ID provided.",
+    });
+  }
+
+  const resolvedProvider =
+    getSensitivityLabelProviderForServerId(internalMCPServerId);
 
   if (!resolvedProvider) {
     return new Err({
@@ -171,7 +177,7 @@ export async function resolveLabelSource(
 
   const accessToken = await getMCPConnectionAccessToken(
     auth,
-    internalMCPServerId as string
+    internalMCPServerId
   );
   if (!accessToken) {
     logger.warn(
@@ -182,7 +188,7 @@ export async function resolveLabelSource(
 
   return new Ok({
     sourceType: "mcp_connection",
-    sourceId: internalMCPServerId as string,
+    sourceId: internalMCPServerId,
     connectorId: null,
     accessToken,
   });
@@ -203,9 +209,9 @@ export async function getMicrosoftSensitivityLabels(
     res?.value ?? [];
 
   return rawLabels
-    .filter((l) => l.id)
+    .filter((l): l is typeof l & { id: string } => !!l.id)
     .map((l) => ({
-      id: l.id as string,
-      name: l.name ?? l.displayName ?? l.id ?? "",
+      id: l.id,
+      name: l.name ?? l.displayName ?? l.id,
     }));
 }
