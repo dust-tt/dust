@@ -157,129 +157,120 @@ export async function sendEmailReplyOnCompletion(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  try {
-    // Only process email-originated messages.
-    if (agentLoopArgs.userMessageOrigin !== "email") {
-      return;
-    }
 
-    // Read without deleting — only delete after actually sending the final reply.
-    const context = await getEmailReplyContext(
-      workspaceId,
-      agentLoopArgs.agentMessageId
-    );
-    if (!context) {
-      logger.info(
-        { agentMessageId: agentLoopArgs.agentMessageId },
-        "[email] No email reply context found, skipping reply"
-      );
-      return;
-    }
+  // Only process email-originated messages.
+  if (agentLoopArgs.userMessageOrigin !== "email") {
+    return;
+  }
 
-    // Get the completed agent message data.
-    const dataRes = await getAgentLoopDataWithAuth(auth, agentLoopArgs);
-    if (dataRes.isErr()) {
-      logger.warn(
-        {
-          agentMessageId: agentLoopArgs.agentMessageId,
-          error: dataRes.error,
-        },
-        "[email] Failed to get agent loop data for email reply"
-      );
-      return;
-    }
-
-    const { agentMessage, conversation } = dataRes.value;
-
-    const isEnabled = await isEmailAgentsEnabled(auth);
-    if (!isEnabled) {
-      await deleteEmailReplyContext(workspaceId, agentLoopArgs.agentMessageId);
-      return;
-    }
-
-    if (agentMessage.status === "failed") {
-      await sendEmailReplyOnError(
-        auth,
-        agentLoopArgs,
-        agentMessage.error?.message ?? "Agent execution failed."
-      );
-      return;
-    }
-
-    // Check if blocked on tool validation — send validation email instead.
-    const blocked = await handleBlockedValidation(
-      auth,
-      agentMessage.sId,
-      context
-    );
-    if (blocked) {
-      return;
-    }
-
-    // No blocked actions — send the normal reply and delete the context.
-    await deleteEmailReplyContext(workspaceId, agentLoopArgs.agentMessageId);
-
-    // Get agent configuration for the reply sender name.
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: context.agentConfigurationId,
-      variant: "light",
-    });
-
-    // Render the agent message content as HTML.
-    const htmlContent = sanitizeHtml(
-      await marked.parse(agentMessage.content ?? ""),
-      {
-        allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
-      }
-    );
-
-    // Build the full HTML with conversation link.
-    const conversationLink = getConversationRoute(
-      context.workspaceId,
-      conversation.sId,
-      undefined,
-      config.getAppUrl()
-    );
-    const agentName = agentConfiguration
-      ? sanitizeHtml(agentConfiguration.name, {
-          allowedTags: [],
-          allowedAttributes: {},
-        })
-      : null;
-    const attribution = agentName
-      ? `Answered by <strong>${agentName}</strong>`
-      : "Answered";
-    const fullHtmlContent =
-      `<div><div>${htmlContent}</div>` +
-      `<p style="color: #666; font-size: 13px; margin-top: 16px;">${attribution} · <a href="${conversationLink}" style="color: #2563eb;">View full conversation</a></p>` +
-      `</div>`;
-
-    // Reconstruct the email and send reply.
-    const email = reconstructEmailFromContext(context);
-    await replyToEmail({
-      email,
-      agentConfiguration: agentConfiguration ?? undefined,
-      htmlContent: fullHtmlContent,
-      recipient: context.fromEmail,
-    });
-
+  // Read without deleting — only delete after actually sending the final reply.
+  const context = await getEmailReplyContext(
+    workspaceId,
+    agentLoopArgs.agentMessageId
+  );
+  if (!context) {
     logger.info(
-      {
-        agentMessageId: agentLoopArgs.agentMessageId,
-        conversationId: conversation.sId,
-        to: context.fromEmail,
-      },
-      "[email] Sent email reply on agent completion"
+      { agentMessageId: agentLoopArgs.agentMessageId },
+      "[email] No email reply context found, skipping reply"
     );
-  } catch (err) {
+    return;
+  }
+
+  // Get the completed agent message data.
+  const dataRes = await getAgentLoopDataWithAuth(auth, agentLoopArgs);
+  if (dataRes.isErr()) {
     logger.warn(
       {
-        err,
         agentMessageId: agentLoopArgs.agentMessageId,
+        error: dataRes.error,
       },
-      "[email] Failed to send email reply on completion, skipping"
+      "[email] Failed to get agent loop data for email reply"
     );
+    return;
   }
+
+  const { agentMessage, conversation } = dataRes.value;
+
+  const isEnabled = await isEmailAgentsEnabled(auth);
+  if (!isEnabled) {
+    await deleteEmailReplyContext(workspaceId, agentLoopArgs.agentMessageId);
+    return;
+  }
+
+  if (agentMessage.status === "failed") {
+    await sendEmailReplyOnError(
+      auth,
+      agentLoopArgs,
+      agentMessage.error?.message ?? "Agent execution failed."
+    );
+    return;
+  }
+
+  // Check if blocked on tool validation — send validation email instead.
+  const blocked = await handleBlockedValidation(
+    auth,
+    agentMessage.sId,
+    context
+  );
+  if (blocked) {
+    return;
+  }
+
+  // No blocked actions — send the normal reply and delete the context.
+  await deleteEmailReplyContext(workspaceId, agentLoopArgs.agentMessageId);
+
+  // Get agent configuration for the reply sender name.
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: context.agentConfigurationId,
+    variant: "light",
+  });
+
+  // Render the agent message content as HTML.
+  const htmlContent = sanitizeHtml(
+    await marked.parse(agentMessage.content ?? ""),
+    {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+    }
+  );
+
+  // Build the full HTML with conversation link.
+  const conversationLink = getConversationRoute(
+    context.workspaceId,
+    conversation.sId,
+    undefined,
+    config.getAppUrl()
+  );
+  const agentName = agentConfiguration
+    ? sanitizeHtml(agentConfiguration.name, {
+        allowedTags: [],
+        allowedAttributes: {},
+      })
+    : null;
+  const attribution = agentName
+    ? `Answered by <strong>${agentName}</strong>`
+    : "Answered";
+  const fullHtmlContent =
+    `<div><div>${htmlContent}</div>` +
+    `<p style="color: #666; font-size: 13px; margin-top: 16px;">${attribution} · <a href="${conversationLink}" style="color: #2563eb;">View full conversation</a></p>` +
+    `</div>`;
+
+  // Reconstruct the email and send reply.
+  const email = reconstructEmailFromContext(context);
+  await replyToEmail({
+    email,
+    agentConfiguration: agentConfiguration ?? undefined,
+    htmlContent: fullHtmlContent,
+    recipient: context.fromEmail,
+  });
+
+  logger.info(
+    {
+      agentMessageId: agentLoopArgs.agentMessageId,
+      conversationId: conversation.sId,
+      to: context.fromEmail,
+    },
+    "[email] Sent email reply on agent completion"
+  );
 }
 
 /**
@@ -292,56 +283,46 @@ export async function sendEmailReplyOnError(
   errorMessage: string
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  try {
-    if (agentLoopArgs.userMessageOrigin !== "email") {
-      return;
-    }
-
-    const context = await getEmailReplyContext(
-      workspaceId,
-      agentLoopArgs.agentMessageId
-    );
-    if (!context) {
-      logger.info(
-        { agentMessageId: agentLoopArgs.agentMessageId },
-        "[email] No email reply context found for error reply, skipping"
-      );
-      return;
-    }
-
-    await deleteEmailReplyContext(workspaceId, agentLoopArgs.agentMessageId);
-
-    const isEnabled = await isEmailAgentsEnabled(auth);
-    if (!isEnabled) {
-      return;
-    }
-
-    const email = reconstructEmailFromContext(context);
-    const htmlContent =
-      `<p>Error running agent:</p>\n` +
-      `<p>${sanitizeHtml(errorMessage, { allowedTags: [], allowedAttributes: {} })}</p>\n`;
-
-    await replyToEmail({
-      email,
-      htmlContent,
-      recipient: context.fromEmail,
-    });
-
-    logger.info(
-      {
-        agentMessageId: agentLoopArgs.agentMessageId,
-        to: context.fromEmail,
-        errorMessage,
-      },
-      "[email] Sent error email reply"
-    );
-  } catch (err) {
-    logger.warn(
-      {
-        err,
-        agentMessageId: agentLoopArgs.agentMessageId,
-      },
-      "[email] Failed to send error email reply, skipping"
-    );
+  if (agentLoopArgs.userMessageOrigin !== "email") {
+    return;
   }
+
+  const context = await getEmailReplyContext(
+    workspaceId,
+    agentLoopArgs.agentMessageId
+  );
+  if (!context) {
+    logger.info(
+      { agentMessageId: agentLoopArgs.agentMessageId },
+      "[email] No email reply context found for error reply, skipping"
+    );
+    return;
+  }
+
+  await deleteEmailReplyContext(workspaceId, agentLoopArgs.agentMessageId);
+
+  const isEnabled = await isEmailAgentsEnabled(auth);
+  if (!isEnabled) {
+    return;
+  }
+
+  const email = reconstructEmailFromContext(context);
+  const htmlContent =
+    `<p>Error running agent:</p>\n` +
+    `<p>${sanitizeHtml(errorMessage, { allowedTags: [], allowedAttributes: {} })}</p>\n`;
+
+  await replyToEmail({
+    email,
+    htmlContent,
+    recipient: context.fromEmail,
+  });
+
+  logger.info(
+    {
+      agentMessageId: agentLoopArgs.agentMessageId,
+      to: context.fromEmail,
+      errorMessage,
+    },
+    "[email] Sent error email reply"
+  );
 }
