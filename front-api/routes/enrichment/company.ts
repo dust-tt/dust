@@ -1,5 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
-/** @ignoreswagger */
 import {
   ENTERPRISE_THRESHOLD,
   enrichCompanyFromDomain,
@@ -11,113 +9,96 @@ import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { isString } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { Hono } from "hono";
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
 
-interface EnrichmentResponse {
-  success: boolean;
-  companySize?: number;
-  companyName?: string;
-  redirectUrl: string;
-  error?: string;
-}
+// Mounted at /api/enrichment/company.
+const app = new Hono();
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<EnrichmentResponse>
-) {
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      success: false,
-      redirectUrl: "/home/pricing",
-      error: "Method not allowed",
-    });
-  }
-
-  const { email } = req.body;
+app.post("/", async (ctx) => {
+  const body = await ctx.req.json().catch(() => ({}));
+  const { email } = body ?? {};
 
   if (!isString(email)) {
-    return res.status(400).json({
-      success: false,
-      redirectUrl: "/home/pricing",
-      error: "Email is required",
-    });
+    return ctx.json(
+      {
+        success: false,
+        redirectUrl: "/home/pricing",
+        error: "Email is required",
+      },
+      400
+    );
   }
 
   const domain = extractDomain(email);
 
   if (!domain) {
-    return res.status(400).json({
-      success: false,
-      redirectUrl: "/home/pricing",
-      error: "Invalid email format",
-    });
+    return ctx.json(
+      {
+        success: false,
+        redirectUrl: "/home/pricing",
+        error: "Invalid email format",
+      },
+      400
+    );
   }
 
   const encodedEmail = encodeURIComponent(email);
 
-  // Check if user already exists in WorkOS - if so, redirect to login.
+  // Check if user already exists in WorkOS — if so, redirect to login.
   const existingUsers = await fetchUsersFromWorkOSWithEmails([email]);
   if (existingUsers.length > 0) {
-    return res.status(200).json({
+    return ctx.json({
       success: true,
       redirectUrl: `/api/workos/login?loginHint=${encodedEmail}`,
     });
   }
 
-  // Skip enrichment for personal email domains (gmail, outlook, yahoo, etc.)
-  // Redirect directly to signup
+  // Skip enrichment for personal email domains (gmail, outlook, yahoo, etc.).
   if (isPersonalEmailDomain(domain)) {
-    return res.status(200).json({
+    return ctx.json({
       success: true,
       redirectUrl: `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`,
     });
   }
 
-  // Check if domain has auto-join enabled - redirect to sign-up (user doesn't exist yet)
+  // Check if domain has auto-join enabled — redirect to sign-up.
   const isAutoJoinDomain =
     await WorkspaceResource.isDomainAutoJoinEnabled(domain);
   if (isAutoJoinDomain) {
-    return res.status(200).json({
+    return ctx.json({
       success: true,
       redirectUrl: `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`,
     });
   }
 
-  // Check if domain has valid MX records before calling Apollo
+  // Check if domain has valid MX records before calling Apollo.
   const hasMx = await hasValidMxRecords(domain);
   if (!hasMx) {
-    return res.status(400).json({
-      success: false,
-      redirectUrl: "/home/pricing",
-      error: "Please use a valid work email address",
-    });
+    return ctx.json(
+      {
+        success: false,
+        redirectUrl: "/home/pricing",
+        error: "Please use a valid work email address",
+      },
+      400
+    );
   }
 
-  // Enrich company data for work emails
   const { size, name, region, funding, revenue } =
     await enrichCompanyFromDomain(domain);
 
-  // Determine redirect based on company size
   let redirectUrl: string;
-
-  if (size === null) {
-    // Unknown company size - default to signup (self-serve)
-    redirectUrl = `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`;
-  } else if (size <= ENTERPRISE_THRESHOLD) {
-    // Small company - self-serve signup
+  if (size === null || size <= ENTERPRISE_THRESHOLD) {
     redirectUrl = `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`;
   } else {
-    // Enterprise - contact sales with email and company data prefilled for HubSpot
     const params = new URLSearchParams();
     params.set("email", email);
     if (name) {
       params.set("company", name);
     }
     if (size) {
-      // Map size to HubSpot headcount ranges
       let headcount: string;
       if (size <= 100) {
         headcount = "1-100";
@@ -138,7 +119,6 @@ export default async function handler(
     redirectUrl = `/home/contact?${params.toString()}`;
   }
 
-  // Send Slack notification for all Apollo enrichments
   const destinationLabel = redirectUrl.includes("/home/contact")
     ? "Contact Sales"
     : "Self-serve Signup";
@@ -160,10 +140,12 @@ export default async function handler(
     channel: GTM_LEADS_SLACK_CHANNEL_ID,
   });
 
-  return res.status(200).json({
+  return ctx.json({
     success: true,
     companySize: size ?? undefined,
     companyName: name ?? undefined,
     redirectUrl,
   });
-}
+});
+
+export default app;

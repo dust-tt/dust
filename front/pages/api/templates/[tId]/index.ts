@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";

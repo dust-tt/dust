@@ -1,5 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
-/** @ignoreswagger */
 import {
   getActionContextForEmailValidation,
   validateActionFromEmail,
@@ -8,32 +6,18 @@ import config from "@app/lib/api/config";
 import { verifyValidationToken } from "@app/lib/api/email/validation_token";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
-export type ValidateActionResponse = {
-  success: boolean;
-};
+// Mounted at /api/email/validate-action.
+const app = new Hono();
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>
-): Promise<void> {
-  if (req.method !== "POST") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "Only POST requests are supported.",
-      },
-    });
-  }
-
-  const { token } = req.body;
+app.post("/", async (ctx) => {
+  const body = await ctx.req.json().catch(() => ({}));
+  const { token } = body ?? {};
   if (!isString(token)) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -55,11 +39,10 @@ async function handler(
           ? "invalid"
           : "error";
 
-    res.redirect(
-      302,
-      `${config.getAppUrl()}/email/validation?status=${errorMessage}`
+    return ctx.redirect(
+      `${config.getAppUrl()}/email/validation?status=${errorMessage}`,
+      302
     );
-    return;
   }
 
   const { actionId, approvalState } = tokenResult.value;
@@ -71,8 +54,10 @@ async function handler(
       { actionId, error: contextResult.error.message },
       "[email] Failed to get action context for email validation"
     );
-    res.redirect(302, `${config.getAppUrl()}/email/validation?status=error`);
-    return;
+    return ctx.redirect(
+      `${config.getAppUrl()}/email/validation?status=error`,
+      302
+    );
   }
 
   const { workspaceId, conversationId, userId } = contextResult.value;
@@ -87,8 +72,10 @@ async function handler(
       { userId, workspaceId },
       "[email] Failed to build authenticator for email validation"
     );
-    res.redirect(302, `${config.getAppUrl()}/email/validation?status=error`);
-    return;
+    return ctx.redirect(
+      `${config.getAppUrl()}/email/validation?status=error`,
+      302
+    );
   }
 
   // Validate the action.
@@ -108,19 +95,18 @@ async function handler(
     const status =
       error.code === "action_not_blocked" ? "already_validated" : "error";
 
-    res.redirect(
-      302,
-      `${config.getAppUrl()}/email/validation?status=${status}&conversationId=${conversationId}&workspaceId=${workspaceId}`
+    return ctx.redirect(
+      `${config.getAppUrl()}/email/validation?status=${status}&conversationId=${conversationId}&workspaceId=${workspaceId}`,
+      302
     );
-    return;
   }
 
   const status = approvalState === "approved" ? "approved" : "rejected";
 
-  res.redirect(
-    302,
-    `${config.getAppUrl()}/email/validation?status=${status}&conversationId=${conversationId}&workspaceId=${workspaceId}`
+  return ctx.redirect(
+    `${config.getAppUrl()}/email/validation?status=${status}&conversationId=${conversationId}&workspaceId=${workspaceId}`,
+    302
   );
-}
+});
 
-export default withLogging(handler);
+export default app;

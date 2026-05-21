@@ -1,12 +1,12 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getStripeCheckoutSessionStatus } from "@app/lib/api/stripe/checkout_status";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import { calculateTax, getStripeClient } from "@app/lib/plans/stripe";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { apiError } from "@app/logger/withlogging";
-import { getStripeCheckoutSessionStatus } from "@app/pages/api/stripe/webhook";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
