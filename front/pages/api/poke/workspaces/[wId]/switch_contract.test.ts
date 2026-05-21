@@ -10,8 +10,8 @@ import {
 } from "@app/lib/metronome/payg_alerts";
 import { PlanModel } from "@app/lib/models/plan";
 import {
+  CREDIT_PRICED_BUSINESS_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
-  PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getStripeCustomer } from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
@@ -179,7 +179,7 @@ function proBody(overrides: Record<string, unknown> = {}) {
 
 function businessBody(overrides: Record<string, unknown> = {}) {
   return {
-    planCode: PRO_PLAN_SEAT_39_CODE,
+    planCode: CREDIT_PRICED_BUSINESS_PLAN_CODE,
     metronomePackageId: BUSINESS_PACKAGE_ID,
     stripeCustomerId: STRIPE_CUSTOMER_ID,
     ...overrides,
@@ -198,7 +198,7 @@ beforeEach(() => {
       {
         id: ENT_PACKAGE_ID,
         name: "Enterprise USD",
-        aliases: ["legacy-enterprise"],
+        aliases: ["enterprise"],
         tier: "enterprise",
         currency: "usd",
       },
@@ -212,7 +212,7 @@ beforeEach(() => {
       {
         id: BUSINESS_PACKAGE_ID,
         name: "Business USD",
-        aliases: ["legacy-business"],
+        aliases: ["business"],
         tier: "business",
         currency: "usd",
       },
@@ -245,7 +245,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
     expect(provisionMetronomeContract).toHaveBeenCalledWith(
       expect.objectContaining({
         metronomeCustomerId: METRONOME_CUSTOMER_ID,
-        packageAlias: "legacy-enterprise",
+        packageAlias: "enterprise",
         planCode: ENT_PLAN_CODE,
         swapAt: "next-hour",
       })
@@ -365,8 +365,8 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     expect(res._getStatusCode()).toBe(200);
     expect(provisionMetronomeContract).toHaveBeenCalledWith(
       expect.objectContaining({
-        packageAlias: "legacy-business",
-        planCode: PRO_PLAN_SEAT_39_CODE,
+        packageAlias: "business",
+        planCode: CREDIT_PRICED_BUSINESS_PLAN_CODE,
         swapAt: "current-hour",
       })
     );
@@ -488,7 +488,9 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     expect(secondPending).not.toBeNull();
     expect(secondPending!.sId).not.toBe(firstPendingSId);
     expect(secondPending!.metronomeContractId).toBe(SECOND_CONTRACT_ID);
-    expect(secondPending!.getPlan().code).toBe(PRO_PLAN_SEAT_39_CODE);
+    expect(secondPending!.getPlan().code).toBe(
+      CREDIT_PRICED_BUSINESS_PLAN_CODE
+    );
   });
 });
 

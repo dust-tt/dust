@@ -6,6 +6,7 @@ import {
 import { clientFetch } from "@app/lib/egress/client";
 import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
+  CREDIT_PRICED_BUSINESS_PLAN_CODE,
   isEntreprisePlanPrefix,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
@@ -33,6 +34,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import assert from "assert";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -71,6 +73,8 @@ function snapDatetimeLocalToHour(value: string): string {
   }
   return value;
 }
+
+const isLegacyPackageName = (name: string) => /\blegacy\b/i.test(name);
 
 interface SwitchContractDialogProps {
   owner: WorkspaceType;
@@ -153,7 +157,6 @@ export default function SwitchContractDialog({
     const inCurrency = metronomePackages.filter(
       (p) => p.currency === resolvedCurrency
     );
-    const isLegacy = (name: string) => /\blegacy\b/i.test(name);
     const toOption = (p: (typeof inCurrency)[number]) => ({
       value: p.id,
       display: `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
@@ -161,12 +164,15 @@ export default function SwitchContractDialog({
     return [
       {
         label: "Current",
-        options: inCurrency.filter((p) => !isLegacy(p.name)).map(toOption),
+        options: inCurrency
+          .filter((p) => !isLegacyPackageName(p.name))
+          .map(toOption),
       },
-      {
-        label: "Legacy",
-        options: inCurrency.filter((p) => isLegacy(p.name)).map(toOption),
-      },
+      // We hide the legacy ones as there is no use case switching to them (at least for now).
+      // {
+      //   label: "Legacy",
+      //   options: inCurrency.filter((p) => isLegacy(p.name)).map(toOption),
+      // },
     ];
   }, [metronomePackages, resolvedCurrency]);
 
@@ -176,6 +182,7 @@ export default function SwitchContractDialog({
     [metronomePackages, selectedPackageId]
   );
   const selectedTier = selectedPackage?.tier ?? null;
+  const selectedName = selectedPackage?.name ?? null;
 
   // Clear a stale package selection when the resolved currency changes so a
   // previously-picked package can't survive a currency switch silently.
@@ -195,10 +202,18 @@ export default function SwitchContractDialog({
   // for tiers that don't support it (currently: pro).
   useEffect(() => {
     if (selectedTier === "pro") {
-      form.setValue("planCode", PRO_PLAN_SEAT_29_CODE);
+      if (isLegacyPackageName(selectedName ?? "")) {
+        form.setValue("planCode", PRO_PLAN_SEAT_29_CODE);
+      } else {
+        assert("There is no non-legacy pro plan");
+      }
       form.setValue("startingAt", "");
     } else if (selectedTier === "business") {
-      form.setValue("planCode", PRO_PLAN_SEAT_39_CODE);
+      if (isLegacyPackageName(selectedName ?? "")) {
+        form.setValue("planCode", PRO_PLAN_SEAT_39_CODE);
+      } else {
+        form.setValue("planCode", CREDIT_PRICED_BUSINESS_PLAN_CODE);
+      }
       form.setValue("startingAt", "");
     } else if (selectedTier === "enterprise") {
       form.setValue("planCode", "");
@@ -208,7 +223,7 @@ export default function SwitchContractDialog({
       form.setValue("paygEnabled", false);
       form.setValue("paygCapDollars", undefined);
     }
-  }, [selectedTier, form, minStartingAtLocal]);
+  }, [selectedTier, selectedName, form, minStartingAtLocal]);
 
   const enterprisePlanOptions = useMemo(
     () =>

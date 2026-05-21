@@ -12,6 +12,9 @@ export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
 export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
+// Credit-priced plans:
+export const CREDIT_PRICED_BUSINESS_PLAN_CODE = "CP_BUSINESS_PLAN";
+
 // BYOK plan:
 export const FREE_BYOK_TRANSITIONING_PLAN_CODE = "FREE_BYOK_TRANSITIONING";
 export const FREE_BYOK_PLAN_CODE = "FREE_BYOK";
@@ -29,9 +32,13 @@ export const REINFORCEMENT_EXCLUDED_PLAN_CODES = new Set([
   FREE_TRIAL_PHONE_PLAN_CODE,
 ]);
 
+// Credit priced plan billed/tracked through Metronome and not legacy.
+export const isCreditPricedPlan = (planCode: string) =>
+  planCode.startsWith("CP_");
+
 // If the plan code starts with ENT_, it's an entreprise plan
 export const isEntreprisePlanPrefix = (planCode: string) =>
-  planCode.startsWith("ENT_");
+  planCode.startsWith("ENT_") || planCode.startsWith("CP_ENT_");
 
 export const isDustCompanyPlan = (planCode: string) =>
   planCode === DUST_COMPANY_PLAN_CODE;
@@ -44,9 +51,14 @@ export const isProPlanPrefix = (planCode: string) =>
 export const isFriendsAndFamilyPlan = (planCode: string) =>
   planCode === "FREE_FRIENDSAMILY";
 
+export const isCreditPricedBusinessPlan = (planCode: string) =>
+  planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE;
+
 // Everything else is free
 export const isFreePlan = (planCode: string) =>
-  !isEntreprisePlanPrefix(planCode) && !isProPlanPrefix(planCode);
+  !isEntreprisePlanPrefix(planCode) &&
+  !isProPlanPrefix(planCode) &&
+  !isCreditPricedBusinessPlan(planCode);
 
 export const isFreeTrialPhonePlan = (planCode: string) =>
   planCode === FREE_TRIAL_PHONE_PLAN_CODE;

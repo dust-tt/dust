@@ -40,7 +40,6 @@ import {
   DialogHeader,
   DialogTitle,
   Page,
-  ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import React, { useEffect, useState } from "react";
@@ -414,7 +413,7 @@ export function SubscriptionPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Subscription"
-          icon={ShapesIcon}
+          icon={CardIcon}
           description="Manage your plan."
         />
         <Page.Vertical align="stretch" gap="md">
@@ -445,7 +444,6 @@ export function SubscriptionPage() {
               )}
             </ContentMessage>
           )}
-
           {useMetronomePanel ? (
             <MetronomeSubscriptionPanel
               owner={owner}
