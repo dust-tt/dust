@@ -1,8 +1,10 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { dbConfig } from "@app/lib/resources/storage/config";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import fs from "fs";
+import { Client } from "pg";
 import { QueryTypes } from "sequelize";
 import type { MigrationParams } from "umzug";
 import { Umzug } from "umzug";
@@ -75,8 +77,21 @@ function createUmzug(phase: Phase) {
             throw new Error(`Missing path for migration ${name}.`);
           }
           const sql = fs.readFileSync(filePath, "utf8");
-          // biome-ignore lint/plugin/noRawSql: migration files are raw SQL by design.
-          await frontSequelize.query(sql);
+          // Use a dedicated pg Client rather than frontSequelize.query() so that
+          // the SQL file is sent as a single simple-protocol message with no
+          // implicit transaction wrapping. This is required because pg-schema-diff
+          // emits files that mix SET SESSION, regular DDL, and
+          // CREATE/DROP INDEX CONCURRENTLY — the latter two cannot run inside a
+          // transaction block, which Sequelize may add implicitly.
+          const client = new Client({
+            connectionString: dbConfig.getRequiredFrontDatabaseURI(),
+          });
+          await client.connect();
+          try {
+            await client.query(sql);
+          } finally {
+            await client.end();
+          }
         },
         // Down migrations are intentionally not supported. The expand/contract
         // pattern means rolling back a schema change is a new forward migration.
