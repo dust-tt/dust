@@ -122,8 +122,8 @@ import {
   SUPPORTED_REGIONS,
 } from "@app/lib/api/regions/config";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
+import { authenticateWithWorkOSCode } from "@app/lib/api/workos/authenticate";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
 import { getUserNicknameFromEmail } from "@app/lib/api/workos/user";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -142,7 +142,7 @@ import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
-import { GenericServerException, OauthException } from "@workos-inc/node";
+import { OauthException } from "@workos-inc/node";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -316,7 +316,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: "Invalid code verifier" });
   }
   try {
-    const authResult = await authenticate({
+    const authResult = await authenticateWithWorkOSCode({
       code,
       codeVerifier: code_verifier,
     });
@@ -348,52 +348,6 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-async function authenticate({
-  code,
-  codeVerifier,
-  organizationId,
-}: {
-  code: string;
-  codeVerifier?: string;
-  organizationId?: string;
-}) {
-  try {
-    return await getWorkOS().userManagement.authenticateWithCode({
-      code,
-      codeVerifier,
-      clientId: config.getWorkOSClientId(),
-      session: {
-        sealSession: true,
-        cookiePassword: config.getWorkOSCookiePassword(),
-      },
-    });
-  } catch (error) {
-    if (error instanceof GenericServerException) {
-      const errorData = error.rawData;
-      // In case we're coming from a login with organizationId, we need to complete the authentication with organization selection
-      if (organizationId && isOrganizationSelectionRequiredError(errorData)) {
-        const result =
-          await getWorkOS().userManagement.authenticateWithOrganizationSelection(
-            {
-              clientId: config.getWorkOSClientId(),
-              pendingAuthenticationToken:
-                errorData.pending_authentication_token,
-              organizationId,
-              session: {
-                sealSession: true,
-                cookiePassword: config.getWorkOSCookiePassword(),
-              },
-            }
-          );
-
-        return result;
-      }
-    }
-
-    throw error; // Re-throw other errors
-  }
-}
-
 async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
   const { code, state } = req.query;
   if (!code || typeof code !== "string") {
@@ -416,7 +370,10 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       authenticationMethod,
       sealedSession,
       accessToken,
-    } = await authenticate({ code, organizationId: stateObj.organizationId });
+    } = await authenticateWithWorkOSCode({
+      code,
+      organizationId: stateObj.organizationId,
+    });
 
     if (!sealedSession) {
       throw new Error("Sealed session not found");
