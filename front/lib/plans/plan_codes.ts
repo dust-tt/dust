@@ -38,7 +38,7 @@ export const isCreditPricedPlan = (planCode: string) =>
 
 // If the plan code starts with ENT_, it's an entreprise plan
 export const isEntreprisePlanPrefix = (planCode: string) =>
-  planCode.startsWith("ENT_");
+  planCode.startsWith("ENT_") || planCode.startsWith("CP_ENT_");
 
 export const isDustCompanyPlan = (planCode: string) =>
   planCode === DUST_COMPANY_PLAN_CODE;
