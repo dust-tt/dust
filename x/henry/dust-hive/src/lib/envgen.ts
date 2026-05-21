@@ -39,7 +39,7 @@ export NEXT_PUBLIC_DUST_API_URL=http://localhost:${ports.front}
 export NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL=http://localhost:${ports.front}
 export NEXT_PUBLIC_DUST_APP_URL=http://localhost:${ports.frontSpaApp}
 export POKE_APP_URL=http://localhost:${ports.frontSpaPoke}
-export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:3000
+export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:${ports.front}
 export CONNECTORS_PUBLIC_URL=http://localhost:${ports.connectors}
 
 # === Database URIs ===

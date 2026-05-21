@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { DUST_HIVE_SCRIPTS, getServiceLogsTuiPath } from "./paths";
-import { ALL_SERVICES } from "./services";
+import { getActiveServices } from "./services";
 
 /**
  * Generates the service logs TUI bash script content.
@@ -20,7 +20,7 @@ import { ALL_SERVICES } from "./services";
  *   x   - exit
  */
 export function getServiceLogsTuiContent(): string {
-  const services = ALL_SERVICES.join(" ");
+  const services = getActiveServices().join(" ");
 
   // Script header and argument parsing
   const header = `#!/usr/bin/env bash

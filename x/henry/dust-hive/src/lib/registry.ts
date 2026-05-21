@@ -6,7 +6,7 @@ import { logger } from "./logger";
 import { getEnvFilePath, getLogPath, getWorktreeDir } from "./paths";
 import type { PortAllocation } from "./ports";
 import { isServiceRunning, readFileTail, spawnShellDaemon } from "./process";
-import { ALL_SERVICES, type ServiceName } from "./services";
+import { ALL_SERVICES, type ServiceName, getActiveServices } from "./services";
 import { buildShell } from "./shell";
 
 // Readiness check types - how to determine if a service is ready
@@ -55,6 +55,17 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
   },
   front: {
     cwd: "front",
+    needsNvm: true,
+    needsEnvSh: true,
+    buildCommand: () => "npm run dev",
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.front}/api/healthz`,
+    },
+    portKey: "front",
+  },
+  "front-api": {
+    cwd: "front-api",
     needsNvm: true,
     needsEnvSh: true,
     buildCommand: () => "npm run dev",
@@ -146,8 +157,9 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all services except sparkle, SDK, and viz which start at spawn/manually)
-export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
+// Services to start during warm (all active services except sparkle, SDK, and viz which start at spawn/manually).
+// Uses getActiveServices() so only the active front variant (front or front-api) is included.
+export const WARM_SERVICES: ServiceName[] = getActiveServices().filter(
   (service) => service !== "sparkle" && service !== "sdk" && service !== "viz"
 );
 
@@ -312,16 +324,17 @@ export async function waitForServiceReady(
   return waitForFileReady(service, env, check.path(env), timeoutMs);
 }
 
-// Get HTTP health checks for all services (for status display)
+// Get HTTP health checks for active services (for status display)
 export function getHealthChecks(
   ports: PortAllocation
 ): Array<{ service: ServiceName; url: string }> {
   const checks: Array<{ service: ServiceName; url: string }> = [];
 
-  for (const [service, config] of Object.entries(SERVICE_REGISTRY)) {
+  for (const service of getActiveServices()) {
+    const config = SERVICE_REGISTRY[service];
     if (config.readinessCheck?.type === "http") {
       checks.push({
-        service: service as ServiceName,
+        service,
         url: config.readinessCheck.url(ports),
       });
     }

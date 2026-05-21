@@ -12,7 +12,7 @@ import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
-import type { ServiceName } from "../lib/services";
+import { type ServiceName, getFrontService } from "../lib/services";
 import { buildShell } from "../lib/shell";
 import { isDockerRunning } from "../lib/state";
 
@@ -152,8 +152,10 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
   // Check if already warm
   const dockerRunning = await isDockerRunning(env.name);
+  const frontService = getFrontService();
+
   if (dockerRunning) {
-    const frontRunning = await isServiceRunning(env.name, "front");
+    const frontRunning = await isServiceRunning(env.name, frontService);
     if (frontRunning) {
       logger.info(`Environment '${env.name}' is already warm`);
       return Ok(undefined);
@@ -164,7 +166,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   console.log();
 
   // Clean up orphaned processes on service ports
-  const portServices: ServiceName[] = ["front", "core", "connectors", "oauth"];
+  const portServices: ServiceName[] = [frontService, "core", "connectors", "oauth"];
   const servicePids = await Promise.all(portServices.map((service) => readPid(env.name, service)));
   const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
@@ -199,7 +201,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
   // Start front immediately to begin page compilation
   // It will retry connections to DB/Redis until they're ready
-  await startService(env, "front");
+  await startService(env, frontService);
 
   // Start pre-warming immediately - curls will retry until Next.js is ready
   // Pages compile while Docker containers start and init runs
@@ -280,7 +282,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   // Start forwarder as soon as front is healthy (don't wait for core/oauth)
   logger.step("Waiting for services to be healthy...");
   await Promise.all([
-    waitForServiceReady(env, "front").then(async () => {
+    waitForServiceReady(env, frontService).then(async () => {
       if (!noForward) {
         await startForwarder(env.ports.base, env.name);
       }
@@ -299,7 +301,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   console.log();
   logger.success(`Environment '${env.name}' is now warm! (${elapsed}s)`);
   console.log();
-  console.log(`  Front:       http://localhost:${env.ports.front}`);
+  console.log(`  ${`${frontService}:`.padEnd(13)}http://localhost:${env.ports.front}`);
   console.log(`  Core:        http://localhost:${env.ports.core}`);
   console.log(`  Connectors:  http://localhost:${env.ports.connectors}`);
   console.log(`  Front app:   http://localhost:${env.ports.frontSpaApp}`);

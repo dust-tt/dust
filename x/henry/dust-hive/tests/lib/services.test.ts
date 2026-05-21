@@ -7,6 +7,7 @@ describe("services", () => {
       expect(ALL_SERVICES).toContain("sparkle");
       expect(ALL_SERVICES).toContain("sdk");
       expect(ALL_SERVICES).toContain("front");
+      expect(ALL_SERVICES).toContain("front-api");
       expect(ALL_SERVICES).toContain("core");
       expect(ALL_SERVICES).toContain("oauth");
       expect(ALL_SERVICES).toContain("connectors");
@@ -16,8 +17,8 @@ describe("services", () => {
       expect(ALL_SERVICES).toContain("viz");
     });
 
-    it("has 10 services total", () => {
-      expect(ALL_SERVICES).toHaveLength(10);
+    it("has 11 services total", () => {
+      expect(ALL_SERVICES).toHaveLength(11);
     });
 
     it("has sdk as first service (start order)", () => {
@@ -56,6 +57,7 @@ describe("services", () => {
         "sdk",
         "sparkle",
         "front",
+        "front-api",
         "core",
         "oauth",
         "connectors",
