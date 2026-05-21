@@ -204,7 +204,11 @@ export function EditableFrame({ children }: EditableFrameProps) {
       <Tooltip open={!!hoverState}>
         <TooltipTrigger asChild>
           <span
-            style={anchorPos ? { top: anchorPos.top, left: anchorPos.left } : undefined}
+            style={
+              anchorPos
+                ? { top: anchorPos.top, left: anchorPos.left }
+                : undefined
+            }
             className="pointer-events-none fixed size-px"
           />
         </TooltipTrigger>
