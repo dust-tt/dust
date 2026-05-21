@@ -23,7 +23,7 @@ import {
   DialogTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -49,7 +49,7 @@ export default function FreePlanUpgradeDialog({
   const { plans } = usePokePlans();
 
   const form = useForm<FreePlanUpgradeFormType>({
-    resolver: ioTsResolver(FreePlanUpgradeFormSchema),
+    resolver: zodResolver(FreePlanUpgradeFormSchema),
     defaultValues: {
       planCode: "",
       endDate: undefined,

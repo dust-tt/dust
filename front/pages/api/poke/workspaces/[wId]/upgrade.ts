@@ -12,9 +12,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { FreePlanUpgradeFormSchema } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export type UpgradeWorkspaceResponseBody = {
   workspace: LightWorkspaceType;
@@ -55,10 +54,9 @@ async function handler(
         }
       );
 
-      const bodyValidation = FreePlanUpgradeFormSchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-        const errorMessage = `The request body is invalid: ${pathError}`;
+      const bodyValidation = FreePlanUpgradeFormSchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const errorMessage = `The request body is invalid: ${fromError(bodyValidation.error).toString()}`;
         await pluginRun.recordError(errorMessage);
         return apiError(req, res, {
           status_code: 400,
@@ -68,9 +66,7 @@ async function handler(
           },
         });
       }
-      const body = bodyValidation.right;
-      const planCode = body.planCode;
-      const endDate = body.endDate;
+      const { planCode, endDate } = bodyValidation.data;
 
       if (endDate && new Date(endDate) < new Date()) {
         const errorMessage = "The end date is in the past.";

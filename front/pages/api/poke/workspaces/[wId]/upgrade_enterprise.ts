@@ -20,9 +20,8 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { EnterpriseUpgradeFormSchema } from "@app/types/plan";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export interface UpgradeEnterpriseSuccessResponseBody {
   success: boolean;
@@ -77,10 +76,9 @@ async function handler(
         }
       );
 
-      const bodyValidation = EnterpriseUpgradeFormSchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-        const errorMessage = `The request body is invalid: ${pathError}`;
+      const bodyValidation = EnterpriseUpgradeFormSchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const errorMessage = `The request body is invalid: ${fromError(bodyValidation.error).toString()}`;
         await pluginRun.recordError(errorMessage);
         return apiError(req, res, {
           status_code: 400,
@@ -90,7 +88,7 @@ async function handler(
           },
         });
       }
-      const body = bodyValidation.right;
+      const body = bodyValidation.data;
 
       const programmaticConfigValidation =
         ProgrammaticUsageConfigurationSchema.safeParse(body);

@@ -14,9 +14,8 @@ import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { EnterpriseUpgradeFormSchema } from "@app/types/plan";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { isLeft } from "fp-ts/lib/Either";
 import { Hono } from "hono";
-import * as reporter from "io-ts-reporters";
+import { fromError } from "zod-validation-error";
 
 export interface PokeUpgradeEnterpriseSuccessResponseBody {
   success: boolean;
@@ -43,17 +42,16 @@ app.post(
       { resourceId: owner.sId, resourceType: "workspaces" }
     );
 
-    const bodyValidation = EnterpriseUpgradeFormSchema.decode(body);
-    if (isLeft(bodyValidation)) {
-      const pathError = reporter.formatValidationErrors(bodyValidation.left);
-      const errorMessage = `The request body is invalid: ${pathError}`;
+    const bodyValidation = EnterpriseUpgradeFormSchema.safeParse(body);
+    if (!bodyValidation.success) {
+      const errorMessage = `The request body is invalid: ${fromError(bodyValidation.error).toString()}`;
       await pluginRun.recordError(errorMessage);
       return apiError(ctx, {
         status_code: 400,
         api_error: { type: "invalid_request_error", message: errorMessage },
       });
     }
-    const validated = bodyValidation.right;
+    const validated = bodyValidation.data;
 
     const programmaticConfigValidation =
       ProgrammaticUsageConfigurationSchema.safeParse(validated);

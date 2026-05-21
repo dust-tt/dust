@@ -6,9 +6,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { FreePlanUpgradeFormSchema } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { isLeft } from "fp-ts/lib/Either";
 import { Hono } from "hono";
-import * as reporter from "io-ts-reporters";
+import { fromError } from "zod-validation-error";
 
 export type PokeUpgradeWorkspaceResponseBody = {
   workspace: LightWorkspaceType;
@@ -31,10 +30,9 @@ app.post("/", async (ctx): HandlerResult<PokeUpgradeWorkspaceResponseBody> => {
     { resourceId: owner.sId, resourceType: "workspaces" }
   );
 
-  const bodyValidation = FreePlanUpgradeFormSchema.decode(body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
-    const errorMessage = `The request body is invalid: ${pathError}`;
+  const bodyValidation = FreePlanUpgradeFormSchema.safeParse(body);
+  if (!bodyValidation.success) {
+    const errorMessage = `The request body is invalid: ${fromError(bodyValidation.error).toString()}`;
     await pluginRun.recordError(errorMessage);
     return apiError(ctx, {
       status_code: 400,
@@ -44,9 +42,7 @@ app.post("/", async (ctx): HandlerResult<PokeUpgradeWorkspaceResponseBody> => {
       },
     });
   }
-  const validated = bodyValidation.right;
-  const planCode = validated.planCode;
-  const endDate = validated.endDate;
+  const { planCode, endDate } = bodyValidation.data;
 
   if (endDate && new Date(endDate) < new Date()) {
     const errorMessage = "The end date is in the past.";

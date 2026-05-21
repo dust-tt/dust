@@ -32,7 +32,7 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -123,7 +123,7 @@ export default function EnterpriseUpgradeDialog({
   const paygCapMicroUsd = programmaticUsageConfig?.paygCapMicroUsd ?? null;
 
   const form = useForm<EnterpriseUpgradeFormType>({
-    resolver: ioTsResolver(EnterpriseUpgradeFormSchema),
+    resolver: zodResolver(EnterpriseUpgradeFormSchema),
     defaultValues: {
       stripeSubscriptionId: !useMetronomePath
         ? (subscription.stripeSubscriptionId ?? "")
