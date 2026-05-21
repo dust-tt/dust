@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { logger } from "../logger";
 import { getInstallInstructions as getPlatformInstallInstructions } from "../platform";
 import { restoreTerminal } from "../prompt";
-import { ALL_SERVICES, type ServiceName } from "../services";
+import { type ServiceName, getActiveServices } from "../services";
 import { shellQuote } from "../shell";
 import type {
   InstallCheckResult,
@@ -13,7 +13,7 @@ import type {
   MultiplexerAdapter,
   MultiplexerType,
 } from "./types";
-import { SESSION_PREFIX, TAB_NAMES } from "./types";
+import { SESSION_PREFIX, getTabName } from "./types";
 
 /**
  * Base directory for zellij layouts
@@ -245,9 +245,9 @@ export class ZellijAdapter implements MultiplexerAdapter {
     }`;
     } else {
       // Individual service tabs (default)
-      logsTabs = ALL_SERVICES.map((service) =>
-        this.generateServiceTab(envName, service, worktreePath)
-      ).join("\n\n");
+      logsTabs = getActiveServices()
+        .map((service) => this.generateServiceTab(envName, service, worktreePath))
+        .join("\n\n");
     }
 
     // When compact mode is enabled, use bottom bar; otherwise use top bar
@@ -298,7 +298,7 @@ ${tabTemplate}
   }
 
   private generateServiceTab(envName: string, service: ServiceName, worktreePath: string): string {
-    const tabName = TAB_NAMES[service];
+    const tabName = getTabName(service);
     return `    tab name="${tabName}" {
         pane {
             cwd "${kdlEscape(worktreePath)}"

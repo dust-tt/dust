@@ -58,7 +58,7 @@ describe("envgen", () => {
       expect(content).toContain(
         "export NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL=http://localhost:10000"
       );
-      expect(content).toContain("export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:3000");
+      expect(content).toContain("export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:10000");
       expect(content).toContain("export CONNECTORS_PUBLIC_URL=http://localhost:10002");
     });
 

@@ -12,7 +12,7 @@ import { ZellijAdapter } from "./zellij";
 
 // Re-export types for convenience
 export type { MultiplexerAdapter, MultiplexerType, LayoutConfig, MainLayoutConfig } from "./types";
-export { getSessionName, MAIN_SESSION_NAME, SESSION_PREFIX, TAB_NAMES } from "./types";
+export { getSessionName, getTabName, MAIN_SESSION_NAME, SESSION_PREFIX } from "./types";
 
 /**
  * Registry of available multiplexer adapters

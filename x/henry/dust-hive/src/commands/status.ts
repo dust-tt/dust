@@ -4,13 +4,13 @@ import type { PortAllocation } from "../lib/ports";
 import { isServiceRunning } from "../lib/process";
 import { checkServiceHealth, getHealthChecks } from "../lib/registry";
 import { Ok } from "../lib/result";
-import { ALL_SERVICES } from "../lib/services";
+import { getActiveServices } from "../lib/services";
 import { getStateInfo, isDockerRunning } from "../lib/state";
 
 async function printServiceStatus(name: string): Promise<void> {
   console.log("Services:");
 
-  for (const service of ALL_SERVICES) {
+  for (const service of getActiveServices()) {
     const running = await isServiceRunning(name, service);
     const status = running ? "\x1b[32m●\x1b[0m" : "\x1b[90m○\x1b[0m";
     console.log(`  ${status} ${service}`);
