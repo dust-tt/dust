@@ -6,7 +6,7 @@
 // This script performs the DB-only step: for every project_context file whose
 // `mountFilePath` still carries the /projects/ prefix, rewrite it to /pods/.
 
-import { toPodsMountFilePath } from "@app/lib/api/files/mount_path";
+import { toPodMountFilePath } from "@app/lib/api/files/mount_path";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -107,7 +107,7 @@ makeScript(
                 return;
               }
 
-              const newPath = toPodsMountFilePath(row.mountFilePath);
+              const newPath = toPodMountFilePath(row.mountFilePath);
               if (!newPath) {
                 logger.warn(
                   { fileId: row.id, mountFilePath: row.mountFilePath },
