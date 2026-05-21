@@ -79,8 +79,8 @@ export async function getUserSpendLimit(
 
   const result = await getMetronomePerUserCap({
     metronomeCustomerId: workspace.metronomeCustomerId,
-    workspaceSId: workspace.sId,
-    userSId: user.sId,
+    workspaceId: workspace.sId,
+    userId: user.sId,
   });
   if (result.isErr()) {
     return new Err(
@@ -108,12 +108,12 @@ export async function getUserSpendLimit(
 async function resolveLocalCapState({
   metronomeCustomerId,
   metronomeContractId,
-  userSId,
+  userId,
   awuCapCredits,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string | null;
-  userSId: string;
+  userId: string;
   awuCapCredits: number;
 }): Promise<"reached" | "resolved" | null> {
   if (!metronomeContractId) {
@@ -127,14 +127,14 @@ async function resolveLocalCapState({
     logger.warn(
       {
         metronomeCustomerId,
-        userId: userSId,
+        userId: userId,
         err: usageResult.error,
       },
       "[Metronome PerUserCap] Could not fetch current usage; skipping immediate state dispatch"
     );
     return null;
   }
-  const consumed = usageResult.value.get(userSId) ?? 0;
+  const consumed = usageResult.value.get(userId) ?? 0;
   return consumed >= awuCapCredits ? "reached" : "resolved";
 }
 
@@ -186,8 +186,8 @@ export async function setUserSpendLimit(
     case "unlimited": {
       const clearResult = await clearMetronomePerUserCapAlert({
         metronomeCustomerId: workspace.metronomeCustomerId,
-        workspaceSId: workspace.sId,
-        userSId: user.sId,
+        workspaceId: workspace.sId,
+        userId: user.sId,
       });
       if (clearResult.isErr()) {
         return new Err(
@@ -215,8 +215,8 @@ export async function setUserSpendLimit(
     case "limited": {
       const syncResult = await syncMetronomePerUserCapAlert({
         metronomeCustomerId: workspace.metronomeCustomerId,
-        workspaceSId: workspace.sId,
-        userSId: user.sId,
+        workspaceId: workspace.sId,
+        userId: user.sId,
         awuCredits: limit.awuCredits,
       });
       if (syncResult.isErr()) {
@@ -227,7 +227,7 @@ export async function setUserSpendLimit(
       transitionedTo = await resolveLocalCapState({
         metronomeCustomerId: workspace.metronomeCustomerId,
         metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
-        userSId: user.sId,
+        userId: user.sId,
         awuCapCredits: limit.awuCredits,
       });
       try {

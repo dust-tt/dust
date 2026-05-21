@@ -7,27 +7,27 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const USER_ID_GROUP_KEY = "user_id";
 
-function perUserAlertUniquenessKeyPrefix(workspaceSId: string): string {
-  return `per-user-cap-${workspaceSId}-`;
+function perUserAlertUniquenessKeyPrefix(workspaceId: string): string {
+  return `per-user-cap-${workspaceId}-`;
 }
 
 function perUserAlertUniquenessKey(
-  workspaceSId: string,
-  userSId: string
+  workspaceId: string,
+  userId: string
 ): string {
-  return `${perUserAlertUniquenessKeyPrefix(workspaceSId)}${userSId}`;
+  return `${perUserAlertUniquenessKeyPrefix(workspaceId)}${userId}`;
 }
 
 async function findExistingPerUserAlert({
   metronomeCustomerId,
-  workspaceSId,
-  userSId,
+  workspaceId,
+  userId,
 }: {
   metronomeCustomerId: string;
-  workspaceSId: string;
-  userSId: string;
+  workspaceId: string;
+  userId: string;
 }): Promise<Result<{ id: string; threshold: number } | null, Error>> {
-  const target = perUserAlertUniquenessKey(workspaceSId, userSId);
+  const target = perUserAlertUniquenessKey(workspaceId, userId);
   try {
     const client = getMetronomeClient();
     for await (const entry of client.v1.customers.alerts.list({
@@ -54,17 +54,17 @@ async function findExistingPerUserAlert({
  */
 export async function getMetronomePerUserCap({
   metronomeCustomerId,
-  workspaceSId,
-  userSId,
+  workspaceId,
+  userId,
 }: {
   metronomeCustomerId: string;
-  workspaceSId: string;
-  userSId: string;
+  workspaceId: string;
+  userId: string;
 }): Promise<Result<{ alertId: string; threshold: number } | null, Error>> {
   const findResult = await findExistingPerUserAlert({
     metronomeCustomerId,
-    workspaceSId,
-    userSId,
+    workspaceId,
+    userId,
   });
   if (findResult.isErr()) {
     return new Err(findResult.error);
@@ -77,18 +77,18 @@ export async function getMetronomePerUserCap({
 }
 
 /**
- * List per-user cap thresholds for a workspace. Returns a `Map<userSId,
+ * List per-user cap thresholds for a workspace. Returns a `Map<userId,
  * threshold>` built from all enabled/disabled alerts whose
  * `uniqueness_key` matches the per-user cap pattern for this workspace.
  */
 export async function listMetronomePerUserCapsForWorkspace({
   metronomeCustomerId,
-  workspaceSId,
+  workspaceId,
 }: {
   metronomeCustomerId: string;
-  workspaceSId: string;
+  workspaceId: string;
 }): Promise<Result<Map<string, number>, Error>> {
-  const prefix = perUserAlertUniquenessKeyPrefix(workspaceSId);
+  const prefix = perUserAlertUniquenessKeyPrefix(workspaceId);
   const caps = new Map<string, number>();
   try {
     const client = getMetronomeClient();
@@ -100,11 +100,11 @@ export async function listMetronomePerUserCapsForWorkspace({
       if (!key || !key.startsWith(prefix)) {
         continue;
       }
-      const userSId = key.slice(prefix.length);
-      if (!userSId) {
+      const userId = key.slice(prefix.length);
+      if (!userId) {
         continue;
       }
-      caps.set(userSId, entry.alert.threshold);
+      caps.set(userId, entry.alert.threshold);
     }
     return new Ok(caps);
   } catch (err) {
@@ -120,19 +120,19 @@ export async function listMetronomePerUserCapsForWorkspace({
  */
 export async function syncMetronomePerUserCapAlert({
   metronomeCustomerId,
-  workspaceSId,
-  userSId,
+  workspaceId,
+  userId,
   awuCredits,
 }: {
   metronomeCustomerId: string;
-  workspaceSId: string;
-  userSId: string;
+  workspaceId: string;
+  userId: string;
   awuCredits: number;
 }): Promise<Result<{ alertId: string }, Error>> {
   const findResult = await findExistingPerUserAlert({
     metronomeCustomerId,
-    workspaceSId,
-    userSId,
+    workspaceId,
+    userId,
   });
   if (findResult.isErr()) {
     return new Err(findResult.error);
@@ -158,17 +158,17 @@ export async function syncMetronomePerUserCapAlert({
   try {
     const created = await client.v1.alerts.create({
       alert_type: "spend_threshold_reached",
-      name: `Per-user cap (${userSId})`,
+      name: `Per-user cap (${userId})`,
       threshold: awuCredits,
       credit_type_id: getCreditTypeAwuId(),
       customer_id: metronomeCustomerId,
-      group_values: [{ key: USER_ID_GROUP_KEY, value: userSId }],
-      uniqueness_key: perUserAlertUniquenessKey(workspaceSId, userSId),
+      group_values: [{ key: USER_ID_GROUP_KEY, value: userId }],
+      uniqueness_key: perUserAlertUniquenessKey(workspaceId, userId),
     });
     logger.info(
       {
-        workspaceId: workspaceSId,
-        userId: userSId,
+        workspaceId: workspaceId,
+        userId: userId,
         metronomeCustomerId,
         alertId: created.data.id,
         awuCredits,
@@ -187,17 +187,17 @@ export async function syncMetronomePerUserCapAlert({
  */
 export async function clearMetronomePerUserCapAlert({
   metronomeCustomerId,
-  workspaceSId,
-  userSId,
+  workspaceId,
+  userId,
 }: {
   metronomeCustomerId: string;
-  workspaceSId: string;
-  userSId: string;
+  workspaceId: string;
+  userId: string;
 }): Promise<Result<void, Error>> {
   const findResult = await findExistingPerUserAlert({
     metronomeCustomerId,
-    workspaceSId,
-    userSId,
+    workspaceId,
+    userId,
   });
   if (findResult.isErr()) {
     return new Err(findResult.error);
@@ -215,8 +215,8 @@ export async function clearMetronomePerUserCapAlert({
     });
     logger.info(
       {
-        workspaceId: workspaceSId,
-        userId: userSId,
+        workspaceId: workspaceId,
+        userId: userId,
         metronomeCustomerId,
         alertId: existing.id,
       },
