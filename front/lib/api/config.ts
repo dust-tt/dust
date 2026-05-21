@@ -125,6 +125,29 @@ const config = {
     }
     return process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   },
+  getTurnstileSiteKey: (): string => {
+    // Using process.env here to make sure the function is usable on the client side.
+    if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+      return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    }
+    // Cloudflare-published "always passes" dummy sitekey for local dev:
+    // https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+    if (isDevelopment()) {
+      // return "3x00000000000000000000FF"; // forces interactive challenge
+      // return "2x00000000000000000000AB"; // always fails and visible
+      return "1x00000000000000000000AA"; // always succeeds and visible
+    }
+    throw new Error("NEXT_PUBLIC_TURNSTILE_SITE_KEY is not set");
+  },
+  getTurnstileSecretKey: (): string => {
+    // Cloudflare-published "always validates" dummy secret for local dev:
+    // https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+    if (isDevelopment()) {
+      // return "2x0000000000000000000000000000000AA" // always fails validation
+      return "1x0000000000000000000000000000000AA"; // always passes validation
+    }
+    return EnvironmentConfig.getEnvVariable("TURNSTILE_SECRET_KEY");
+  },
   getStripeSecretKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_KEY");
   },

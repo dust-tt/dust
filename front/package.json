@@ -66,6 +66,7 @@
     "@langfuse/client": "^4.5.1",
     "@langfuse/otel": "^4.4.2",
     "@langfuse/tracing": "^4.4.2",
+    "@marsidev/react-turnstile": "^1.5.2",
     "@mendable/firecrawl-js": "^1.29.1",
     "@metronome/sdk": "^3.4.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
