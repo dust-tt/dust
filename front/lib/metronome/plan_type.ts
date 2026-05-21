@@ -92,7 +92,7 @@ export async function getActiveContract(
  * type); new plans bill all usage in AWU. Fails open (returns true) when the
  * plan cannot be determined.
  */
-export async function isLegacyPlan(plan: PlanType): Promise<boolean> {
+export function isLegacyPlan(plan: PlanType): boolean {
   return !isCreditPricedPlan(plan.code);
 }
 

@@ -99,7 +99,7 @@ describe("getAwuPurchaseInfo", () => {
       workspace.sId
     );
 
-    vi.mocked(isLegacyPlan).mockResolvedValue(false);
+    vi.mocked(isLegacyPlan).mockReturnValue(false);
     vi.mocked(getMetronomeCustomerStripeCustomerId).mockResolvedValue(
       new Ok("cus_123")
     );
