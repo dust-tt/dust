@@ -11,8 +11,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
-import type { Bucket, File } from "@google-cloud/storage";
-import { Storage } from "@google-cloud/storage";
+import type { ApiError, Bucket, File } from "@google-cloud/storage";
+import { RETRYABLE_ERR_FN_DEFAULT, Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
 import isNumber from "lodash/isNumber";
@@ -20,11 +20,19 @@ import { pipeline } from "stream/promises";
 
 const GCS_COPY_MAX_RETRIES = 3;
 const GCS_COPY_BASE_DELAY_MS = 500;
+const GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX = /socket hang up/i;
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
 interface FileStorageOptions {
   useServiceAccount?: boolean;
+}
+
+function isRetryableGCSError(err: ApiError): boolean {
+  return (
+    RETRYABLE_ERR_FN_DEFAULT(err) ||
+    GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX.test(err.message)
+  );
 }
 
 export class FileStorage {
@@ -37,6 +45,9 @@ export class FileStorage {
   ) {
     this.storage = new Storage({
       keyFilename: useServiceAccount ? config.getServiceAccount() : undefined,
+      retryOptions: {
+        retryableErrorFn: isRetryableGCSError,
+      },
     });
 
     this.bucket = this.storage.bucket(bucketKey);
