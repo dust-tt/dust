@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 /**
  * @swagger
  * /api/workos/login:
@@ -137,8 +139,10 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { apiError } from "@app/logger/withlogging";
 
 import { isDevelopment } from "@app/types/shared/env";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
@@ -585,7 +589,27 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       return { ...base, returnTo: appendUtmToUrl(sanitizedReturnTo) };
     })();
 
-    await performLogin(req, res, loginSession, loginOptions);
+    const outcome = await performLogin(
+      {
+        cookieHeader: req.headers.cookie,
+        forwardedFor: req.headers["x-forwarded-for"],
+        remoteAddress: req.socket?.remoteAddress,
+      },
+      loginSession,
+      loginOptions
+    );
+    switch (outcome.kind) {
+      case "redirect":
+        res.redirect(outcome.url);
+        return;
+      case "unauthorized":
+        res.status(401).end();
+        return;
+      case "apiError":
+        return apiError(req, res, outcome.error);
+      default:
+        assertNever(outcome);
+    }
     return;
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
