@@ -107,6 +107,10 @@ export async function listWebhookSourcesWithCounts(
   const sources = await WebhookSourceResource.listByWorkspace(auth);
   const results: WebhookSourceWithCounts[] = [];
 
+  // O(sources × views) sequential DB round-trips. Acceptable for the poke
+  // admin UI: webhook sources and views per workspace are small (< 20 each
+  // in practice), and this endpoint is not on a user hot path. If counts
+  // grow, batch the view + trigger fetches into one query each.
   for (const source of sources) {
     const views = await WebhookSourcesViewResource.listByWebhookSource(
       auth,
