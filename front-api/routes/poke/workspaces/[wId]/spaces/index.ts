@@ -3,6 +3,8 @@ import type { SpaceType } from "@app/types/space";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
+import spaceId from "./[spaceId]";
+
 export type PokeListSpaces = {
   spaces: SpaceType[];
 };
@@ -17,5 +19,7 @@ app.get("/", async (ctx): HandlerResult<PokeListSpaces> => {
 
   return ctx.json({ spaces: spaces.map((s) => s.toJSON()) });
 });
+
+app.route("/:spaceId", spaceId);
 
 export default app;

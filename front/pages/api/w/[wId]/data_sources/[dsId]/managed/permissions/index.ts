@@ -2,6 +2,10 @@
 // @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import {
+  getManagedDataSourcePermissions,
+  ManagedPermissionsQuerySchema,
+} from "@app/lib/api/data_sources/managed_permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -12,8 +16,6 @@ import type {
   ContentNodeWithParent,
 } from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes";
-import type { DataSourceType } from "@app/types/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -93,14 +95,92 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
-      return getManagedDataSourcePermissionsHandler(
-        auth,
-        // To make typescript happy.
-        { ...dataSource.toJSON(), connectorId: dataSource.connectorId },
-        req,
-        res
+    case "GET": {
+      const q = ManagedPermissionsQuerySchema.safeParse(req.query);
+      if (!q.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid query parameters: ${fromError(q.error).toString()}`,
+          },
+        });
+      }
+
+      // Auth gating: read = anyone, write = builder, undefined (all) = admin.
+      switch (q.data.filterPermission) {
+        case "read":
+          break;
+        case "write":
+          if (!auth.isBuilder()) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "data_source_auth_error",
+                message:
+                  "Only builders of the current workspace can view 'write' permissions of a data source.",
+              },
+            });
+          }
+          break;
+        case undefined:
+          if (!auth.isAdmin()) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "data_source_auth_error",
+                message:
+                  "Only admins of the current workspace can view all permissions of a data source.",
+              },
+            });
+          }
+          break;
+        default:
+          assertNever(q.data.filterPermission);
+      }
+
+      const result = await getManagedDataSourcePermissions(
+        dataSource.connectorId,
+        q.data
       );
+
+      if (result.isErr()) {
+        switch (result.error.type) {
+          case "connector_rate_limit":
+            return apiError(req, res, {
+              status_code: 429,
+              api_error: {
+                type: "rate_limit_error",
+                message:
+                  "Rate limit error while retrieving the data source permissions",
+              },
+            });
+          case "connector_authorization_error":
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "data_source_auth_error",
+                message:
+                  "Authorization error while retrieving the data source permissions.",
+              },
+            });
+          case "internal_error":
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message:
+                  "An error occurred while retrieving the data source permissions.",
+              },
+            });
+          default:
+            assertNever(result.error);
+        }
+      }
+
+      res.status(200).json(result.value);
+      return;
+    }
 
     case "POST":
       const connectorsAPI = new ConnectorsAPI(
@@ -169,136 +249,6 @@ async function handler(
         },
       });
   }
-}
-
-export async function getManagedDataSourcePermissionsHandler(
-  auth: Authenticator,
-  dataSource: DataSourceType & { connectorId: string },
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetDataSourcePermissionsResponseBody>
-  >
-) {
-  let parentId: string | undefined = undefined;
-  if (req.query.parentId && typeof req.query.parentId === "string") {
-    parentId = req.query.parentId;
-  }
-
-  let filterPermission: ConnectorPermission | undefined = undefined;
-  if (
-    req.query.filterPermission &&
-    typeof req.query.filterPermission === "string"
-  ) {
-    switch (req.query.filterPermission) {
-      case "read":
-        filterPermission = "read";
-        break;
-      case "write":
-        filterPermission = "write";
-        break;
-    }
-  }
-
-  switch (filterPermission) {
-    case "read":
-      // We let users get the read  permissions of a connector
-      // `read` is used for data source selection when creating personal assitsants
-      break;
-    case "write":
-      // We let builders get the write permissions of a connector.
-      // `write` is used for selection of default slack channel in the workspace agent
-      // builder.
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only builders of the current workspace can view 'write' permissions of a data source.",
-          },
-        });
-      }
-      break;
-    case undefined:
-      // Only admins can browse "all" the resources of a connector.
-      if (!auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only admins of the current workspace can view all permissions of a data source.",
-          },
-        });
-      }
-      break;
-    default:
-      assertNever(filterPermission);
-  }
-
-  const viewType = req.query.viewType;
-  if (
-    !viewType ||
-    typeof viewType !== "string" ||
-    !isValidContentNodesViewType(viewType)
-  ) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid viewType. Required: table | document | all",
-      },
-    });
-  }
-
-  const connectorsAPI = new ConnectorsAPI(
-    config.getConnectorsAPIConfig(),
-    logger
-  );
-  const permissionsRes = await connectorsAPI.getConnectorPermissions({
-    connectorId: dataSource.connectorId,
-    parentId,
-    filterPermission,
-    viewType,
-  });
-  if (permissionsRes.isErr()) {
-    if (permissionsRes.error.type === "connector_rate_limit_error") {
-      return apiError(req, res, {
-        status_code: 429,
-        api_error: {
-          type: "rate_limit_error",
-          message:
-            "Rate limit error while retrieving the data source permissions",
-        },
-      });
-    }
-    if (permissionsRes.error.type === "connector_authorization_error") {
-      return apiError(req, res, {
-        status_code: 401,
-        api_error: {
-          type: "data_source_auth_error",
-          message:
-            "Authorization error while retrieving the data source permissions.",
-        },
-      });
-    }
-    // Other error codes are invalid requests from front to connectors or 500s which should be
-    // treated as 500.
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: `An error occurred while retrieving the data source permissions.`,
-      },
-    });
-  }
-
-  const permissions = permissionsRes.value.resources;
-
-  res.status(200).json({
-    resources: permissions,
-  });
-  return;
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

@@ -1,4 +1,8 @@
 import config from "@app/lib/api/config";
+import {
+  getManagedDataSourcePermissions,
+  ManagedPermissionsQuerySchema,
+} from "@app/lib/api/data_sources/managed_permissions";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -7,7 +11,6 @@ import type {
   ContentNodeWithParent,
 } from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -39,6 +42,7 @@ const app = workspaceApp();
 
 app.get(
   "/",
+  validate("query", ManagedPermissionsQuerySchema),
   async (ctx): HandlerResult<GetDataSourcePermissionsResponseBody> => {
     const auth = ctx.get("auth");
     const dsId = ctx.req.param("dsId") ?? "";
@@ -73,25 +77,14 @@ app.get(
       });
     }
 
-    const parentIdParam = ctx.req.query("parentId");
-    const parentId =
-      typeof parentIdParam === "string" ? parentIdParam : undefined;
+    const query = ctx.req.valid("query");
 
-    const filterPermissionParam = ctx.req.query("filterPermission");
-    let filterPermission: "read" | "write" | undefined;
-    if (filterPermissionParam === "read") {
-      filterPermission = "read";
-    } else if (filterPermissionParam === "write") {
-      filterPermission = "write";
-    }
-
-    switch (filterPermission) {
+    // Auth gating: read = anyone, write = builder, undefined (all) = admin.
+    switch (query.filterPermission) {
       case "read":
-        // We let users get the read permissions of a connector.
         // `read` is used for data source selection when creating personal assistants.
         break;
       case "write":
-        // We let builders get the write permissions of a connector.
         // `write` is used for selection of default slack channel in the workspace agent builder.
         if (!auth.isBuilder()) {
           return apiError(ctx, {
@@ -105,7 +98,6 @@ app.get(
         }
         break;
       case undefined:
-        // Only admins can browse "all" the resources of a connector.
         if (!auth.isAdmin()) {
           return apiError(ctx, {
             status_code: 403,
@@ -118,63 +110,49 @@ app.get(
         }
         break;
       default:
-        assertNever(filterPermission);
+        assertNever(query.filterPermission);
     }
 
-    const viewType = ctx.req.query("viewType");
-    if (!viewType || !isValidContentNodesViewType(viewType)) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid viewType. Required: table | document | all",
-        },
-      });
-    }
-
-    const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsAPIConfig(),
-      logger
+    const result = await getManagedDataSourcePermissions(
+      dataSource.connectorId,
+      query
     );
-    const permissionsRes = await connectorsAPI.getConnectorPermissions({
-      connectorId: dataSource.connectorId,
-      parentId,
-      filterPermission,
-      viewType,
-    });
 
-    if (permissionsRes.isErr()) {
-      if (permissionsRes.error.type === "connector_rate_limit_error") {
-        return apiError(ctx, {
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message:
-              "Rate limit error while retrieving the data source permissions",
-          },
-        });
+    if (result.isErr()) {
+      switch (result.error.type) {
+        case "connector_rate_limit":
+          return apiError(ctx, {
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message:
+                "Rate limit error while retrieving the data source permissions",
+            },
+          });
+        case "connector_authorization_error":
+          return apiError(ctx, {
+            status_code: 401,
+            api_error: {
+              type: "data_source_auth_error",
+              message:
+                "Authorization error while retrieving the data source permissions.",
+            },
+          });
+        case "internal_error":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message:
+                "An error occurred while retrieving the data source permissions.",
+            },
+          });
+        default:
+          assertNever(result.error);
       }
-      if (permissionsRes.error.type === "connector_authorization_error") {
-        return apiError(ctx, {
-          status_code: 401,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Authorization error while retrieving the data source permissions.",
-          },
-        });
-      }
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message:
-            "An error occurred while retrieving the data source permissions.",
-        },
-      });
     }
 
-    return ctx.json({ resources: permissionsRes.value.resources });
+    return ctx.json(result.value);
   }
 );
 
