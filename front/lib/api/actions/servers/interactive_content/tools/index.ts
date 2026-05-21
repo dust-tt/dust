@@ -18,6 +18,8 @@ import {
   revertClientExecutableFileChanges,
 } from "@app/lib/api/files/client_executable";
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
+import { exportInteractiveContentFileAsPdf } from "@app/lib/api/files/pdf_export";
+import { screenshotInteractiveContentFile } from "@app/lib/api/files/screenshot";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -287,6 +289,43 @@ export function createInteractiveContentTools(
         {
           type: "text",
           text: `URL: ${shareUrlRes.value}`,
+        },
+      ]);
+    },
+
+    export_interactive_content_file: async ({ file_id, format, orientation }) => {
+      if (format === "pdf") {
+        const result = await exportInteractiveContentFileAsPdf(auth, {
+          fileId: file_id,
+          orientation,
+        });
+        if (result.isErr()) {
+          return new Err(new MCPError(result.error.message, { tracked: false }));
+        }
+        return new Ok([
+          {
+            type: "resource",
+            resource: {
+              uri: `dust://files/${file_id}/export/pdf`,
+              mimeType: "application/pdf",
+              blob: result.value.buffer.toString("base64"),
+            },
+          },
+        ]);
+      }
+
+      const result = await screenshotInteractiveContentFile(auth, {
+        fileId: file_id,
+      });
+      if (result.isErr()) {
+        return new Err(new MCPError(result.error.message, { tracked: false }));
+      }
+
+      return new Ok([
+        {
+          type: "image",
+          data: result.value.buffer.toString("base64"),
+          mimeType: "image/png",
         },
       ]);
     },
