@@ -167,10 +167,10 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     let threadingHeaders: string[] = [];
     let threadId: string | undefined = undefined;
     let fullBody: string | undefined = undefined;
-    let replyTo : string | undefined = undefined;
-    let replyCc : string | undefined = undefined;
-    let originalSubject : string | undefined = undefined;
-    let replyBcc : string | undefined = undefined;
+    let replyTo: string | undefined = undefined;
+    let replyCc: string | undefined = undefined;
+    let originalSubject: string | undefined = undefined;
+    let replyBcc: string | undefined = undefined;
 
     if (replyToMessageId) {
       const messageResponse = await fetchFromGmail(
@@ -195,7 +195,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
       const originalMessage: GmailMessage = await messageResponse.json();
       threadId = originalMessage.threadId;
-      
+
       // Determine recipients
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const headers = originalMessage.payload?.headers || [];
@@ -205,7 +205,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       const originalTo = getHeaderValue(headers, "To");
       const originalCc = getHeaderValue(headers, "Cc");
       const originalBcc = getHeaderValue(headers, "Bcc");
-      originalSubject = getHeaderValue(headers, "Subject")
+      originalSubject = getHeaderValue(headers, "Subject");
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
       replyCc = cc?.length ? cc.join(", ") : originalCc;
@@ -213,7 +213,9 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
 
       if (!replyTo?.trim()) {
         return new Err(
-          new MCPError("Cannot determine reply-to address from original message")
+          new MCPError(
+            "Cannot determine reply-to address from original message"
+          )
         );
       }
 
@@ -245,11 +247,11 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       cc: replyToMessageId && replyCc ? [replyCc] : cc,
       bcc: replyToMessageId && replyBcc ? [replyBcc] : bcc,
       subject: replyToMessageId
-      ? subject
-      ?? (originalSubject?.startsWith("Re: ")
-      ? originalSubject : `Re: ${originalSubject ?? "No Subject"}`
-    )
-    : subject,
+        ? (subject ??
+          (originalSubject?.startsWith("Re: ")
+            ? originalSubject
+            : `Re: ${originalSubject ?? "No Subject"}`))
+        : subject,
       contentType: replyToMessageId ? "text/html" : contentType,
       body: fullBody ?? body,
       threadingHeaders,
@@ -715,10 +717,10 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     let threadingHeaders: string[] = [];
     let threadId: string | undefined = undefined;
     let fullBody: string | undefined = undefined;
-    let replyTo : string | undefined = undefined;
-    let replyCc : string | undefined = undefined;
-    let originalSubject : string | undefined = undefined;
-    let replyBcc : string | undefined = undefined;
+    let replyTo: string | undefined = undefined;
+    let replyCc: string | undefined = undefined;
+    let originalSubject: string | undefined = undefined;
+    let replyBcc: string | undefined = undefined;
 
     if (replyToMessageId) {
       const messageResponse = await fetchFromGmail(
@@ -743,7 +745,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
       const originalMessage: GmailMessage = await messageResponse.json();
       threadId = originalMessage.threadId;
-    
+
       // Determine recipients
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const headers = originalMessage.payload?.headers || [];
@@ -761,7 +763,9 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
 
       if (!replyTo?.trim()) {
         return new Err(
-          new MCPError("Cannot determine reply-to address from original message")
+          new MCPError(
+            "Cannot determine reply-to address from original message"
+          )
         );
       }
 
@@ -795,12 +799,11 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       bcc: replyToMessageId && replyBcc ? [replyBcc] : bcc,
       from,
       subject: replyToMessageId
-      ? subject 
-      ?? (
-        originalSubject?.startsWith("Re:") ? originalSubject
-        : `Re: ${originalSubject ?? "No Subject"}`
-      )
-      : subject,
+        ? (subject ??
+          (originalSubject?.startsWith("Re:")
+            ? originalSubject
+            : `Re: ${originalSubject ?? "No Subject"}`))
+        : subject,
       contentType: replyToMessageId ? "text/html" : contentType,
       body: fullBody ?? body,
       threadingHeaders,

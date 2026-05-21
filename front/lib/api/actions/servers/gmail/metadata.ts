@@ -33,7 +33,12 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
 - If replyToMessageId is provided, the draft will be created as a reply in the existing thread, with the original message quoted.
 - The draft will include proper email headers and formatting.`,
     schema: {
-      to: z.array(z.string()).optional().describe("The email addresses of the recipients. Optional if replyToMessageId is provided then Dust will automatically use the recipients from the original message."),
+      to: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The email addresses of the recipients. Optional if replyToMessageId is provided then Dust will automatically use the recipients from the original message."
+        ),
       cc: z.array(z.string()).optional().describe("The email addresses to CC"),
       bcc: z
         .array(z.string())
@@ -174,8 +179,11 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
 - The email will include proper headers and formatting.`,
     schema: {
       to: z
-        .array(z.string()).optional()
-        .describe("The email addresses of the recipients. Optional if replyToMessageId is provided then Dust will automatically use the recipients from the original message."),
+        .array(z.string())
+        .optional()
+        .describe(
+          "The email addresses of the recipients. Optional if replyToMessageId is provided then Dust will automatically use the recipients from the original message."
+        ),
       cc: z.array(z.string()).optional().describe("The email addresses to CC"),
       bcc: z
         .array(z.string())
