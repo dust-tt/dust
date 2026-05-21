@@ -4,6 +4,7 @@ import {
   isNodeCandidate,
   isUrlCandidate,
   nodeCandidateFromUrl,
+  normalizeUrlForSourceUrlSearch,
 } from "./connectors";
 
 // Mock the config module before importing
@@ -132,6 +133,40 @@ describe("nodeCandidateFromUrl", () => {
       expect(isUrlCandidate(result)).toBe(true);
       if (isUrlCandidate(result)) {
         expect(result.url).toBe(url);
+        expect(result.provider).toBe("github");
+      }
+    });
+
+    it("should not match lookalike GitHub domains", () => {
+      const result = nodeCandidateFromUrl("https://notgithub.com/user/repo");
+
+      expect(result).toBeNull();
+    });
+
+    it("should remove fragments from GitHub URLs", () => {
+      const result = nodeCandidateFromUrl(
+        "https://github.com/dust-tt/decisions/issues/797#issuecomment-4325601982"
+      );
+
+      expect(result).not.toBeNull();
+      expect(isUrlCandidate(result)).toBe(true);
+      if (isUrlCandidate(result)) {
+        expect(result.url).toBe(
+          "https://github.com/dust-tt/decisions/issues/797"
+        );
+        expect(result.provider).toBe("github");
+      }
+    });
+
+    it("should remove query parameters from GitHub URLs", () => {
+      const result = nodeCandidateFromUrl(
+        "https://github.com/dust-tt/dust/pull/123?notification_referrer_id=abc"
+      );
+
+      expect(result).not.toBeNull();
+      expect(isUrlCandidate(result)).toBe(true);
+      if (isUrlCandidate(result)) {
+        expect(result.url).toBe("https://github.com/dust-tt/dust/pull/123");
         expect(result.provider).toBe("github");
       }
     });
@@ -510,5 +545,27 @@ describe("nodeCandidateFromUrl", () => {
         expect(result.url).toBe(url);
       }
     });
+  });
+});
+
+describe("normalizeUrlForSourceUrlSearch", () => {
+  it("should normalize GitHub URL candidates", () => {
+    expect(
+      normalizeUrlForSourceUrlSearch(
+        "https://github.com/dust-tt/decisions/issues/797#issuecomment-4325601982"
+      )
+    ).toBe("https://github.com/dust-tt/decisions/issues/797");
+  });
+
+  it("should preserve non-URL search queries", () => {
+    expect(normalizeUrlForSourceUrlSearch("quarterly planning")).toBe(
+      "quarterly planning"
+    );
+  });
+
+  it("should preserve non-GitHub URL candidate search queries", () => {
+    const confluenceUrl = "https://example.atlassian.net/wiki/spaces/SPACE";
+
+    expect(normalizeUrlForSourceUrlSearch(confluenceUrl)).toBe(confluenceUrl);
   });
 });

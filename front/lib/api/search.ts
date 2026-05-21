@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { normalizeUrlForSourceUrlSearch } from "@app/lib/connectors";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
@@ -262,9 +263,11 @@ export async function handleSearch(
   }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const searchQuery =
+    query && searchSourceUrls ? normalizeUrlForSourceUrlSearch(query) : query;
   const searchRes = await coreAPI.searchNodes({
     // To run an empty search, we need to pass undefined to the API.
-    query: query && query.length > 0 ? query : undefined,
+    query: searchQuery && searchQuery.length > 0 ? searchQuery : undefined,
     filter: searchFilter,
     options: {
       cursor: paginationRes.value?.cursor ?? undefined,

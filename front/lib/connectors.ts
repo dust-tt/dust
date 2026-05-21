@@ -180,10 +180,16 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
   },
   github: {
     matcher: (url: URL): boolean => {
-      return url.hostname.endsWith("github.com");
+      return (
+        url.hostname === "github.com" || url.hostname.endsWith(".github.com")
+      );
     },
     urlNormalizer: (url: URL): UrlCandidate => {
-      return { url: url.toString(), provider: "github" };
+      const normalizedUrl = new URL(url.toString());
+      normalizedUrl.search = "";
+      normalizedUrl.hash = "";
+
+      return { url: normalizedUrl.toString(), provider: "github" };
     },
   },
   notion: {
@@ -376,6 +382,22 @@ export function nodeCandidateFromUrl(
   } catch {
     return null;
   }
+}
+
+export function normalizeUrlForSourceUrlSearch(query: string): string {
+  const candidate = nodeCandidateFromUrl(query.trim());
+
+  // This endpoint-level normalization only exists for GitHub anchors/notification
+  // parameters; other connectors keep their existing source URL search behavior.
+  if (
+    isUrlCandidate(candidate) &&
+    candidate.provider === "github" &&
+    candidate.url
+  ) {
+    return candidate.url;
+  }
+
+  return query;
 }
 
 // Notion databases have 2 entries in core:
