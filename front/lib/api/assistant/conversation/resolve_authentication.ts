@@ -146,6 +146,10 @@ export async function resolveAuthentication(
   }, getMessageChannelId(messageId));
 
   if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+    // Clear the orange dot when the user resolves a sandbox child action — the
+    // normal path would call launchAgentLoopWorkflow which handles this, but the
+    // sandbox child path returns early without going through that codepath.
+    await ConversationResource.clearActionRequired(auth, conversationId);
     if (outcome === "completed") {
       await resumeSandboxChildAction(auth, {
         action,

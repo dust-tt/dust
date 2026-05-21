@@ -8,7 +8,7 @@ import { resumeSandboxChildAction } from "@app/lib/api/sandbox/resume_child_acti
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
@@ -110,6 +110,10 @@ export async function registerUserAnswer(
   }, getMessageChannelId(messageId));
 
   if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+    // Clear the orange dot when the user resolves a sandbox child action — the
+    // normal path would call launchAgentLoopWorkflow which handles this, but the
+    // sandbox child path returns early without going through that codepath.
+    await ConversationResource.clearActionRequired(auth, conversationId);
     await resumeSandboxChildAction(auth, {
       action,
       conversationId,
