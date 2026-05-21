@@ -21,6 +21,7 @@ import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
 import type { PokeItemBase } from "@app/types/poke";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import { validate as validateUuid } from "uuid";
 
@@ -190,14 +191,29 @@ async function searchPokeFrames(searchTerm: string): Promise<PokeItemBase[]> {
 async function searchByPhoneNumber(
   searchTerm: string
 ): Promise<PokeItemBase[]> {
-  const e164 = tryParsePhoneNumber(searchTerm);
-  if (!e164) {
+  let e164PhoneNumber: string | null;
+  try {
+    // `tryParsePhoneNumber` loads `libphonenumber-js`. Production is fine
+    // (front-api's esbuild config bundles it inline; see `ESM_ONLY_PACKAGES`
+    // in front-api/esbuild.server.ts), but the front-api dev runtime (tsx)
+    // can still hit the CJS metadata interop issue. Degrade gracefully so
+    // the other search axes work in dev — most search terms aren't phone
+    // numbers anyway.
+    e164PhoneNumber = tryParsePhoneNumber(searchTerm);
+  } catch (err) {
+    logger.warn(
+      { err: normalizeError(err) },
+      "Phone number parsing unavailable; skipping phone-search axis"
+    );
+    return [];
+  }
+  if (!e164PhoneNumber) {
     return [];
   }
 
   const workspaceModelId =
     await WorkspaceVerificationAttemptResource.findWorkspaceModelIdFromPhoneNumber(
-      e164
+      e164PhoneNumber
     );
   if (!workspaceModelId) {
     return [];

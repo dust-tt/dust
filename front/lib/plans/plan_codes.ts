@@ -67,6 +67,29 @@ export const isFreeTrialPhonePlan = (planCode: string) =>
 export const isOldFreePlan = (planCode: string) =>
   planCode === FREE_TEST_PLAN_CODE;
 
+// Sort priority for plan-code buckets. Lower number sorts first.
+// Used by the poke workspaces list to surface enterprise / pro tenants
+// ahead of free / old-free ones when the result set is over the requested
+// limit.
+export const getPlanCodeSortPriority = (planCode: string): number => {
+  if (isEntreprisePlanPrefix(planCode)) {
+    return 1;
+  }
+  if (isFriendsAndFamilyPlan(planCode)) {
+    return 2;
+  }
+  if (isProPlanPrefix(planCode)) {
+    return 3;
+  }
+  if (isFreePlan(planCode)) {
+    return 4;
+  }
+  if (isOldFreePlan(planCode)) {
+    return 5;
+  }
+  return 6;
+};
+
 export function isProPlan(plan?: PlanType) {
   return (
     plan?.code === PRO_PLAN_SEAT_29_CODE ||

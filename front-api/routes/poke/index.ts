@@ -10,6 +10,7 @@ import globalAgentFeedbacks from "./global-agent-feedbacks";
 import kill from "./kill";
 import plans from "./plans";
 import region from "./region";
+import search from "./search";
 import templates from "./templates";
 import workspaces from "./workspaces";
 
@@ -28,6 +29,7 @@ app.route("/global-agent-feedbacks", globalAgentFeedbacks);
 app.route("/kill", kill);
 app.route("/plans", plans);
 app.route("/region", region);
+app.route("/search", search);
 app.route("/templates", templates);
 app.route("/workspaces", workspaces);
 
