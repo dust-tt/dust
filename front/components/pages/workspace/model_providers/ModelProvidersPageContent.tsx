@@ -37,12 +37,8 @@ export function ModelProvidersPageContent({
 }: ModelProvidersPageContentProps) {
   const { subscription } = useAuth();
   const { plan } = subscription;
-  const { featureFlags, hasFeature } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
   const { regionInfo } = useRegionContext();
-
-  const displayRegionalModelsOnlyToggle =
-    regionInfo.name === "europe-west1" &&
-    hasFeature("use_vertex_for_anthropic_models");
 
   // Filter models based on feature flags and build modelProviders dynamically
   const filteredModels = uniqBy(
@@ -76,9 +72,7 @@ export function ModelProvidersPageContent({
         />
       ) : (
         <>
-          {displayRegionalModelsOnlyToggle && (
-            <RegionalModelsOnlyToggle workspace={workspace} />
-          )}
+          <RegionalModelsOnlyToggle workspace={workspace} />
           <AllProvidersToggle
             providersSelection={providersSelection}
             onSelectAll={onSelectAllProviders}

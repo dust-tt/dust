@@ -1,12 +1,12 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   getModelKey,
   getModelsCategorization,
 } from "@app/components/agent_builder/instructions/utils";
 import { getModelProviderLogo } from "@app/components/providers/types";
+import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { RegionInfo } from "@app/lib/api/regions/config";
+import type { RegionType } from "@app/lib/api/regions/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
@@ -20,7 +20,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@dust-tt/sparkle";
-import Image from "next/image";
 import type React from "react";
 import { useController } from "react-hook-form";
 
@@ -53,17 +52,9 @@ function ModelRadioItem({
   );
 }
 
-const FLAG_SIZE = 16;
-const REGIONAL_FLAGS: Record<RegionInfo["name"], React.ReactNode | null> = {
-  "europe-west1": (
-    <Image
-      src="/static/EuropeanFlag.svg"
-      alt="EU"
-      width={FLAG_SIZE}
-      height={FLAG_SIZE}
-    />
-  ),
-  "us-central1": null,
+const SHOULD_DISPLAY_FLAG: Record<RegionType, boolean> = {
+  "europe-west1": true,
+  "us-central1": false,
 };
 
 export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
@@ -84,11 +75,13 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { regionInfo } = useRegionContext();
   const { hasFeature } = useFeatureFlags();
 
-  const modelRadioItemEndComponent = hasFeature(
-    "use_vertex_for_anthropic_models"
-  )
-    ? null
-    : REGIONAL_FLAGS[regionInfo.name];
+  const showRegionalFlag =
+    hasFeature("use_vertex_for_anthropic_models") &&
+    SHOULD_DISPLAY_FLAG[regionInfo.name];
+
+  const modelRadioItemEndComponent = showRegionalFlag ? (
+    <RegionalFlag region={regionInfo.name} />
+  ) : null;
 
   const { bestGeneralModels, providerGroups } = getModelsCategorization(models);
 
