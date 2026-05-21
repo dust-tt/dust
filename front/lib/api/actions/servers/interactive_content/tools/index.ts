@@ -314,7 +314,7 @@ export function createInteractiveContentTools(
             {
               type: "resource",
               resource: {
-                uri: `dust://files/${file_id}/export/pdf`,
+                uri: result.value.fileName,
                 mimeType: "application/pdf",
                 blob: result.value.buffer.toString("base64"),
               },
