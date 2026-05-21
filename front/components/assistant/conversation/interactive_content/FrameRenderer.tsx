@@ -19,6 +19,7 @@ import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
+import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowCircleIcon,
@@ -128,6 +129,38 @@ export function FrameRenderer({
   });
 
   const [showCode, setShowCode] = React.useState(false);
+
+  const handleEditText = useCallback(
+    async ({ newText, oldText }: { newText: string; oldText: string }) => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/files/${fileId}/edit-text`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ oldText, newText }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await getErrorFromResponse(response);
+          return { success: false, error: errorData.message };
+        }
+
+        await mutateFileContent(
+          `/api/w/${owner.sId}/files/${fileId}?action=view`
+        );
+
+        return { success: true };
+      } catch (e) {
+        return {
+          success: false,
+          error: normalizeAsInternalDustError(e).message,
+        };
+      }
+    },
+    [owner.sId, fileId, mutateFileContent]
+  );
 
   const restoreLayout = useCallback(() => {
     if (panel) {
@@ -363,8 +396,10 @@ export function FrameRenderer({
               }}
               key={`viz-${fileId}`}
               conversationId={conversation?.sId ?? null}
-              spaceId={frameSpaceId}
+              isEditable={true}
+              spaceId={frameSpaceId ?? undefined}
               isInDrawer={true}
+              onEditText={handleEditText}
               ref={iframeRef}
             />
             {conversation && (

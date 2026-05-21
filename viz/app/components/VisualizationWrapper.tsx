@@ -1,9 +1,11 @@
 "use client";
 
 import { Spinner } from "@viz/app/components/Components";
+import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
+import { transformEditableText } from "@viz/app/lib/transformEditableText";
 import type {
   VisualizationAPI,
   VisualizationConfig,
@@ -33,6 +35,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
+
+// Delay before marking the viz as ready in PDF mode, to let Recharts animations complete.
+const PDF_MODE_READY_DELAY_MS = 5000;
 
 const FRAME_MIME_TYPES = new Set([
   "application/vnd.dust.frame",
@@ -168,6 +173,16 @@ export function useVisualizationAPI(
     await sendCrossDocumentMessage("displayCode", null);
   }, [sendCrossDocumentMessage]);
 
+  const editText = useCallback(
+    async ({ newText, oldText }: { newText: string; oldText: string }) => {
+      return await sendCrossDocumentMessage("editText", {
+        oldText,
+        newText,
+      });
+    },
+    [sendCrossDocumentMessage]
+  );
+
   const addEventListener = useCallback(
     (
       eventType: SupportedEventType,
@@ -211,6 +226,7 @@ export function useVisualizationAPI(
     addEventListener,
     displayCode,
     downloadFile,
+    editText,
     sendHeightToParent,
   };
 }
@@ -307,14 +323,24 @@ export function VisualizationWrapper({
   config: VisualizationConfig;
   api: VisualizationAPI;
 }) {
-  const { identifier, isFullHeight = false, isPdfMode = false } = config;
+  const {
+    identifier,
+    isEditable = false,
+    isFullHeight = false,
+    isPdfMode = false,
+  } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
   const [vizReady, setVizReady] = useState(false);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
-  const { sendHeightToParent, downloadFile, displayCode, addEventListener } =
-    api.ui;
+  const {
+    sendHeightToParent,
+    downloadFile,
+    displayCode,
+    editText,
+    addEventListener,
+  } = api.ui;
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
 
@@ -356,8 +382,8 @@ export function VisualizationWrapper({
   useEffect(() => {
     const loadCode = async () => {
       try {
-        const codeToUse = await api.data.fetchCode();
-        if (!codeToUse) {
+        const fetchedCode = await api.data.fetchCode();
+        if (!fetchedCode) {
           setErrorMessage(
             new Error("No code provided to visualization component")
           );
@@ -365,7 +391,12 @@ export function VisualizationWrapper({
         }
         // Validate Tailwind code before processing to catch arbitrary values early. Error gets
         // exposed to user for retry, providing feedback to the model.
-        validateTailwindCode(codeToUse);
+        validateTailwindCode(fetchedCode);
+
+        // Wrap JSXText nodes with editable spans when inline editing is enabled.
+        const codeToUse = isEditable
+          ? transformEditableText(fetchedCode)
+          : fetchedCode;
 
         const baseImports: Record<string, unknown> = {
           papaparse: papaparseAll,
@@ -429,7 +460,7 @@ export function VisualizationWrapper({
     };
 
     loadCode();
-  }, [memoizedDownloadFile, handleScreenshotDownload, api.data]);
+  }, [memoizedDownloadFile, handleScreenshotDownload, api.data, isEditable]);
 
   const handleSVGDownload = useCallback(async () => {
     if (ref.current) {
@@ -479,6 +510,11 @@ export function VisualizationWrapper({
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [addEventListener, handleScreenshotDownload, handleSVGDownload]);
 
+  const vizContextValue = useMemo(
+    () => ({ isPdfMode, editText }),
+    [isPdfMode, editText]
+  );
+
   if (errored) {
     // Throw the error to the ErrorBoundary.
     throw errored;
@@ -492,6 +528,25 @@ export function VisualizationWrapper({
   const heightClass = isPdfMode ? "" : isFullHeight ? "h-screen" : "";
 
   const shouldShowControls = !isFullHeight && !isPdfMode;
+
+  const runner = (
+    <div ref={ref}>
+      <Runner
+        code={runnerParams.code}
+        scope={runnerParams.scope}
+        onRendered={(error) => {
+          if (error) {
+            setErrorMessage(error);
+          } else {
+            // Set data-viz-ready attribute once fully rendered to enable screen capture.
+            // In PDF mode, delay to let Recharts animations complete (react-smooth is JS-based).
+            const delayMs = isPdfMode ? PDF_MODE_READY_DELAY_MS : 0;
+            setTimeout(() => setVizReady(true), delayMs);
+          }
+        }}
+      />
+    </div>
+  );
 
   return (
     <div
@@ -523,24 +578,9 @@ export function VisualizationWrapper({
           </button>
         </div>
       )}
-      <div ref={ref}>
-        <VizContext.Provider value={{ isPdfMode }}>
-          <Runner
-            code={runnerParams.code}
-            scope={runnerParams.scope}
-            onRendered={(error) => {
-              if (error) {
-                setErrorMessage(error);
-              } else {
-                // Set data-viz-ready attribute once fully rendered to enable screen capture.
-                // In PDF mode, delay to let Recharts animations complete (react-smooth is JS-based).
-                const delayMs = isPdfMode ? 5000 : 0;
-                setTimeout(() => setVizReady(true), delayMs);
-              }
-            }}
-          />
-        </VizContext.Provider>
-      </div>
+      <VizContext.Provider value={vizContextValue}>
+        {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
+      </VizContext.Provider>
     </div>
   );
 }

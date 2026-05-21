@@ -70,6 +70,22 @@ const DisplayCodeRequestSchema = VisualizationRPCRequestBaseSchema.extend({
   params: z.null(),
 });
 
+const EditTextParamsSchema = z.object({
+  newText: z.string(),
+  oldText: z.string(),
+});
+
+type EditTextParams = z.infer<typeof EditTextParamsSchema>;
+
+export type EditTextFn = (
+  params: EditTextParams
+) => Promise<{ success: boolean; error?: string }>;
+
+const EditTextRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("editText"),
+  params: EditTextParamsSchema,
+});
+
 const VisualizationRPCRequestSchema = z.union([
   GetFileRequestSchema,
   GetCodeToExecuteRequestSchema,
@@ -77,6 +93,7 @@ const VisualizationRPCRequestSchema = z.union([
   SetErrorMessageRequestSchema,
   DownloadFileRequestSchema,
   DisplayCodeRequestSchema,
+  EditTextRequestSchema,
 ]);
 
 // Derive types from Zod schemas.
@@ -93,6 +110,7 @@ export type VisualizationRPCRequestMap = {
   setErrorMessage: SetErrorMessageParams;
   downloadFileRequest: DownloadFileRequestParams;
   displayCode: null;
+  editText: EditTextParams;
 };
 
 // Command results.
@@ -103,6 +121,7 @@ export interface CommandResultMap {
   setContentHeight: void;
   setErrorMessage: void;
   displayCode: void;
+  editText: { success: boolean; error?: string };
 }
 
 // Zod-based type guards.

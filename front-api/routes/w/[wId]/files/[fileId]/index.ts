@@ -19,6 +19,7 @@ import type { HttpBindings } from "@hono/node-server";
 import type { Context } from "hono";
 import { Hono } from "hono";
 
+import editText from "./edit-text";
 import exportApp from "./export";
 import metadata from "./metadata";
 import rename from "./rename";
@@ -343,6 +344,7 @@ app.post("/", async (ctx) => {
   return ctx.json({ file: file.toJSON(auth) });
 });
 
+app.route("/edit-text", editText);
 app.route("/export", exportApp);
 app.route("/metadata", metadata);
 app.route("/rename", rename);
