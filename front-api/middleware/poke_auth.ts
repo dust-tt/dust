@@ -30,5 +30,6 @@ export const pokeAuth: MiddlewareHandler = async (ctx, next) => {
   }
 
   ctx.set("auth", auth);
+  ctx.set("session", sessionResult);
   await next();
 };

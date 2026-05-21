@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getWorkOSOrganizationDSyncDirectories } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";

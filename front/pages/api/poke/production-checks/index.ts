@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getCheckSummaries } from "@app/lib/api/poke/production_checks";
 import { Authenticator } from "@app/lib/auth";
