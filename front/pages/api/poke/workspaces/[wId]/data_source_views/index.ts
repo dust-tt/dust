@@ -1,11 +1,9 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
-import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { listDataSourceViewsWithUsage } from "@app/lib/api/data_source_view";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
@@ -52,29 +50,10 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const dataSourceViews = await DataSourceViewResource.listByWorkspace(
-        auth,
-        { includeEditedBy: true }
-      );
-
-      const dataSourceViewsWithUsage = await concurrentExecutor(
-        dataSourceViews,
-        async (dsv) => {
-          const usageResult = await getDataSourceViewUsage({
-            auth,
-            dataSourceView: dsv,
-          });
-          return {
-            ...dsv.toJSON(),
-            usage: usageResult.isOk() ? usageResult.value : null,
-          };
-        },
-        { concurrency: 4 }
-      );
-
-      return res.status(200).json({
-        data_source_views: dataSourceViewsWithUsage,
-      });
+      const dataSourceViewsWithUsage = await listDataSourceViewsWithUsage(auth);
+      return res
+        .status(200)
+        .json({ data_source_views: dataSourceViewsWithUsage });
 
     default:
       return apiError(req, res, {

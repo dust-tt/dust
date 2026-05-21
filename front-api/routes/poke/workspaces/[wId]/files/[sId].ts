@@ -1,5 +1,6 @@
-import { FileResource } from "@app/lib/resources/file_resource";
+import { readInteractiveContentFile } from "@app/lib/api/files/read";
 import type { FileTypeWithMetadata } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
@@ -24,39 +25,32 @@ app.get("/", async (ctx): HandlerResult<GetPokeFileResponseBody> => {
     });
   }
 
-  const file = await FileResource.fetchById(auth, sId);
-  if (!file) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
+  const result = await readInteractiveContentFile(auth, sId);
+  if (result.isErr()) {
+    const err = result.error;
+    switch (err) {
+      case "file_not_found":
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "File not found.",
+          },
+        });
+      case "not_interactive_content":
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Only interactive content files can be viewed.",
+          },
+        });
+      default:
+        return assertNever(err);
+    }
   }
 
-  // Only allow access to interactive content files (frames).
-  if (!file.isInteractiveContent) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Only interactive content files can be viewed.",
-      },
-    });
-  }
-
-  const readStream = file.getReadStream({ auth, version: "original" });
-  const chunks: Buffer[] = [];
-  for await (const chunk of readStream) {
-    chunks.push(chunk);
-  }
-  const content = Buffer.concat(chunks).toString("utf-8");
-
-  return ctx.json({
-    file: file.toJSONWithMetadata(auth),
-    content,
-  });
+  return ctx.json(result.value);
 });
 
 export default app;

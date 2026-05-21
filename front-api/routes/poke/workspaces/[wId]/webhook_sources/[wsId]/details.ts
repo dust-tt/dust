@@ -1,10 +1,6 @@
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { getWebhookSourceAdminDetails } from "@app/lib/api/webhook_source";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
-import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   WebhookSourceForAdminType,
   WebhookSourceViewForAdminType,
@@ -47,45 +43,9 @@ app.get("/", async (ctx): HandlerResult<PokeGetWebhookSourceDetails> => {
     });
   }
 
-  const views = await WebhookSourcesViewResource.listByWebhookSource(
-    auth,
-    source.id
-  );
+  const details = await getWebhookSourceAdminDetails(auth, source);
 
-  // Collect all triggers from all views
-  const allTriggers: TriggerType[] = [];
-  for (const view of views) {
-    const triggers = await TriggerResource.listByWebhookSourceViewId(
-      auth,
-      view.id
-    );
-    for (const t of triggers) {
-      allTriggers.push(t.toJSON());
-    }
-  }
-
-  // Batch-fetch editor users
-  const editorIds = removeNulls(allTriggers.map((t) => t.editor));
-  const editorUsers =
-    editorIds.length > 0 ? await UserResource.fetchByModelIds(editorIds) : [];
-  const editorUserMap = new Map(editorUsers.map((u) => [u.id, u.toJSON()]));
-
-  const triggersWithEditors = allTriggers.map((t) => ({
-    ...t,
-    editorUser: editorUserMap.get(t.editor) ?? null,
-  }));
-
-  const requestStats = await WebhookRequestResource.countBySourceInPeriods(
-    auth,
-    source.id
-  );
-
-  return ctx.json({
-    webhookSource: source.toJSONForAdmin(),
-    views: views.map((v) => v.toJSONForAdmin()),
-    triggers: triggersWithEditors,
-    requestStats,
-  });
+  return ctx.json(details);
 });
 
 export default app;

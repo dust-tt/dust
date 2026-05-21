@@ -1,4 +1,4 @@
-import { getMembers } from "@app/lib/api/workspace";
+import { getGroupMembersWithWorkspaces } from "@app/lib/api/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GroupType } from "@app/types/groups";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
@@ -38,19 +38,10 @@ app.get("/", async (ctx): HandlerResult<PokeGetGroupDetails> => {
   }
 
   const group = groupRes.value;
-
-  const groupMembers = await group.getActiveMembers(auth);
-  const memberships = await getMembers(auth);
-
-  const memberById = new Map(memberships.members.map((m) => [m.sId, m]));
-
-  const userWithWorkspaces = groupMembers.flatMap((user) => {
-    const member = memberById.get(user.sId);
-    return member ? [member] : [];
-  });
+  const members = await getGroupMembersWithWorkspaces(auth, group);
 
   return ctx.json({
-    members: userWithWorkspaces,
+    members,
     group: group.toJSON(),
   });
 });

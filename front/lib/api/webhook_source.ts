@@ -2,12 +2,21 @@ import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/servic
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import logger from "@app/logger/logger";
+import type { TriggerType } from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type {
+  WebhookSourceForAdminType,
+  WebhookSourceType,
+  WebhookSourceViewForAdminType,
+} from "@app/types/triggers/webhooks";
+import type { UserType } from "@app/types/user";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
@@ -81,4 +90,100 @@ export async function deleteWebhookSource(
   await webhookSource.hardDelete(auth, { transaction });
 
   return new Ok(undefined);
+}
+
+export type WebhookSourceWithCounts = WebhookSourceType & {
+  viewCount: number;
+  triggerCount: number;
+};
+
+/**
+ * Every webhook source in the workspace, with the number of views and the
+ * total number of triggers across those views. Used by the poke admin UI.
+ */
+export async function listWebhookSourcesWithCounts(
+  auth: Authenticator
+): Promise<WebhookSourceWithCounts[]> {
+  const sources = await WebhookSourceResource.listByWorkspace(auth);
+  const results: WebhookSourceWithCounts[] = [];
+
+  for (const source of sources) {
+    const views = await WebhookSourcesViewResource.listByWebhookSource(
+      auth,
+      source.id
+    );
+    let triggerCount = 0;
+    for (const view of views) {
+      const triggers = await TriggerResource.listByWebhookSourceViewId(
+        auth,
+        view.id
+      );
+      triggerCount += triggers.length;
+    }
+
+    results.push({
+      ...source.toJSON(),
+      viewCount: views.length,
+      triggerCount,
+    });
+  }
+
+  return results;
+}
+
+export type WebhookSourceAdminDetails = {
+  webhookSource: WebhookSourceForAdminType;
+  views: WebhookSourceViewForAdminType[];
+  triggers: Array<TriggerType & { editorUser: UserType | null }>;
+  requestStats: { last24h: number; last7d: number; last30d: number };
+};
+
+/**
+ * For a given webhook source, return its admin-only JSON, all of its views,
+ * every trigger across those views (enriched with the editor user record), and
+ * request-volume counts over recent periods. Used by the poke admin UI.
+ */
+export async function getWebhookSourceAdminDetails(
+  auth: Authenticator,
+  source: WebhookSourceResource
+): Promise<WebhookSourceAdminDetails> {
+  const views = await WebhookSourcesViewResource.listByWebhookSource(
+    auth,
+    source.id
+  );
+
+  // Collect all triggers from all views.
+  const allTriggers: TriggerType[] = [];
+  for (const view of views) {
+    const triggers = await TriggerResource.listByWebhookSourceViewId(
+      auth,
+      view.id
+    );
+    for (const t of triggers) {
+      allTriggers.push(t.toJSON());
+    }
+  }
+
+  // Batch-fetch editor users.
+  const editorIds = removeNulls(allTriggers.map((t) => t.editor));
+  const editorUsers =
+    editorIds.length > 0 ? await UserResource.fetchByModelIds(editorIds) : [];
+  const editorUserMap = new Map(editorUsers.map((u) => [u.id, u.toJSON()]));
+
+  const triggersWithEditors = allTriggers.map((t) => ({
+    ...t,
+    editorUser: editorUserMap.get(t.editor) ?? null,
+  }));
+
+  const requestStats = await WebhookRequestResource.countBySourceInPeriods(
+    auth,
+    source.id
+  );
+
+  return {
+    webhookSource: source.toJSONForAdmin(),
+    views: views.map((v) => v.toJSONForAdmin()),
+    triggers: triggersWithEditors,
+    requestStats,
+  };
 }

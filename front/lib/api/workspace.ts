@@ -244,6 +244,27 @@ export async function getActiveAdminEmails(
   return Array.from(new Set(members.map((member) => member.email)));
 }
 
+/**
+ * For a given group, return the workspace members that belong to it. Members
+ * are returned as `UserTypeWithWorkspaces` (matching `getMembers`) so callers
+ * have the workspace context. Users in the group who are not workspace
+ * members are filtered out.
+ */
+export async function getGroupMembersWithWorkspaces(
+  auth: Authenticator,
+  group: GroupResource
+): Promise<UserTypeWithWorkspaces[]> {
+  const groupMembers = await group.getActiveMembers(auth);
+  const { members } = await getMembers(auth);
+
+  const memberById = new Map(members.map((m) => [m.sId, m]));
+
+  return groupMembers.flatMap((user) => {
+    const member = memberById.get(user.sId);
+    return member ? [member] : [];
+  });
+}
+
 export async function searchMembers(
   auth: Authenticator,
   options: {
