@@ -163,7 +163,7 @@ export const PEOPLE: Record<string, TeamMember> = {
   },
   adrsimon: {
     name: "Adrien Simon",
-    title: "Software Engineer",
+    title: "Head of dsbx",
     image: "https://avatars.githubusercontent.com/u/99071153",
     github: "https://github.com/adrsimon",
     linkedIn: "https://www.linkedin.com/in/adrsimon/",
