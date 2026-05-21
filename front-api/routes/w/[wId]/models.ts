@@ -10,6 +10,7 @@ import {
 import { getFeatureFlags } from "@app/lib/auth";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 export type GetAvailableModelsResponseType = {
@@ -20,7 +21,7 @@ export type GetAvailableModelsResponseType = {
 // Mounted at /api/w/:wId/models.
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetAvailableModelsResponseType> => {
   const auth = ctx.get("auth");
 
   const featureFlags = await getFeatureFlags(auth);
@@ -49,8 +50,7 @@ app.get("/", async (ctx) => {
     }
   );
 
-  const body: GetAvailableModelsResponseType = { models, reasoningModels };
-  return ctx.json(body);
+  return ctx.json({ models, reasoningModels });
 });
 
 export default app;

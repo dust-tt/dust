@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import config from "@app/lib/api/config";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";

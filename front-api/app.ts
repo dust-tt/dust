@@ -28,6 +28,7 @@ import templatesApp from "./routes/templates";
 import userApp from "./routes/user";
 import publicWorkspaceApp from "./routes/v1/w/[wId]";
 import workspaceApp from "./routes/w/[wId]";
+import workspaceJoinApp from "./routes/w/[wId]/join";
 import workosApp from "./routes/workos";
 import { workspaceLookupApp } from "./routes/workspace-lookup";
 
@@ -55,6 +56,9 @@ apiApp.route("/templates", templatesApp);
 apiApp.route("/user", userApp);
 apiApp.route("/workos", workosApp);
 apiApp.route("/workspace-lookup", workspaceLookupApp);
+// join is mounted before the workspace app so it does not inherit workspaceAuth
+// (it is a public, unauthenticated endpoint).
+apiApp.route("/w/:wId/join", workspaceJoinApp);
 apiApp.route("/w/:wId", workspaceApp);
 apiApp.route("/v1/w/:wId", publicWorkspaceApp);
 // Pre-stop uses a dynamic first segment (the secret) — register last so its
