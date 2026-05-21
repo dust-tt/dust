@@ -1,12 +1,12 @@
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { resolveSession } from "@front-api/middleware/session_resolution";
-import type { MiddlewareHandler } from "hono";
+import { createMiddleware } from "hono/factory";
 
-declare module "hono" {
-  interface ContextVariableMap {
+export type SessionAuthEnv = {
+  Variables: {
     session: SessionWithUser;
-  }
-}
+  };
+};
 
 /**
  * Resolves a session (bearer token or cookie) and stores the resulting
@@ -15,12 +15,14 @@ declare module "hono" {
  * Mirrors `withSessionAuthentication` in `front/lib/api/auth_wrappers.ts`.
  * Apply to routes that need a logged-in user but no workspace scoping.
  */
-export const sessionAuth: MiddlewareHandler = async (ctx, next) => {
-  const result = await resolveSession(ctx);
-  if (result instanceof Response) {
-    return result;
-  }
+export const sessionAuth = createMiddleware<SessionAuthEnv>(
+  async (ctx, next) => {
+    const result = await resolveSession(ctx);
+    if (result instanceof Response) {
+      return result;
+    }
 
-  ctx.set("session", result);
-  await next();
-};
+    ctx.set("session", result);
+    await next();
+  }
+);

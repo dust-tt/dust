@@ -1,7 +1,13 @@
 import { Authenticator } from "@app/lib/auth";
 import { resolveSession } from "@front-api/middleware/session_resolution";
 import { apiError } from "@front-api/middleware/utils";
-import type { MiddlewareHandler } from "hono";
+import { createMiddleware } from "hono/factory";
+
+export type PokeAuthEnv = {
+  Variables: {
+    auth: Authenticator;
+  };
+};
 
 /**
  * Authenticates a Poke (super-user) request and stores the resolved
@@ -11,7 +17,7 @@ import type { MiddlewareHandler } from "hono";
  * `front/lib/api/auth_wrappers.ts`. Apply to any route under
  * `/api/poke/...`.
  */
-export const pokeAuth: MiddlewareHandler = async (ctx, next) => {
+export const pokeAuth = createMiddleware<PokeAuthEnv>(async (ctx, next) => {
   const sessionResult = await resolveSession(ctx);
   if (sessionResult instanceof Response) {
     return sessionResult;
@@ -32,4 +38,4 @@ export const pokeAuth: MiddlewareHandler = async (ctx, next) => {
   ctx.set("auth", auth);
   ctx.set("session", sessionResult);
   await next();
-};
+});

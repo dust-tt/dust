@@ -16,8 +16,6 @@ import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 import { Hono } from "hono";
 import { escape } from "html-escaper";
 import { z } from "zod";
-
-import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
 import authContext from "./auth-context";
@@ -173,19 +171,60 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceAuditLogsUpdateBodySchema,
 ]);
 
-// Mounted at /api/w/:wId.
 const app = new Hono();
 
-// `auth-context` runs without `workspaceAuth` because it needs to handle
-// the missing-workspace case (cross-region redirect). It owns its own
-// session-based auth flow internally. Must be mounted before the
-// `workspaceAuth` middleware below.
-// TODO: review this
 app.route("/auth-context", authContext);
 
-// Every route below inherits workspaceAuth, which resolves the Authenticator
-// and stashes it on the context.
-app.use("*", workspaceAuth);
+app.use(
+  "/feature-flags/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+app.route("/feature-flags", featureFlags);
+
+app.use("/welcome/*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
+app.route("/welcome", welcome);
+
+app.use("/verify/*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
+app.route("/verify", verify);
+
+app.use(
+  "/trial-message-usage/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+app.route("/trial-message-usage", trialMessageUsage);
+
+app.use(
+  "/coupon/validate/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+app.route("/coupon", coupon);
+
+app.use("/trial/start/*", workspaceAuth({ doesNotRequireCanUseProduct: true }));
+app.route("/trial", trial);
+
+// Why we do not collocate them with `app.route`? These sub-apps have a mix of
+// override and non-override paths: overrides must run before the catch-all
+// (`workspaceAuth` default = without the options would win otherwise), while
+// the `app.route()` must sit below the catch-all so non-override sub-paths
+// inherit the default.
+app.use("/credits", workspaceAuth({ doesNotRequireCanUseProduct: true }));
+app.use("/seats/count", workspaceAuth({ doesNotRequireCanUseProduct: true }));
+app.use("/subscriptions", workspaceAuth({ doesNotRequireCanUseProduct: true }));
+app.use(
+  "/subscriptions/status/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+app.use(
+  "/subscriptions/checkout-status/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+app.use(
+  "/subscriptions/trial-info/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+
+// === Default auth for everything else.
+app.use("*", workspaceAuth());
 
 interface GetWorkspaceResponseBody {
   workspace: WorkspaceType;
@@ -498,11 +537,11 @@ app.post(
   }
 );
 
-app.route("/analytics", analytics);
+// Sub-apps using the catch-all default + the partial-subtree exception
+// targets declared above.
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
 app.route("/builder", builder);
-app.route("/coupon", coupon);
 app.route("/credits", credits);
 app.route("/data-classification-labels", dataClassificationLabels);
 app.route("/data_source_views", dataSourceViews);
@@ -510,7 +549,6 @@ app.route("/data_sources", dataSources);
 app.route("/domains", domains);
 app.route("/dsync", dsync);
 app.route("/extension", extension);
-app.route("/feature-flags", featureFlags);
 app.route("/files", files);
 app.route("/groups", groups);
 app.route("/mcp", mcp);
@@ -525,11 +563,7 @@ app.route("/skills", skills);
 app.route("/sso", sso);
 app.route("/spaces", spaces);
 app.route("/subscriptions", subscriptions);
-app.route("/trial", trial);
-app.route("/trial-message-usage", trialMessageUsage);
 app.route("/verified-domains", verifiedDomains);
-app.route("/verify", verify);
-app.route("/welcome", welcome);
 app.route("/workspace-analytics", workspaceAnalytics);
 app.route("/workspace-usage", workspaceUsage);
 

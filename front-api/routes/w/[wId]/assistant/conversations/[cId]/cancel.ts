@@ -3,6 +3,7 @@ import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { streamingTag } from "@front-api/middleware/streaming";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -19,6 +20,8 @@ const PostMessageEventBodySchema = z.object({
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/cancel.
 const app = new Hono();
+
+app.use("*", streamingTag);
 
 app.post(
   "/",

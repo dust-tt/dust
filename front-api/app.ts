@@ -1,5 +1,8 @@
 import { Hono } from "hono";
 
+// Side-effect import: registers the ContextVariableMap augmentation for
+// `auth` and `session`. See middleware/context.ts for rationale.
+import "./middleware/context";
 import { cors } from "./middleware/cors";
 import preStopApp from "./routes/[preStopSecret]";
 import { appStatusApp } from "./routes/app-status";

@@ -4,8 +4,7 @@ import availability from "./availability";
 import count from "./count";
 import plan from "./plan";
 
-// Mounted at /api/w/:wId/seats. workspaceAuth is applied by the parent
-// workspace sub-app.
+// Mounted at /api/w/:wId/seats.
 const app = new Hono();
 
 app.route("/availability", availability);
