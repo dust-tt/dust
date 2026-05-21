@@ -1,21 +1,12 @@
 import { RETRY_ON_INTERRUPT_MAX_ATTEMPTS } from "@app/lib/actions/constants";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
-import { DUST_WORKER_SHUTDOWN_ABORT_REASON } from "@app/lib/shutdown_signal";
+import {
+  classifyTemporalAbortReason,
+  classifyTemporalAbortSignal,
+  type TemporalAbortClassification,
+} from "@app/lib/temporal/cancellation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ApplicationFailure } from "@temporalio/common";
-
-const TEMPORAL_WORKER_SHUTDOWN_REASON = "WORKER_SHUTDOWN";
-const TEMPORAL_WORKER_SHUTDOWN_ERROR = "CancelledFailure: WORKER_SHUTDOWN";
-const TEMPORAL_USER_CANCELLATION_REASON = "CANCELLED";
-const TEMPORAL_USER_CANCELLATION_ERROR = "CancelledFailure: CANCELLED";
-const DEPLOY_INTERRUPTION_REASON_TEXTS: readonly string[] = [
-  DUST_WORKER_SHUTDOWN_ABORT_REASON,
-  TEMPORAL_WORKER_SHUTDOWN_REASON,
-  TEMPORAL_WORKER_SHUTDOWN_ERROR,
-];
-const USER_CANCELLATION_REASON_TEXTS: readonly string[] = [
-  TEMPORAL_USER_CANCELLATION_REASON,
-  TEMPORAL_USER_CANCELLATION_ERROR,
-];
 
 export const TOOL_INTERRUPTION_ERROR_TYPE = "ToolInterruption";
 
@@ -28,55 +19,34 @@ export type HandledToolAbortClassification = Exclude<
   "none"
 >;
 
-function getAbortReasonTexts(reason: unknown): string[] {
-  if (typeof reason === "string") {
-    return [reason];
-  }
+function classifyToolAbort(
+  abortClassification: TemporalAbortClassification
+): ToolAbortClassification {
+  switch (abortClassification) {
+    case "worker_shutdown":
+      return "deploy_interruption";
 
-  if (reason instanceof Error) {
-    return [reason.message, reason.toString()];
-  }
+    case "user_cancellation":
+      return "user_cancellation";
 
-  if (
-    typeof reason === "object" &&
-    reason !== null &&
-    "message" in reason &&
-    typeof reason.message === "string"
-  ) {
-    return [reason.message];
-  }
+    case "none":
+      return "none";
 
-  return [];
+    default:
+      assertNever(abortClassification);
+  }
 }
 
 export function classifyToolAbortReason(
   reason: unknown
 ): ToolAbortClassification {
-  const reasonTexts = getAbortReasonTexts(reason);
-
-  if (
-    reasonTexts.some((text) => DEPLOY_INTERRUPTION_REASON_TEXTS.includes(text))
-  ) {
-    return "deploy_interruption";
-  }
-
-  if (
-    reasonTexts.some((text) => USER_CANCELLATION_REASON_TEXTS.includes(text))
-  ) {
-    return "user_cancellation";
-  }
-
-  return "none";
+  return classifyToolAbort(classifyTemporalAbortReason(reason));
 }
 
 export function classifyToolAbortSignal(
   signal?: AbortSignal | null
 ): ToolAbortClassification {
-  if (!signal?.aborted) {
-    return "none";
-  }
-
-  return classifyToolAbortReason(signal.reason);
+  return classifyToolAbort(classifyTemporalAbortSignal(signal));
 }
 
 export function shouldRetryToolInterruption({
