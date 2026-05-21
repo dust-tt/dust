@@ -1803,8 +1803,14 @@ function productMatches(
   return true;
 }
 
-async function syncProducts(): Promise<void> {
+// Returns true when any product was created, archived, or had its
+// `custom_fields` updated — i.e. the cached `productId → seatType` map in
+// Redis is now stale and needs invalidating. Returns false on a no-op run so
+// `main()` can skip the Redis call entirely.
+async function syncProducts(): Promise<boolean> {
   console.log("\n=== Syncing Products ===");
+
+  let mutated = false;
 
   interface ExistingProduct {
     id: string;
@@ -1843,6 +1849,7 @@ async function syncProducts(): Promise<void> {
       if (EXECUTE) {
         try {
           await client.v1.contracts.products.archive({ product_id: p.id });
+          mutated = true;
         } catch {
           console.log(`    (archive failed — may have active references)`);
         }
@@ -1858,7 +1865,9 @@ async function syncProducts(): Promise<void> {
     if (isUpToDate) {
       console.log(`  ✓ ${desired.name} — up to date (${ex.id})`);
       ids.products[desired.name] = ex.id;
-      await reconcileProductCustomFields(ex, desired);
+      if (await reconcileProductCustomFields(ex, desired)) {
+        mutated = true;
+      }
     } else {
       if (ex) {
         console.log(
@@ -1867,6 +1876,7 @@ async function syncProducts(): Promise<void> {
         if (EXECUTE) {
           try {
             await client.v1.contracts.products.archive({ product_id: ex.id });
+            mutated = true;
           } catch {
             console.log(`    (archive failed)`);
           }
@@ -1896,6 +1906,7 @@ async function syncProducts(): Promise<void> {
         const id = (created as { data: { id: string } }).data.id;
         console.log(`    → ${id}`);
         ids.products[desired.name] = id;
+        mutated = true;
       } else {
         console.log(`  + [DRYRUN] Would create: ${desired.name}`);
         ids.products[desired.name] = ex?.id ?? `dryrun-${desired.name}`;
@@ -1903,20 +1914,25 @@ async function syncProducts(): Promise<void> {
       recreated.products.add(desired.name);
     }
   }
+
+  return mutated;
 }
 
 /**
  * Reconcile `custom_fields` on an existing product via `setValues` — drift on
  * custom fields alone never triggers a product recreate (and the matching
  * predicate above intentionally ignores them).
+ *
+ * Returns true when an update was actually applied (EXECUTE + drift detected)
+ * so the caller can flag the product-seat-type cache as stale.
  */
 async function reconcileProductCustomFields(
   ex: { id: string; custom_fields?: Record<string, string> },
   desired: ProductDef
-): Promise<void> {
+): Promise<boolean> {
   const desiredCfs = desired.custom_fields;
   if (!desiredCfs || Object.keys(desiredCfs).length === 0) {
-    return;
+    return false;
   }
   const existingCfs = ex.custom_fields ?? {};
   const drift: Record<string, string> = {};
@@ -1926,7 +1942,7 @@ async function reconcileProductCustomFields(
     }
   }
   if (Object.keys(drift).length === 0) {
-    return;
+    return false;
   }
   console.log(
     `  ✎ ${EXECUTE ? "Updating" : "[DRYRUN] Would update"} ${desired.name} custom_fields ${JSON.stringify(drift)}`
@@ -1937,7 +1953,9 @@ async function reconcileProductCustomFields(
       entity_id: ex.id,
       custom_fields: drift,
     });
+    return true;
   }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -2818,14 +2836,18 @@ async function main(): Promise<void> {
 
   await syncCustomFields();
   await syncMetrics();
-  await syncProducts();
+  const productsMutated = await syncProducts();
   await syncRateCards();
   await syncPackages();
   await syncAlerts();
 
   // Drop the cached `productId → seatType` map so live processes pick up
-  // tag changes immediately rather than waiting for the 6h TTL.
-  if (EXECUTE) {
+  // tag changes immediately rather than waiting for the 6h TTL. Only needed
+  // when products were created, archived, or had custom_fields updated —
+  // rate-card / package / alert changes don't affect the map. Skipping the
+  // call on no-op runs also avoids the Redis connection error on hosts where
+  // Redis isn't reachable.
+  if (EXECUTE && productsMutated) {
     try {
       await invalidateProductSeatTypesCache();
       console.log("\n✓ Cleared product seat-type cache");
