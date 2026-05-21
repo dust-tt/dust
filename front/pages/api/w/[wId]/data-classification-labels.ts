@@ -100,8 +100,12 @@ async function handler(
     return apiError(req, res, resolveSourceErrorToApiError(type, message));
   }
 
-  const { sourceType, sourceId, connectorId: resolvedConnectorId, accessToken } =
-    sourceResult.value;
+  const {
+    sourceType,
+    sourceId,
+    connectorId: resolvedConnectorId,
+    accessToken,
+  } = sourceResult.value;
 
   // ── Handle request methods ────────────────────────────────────────────────
 

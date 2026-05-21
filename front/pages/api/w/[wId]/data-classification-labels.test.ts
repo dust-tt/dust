@@ -1,6 +1,6 @@
 import {
-  resolveLabelSource,
   type ResolvedLabelSource,
+  resolveLabelSource,
 } from "@app/lib/api/data_classification_labels";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";

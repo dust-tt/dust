@@ -7,8 +7,8 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import { Err, Ok } from "@app/types/shared/result";
 import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
 import { z } from "zod";
@@ -94,8 +94,6 @@ export async function getMCPConnectionAccessToken(
   }
   return null;
 }
-
-// ── Source resolution helper ─────────────────────────────────────────────────
 
 export type ResolveSourceErrorType =
   | "data_source_not_found"
