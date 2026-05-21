@@ -1,7 +1,4 @@
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
-import * as t from "io-ts";
-import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
-import { NumberFromString } from "io-ts-types/lib/NumberFromString";
 import { z } from "zod";
 
 export const MAX_MESSAGE_TIMEFRAMES = ["day", "lifetime"] as const;
@@ -141,33 +138,6 @@ export type SubscriptionPerSeatPricing = {
   billingPeriod: BillingPeriod;
   quantity: number;
 };
-
-export const CreatePlanFormSchema = t.type({
-  code: NonEmptyString,
-  name: NonEmptyString,
-  isSlackbotAllowed: t.boolean,
-  isSlackAllowed: t.boolean,
-  isNotionAllowed: t.boolean,
-  isGoogleDriveAllowed: t.boolean,
-  isGithubAllowed: t.boolean,
-  isIntercomAllowed: t.boolean,
-  isConfluenceAllowed: t.boolean,
-  isWebCrawlerAllowed: t.boolean,
-  isSalesforceAllowed: t.boolean,
-  maxMessages: t.union([t.number, NumberFromString]),
-  maxMessagesTimeframe: t.keyof({
-    day: null,
-    lifetime: null,
-  }),
-  isDeepDiveAllowed: t.boolean,
-  dataSourcesCount: t.union([t.number, NumberFromString]),
-  dataSourcesDocumentsCount: t.union([t.number, NumberFromString]),
-  dataSourcesDocumentsSizeMb: t.union([t.number, NumberFromString]),
-  maxUsers: t.union([t.number, NumberFromString]),
-  maxVaults: t.union([t.number, NumberFromString]),
-});
-
-export type CreatePlanFormType = t.TypeOf<typeof CreatePlanFormSchema>;
 
 export const EnterpriseUpgradeFormSchema = z.object({
   planCode: z.string().min(1),
