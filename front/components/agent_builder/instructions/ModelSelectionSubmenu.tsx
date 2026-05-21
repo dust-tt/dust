@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   getModelKey,
@@ -5,6 +6,7 @@ import {
 } from "@app/components/agent_builder/instructions/utils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { RegionInfo } from "@app/lib/api/regions/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
@@ -18,8 +20,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
+import Image from "next/image";
+import type React from "react";
 import { useController } from "react-hook-form";
 
 interface ModelSelectionSubmenuProps {
@@ -30,31 +32,39 @@ interface ModelRadioItemProps {
   modelConfig: ModelConfigurationType;
   isDark: boolean;
   onModelSelection: (modelConfig: ModelConfigurationType) => void;
-  displayEuropeanFlag: boolean;
+  endComponent?: React.ReactNode | null;
 }
 
 function ModelRadioItem({
   modelConfig,
   isDark,
   onModelSelection,
-  displayEuropeanFlag,
+  endComponent,
 }: ModelRadioItemProps) {
-  const labelSuffix =
-    displayEuropeanFlag && modelConfig.regionalAvailability["europe-west1"]
-      ? " 🇪🇺"
-      : "";
-  const label = `${modelConfig.displayName}${labelSuffix}`;
-
   return (
     <DropdownMenuRadioItem
       value={modelConfig.modelId}
       icon={getModelProviderLogo(modelConfig.providerId, isDark)}
       description={modelConfig.shortDescription}
-      label={label}
+      label={modelConfig.displayName}
       onClick={() => onModelSelection(modelConfig)}
+      endComponent={endComponent}
     />
   );
 }
+
+const FLAG_SIZE = 16;
+const REGIONAL_FLAGS: Record<RegionInfo["name"], React.ReactNode | null> = {
+  "europe-west1": (
+    <Image
+      src="/static/EuropeanFlag.svg"
+      alt="EU"
+      width={FLAG_SIZE}
+      height={FLAG_SIZE}
+    />
+  ),
+  "us-central1": null,
+};
 
 export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { isDark } = useTheme();
@@ -74,9 +84,11 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { regionInfo } = useRegionContext();
   const { hasFeature } = useFeatureFlags();
 
-  const displayEuropeanFlag =
-    regionInfo.name === "europe-west1" &&
-    hasFeature("use_vertex_for_anthropic_models");
+  const modelRadioItemEndComponent = hasFeature(
+    "use_vertex_for_anthropic_models"
+  )
+    ? null
+    : REGIONAL_FLAGS[regionInfo.name];
 
   const { bestGeneralModels, providerGroups } = getModelsCategorization(models);
 
@@ -113,7 +125,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                   modelConfig={selectedModel}
                   isDark={isDark}
                   onModelSelection={handleModelSelection}
-                  displayEuropeanFlag={displayEuropeanFlag}
+                  endComponent={modelRadioItemEndComponent}
                 />
               </DropdownMenuRadioGroup>
             </>
@@ -127,7 +139,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                 modelConfig={modelConfig}
                 isDark={isDark}
                 onModelSelection={handleModelSelection}
-                displayEuropeanFlag={displayEuropeanFlag}
+                endComponent={modelRadioItemEndComponent}
               />
             ))}
           </DropdownMenuRadioGroup>
@@ -153,7 +165,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               modelConfig={modelConfig}
                               isDark={isDark}
                               onModelSelection={handleModelSelection}
-                              displayEuropeanFlag={displayEuropeanFlag}
+                              endComponent={modelRadioItemEndComponent}
                             />
                           ))}
                         </DropdownMenuRadioGroup>
@@ -173,7 +185,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               modelConfig={modelConfig}
                               isDark={isDark}
                               onModelSelection={handleModelSelection}
-                              displayEuropeanFlag={displayEuropeanFlag}
+                              endComponent={modelRadioItemEndComponent}
                             />
                           ))}
                         </DropdownMenuRadioGroup>
