@@ -1076,10 +1076,10 @@ describe("deleteGCSMountFile", () => {
 });
 
 describe("scoped path ↔ GCS path", () => {
-  const prefix = "w/ws1/projects/proj1/files/";
+  const prefix = "w/ws1/pods/proj1/files/";
 
   it("getScopedPathFromGCSPath is the inverse of getGCSPathFromScopedPath", () => {
-    const scopedPath = "project/reports/report_fil_abc.pdf";
+    const scopedPath = "pod/reports/report_fil_abc.pdf";
     const gcsPath = getGCSPathFromScopedPath({
       prefix,
       scopedPath,

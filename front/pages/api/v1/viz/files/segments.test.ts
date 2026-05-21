@@ -414,7 +414,7 @@ describe("/api/v1/viz/files/[...segments] security tests", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "Frame has no project context for this path.",
+        message: "Frame has no pod context for this path.",
       },
     });
   });
