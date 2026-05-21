@@ -206,7 +206,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
 
     const action = await withTransaction(async (t) => {
-      const action = await AgentMCPActionModel.create(
+      const agentMCPAction = await AgentMCPActionModel.create(
         {
           ...blob,
           workspaceId: workspace.id,
@@ -219,13 +219,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           workspaceId: workspace.id,
           agentMessageId: blob.agentMessageId,
           conversationId: conversation.id,
-          agentMCPActionId: action.id,
+          agentMCPActionId: agentMCPAction.id,
           stepContentId: stepContent.id,
         },
         { transaction: t }
       );
 
-      return action;
+      return agentMCPAction;
     }, transaction);
 
     assert(
