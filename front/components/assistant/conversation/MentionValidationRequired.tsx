@@ -1,5 +1,6 @@
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useMentionValidation } from "@app/lib/swr/mentions";
 import type {
@@ -46,8 +47,12 @@ export function MentionValidationRequired({
     isProjectConversation: isProjectMembership,
   });
 
-  const isTriggeredByCurrentUser = useMemo(
-    () => !triggeringUser || triggeringUser.sId === user?.sId,
+  const canCurrentUserRespond = useMemo(
+    () =>
+      canCurrentUserRespondToParentUserMessage({
+        parentUserId: triggeringUser?.sId,
+        currentUserId: user?.sId,
+      }),
     [triggeringUser, user?.sId]
   );
 
@@ -69,7 +74,7 @@ export function MentionValidationRequired({
     }
   };
 
-  if (!isTriggeredByCurrentUser) {
+  if (!canCurrentUserRespond) {
     return null;
   }
 

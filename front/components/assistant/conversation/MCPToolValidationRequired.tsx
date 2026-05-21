@@ -4,6 +4,7 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -78,8 +79,12 @@ export function MCPToolValidationRequired({
     onError: setErrorMessage,
   });
 
-  const isTriggeredByCurrentUser = useMemo(
-    () => blockedAction.userId === user?.sId,
+  const canCurrentUserRespond = useMemo(
+    () =>
+      canCurrentUserRespondToParentUserMessage({
+        parentUserId: blockedAction.userId,
+        currentUserId: user?.sId,
+      }),
     [blockedAction.userId, user?.sId]
   );
 
@@ -137,7 +142,7 @@ export function MCPToolValidationRequired({
     ];
 
   function getTitle() {
-    if (!isTriggeredByCurrentUser) {
+    if (!canCurrentUserRespond) {
       return `Permission needed for ${asDisplayName(blockedAction.metadata.mcpServerName)}.`;
     }
     if (toolOverride?.title) {
@@ -194,7 +199,7 @@ export function MCPToolValidationRequired({
       className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]"
       icon={icon}
     >
-      {isTriggeredByCurrentUser ? (
+      {canCurrentUserRespond ? (
         <>
           <ToolValidationDetails
             blockedAction={blockedAction}

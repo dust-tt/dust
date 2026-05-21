@@ -1,4 +1,5 @@
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import {
   canCurrentUserAddProjectMembers,
@@ -316,7 +317,12 @@ export async function validateUserMention(
 
   if (isUserMessageType(message)) {
     // Verify user is authorized to edit the message by checking the message user.
-    if (message.user && message.user.id !== auth.getNonNullableUser().id) {
+    if (
+      !canCurrentUserRespondToParentUserMessage({
+        parentUserId: message.user?.id,
+        currentUserId: auth.getNonNullableUser().id,
+      })
+    ) {
       return new Err({
         status_code: 403,
         api_error: {
@@ -331,8 +337,10 @@ export async function validateUserMention(
       messageId,
     });
     if (
-      userMessageUserId !== null &&
-      userMessageUserId !== auth.getNonNullableUser().id
+      !canCurrentUserRespondToParentUserMessage({
+        parentUserId: userMessageUserId,
+        currentUserId: auth.getNonNullableUser().id,
+      })
     ) {
       return new Err({
         status_code: 403,
@@ -514,7 +522,12 @@ export async function dismissMention(
 
   if (isUserMessageType(message)) {
     // Verify user is authorized to edit the message by checking the message user.
-    if (message.user && message.user.id !== auth.getNonNullableUser().id) {
+    if (
+      !canCurrentUserRespondToParentUserMessage({
+        parentUserId: message.user?.id,
+        currentUserId: auth.getNonNullableUser().id,
+      })
+    ) {
       return new Err({
         status_code: 403,
         api_error: {
@@ -529,8 +542,10 @@ export async function dismissMention(
       messageId,
     });
     if (
-      userMessageUserId !== null &&
-      userMessageUserId !== auth.getNonNullableUser().id
+      !canCurrentUserRespondToParentUserMessage({
+        parentUserId: userMessageUserId,
+        currentUserId: auth.getNonNullableUser().id,
+      })
     ) {
       return new Err({
         status_code: 403,

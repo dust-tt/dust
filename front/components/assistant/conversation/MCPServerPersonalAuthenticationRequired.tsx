@@ -7,6 +7,7 @@ import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { useResolveAuthentication } from "@app/hooks/useResolveAuthentication";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
@@ -73,8 +74,12 @@ export function MCPServerPersonalAuthenticationRequired({
       ? getMcpServerDisplayName(mcpServer)
       : undefined;
 
-  const isTriggeredByCurrentUser = useMemo(
-    () => triggeringUser?.sId === user?.sId,
+  const canCurrentUserRespond = useMemo(
+    () =>
+      canCurrentUserRespondToParentUserMessage({
+        parentUserId: triggeringUser?.sId,
+        currentUserId: user?.sId,
+      }),
     [triggeringUser, user?.sId]
   );
 
@@ -142,7 +147,7 @@ export function MCPServerPersonalAuthenticationRequired({
 
   // Determine the ActionCardBlock state.
   let cardState: "active" | "disabled" | "accepted";
-  if (!isTriggeredByCurrentUser) {
+  if (!canCurrentUserRespond) {
     cardState = "disabled";
   } else if (isConnected) {
     cardState = "accepted";
@@ -156,7 +161,7 @@ export function MCPServerPersonalAuthenticationRequired({
 
   // Build description based on current state.
   let description: React.ReactNode;
-  if (!isTriggeredByCurrentUser) {
+  if (!canCurrentUserRespond) {
     description = (
       <div className="text-sm">
         {`${triggeringUser?.fullName} is trying to use ${serverDisplayName ?? "a tool"}.`}
@@ -195,7 +200,7 @@ export function MCPServerPersonalAuthenticationRequired({
 
   // Build actions — only show Connect/Retry button for current user when not yet connected.
   const actions =
-    isTriggeredByCurrentUser && !isConnected && mcpServer ? (
+    canCurrentUserRespond && !isConnected && mcpServer ? (
       <div className="flex justify-end gap-3">
         <Button
           variant="outline"

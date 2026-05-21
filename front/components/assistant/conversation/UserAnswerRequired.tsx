@@ -3,6 +3,7 @@ import { useAnswerUserQuestion } from "@app/hooks/useAnswerUserQuestion";
 import { useUserAnswerDraft } from "@app/hooks/useUserAnswerDraft";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -66,7 +67,10 @@ export function UserAnswerRequired({
   const customResponseInputRef = useRef<HTMLInputElement>(null);
 
   const { question } = blockedAction;
-  const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
+  const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
+    parentUserId: blockedAction.userId,
+    currentUserId: user?.sId,
+  });
 
   const isCustomResponseActive =
     isCustomResponseFocused ||
@@ -246,7 +250,7 @@ export function UserAnswerRequired({
     }
   }
 
-  if (!isTriggeredByCurrentUser) {
+  if (!canCurrentUserRespond) {
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         Waiting for&nbsp;

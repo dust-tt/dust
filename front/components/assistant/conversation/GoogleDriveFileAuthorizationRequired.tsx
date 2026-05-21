@@ -6,6 +6,7 @@ import type {
   BlockedToolExecution,
   FileAuthorizationInfo,
 } from "@app/lib/actions/mcp";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useClientType } from "@app/lib/context/clientType";
@@ -59,14 +60,18 @@ export function GoogleDriveFileAuthorizationRequired({
   });
   const isExtension = clientType === "extension";
 
-  const isTriggeredByCurrentUser = useMemo(
-    () => triggeringUser?.sId === user?.sId,
+  const canCurrentUserRespond = useMemo(
+    () =>
+      canCurrentUserRespondToParentUserMessage({
+        parentUserId: triggeringUser?.sId,
+        currentUserId: user?.sId,
+      }),
     [triggeringUser, user?.sId]
   );
 
   // Pre-fetch picker credentials on mount for faster picker opening
   useEffect(() => {
-    if (isExtension || !isTriggeredByCurrentUser || pickerCredentials) {
+    if (isExtension || !canCurrentUserRespond || pickerCredentials) {
       return;
     }
 
@@ -95,7 +100,7 @@ export function GoogleDriveFileAuthorizationRequired({
     void fetchCredentials();
   }, [
     isExtension,
-    isTriggeredByCurrentUser,
+    canCurrentUserRespond,
     owner.sId,
     mcpServerId,
     pickerCredentials,
@@ -191,7 +196,7 @@ export function GoogleDriveFileAuthorizationRequired({
       icon={isAuthorized ? CheckCircleIcon : DocumentTextIcon}
       className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
     >
-      {isTriggeredByCurrentUser ? (
+      {canCurrentUserRespond ? (
         <>
           <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
             {isAuthorized ? (
