@@ -22,7 +22,7 @@ import {
   RadioGroupItem,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const MIN_AWU_CREDITS = 1;
 const MAX_AWU_CREDITS = 1_000_000;
@@ -36,7 +36,7 @@ function isSpendLimitKind(value: string): value is SpendLimitKind {
 interface EditSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  member: MemberUsageType;
+  member: MemberUsageType | null;
   owner: WorkspaceType;
 }
 
@@ -46,6 +46,14 @@ export function EditSpendLimitModal({
   member,
   owner,
 }: EditSpendLimitModalProps) {
+  // Keep the last non-null member so the dialog can render its content through
+  // the exit animation after the parent has cleared `member`.
+  const lastMemberRef = useRef<MemberUsageType | null>(null);
+  if (member) {
+    lastMemberRef.current = member;
+  }
+  const displayedMember = member ?? lastMemberRef.current;
+
   const {
     spendLimit,
     isSpendLimitLoading,
@@ -53,8 +61,8 @@ export function EditSpendLimitModal({
     mutateSpendLimit,
   } = useUserSpendLimit({
     workspaceId: owner.sId,
-    memberId: member.sId,
-    disabled: !isOpen,
+    memberId: displayedMember?.sId ?? "",
+    disabled: !isOpen || !displayedMember,
   });
   const { doUpdateSpendLimit } = useUpdateUserSpendLimit({
     workspaceId: owner.sId,
@@ -69,6 +77,8 @@ export function EditSpendLimitModal({
 
   useEffect(() => {
     if (!isOpen) {
+      setIsSaving(false);
+      setValidationMessage(null);
       return;
     }
     if (!spendLimit) {
@@ -133,6 +143,10 @@ export function EditSpendLimitModal({
       return;
     }
 
+    if (!displayedMember) {
+      return;
+    }
+
     setIsSaving(true);
     try {
       let limit:
@@ -150,8 +164,8 @@ export function EditSpendLimitModal({
           return;
       }
       const body = await doUpdateSpendLimit({
-        memberId: member.sId,
-        memberName: member.name,
+        memberId: displayedMember.sId,
+        memberName: displayedMember.name,
         limit,
       });
       if (body) {
@@ -176,13 +190,15 @@ export function EditSpendLimitModal({
         <DialogHeader>
           <div className="flex items-center gap-3">
             <Avatar
-              visual={member.image ?? undefined}
-              name={member.name}
+              visual={displayedMember?.image ?? undefined}
+              name={displayedMember?.name}
               size="md"
               isRounded
             />
             <div>
-              <DialogTitle>Edit spend limit for {member.name}</DialogTitle>
+              <DialogTitle>
+                Edit spend limit for {displayedMember?.name}
+              </DialogTitle>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 They will be able to consume this amount from the pool after
                 reaching their plan usage limit.

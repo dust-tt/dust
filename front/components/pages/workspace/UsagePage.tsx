@@ -394,24 +394,20 @@ export function UsagePage() {
           />
         )}
 
-        {changeSeatMember && (
-          <ChangeSeatModal
-            isOpen={true}
-            onClose={() => setChangeSeatMember(null)}
-            member={changeSeatMember}
-            owner={owner}
-            seatPlans={seatPlans}
-          />
-        )}
+        <ChangeSeatModal
+          isOpen={changeSeatMember !== null}
+          onClose={() => setChangeSeatMember(null)}
+          member={changeSeatMember}
+          owner={owner}
+          seatPlans={seatPlans}
+        />
 
-        {editSpendLimitMember && (
-          <EditSpendLimitModal
-            isOpen={true}
-            onClose={() => setEditSpendLimitMember(null)}
-            member={editSpendLimitMember}
-            owner={owner}
-          />
-        )}
+        <EditSpendLimitModal
+          isOpen={editSpendLimitMember !== null}
+          onClose={() => setEditSpendLimitMember(null)}
+          member={editSpendLimitMember}
+          owner={owner}
+        />
 
         {/* TODO: Settings section*/}
         <div />
