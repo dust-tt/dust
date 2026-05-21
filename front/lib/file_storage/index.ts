@@ -20,6 +20,7 @@ import { pipeline } from "stream/promises";
 
 const GCS_COPY_MAX_RETRIES = 3;
 const GCS_COPY_BASE_DELAY_MS = 500;
+const GCS_MAX_RETRIES = 3; // Same as the SDK default.
 const GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX = /socket hang up/i;
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
@@ -46,6 +47,7 @@ export class FileStorage {
     this.storage = new Storage({
       keyFilename: useServiceAccount ? config.getServiceAccount() : undefined,
       retryOptions: {
+        maxRetries: GCS_MAX_RETRIES,
         retryableErrorFn: isRetryableGCSError,
       },
     });
