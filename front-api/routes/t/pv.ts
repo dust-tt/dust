@@ -1,4 +1,4 @@
-// This endpoint must exist in both front and front-api since 
+// This endpoint must exist in both front and front-api since
 // it's used in both public homepage and app.
 
 import { trackPageview } from "@app/lib/api/track_pageview";

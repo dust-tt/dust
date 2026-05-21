@@ -35,9 +35,7 @@ export function parseCookieValue(
   return match ? decodeURIComponent(match.slice(prefix.length)) : undefined;
 }
 
-type TrackPageviewResult =
-  | { type: "rate_limited" }
-  | { type: "ok" };
+type TrackPageviewResult = { type: "rate_limited" } | { type: "ok" };
 
 interface TrackPageviewParams {
   ip: string | undefined;
