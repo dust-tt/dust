@@ -1,6 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
-
-/** @ignoreswagger */
 import config from "@app/lib/api/config";
 import {
   getClientIpFromHeaders,
@@ -8,29 +5,16 @@ import {
   validateWorkOSWebhookEvent,
 } from "@app/lib/api/workos/webhook_helpers";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchWorkOSEventsWorkflow } from "@app/temporal/workos_events_queue/client";
-import type { WithAPIErrorResponse } from "@app/types/error";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<void>>
-): Promise<void> {
-  if (req.method !== "POST") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, POST is expected.",
-      },
-    });
-  }
+const app = new Hono();
 
-  // Validate the webhook secret.
-  const { webhookSecret } = req.query;
+app.post("/", async (ctx) => {
+  const webhookSecret = ctx.req.param("webhookSecret");
   if (typeof webhookSecret !== "string") {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -40,7 +24,7 @@ async function handler(
   }
 
   if (webhookSecret !== config.getWorkOSWebhookSecret()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "not_authenticated",
@@ -49,12 +33,16 @@ async function handler(
     });
   }
 
-  // Validate the client IP address.
-  const clientIp =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    getClientIpFromHeaders(req.headers) || req.socket.remoteAddress;
+  // Validate the client IP address. Hono does not surface the underlying Node
+  // `req.socket.remoteAddress`, so we rely on the forwarded headers WorkOS
+  // sends (which the Next handler also prioritized via `getClientIpFromHeaders`).
+  const headers: Record<string, string | string[] | undefined> = {};
+  ctx.req.raw.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+  const clientIp = getClientIpFromHeaders(headers);
   if (typeof clientIp !== "string") {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -63,16 +51,9 @@ async function handler(
     });
   }
 
-  const isWorkOSIp = isWorkOSIpAddress(clientIp);
-  if (!isWorkOSIp) {
-    logger.error(
-      {
-        clientIp,
-      },
-      "Request not from WorkOS IP range"
-    );
-
-    return apiError(req, res, {
+  if (!isWorkOSIpAddress(clientIp)) {
+    logger.error({ clientIp }, "Request not from WorkOS IP range");
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "invalid_request_error",
@@ -81,10 +62,9 @@ async function handler(
     });
   }
 
-  const { body: payload } = req;
-  const sigHeader = req.headers["workos-signature"];
+  const sigHeader = ctx.req.header("workos-signature");
   if (typeof sigHeader !== "string") {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -93,18 +73,13 @@ async function handler(
     });
   }
 
+  const payload = await ctx.req.json();
   const result = await validateWorkOSWebhookEvent(payload, {
     signatureHeader: sigHeader,
   });
   if (result.isErr()) {
-    logger.error(
-      {
-        error: result.error,
-      },
-      "Invalid WorkOS webhook event"
-    );
-
-    return apiError(req, res, {
+    logger.error({ error: result.error }, "Invalid WorkOS webhook event");
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -116,9 +91,8 @@ async function handler(
   const workflowId = await launchWorkOSEventsWorkflow({
     eventPayload: result.value,
   });
-
   if (workflowId.isErr()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -127,7 +101,7 @@ async function handler(
     });
   }
 
-  res.status(200).send();
-}
+  return ctx.body(null, 200);
+});
 
-export default withLogging(handler);
+export default app;

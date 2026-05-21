@@ -1,6 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
-
-/** @ignoreswagger */
 import config from "@app/lib/api/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import {
@@ -10,40 +7,28 @@ import {
 } from "@app/lib/api/workos/webhook_helpers";
 import { isBlacklistedEmailDomain } from "@app/lib/utils/blacklisted_email_domains";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import type { HandlerResult } from "@front-api/middleware/utils";
+import { apiError } from "@front-api/middleware/utils";
 import type {
   AuthenticationActionResponseData,
   ResponsePayload,
   UserRegistrationActionResponseData,
 } from "@workos-inc/node";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { Hono } from "hono";
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<{
-      object: string;
-      payload: ResponsePayload;
-      signature: string;
-    }>
-  >
-): Promise<void> {
-  if (req.method !== "POST") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, POST is expected.",
-      },
-    });
-  }
+type ActionResponseBody = {
+  object: string;
+  payload: ResponsePayload;
+  signature: string;
+};
 
-  // Validate the webhook secret.
-  const { actionSecret } = req.query;
+const app = new Hono();
+
+app.post("/", async (ctx): HandlerResult<ActionResponseBody> => {
+  const actionSecret = ctx.req.param("actionSecret");
   if (!isString(actionSecret)) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -53,7 +38,7 @@ async function handler(
   }
 
   if (actionSecret !== config.getWorkOSActionSecret()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "not_authenticated",
@@ -62,12 +47,16 @@ async function handler(
     });
   }
 
-  // Validate the client IP address.
-  const clientIp =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    getClientIpFromHeaders(req.headers) || req.socket.remoteAddress;
+  // Validate the client IP address. Hono does not surface
+  // `req.socket.remoteAddress`, so we rely on forwarded headers (the same
+  // path the Next handler prioritized via `getClientIpFromHeaders`).
+  const headers: Record<string, string | string[] | undefined> = {};
+  ctx.req.raw.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+  const clientIp = getClientIpFromHeaders(headers);
   if (!isString(clientIp)) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -76,16 +65,9 @@ async function handler(
     });
   }
 
-  const isWorkOSIp = isWorkOSIpAddress(clientIp);
-  if (!isWorkOSIp) {
-    logger.error(
-      {
-        clientIp,
-      },
-      "Request not from WorkOS IP range"
-    );
-
-    return apiError(req, res, {
+  if (!isWorkOSIpAddress(clientIp)) {
+    logger.error({ clientIp }, "Request not from WorkOS IP range");
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "invalid_request_error",
@@ -94,10 +76,9 @@ async function handler(
     });
   }
 
-  const { body: payload } = req;
-  const sigHeader = req.headers["workos-signature"];
+  const sigHeader = ctx.req.header("workos-signature");
   if (!isString(sigHeader)) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -106,18 +87,13 @@ async function handler(
     });
   }
 
+  const payload = await ctx.req.json();
   const result = await validateWorkOSActionEvent(payload, {
     signatureHeader: sigHeader,
   });
   if (result.isErr()) {
-    logger.error(
-      {
-        error: result.error,
-      },
-      "Invalid WorkOS action"
-    );
-
-    return apiError(req, res, {
+    logger.error({ error: result.error }, "Invalid WorkOS action");
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -127,7 +103,6 @@ async function handler(
   }
 
   const action = result.value;
-
   const workOS = getWorkOS();
 
   let responsePayload:
@@ -135,7 +110,6 @@ async function handler(
     | AuthenticationActionResponseData;
 
   if (action.object === "user_registration_action_context") {
-    // Determine whether to allow or deny the action.
     if (isBlacklistedEmailDomain(action.userData.email.split("@")[1])) {
       responsePayload = {
         type: "user_registration" as const,
@@ -160,7 +134,8 @@ async function handler(
     responsePayload,
     config.getWorkOSActionSigningSecret()
   );
-  res.json(signedResponse);
-}
 
-export default withLogging(handler);
+  return ctx.json(signedResponse);
+});
+
+export default app;
