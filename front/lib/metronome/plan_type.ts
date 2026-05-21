@@ -1,10 +1,11 @@
 import { getMetronomeClient } from "@app/lib/metronome/client";
-import { getProductProgrammaticUsageId } from "@app/lib/metronome/constants";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
+import type { PlanType } from "@app/types/plan";
 import type { ContractV2 } from "@metronome/sdk/resources";
+import { isCreditPricedPlan } from "../plans/plan_codes";
 
 // Commits and credits are stripped before caching — their balances/ledgers change
 // every billing cycle and are never read here.
@@ -85,52 +86,14 @@ export async function getActiveContract(
 }
 
 /**
- * Returns true if the contract's rate card prices the `Programmatic Usage`
- * product. Legacy plans bill programmatic usage in programmatic-USD credits;
- * new plans price all usage in AWU and never reference this product.
- *
- * Cached by rate card ID — rate cards rarely change.
- */
-async function fetchHasProgrammaticUsageRate(
-  rateCardId: string
-): Promise<boolean> {
-  try {
-    const client = getMetronomeClient();
-    const response = await client.v1.contracts.rateCards.retrieveRateSchedule({
-      rate_card_id: rateCardId,
-      starting_at: new Date().toISOString(),
-      selectors: [{ product_id: getProductProgrammaticUsageId() }],
-      limit: 1,
-    });
-    return (response.data ?? []).some((rate) => rate.entitled);
-  } catch (err) {
-    logger.warn(
-      { rateCardId, err },
-      "[Metronome Contract] Failed to fetch rate schedule — treating as legacy (fail-open)"
-    );
-    return true;
-  }
-}
-
-const getCachedHasProgrammaticUsageRate = cacheWithRedis(
-  fetchHasProgrammaticUsageRate,
-  (rateCardId) => `metronome:has-programmatic-usage-rate:${rateCardId}`,
-  { ttlMs: 6 * 60 * 60 * 1000 }
-);
-
-/**
  * Returns true if the workspace is on a legacy Metronome plan.
  *
  * Legacy plans price the `Programmatic Usage` product (programmatic-USD credit
  * type); new plans bill all usage in AWU. Fails open (returns true) when the
  * plan cannot be determined.
  */
-export async function isLegacyPlan(workspaceId: string): Promise<boolean> {
-  const contract = await getActiveContract(workspaceId);
-  if (!contract?.rate_card_id) {
-    return true;
-  }
-  return await getCachedHasProgrammaticUsageRate(contract.rate_card_id);
+export async function isLegacyPlan(plan: PlanType): Promise<boolean> {
+  return !isCreditPricedPlan(plan.code);
 }
 
 /**
