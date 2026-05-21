@@ -5,8 +5,9 @@ import { MembershipInvitationResource } from "@app/lib/resources/membership_invi
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getSignInUrl } from "@app/lib/signup";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { LightWorkspaceType } from "@app/types/user";
 import { isString } from "@app/types/shared/utils/general";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 
 type OnboardingType =
@@ -14,10 +15,17 @@ type OnboardingType =
   | "domain_conversation_link"
   | "domain_invite_link";
 
+interface GetJoinResponseBody {
+  onboardingType: OnboardingType;
+  workspace: LightWorkspaceType;
+  signInUrl: string;
+  userExists: boolean;
+}
+
 // Mounted at /api/w/:wId/join (no workspace auth — public endpoint).
 const app = new Hono();
 
-app.get("/", async (ctx) => {
+app.get("/", async (ctx): HandlerResult<GetJoinResponseBody | { redirectUrl: string }> => {
   const wId = ctx.req.param("wId");
   const { t, cId } = ctx.req.query();
 

@@ -63,28 +63,19 @@ async function setupTest({
   return { workspace, auth, ...rest };
 }
 
-function getLabels(
-  wId: string,
-  query: Record<string, string> = {}
-) {
+function getLabels(wId: string, query: Record<string, string> = {}) {
   const qs = new URLSearchParams(query).toString();
   return honoApp.request(
     `/api/w/${wId}/data-classification-labels${qs ? `?${qs}` : ""}`
   );
 }
 
-function postLabels(
-  wId: string,
-  body: Record<string, unknown>
-) {
-  return honoApp.request(
-    `/api/w/${wId}/data-classification-labels`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
+function postLabels(wId: string, body: Record<string, unknown>) {
+  return honoApp.request(`/api/w/${wId}/data-classification-labels`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 // ── Authorization ──────────────────────────────────────────────────────────

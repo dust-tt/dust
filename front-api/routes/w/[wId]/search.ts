@@ -1,4 +1,8 @@
-import { handleSearch, SearchRequestBody } from "@app/lib/api/search";
+import {
+  handleSearch,
+  SearchRequestBody,
+  type SearchResult,
+} from "@app/lib/api/search";
 import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
@@ -7,7 +11,7 @@ import type { SearchWarningCode } from "@app/types/core/core_api";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { isString } from "@app/types/shared/utils/general";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
 import { stream } from "hono/streaming";
@@ -165,7 +169,7 @@ app.get("/", async (ctx) => {
   });
 });
 
-app.post("/", validate("json", SearchRequestBody), async (ctx) => {
+app.post("/", validate("json", SearchRequestBody), async (ctx): HandlerResult<SearchResult> => {
   const auth = ctx.get("auth");
   const body = ctx.req.valid("json");
 

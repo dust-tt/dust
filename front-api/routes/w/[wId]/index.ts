@@ -9,7 +9,8 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
-import { apiError } from "@front-api/middleware/utils";
+import type { WorkspaceType } from "@app/types/user";
+import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { workspaceAuth } from "@front-api/middleware/workspace_auth";
 import { Hono } from "hono";
@@ -186,7 +187,11 @@ app.route("/auth-context", authContext);
 // and stashes it on the context.
 app.use("*", workspaceAuth);
 
-app.get("/", async (ctx) => {
+interface GetWorkspaceResponseBody {
+  workspace: WorkspaceType;
+}
+
+app.get("/", async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
@@ -204,7 +209,7 @@ app.get("/", async (ctx) => {
   return ctx.json({ workspace: owner });
 });
 
-app.post("/", validate("json", PostWorkspaceRequestBodySchema), async (ctx) => {
+app.post("/", validate("json", PostWorkspaceRequestBodySchema), async (ctx): HandlerResult<GetWorkspaceResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
