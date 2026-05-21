@@ -142,19 +142,11 @@ async function runBestEffortSlackCleanup({
 
   try {
     await planHandler.deletePlanMessage();
-  } catch (error) {
-    logger.warn(
-      { error, ...logContext },
-      "Failed to delete Slack plan message while cleaning up Slack stream."
-    );
-  }
-
-  try {
     await streamHandler.stop();
   } catch (error) {
     logger.warn(
       { error, ...logContext },
-      "Failed to stop Slack stream while cleaning up Slack stream."
+      "Failed to delete plan message or stop stream while cleaning up Slack stream."
     );
   }
 }
