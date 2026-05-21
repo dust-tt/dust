@@ -7,8 +7,10 @@ import config from "@app/lib/api/config";
 import { GCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
 import {
   getConversationFilesBasePath,
+  getPodFilesBasePath,
   getProjectFilesBasePath,
   TOOL_OUTPUTS_FOLDER_NAME,
+  toPodMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -355,6 +357,21 @@ export async function renameGCSMountFile(
   try {
     await bucket.copyFile(oldGcsPath, newGcsPath);
     await bucket.delete(oldGcsPath);
+
+    // Mirror the rename on the pods/ side for project files. We copy from the new canonical
+    // projects/ path (instead of an old pods/ path that may not exist for files predating the
+    // dual-write) — this also opportunistically backfills the pods/ side as files get renamed.
+    if (scope.useCase === "project") {
+      const podsPrefix = getPodFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: scope.projectId,
+      });
+      const oldPodsPath = `${podsPrefix}${relativeFilePath}`;
+      const newPodsPath = `${podsPrefix}${dir}${newFileName}`;
+      await bucket.copyFile(newGcsPath, newPodsPath);
+      await bucket.delete(oldPodsPath, { ignoreNotFound: true });
+    }
+
     return new Ok({ newGcsPath });
   } catch (err) {
     return new Err(normalizeError(err));
@@ -409,6 +426,16 @@ export async function createGCSMountFile(
   const bucket = getPrivateUploadBucket();
   try {
     await bucket.file(gcsPath).save(content, { contentType });
+
+    // Mirror the write on the pods/ side for project files
+    if (scope.useCase === "project") {
+      const podsPrefix = getPodFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: scope.projectId,
+      });
+      const podsGcsPath = `${podsPrefix}${relativeFilePath}`;
+      await bucket.file(podsGcsPath).save(content, { contentType });
+    }
   } catch (error) {
     return new Err(normalizeError(error));
   }
@@ -492,6 +519,17 @@ export async function deleteGCSMountFile(
   const bucket = getPrivateUploadBucket();
   try {
     await bucket.delete(gcsPath, { ignoreNotFound: true });
+
+    // Mirror delete on the pods/ side for project files
+    if (scope.useCase === "project") {
+      const podsPrefix = getPodFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: scope.projectId,
+      });
+      const podsGcsPath = `${podsPrefix}${relativeFilePath}`;
+      await bucket.delete(podsGcsPath, { ignoreNotFound: true });
+    }
+
     return new Ok(undefined);
   } catch (err) {
     return new Err(normalizeError(err));
@@ -519,6 +557,17 @@ export async function copyMountFile(
 
   try {
     await bucket.copyFile(sourceGcsPath, destGcsPath);
+
+    // Mirror the destination write on the pods/ side for project files (double-write counterpart).
+    if (dest.scope.useCase === "project") {
+      const podsPrefix = getPodFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: dest.scope.projectId,
+      });
+      const destPodsPath = `${podsPrefix}${dest.relativeFilePath}`;
+      await bucket.copyFile(sourceGcsPath, destPodsPath);
+    }
+
     return new Ok(undefined);
   } catch (err) {
     return new Err(normalizeError(err));
@@ -705,6 +754,35 @@ export async function moveFile(
   const moveRes = await moveGCSMountFile({ sourceGcsPath, destGcsPath });
   if (moveRes.isErr()) {
     return moveRes;
+  }
+
+  // Dual-write to the pods/ side. Copy from the new canonical so this works even when the
+  // source was a non-project file (no pre-existing pods/ source to copy from).
+  const bucket = getPrivateUploadBucket();
+  if (destScope.useCase === "project") {
+    const podsPrefix = getPodFilesBasePath({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      projectId: destScope.projectId,
+    });
+    const destPodsPath = `${podsPrefix}${destRelativeFilePath}`;
+    try {
+      await bucket.copyFile(destGcsPath, destPodsPath);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  }
+
+  // Clean up the pods/ mirror of the source if the source was a project mount path.
+  const sourcePodsPath = toPodMountFilePath(sourceGcsPath);
+  if (sourcePodsPath) {
+    try {
+      await bucket.delete(sourcePodsPath, { ignoreNotFound: true });
+    } catch (err) {
+      logger.error(
+        { sourcePodsPath, err: normalizeError(err) },
+        "moveFile: source pods/ mirror delete failed after successful move"
+      );
+    }
   }
 
   if (file) {

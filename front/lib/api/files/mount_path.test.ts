@@ -3,6 +3,7 @@ import {
   getBaseMountPathForWorkspace,
   getConversationFilePath,
   getConversationFilesBasePath,
+  getPodFilesBasePath,
   getProjectFilesBasePath,
   makeProcessedMountFileName,
   normalizeAndValidateMountRelativeFilePath,
@@ -14,6 +15,7 @@ import {
   resolveMountFileSourcePath,
   resolveMoveSourcePath,
   resolveScopedMountFilePath,
+  toPodMountFilePath,
   validateMountFolderName,
 } from "@app/lib/api/files/mount_path";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -45,6 +47,46 @@ describe("mount_path helpers", () => {
       expect(
         getProjectFilesBasePath({ workspaceId: "ws1", projectId: "spc1" })
       ).toBe("w/ws1/projects/spc1/files/");
+    });
+  });
+
+  describe("getPodFilesBasePath", () => {
+    it("should return full pod files path", () => {
+      expect(
+        getPodFilesBasePath({ workspaceId: "ws1", projectId: "spc1" })
+      ).toBe("w/ws1/pods/spc1/files/");
+    });
+  });
+
+  describe("toPodMountFilePath", () => {
+    it("converts a project mount file path to its pods/ counterpart", () => {
+      expect(toPodMountFilePath("w/ws1/projects/p1/files/report.pdf")).toBe(
+        "w/ws1/pods/p1/files/report.pdf"
+      );
+    });
+
+    it("preserves nested directory structure", () => {
+      expect(
+        toPodMountFilePath("w/ws1/projects/p1/files/dir/sub/report.pdf")
+      ).toBe("w/ws1/pods/p1/files/dir/sub/report.pdf");
+    });
+
+    it("returns null for conversation paths", () => {
+      expect(
+        toPodMountFilePath("w/ws1/conversations/c1/files/report.pdf")
+      ).toBeNull();
+    });
+
+    it("returns null for already-pods paths (no double-rewrite)", () => {
+      expect(toPodMountFilePath("w/ws1/pods/p1/files/report.pdf")).toBeNull();
+    });
+
+    it("returns null when the w/ workspace prefix is missing", () => {
+      expect(toPodMountFilePath("projects/p1/files/report.pdf")).toBeNull();
+    });
+
+    it("returns null when nothing follows projects/", () => {
+      expect(toPodMountFilePath("w/ws1/projects/")).toBeNull();
     });
   });
 
