@@ -311,6 +311,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "interactive_content": {
     "create_interactive_content_file": "never_ask",
     "edit_interactive_content_file": "never_ask",
+    "export_interactive_content_file": "never_ask",
     "get_interactive_content_file_share_url": "never_ask",
     "rename_interactive_content_file": "never_ask",
     "retrieve_interactive_content_file": "never_ask",
