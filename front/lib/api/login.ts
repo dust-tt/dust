@@ -22,10 +22,8 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { readAnonymousIdFromCookies } from "@app/lib/utils/anonymous_id";
 import type { UTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
+import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface PerformLoginOptions {
   inviteToken: string | null;
@@ -39,18 +37,47 @@ export interface PerformLoginOptions {
   returnTo: string | null;
 }
 
+/**
+ * Transport-agnostic input for `performLogin`. Carries only the request
+ * fields the login flow actually reads, so both the Next handler and the
+ * Hono handler can call into it.
+ */
+export interface PerformLoginRequest {
+  cookieHeader: string | undefined;
+  forwardedFor: string | string[] | undefined;
+  remoteAddress: string | undefined;
+}
+
+/**
+ * Result of `performLogin`. The handler at the transport boundary
+ * (Next API route or Hono route) maps this to the actual HTTP response.
+ */
+export type LoginOutcome =
+  | { kind: "redirect"; url: string }
+  | { kind: "unauthorized" }
+  | { kind: "apiError"; error: APIErrorWithStatusCode };
+
+function resolveClientIp(request: PerformLoginRequest): string | undefined {
+  const { forwardedFor, remoteAddress } = request;
+  if (forwardedFor) {
+    return (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor)
+      .split(",")[0]
+      .trim();
+  }
+  return remoteAddress;
+}
+
 export async function performLogin(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<void>>,
+  request: PerformLoginRequest,
   session: SessionWithUser,
   options: PerformLoginOptions
-): Promise<void> {
+): Promise<LoginOutcome> {
   const { inviteToken, wId, utmParams, join, conversationId, returnTo } =
     options;
   const { isSSO, workspaceId } = session;
 
   const anonymousId =
-    readAnonymousIdFromCookies(req.headers.cookie) ?? undefined;
+    readAnonymousIdFromCookies(request.cookieHeader) ?? undefined;
 
   // Use the workspaceId from the query if it exists, otherwise use the workspaceId from the workos session.
   const targetWorkspaceId = wId ?? workspaceId;
@@ -69,13 +96,16 @@ export async function performLogin(
     const { error } = membershipInviteRes;
 
     if (error instanceof AuthFlowError) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: error.message,
+      return {
+        kind: "apiError",
+        error: {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: error.message,
+          },
         },
-      });
+      };
     }
 
     throw error;
@@ -96,8 +126,7 @@ export async function performLogin(
         },
         "User not found in database, but found in cache. Flush redis cache for this workOSUserId."
       );
-      res.status(401).end();
-      return;
+      return { kind: "unauthorized" };
     }
   }
 
@@ -159,8 +188,7 @@ export async function performLogin(
         const targetUrl = multiRegionsConfig.getRegionUrl(
           workspaceRegionRes.value
         );
-        res.redirect(`${targetUrl}/api/login`);
-        return;
+        return { kind: "redirect", url: `${targetUrl}/api/login` };
       }
 
       logger.error(
@@ -169,10 +197,10 @@ export async function performLogin(
       );
 
       // Workspace not in other region or lookup failed: show login error.
-      res.redirect(
-        `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
-      );
-      return;
+      return {
+        kind: "redirect",
+        url: `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`,
+      };
     }
 
     targetWorkspace = workspace;
@@ -200,8 +228,10 @@ export async function performLogin(
 
     // More than one pending invitation, redirect to invite choose page - otherwise use the first one.
     if (pendingInvitations && pendingInvitations.length > 1) {
-      res.redirect(`${config.getAppUrl()}/invite-choose`);
-      return;
+      return {
+        kind: "redirect",
+        url: `${config.getAppUrl()}/invite-choose`,
+      };
     }
 
     const finalMembershipInvite = membershipInvite ?? pendingInvitations?.[0];
@@ -233,10 +263,10 @@ export async function performLogin(
           },
           "Error during login flow."
         );
-        res.redirect(
-          `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
-        );
-        return;
+        return {
+          kind: "redirect",
+          url: `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`,
+        };
       }
 
       // Delete newly created user if SSO is mandatory.
@@ -258,16 +288,18 @@ export async function performLogin(
         "SSO enforcement : redirecting to SSO login."
       );
 
-      res.redirect(
-        `/api/workos/logout?returnTo=${encodeURIComponent(ssoLoginUrl)}`
-      );
-      return;
+      return {
+        kind: "redirect",
+        url: `/api/workos/logout?returnTo=${encodeURIComponent(ssoLoginUrl)}`,
+      };
     }
 
     const { flow, workspace } = result.value;
     if (flow === "no-auto-join" || flow === "revoked") {
-      res.redirect(`${config.getAppUrl()}/no-workspace?flow=${flow}`);
-      return;
+      return {
+        kind: "redirect",
+        url: `${config.getAppUrl()}/no-workspace?flow=${flow}`,
+      };
     }
 
     targetWorkspace = workspace;
@@ -276,8 +308,10 @@ export async function performLogin(
 
   const u = await getUserFromSession(session);
   if (!u || u.workspaces.length === 0) {
-    res.redirect(`${config.getAppUrl()}/no-workspace?flow=revoked`);
-    return;
+    return {
+      kind: "redirect",
+      url: `${config.getAppUrl()}/no-workspace?flow=revoked`,
+    };
   }
 
   const redirectOptions: Parameters<typeof buildPostLoginUrl>[1] = {
@@ -288,12 +322,7 @@ export async function performLogin(
   await user.recordLoginActivity();
 
   if (targetWorkspace) {
-    const forwarded = req.headers["x-forwarded-for"];
-    const ip = forwarded
-      ? (Array.isArray(forwarded) ? forwarded[0] : forwarded)
-          .split(",")[0]
-          .trim()
-      : req.socket?.remoteAddress;
+    const ip = resolveClientIp(request);
     void emitAuditLogEventDirect({
       workspace: targetWorkspace,
       action: "user.login",
@@ -329,24 +358,26 @@ export async function performLogin(
     if (join && conversationId) {
       redirectOptions.conversationId = conversationId;
     }
-    res.redirect(buildPostLoginUrl(targetWorkspace.sId, redirectOptions));
-    return;
+    return {
+      kind: "redirect",
+      url: buildPostLoginUrl(targetWorkspace.sId, redirectOptions),
+    };
   }
 
   // If caller provided a safe deep-link returnTo, honor it over the default
   // workspace destination. This is used by the WorkOS callback to restore the
   // URL the user was originally trying to reach.
   if (returnTo) {
-    res.redirect(returnTo);
-    return;
+    return { kind: "redirect", url: returnTo };
   }
 
-  res.redirect(
-    buildPostLoginUrl(
+  return {
+    kind: "redirect",
+    url: buildPostLoginUrl(
       targetWorkspace?.sId ?? u.workspaces[0].sId,
       redirectOptions
-    )
-  );
+    ),
+  };
 }
 
 const buildPostLoginUrl = (
