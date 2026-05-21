@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 /** @ignoreswagger */
 import { runPreStop } from "@app/lib/api/prestop";
 import logger from "@app/logger/logger";

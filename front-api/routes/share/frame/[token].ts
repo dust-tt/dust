@@ -1,16 +1,13 @@
-// @migration-status: MIGRATED_TO_HONO
-
-/** @ignoreswagger */
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { lookupShareToken } from "@app/lib/api/regions/lookup";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isInteractiveContentType } from "@app/types/files";
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { HandlerResult } from "@front-api/middleware/utils";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 
 export interface GetShareFrameMetadataResponseBody {
   requiresEmailVerification: boolean;
@@ -21,23 +18,12 @@ export interface GetShareFrameMetadataResponseBody {
   workspaceName: string;
 }
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetShareFrameMetadataResponseBody>>
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "Only GET method is supported.",
-      },
-    });
-  }
+const app = new Hono();
 
-  const { token } = req.query;
-  if (typeof token !== "string") {
-    return apiError(req, res, {
+app.get("/", async (ctx): HandlerResult<GetShareFrameMetadataResponseBody> => {
+  const token = ctx.req.param("token");
+  if (!token) {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -59,20 +45,23 @@ async function handler(
       }
       if (lookupResult.isOk() && lookupResult.value) {
         const region = lookupResult.value;
-        return res.status(400).json({
-          error: {
-            type: "workspace_in_different_region",
-            message: "File is located in a different region",
-            redirect: {
-              region,
-              url: regionConfig.getRegionUrl(region),
+        return ctx.json(
+          {
+            error: {
+              type: "workspace_in_different_region",
+              message: "File is located in a different region",
+              redirect: {
+                region,
+                url: regionConfig.getRegionUrl(region),
+              },
             },
           },
-        });
+          400
+        );
       }
     }
 
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -85,7 +74,7 @@ async function handler(
 
   // Only allow Frame files.
   if (!isInteractiveContentType(file.contentType)) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -96,7 +85,7 @@ async function handler(
 
   const workspace = await WorkspaceResource.fetchByModelId(file.workspaceId);
   if (!workspace) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -110,7 +99,7 @@ async function handler(
     shareScope === "public" &&
     !workspace.canShareInteractiveContentPublicly
   ) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -121,8 +110,8 @@ async function handler(
 
   const shareUrl = `${config.getAppUrl()}/share/frame/${token}`;
 
-  // Only show the email verification form if the scope supports email invites AND there are active
-  // grants.
+  // Only show the email verification form if the scope supports email
+  // invites AND there are active grants.
   const isEmailScope =
     shareScope === "emails_only" || shareScope === "workspace_and_emails";
   const hasActiveGrants = isEmailScope
@@ -130,7 +119,7 @@ async function handler(
     : false;
   const requiresEmailVerification = isEmailScope && hasActiveGrants;
 
-  res.status(200).json({
+  return ctx.json({
     requiresEmailVerification,
     shareUrl,
     title: file.fileName,
@@ -138,6 +127,6 @@ async function handler(
     workspaceId: workspace.sId,
     workspaceName: workspace.name,
   });
-}
+});
 
-export default withLogging(handler);
+export default app;
