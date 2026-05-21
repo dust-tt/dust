@@ -1,7 +1,11 @@
-import { getMCPConnectionAccessToken } from "@app/lib/api/data_classification_labels";
+import {
+  resolveLabelSource,
+  type ResolvedLabelSource,
+} from "@app/lib/api/data_classification_labels";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
+import { Err, Ok } from "@app/types/shared/result";
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
 
@@ -12,8 +16,7 @@ vi.mock(import("@app/lib/api/data_classification_labels"), async (orig) => {
   const mod = await orig();
   return {
     ...mod,
-    getConnectorAccessToken: vi.fn().mockResolvedValue(null),
-    getMCPConnectionAccessToken: vi.fn().mockResolvedValue(null),
+    resolveLabelSource: vi.fn(),
     getMicrosoftSensitivityLabels: vi.fn().mockResolvedValue([
       { id: "label-1", name: "Confidential" },
       { id: "label-2", name: "Public" },
@@ -21,18 +24,31 @@ vi.mock(import("@app/lib/api/data_classification_labels"), async (orig) => {
   };
 });
 
-vi.mock(
-  import("@app/lib/actions/mcp_internal_actions/constants"),
-  async (orig) => {
-    const mod = await orig();
-    return {
-      ...mod,
-      getSensitivityLabelProviderForServerId: vi.fn((sId: string) =>
-        sId === "supported-mcp-server" ? "microsoft" : null
-      ),
-    };
-  }
-);
+function mockResolveLabelSource(result: ResolvedLabelSource) {
+  vi.mocked(resolveLabelSource).mockResolvedValue(new Ok(result));
+}
+
+function mockResolveLabelSourceError(
+  type:
+    | "data_source_not_found"
+    | "not_microsoft_connector"
+    | "unsupported_mcp_server",
+  message: string
+) {
+  vi.mocked(resolveLabelSource).mockResolvedValue(new Err({ type, message }));
+}
+
+const DEFAULT_MCP_SOURCE: ResolvedLabelSource = {
+  sourceType: "mcp_connection",
+  sourceId: "supported-mcp-server",
+  connectorId: null,
+  accessToken: null,
+};
+
+const MCP_SOURCE_WITH_TOKEN: ResolvedLabelSource = {
+  ...DEFAULT_MCP_SOURCE,
+  accessToken: "fake-access-token",
+};
 
 async function setupTest({
   role = "admin" as MembershipRoleType,
@@ -99,6 +115,10 @@ describe("Validation /api/w/[wId]/data-classification-labels", () => {
   });
 
   it("returns 400 for unsupported MCP server", async () => {
+    mockResolveLabelSourceError(
+      "unsupported_mcp_server",
+      "Unsupported MCP server for data classification: unsupported-mcp-server"
+    );
     const { req, res } = await setupTest();
     req.query.internalMCPServerId = "unsupported-mcp-server";
 
@@ -113,6 +133,7 @@ describe("Validation /api/w/[wId]/data-classification-labels", () => {
 
 describe("GET /api/w/[wId]/data-classification-labels (MCP path)", () => {
   it("returns empty labels and allowedLabels when no config exists and no access token", async () => {
+    mockResolveLabelSource(DEFAULT_MCP_SOURCE);
     const { req, res } = await setupTest();
     req.query.internalMCPServerId = "supported-mcp-server";
 
@@ -125,10 +146,7 @@ describe("GET /api/w/[wId]/data-classification-labels (MCP path)", () => {
   });
 
   it("returns labels from Microsoft when access token is available", async () => {
-    vi.mocked(getMCPConnectionAccessToken).mockResolvedValueOnce(
-      "fake-access-token"
-    );
-
+    mockResolveLabelSource(MCP_SOURCE_WITH_TOKEN);
     const { req, res } = await setupTest();
     req.query.internalMCPServerId = "supported-mcp-server";
 
@@ -148,6 +166,7 @@ describe("GET /api/w/[wId]/data-classification-labels (MCP path)", () => {
 
 describe("POST /api/w/[wId]/data-classification-labels (MCP path)", () => {
   it("returns 400 when allowedLabels is missing", async () => {
+    mockResolveLabelSource(DEFAULT_MCP_SOURCE);
     const { req, res } = await setupTest({ method: "POST" });
     req.body = {
       internalMCPServerId: "supported-mcp-server",
@@ -160,6 +179,7 @@ describe("POST /api/w/[wId]/data-classification-labels (MCP path)", () => {
   });
 
   it("saves allowed labels for MCP connection", async () => {
+    mockResolveLabelSource(DEFAULT_MCP_SOURCE);
     const { req, res } = await setupTest({ method: "POST" });
     req.body = {
       internalMCPServerId: "supported-mcp-server",
@@ -177,6 +197,7 @@ describe("POST /api/w/[wId]/data-classification-labels (MCP path)", () => {
   });
 
   it("saves empty allowed labels", async () => {
+    mockResolveLabelSource(DEFAULT_MCP_SOURCE);
     const { req, res } = await setupTest({ method: "POST" });
     req.body = {
       internalMCPServerId: "supported-mcp-server",
@@ -194,6 +215,10 @@ describe("POST /api/w/[wId]/data-classification-labels (MCP path)", () => {
 
 describe("GET /api/w/[wId]/data-classification-labels (connector path)", () => {
   it("returns 404 for non-existent data source", async () => {
+    mockResolveLabelSourceError(
+      "data_source_not_found",
+      "The data source was not found."
+    );
     const { req, res } = await setupTest();
     req.query.dataSourceId = "non-existent-ds";
 
@@ -209,6 +234,7 @@ describe("GET /api/w/[wId]/data-classification-labels (connector path)", () => {
 describe("Method support /api/w/[wId]/data-classification-labels", () => {
   it("returns 405 for unsupported methods", async () => {
     for (const method of ["DELETE", "PUT", "PATCH"] as const) {
+      mockResolveLabelSource(DEFAULT_MCP_SOURCE);
       const { req, res } = await setupTest({ method });
       // For non-GET methods, source is read from req.body.
       req.body = {

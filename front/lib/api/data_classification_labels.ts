@@ -1,11 +1,15 @@
+import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import config from "@app/lib/api/config";
 import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { Err, Ok } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { Client as GraphClient } from "@microsoft/microsoft-graph-client";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -89,6 +93,123 @@ export async function getMCPConnectionAccessToken(
     return tokRes.value.access_token;
   }
   return null;
+}
+
+// ── Source resolution helper ─────────────────────────────────────────────────
+
+export type ResolveSourceErrorType =
+  | "data_source_not_found"
+  | "not_microsoft_connector"
+  | "unsupported_mcp_server";
+
+export type ResolvedLabelSourceError = {
+  type: ResolveSourceErrorType;
+  message: string;
+};
+
+export function resolveSourceErrorToApiError(
+  errorType: ResolveSourceErrorType,
+  message: string
+) {
+  switch (errorType) {
+    case "data_source_not_found":
+      return {
+        status_code: 404 as const,
+        api_error: { type: "data_source_not_found" as const, message },
+      };
+    case "not_microsoft_connector":
+    case "unsupported_mcp_server":
+      return {
+        status_code: 400 as const,
+        api_error: { type: "invalid_request_error" as const, message },
+      };
+    default:
+      assertNever(errorType);
+  }
+}
+
+export type ResolvedLabelSource =
+  | {
+      sourceType: "connector";
+      sourceId: string;
+      connectorId: string | null;
+      accessToken: string | null;
+    }
+  | {
+      sourceType: "mcp_connection";
+      sourceId: string;
+      connectorId: null;
+      accessToken: string | null;
+    };
+
+export async function resolveLabelSource(
+  auth: Authenticator,
+  source: { dataSourceId?: string; internalMCPServerId?: string }
+): Promise<Result<ResolvedLabelSource, ResolvedLabelSourceError>> {
+  const { dataSourceId, internalMCPServerId } = source;
+
+  if (dataSourceId) {
+    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+    if (!dataSource) {
+      return new Err({
+        type: "data_source_not_found",
+        message: "The data source was not found.",
+      });
+    }
+
+    if (dataSource.connectorProvider !== "microsoft") {
+      return new Err({
+        type: "not_microsoft_connector",
+        message:
+          "Data classification labels are only supported for Microsoft connectors.",
+      });
+    }
+
+    const accessToken = await getConnectorAccessToken(dataSource);
+    if (!accessToken) {
+      logger.warn(
+        { dataSourceId },
+        "No access token for connector label fetch"
+      );
+    }
+
+    return new Ok({
+      sourceType: "connector",
+      sourceId: dataSource.sId,
+      connectorId: dataSource.connectorId ?? null,
+      accessToken,
+    });
+  }
+
+  // MCP connection path.
+  const resolvedProvider = getSensitivityLabelProviderForServerId(
+    internalMCPServerId as string
+  );
+
+  if (!resolvedProvider) {
+    return new Err({
+      type: "unsupported_mcp_server",
+      message: `Unsupported MCP server for data classification: ${internalMCPServerId}`,
+    });
+  }
+
+  const accessToken = await getMCPConnectionAccessToken(
+    auth,
+    internalMCPServerId as string
+  );
+  if (!accessToken) {
+    logger.warn(
+      { internalMCPServerId },
+      "No access token for MCP connection label fetch"
+    );
+  }
+
+  return new Ok({
+    sourceType: "mcp_connection",
+    sourceId: internalMCPServerId as string,
+    connectorId: null,
+    accessToken,
+  });
 }
 
 export async function getMicrosoftSensitivityLabels(

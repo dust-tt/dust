@@ -1,18 +1,16 @@
 /** @ignoreswagger */
-import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import {
-  getConnectorAccessToken,
-  getMCPConnectionAccessToken,
   getMicrosoftSensitivityLabels,
   type MicrosoftSensitivityLabel,
   parseAllowedLabelsConfig,
+  resolveLabelSource,
+  resolveSourceErrorToApiError,
 } from "@app/lib/api/data_classification_labels";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkspaceSensitivityLabelConfigType } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import logger from "@app/logger/logger";
@@ -95,80 +93,15 @@ async function handler(
       },
     });
   }
-  const { dataSourceId, internalMCPServerId } = sourceValidation.data;
 
-  // ── Resolve sourceType, sourceId, and access token ───────────────
-
-  let sourceType: "connector" | "mcp_connection";
-  let sourceId: string;
-  let accessToken: string | null;
-  let resolvedConnectorId: string | null = null;
-
-  if (dataSourceId) {
-    // Connector path.
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
-    if (!dataSource) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "data_source_not_found",
-          message: "The data source was not found.",
-        },
-      });
-    }
-
-    if (dataSource.connectorProvider !== "microsoft") {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Data classification labels are only supported for Microsoft connectors.",
-        },
-      });
-    }
-
-    sourceType = "connector";
-    sourceId = dataSource.sId;
-    resolvedConnectorId = dataSource.connectorId ?? null;
-    accessToken = await getConnectorAccessToken(dataSource);
-
-    if (!accessToken) {
-      logger.warn(
-        { dataSourceId },
-        "No access token for connector label fetch"
-      );
-    }
-  } else {
-    // MCP connection path.
-    const resolvedProvider = getSensitivityLabelProviderForServerId(
-      internalMCPServerId as string
-    );
-
-    if (!resolvedProvider) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Unsupported MCP server for data classification: ${internalMCPServerId}`,
-        },
-      });
-    }
-
-    sourceType = "mcp_connection";
-    sourceId = internalMCPServerId as string;
-    accessToken = await getMCPConnectionAccessToken(
-      auth,
-      internalMCPServerId as string
-    );
-
-    if (!accessToken) {
-      logger.warn(
-        { internalMCPServerId },
-        "No access token for MCP connection label fetch"
-      );
-    }
+  const sourceResult = await resolveLabelSource(auth, sourceValidation.data);
+  if (sourceResult.isErr()) {
+    const { type, message } = sourceResult.error;
+    return apiError(req, res, resolveSourceErrorToApiError(type, message));
   }
+
+  const { sourceType, sourceId, connectorId: resolvedConnectorId, accessToken } =
+    sourceResult.value;
 
   // ── Handle request methods ────────────────────────────────────────────────
 
