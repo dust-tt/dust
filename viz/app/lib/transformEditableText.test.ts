@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 // Helper: extract the text content of every data-editable span in the
 // transformed output, in document order.
 function spanContents(output: string): string[] {
-  const matches = [...output.matchAll(/<span[^>]*data-editable[^>]*>(.*?)<\/span>/gs)];
+  const matches = [
+    ...output.matchAll(/<span[^>]*data-editable[^>]*>(.*?)<\/span>/gs),
+  ];
   return matches.map((m) => m[1]);
 }
 
@@ -55,7 +57,9 @@ function Foo() {
     const code = `function Foo() { return <p>The Alps host <strong>340</strong> resorts.</p>; }`;
     const out = transformEditableText(code);
     // The raw text for "The Alps host " includes the trailing space.
-    expect(out).toContain(`data-raw-text="${encodeURIComponent("The Alps host ")}"`);
+    expect(out).toContain(
+      `data-raw-text="${encodeURIComponent("The Alps host ")}"`
+    );
     // The raw text for " resorts." includes the leading space.
     expect(out).toContain(`data-raw-text="${encodeURIComponent(" resorts.")}"`);
   });
