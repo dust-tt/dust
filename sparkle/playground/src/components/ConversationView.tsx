@@ -863,7 +863,6 @@ export function ConversationView({
         <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
           <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
             <InputBar
-              placeholder="Ask a question"
               className="s-shadow-xl"
               onSend={validationDisplayMode === "sheet" ? onSend : undefined}
             />

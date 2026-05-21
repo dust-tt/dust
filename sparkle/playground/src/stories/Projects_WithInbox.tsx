@@ -1680,7 +1680,7 @@ function DustMain() {
           <div className="s-heading-2xl s-text-foreground">
             Welcome, Edouard!{" "}
           </div>
-          <InputBar placeholder="Ask a question" />
+          <InputBar />
           <div className="s-flex s-w-full s-flex-col s-gap-2">
             <div className="s-heading-lg s-text-foreground">
               Universal search

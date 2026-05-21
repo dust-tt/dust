@@ -1442,7 +1442,7 @@ export function AgentBuilderView({
                         />
                       </div>
                       <InputBar
-                        placeholder="Ask Sidekick to help build your agent"
+                        placeholder="Build your agent with Sidekick"
                         instructionReference={instructionReference}
                         onInstructionInserted={() =>
                           setInstructionReference(null)
