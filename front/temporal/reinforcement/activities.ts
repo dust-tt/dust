@@ -460,17 +460,18 @@ export async function recordSelfImprovingSkillsUsageActivity({
     const runs = await RunResource.listByDustRunIds(auth, {
       dustRunIds: allDustRunIds,
     });
+    const runByModelId = new Map(runs.map((run) => [run.id, run]));
+    const runUsages = await RunResource.listRunUsagesForRuns(auth, { runs });
 
-    for (const run of runs) {
-      const usages = await run.listRunUsages(auth);
-      const runCostMicroUsd = usages.reduce(
-        (sum, usage) => sum + usage.costMicroUsd,
-        0
-      );
+    for (const usage of runUsages) {
+      const dustRunId = runByModelId.get(usage.runModelId)?.dustRunId;
+      if (!dustRunId) {
+        continue;
+      }
 
       runCostMicroUsdByDustRunId.set(
-        run.dustRunId,
-        (runCostMicroUsdByDustRunId.get(run.dustRunId) ?? 0) + runCostMicroUsd
+        dustRunId,
+        (runCostMicroUsdByDustRunId.get(dustRunId) ?? 0) + usage.costMicroUsd
       );
     }
   }

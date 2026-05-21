@@ -176,7 +176,7 @@ export class RunResource extends BaseResource<RunModel> {
     }: {
       runs: RunResource[];
     }
-  ): Promise<RunUsageType[]> {
+  ): Promise<(RunUsageType & { runModelId: ModelId })[]> {
     const runModelIds = runs.map((run) => run.id);
     if (runModelIds.length === 0) {
       return [];
@@ -190,6 +190,7 @@ export class RunResource extends BaseResource<RunModel> {
     });
 
     return usages.map((usage) => ({
+      runModelId: usage.runId,
       completionTokens: usage.completionTokens,
       modelId: usage.modelId as ModelIdType,
       promptTokens: usage.promptTokens,
@@ -412,7 +413,11 @@ export class RunResource extends BaseResource<RunModel> {
   }
 
   async listRunUsages(auth: Authenticator): Promise<RunUsageType[]> {
-    return RunResource.listRunUsagesForRuns(auth, { runs: [this] });
+    const usages = await RunResource.listRunUsagesForRuns(auth, {
+      runs: [this],
+    });
+
+    return usages.map(({ runModelId, ...usage }) => usage);
   }
 }
 
