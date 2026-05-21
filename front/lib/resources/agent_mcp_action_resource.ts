@@ -55,6 +55,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -204,26 +205,28 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       blob.toolConfiguration.toolServerId
     );
 
-    const action = await AgentMCPActionModel.create(
-      {
-        ...blob,
-        workspaceId: workspace.id,
-      },
-      { transaction }
-    );
+    const action = await withTransaction(async (t) => {
+      const action = await AgentMCPActionModel.create(
+        {
+          ...blob,
+          workspaceId: workspace.id,
+        },
+        { transaction: t }
+      );
 
-    await AgentStepContentToolExecutionModel.create(
-      {
-        workspaceId: workspace.id,
-        agentMessageId: blob.agentMessageId,
-        conversationId: conversation.id,
-        agentMCPActionId: action.id,
-        stepContentId: stepContent.id,
-      },
-      {
-        transaction,
-      }
-    );
+      await AgentStepContentToolExecutionModel.create(
+        {
+          workspaceId: workspace.id,
+          agentMessageId: blob.agentMessageId,
+          conversationId: conversation.id,
+          agentMCPActionId: action.id,
+          stepContentId: stepContent.id,
+        },
+        { transaction: t }
+      );
+
+      return action;
+    }, transaction);
 
     assert(
       stepContent.isFunctionCallContent(),
