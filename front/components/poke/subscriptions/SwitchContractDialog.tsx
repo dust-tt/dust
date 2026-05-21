@@ -17,6 +17,7 @@ import {
   usePokePlans,
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
+import assert from "@app/lib/utils/assert";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -34,7 +35,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import assert from "assert";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
