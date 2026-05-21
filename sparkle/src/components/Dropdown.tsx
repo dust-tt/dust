@@ -655,33 +655,39 @@ const DropdownMenuRadioItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
   MutuallyExclusiveProps<
     React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>,
-    LabelAndIconProps & { description?: string }
+    LabelAndIconProps & { description?: string; endComponent?: React.ReactNode }
   >
->(({ className, children, description, label, icon, ...props }, ref) => (
-  <DropdownMenuPrimitive.RadioItem
-    ref={ref}
-    className={cn(
-      menuStyleClasses.item({ variant: "default" }),
-      menuStyleClasses.inset,
-      "s-group/dropdown-radio",
-      className
-    )}
-    {...props}
-  >
-    <span className={cn("s-absolute s-left-2", radioStyles({ size: "xs" }))}>
-      <DropdownMenuPrimitive.ItemIndicator>
-        <div className={radioIndicatorStyles({ size: "xs" })} />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
-    <ItemWithLabelIconAndDescription
-      label={label}
-      icon={icon}
-      description={description}
+>(
+  (
+    { className, children, description, label, icon, endComponent, ...props },
+    ref
+  ) => (
+    <DropdownMenuPrimitive.RadioItem
+      ref={ref}
+      className={cn(
+        menuStyleClasses.item({ variant: "default" }),
+        menuStyleClasses.inset,
+        "s-group/dropdown-radio",
+        className
+      )}
+      {...props}
     >
-      {children}
-    </ItemWithLabelIconAndDescription>
-  </DropdownMenuPrimitive.RadioItem>
-));
+      <span className={cn("s-absolute s-left-2", radioStyles({ size: "xs" }))}>
+        <DropdownMenuPrimitive.ItemIndicator>
+          <div className={radioIndicatorStyles({ size: "xs" })} />
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      <ItemWithLabelIconAndDescription
+        label={label}
+        icon={icon}
+        description={description}
+        endComponent={endComponent}
+      >
+        {children}
+      </ItemWithLabelIconAndDescription>
+    </DropdownMenuPrimitive.RadioItem>
+  )
+);
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
 interface DropdownMenuTagItemProps

@@ -98,6 +98,56 @@ export function useWorkspace({
   };
 }
 
+export function useUpdateWorkspaceRegionalModelsOnly({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { mutateWorkspace } = useWorkspace({ owner, disabled: true });
+
+  const updateWorkspaceRegionalModelsOnly = useCallback(
+    async (regionalModelsOnly: boolean): Promise<boolean> => {
+      setIsUpdating(true);
+      try {
+        const res = await clientFetch(`/api/w/${owner.sId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ regionalModelsOnly }),
+        });
+
+        if (!res.ok) {
+          sendNotification({
+            type: "error",
+            title: "Update failed",
+            description: "Failed to update regional models setting.",
+          });
+          return false;
+        }
+
+        await mutateWorkspace();
+        sendNotification({
+          type: "success",
+          title: "Regional models setting updated",
+          description: regionalModelsOnly
+            ? "Only regional models are now available in this workspace."
+            : "All models are now available in this workspace.",
+        });
+        return true;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [owner.sId, mutateWorkspace, sendNotification]
+  );
+
+  return {
+    updateWorkspaceRegionalModelsOnly,
+    isUpdatingWorkspaceRegionalModelsOnly: isUpdating,
+  };
+}
+
 export function useWorkspaceSubscriptions({
   owner,
   disabled,

@@ -56,6 +56,7 @@ import {
   isProgrammaticUsage,
 } from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -740,7 +741,12 @@ export async function postUserMessage(
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
       supportedModelConfig &&
-      !isModelAvailable(supportedModelConfig, featureFlags, plan)
+      !isModelAvailable(supportedModelConfig, {
+        featureFlags,
+        plan,
+        owner,
+        region: regionConfig.getCurrentRegion(),
+      })
     ) {
       return new Err({
         status_code: 400,
