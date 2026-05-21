@@ -129,6 +129,36 @@ interface StreamConversationToSlackParams {
   feedbackVisibleToAuthorOnly: boolean;
 }
 
+async function runBestEffortSlackCleanup({
+  planHandler,
+  streamHandler,
+  logContext,
+}: {
+  planHandler: PlanMessageHandler;
+  streamHandler: SlackStreamHandler;
+  logContext: Record<string, unknown>;
+}): Promise<void> {
+  planHandler.abortAllChildStreams();
+
+  try {
+    await planHandler.deletePlanMessage();
+  } catch (error) {
+    logger.warn(
+      { error, ...logContext },
+      "Failed to delete Slack plan message while cleaning up Slack stream."
+    );
+  }
+
+  try {
+    await streamHandler.stop();
+  } catch (error) {
+    logger.warn(
+      { error, ...logContext },
+      "Failed to stop Slack stream while cleaning up Slack stream."
+    );
+  }
+}
+
 export async function streamConversationToSlack(
   dustAPI: DustAPI,
   conversationData: StreamConversationToSlackParams
@@ -180,9 +210,14 @@ export async function streamConversationToSlack(
     );
   } finally {
     // Cleanup streams and plan message on unexpected error
-    planHandler.abortAllChildStreams();
-    await planHandler.deletePlanMessage();
-    await streamHandler.stop();
+    await runBestEffortSlackCleanup({
+      planHandler,
+      streamHandler,
+      logContext: {
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+      },
+    });
   }
 }
 
@@ -200,35 +235,32 @@ type SlackUserActionType = Extract<
   | "tool_ask_user_question"
 >;
 
-const SLACK_USER_ACTION_IDLE_TIMEOUT_MS = 4 * 60 * 1000 + 30 * 1000; // 4.5 minutes
+export const SLACK_USER_ACTION_IDLE_TIMEOUT_MS = 4 * 60 * 1000 + 30 * 1000; // 4.5 minutes
+
+function getUserActionLabel(actionType: SlackUserActionType): string {
+  switch (actionType) {
+    case "tool_approve_execution":
+      return "tool execution approval";
+    case "tool_file_auth_required":
+      return "file access authorization";
+    case "tool_personal_auth_required":
+      return "tool authentication";
+    case "tool_ask_user_question":
+      return "response to a question";
+    default:
+      assertNever(actionType);
+  }
+}
+
+function getContinueOnDustSuffix(conversationUrl: string | null): string {
+  return conversationUrl ? ` <${conversationUrl}|Continue on Dust>.` : "";
+}
 
 function getUserActionFallbackMessage(
   actionType: SlackUserActionType,
   conversationUrl: string | null
 ): string {
-  let actionLabel: string;
-  switch (actionType) {
-    case "tool_approve_execution":
-      actionLabel = "tool execution approval";
-      break;
-    case "tool_file_auth_required":
-      actionLabel = "file access authorization";
-      break;
-    case "tool_personal_auth_required":
-      actionLabel = "tool authentication";
-      break;
-    case "tool_ask_user_question":
-      actionLabel = "response to a question";
-      break;
-    default:
-      assertNever(actionType);
-  }
-
-  const urlPart = conversationUrl
-    ? ` <${conversationUrl}|Continue on Dust>.`
-    : "";
-
-  return `:hourglass_flowing_sand: _Streaming was interrupted after 5 mins waiting on a ${actionLabel}.${urlPart}_`;
+  return `:hourglass_flowing_sand: _Streaming was interrupted after 5 mins waiting on a ${getUserActionLabel(actionType)}.${getContinueOnDustSuffix(conversationUrl)}_`;
 }
 
 async function streamAgentAnswerToSlack(
@@ -343,6 +375,21 @@ async function streamAgentAnswerToSlack(
     );
   };
 
+  const postUserActionEphemeral = async <T extends { text: string }>(
+    payload: T
+  ): Promise<void> => {
+    if (!slackUserId || slackUserInfo.is_bot) {
+      return;
+    }
+
+    await slackClient.chat.postEphemeral({
+      ...payload,
+      channel: slackChannelId,
+      thread_ts: slackMessageTs,
+      user: slackUserId,
+    });
+  };
+
   async function* eventStreamWithTimeoutCleanup() {
     try {
       yield* eventStream;
@@ -408,19 +455,14 @@ async function streamAgentAnswerToSlack(
         await planHandler.upsertPlanMessage(AWAITING_TOOL_APPROVAL_LABEL);
         await streamHandler.setThinking(AWAITING_TOOL_APPROVAL_LABEL);
 
-        if (slackUserId && !slackUserInfo.is_bot) {
-          await slackClient.chat.postEphemeral({
-            channel: slackChannelId,
-            user: slackUserId,
-            text: "Approve tool execution",
-            blocks: makeToolValidationBlock({
-              agentName: event.metadata.agentName,
-              toolName: event.metadata.toolName,
-              id: JSON.stringify(blockId),
-            }),
-            thread_ts: slackMessageTs,
-          });
-        }
+        await postUserActionEphemeral({
+          text: "Approve tool execution",
+          blocks: makeToolValidationBlock({
+            agentName: event.metadata.agentName,
+            toolName: event.metadata.toolName,
+            id: JSON.stringify(blockId),
+          }),
+        });
         break;
       }
 
@@ -433,9 +475,7 @@ async function streamAgentAnswerToSlack(
         );
 
         if (slackUserId && !slackUserInfo.is_bot && conversationUrl) {
-          await slackClient.chat.postEphemeral({
-            channel: slackChannelId,
-            user: slackUserId,
+          await postUserActionEphemeral({
             text: "Personal authentication required",
             blocks: makeToolAuthenticationBlock({
               agentName: event.metadata.agentName,
@@ -446,7 +486,6 @@ async function streamAgentAnswerToSlack(
                 messageId: event.messageId,
               }),
             }),
-            thread_ts: slackMessageTs,
           });
 
           pendingPersonalAuth = {
@@ -472,9 +511,7 @@ async function streamAgentAnswerToSlack(
         );
 
         if (slackUserId && !slackUserInfo.is_bot && conversationUrl) {
-          await slackClient.chat.postEphemeral({
-            channel: slackChannelId,
-            user: slackUserId,
+          await postUserActionEphemeral({
             text: "File authorization required",
             blocks: makeToolFileAuthorizationBlock({
               agentName: event.metadata.agentName,
@@ -485,7 +522,6 @@ async function streamAgentAnswerToSlack(
                 messageId: event.messageId,
               }),
             }),
-            thread_ts: slackMessageTs,
           });
         }
 
@@ -810,18 +846,13 @@ async function streamAgentAnswerToSlack(
           slackChatBotMessageId: slackChatBotMessage.id,
         });
 
-        if (slackUserId && !slackUserInfo.is_bot) {
-          await slackClient.chat.postEphemeral({
-            channel: slackChannelId,
-            user: slackUserId,
-            text: event.question.question,
-            blocks: makeUserQuestionBlock({
-              question: event.question,
-              value: questionValue,
-            }),
-            thread_ts: slackMessageTs,
-          });
-        }
+        await postUserActionEphemeral({
+          text: event.question.question,
+          blocks: makeUserQuestionBlock({
+            question: event.question,
+            value: questionValue,
+          }),
+        });
         break;
       }
 
