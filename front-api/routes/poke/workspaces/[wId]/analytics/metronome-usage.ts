@@ -4,14 +4,14 @@ import {
   MetronomeUsageQuerySchema,
 } from "@app/lib/api/analytics/metronome_usage";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { workspaceApp } from "@front-api/middlewares/ctx";
+import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 export type { GetMetronomeUsageResponse };
 
-// Mounted at /api/w/:wId/analytics/metronome-usage.
-const app = workspaceApp();
+// Mounted at /api/poke/workspaces/:wId/analytics/metronome-usage.
+const app = pokeApp();
 
 app.get("/", validate("query", MetronomeUsageQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
