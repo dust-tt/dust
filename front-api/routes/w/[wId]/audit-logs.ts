@@ -7,6 +7,7 @@ import {
 import config from "@app/lib/api/config";
 import { generateWorkOSAdminPortalUrl } from "@app/lib/api/workos/organization";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { Hono } from "hono";
@@ -77,6 +78,8 @@ app.post(
         workOSIntent = WorkOSPortalIntent.LogStreams;
         action = "audit_log.export_configured";
         break;
+      default:
+        assertNever(portal);
     }
 
     const returnUrl = `${config.getAppUrl()}/w/${owner.sId}/members`;
