@@ -194,17 +194,24 @@ function parseEgressHealthcheckOutput(
   // DNS interception alone isn't load-bearing without the generic UDP/ICMP/
   // IPv6 drops and the broad TCP redirect to the forwarder. Treating a
   // partially damaged table as healthy would silently reopen non-53 UDP.
+  const nftablesOk =
+    data.nft_dns_udp_redirect_ok &&
+    data.nft_dns_tcp_redirect_ok &&
+    data.nft_dns_udp_accept_ok &&
+    data.nft_tcp_forward_redirect_ok &&
+    data.nft_udp_drop_ok &&
+    data.nft_icmp_drop_ok &&
+    data.nft_ipv6_drop_ok;
+  if (!nftablesOk) {
+    logger.warn(
+      { ...logContext, signals: data },
+      "Sandbox egress healthcheck aggregate failed; per-signal breakdown"
+    );
+  }
   return {
     portOk: data.forwarder_port_ok,
     resolverOk: data.resolver_udp_ok && data.resolver_tcp_ok,
-    nftablesOk:
-      data.nft_dns_udp_redirect_ok &&
-      data.nft_dns_tcp_redirect_ok &&
-      data.nft_dns_udp_accept_ok &&
-      data.nft_tcp_forward_redirect_ok &&
-      data.nft_udp_drop_ok &&
-      data.nft_icmp_drop_ok &&
-      data.nft_ipv6_drop_ok,
+    nftablesOk,
     bundleOk: data.bundle_ok,
   };
 }

@@ -87,8 +87,14 @@ fn run_healthcheck(args: &HealthcheckArgs) -> EgressHealthcheck {
         &ipv4_rules,
         &format!("tcp dport != 0 redirect to :{forwarder_port}"),
     );
-    let nft_udp_drop_ok = uid_rule(&ipv4_rules, "meta l4proto udp drop");
-    let nft_icmp_drop_ok = uid_rule(&ipv4_rules, "meta l4proto icmp drop");
+    // `nft list` may print `meta l4proto` matches either by name (`udp`,
+    // `icmp`) or by IANA protocol number (17, 1). Accept both so the check
+    // works regardless of how nft prints the ruleset on a given kernel/nft
+    // version.
+    let nft_udp_drop_ok = uid_rule(&ipv4_rules, "meta l4proto 17 drop")
+        || uid_rule(&ipv4_rules, "meta l4proto udp drop");
+    let nft_icmp_drop_ok = uid_rule(&ipv4_rules, "meta l4proto 1 drop")
+        || uid_rule(&ipv4_rules, "meta l4proto icmp drop");
     // The ip6 table has a single catch-all drop for the proxied uid; match on
     // the bare `drop` verdict scoped to that uid.
     let nft_ipv6_drop_ok = uid_rule(&ipv6_rules, "drop");
@@ -246,5 +252,43 @@ table ip dust-egress {
             1004,
             "udp dport 53 redirect to :1053"
         ));
+    }
+
+    // `nft list table` normalizes `meta l4proto udp` to `meta l4proto 17`
+    // (and `icmp` to `1`) even though the install script writes the named
+    // form. The healthcheck accepts both so the verification doesn't depend
+    // on the printer's choice.
+    #[test]
+    fn matches_meta_l4proto_drops_in_numeric_form() {
+        let rules = r#"
+table ip dust-egress {
+  chain filter_output {
+    type filter hook output priority 0; policy accept;
+    meta skuid 1003 meta l4proto 17 drop
+    meta skuid 1003 meta l4proto 1 drop
+  }
+}
+"#;
+
+        assert!(contains_uid_rule(rules, 1003, "meta l4proto 17 drop"));
+        assert!(contains_uid_rule(rules, 1003, "meta l4proto 1 drop"));
+        assert!(!contains_uid_rule(rules, 1003, "meta l4proto udp drop"));
+        assert!(!contains_uid_rule(rules, 1003, "meta l4proto icmp drop"));
+    }
+
+    #[test]
+    fn matches_meta_l4proto_drops_in_named_form() {
+        let rules = r#"
+table ip dust-egress {
+  chain filter_output {
+    type filter hook output priority 0; policy accept;
+    meta skuid 1003 meta l4proto udp drop
+    meta skuid 1003 meta l4proto icmp drop
+  }
+}
+"#;
+
+        assert!(contains_uid_rule(rules, 1003, "meta l4proto udp drop"));
+        assert!(contains_uid_rule(rules, 1003, "meta l4proto icmp drop"));
     }
 }
