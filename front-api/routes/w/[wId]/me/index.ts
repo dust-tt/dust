@@ -1,4 +1,4 @@
-import { workspaceApp } from "@front-api/middleware/env";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 import pendingInvitations from "./pending-invitations";
 import slackNotifications from "./slack-notifications";

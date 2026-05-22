@@ -2,8 +2,8 @@ import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator } from "@app/lib/auth";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { sessionAuthApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { sessionApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetPokeWorkspaceAuthContextResponseType = {
   user: UserType;
@@ -16,12 +16,12 @@ export type GetPokeWorkspaceAuthContextResponseType = {
 
 // Mounted at /api/poke/workspaces/:wId/auth-context.
 //
-// This route deliberately does NOT use pokeWorkspaceAuth: when the workspace
+// This route deliberately does NOT use pokeAuth: when the workspace
 // is not found locally we still need to check whether it lives in another
 // region and respond with a redirect rather than a plain 404. pokeAuth is
 // inherited from the parent /poke sub-app and stashes the session, which we
 // use here to resolve a workspace-scoped Authenticator inline.
-const app = sessionAuthApp();
+const app = sessionApp();
 
 app.get(
   "/",

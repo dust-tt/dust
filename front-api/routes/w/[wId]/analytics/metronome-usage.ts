@@ -23,9 +23,9 @@ import {
 } from "@app/lib/metronome/constants";
 import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import logger from "@app/logger/logger";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const METRONOME_USAGE_GROUP_BY_KEYS = ["api_key", "model", "origin"] as const;

@@ -1,9 +1,9 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMcpConfigurationSummary } from "@app/lib/api/assistant/mcp_configurations";
 import { listAgentMcpConfigurationsForAgent } from "@app/lib/api/assistant/mcp_configurations";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type GetAgentMcpConfigurationsResponseBody = {
   configurations: AgentMcpConfigurationSummary[];

@@ -33,7 +33,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
-import { apiError, parseCookieHeader } from "@front-api/middleware/utils";
+import { apiError, parseCookieHeader } from "@front-api/middlewares/utils";
 import { OauthException } from "@workos-inc/node";
 import type { Context } from "hono";
 import { Hono } from "hono";

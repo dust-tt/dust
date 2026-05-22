@@ -1,7 +1,7 @@
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@dust-tt/client";
-import { publicApiApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
 // Re-exported so consumers can import the response type from the route
 // file, matching the convention of our other migrated routes.

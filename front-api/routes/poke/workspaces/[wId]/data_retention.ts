@@ -4,15 +4,15 @@ import {
   getConversationsDataRetention,
   getWorkspaceDataRetention,
 } from "@app/lib/data_retention";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type PokeGetDataRetentionResponseBody = {
   data: DataRetentionConfig;
 };
 
 // Mounted at /api/poke/workspaces/:wId/data_retention.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetDataRetentionResponseBody> => {
   const auth = ctx.get("auth");

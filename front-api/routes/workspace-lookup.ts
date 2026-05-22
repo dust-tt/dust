@@ -3,13 +3,13 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { LightWorkspaceType } from "@app/types/user";
-import { sessionAuthApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { sessionApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { z } from "zod";
 
-import { sessionAuth } from "../middleware/session_auth";
-import { validate } from "../middleware/validator";
+import { sessionAuth } from "../middlewares/session_auth";
+import { validate } from "../middlewares/validator";
 
 export type GetWorkspaceLookupResponseBody = {
   workspace: LightWorkspaceType;
@@ -21,7 +21,7 @@ const GetWorkspaceLookupQuerySchema = z.object({
   flow: z.enum(["no-auto-join", "revoked"]),
 });
 
-export const workspaceLookupApp = sessionAuthApp();
+export const workspaceLookupApp = sessionApp();
 
 workspaceLookupApp.use("*", sessionAuth);
 

@@ -3,10 +3,10 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import logger from "@app/logger/logger";
 import type { CoreAPISearchTagsResponse } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 export type PostTagSearchResponseBody = CoreAPISearchTagsResponse;

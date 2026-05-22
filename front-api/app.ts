@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 
-import { cors } from "./middleware/cors";
+import { cors } from "./middlewares/cors";
 import preStopApp from "./routes/[preStopSecret]";
 import { appStatusApp } from "./routes/app-status";
 import { loginApp } from "./routes/auth/login";

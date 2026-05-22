@@ -1,10 +1,10 @@
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
+import { pokeApp } from "@front-api/middlewares/ctx";
 
 import config from "./config";
 import document from "./document";
 import tables from "./tables";
 
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.route("/config", config);
 app.route("/document", document);

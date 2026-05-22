@@ -1,9 +1,9 @@
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { SKILL_SUGGESTION_SOURCES } from "@app/types/suggestions/skill_suggestion";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 export type PokeListSkillSuggestions = {
@@ -15,7 +15,7 @@ const DeleteSuggestionQuerySchema = z.object({
 });
 
 // Mounted at /api/poke/workspaces/:wId/skills/:sId/suggestions.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeListSkillSuggestions> => {
   const auth = ctx.get("auth");

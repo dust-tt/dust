@@ -2,9 +2,9 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { formatUTCDateFromMillis } from "@app/lib/api/elasticsearch";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { stringify } from "csv-stringify/sync";
 import { z } from "zod";
 

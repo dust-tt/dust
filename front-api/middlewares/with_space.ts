@@ -5,8 +5,8 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SpaceEnv, WorkspaceAuthEnv } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import type { SpaceCtx } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
 interface WithSpaceOptions {
@@ -57,7 +57,7 @@ function deriveAccessMethod(auth: Authenticator): string {
  * Apply after the auth middleware so `ctx.get("auth")` is available.
  */
 export function withSpace(options: WithSpaceOptions) {
-  return createMiddleware<WorkspaceAuthEnv & SpaceEnv>(async (ctx, next) => {
+  return createMiddleware<SpaceCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
     const spaceId = ctx.req.param("spaceId");
     if (!spaceId) {

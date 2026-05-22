@@ -1,9 +1,9 @@
 import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
 import type { APIErrorType } from "@app/types/error";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
-import { withSpace } from "@front-api/middleware/with_space";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 
 const PostStartProjectTaskBodySchema = z.object({

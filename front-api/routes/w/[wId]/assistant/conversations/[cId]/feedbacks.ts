@@ -1,7 +1,7 @@
 import { getConversationFeedbacksForUser } from "@app/lib/api/assistant/feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { workspaceApp } from "@front-api/middleware/env";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/feedbacks.
 const app = workspaceApp();

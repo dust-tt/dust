@@ -1,5 +1,5 @@
-import { pokeApp } from "@front-api/middleware/env";
-import { pokeAuth } from "@front-api/middleware/poke_auth";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { pokeAuth } from "@front-api/middlewares/poke_auth";
 
 import admin from "./admin";
 import authContext from "./auth-context";

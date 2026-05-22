@@ -7,9 +7,9 @@ import { Authenticator } from "@app/lib/auth";
 import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceAuthEnv } from "@front-api/middleware/env";
-import { resolveSession } from "@front-api/middleware/session_resolution";
-import { apiError } from "@front-api/middleware/utils";
+import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
+import { resolveSession } from "@front-api/middlewares/session_resolution";
+import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
 function workspaceAccessErrorToApiError(
@@ -94,7 +94,7 @@ interface WorkspaceAuthOptions {
  * catch-all), it short-circuits.
  */
 export const workspaceAuth = (opts: WorkspaceAuthOptions = {}) =>
-  createMiddleware<WorkspaceAuthEnv>(async (ctx, next) => {
+  createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
     if (ctx.get("auth")) {
       return next();
     }

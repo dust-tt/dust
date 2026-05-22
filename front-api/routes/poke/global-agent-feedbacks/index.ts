@@ -1,7 +1,7 @@
 import type { GlobalAgentFeedbackItem } from "@app/lib/api/poke/global_agent_feedbacks";
 import { listGlobalAgentFeedbacks } from "@app/lib/api/poke/global_agent_feedbacks";
-import { pokeApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export interface GetGlobalAgentFeedbacksResponseBody {
   feedbacks: GlobalAgentFeedbackItem[];

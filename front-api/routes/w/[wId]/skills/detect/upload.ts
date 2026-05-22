@@ -6,8 +6,8 @@ import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_ski
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 import type formidable from "formidable";
 
 // Mounted at /api/w/:wId/skills/detect/upload.

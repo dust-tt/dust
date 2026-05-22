@@ -9,7 +9,7 @@ import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { isString } from "@app/types/shared/utils/general";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
 
 interface EnrichmentResponse {

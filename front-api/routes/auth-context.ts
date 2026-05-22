@@ -1,11 +1,11 @@
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { fetchUserFromSession } from "@app/lib/iam/users";
-import { sessionAuthApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { sessionApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
-import { sessionAuth } from "../middleware/session_auth";
+import { sessionAuth } from "../middlewares/session_auth";
 
-export const authContextApp = sessionAuthApp();
+export const authContextApp = sessionApp();
 
 authContextApp.use("*", sessionAuth);
 

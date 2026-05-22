@@ -15,9 +15,9 @@ import logger from "@app/logger/logger";
 import type { SubscriptionType } from "@app/types/plan";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { pokeApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
@@ -36,7 +36,7 @@ export type GetPokeWorkspacesResponseBody = {
 // Note: the parent poke/index.ts already applies pokeAuth (super-user gate).
 // This sub-router handles the workspace LIST endpoint (GET /) and mounts the
 // per-workspace [wId] sub-app (which adds workspace resolution on top via
-// pokeWorkspaceAuth).
+// pokeAuth).
 const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {

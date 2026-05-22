@@ -1,5 +1,5 @@
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
 
 export type FetchAgentTemplateResponse = ReturnType<TemplateResource["toJSON"]>;

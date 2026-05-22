@@ -4,8 +4,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { UserType } from "@app/types/user";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type PokeGetTriggerDetails = {
   trigger: TriggerType;
@@ -14,7 +14,7 @@ export type PokeGetTriggerDetails = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/triggers/:tId/details.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetTriggerDetails> => {
   const auth = ctx.get("auth");

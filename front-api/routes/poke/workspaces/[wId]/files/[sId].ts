@@ -1,8 +1,8 @@
 import { readInteractiveContentFile } from "@app/lib/api/files/read";
 import type { FileTypeWithMetadata } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export interface GetPokeFileResponseBody {
   content: string;
@@ -10,7 +10,7 @@ export interface GetPokeFileResponseBody {
 }
 
 // Mounted at /api/poke/workspaces/:wId/files/:sId.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<GetPokeFileResponseBody> => {
   const auth = ctx.get("auth");

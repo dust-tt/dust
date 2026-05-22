@@ -5,9 +5,9 @@ import {
   getCacheResourceById,
 } from "@app/types/shared/cache_resource_registry";
 import { isString } from "@app/types/shared/utils/general";
-import { pokeApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
 
 export interface RedisCacheResult {

@@ -1,9 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
-import { sessionAuthApp } from "@front-api/middleware/env";
-import { sessionAuth } from "@front-api/middleware/session_auth";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { sessionApp } from "@front-api/middlewares/ctx";
+import { sessionAuth } from "@front-api/middlewares/session_auth";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const PostStripePortalRequestBody = z.object({
@@ -15,7 +15,7 @@ export type PostStripePortalResponseBody = {
 };
 
 // Mounted at /api/stripe/portal.
-const app = sessionAuthApp();
+const app = sessionApp();
 
 app.use("*", sessionAuth);
 

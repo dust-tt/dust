@@ -1,7 +1,7 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type GetWorkspaceSeatsCountResponseBody = {
   seatsCount: number;

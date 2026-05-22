@@ -1,5 +1,5 @@
 import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/mention_suggestions";
-import { workspaceApp } from "@front-api/middleware/env";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 // Mounted at /api/w/:wId/assistant/mentions/suggestions.
 const app = workspaceApp();

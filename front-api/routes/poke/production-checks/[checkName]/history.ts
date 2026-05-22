@@ -3,8 +3,8 @@ import {
   getRegisteredCheck,
 } from "@app/lib/api/poke/production_checks";
 import type { CheckHistoryRun } from "@app/types/production_checks";
-import { pokeApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetCheckHistoryResponseBody = {
   runs: CheckHistoryRun[];

@@ -1,4 +1,4 @@
-import { workspaceApp } from "@front-api/middleware/env";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import datasourceRetrieval from "./datasource-retrieval";
 import datasourceRetrievalDocuments from "./datasource-retrieval-documents";
 import errorRate from "./error_rate";

@@ -1,6 +1,6 @@
 import { parseMentionsInMarkdown } from "@app/lib/api/assistant/parse_mentions";
-import { workspaceApp } from "@front-api/middleware/env";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const ParseMentionsRequestBodySchema = z.object({

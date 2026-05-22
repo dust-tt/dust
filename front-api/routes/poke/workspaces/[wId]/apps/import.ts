@@ -1,9 +1,9 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApp } from "@app/lib/utils/apps";
 import type { AppType } from "@app/types/app";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 type ImportAppResponseBody = {
@@ -48,7 +48,7 @@ const ImportQuerySchema = z.object({
 });
 
 // Mounted at /api/poke/workspaces/:wId/apps/import.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.post(
   "/",

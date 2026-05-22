@@ -1,5 +1,5 @@
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
 
 import template from "./[tId]";

@@ -1,7 +1,7 @@
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetPokeFeaturesResponseBody = {
   features: {
@@ -11,7 +11,7 @@ export type GetPokeFeaturesResponseBody = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/features.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<GetPokeFeaturesResponseBody> => {
   const auth = ctx.get("auth");

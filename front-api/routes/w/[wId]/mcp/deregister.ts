@@ -1,6 +1,6 @@
 import { deregisterMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
-import { workspaceApp } from "@front-api/middleware/env";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const PostMCPDeregisterRequestBodySchema = z.object({

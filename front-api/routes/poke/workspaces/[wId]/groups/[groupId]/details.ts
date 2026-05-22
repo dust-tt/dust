@@ -2,8 +2,8 @@ import { getGroupMembersWithWorkspaces } from "@app/lib/api/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GroupType } from "@app/types/groups";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type PokeGetGroupDetails = {
   members: UserTypeWithWorkspaces[];
@@ -11,7 +11,7 @@ export type PokeGetGroupDetails = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/groups/:groupId/details.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetGroupDetails> => {
   const auth = ctx.get("auth");

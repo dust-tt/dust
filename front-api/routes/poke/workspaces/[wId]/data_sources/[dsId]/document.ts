@@ -3,9 +3,9 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { CoreAPIDocument } from "@app/types/core/data_source";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 export type PokeGetDocument = {
@@ -17,7 +17,7 @@ const QuerySchema = z.object({
 });
 
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/document.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get(
   "/",

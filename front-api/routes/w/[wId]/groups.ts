@@ -1,9 +1,9 @@
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import { GroupKindCodec } from "@app/types/groups";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 export type GetGroupsResponseBody = {

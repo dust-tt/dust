@@ -1,4 +1,4 @@
-import { workspaceApp } from "@front-api/middleware/env";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import activeUsers from "./active-users";
 import activeUsersExport from "./active-users-export";
 import agentsExport from "./agents-export";

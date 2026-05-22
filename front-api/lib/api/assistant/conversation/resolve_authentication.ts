@@ -4,9 +4,9 @@ import {
   resolveAuthentication,
 } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 
 /**
  * Hono counterpart of `makeResolveAuthenticationHandler` from

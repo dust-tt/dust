@@ -1,6 +1,6 @@
 import { getRegisteredImages } from "@app/lib/api/sandbox/image";
-import { pokeApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export interface SandboxKillImagesResponseBody {
   images: Array<{ baseImage: string; version: string }>;

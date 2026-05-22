@@ -6,69 +6,57 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Hono } from "hono";
 
-export type SessionAuthEnv = {
+export type SessionCtx = {
   Variables: {
     session: SessionWithUser;
   };
 };
 
-export type WorkspaceAuthEnv = {
-  Variables: {
-    auth: Authenticator;
-    session: SessionWithUser;
-  };
-};
-
-export type PokeAuthEnv = {
-  Variables: {
-    auth: Authenticator;
-    session: SessionWithUser;
-  };
-};
-
-export type PokeWorkspaceAuthEnv = {
+export type WorkspaceAwareCtx = SessionCtx & {
   Variables: {
     auth: Authenticator;
   };
 };
 
-export type PublicApiAuthEnv = {
+export type PokeCtx = SessionCtx & {
   Variables: {
     auth: Authenticator;
   };
 };
 
-export type SpaceEnv = {
+export type PublicApiCtx = {
+  Variables: {
+    auth: Authenticator;
+  };
+};
+
+export type SpaceCtx = WorkspaceAwareCtx & {
   Variables: {
     space: SpaceResource;
   };
 };
 
-export type DataSourceEnv = {
+export type DataSourceCtx = SpaceCtx & {
   Variables: {
     dataSource: DataSourceResource;
   };
 };
 
-export type DataSourceViewEnv = {
+export type DataSourceViewCtx = SpaceCtx & {
   Variables: {
     dataSourceView: DataSourceViewResource;
   };
 };
 
-export type SkillEnv = {
+export type SkillCtx = WorkspaceAwareCtx & {
   Variables: {
     skill: SkillResource;
   };
 };
 
-export type WorkspaceAuthWithSkillEnv = WorkspaceAuthEnv & SkillEnv;
-
 export const unauthedApp = () => new Hono();
-export const sessionAuthApp = () => new Hono<SessionAuthEnv>();
-export const workspaceApp = () => new Hono<WorkspaceAuthEnv>();
-export const pokeApp = () => new Hono<PokeAuthEnv>();
-export const pokeWorkspaceApp = () => new Hono<PokeWorkspaceAuthEnv>();
-export const publicApiApp = () => new Hono<PublicApiAuthEnv>();
-export const workspaceAuthWithSkillApp = () =>
-  new Hono<WorkspaceAuthWithSkillEnv>();
+export const sessionApp = () => new Hono<SessionCtx>();
+export const workspaceApp = () => new Hono<WorkspaceAwareCtx>();
+export const pokeApp = () => new Hono<PokeCtx>();
+export const publicApiApp = () => new Hono<PublicApiCtx>();
+export const skillApp = () => new Hono<SkillCtx>();

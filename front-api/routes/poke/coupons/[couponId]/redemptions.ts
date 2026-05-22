@@ -1,9 +1,9 @@
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { CouponRedemptionStatus } from "@app/types/coupon";
-import { pokeApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 // `redeemedAt` is a `Date` in `CouponRedemptionResource.toJSON()` but
 // JSON-serializes to an ISO string on the wire; the response body type

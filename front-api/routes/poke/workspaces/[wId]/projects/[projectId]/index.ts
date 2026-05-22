@@ -1,10 +1,10 @@
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
+import { pokeApp } from "@front-api/middlewares/ctx";
 
 import connectorKnowledge from "./connector-knowledge";
 import tasks from "./tasks";
 import tasksWorkflow from "./tasks-workflow";
 
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.route("/connector-knowledge", connectorKnowledge);
 app.route("/tasks-workflow", tasksWorkflow);

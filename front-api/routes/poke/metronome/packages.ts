@@ -2,8 +2,8 @@ import {
   listMetronomePackages,
   type MetronomePackageSummary,
 } from "@app/lib/metronome/client";
-import { pokeApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetPokeMetronomePackagesResponseBody = {
   packages: MetronomePackageSummary[];

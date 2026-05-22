@@ -12,9 +12,9 @@ import {
   supportedResourceTypes,
 } from "@app/types/poke/plugins";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { pokeApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 

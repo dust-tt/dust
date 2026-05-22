@@ -1,14 +1,14 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SpaceType } from "@app/types/space";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type PokeListSpaces = {
   spaces: SpaceType[];
 };
 
 // Mounted at /api/poke/workspaces/:wId/spaces.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeListSpaces> => {
   const auth = ctx.get("auth");

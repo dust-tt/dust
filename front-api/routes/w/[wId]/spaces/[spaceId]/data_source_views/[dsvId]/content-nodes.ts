@@ -4,11 +4,11 @@ import {
   SortingParamsCodec,
 } from "@app/lib/api/pagination";
 import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
-import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
-import { withSpace } from "@front-api/middleware/with_space";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
+import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 
 const ContentNodesBody = z.object({

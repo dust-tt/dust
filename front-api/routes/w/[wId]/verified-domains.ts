@@ -1,8 +1,8 @@
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WorkspaceDomain } from "@app/types/workspace";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type GetWorkspaceVerifiedDomainsResponseBody = {
   verifiedDomains: WorkspaceDomain[];

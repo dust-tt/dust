@@ -1,4 +1,4 @@
-import { pokeApp } from "@front-api/middleware/env";
+import { pokeApp } from "@front-api/middlewares/ctx";
 
 import images from "./images";
 

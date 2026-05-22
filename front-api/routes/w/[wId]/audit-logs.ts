@@ -8,9 +8,9 @@ import config from "@app/lib/api/config";
 import { generateWorkOSAdminPortalUrl } from "@app/lib/api/workos/organization";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const PostAuditLogsRequestBodySchema = z.object({

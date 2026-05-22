@@ -1,4 +1,4 @@
-import { pokeApp } from "@front-api/middleware/env";
+import { pokeApp } from "@front-api/middlewares/ctx";
 
 import archive from "./archive";
 import redemptions from "./redemptions";

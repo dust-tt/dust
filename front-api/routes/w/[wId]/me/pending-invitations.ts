@@ -1,8 +1,8 @@
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetPendingInvitationsResponseBody = {
   pendingInvitations: PendingInvitationOption[];

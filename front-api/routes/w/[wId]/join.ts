@@ -7,7 +7,7 @@ import { getSignInUrl } from "@app/lib/signup";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
 
 type OnboardingType =

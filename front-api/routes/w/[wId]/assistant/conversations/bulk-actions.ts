@@ -1,6 +1,6 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { workspaceApp } from "@front-api/middleware/env";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const MarkAllAsReadBodySchema = z.object({
