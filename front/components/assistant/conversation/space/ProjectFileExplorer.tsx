@@ -34,7 +34,7 @@ import {
   useProjectContextAttachments,
   useProjectFiles,
   useRemoveProjectContextContentNodes,
-} from "@app/lib/swr/projects";
+} from "@app/lib/swr/pods";
 import { useSpaceDataSourceViews, useSpaces } from "@app/lib/swr/spaces";
 import { isManualProjectKnowledgeManagementAllowed } from "@app/lib/workspace_policies";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";

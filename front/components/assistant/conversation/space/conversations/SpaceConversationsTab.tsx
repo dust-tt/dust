@@ -7,8 +7,8 @@ import { getGroupConversationsByDate } from "@app/components/assistant/conversat
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
-import { useSpaceUnreadConversationIds } from "@app/hooks/conversations";
-import type { SpaceConversationListFilter } from "@app/hooks/conversations/useSpaceConversations";
+import { usePodUnreadConversationIds } from "@app/hooks/conversations";
+import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
@@ -59,8 +59,8 @@ interface SpaceConversationsTabProps {
   isLoadingMore: boolean;
   spaceInfo: GetSpaceResponseBody["space"];
   isSpaceEmpty: boolean;
-  conversationFilter: SpaceConversationListFilter;
-  onConversationFilterChange: (filter: SpaceConversationListFilter) => void;
+  conversationFilter: PodConversationListFilter;
+  onConversationFilterChange: (filter: PodConversationListFilter) => void;
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -95,9 +95,9 @@ export function SpaceConversationsTab({
     owner,
     spaceId: spaceInfo.sId,
   });
-  const { unreadConversationIds } = useSpaceUnreadConversationIds({
+  const { unreadConversationIds } = usePodUnreadConversationIds({
     workspaceId: owner.sId,
-    spaceId: spaceInfo.sId,
+    podId: spaceInfo.sId,
   });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);

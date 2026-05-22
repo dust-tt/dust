@@ -5,7 +5,7 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useStartProjectTaskConversation,
   useWorkspaceProjectTask,
-} from "@app/lib/swr/projects";
+} from "@app/lib/swr/pods";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";

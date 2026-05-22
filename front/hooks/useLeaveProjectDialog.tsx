@@ -1,31 +1,31 @@
-import { useLeaveProject } from "@app/lib/swr/spaces";
+import { useLeavePod } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
-interface UseLeaveProjectDialogProps {
+interface UseLeavePodDialogProps {
   owner: LightWorkspaceType;
-  spaceId: string;
-  spaceName: string;
+  podId: string;
+  podName: string;
   isRestricted: boolean;
   userName: string;
   onSuccess?: () => void;
 }
 
-export function useLeaveProjectDialog({
+export function useLeavePodDialog({
   owner,
-  spaceId,
-  spaceName,
+  podId,
+  podName,
   isRestricted,
   userName,
   onSuccess,
-}: UseLeaveProjectDialogProps) {
+}: UseLeavePodDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
-  const doLeave = useLeaveProject({
+  const doLeave = useLeavePod({
     owner,
-    spaceId,
-    spaceName,
+    podId: podId,
+    podName: podName,
     userName,
   });
 
@@ -39,13 +39,13 @@ export function useLeaveProjectDialog({
     }
   }, [doLeave, onSuccess]);
 
-  const openDialog = useCallback(() => {
+  const openDialog = () => {
     setIsOpen(true);
-  }, []);
+  };
 
-  const closeDialog = useCallback(() => {
+  const closeDialog = () => {
     setIsOpen(false);
-  }, []);
+  };
 
   const leaveDialogProps = {
     isOpen,
@@ -53,7 +53,7 @@ export function useLeaveProjectDialog({
     isRestricted,
     onClose: closeDialog,
     onLeave: handleLeave,
-    spaceName,
+    spaceName: podName,
   };
 
   return {

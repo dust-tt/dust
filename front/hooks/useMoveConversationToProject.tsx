@@ -1,7 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   useConversations,
-  useSpaceConversationsSummary,
+  usePodConversationsSummary,
 } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -23,7 +23,7 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
     options: { disabled: true },
   });
 
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });

@@ -11,7 +11,7 @@ import type { LightConversationType } from "@app/types/assistant/conversation";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-export function useSpaceConversationsSummary({
+export function usePodConversationsSummary({
   workspaceId,
   options,
 }: {
@@ -37,19 +37,19 @@ export function useSpaceConversationsSummary({
 
 const DEFAULT_CONVERSATIONS_PAGE_SIZE = 12;
 
-export type SpaceConversationListFilter = "all" | "group" | "with_me";
+export type PodConversationListFilter = "all" | "group" | "with_me";
 
-export function useSpaceConversations({
+export function usePodConversations({
   workspaceId,
-  spaceId,
+  podId,
   limit = DEFAULT_CONVERSATIONS_PAGE_SIZE,
   filter = "all",
   options,
 }: {
   workspaceId: string;
-  spaceId: string | null;
+  podId: string | null;
   limit?: number;
-  filter?: SpaceConversationListFilter;
+  filter?: PodConversationListFilter;
   options?: { disabled?: boolean };
 }) {
   const { fetcher } = useFetcher();
@@ -62,7 +62,7 @@ export function useSpaceConversations({
         pageIndex: number,
         previousPageData: GetSpaceConversationsResponseBody | null
       ) => {
-        if (!spaceId) {
+        if (!podId) {
           return null;
         }
 
@@ -71,7 +71,7 @@ export function useSpaceConversations({
         });
 
         if (previousPageData === null) {
-          return `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}?${searchParams.toString()}`;
+          return `/api/w/${workspaceId}/assistant/conversations/spaces/${podId}?${searchParams.toString()}`;
         }
 
         if (!previousPageData.hasMore) {
@@ -83,7 +83,7 @@ export function useSpaceConversations({
         }
         searchParams.set("limit", limit.toString());
 
-        return `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}?${searchParams.toString()}`;
+        return `/api/w/${workspaceId}/assistant/conversations/spaces/${podId}?${searchParams.toString()}`;
       },
       conversationsFetcher,
       {
@@ -122,13 +122,13 @@ export function useSpaceConversations({
   };
 }
 
-export function useSpaceUnreadConversationIds({
+export function usePodUnreadConversationIds({
   workspaceId,
-  spaceId,
+  podId,
   options,
 }: {
   workspaceId: string;
-  spaceId: string | null;
+  podId: string | null;
   options?: { disabled: boolean };
 }) {
   const { fetcher } = useFetcher();
@@ -136,12 +136,12 @@ export function useSpaceUnreadConversationIds({
     fetcher;
 
   const { data, isLoading, mutate } = useSWRWithDefaults(
-    spaceId
-      ? `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}/unread`
+    podId
+      ? `/api/w/${workspaceId}/assistant/conversations/spaces/${podId}/unread`
       : null,
     conversationsFetcher,
     {
-      disabled: options?.disabled ?? !spaceId,
+      disabled: options?.disabled ?? !podId,
     }
   );
 

@@ -2,7 +2,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import {
   useConversation,
   useConversations,
-  useSpaceConversationsSummary,
+  usePodConversationsSummary,
 } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -26,7 +26,7 @@ export function useMoveConversationOutOfProject(
     options: { disabled: true },
   });
 
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });

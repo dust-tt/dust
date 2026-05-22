@@ -1,4 +1,4 @@
-import { useRenameProjectFile } from "@app/lib/swr/projects";
+import { useRenameProjectFile } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,

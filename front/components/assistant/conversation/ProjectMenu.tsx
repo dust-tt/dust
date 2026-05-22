@@ -1,7 +1,7 @@
 import { EditProjectTitleDialog } from "@app/components/assistant/conversation/EditProjectTitleDialog";
 import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
 import { useArchiveProject } from "@app/hooks/useArchiveProject";
-import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
+import { useLeavePodDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import config from "@app/lib/api/config";
@@ -168,10 +168,10 @@ export function ProjectMenu({
     }
   }, [isProjectDisplayed, owner.sId, router]);
 
-  const { leaveDialogProps, openLeaveDialog } = useLeaveProjectDialog({
+  const { leaveDialogProps, openLeaveDialog } = useLeavePodDialog({
     owner,
-    spaceId: activeSpaceId ?? "",
-    spaceName,
+    podId: activeSpaceId ?? "",
+    podName: spaceName,
     isRestricted: spaceInfo?.isRestricted ?? true,
     userName,
     onSuccess: handleLeaveSuccess,

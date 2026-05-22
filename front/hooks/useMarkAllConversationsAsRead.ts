@@ -1,8 +1,8 @@
 import {
   useConversations,
-  useSpaceConversations,
-  useSpaceConversationsSummary,
-  useSpaceUnreadConversationIds,
+  usePodConversations,
+  usePodConversationsSummary,
+  usePodUnreadConversationIds,
 } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -25,20 +25,21 @@ export function useMarkAllConversationsAsRead({
     options: { disabled: true },
   });
 
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
 
-  const { mutateConversations: mutateSpaceConversations } =
-    useSpaceConversations({
+  const { mutateConversations: mutateSpaceConversations } = usePodConversations(
+    {
       workspaceId: owner.sId,
-      spaceId: spaceId ?? null,
-    });
+      podId: spaceId ?? null,
+    }
+  );
 
-  const { mutateUnreadConversationIds } = useSpaceUnreadConversationIds({
+  const { mutateUnreadConversationIds } = usePodUnreadConversationIds({
     workspaceId: owner.sId,
-    spaceId: spaceId ?? null,
+    podId: spaceId ?? null,
   });
 
   const markAllAsRead = useCallback(

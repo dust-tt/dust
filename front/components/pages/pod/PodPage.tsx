@@ -2,27 +2,28 @@ import { SpaceAboutTab } from "@app/components/assistant/conversation/space/abou
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
-import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
 import { SpaceTasksTab } from "@app/components/assistant/conversation/space/SpaceTasksTab";
-
-import { useSpaceConversations } from "@app/hooks/conversations";
-import type { SpaceConversationListFilter } from "@app/hooks/conversations/useSpaceConversations";
+import { PodHeaderActions } from "@app/components/pod/PodHeaderActions";
+import {
+  type PodConversationListFilter,
+  usePodConversations,
+} from "@app/hooks/conversations/usePodConversations";
 import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useScopedUIPreferences } from "@app/hooks/useScopedUIPreferences";
+import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import {
-  DEFAULT_SPACE_PROJECT_UI_PREFERENCES,
-  type SpaceProjectTab,
-  useSpaceProjectTabs,
+  DEFAULT_POD_UI_PREFERENCES,
+  type PodTab,
+  usePodTabs,
 } from "@app/hooks/useSpaceProjectTabs";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
-import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightConversationType } from "@app/types/assistant/conversation";
@@ -49,23 +50,23 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
-export function SpaceConversationsPage() {
+export function PodPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
   const clientType = useClientType();
   const router = useAppRouter();
-  const spaceId = useActivePodId();
+  const podId = useActivePodId();
   const sendNotification = useSendNotification();
 
-  const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError, mutateSpaceInfo } =
-    useSpaceInfo({
-      workspaceId: owner.sId,
-      spaceId: spaceId,
-      includeAllMembers: true,
-    });
-
-  const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
+  const {
+    spaceInfo: podInfo,
+    isSpaceInfoLoading: isPodsInfoLoading,
+    isSpaceInfoError: podInfoError,
+    mutateSpaceInfo: mutatePodInfo,
+  } = useSpaceInfo({
     workspaceId: owner.sId,
+    spaceId: podId,
+    includeAllMembers: true,
   });
 
   const createConversationWithMessage = useCreateConversationWithMessage({
@@ -73,16 +74,16 @@ export function SpaceConversationsPage() {
     user,
   });
 
-  const { value: projectUIPreferences, setValue: setProjectUIPreferences } =
-    useScopedUIPreferences({
-      scope: "projectUI",
-      resourceId: spaceId,
-      defaultValue: DEFAULT_SPACE_PROJECT_UI_PREFERENCES,
+  const { value: podUiPreferences, setValue: setPodUiPreferences } =
+    useScopedPodUiPreferences({
+      scope: "podUi",
+      resourceId: podId,
+      defaultValue: DEFAULT_POD_UI_PREFERENCES,
     });
-  const isSingleMemberProject = !!spaceInfo && spaceInfo.members.length === 1;
-  const conversationFilter: SpaceConversationListFilter = isSingleMemberProject
+  const isSingleMemberPod = !!podInfo && podInfo.members.length === 1;
+  const conversationFilter: PodConversationListFilter = isSingleMemberPod
     ? "all"
-    : projectUIPreferences.conversationsFilter;
+    : podUiPreferences.conversationsFilter;
 
   const {
     conversations,
@@ -92,44 +93,39 @@ export function SpaceConversationsPage() {
     isEmpty: isSpaceEmpty,
     loadMore,
     isLoadingMore,
-  } = useSpaceConversations({
+  } = usePodConversations({
     workspaceId: owner.sId,
-    spaceId: spaceId,
+    podId: podId,
     filter: conversationFilter,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_planLimitReached, setPlanLimitReached] = useState(false);
   const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
-  const compactProjectTabs = useIsMobile();
+  const compactPodTabs = useIsMobile();
 
-  const { currentTab, handleTabChange } = useSpaceProjectTabs({
-    spaceId,
-    projectUIPreferences,
-    setProjectUIPreferences,
+  const { currentTab, handleTabChange } = usePodTabs({
+    podId,
+    podUiPreferences,
+    setPodUiPreferences,
   });
 
-  const handleConversationFilterChange = useCallback(
-    (filter: SpaceConversationListFilter) => {
-      setProjectUIPreferences({
-        ...projectUIPreferences,
-        conversationsFilter: filter,
-      });
-    },
-    [projectUIPreferences, setProjectUIPreferences]
-  );
+  const handleConversationFilterChange = (
+    filter: PodConversationListFilter
+  ) => {
+    setPodUiPreferences({
+      ...podUiPreferences,
+      conversationsFilter: filter,
+    });
+  };
 
-  const handleTaskOwnerFilterChange = useCallback(
-    (tasksOwnerFilter: TaskOwnerFilter) => {
-      setProjectUIPreferences({
-        ...projectUIPreferences,
-        tasksOwnerFilter,
-      });
-    },
-    [projectUIPreferences, setProjectUIPreferences]
-  );
+  const handleTaskOwnerFilterChange = (tasksOwnerFilter: TaskOwnerFilter) => {
+    setPodUiPreferences({
+      ...podUiPreferences,
+      tasksOwnerFilter,
+    });
+  };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleConversationCreation = useCallback(
     async (
       input: string,
@@ -154,7 +150,7 @@ export function SpaceConversationsPage() {
           contentFragments,
           selectedMCPServerViewIds,
         },
-        spaceId,
+        spaceId: podId,
       });
 
       setIsSubmitting(false);
@@ -235,8 +231,7 @@ export function SpaceConversationsPage() {
     [
       isSubmitting,
       owner,
-      spaceId,
-      setPlanLimitReached,
+      podId,
       sendNotification,
       router,
       mutateConversations,
@@ -245,7 +240,7 @@ export function SpaceConversationsPage() {
   );
 
   // Show loading state while fetching space info
-  if (isSpaceInfoLoading || isSystemSpaceLoading) {
+  if (isPodsInfoLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Spinner />
@@ -253,15 +248,15 @@ export function SpaceConversationsPage() {
     );
   }
 
-  // Handle space not found or access denied
-  if (isSpaceInfoError || !spaceInfo || !systemSpace) {
+  // Handle pod not found or access denied
+  if (podInfoError || !podInfo) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-semibold">Space not found</h2>
+          <h2 className="text-lg font-semibold">Pod not found</h2>
           <p className="text-muted-foreground">
-            The space you&apos;re looking for doesn&apos;t exist or you
-            don&apos;t have access to it.
+            The Pod you&apos;re looking for doesn&apos;t exist or you don&apos;t
+            have access to it.
           </p>
         </div>
       </div>
@@ -279,7 +274,7 @@ export function SpaceConversationsPage() {
           hasMore={hasMore}
           loadMore={loadMore}
           isLoadingMore={isLoadingMore}
-          spaceInfo={spaceInfo}
+          spaceInfo={podInfo}
           isSpaceEmpty={isSpaceEmpty}
           conversationFilter={conversationFilter}
           onConversationFilterChange={handleConversationFilterChange}
@@ -295,46 +290,46 @@ export function SpaceConversationsPage() {
     <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
       <Tabs
         value={currentTab}
-        onValueChange={(value) => handleTabChange(value as SpaceProjectTab)}
+        onValueChange={(value) => handleTabChange(value as PodTab)}
         className="flex min-h-0 flex-1 flex-col overflow-hidden pt-3"
       >
         <div className="flex shrink-0 items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6 dark:border-separator-night">
           <TabsList border={false}>
             <TabsTrigger
               value="conversations"
-              label={compactProjectTabs ? undefined : "Conversations"}
-              tooltip={compactProjectTabs ? "Conversations" : undefined}
+              label={compactPodTabs ? undefined : "Conversations"}
+              tooltip={compactPodTabs ? "Conversations" : undefined}
               icon={ChatBubbleLeftRightIcon}
             />
             <TabsTrigger
               value="tasks"
-              label={compactProjectTabs ? undefined : "Tasks"}
-              tooltip={compactProjectTabs ? "Tasks" : undefined}
+              label={compactPodTabs ? undefined : "Tasks"}
+              tooltip={compactPodTabs ? "Tasks" : undefined}
               icon={CheckIcon}
             />
             <TabsTrigger
               value="files"
-              label={compactProjectTabs ? undefined : "Files"}
-              tooltip={compactProjectTabs ? "Files" : undefined}
+              label={compactPodTabs ? undefined : "Files"}
+              tooltip={compactPodTabs ? "Files" : undefined}
               icon={FolderIcon}
             />
             <TabsTrigger
               value="settings"
-              label={compactProjectTabs ? undefined : "Settings"}
-              tooltip={compactProjectTabs ? "Settings" : undefined}
+              label={compactPodTabs ? undefined : "Settings"}
+              tooltip={compactPodTabs ? "Settings" : undefined}
               icon={Cog6ToothIcon}
             />
           </TabsList>
 
-          {spaceInfo.kind === "project" &&
-            (spaceInfo.isMember || !spaceInfo.isRestricted) && (
-              <ProjectHeaderActions
-                isMember={spaceInfo.isMember}
-                isRestricted={spaceInfo.isRestricted}
-                members={spaceInfo.members}
+          {podInfo.kind === "project" &&
+            (podInfo.isMember || !podInfo.isRestricted) && (
+              <PodHeaderActions
+                isMember={podInfo.isMember}
+                isRestricted={podInfo.isRestricted}
+                members={podInfo.members}
                 owner={owner}
-                spaceId={spaceInfo.sId}
-                spaceName={spaceInfo.name}
+                podId={podInfo.sId}
+                podName={podInfo.name}
                 user={user}
               />
             )}
@@ -349,7 +344,7 @@ export function SpaceConversationsPage() {
             hasMore={hasMore}
             loadMore={loadMore}
             isLoadingMore={isLoadingMore}
-            spaceInfo={spaceInfo}
+            spaceInfo={podInfo}
             isSpaceEmpty={isSpaceEmpty}
             conversationFilter={conversationFilter}
             onConversationFilterChange={handleConversationFilterChange}
@@ -360,23 +355,23 @@ export function SpaceConversationsPage() {
         </TabsContent>
 
         <TabsContent value="files">
-          <SpaceKnowledgeTab owner={owner} space={spaceInfo} />
+          <SpaceKnowledgeTab owner={owner} space={podInfo} />
         </TabsContent>
 
         <TabsContent value="tasks">
           <SpaceTasksTab
             owner={owner}
-            spaceInfo={spaceInfo}
-            taskOwnerFilter={projectUIPreferences.tasksOwnerFilter}
+            spaceInfo={podInfo}
+            taskOwnerFilter={podUiPreferences.tasksOwnerFilter}
             onTaskOwnerFilterChange={handleTaskOwnerFilterChange}
           />
         </TabsContent>
 
         <TabsContent value="settings">
           <SpaceAboutTab
-            key={spaceId}
+            key={podId}
             owner={owner}
-            space={spaceInfo}
+            space={podInfo}
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
@@ -386,9 +381,9 @@ export function SpaceConversationsPage() {
         setIsOpen={setIsInvitePanelOpen}
         owner={owner}
         mode="space-members"
-        space={spaceInfo}
-        currentProjectMembers={spaceInfo.members}
-        onSuccess={() => mutateSpaceInfo()}
+        space={podInfo}
+        currentProjectMembers={podInfo.members}
+        onSuccess={() => mutatePodInfo()}
       />
     </div>
   );

@@ -1,9 +1,9 @@
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
-import { useScopedUIPreferences } from "@app/hooks/useScopedUIPreferences";
+import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileContent } from "@app/lib/swr/files";
-import { useProjectFiles } from "@app/lib/swr/projects";
+import { useProjectFiles } from "@app/lib/swr/pods";
 import logger from "@app/logger/logger";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { WorkspaceType } from "@app/types/user";
@@ -154,7 +154,7 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
   const pinnedFramePath = spaceInfo.pinnedFramePath;
 
   const { value: bannerPreferences, setValue: setBannerPreferences } =
-    useScopedUIPreferences({
+    useScopedPodUiPreferences({
       scope: "podPinnedBanner",
       resourceId: spaceInfo.sId,
       defaultValue: DEFAULT_POD_PINNED_BANNER_PREFERENCES,
