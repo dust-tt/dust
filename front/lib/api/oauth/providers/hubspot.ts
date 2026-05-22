@@ -14,35 +14,10 @@ import type {
 } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { ParsedUrlQuery } from "querystring";
-import { z } from "zod";
-
-const ALL_OPTIONAL_SCOPES = [
-  "crm.objects.contacts.read",
-  "crm.objects.contacts.write",
-  "crm.schemas.contacts.read",
-  "crm.objects.companies.read",
-  "crm.objects.companies.write",
-  "crm.schemas.companies.read",
-  "crm.objects.deals.read",
-  "crm.objects.deals.write",
-  "crm.schemas.deals.read",
-  "crm.objects.owners.read",
-  "crm.schemas.custom.read",
-  "crm.objects.custom.read",
-  "crm.objects.quotes.read",
-  "crm.objects.line_items.read",
-  "files",
-  "sales-email-read",
-  "timeline",
-  "crm.lists.read",
-  "crm.lists.write",
-  "marketing-email",
-  "content",
-] as const;
-
-const HubSpotScrubbed = z.object({ scope: z.string() }).passthrough();
 
 export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
+  requiresWorkspaceConnectionForPersonalAuth = true;
+
   setupUri({
     connection,
     extraConfig,
@@ -53,21 +28,46 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
   }) {
     const requiredScopes = ["oauth"];
 
+    // Optional scopes - user can still install app without these
+    const optionalScopes = [
+      "crm.objects.contacts.read",
+      "crm.objects.contacts.write",
+      "crm.schemas.contacts.read",
+      "crm.objects.companies.read",
+      "crm.objects.companies.write",
+      "crm.schemas.companies.read",
+      "crm.objects.deals.read",
+      "crm.objects.deals.write",
+      "crm.schemas.deals.read",
+      "crm.objects.owners.read",
+      "crm.schemas.custom.read",
+      "crm.objects.custom.read",
+      "crm.objects.quotes.read",
+      "crm.objects.line_items.read",
+      "files",
+      "sales-email-read",
+      "timeline",
+      "crm.lists.read",
+      "crm.lists.write",
+      "marketing-email",
+      "content",
+    ];
+
     const workspaceGrantedScopes = extraConfig?.workspace_granted_scopes;
     const grantedSet =
       workspaceGrantedScopes && workspaceGrantedScopes.length > 0
         ? new Set(workspaceGrantedScopes.split(" "))
         : null;
-    const optionalScopes = grantedSet
-      ? ALL_OPTIONAL_SCOPES.filter((s) => grantedSet.has(s))
-      : ALL_OPTIONAL_SCOPES;
+    const filteredOptionalScopes = grantedSet
+      ? optionalScopes.filter((s) => grantedSet.has(s))
+      : optionalScopes;
 
     return (
       `https://app.hubspot.com/oauth/authorize` +
       `?client_id=${config.getOAuthHubspotClientId()}` +
       `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("hubspot"))}` +
       `&scope=${encodeURIComponent(requiredScopes.join(" "))}` +
-      `&optional_scope=${encodeURIComponent(optionalScopes.join(" "))}` +
+      `&optional_scope=${encodeURIComponent(filteredOptionalScopes.join(" "))}` +
       `&state=${connection.connection_id}`
     );
   }
@@ -113,21 +113,25 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
     }
 
     const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-    const tokenRes = await oauthApi.getAccessToken({
+    const metadataRes = await oauthApi.getConnectionMetadata({
       connectionId: oauthConnectionIdRes.value,
     });
-    if (tokenRes.isErr()) {
+    if (metadataRes.isErr()) {
       throw new Error(
-        "Failed to get workspace connection: " + tokenRes.error.message
+        "Failed to get workspace connection metadata: " +
+          metadataRes.error.message
       );
     }
 
-    const parsed = HubSpotScrubbed.safeParse(tokenRes.value.scrubbed_raw_json);
-    const workspaceGrantedScopes = parsed.success ? parsed.data.scope : "";
+    const { scope } = metadataRes.value.connection.metadata;
+
+    if (!scope) {
+      return extraConfig;
+    }
 
     return {
       ...extraConfig,
-      workspace_granted_scopes: workspaceGrantedScopes,
+      workspace_granted_scopes: scope,
     };
   }
 }
