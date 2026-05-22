@@ -1,6 +1,8 @@
-use anyhow::bail;
+use anyhow::{bail, Context};
 
 use crate::api::{ContentBlock, DustApiClient};
+
+const MAX_FILE_ARG_SIZE_BYTES: u64 = 100 * 1024 * 1024;
 
 pub async fn cmd_exec(
     client: &DustApiClient,
@@ -73,6 +75,12 @@ pub async fn cmd_exec(
 
 /// Parse `--key value` pairs into a JSON object.
 /// Auto-detects numbers, booleans, JSON objects/arrays, and falls back to string.
+///
+/// A value prefixed with `__file__:` is interpreted as a path reference:
+/// the file at that path is read (UTF-8, capped at 100 MB) and its contents
+/// are used as a string value for the key. This bypasses type coercion
+/// and lets agents pass values larger than the OS argv limit (ARG_MAX)
+/// by writing them to disk first.
 fn parse_args(raw: &[String]) -> anyhow::Result<Option<serde_json::Value>> {
     if raw.is_empty() {
         return Ok(Some(serde_json::Value::Object(serde_json::Map::new())));
@@ -105,11 +113,34 @@ fn parse_args(raw: &[String]) -> anyhow::Result<Option<serde_json::Value>> {
             continue;
         }
 
-        map.insert(key, coerce_value(val));
+        map.insert(key, coerce_value_or_read_file(val)?);
         i += 1;
     }
 
     Ok(Some(serde_json::Value::Object(map)))
+}
+
+fn coerce_value_or_read_file(s: &str) -> anyhow::Result<serde_json::Value> {
+    if let Some(path) = s.strip_prefix("__file__:") {
+        return Ok(serde_json::Value::String(read_file_arg(path)?));
+    }
+    Ok(coerce_value(s))
+}
+
+fn read_file_arg(path: &str) -> anyhow::Result<String> {
+    if path.is_empty() {
+        bail!("__file__: prefix requires a path");
+    }
+    let metadata =
+        std::fs::metadata(path).with_context(|| format!("failed to stat __file__:{path}"))?;
+    if metadata.len() > MAX_FILE_ARG_SIZE_BYTES {
+        bail!(
+            "__file__:{path} is {} bytes; exceeds the {MAX_FILE_ARG_SIZE_BYTES}-byte limit",
+            metadata.len()
+        );
+    }
+    std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read __file__:{path} (must be UTF-8)"))
 }
 
 fn coerce_value(s: &str) -> serde_json::Value {
@@ -232,5 +263,65 @@ mod tests {
     fn parse_missing_dashes_errors() {
         let args = vec!["name".to_string(), "hello".to_string()];
         assert!(parse_args(&args).is_err());
+    }
+
+    fn write_tempfile(contents: &[u8]) -> tempfile::NamedTempFile {
+        use std::io::Write;
+        let mut file = tempfile::NamedTempFile::new().expect("create tempfile");
+        file.write_all(contents).expect("write tempfile");
+        file
+    }
+
+    #[test]
+    fn parse_file_prefix_reads_contents() {
+        let file = write_tempfile(b"hello world");
+        let args = vec![
+            "--query".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["query"], "hello world");
+    }
+
+    #[test]
+    fn parse_file_prefix_skips_coercion() {
+        let file = write_tempfile(b"42");
+        let args = vec![
+            "--count".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["count"], "42");
+        assert!(result["count"].is_string());
+    }
+
+    #[test]
+    fn parse_file_prefix_empty_path_errors() {
+        let args = vec!["--query".to_string(), "__file__:".to_string()];
+        assert!(parse_args(&args).is_err());
+    }
+
+    #[test]
+    fn parse_file_prefix_nonexistent_path_errors() {
+        let args = vec![
+            "--query".to_string(),
+            "__file__:/nonexistent/dsbx-test-12345".to_string(),
+        ];
+        assert!(parse_args(&args).is_err());
+    }
+
+    #[test]
+    fn parse_value_without_file_prefix_treated_as_literal_string() {
+        // A value that doesn't start with `__file__:` is coerced normally;
+        // no filesystem touch.
+        let args = vec!["--query".to_string(), "hello world".to_string()];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["query"], "hello world");
     }
 }
