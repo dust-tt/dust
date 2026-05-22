@@ -6,7 +6,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
 /**
- * Validate a pinned frame path for a project space.
+ * Validate a pinned frame path for a pod space.
  * Path must be scoped under `pod/` and resolve to an existing GCS object.
  */
 export async function validatePinnedFramePath(
@@ -24,15 +24,9 @@ export async function validatePinnedFramePath(
     podId: space.sId,
   });
 
-  // Some DB rows still carry the legacy `project/` scope prefix; as they have not been
-  // migrated to the new `pod/` scope, treat them as `pod/`
-  const normalizedScopedPath = pinnedFramePath.startsWith("project/")
-    ? `pod/${pinnedFramePath.slice("project/".length)}`
-    : pinnedFramePath;
-
   const gcsPath = getGCSPathFromScopedPath({
     prefix,
-    scopedPath: normalizedScopedPath,
+    scopedPath: pinnedFramePath,
     useCase: "pod",
   });
   if (!gcsPath) {
