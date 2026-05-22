@@ -1,5 +1,9 @@
 import config from "@app/lib/api/config";
-import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import {
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
+  PLAN_CODE_CUSTOM_FIELD_KEY,
+} from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
@@ -1480,6 +1484,18 @@ export async function listMetronomeBalances(
         : {}),
       ...(includeArchived ? { include_archived: true } : {}),
     })) {
+      // Mirror the default ContractCredit alert filter: include only
+      // credits explicitly tagged DUST_CONTRACT_CREDIT_TYPE=pool. Excess
+      // credits (tagged "excess") and per-seat / unstamped credits are
+      // excluded — they're not part of the workspace pool balance the
+      // alert tracks. Commits are not stamped and pass through unchanged.
+      if (
+        entry.type === "CREDIT" &&
+        entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
+          CONTRACT_CREDIT_TYPE_POOL
+      ) {
+        continue;
+      }
       balances.push(entry);
     }
     return new Ok(balances);

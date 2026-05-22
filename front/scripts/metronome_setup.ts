@@ -19,6 +19,7 @@ import {
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_SEAT_ALLOCATION,
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
@@ -2988,12 +2989,26 @@ async function syncPackages(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 const CUSTOM_FIELD_KEYS: Array<{
-  entity: "contract" | "contract_product";
+  entity: "contract" | "contract_product" | "contract_credit";
   key: string;
 }> = [
   { entity: "contract", key: "MAU_TIERS" },
   { entity: "contract", key: "MAU_THRESHOLD" },
   { entity: "contract", key: PLAN_CODE_CUSTOM_FIELD_KEY },
+  // Stamped on individual contract_credit instances to identify excess
+  // recurring credits ("excess") vs. workspace-pool credits ("pool"). Lets
+  // the default ContractCredit-balance alerts filter on value="pool" to
+  // exclude excess credits from low-balance notifications.
+  //
+  // The template-level approach (stamping on `package_credit`) does not
+  // work: Metronome registers the key but refuses `setValues` with 400
+  // "Setting package managed fields is not yet supported". Stamping must
+  // happen per-instance at contract provisioning time — see
+  // `stampExcessCreditCustomField` in `lib/metronome/contracts.ts`.
+  {
+    entity: "contract_credit",
+    key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  },
   // Stamped on each seat-style product (Workspace / Pro / Max / Free).
   // Runtime code reads `product.custom_fields.DUST_SEAT_TYPE` (cached in
   // Redis) instead of comparing product names/IDs, which change on every
@@ -3035,18 +3050,19 @@ async function syncCustomFields(): Promise<void> {
     const existing = existingKeysByEntity.get(field.entity) ?? new Set();
     if (existing.has(field.key)) {
       console.log(`  ✓ ${field.entity}.${field.key} — already exists`);
-    } else {
-      console.log(
-        `  + ${EXECUTE ? "Creating" : "[DRYRUN] Would create"}: ${field.entity}.${field.key}`
-      );
-      if (EXECUTE) {
-        await client.v1.customFields.addKey({
-          entity: field.entity,
-          key: field.key,
-          enforce_uniqueness: false,
-        });
-      }
+      continue;
     }
+    console.log(
+      `  + ${EXECUTE ? "Creating" : "[DRYRUN] Would create"}: ${field.entity}.${field.key}`
+    );
+    if (!EXECUTE) {
+      continue;
+    }
+    await client.v1.customFields.addKey({
+      entity: field.entity,
+      key: field.key,
+      enforce_uniqueness: false,
+    });
   }
 }
 
@@ -3066,31 +3082,39 @@ interface AlertDef {
   // Tag identifying which credit type the threshold tracks. Resolved at sync
   // time (AWU ID differs per environment).
   credit_type: "AWU";
+  // Custom field filters scoped to ContractCredit / Commit / Contract. Used
+  // here to exclude excess recurring credits from contract-credit-balance
+  // alerts (those credits exist solely to absorb over-consumption and would
+  // otherwise mask a real depletion of the workspace pool).
+  custom_field_filters?: Array<{
+    entity: "ContractCredit" | "Commit" | "Contract";
+    key: string;
+    value: string;
+  }>;
 }
+
+// Filter that excludes the "excess" recurring credit from
+// contract-credit-balance alerts. The inverse marker ("pool") is stamped on
+// workspace-pool recurring credits in the package definitions; excess credits
+// get "excess" so they don't match this filter.
+const POOL_CONTRACT_CREDIT_FILTER: NonNullable<
+  AlertDef["custom_field_filters"]
+>[number] = {
+  entity: "ContractCredit",
+  key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  value: "pool",
+};
 
 // Default alerts applied to all customers (no `customer_id` set on create):
 // fire when AWU credit / contract-credit / commit balance reaches 0.
 const ALERTS: AlertDef[] = [
-  {
-    name: "Default: Empty contract credit balance (AWU)",
-    alert_type: "low_remaining_contract_credit_balance_reached",
-    threshold: 0,
-    uniqueness_key: "default-low-contract-credit-balance-zero-awu",
-    credit_type: "AWU",
-  },
-  {
-    name: "Default: Empty commit balance (AWU)",
-    alert_type: "low_remaining_commit_balance_reached",
-    threshold: 0,
-    uniqueness_key: "default-low-commit-balance-zero-awu",
-    credit_type: "AWU",
-  },
   {
     name: "Default: Empty contract credit + commit balance (AWU)",
     alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
     threshold: 0,
     uniqueness_key: "default-low-contract-credit-and-commit-balance-zero-awu",
     credit_type: "AWU",
+    custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
   },
 ];
 
@@ -3115,6 +3139,9 @@ async function syncAlerts(): Promise<void> {
         threshold: desired.threshold,
         uniqueness_key: desired.uniqueness_key,
         credit_type_id: creditTypeId,
+        ...(desired.custom_field_filters
+          ? { custom_field_filters: desired.custom_field_filters }
+          : {}),
       });
       const id = (created as { data: { id: string } }).data.id;
       console.log(`  + Created: ${desired.name} → ${id}`);
