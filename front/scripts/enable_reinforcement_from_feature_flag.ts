@@ -1,5 +1,5 @@
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { updateWorkspaceMetadata } from "@app/lib/api/workspace";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
