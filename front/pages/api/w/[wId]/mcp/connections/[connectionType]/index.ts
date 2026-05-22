@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
