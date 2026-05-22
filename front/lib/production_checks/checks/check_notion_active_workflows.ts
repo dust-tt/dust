@@ -113,13 +113,10 @@ async function areTemporalWorkflowsRunning(
 
   const latestEventTimes = await withRetries(
     logger,
-    async ({
-      client,
-      descriptions,
-    }: {
-      client: Client;
-      descriptions: WorkflowExecutionDescription[];
-    }): Promise<(Date | null)[]> => {
+    async (
+      client: Client,
+      descriptions: WorkflowExecutionDescription[]
+    ): Promise<(Date | null)[]> => {
       // Bounded (only three elements), Temporal-only Promise.all.
       return Promise.all(
         descriptions.map((description) =>
@@ -130,10 +127,7 @@ async function areTemporalWorkflowsRunning(
     {
       retries: TEMPORAL_WORKFLOW_CHECK_RETRIES,
     }
-  )({
-    client,
-    descriptions,
-  });
+  )(client, descriptions);
 
   logger.info("Workflow latest events retrieved");
 
