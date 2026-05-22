@@ -34,7 +34,7 @@ export const GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS = [
 export type GoogleAIStudioWhitelistedModelId =
   (typeof GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS)[number];
 
-// Temporary list to route only certain models to vertex while we gather data and feedback
+// TODO(eu-endpoint): temporary list — remove once availability is per-model, not per-provider.
 export const GOOGLE_VERTEX_WHITELISTED_MODEL_IDS = [
   GEMINI_2_5_FLASH_MODEL_ID,
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
