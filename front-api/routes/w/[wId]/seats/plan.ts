@@ -8,7 +8,7 @@ import { getMetronomeClient } from "@app/lib/metronome/client";
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
-  getAwuAllocationForSeatType,
+  getAwuAllocationInfoForSeatType,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
   getSeatTypesByProductIdFromContract,
@@ -22,6 +22,22 @@ import { apiError } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/seats/plan.
 const app = workspaceApp();
+
+function getSeatBillingFrequency(
+  billingFrequency: string
+): SeatBillingFrequency {
+  switch (billingFrequency) {
+    case "WEEKLY":
+      return "weekly";
+    case "QUARTERLY":
+      return "quarterly";
+    case "ANNUAL":
+      return "annual";
+    case "MONTHLY":
+    default:
+      return "monthly";
+  }
+}
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");
@@ -78,9 +94,8 @@ app.get("/", async (ctx) => {
   }
 
   // Resolve each seat's billing frequency from the matching subscription on
-  // the contract. Default to "monthly" if the subscription declares anything
-  // other than ANNUAL — Metronome's enum has WEEKLY / QUARTERLY too, but we
-  // only ship monthly and annual seats.
+  // the contract. Keep the full Metronome cadence in the response so callers
+  // don't need to assume that all non-annual seats are monthly.
   const billingFrequencyBySeatType = new Map<
     MembershipSeatType,
     SeatBillingFrequency
@@ -92,9 +107,7 @@ app.get("/", async (ctx) => {
   for (const [seatType, sub] of seatSubscriptions) {
     billingFrequencyBySeatType.set(
       seatType,
-      sub.subscription_rate.billing_frequency === "ANNUAL"
-        ? "annual"
-        : "monthly"
+      getSeatBillingFrequency(sub.subscription_rate.billing_frequency)
     );
   }
 
@@ -164,13 +177,15 @@ app.get("/", async (ctx) => {
     if (priceCents === undefined || name === undefined) {
       continue;
     }
+    const awuAllocation = getAwuAllocationInfoForSeatType(
+      contract,
+      seatType,
+      productSeatTypes
+    );
     const info: SeatTypeInfo = {
       name,
-      awuCredits: getAwuAllocationForSeatType(
-        contract,
-        seatType,
-        productSeatTypes
-      ),
+      awuCredits: awuAllocation.credits,
+      awuCreditsPeriod: awuAllocation.period,
       priceCents,
       currency,
       billingFrequency: billingFrequencyBySeatType.get(seatType) ?? "monthly",

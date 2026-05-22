@@ -69,6 +69,21 @@ function seatTypeGroup(seatType: MembershipSeatType): MembershipSeatType {
   }
 }
 
+function formatAwuCreditsPeriod(period: SeatTypeInfo["awuCreditsPeriod"]) {
+  switch (period) {
+    case "weekly":
+      return "per week";
+    case "monthly":
+      return "per month";
+    case "quarterly":
+      return "per quarter";
+    case "annual":
+      return "per year";
+    case "lifetime":
+      return "lifetime";
+  }
+}
+
 interface BillingSeatsOverviewProps {
   owner: LightWorkspaceType;
 }
@@ -183,7 +198,8 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                 <div className="flex items-center gap-2">
                   <Icon visual={ActionCreditCoinsIcon} size="xs" />
                   <span>
-                    {primaryPlan.awuCredits.toLocaleString()} credits per month
+                    {primaryPlan.awuCredits.toLocaleString()} credits{" "}
+                    {formatAwuCreditsPeriod(primaryPlan.awuCreditsPeriod)}
                   </span>
                 </div>
               </div>

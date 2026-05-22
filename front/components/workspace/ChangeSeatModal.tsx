@@ -52,6 +52,13 @@ const SEAT_DISPLAY_ORDER: MembershipSeatType[] = [
   "max_yearly",
 ];
 
+const SEAT_BILLING_FREQUENCIES: SeatBillingFrequency[] = [
+  "weekly",
+  "monthly",
+  "quarterly",
+  "annual",
+];
+
 function sortSeatTypes(seatTypes: MembershipSeatType[]): MembershipSeatType[] {
   const indexOf = (s: MembershipSeatType) => {
     const i = SEAT_DISPLAY_ORDER.indexOf(s);
@@ -67,14 +74,32 @@ function formatPriceCents(
 ): string {
   const symbol = CURRENCY_SYMBOLS[currency];
   const amount = (cents / 100).toFixed(2).replace(/\.00$/, "");
-  const suffix = billingFrequency === "annual" ? "/yr" : "/mo";
+  const suffixByFrequency: Record<SeatBillingFrequency, string> = {
+    weekly: "/wk",
+    monthly: "/mo",
+    quarterly: "/qtr",
+    annual: "/yr",
+  };
   return currency === "usd"
-    ? `${symbol}${amount}${suffix}`
-    : `${amount}${symbol}${suffix}`;
+    ? `${symbol}${amount}${suffixByFrequency[billingFrequency]}`
+    : `${amount}${symbol}${suffixByFrequency[billingFrequency]}`;
 }
 
-function formatAwuCredits(awuCredits: number): string {
-  return `${awuCredits.toLocaleString("en-US")} credits/month`;
+function formatAwuCredits(info: SeatTypeInfo): string {
+  const suffixByPeriod: Record<SeatTypeInfo["awuCreditsPeriod"], string> = {
+    weekly: "/week",
+    monthly: "/month",
+    quarterly: "/quarter",
+    annual: "/year",
+    lifetime: " lifetime",
+  };
+  return `${info.awuCredits.toLocaleString("en-US")} credits${
+    suffixByPeriod[info.awuCreditsPeriod]
+  }`;
+}
+
+function formatFrequencyLabel(frequency: SeatBillingFrequency): string {
+  return frequency.charAt(0).toUpperCase() + frequency.slice(1);
 }
 
 interface SeatCardProps {
@@ -116,7 +141,7 @@ function SeatCard({
         </span>
         {info.awuCredits > 0 && (
           <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {formatAwuCredits(info.awuCredits)}
+            {formatAwuCredits(info)}
           </span>
         )}
       </div>
@@ -191,7 +216,9 @@ export function ChangeSeatModal({
     SeatBillingFrequency,
     MembershipSeatType[]
   > = {
+    weekly: [],
     monthly: [],
+    quarterly: [],
     annual: [],
   };
   for (const seatType of seatTypes) {
@@ -201,9 +228,9 @@ export function ChangeSeatModal({
     }
   }
 
-  const availableFrequencies: SeatBillingFrequency[] = (
-    ["monthly", "annual"] as const
-  ).filter((f) => seatTypesByFrequency[f].length > 0);
+  const availableFrequencies = SEAT_BILLING_FREQUENCIES.filter(
+    (f) => seatTypesByFrequency[f].length > 0
+  );
 
   // Default the active tab to the frequency of the user's current seat — falls
   // back to the first frequency that has any seats to show.
@@ -300,7 +327,7 @@ export function ChangeSeatModal({
                     <TabsTrigger
                       key={f}
                       value={f}
-                      label={f === "annual" ? "Annual" : "Monthly"}
+                      label={formatFrequencyLabel(f)}
                       onClick={() => setActiveFrequency(f)}
                     />
                   ))}

@@ -240,6 +240,38 @@ export function getSeatTypesByProductIdFromContract(
   return result;
 }
 
+export type SeatAwuCreditsPeriod =
+  | "weekly"
+  | "monthly"
+  | "quarterly"
+  | "annual"
+  | "lifetime";
+
+export type SeatAwuAllocationInfo = {
+  credits: number;
+  period: SeatAwuCreditsPeriod;
+};
+
+function getSeatAwuCreditsPeriod(
+  credit: NonNullable<CachedContract["recurring_credits"]>[number]
+): SeatAwuCreditsPeriod {
+  if (credit.commit_duration.value > 1) {
+    return "lifetime";
+  }
+
+  switch (credit.recurrence_frequency) {
+    case "WEEKLY":
+      return "weekly";
+    case "ANNUAL":
+      return "annual";
+    case "QUARTERLY":
+      return "quarterly";
+    case "MONTHLY":
+    case undefined:
+      return "monthly";
+  }
+}
+
 /**
  * Look up the per-seat AWU allocation for a given seat type from the
  * contract's recurring credits. Credits are linked to seat subscriptions
@@ -249,23 +281,42 @@ export function getSeatTypesByProductIdFromContract(
  * Returns 0 when the seat type has no recurring credit (e.g. workspace
  * seats on legacy plans).
  */
-export function getAwuAllocationForSeatType(
+export function getAwuAllocationInfoForSeatType(
   contract: Pick<CachedContract, "subscriptions" | "recurring_credits">,
   seatType: MembershipSeatType,
   productSeatTypes: Map<string, MembershipSeatType>
-): number {
+): SeatAwuAllocationInfo {
   const seatSubscriptions = getSeatSubscriptionsFromContract(
     contract,
     productSeatTypes
   );
   const subscription = seatSubscriptions.get(seatType);
   if (!subscription?.id) {
-    return 0;
+    return { credits: 0, period: "monthly" };
   }
   const credit = (contract.recurring_credits ?? []).find(
     (c) => c.subscription_config?.subscription_id === subscription.id
   );
-  return credit?.access_amount.unit_price ?? 0;
+  if (!credit) {
+    return { credits: 0, period: "monthly" };
+  }
+
+  return {
+    credits: credit.access_amount.unit_price,
+    period: getSeatAwuCreditsPeriod(credit),
+  };
+}
+
+export function getAwuAllocationForSeatType(
+  contract: Pick<CachedContract, "subscriptions" | "recurring_credits">,
+  seatType: MembershipSeatType,
+  productSeatTypes: Map<string, MembershipSeatType>
+): number {
+  return getAwuAllocationInfoForSeatType(
+    contract,
+    seatType,
+    productSeatTypes
+  ).credits;
 }
 
 /**
