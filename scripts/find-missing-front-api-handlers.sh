@@ -13,6 +13,7 @@ FRONT_API_ROUTES_DIR="$REPO_ROOT/front-api/routes"
 cd "$FRONT_API_DIR"
 find . -type f \( -name "*.ts" -o -name "*.tsx" \) \
   ! -name "*.test.ts" ! -name "*.test.tsx" \
+  ! -path "./marketing/*" \
   | sed 's|^\./||' \
   | sort \
   | while IFS= read -r rel; do
