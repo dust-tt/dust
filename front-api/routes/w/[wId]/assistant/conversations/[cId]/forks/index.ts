@@ -1,8 +1,8 @@
 import { createConversationFork } from "@app/lib/api/assistant/conversation/forks";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { Hono } from "hono";
 import { z } from "zod";
 

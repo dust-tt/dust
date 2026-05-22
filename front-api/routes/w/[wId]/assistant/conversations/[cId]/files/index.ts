@@ -3,8 +3,8 @@ import {
   listGCSMountFiles,
 } from "@app/lib/api/files/gcs_mount/files";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
 
 import download from "./download";

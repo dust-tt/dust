@@ -9,7 +9,7 @@ import logger from "@app/logger/logger";
 import { isSupportedImageContentType } from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
 import path from "path";
 

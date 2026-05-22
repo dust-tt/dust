@@ -3,9 +3,9 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/internal/assistant";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { Hono } from "hono";
 
 export type PostContentFragmentResponseBody = {
