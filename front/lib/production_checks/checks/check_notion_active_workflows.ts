@@ -6,6 +6,7 @@ import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { getNotionWorkflowId } from "@app/types/connectors/workflows";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
+import type { ModelId } from "@app/types/shared/model_id";
 import { withRetries } from "@app/types/shared/retries";
 import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
 import type { Logger } from "pino";
@@ -20,17 +21,6 @@ interface NotionConnector {
   workspaceId: string;
   pausedAt: Date | null;
 }
-
-type MissingWorkflow = {
-  connectorId: number;
-  workspaceId: string;
-  details: string;
-};
-
-type StalledWorkflow = {
-  connectorId: number;
-  workspaceId: string;
-};
 
 async function listAllNotionConnectors() {
   const connectorsDb = getConnectorsPrimaryDbConnection();
@@ -119,18 +109,10 @@ async function areTemporalWorkflowsRunning(
     ({ status: { name } }) => name === "RUNNING"
   );
 
-  const details = isRunning
-    ? ""
-    : "Statuses of workflows are " +
-      descriptions
-        .map(({ status: { name }, workflowId }) => `${workflowId}: ${name}`)
-        .join(", ");
-
   if (!isRunning) {
     return {
       isRunning,
       isNotStalled: false,
-      details,
     };
   }
 
@@ -167,7 +149,6 @@ async function areTemporalWorkflowsRunning(
     isNotStalled: latestEventTimes.every(
       (d) => d && now - d.getTime() < TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS
     ),
-    details,
   };
 }
 
@@ -192,8 +173,14 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 
   logger.info(`Found ${notionConnectors.length} Notion connectors.`);
 
-  const missingActiveWorkflows: MissingWorkflow[] = [];
-  const stalledWorkflows: StalledWorkflow[] = [];
+  const missingActiveWorkflows: {
+    connectorId: ModelId;
+    workspaceId: string;
+  }[] = [];
+  const stalledWorkflows: {
+    connectorId: ModelId;
+    workspaceId: string;
+  }[] = [];
 
   for (const notionConnector of notionConnectors) {
     const localLogger = logger.child({ connectorId: notionConnector.id });
@@ -210,14 +197,16 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 
     heartbeat();
 
-    const { isRunning, isNotStalled, details } =
-      await areTemporalWorkflowsRunning(client, notionConnector, localLogger);
+    const { isRunning, isNotStalled } = await areTemporalWorkflowsRunning(
+      client,
+      notionConnector,
+      localLogger
+    );
 
     if (!isRunning) {
       missingActiveWorkflows.push({
         connectorId: notionConnector.id,
         workspaceId: notionConnector.workspaceId,
-        details,
       });
     } else {
       if (!isNotStalled) {
