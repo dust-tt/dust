@@ -80,10 +80,7 @@ app.post(
           );
           if (!deploymentsRes.ok) {
             const err = await deploymentsRes.json();
-            return ctx.json(
-              { ok: false, error: err.error.message },
-              400
-            );
+            return ctx.json({ ok: false, error: err.error.message }, 400);
           }
           await deploymentsRes.json();
           return ctx.json({ ok: true });
@@ -246,10 +243,7 @@ app.post(
         });
         if (!rGoogleAIStudio.ok) {
           const err = await rGoogleAIStudio.json();
-          return ctx.json(
-            { ok: false, error: err.error?.message },
-            400
-          );
+          return ctx.json({ ok: false, error: err.error?.message }, 400);
         }
         await rGoogleAIStudio.json();
         return ctx.json({ ok: true });
@@ -265,10 +259,7 @@ app.post(
         });
         if (!tModelsRes.ok) {
           const err = await tModelsRes.json();
-          return ctx.json(
-            { ok: false, error: err.error.message },
-            400
-          );
+          return ctx.json({ ok: false, error: err.error.message }, 400);
         }
         await tModelsRes.json();
         return ctx.json({ ok: true });

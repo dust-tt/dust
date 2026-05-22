@@ -4,8 +4,8 @@ import { redactString } from "@app/types/shared/utils/string_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import check from "./[pId]/check";
-import models from "./[pId]/models";
 import provider from "./[pId]/index";
+import models from "./[pId]/models";
 
 export type GetProvidersResponseBody = {
   providers: ProviderType[];
