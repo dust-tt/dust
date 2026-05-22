@@ -14,7 +14,6 @@ import {
   EyeSlashIcon,
   FullscreenExitIcon,
   FullscreenIcon,
-  Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -252,9 +251,10 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
 
   if (isProjectFilesLoading || (fileId && !fileContent)) {
     return (
-      <div className="mb-4 flex h-16 items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night">
-        <Spinner size="sm" />
-      </div>
+      <div
+        className="mb-4 flex h-16 items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night"
+        style={{ height: BANNER_HEIGHT_PX }}
+      />
     );
   }
 
