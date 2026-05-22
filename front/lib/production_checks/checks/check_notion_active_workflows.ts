@@ -118,80 +118,72 @@ async function areTemporalWorkflowsRunning(
   notionConnector: NotionConnector,
   logger: pino.Logger
 ) {
-  try {
-    const descriptions = await withRetries(logger, getWorkflowDescriptions, {
-      retries: TEMPORAL_WORKFLOW_CHECK_RETRIES,
-    })({
-      client,
-      notionConnector,
-      logger,
-    });
+  const descriptions = await withRetries(logger, getWorkflowDescriptions, {
+    retries: TEMPORAL_WORKFLOW_CHECK_RETRIES,
+  })({
+    client,
+    notionConnector,
+    logger,
+  });
 
-    logger.info(
-      {
-        connectorId: notionConnector.id,
-      },
-      "Workflow descriptions retrieved"
-    );
+  logger.info(
+    {
+      connectorId: notionConnector.id,
+    },
+    "Workflow descriptions retrieved"
+  );
 
-    const isRunning = descriptions.every(
-      ({ status: { name } }) => name === "RUNNING"
-    );
+  const isRunning = descriptions.every(
+    ({ status: { name } }) => name === "RUNNING"
+  );
 
-    const details = isRunning
-      ? ""
-      : "Statuses of workflows are " +
-        descriptions
-          .map(({ status: { name }, workflowId }) => `${workflowId}: ${name}`)
-          .join(", ");
+  const details = isRunning
+    ? ""
+    : "Statuses of workflows are " +
+      descriptions
+        .map(({ status: { name }, workflowId }) => `${workflowId}: ${name}`)
+        .join(", ");
 
-    if (!isRunning) {
-      return {
-        isRunning,
-        isNotStalled: false,
-        details,
-      };
-    }
-
-    const latestEventTimes = await withRetries(
-      logger,
-      async ({
-        client,
-        descriptions,
-      }: {
-        client: Client;
-        descriptions: NotionWorkflowDescriptions;
-      }): Promise<(Date | null)[]> => {
-        return Promise.all(
-          descriptions.map((description) =>
-            getLatestWorkflowEventTime({ client, description })
-          )
-        );
-      },
-      {
-        retries: TEMPORAL_WORKFLOW_CHECK_RETRIES,
-      }
-    )({
-      client,
-      descriptions,
-    });
-
-    const now = new Date().getTime();
-
+  if (!isRunning) {
     return {
       isRunning,
-      isNotStalled: latestEventTimes.every(
-        (d) => d && now - d.getTime() < TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS
-      ),
+      isNotStalled: false,
       details,
     };
-  } catch (err) {
-    return {
-      isRunning: false,
-      isNotStalled: false,
-      details: `Got Error: ${err}`,
-    };
   }
+
+  const latestEventTimes = await withRetries(
+    logger,
+    async ({
+      client,
+      descriptions,
+    }: {
+      client: Client;
+      descriptions: NotionWorkflowDescriptions;
+    }): Promise<(Date | null)[]> => {
+      return Promise.all(
+        descriptions.map((description) =>
+          getLatestWorkflowEventTime({ client, description })
+        )
+      );
+    },
+    {
+      retries: TEMPORAL_WORKFLOW_CHECK_RETRIES,
+    }
+  )({
+    client,
+    descriptions,
+  });
+
+  const now = new Date().getTime();
+
+  return {
+    isRunning,
+    isNotStalled: latestEventTimes.every(
+      (d) => d && now - d.getTime() < TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS
+    ),
+    details,
+  };
 }
 
 export const checkNotionActiveWorkflows: CheckFunction = async (
