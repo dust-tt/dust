@@ -5,11 +5,11 @@ import logger from "@app/logger/logger";
 import type { AppType } from "@app/types/app";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import aId from "./[aId]";
@@ -28,7 +28,7 @@ const PostAppBodySchema = z.object({
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps.
-const app = new Hono();
+const app = workspaceApp();
 
 // GET / — list apps in space.
 app.get(

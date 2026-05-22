@@ -5,9 +5,9 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { LightConversationType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetSpaceConversationsResponseBody = {
   conversations: LightConversationType[];
@@ -30,7 +30,7 @@ function parseFilter(value: string | undefined): SpaceConversationsFilter {
 }
 
 // Mounted at /api/w/:wId/assistant/conversations/spaces/:spaceId.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetSpaceConversationsResponseBody> => {
   const auth = ctx.get("auth");

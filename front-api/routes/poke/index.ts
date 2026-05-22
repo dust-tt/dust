@@ -1,5 +1,5 @@
+import { pokeApp } from "@front-api/middleware/env";
 import { pokeAuth } from "@front-api/middleware/poke_auth";
-import { Hono } from "hono";
 
 import admin from "./admin";
 import authContext from "./auth-context";
@@ -21,7 +21,7 @@ import workspaces from "./workspaces";
 
 // Mounted at /api/poke. Every route below inherits pokeAuth, which resolves
 // the super-user Authenticator and stashes it on the context.
-const app = new Hono();
+const app = pokeApp();
 
 app.use("*", pokeAuth);
 

@@ -1,11 +1,11 @@
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/mcp/connections/:connectionType/:cId.
-const app = new Hono();
+const app = workspaceApp();
 
 async function loadConnection(ctx: Context) {
   const auth = ctx.get("auth");

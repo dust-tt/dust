@@ -8,10 +8,10 @@ import {
   isInteractiveContentType,
   MAX_EMAILS_PER_INVITE,
 } from "@app/types/files";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import type { Context } from "hono";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const AddGrantsRequestBodySchema = z.object({
@@ -23,7 +23,7 @@ const RevokeGrantRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/files/:fileId/share/grants.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

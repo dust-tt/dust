@@ -5,9 +5,9 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { ensureFileSize, isSupportedFileContentType } from "@app/types/files";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import file from "./[fileId]";
@@ -77,7 +77,7 @@ const FileUploadUrlRequestSchema = z.discriminatedUnion("useCase", [
 ]);
 
 // Mounted at /api/w/:wId/files.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
   const auth = ctx.get("auth");

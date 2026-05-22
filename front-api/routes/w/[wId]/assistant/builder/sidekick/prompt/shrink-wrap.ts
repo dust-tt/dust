@@ -1,10 +1,10 @@
 import { buildShrinkWrapPromptForConversation } from "@app/lib/api/assistant/builder/sidekick_prompts";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/builder/sidekick/prompt/shrink-wrap.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

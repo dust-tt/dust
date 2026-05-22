@@ -1,9 +1,9 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import differenceWith from "lodash/differenceWith";
 
 export type GetMCPServerViewsNotActivatedResponseBody = {
@@ -12,7 +12,7 @@ export type GetMCPServerViewsNotActivatedResponseBody = {
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views/not_activated.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

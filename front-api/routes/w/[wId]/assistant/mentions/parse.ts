@@ -1,6 +1,6 @@
 import { parseMentionsInMarkdown } from "@app/lib/api/assistant/parse_mentions";
+import { workspaceApp } from "@front-api/middleware/env";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const ParseMentionsRequestBodySchema = z.object({
@@ -8,7 +8,7 @@ const ParseMentionsRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/mentions/parse.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", ParseMentionsRequestBodySchema), async (ctx) => {
   const auth = ctx.get("auth");

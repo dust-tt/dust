@@ -3,16 +3,16 @@ import {
   restoreAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type RestoreAgentConfigurationResponseBody = {
   success: true;
 };
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/restore.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

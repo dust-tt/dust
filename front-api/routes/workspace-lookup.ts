@@ -3,9 +3,9 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { LightWorkspaceType } from "@app/types/user";
+import { sessionAuthApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import { sessionAuth } from "../middleware/session_auth";
@@ -21,7 +21,7 @@ const GetWorkspaceLookupQuerySchema = z.object({
   flow: z.enum(["no-auto-join", "revoked"]),
 });
 
-export const workspaceLookupApp = new Hono();
+export const workspaceLookupApp = sessionAuthApp();
 
 workspaceLookupApp.use("*", sessionAuth);
 

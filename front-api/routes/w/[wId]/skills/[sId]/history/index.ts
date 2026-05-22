@@ -3,9 +3,9 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
 import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 import { fromError } from "zod-validation-error";
 
 export type GetSkillHistoryResponseBody = {
@@ -13,7 +13,7 @@ export type GetSkillHistoryResponseBody = {
 };
 
 // Mounted at /api/w/:wId/skills/:sId/history.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetSkillHistoryResponseBody> => {
   const auth = ctx.get("auth");

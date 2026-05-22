@@ -2,8 +2,8 @@ import {
   listAllProjectsWithAdminMetadata,
   type ProjectWithAdminMetadata,
 } from "@app/lib/api/projects/list";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import projectId from "./[projectId]";
 
@@ -14,7 +14,7 @@ export type PokeListProjects = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/projects.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeListProjects> => {
   const auth = ctx.get("auth");

@@ -18,9 +18,9 @@ import type {
 } from "@app/pages/api/w/[wId]/members/[uId]/index";
 import { isMembershipRoleType } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import seatType from "./seat-type";
@@ -31,7 +31,7 @@ const PostMemberBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/members/:uId.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/seat-type", seatType);
 

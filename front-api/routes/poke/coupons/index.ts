@@ -1,10 +1,10 @@
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { CouponDiscountType } from "@app/types/coupon";
 import { CreateCouponBodySchema } from "@app/types/coupon";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 
 import couponId from "./[couponId]";
 
@@ -36,7 +36,7 @@ export type CreatePokeCouponResponseBody = {
 
 // Mounted at /api/poke/coupons. pokeAuth is applied by the parent poke
 // sub-app.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<GetPokeCouponsResponseBody> => {
   const coupons = await CouponResource.listAll({ includeArchived: true });

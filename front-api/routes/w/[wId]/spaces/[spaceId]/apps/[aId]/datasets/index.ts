@@ -8,12 +8,12 @@ import { CoreAPI } from "@app/types/core/core_api";
 import type { DatasetType } from "@app/types/dataset";
 import type { APIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
 import type { Context, TypedResponse } from "hono";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import name from "./[name]";
@@ -46,7 +46,7 @@ export const PostDatasetRequestBodySchema = z.object({
 // Interacting with datasets requires write access to the app's space.
 // Read permission is not enough as it's available to all space users (or
 // everybody for public spaces).
-const app = new Hono();
+const app = workspaceApp();
 
 // Shared prelude for GET and POST: resolves the app from `:aId`, verifies it
 // belongs to the current space, and enforces write access on it. Returns

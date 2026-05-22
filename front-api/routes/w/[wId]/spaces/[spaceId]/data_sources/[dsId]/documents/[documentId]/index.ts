@@ -6,19 +6,19 @@ import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/d
 import { CoreAPI } from "@app/types/core/core_api";
 import type { CoreAPILightDocument } from "@app/types/core/data_source";
 import type { DocumentType } from "@app/types/document";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withDataSource } from "@front-api/middleware/with_data_source";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 export type PatchDocumentResponseBody = {
   document: DocumentType | CoreAPILightDocument;
 };
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/documents/:documentId.
-const app = new Hono();
+const app = workspaceApp();
 
 app.patch(
   "/",

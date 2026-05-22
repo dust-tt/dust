@@ -1,11 +1,11 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { APIErrorResponse } from "@app/types/error";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import type { Context, TypedResponse } from "hono";
-import { Hono } from "hono";
 import { z } from "zod";
 
 // `lastUpdated` is a `Date` in `AgentMemoryResource.toJSON()` but JSON-serializes
@@ -25,7 +25,7 @@ const PatchAgentMemoryRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/memories/:mId.
-const app = new Hono();
+const app = workspaceApp();
 
 async function loadAgentAndMemory(
   ctx: Context

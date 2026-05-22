@@ -3,10 +3,10 @@ import {
   WEBHOOK_PRESETS,
   WEBHOOK_PROVIDERS,
 } from "@app/types/triggers/webhooks";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PostWebhookFilterGeneratorResponseBody = {
@@ -20,7 +20,7 @@ const PostWebhookFilterGeneratorRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/webhook_filter_generator.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

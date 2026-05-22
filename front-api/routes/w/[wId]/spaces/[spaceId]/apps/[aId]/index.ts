@@ -2,11 +2,11 @@ import { softDeleteApp } from "@app/lib/api/apps";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { AppType } from "@app/types/app";
 import { APP_NAME_REGEXP } from "@app/types/app";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import datasets from "./datasets";
@@ -23,7 +23,7 @@ const PatchAppBodySchema = z.object({
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId.
-const app = new Hono();
+const app = workspaceApp();
 
 // GET / — read app.
 app.get(

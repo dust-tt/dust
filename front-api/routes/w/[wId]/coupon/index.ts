@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 import validate from "./validate";
 
 // Mounted under /api/w/:wId/coupon.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/validate", validate);
 

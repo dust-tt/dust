@@ -1,10 +1,10 @@
 import { closeConversationBranch } from "@app/lib/api/assistant/conversation/branches";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/branches/:bId/close.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", async (ctx) => {
   const auth = ctx.get("auth");

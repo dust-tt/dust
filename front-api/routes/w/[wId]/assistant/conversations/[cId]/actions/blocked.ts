@@ -1,10 +1,10 @@
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/actions/blocked.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

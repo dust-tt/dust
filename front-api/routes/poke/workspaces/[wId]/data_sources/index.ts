@@ -1,7 +1,7 @@
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceType } from "@app/types/data_source";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import dsId from "./[dsId]";
 
@@ -10,7 +10,7 @@ export type PokeListDataSources = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/data_sources.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeListDataSources> => {
   const auth = ctx.get("auth");

@@ -1,9 +1,9 @@
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type SearchConversationsResponseBody = {
   conversations: Array<
@@ -14,7 +14,7 @@ export type SearchConversationsResponseBody = {
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/search.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<SearchConversationsResponseBody> => {
   const auth = ctx.get("auth");

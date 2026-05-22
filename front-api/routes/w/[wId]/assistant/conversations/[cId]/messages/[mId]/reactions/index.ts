@@ -8,9 +8,9 @@ import {
 } from "@app/lib/api/assistant/reaction_update";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const MessageReactionRequestBodySchema = z.object({
@@ -18,7 +18,7 @@ const MessageReactionRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/reactions.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

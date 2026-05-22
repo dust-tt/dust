@@ -3,10 +3,10 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PostNotionUrlStatusResponseBody = {
@@ -31,7 +31,7 @@ const PostNotionUrlStatusBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion_url_status.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

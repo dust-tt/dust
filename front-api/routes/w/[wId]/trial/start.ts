@@ -3,16 +3,16 @@ import {
   isWorkspaceEligibleForTrial,
 } from "@app/lib/plans/trial";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PostTrialVerifyResponseBody = {
   success: boolean;
 };
 
 // Mounted at /api/w/:wId/trial/start.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", async (ctx): HandlerResult<PostTrialVerifyResponseBody> => {
   const auth = ctx.get("auth");

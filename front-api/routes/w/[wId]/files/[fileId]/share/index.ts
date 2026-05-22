@@ -8,11 +8,11 @@ import {
   isConversationFileUseCase,
   isInteractiveContentType,
 } from "@app/types/files";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import type { Context, TypedResponse } from "hono";
-import { Hono } from "hono";
 import { z } from "zod";
 
 // `sharedAt` is `Date` at the resource layer but JSON-serializes to a string.
@@ -31,7 +31,7 @@ const ShareFileRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/files/:fileId/share.
-const app = new Hono();
+const app = workspaceApp();
 
 // Register `/grants` BEFORE the bare `/` handlers — see [API2] for ordering
 // rules around literal vs. param siblings (though they are different routes,

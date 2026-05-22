@@ -1,15 +1,15 @@
 import { dataSourceViewToPokeJSON } from "@app/lib/poke/utils";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { PokeDataSourceViewType } from "@app/types/poke";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PokeGetDataSourceViewDetails = {
   dataSourceView: PokeDataSourceViewType;
 };
 
 // Mounted at /api/poke/workspaces/:wId/data_source_views/:dsvId/details.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetDataSourceViewDetails> => {
   const auth = ctx.get("auth");

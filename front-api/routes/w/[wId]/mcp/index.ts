@@ -5,10 +5,10 @@ import {
   createRemoteMCPServer,
   listMCPServersWithViews,
 } from "@app/lib/api/mcp/servers";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import server from "./[serverId]";
@@ -68,7 +68,7 @@ const PostBodySchema = z.discriminatedUnion("serverType", [
 
 // Mounted at /api/w/:wId/mcp. workspaceAuth is applied by the parent
 // workspace sub-app.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
   const auth = ctx.get("auth");

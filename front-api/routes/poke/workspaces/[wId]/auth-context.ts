@@ -2,8 +2,8 @@ import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator } from "@app/lib/auth";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { sessionAuthApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetPokeWorkspaceAuthContextResponseType = {
   user: UserType;
@@ -21,7 +21,7 @@ export type GetPokeWorkspaceAuthContextResponseType = {
 // region and respond with a redirect rather than a plain 404. pokeAuth is
 // inherited from the parent /poke sub-app and stashes the session, which we
 // use here to resolve a workspace-scoped Authenticator inline.
-const app = new Hono();
+const app = sessionAuthApp();
 
 app.get(
   "/",

@@ -1,9 +1,9 @@
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { CouponType } from "@app/types/coupon";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type GetCouponValidateResponseBody = {
@@ -15,7 +15,7 @@ const GetCouponValidateQuerySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/coupon/validate.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", validate("query", GetCouponValidateQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");

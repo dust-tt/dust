@@ -18,17 +18,17 @@ import { isAPIError } from "@app/types/error";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;
 };
 
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/update.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

@@ -1,10 +1,10 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { UserType } from "@app/types/user";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const MEMBERS_LOOKUP_MAX_IDS = 50;
@@ -22,7 +22,7 @@ export type MembersLookupResponseBody = {
 };
 
 // Mounted at /api/w/:wId/members/lookup.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

@@ -1,10 +1,10 @@
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/files/:fileId/signed-url.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

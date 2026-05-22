@@ -4,10 +4,10 @@ import {
   validateWorkspaceAccess,
 } from "@app/lib/api/workspace_validation";
 import { Authenticator } from "@app/lib/auth";
-import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { WorkspaceAuthEnv } from "@front-api/middleware/env";
 import { resolveSession } from "@front-api/middleware/session_resolution";
 import { apiError } from "@front-api/middleware/utils";
 import { createMiddleware } from "hono/factory";
@@ -81,13 +81,6 @@ interface WorkspaceAuthOptions {
   doesNotRequireCanUseProduct?: boolean;
   allowMissingWorkspace?: boolean;
 }
-
-export type WorkspaceAuthEnv = {
-  Variables: {
-    auth: Authenticator;
-    session: SessionWithUser;
-  };
-};
 
 /**
  * Authenticates a workspace-scoped request and stores the resolved

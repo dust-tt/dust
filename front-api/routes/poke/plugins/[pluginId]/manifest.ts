@@ -4,15 +4,15 @@ import type {
   PluginManifest,
   SupportedResourceType,
 } from "@app/types/poke/plugins";
+import { pokeApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export interface PokeGetPluginDetailsResponseBody {
   manifest: PluginManifest<PluginArgs, SupportedResourceType>;
 }
 
 // Mounted at /api/poke/plugins/:pluginId/manifest.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetPluginDetailsResponseBody> => {
   const pluginId = ctx.req.param("pluginId");

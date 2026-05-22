@@ -8,19 +8,19 @@ import { CoreAPI } from "@app/types/core/core_api";
 import type { DatasetType } from "@app/types/dataset";
 import type { APIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
 import type { Context, TypedResponse } from "hono";
-import { Hono } from "hono";
 
 import { PostDatasetRequestBodySchema } from "../schemas";
 
 export type GetDatasetResponseBody = { dataset: DatasetType };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/datasets/:name.
-const app = new Hono();
+const app = workspaceApp();
 
 // Shared prelude for every method: resolves the workspace, app, and dataset
 // from the path params and enforces read access on the app. Returns either

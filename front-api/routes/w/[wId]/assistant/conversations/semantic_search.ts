@@ -2,10 +2,10 @@ import { searchProjectConversations } from "@app/lib/api/projects/search";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type SemanticSearchConversationsResponseBody = {
@@ -20,7 +20,7 @@ const SearchQuerySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/semantic_search.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

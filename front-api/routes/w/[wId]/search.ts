@@ -11,9 +11,9 @@ import type { SearchWarningCode } from "@app/types/core/core_api";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { stream } from "hono/streaming";
 import { fromError } from "zod-validation-error";
 
@@ -33,7 +33,7 @@ interface UnifiedSearchStreamChunk {
 }
 
 // Mounted at /api/w/:wId/search.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

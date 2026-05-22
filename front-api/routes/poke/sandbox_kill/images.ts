@@ -1,13 +1,13 @@
 import { getRegisteredImages } from "@app/lib/api/sandbox/image";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export interface SandboxKillImagesResponseBody {
   images: Array<{ baseImage: string; version: string }>;
 }
 
 // Mounted at /api/poke/sandbox_kill/images.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<SandboxKillImagesResponseBody> => {
   const images = getRegisteredImages()

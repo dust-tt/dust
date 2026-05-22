@@ -1,8 +1,8 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const PostMCPResultsBodySchema = z.object({
@@ -11,7 +11,7 @@ const PostMCPResultsBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/mcp/results.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", PostMCPResultsBodySchema), async (ctx) => {
   const auth = ctx.get("auth");

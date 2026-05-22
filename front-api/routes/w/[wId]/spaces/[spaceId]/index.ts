@@ -17,11 +17,11 @@ import type { AgentsUsageType } from "@app/types/data_source";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import uniqBy from "lodash/uniqBy";
 
 import apps from "./apps";
@@ -79,7 +79,7 @@ export type DeleteSpaceResponseBody = {
 // live in their own sibling files; each sub-app applies its own
 // `withSpace(...)` middleware so different permission options can be used
 // per route.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

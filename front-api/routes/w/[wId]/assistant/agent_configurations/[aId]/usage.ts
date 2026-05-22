@@ -1,16 +1,16 @@
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentUsageType } from "@app/types/assistant/agent";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetAgentUsageResponseBody = {
   agentUsage: AgentUsageType | null;
 };
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/usage.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetAgentUsageResponseBody> => {
   const auth = ctx.get("auth");

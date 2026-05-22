@@ -1,9 +1,9 @@
 import { removeContentNodesFromProject } from "@app/lib/api/projects/context";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type DeleteProjectContextContentNodeResponseBody = Record<string, never>;
@@ -21,7 +21,7 @@ const DeleteContentNodeBodySchema = z.object({
 //
 // The Next handler enforces these as project-only and require write access;
 // we keep the same checks here.
-const app = new Hono();
+const app = workspaceApp();
 
 app.delete(
   "/",

@@ -3,8 +3,8 @@ import {
   BUILDER_GROUP_NAME,
   GroupResource,
 } from "@app/lib/resources/group_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetProvisioningStatusResponseBody = {
   hasAdminGroup: boolean;
@@ -12,7 +12,7 @@ export type GetProvisioningStatusResponseBody = {
 };
 
 // Mounted at /api/w/:wId/provisioning-status.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetProvisioningStatusResponseBody> => {
   const auth = ctx.get("auth");

@@ -1,10 +1,10 @@
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { AppType, SpecificationType } from "@app/types/app";
 import type { RunType } from "@app/types/run";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 import blocks from "./blocks";
 import cancel from "./cancel";
@@ -16,7 +16,7 @@ export type GetRunResponseBody = {
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId.
-const app = new Hono();
+const app = workspaceApp();
 
 // GET / — get a run.
 app.get(

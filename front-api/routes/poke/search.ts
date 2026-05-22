@@ -1,16 +1,16 @@
 import { searchPokeResources } from "@app/lib/poke/search";
 import type { PokeItemBase } from "@app/types/poke";
 import { isString } from "@app/types/shared/utils/general";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetPokeSearchItemsResponseBody = {
   results: PokeItemBase[];
 };
 
 // Mounted at /api/poke/search. pokeAuth is applied by the parent poke sub-app.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<GetPokeSearchItemsResponseBody> => {
   const auth = ctx.get("auth");

@@ -3,8 +3,8 @@ import {
   type ProjectKnowledgeFromConnectorItem,
 } from "@app/lib/api/projects/context";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PokeProjectKnowledgeFromConnectorItem =
   ProjectKnowledgeFromConnectorItem;
@@ -14,7 +14,7 @@ export type PokeListProjectKnowledgeFromConnectors = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/projects/:projectId/connector-knowledge.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get(
   "/",

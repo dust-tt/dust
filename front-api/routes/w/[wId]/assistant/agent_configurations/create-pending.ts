@@ -1,14 +1,14 @@
 import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PostPendingAgentResponseBody = {
   sId: string;
 };
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/create-pending.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", async (ctx): HandlerResult<PostPendingAgentResponseBody> => {
   const auth = ctx.get("auth");

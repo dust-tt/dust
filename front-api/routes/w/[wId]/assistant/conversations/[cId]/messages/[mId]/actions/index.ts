@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 import action from "./[aId]";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/actions.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/:aId", action);
 

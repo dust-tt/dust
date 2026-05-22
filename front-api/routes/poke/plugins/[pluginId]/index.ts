@@ -1,10 +1,10 @@
-import { Hono } from "hono";
+import { pokeApp } from "@front-api/middleware/env";
 
 import asyncArgs from "./async-args";
 import manifest from "./manifest";
 import run from "./run";
 
-const app = new Hono();
+const app = pokeApp();
 
 app.route("/async-args", asyncArgs);
 app.route("/manifest", manifest);

@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 import start from "./start";
 
 // Mounted under /api/w/:wId/trial.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/start", start);
 

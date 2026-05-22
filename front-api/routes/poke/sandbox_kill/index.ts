@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { pokeApp } from "@front-api/middleware/env";
 
 import images from "./images";
 
-const app = new Hono();
+const app = pokeApp();
 
 app.route("/images", images);
 

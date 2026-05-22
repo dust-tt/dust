@@ -8,11 +8,11 @@ import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
+import { sessionAuthApp } from "@front-api/middleware/env";
 import { sessionAuth } from "@front-api/middleware/session_auth";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import metadata from "./metadata";
@@ -36,7 +36,7 @@ const PatchUserBodySchema = z.object({
 });
 
 // Mounted under /api/user. Every route below inherits sessionAuth.
-const app = new Hono();
+const app = sessionAuthApp();
 
 app.use("*", sessionAuth);
 

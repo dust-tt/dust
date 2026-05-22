@@ -1,7 +1,7 @@
 import { exportAgentConfigurationAsYAML } from "@app/lib/api/assistant/configuration/yaml_export";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetAgentConfigurationYAMLExportResponseBody = {
   yamlContent: string;
@@ -9,7 +9,7 @@ export type GetAgentConfigurationYAMLExportResponseBody = {
 };
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/export/yaml.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

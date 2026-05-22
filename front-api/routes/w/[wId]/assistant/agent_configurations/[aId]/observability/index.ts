@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 import datasourceRetrieval from "./datasource-retrieval";
 import datasourceRetrievalDocuments from "./datasource-retrieval-documents";
 import errorRate from "./error_rate";
@@ -15,7 +15,7 @@ import usageMetrics from "./usage-metrics";
 import versionMarkers from "./version-markers";
 
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/observability.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/datasource-retrieval", datasourceRetrieval);
 app.route("/datasource-retrieval-documents", datasourceRetrievalDocuments);

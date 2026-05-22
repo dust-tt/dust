@@ -3,10 +3,10 @@ import {
   validateUserMention,
 } from "@app/lib/api/assistant/conversation/mentions";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PostMentionActionResponseBody = {
@@ -20,7 +20,7 @@ const PostMentionActionRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/mentions.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

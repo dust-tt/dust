@@ -9,8 +9,8 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileType } from "@app/types/files";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PlanApprovalState = "draft" | "pending" | "approved";
 
@@ -21,7 +21,7 @@ export type GetConversationPlanModeResponseBody = {
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/plan_mode.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

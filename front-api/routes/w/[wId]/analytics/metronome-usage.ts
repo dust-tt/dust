@@ -23,9 +23,9 @@ import {
 } from "@app/lib/metronome/constants";
 import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import logger from "@app/logger/logger";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const METRONOME_USAGE_GROUP_BY_KEYS = ["api_key", "model", "origin"] as const;
@@ -72,7 +72,7 @@ const GROUP_BY_TO_EVENT_PROPERTY: Record<MetronomeUsageGroupByType, string> = {
 };
 
 // Mounted at /api/w/:wId/analytics/metronome-usage.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");

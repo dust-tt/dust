@@ -1,8 +1,8 @@
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PokeListSuggestions = {
@@ -14,7 +14,7 @@ const DeleteSuggestionQuerySchema = z.object({
 });
 
 // Mounted at /api/poke/workspaces/:wId/assistants/:aId/suggestions.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeListSuggestions> => {
   const auth = ctx.get("auth");

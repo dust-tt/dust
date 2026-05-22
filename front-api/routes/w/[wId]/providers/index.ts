@@ -1,9 +1,9 @@
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import type { ProviderType } from "@app/types/provider";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetProvidersResponseBody = {
   providers: ProviderType[];
@@ -19,7 +19,7 @@ function redactConfig(config: string) {
 }
 
 // Mounted at /api/w/:wId/providers.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetProvidersResponseBody> => {
   const auth = ctx.get("auth");

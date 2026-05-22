@@ -1,14 +1,14 @@
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
+import { publicApiApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 // Re-exported so SWR hooks and other consumers can import the response type
 // from the Hono route file, matching the convention of our other routes.
 export type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
 
 // Mounted at /api/v1/w/:wId/verified_domains.
-const app = new Hono();
+const app = publicApiApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

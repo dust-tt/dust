@@ -3,9 +3,9 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const AgentMentionSchema = z.object({
@@ -22,7 +22,7 @@ const PostEditRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/edit.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", PostEditRequestBodySchema), async (ctx) => {
   const auth = ctx.get("auth");

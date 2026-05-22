@@ -2,8 +2,8 @@ import {
   listMetronomePackages,
   type MetronomePackageSummary,
 } from "@app/lib/metronome/client";
+import { pokeApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetPokeMetronomePackagesResponseBody = {
   packages: MetronomePackageSummary[];
@@ -11,7 +11,7 @@ export type GetPokeMetronomePackagesResponseBody = {
 
 // Mounted at /api/poke/metronome/packages. pokeAuth is applied by the parent
 // poke sub-app.
-const app = new Hono();
+const app = pokeApp();
 
 app.get(
   "/",

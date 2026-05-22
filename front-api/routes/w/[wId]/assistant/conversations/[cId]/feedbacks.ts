@@ -1,10 +1,10 @@
 import { getConversationFeedbacksForUser } from "@app/lib/api/assistant/feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/feedbacks.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

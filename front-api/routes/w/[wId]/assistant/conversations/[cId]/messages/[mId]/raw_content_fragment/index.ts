@@ -7,9 +7,9 @@ import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_reso
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import type formidable from "formidable";
-import { Hono } from "hono";
 
 const privateUploadGcs = getPrivateUploadBucket();
 
@@ -26,7 +26,7 @@ function isValidContentFormat(
 }
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/raw_content_fragment.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

@@ -2,11 +2,11 @@ import { performLogin } from "@app/lib/api/login";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import { sessionAuthApp } from "@front-api/middleware/env";
 import { sessionAuth } from "@front-api/middleware/session_auth";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
-const app = new Hono();
+const app = sessionAuthApp();
 
 app.use("*", sessionAuth);
 

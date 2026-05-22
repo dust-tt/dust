@@ -16,10 +16,10 @@ import {
 } from "@app/types/assistant/skill_configuration";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import uniq from "lodash/uniq";
 import { z } from "zod";
 import skill from "./[sId]";
@@ -101,7 +101,7 @@ const PostSkillRequestBodySchema = z.intersection(
 );
 
 // Mounted at /api/w/:wId/skills.
-const app = new Hono();
+const app = workspaceApp();
 
 // Static sub-paths must be registered before the param sub-app.
 app.route("/detect", detect);

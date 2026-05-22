@@ -1,7 +1,7 @@
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const GetLookupRequestSchema = z.object({
@@ -9,7 +9,7 @@ const GetLookupRequestSchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/lookup.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", validate("query", GetLookupRequestSchema), async (ctx) => {
   const auth = ctx.get("auth");

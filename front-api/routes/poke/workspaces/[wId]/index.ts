@@ -1,9 +1,9 @@
 import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
 import type { LightWorkspaceType } from "@app/types/user";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { pokeWorkspaceAuth } from "@front-api/middleware/poke_workspace_auth";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import analytics from "./analytics";
@@ -39,7 +39,7 @@ export type SegmentWorkspaceResponseBody = {
 };
 
 // Mounted at /api/poke/workspaces/:wId.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 // `auth-context` runs without `pokeWorkspaceAuth` because it needs to handle
 // the missing-workspace case (cross-region redirect). It owns its own

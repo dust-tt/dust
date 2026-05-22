@@ -2,10 +2,10 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { FileType } from "@app/types/files";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type RenameFileResponseBody = {
@@ -17,7 +17,7 @@ const RenameRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/files/:fileId/rename.
-const app = new Hono();
+const app = workspaceApp();
 
 app.patch(
   "/",

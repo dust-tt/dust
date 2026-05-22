@@ -1,10 +1,10 @@
-import { Hono } from "hono";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 
 import config from "./config";
 import document from "./document";
 import tables from "./tables";
 
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.route("/config", config);
 app.route("/document", document);

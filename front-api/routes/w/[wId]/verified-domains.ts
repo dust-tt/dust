@@ -1,15 +1,15 @@
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WorkspaceDomain } from "@app/types/workspace";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetWorkspaceVerifiedDomainsResponseBody = {
   verifiedDomains: WorkspaceDomain[];
 };
 
 // Mounted at /api/w/:wId/verified-domains.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

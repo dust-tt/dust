@@ -2,9 +2,9 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/triggers/webhook";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import { WEBHOOK_REQUEST_TRIGGER_STATUSES } from "@app/types/assistant/triggers";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export interface PokeGetWebhookRequestsResponseBody {
@@ -25,7 +25,7 @@ const WebhookRequestsQuerySchema = z.object({
 });
 
 // Mounted at /api/poke/workspaces/:wId/triggers/:tId/webhook_requests.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get(
   "/",

@@ -5,9 +5,9 @@ import {
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -34,7 +34,7 @@ function isAllowedAvailability(
 }
 
 // Mounted at /api/w/:wId/mcp/views.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
   const auth = ctx.get("auth");

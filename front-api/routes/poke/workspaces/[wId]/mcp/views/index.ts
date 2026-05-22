@@ -1,9 +1,9 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PokeListMCPServerViews = {
@@ -15,7 +15,7 @@ const QuerySchema = z.object({
 });
 
 // Mounted at /api/poke/workspaces/:wId/mcp/views.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get(
   "/",

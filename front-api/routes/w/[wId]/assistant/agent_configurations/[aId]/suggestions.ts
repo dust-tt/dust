@@ -1,10 +1,10 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type GetSuggestionsResponseBody = {
@@ -34,7 +34,7 @@ const GetSuggestionsQuerySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/suggestions.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

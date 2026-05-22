@@ -20,10 +20,10 @@ import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 
 import message from "./[mId]";
 
@@ -47,7 +47,7 @@ export interface FetchConversationMessagesResponse {
 }
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

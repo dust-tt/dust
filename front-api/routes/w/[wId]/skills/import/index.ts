@@ -2,10 +2,10 @@ import { importSkillsFromGitHub } from "@app/lib/api/skills/detection/github/imp
 import logger from "@app/logger/logger";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import upload from "./upload";
@@ -26,7 +26,7 @@ export type ImportSkillsResponseBody = {
 };
 
 // Mounted at /api/w/:wId/skills/import.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/upload", upload);
 

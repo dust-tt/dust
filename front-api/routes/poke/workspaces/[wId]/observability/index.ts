@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 
 import datasourceRetrieval from "./datasource-retrieval";
 
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.route("/datasource-retrieval", datasourceRetrieval);
 

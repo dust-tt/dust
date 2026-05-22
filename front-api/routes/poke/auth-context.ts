@@ -1,6 +1,6 @@
 import type { UserType } from "@app/types/user";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetPokeNoWorkspaceAuthContextResponseType = {
   user: UserType;
@@ -10,7 +10,7 @@ export type GetPokeNoWorkspaceAuthContextResponseType = {
 // Mounted at /api/poke/auth-context. pokeAuth is applied by the parent poke
 // sub-app, so ctx.get("auth") is always available here and the user is a
 // verified super-user.
-const app = new Hono();
+const app = pokeApp();
 
 app.get(
   "/",

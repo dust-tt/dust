@@ -1,12 +1,6 @@
-import type { SessionWithUser } from "@app/lib/iam/provider";
+import type { SessionAuthEnv } from "@front-api/middleware/env";
 import { resolveSession } from "@front-api/middleware/session_resolution";
 import { createMiddleware } from "hono/factory";
-
-export type SessionAuthEnv = {
-  Variables: {
-    session: SessionWithUser;
-  };
-};
 
 /**
  * Resolves a session (bearer token or cookie) and stores the resulting

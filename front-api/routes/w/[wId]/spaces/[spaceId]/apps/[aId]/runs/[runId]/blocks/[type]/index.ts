@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 import name from "./[name]";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/blocks/:type.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/:name", name);
 

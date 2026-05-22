@@ -1,13 +1,13 @@
 import { getFeatureFlags } from "@app/lib/auth";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 export type GetWorkspaceFeatureFlagsResponseType = {
   feature_flags: WhitelistableFeature[];
 };
 
 // Mounted at /api/w/:wId/feature-flags.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

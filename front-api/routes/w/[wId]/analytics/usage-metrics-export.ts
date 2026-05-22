@@ -2,10 +2,10 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { formatUTCDateFromMillis } from "@app/lib/api/elasticsearch";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { stringify } from "csv-stringify/sync";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const QuerySchema = z.object({
@@ -13,7 +13,7 @@ const QuerySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/analytics/usage-metrics-export.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");

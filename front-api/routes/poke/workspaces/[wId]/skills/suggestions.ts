@@ -1,9 +1,9 @@
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export const PostSkillSuggestionBodySchema = z.object({
@@ -22,7 +22,7 @@ export type PostPokeSkillSuggestionResponseBody = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/skills/suggestions.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.post(
   "/",

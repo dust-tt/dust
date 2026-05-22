@@ -9,10 +9,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ProjectType, SpaceType } from "@app/types/space";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 import spaceId from "./[spaceId]";
 import checkName from "./check-name";
@@ -51,7 +51,7 @@ export type PostSpacesResponseBody = {
 
 // Mounted under /api/w/:wId/spaces. workspaceAuth is applied by the parent
 // workspace sub-app, so ctx.get("auth") is always available here.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetSpacesResponseBody> => {
   const auth = ctx.get("auth");

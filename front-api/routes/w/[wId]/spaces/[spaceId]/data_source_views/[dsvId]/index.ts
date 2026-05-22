@@ -7,12 +7,12 @@ import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 import contentNodes from "./content-nodes";
 import documents from "./documents";
@@ -29,7 +29,7 @@ export type PatchDataSourceViewResponseBody = {
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

@@ -1,13 +1,12 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type {
+  DataSourceViewEnv,
+  SpaceEnv,
+  WorkspaceAuthEnv,
+} from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import type { MiddlewareHandler } from "hono";
-
-declare module "hono" {
-  interface ContextVariableMap {
-    dataSourceView: DataSourceViewResource;
-  }
-}
+import { createMiddleware } from "hono/factory";
 
 interface WithDataSourceViewOptions {
   requireCanAdministrate?: boolean;
@@ -42,38 +41,38 @@ function hasPermission(
  * permission, and stashes it on `ctx.var.dataSourceView`. Mirrors
  * `withDataSourceViewFromRoute` in `front/lib/api/resource_wrappers.ts`.
  */
-export function withDataSourceView(
-  options: WithDataSourceViewOptions
-): MiddlewareHandler {
-  return async (ctx, next) => {
-    const auth = ctx.get("auth");
-    const space = ctx.get("space");
-    const dsvId = ctx.req.param("dsvId");
-    if (!dsvId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
+export function withDataSourceView(options: WithDataSourceViewOptions) {
+  return createMiddleware<WorkspaceAuthEnv & SpaceEnv & DataSourceViewEnv>(
+    async (ctx, next) => {
+      const auth = ctx.get("auth");
+      const space = ctx.get("space");
+      const dsvId = ctx.req.param("dsvId");
+      if (!dsvId) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid path parameters.",
+          },
+        });
+      }
+      const view = await DataSourceViewResource.fetchById(auth, dsvId);
+      if (
+        !view ||
+        view.space.sId !== space.sId ||
+        space.isConversations() ||
+        !hasPermission(auth, view, options)
+      ) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_view_not_found",
+            message: "The data source view you requested was not found.",
+          },
+        });
+      }
+      ctx.set("dataSourceView", view);
+      await next();
     }
-    const view = await DataSourceViewResource.fetchById(auth, dsvId);
-    if (
-      !view ||
-      view.space.sId !== space.sId ||
-      space.isConversations() ||
-      !hasPermission(auth, view, options)
-    ) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "data_source_view_not_found",
-          message: "The data source view you requested was not found.",
-        },
-      });
-    }
-    ctx.set("dataSourceView", view);
-    await next();
-  };
+  );
 }

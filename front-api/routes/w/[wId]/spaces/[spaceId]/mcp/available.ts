@@ -2,9 +2,9 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 export type GetMCPServersResponseBody = {
   success: boolean;
@@ -16,7 +16,7 @@ export type GetMCPServersResponseBody = {
 // Lists MCP servers available to add to the space — i.e. servers that exist
 // in the workspace but are not yet attached to this space nor to the global
 // space.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

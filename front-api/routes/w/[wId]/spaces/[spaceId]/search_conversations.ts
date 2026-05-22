@@ -2,11 +2,11 @@ import { searchProjectConversations } from "@app/lib/api/projects/search";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type SearchConversationsResponseBody = {
@@ -27,7 +27,7 @@ const SearchConversationsQuerySchema = z.object({
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/search_conversations.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

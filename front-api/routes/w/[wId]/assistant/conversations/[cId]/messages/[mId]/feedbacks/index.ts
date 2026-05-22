@@ -6,9 +6,9 @@ import {
 import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const MessageFeedbackRequestBodySchema = z.object({
@@ -18,7 +18,7 @@ const MessageFeedbackRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/feedbacks.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

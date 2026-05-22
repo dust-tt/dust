@@ -2,14 +2,14 @@ import { finalizeConnection } from "@app/lib/api/oauth";
 import { Authenticator } from "@app/lib/auth";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import { isOAuthProvider } from "@app/types/oauth/lib";
+import { sessionAuthApp } from "@front-api/middleware/env";
 import { sessionAuth } from "@front-api/middleware/session_auth";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetOauthFinalizeResponseBody = { connection: OAuthConnectionType };
 
-const app = new Hono();
+const app = sessionAuthApp();
 
 app.use("*", sessionAuth);
 

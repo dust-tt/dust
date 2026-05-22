@@ -2,11 +2,11 @@ import { fetchConversationParticipants } from "@app/lib/api/assistant/participan
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/participants.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

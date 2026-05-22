@@ -1,15 +1,15 @@
 import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetPendingInvitationsResponseBody = {
   pendingInvitations: PendingInvitationOption[];
 };
 
 // Mounted at /api/w/:wId/me/pending-invitations.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetPendingInvitationsResponseBody> => {
   const auth = ctx.get("auth");

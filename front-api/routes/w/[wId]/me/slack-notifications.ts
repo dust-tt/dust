@@ -1,14 +1,14 @@
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetSlackNotificationResponseBody = {
   canConfigure: boolean;
 };
 
 // Mounted at /api/w/:wId/me/slack-notifications.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetSlackNotificationResponseBody> => {
   const auth = ctx.get("auth");

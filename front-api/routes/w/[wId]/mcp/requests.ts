@@ -1,5 +1,5 @@
+import { workspaceApp } from "@front-api/middleware/env";
 import type { Context } from "hono";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/mcp/requests.
 //
@@ -13,7 +13,7 @@ import { Hono } from "hono";
 //      contract is the same whether the request first hits Hono or Next.
 //   2. Reserve the literal `requests` segment so Hono's sibling `:serverId`
 //      param route under `/mcp/` does not swallow it as a server id.
-const app = new Hono();
+const app = workspaceApp();
 
 const SSE_PREFIX = "/api/sse";
 

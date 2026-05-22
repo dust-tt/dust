@@ -2,17 +2,17 @@ import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 export type PostRunCancelResponseBody = {
   success: boolean;
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/cancel.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

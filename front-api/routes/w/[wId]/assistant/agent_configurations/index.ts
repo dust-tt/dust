@@ -11,9 +11,9 @@ import {
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@app/types/api/internal/agent_configuration";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
 
@@ -38,7 +38,7 @@ import webhookFilterGenerator from "./webhook_filter_generator";
 
 // Mounted at /api/w/:wId/assistant/agent_configurations. workspaceAuth is
 // applied by the parent workspace sub-app.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
   const auth = ctx.get("auth");

@@ -1,7 +1,7 @@
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { DataSourceViewType } from "@app/types/data_source_view";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import tags from "./tags";
 
@@ -10,7 +10,7 @@ export type GetDataSourceViewsResponseBody = {
 };
 
 // Mounted under /api/w/:wId/data_source_views.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetDataSourceViewsResponseBody> => {
   const auth = ctx.get("auth");
