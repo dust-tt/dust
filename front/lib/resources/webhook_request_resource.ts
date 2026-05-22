@@ -270,11 +270,8 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       maxWebhookRequestsToKeep = MAX_WEBHOOK_REQUESTS_TO_KEEP,
     }: Partial<CleanUpWorkspaceOptions> = {}
   ) {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const oldRequestsDeletedCount = await this.model.destroy({
+    const oldRequests = await this.baseFetch(auth, {
       where: {
-        workspaceId: workspace.id,
         createdAt: {
           [Op.lt]: literal(`now() - interval '${webhookRequestTtl}'`),
         },
@@ -283,11 +280,13 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
 
     logger.info(
       {
-        toDelete: oldRequestsDeletedCount,
-        workspaceId: workspace.sId,
+        toDelete: oldRequests.length,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
       "Cleaning up old webhook requests"
     );
+
+    await this.deleteMany(auth, oldRequests);
 
     const excessiveRequests = await this.baseFetch(auth, {
       order: [["createdAt", "DESC"]],
@@ -302,12 +301,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       "Cleaning up excessive webhook requests"
     );
 
-    await this.model.destroy({
-      where: {
-        workspaceId: workspace.id,
-        id: excessiveRequests.map((request) => request.id),
-      },
-    });
+    await this.deleteMany(auth, excessiveRequests);
   }
 
   /**
@@ -465,6 +459,29 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     webRequestId: ModelId;
   }): string {
     return `${workspaceId}/webhook_source_${webhookSourceId}/webhook_request_${webRequestId}.json`;
+  }
+
+  private static async deleteMany(
+    auth: Authenticator,
+    webhookRequests: WebhookRequestResource[]
+  ) {
+    const owner = auth.getNonNullableWorkspace();
+
+    const webhookRequestModelIds = webhookRequests.map((request) => request.id);
+
+    await WebhookRequestTriggerModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        webhookRequestId: webhookRequestModelIds,
+      },
+    });
+
+    await this.model.destroy({
+      where: {
+        workspaceId: owner.id,
+        id: webhookRequestModelIds,
+      },
+    });
   }
 
   async delete(
