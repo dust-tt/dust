@@ -30,7 +30,8 @@ function buildSandboxInstructionProse({
   if (hasDsbxTools) {
     instructions.push(
       "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox.",
-      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information."
+      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information.",
+      "For very large argument values, write the value to a file in the sandbox and pass the path with a `file:` prefix (e.g. `--query file:/tmp/q.txt`) instead of inlining the value on the command line. Any value starting with `file:` is read as a UTF-8 string (max 100 MB) and used as the value for that key. The file must already exist in the sandbox filesystem."
     );
   }
 
