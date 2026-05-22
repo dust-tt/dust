@@ -213,8 +213,10 @@ export async function purgeExpiredSyntheticSkillSuggestionsActivity(
 
       return deleted;
     },
-    { concurrency: WORKSPACE_CONCURRENCY,
-      excludePlanCodes: REINFORCEMENT_EXCLUDED_PLAN_CODES }
+    {
+      concurrency: WORKSPACE_CONCURRENCY,
+      excludePlanCodes: REINFORCEMENT_EXCLUDED_PLAN_CODES,
+    }
   );
 
   const totalDeleted = results.reduce((sum, count) => sum + count, 0);
