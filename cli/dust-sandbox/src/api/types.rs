@@ -58,7 +58,9 @@ pub enum ActionPollResponse {
     Pending,
     Rejected,
     Success {
-        content: Vec<ContentBlock>,
+        // Raw blocks; the plain-text formatter parses them lazily so JSON
+        // mode can emit unknown block types verbatim.
+        content: Vec<serde_json::Value>,
         is_error: bool,
     },
 }
@@ -108,18 +110,13 @@ pub fn parse_action_poll_response(body: &str) -> anyhow::Result<ActionPollRespon
         ActionPollResponseRaw::Rejected => Ok(ActionPollResponse::Rejected),
         ActionPollResponseRaw::Success { action } => {
             let is_error = action.status == "errored";
-            let content = action
-                .output
-                .unwrap_or_default()
-                .iter()
-                .map(parse_content_block)
-                .collect();
+            let content = action.output.unwrap_or_default();
             Ok(ActionPollResponse::Success { content, is_error })
         }
     }
 }
 
-fn parse_content_block(value: &serde_json::Value) -> ContentBlock {
+pub fn parse_content_block(value: &serde_json::Value) -> ContentBlock {
     match serde_json::from_value::<ContentBlock>(value.clone()) {
         Ok(block) => block,
         Err(err) => {
@@ -136,10 +133,10 @@ pub struct CallToolResponse {
     pub result: CallToolResult,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CallToolResult {
-    pub content: Vec<ContentBlock>,
+    pub content: Vec<serde_json::Value>,
     pub is_error: bool,
 }
 
@@ -227,6 +224,8 @@ mod tests {
             ActionPollResponse::Success { content, is_error } => {
                 assert!(!is_error);
                 assert_eq!(content.len(), 1);
+                assert_eq!(content[0]["type"], "text");
+                assert_eq!(content[0]["text"], "hello");
             }
             _ => panic!("expected success"),
         }
@@ -263,5 +262,41 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("bad token"));
+    }
+
+    #[test]
+    fn call_tool_result_serializes_with_camelcase() {
+        let result = CallToolResult {
+            content: vec![serde_json::json!({"type": "text", "text": "hello"})],
+            is_error: false,
+        };
+
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&result).expect("should serialize"))
+                .expect("should round-trip");
+
+        assert_eq!(value["isError"], false);
+        assert!(value.get("is_error").is_none());
+        assert_eq!(value["content"][0]["type"], "text");
+        assert_eq!(value["content"][0]["text"], "hello");
+    }
+
+    #[test]
+    fn call_tool_result_preserves_unknown_block_types_when_serialized() {
+        let result = CallToolResult {
+            content: vec![serde_json::json!({
+                "type": "future_block",
+                "payload": {"k": 1}
+            })],
+            is_error: true,
+        };
+
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&result).expect("should serialize"))
+                .expect("should round-trip");
+
+        assert_eq!(value["isError"], true);
+        assert_eq!(value["content"][0]["type"], "future_block");
+        assert_eq!(value["content"][0]["payload"]["k"], 1);
     }
 }
