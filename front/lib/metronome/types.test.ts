@@ -16,6 +16,7 @@ describe("classifyMetronomePackageByName", () => {
     expect(classifyMetronomePackageByName("Legacy Pro Monthly")).toBe("pro");
     expect(classifyMetronomePackageByName("Legacy Business")).toBe("business");
     expect(classifyMetronomePackageByName("Enterprise EUR")).toBe("enterprise");
+    expect(classifyMetronomePackageByName("Free plan")).toBe("free");
   });
 
   it("is case-insensitive", () => {

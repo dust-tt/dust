@@ -41,6 +41,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -60,7 +61,9 @@ const SwitchContractBodySchema = z
     // selected package is enterprise-tier; forbidden otherwise (Pro/Business
     // swap at the current hour).
     startingAt: z.string().optional(),
-    stripeCustomerId: z.string().min(1),
+    // Optional: required for paid tiers (pro/business/enterprise), omitted
+    // for free-tier switches where Metronome contracts have no Stripe link.
+    stripeCustomerId: z.string().min(1).optional(),
     paygEnabled: z.boolean().default(false),
     paygCapDollars: z
       .number()
@@ -76,9 +79,7 @@ const SwitchContractBodySchema = z
     path: ["paygCapDollars"],
   });
 
-type PlanTier = MetronomePackageTier | "free";
-
-function classifyPlanCode(planCode: string): PlanTier {
+function classifyPlanCode(planCode: string): MetronomePackageTier {
   if (isEntreprisePlanPrefix(planCode)) {
     return "enterprise";
   }
@@ -99,14 +100,6 @@ function validatePlanPackageCompat(
   packageTier: MetronomePackageTier
 ): Result<void, Error> {
   const planTier = classifyPlanCode(planCode);
-  if (planTier === "free") {
-    return new Err(
-      new Error(
-        `Plan ${planCode} is a free plan; the switch-contract flow only ` +
-          "handles paid plans. Use the dedicated free-plan action instead."
-      )
-    );
-  }
   if (planTier !== packageTier) {
     return new Err(
       new Error(
@@ -202,16 +195,21 @@ async function handler(
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
   // Validate the Stripe customer exists before we touch Metronome.
-  const stripeCustomer = await getStripeCustomer(body.stripeCustomerId);
-  if (!stripeCustomer) {
-    const errorMessage = `Stripe customer not found: ${body.stripeCustomerId}.`;
-    await pluginRun.recordError(errorMessage);
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: { type: "invalid_request_error", message: errorMessage },
-    });
+  // For free-tier switches the operator may omit the Stripe customer entirely
+  // — the contract is created without Stripe billing wired in.
+  let resolvedCurrency: SupportedCurrency | null = null;
+  if (body.stripeCustomerId) {
+    const stripeCustomer = await getStripeCustomer(body.stripeCustomerId);
+    if (!stripeCustomer) {
+      const errorMessage = `Stripe customer not found: ${body.stripeCustomerId}.`;
+      await pluginRun.recordError(errorMessage);
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: errorMessage },
+      });
+    }
+    resolvedCurrency = resolveCurrencyFromStripe({ stripeCustomer });
   }
-  const resolvedCurrency = resolveCurrencyFromStripe({ stripeCustomer });
 
   // Resolve the Metronome customer.
   const customerResult = await ensureMetronomeCustomerForWorkspace({
@@ -249,7 +247,14 @@ async function handler(
       api_error: { type: "invalid_request_error", message: errorMessage },
     });
   }
-  if (pkg.currency !== resolvedCurrency) {
+  // Free packages are currency-agnostic (price is 0) — skip the currency
+  // match check. For paid tiers, the resolved Stripe currency must match the
+  // package's currency.
+  if (
+    pkg.tier !== "free" &&
+    resolvedCurrency &&
+    pkg.currency !== resolvedCurrency
+  ) {
     const errorMessage =
       `Metronome package ${body.metronomePackageId} is ${pkg.currency.toUpperCase()}, ` +
       `but Stripe customer ${body.stripeCustomerId} resolves to ` +
@@ -290,8 +295,9 @@ async function handler(
   // Resolve when the swap happens.
   //  - startingAt provided: schedule at the requested moment, ceiled to the
   //    next hour boundary. Must be ≥1h in the future.
-  //  - startingAt omitted: swap immediately at the current hour boundary.
-  //    Required when the package is enterprise-tier (no immediate swap).
+  //  - startingAt omitted: swap immediately at the current hour boundary
+  //    (supported for all tiers, including enterprise via the operator's
+  //    explicit "start immediately" opt-in).
   let startingAtDate: Date;
   let swapAt: "current-hour" | "next-hour";
   if (body.startingAt) {
@@ -317,16 +323,6 @@ async function handler(
     startingAtDate = new Date(requestedStartMs);
     swapAt = "next-hour";
   } else {
-    if (pkg.tier === "enterprise") {
-      const errorMessage =
-        "startingAt is required for enterprise packages and must be at " +
-        "least one hour in the future.";
-      await pluginRun.recordError(errorMessage);
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: { type: "invalid_request_error", message: errorMessage },
-      });
-    }
     startingAtDate = new Date();
     swapAt = "current-hour";
   }
@@ -347,7 +343,7 @@ async function handler(
     packageAlias,
     startingAt: startingAtDate,
     swapAt,
-    enableStripeBilling: true,
+    enableStripeBilling: body.stripeCustomerId !== undefined,
     planCode: body.planCode,
   });
   if (provisionResult.isErr()) {
