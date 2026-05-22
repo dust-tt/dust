@@ -45,12 +45,12 @@ export class SlackStreamHandler {
     });
   }
 
-  async setThinking(status: string) {
+  async setThinking(status: string, loadingMessage = "Thinking...") {
     await this.slackClient.assistant.threads.setStatus({
       channel_id: this.channelId,
       thread_ts: this.threadTs ?? this.slackMessageTs,
       status,
-      loading_messages: ["Thinking..."],
+      loading_messages: [loadingMessage],
     });
   }
 
