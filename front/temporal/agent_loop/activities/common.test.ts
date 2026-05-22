@@ -3,11 +3,13 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
 import type { AgentMessageSuccessEvent } from "@app/types/assistant/agent";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   processEventForDatabase,
   updateAgentMessageDBAndMemory,
+  updateResourceAndPublishEvent,
 } from "./common";
 
 // Helper to create an event with runIds for testing
@@ -29,6 +31,10 @@ describe("processEventForDatabase", () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
     workspace = setup.workspace;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe("modelInteractionDurationMs", () => {
@@ -286,7 +292,11 @@ describe("processEventForDatabase", () => {
           conversation,
         });
 
-        await processEventForDatabase(auth, {
+        const handleEventSpy = vi
+          .spyOn(globalCoalescer, "handleEvent")
+          .mockResolvedValue();
+
+        await updateResourceAndPublishEvent(auth, {
           event: {
             type: "tool_error",
             created: Date.now(),
@@ -317,6 +327,7 @@ describe("processEventForDatabase", () => {
         expect(dbMessage?.errorCode).toBeNull();
         expect(dbMessage?.errorMessage).toBeNull();
         expect(staleAgentMessage.status).toBe(status);
+        expect(handleEventSpy).not.toHaveBeenCalled();
       }
     );
 

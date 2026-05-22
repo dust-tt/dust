@@ -277,19 +277,6 @@ async function executeToolStreaming(
         );
 
         if (event.reason === "user_cancellation") {
-          await handleNonDeferredEvents(auth, {
-            event: {
-              type: "agent_generation_cancelled",
-              created: event.created,
-              configurationId: agentConfiguration.sId,
-              messageId: agentMessage.sId,
-              status: "cancelled",
-            },
-            agentMessage,
-            conversation,
-            step,
-          });
-
           return { deferredEvents, shouldPauseAgentLoop: true };
         }
 

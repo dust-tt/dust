@@ -232,7 +232,7 @@ export async function processEventForDatabase(
     conversation: ConversationWithoutContentType;
     modelInteractionDurationMs?: number;
   }
-): Promise<void> {
+): Promise<boolean> {
   // If we have a model interaction duration, store it.
   if (modelInteractionDurationMs) {
     await updateAgentMessageDBAndMemory(auth, {
@@ -266,7 +266,7 @@ export async function processEventForDatabase(
           error: event.error,
         }))
       ) {
-        break;
+        return false;
       }
 
       // Mark the conversation as errored.
@@ -302,7 +302,7 @@ export async function processEventForDatabase(
           error: event.error,
         }))
       ) {
-        break;
+        return false;
       }
 
       // Mark the conversation as errored.
@@ -355,6 +355,8 @@ export async function processEventForDatabase(
       isRunningAgentLoop: false,
     });
   }
+
+  return true;
 }
 
 // Process unread state for agent events before publishing to Redis.
@@ -404,17 +406,20 @@ export async function updateResourceAndPublishEvent(
     modelInteractionDurationMs?: number;
   }
 ): Promise<void> {
-  // Process DB updates and unread state for all events.
-  await Promise.all([
-    processEventForDatabase(auth, {
-      event,
-      agentMessage,
-      step,
-      conversation,
-      modelInteractionDurationMs,
-    }),
-    processEventForUnreadState(auth, { event, conversation }),
-  ]);
+  // Process DB updates before publishing so stale terminal errors protected by the DB guard
+  // don't briefly flip live clients to failed.
+  const shouldPublishEvent = await processEventForDatabase(auth, {
+    event,
+    agentMessage,
+    step,
+    conversation,
+    modelInteractionDurationMs,
+  });
+  if (!shouldPublishEvent) {
+    return;
+  }
+
+  await processEventForUnreadState(auth, { event, conversation });
 
   // All events go through the coalescer, which handles batching logic internally.
   const key = `${conversation.sId}-${event.messageId}-${step}`;
