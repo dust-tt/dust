@@ -253,8 +253,9 @@ cannot reach it.
 | Raw UDP socket to `8.8.8.8:53`                   | NAT'd to stub, packet never reaches `8.8.8.8` |
 | Raw UDP socket to any other host:port            | Dropped             |
 | QUIC / HTTP/3 to allowed domain                  | Fails (UDP/443 dropped); client falls back to HTTP/2-over-TCP |
-| Connecting directly to `240.0.0.1:443`           | Redirected to `:9990`, SNI extraction proceeds normally |
-| Inbound DNS TXT/CNAME/HTTPS response side-channel | NODATA — no attacker-controlled bytes returned |
+| Connecting directly to `240.0.0.1:443` with SNI  | Redirected to `:9990`, SNI extraction proceeds normally, proxy applies the allowlist |
+| Connecting directly to `240.0.0.1:443` (no SNI)  | Redirected to `:9990`, forwarder cannot extract a domain, proxy denies (existing behavior) |
+| Inbound DNS TXT/CNAME/HTTPS response side-channel | NODATA, no attacker-controlled bytes returned |
 
 The "packet never reaches 8.8.8.8" row is the load-bearing security
 property. Even if an attacker explicitly targets `8.8.8.8:53` with raw
@@ -320,19 +321,29 @@ DNS resolver.
      - `getent hosts storage.googleapis.com` MUST return a real
        routable IP, not the sentinel.
 
-7. **Verification at create and wake**:
-   - `front` confirms the sandbox is healthy by checking (a) the
-     resolver socket is bound on `127.0.0.1:1053` and (b) the
-     nftables ruleset contains the REDIRECT rules. Implementable
-     via a short `dsbx healthcheck` command that returns a
-     structured result.
-   - **Not** added to the exec hot path unless it can be folded
-     into an existing per-exec egress health check at zero
-     additional round-trip cost. The fail-closed property at
-     enforcement time does not depend on exec-time verification:
-     REDIRECT is installed at boot, the stub failing means
-     `connect()` is refused, and uid 1003 has no other UDP/53
-     path. Exec-time checks are detection, not enforcement.
+7. **Verification at create, wake, and exec**:
+   - `front` confirms the sandbox is healthy via `dsbx healthcheck`,
+     which reads kernel state directly (`/proc/net/{tcp,udp}` and
+     `nft list table ip dust-egress`) and reports forwarder socket,
+     resolver socket (UDP + TCP), DNS REDIRECT rules, and trust
+     bundle as separate booleans.
+   - The check runs on the existing `ensureSandboxEgressOnExec`
+     hot path, folded into the same probe that already verified the
+     forwarder. Marginal cost is zero extra exec calls. This catches
+     "nftables flushed mid-session" or "resolver crash-looped past
+     its restart budget" without waiting for the next create/wake.
+   - Behavior on failure is asymmetric by signal: a missing
+     forwarder port triggers an in-place restart of dsbx; a missing
+     trust bundle triggers an idempotent reinstall; a missing
+     resolver socket OR missing DNS REDIRECT rule returns Err and
+     refuses the exec. The DNS-enforcement signals never auto-heal
+     because regenerating them safely requires re-running the boot
+     scripts under root, which `front` doesn't do mid-session.
+   - The fail-closed property at enforcement time does not depend
+     on this check: REDIRECT is installed at boot, the stub failing
+     means `connect()` is refused (ECONNREFUSED), and uid 1003 has
+     no other UDP/53 path. Exec-time verification is detection on
+     top of that, not the enforcement itself.
 
 ## Rollout
 

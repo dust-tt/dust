@@ -146,6 +146,10 @@ describe("sandbox image registry", () => {
     expect(resolverUnit).toContain("Restart=on-failure");
     expect(resolverUnit).toContain("RestartSec=2s");
     expect(resolverUnit).toContain("WantedBy=multi-user.target");
+    expect(resolverUnit).toContain("NoNewPrivileges=yes");
+    expect(resolverUnit).toContain("ProtectSystem=strict");
+    expect(resolverUnit).toContain("RestrictAddressFamilies=AF_INET");
+    expect(resolverUnit).toContain("MemoryDenyWriteExecute=yes");
 
     expect(nftablesScript).toContain("nft add table ip dust-egress");
     expect(nftablesScript).toContain("DNS_STUB_PORT=1053");
@@ -168,7 +172,7 @@ describe("sandbox image registry", () => {
       "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID tcp dport != 0 redirect to :9990"
     );
     expect(nftablesScript).toContain(
-      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 udp dport $DNS_STUB_PORT accept"
+      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.1 udp dport $DNS_STUB_PORT accept"
     );
     expect(nftablesScript).toContain(
       "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 169.254.169.254 drop"

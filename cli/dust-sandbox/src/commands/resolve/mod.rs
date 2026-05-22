@@ -13,6 +13,7 @@ const DNS_TYPE_A: u16 = 1;
 const DNS_CLASS_IN: u16 = 1;
 const DNS_TTL_SECONDS: u32 = 60;
 const SENTINEL_A_RECORD: [u8; 4] = [240, 0, 0, 1];
+const SENTINEL_A_RECORD_LEN: u16 = SENTINEL_A_RECORD.len() as u16;
 
 const FLAG_QUERY_RESPONSE: u16 = 0x8000;
 const FLAG_RECURSION_DESIRED: u16 = 0x0100;
@@ -47,14 +48,20 @@ pub async fn cmd_resolve(args: ResolveArgs) -> Result<()> {
 
     info!(listen_addr = %args.listen, "starting dsbx DNS resolver");
 
-    let udp_task = tokio::spawn(run_udp_resolver(udp_socket));
-    let tcp_task = tokio::spawn(run_tcp_resolver(tcp_listener));
+    let mut udp_task = tokio::spawn(run_udp_resolver(udp_socket));
+    let mut tcp_task = tokio::spawn(run_tcp_resolver(tcp_listener));
 
+    // If either transport exits, abort the sibling so we return promptly and
+    // systemd's Restart=on-failure can take over. Otherwise a hung peer task
+    // would keep cmd_resolve from returning even after one transport has
+    // already failed.
     tokio::select! {
-        result = udp_task => {
+        result = &mut udp_task => {
+            tcp_task.abort();
             result.context("DNS UDP resolver task panicked")??;
         }
-        result = tcp_task => {
+        result = &mut tcp_task => {
+            udp_task.abort();
             result.context("DNS TCP resolver task panicked")??;
         }
     }
@@ -204,6 +211,9 @@ fn parse_qname(message: &[u8], start: usize) -> Option<(String, usize)> {
             break;
         }
 
+        // Reject compression pointers (top bits 0b11) and extended labels
+        // (top bits 0b01 / 0b10, RFC 2671). A query MUST only use literal
+        // labels (top bits 0b00), so anything else is invalid here.
         if len & 0xC0 != 0 || len > 63 {
             return None;
         }
@@ -214,6 +224,9 @@ fn parse_qname(message: &[u8], start: usize) -> Option<(String, usize)> {
         }
 
         let label = message.get(offset..offset + len)?;
+        // Labels are bytestrings, not UTF-8. We accept invalid UTF-8 with the
+        // replacement character because the parsed name is only used for
+        // logging; the response copies the original question bytes verbatim.
         labels.push(String::from_utf8_lossy(label).into_owned());
         offset += len;
     }
@@ -248,10 +261,7 @@ fn build_success_response(message: &[u8], query: &DnsQuery) -> Vec<u8> {
         write_u16(&mut response, DNS_TYPE_A);
         write_u16(&mut response, DNS_CLASS_IN);
         write_u32(&mut response, DNS_TTL_SECONDS);
-        write_u16(
-            &mut response,
-            u16::try_from(SENTINEL_A_RECORD.len()).unwrap_or_default(),
-        );
+        write_u16(&mut response, SENTINEL_A_RECORD_LEN);
         response.extend_from_slice(&SENTINEL_A_RECORD);
     }
 
@@ -320,7 +330,7 @@ mod tests {
         write_u16(&mut query, 0);
 
         for label in qname.split('.') {
-            query.push(u8::try_from(label.len()).unwrap_or_default());
+            query.push(u8::try_from(label.len()).expect("test labels fit in u8"));
             query.extend_from_slice(label.as_bytes());
         }
         query.push(0);

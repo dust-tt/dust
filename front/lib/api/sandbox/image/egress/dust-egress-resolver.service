@@ -10,5 +10,20 @@ ExecStart=/opt/bin/dsbx resolve --listen 127.0.0.1:1053
 Restart=on-failure
 RestartSec=2s
 
+# Defense in depth: this process exists specifically to parse attacker-shaped
+# DNS queries. Lock it down so a parser bug cannot escalate beyond the
+# process itself.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+
 [Install]
 WantedBy=multi-user.target

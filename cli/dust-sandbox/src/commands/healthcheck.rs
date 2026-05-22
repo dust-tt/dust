@@ -5,6 +5,7 @@ use std::process::Command;
 
 use anyhow::Result;
 use serde::Serialize;
+use tracing::warn;
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct HealthcheckArgs {
@@ -14,8 +15,9 @@ pub struct HealthcheckArgs {
     /// Local resolver UDP/TCP listen address in host:port form
     #[arg(long, default_value = "127.0.0.1:1053")]
     resolver_listen: SocketAddr,
-    /// UID whose egress must be forced through local services
-    #[arg(long, default_value_t = 1003)]
+    /// UID whose egress must be forced through local services. Required;
+    /// front passes this explicitly so there is no implicit-default rot.
+    #[arg(long)]
     proxied_uid: u32,
     /// Merged MITM trust bundle path
     #[arg(long, default_value = "/etc/dust/ca-bundle.pem")]
@@ -77,7 +79,7 @@ fn run_healthcheck(args: &HealthcheckArgs) -> EgressHealthcheck {
             contains_uid_rule(
                 rules,
                 args.proxied_uid,
-                &format!("ip daddr 127.0.0.0/8 udp dport {dns_stub_port} accept"),
+                &format!("ip daddr 127.0.0.1 udp dport {dns_stub_port} accept"),
             )
         })
         .unwrap_or(false);
@@ -140,14 +142,35 @@ fn file_nonempty(path: &PathBuf) -> bool {
 }
 
 fn nft_ipv4_ruleset() -> Option<String> {
-    let output = Command::new("nft")
+    // Any failure path here surfaces to the caller as `nft_dns_*_ok: false`
+    // (DNS enforcement reads as missing), which is the right safety posture.
+    // Log the reason on stderr so we don't lose the diagnostic.
+    let output = match Command::new("nft")
         .args(["-n", "list", "table", "ip", "dust-egress"])
         .output()
-        .ok()?;
+    {
+        Ok(output) => output,
+        Err(error) => {
+            warn!(error = %error, "failed to invoke nft for healthcheck");
+            return None;
+        }
+    };
     if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        warn!(
+            exit_code = ?output.status.code(),
+            stderr = %stderr,
+            "nft list table ip dust-egress exited non-zero"
+        );
         return None;
     }
-    String::from_utf8(output.stdout).ok()
+    match String::from_utf8(output.stdout) {
+        Ok(rules) => Some(rules),
+        Err(error) => {
+            warn!(error = %error, "nft stdout was not valid UTF-8");
+            None
+        }
+    }
 }
 
 fn contains_uid_rule(rules: &str, proxied_uid: u32, fragment: &str) -> bool {

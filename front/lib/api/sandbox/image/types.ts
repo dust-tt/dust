@@ -23,10 +23,17 @@ export function formatSandboxImageId(id: SandboxImageId): string {
 // sandbox-enabled workspaces and the flag goes away.
 export const DSBX_TOOL_NAME = "dsbx";
 
+// UID of the `agent-proxied` user that runs untrusted agent code. Egress
+// enforcement (nftables redirect to dsbx forward + DNS stub) is scoped to
+// this UID; every other process in the sandbox bypasses it.
+export const SANDBOX_AGENT_PROXIED_UID = 1003;
+
 // UIDs that can execute untrusted workspace or model-driven code inside the
 // sandbox. Every UID in this list must be covered by the egress nftables
-// ruleset, otherwise it inherits provider DNS/networking.
-export const SANDBOX_UNTRUSTED_UIDS = [1003] as const;
+// ruleset, otherwise it inherits provider DNS/networking. Today this is just
+// agent-proxied; if a future feature adds another untrusted UID, extend this
+// list AND update egress-nftables.sh so the new UID is covered there too.
+export const SANDBOX_UNTRUSTED_UIDS = [SANDBOX_AGENT_PROXIED_UID] as const;
 
 // ---------------------------------------------------------------------------
 // Tool Runtime & Profile
