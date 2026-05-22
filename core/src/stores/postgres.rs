@@ -2346,7 +2346,17 @@ impl Store for PostgresStore {
             .await?;
 
         let stmt_documents = c
-            .prepare("DELETE FROM data_sources_documents WHERE id = ANY($1)")
+            .prepare(
+                "WITH documents_to_delete AS (
+                   SELECT id FROM data_sources_documents
+                   WHERE id = ANY($1)
+                   ORDER BY id
+                   FOR UPDATE
+                 )
+                 DELETE FROM data_sources_documents
+                 USING documents_to_delete
+                 WHERE data_sources_documents.id = documents_to_delete.id",
+            )
             .await?;
 
         // First remove active documents, which are linked to a node
@@ -2371,9 +2381,16 @@ impl Store for PostgresStore {
         // Then remove all remaining documents
         let stmt = c
             .prepare(
-                "DELETE FROM data_sources_documents WHERE id IN (
-                   SELECT id FROM data_sources_documents WHERE data_source = $1 LIMIT $2
-                 )",
+                "WITH documents_to_delete AS (
+                   SELECT id FROM data_sources_documents
+                   WHERE data_source = $1
+                   ORDER BY id
+                   LIMIT $2
+                   FOR UPDATE
+                 )
+                 DELETE FROM data_sources_documents
+                 USING documents_to_delete
+                 WHERE data_sources_documents.id = documents_to_delete.id",
             )
             .await?;
 
