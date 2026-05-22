@@ -425,6 +425,7 @@ const TIER_SORT_ORDER: Record<MetronomePackageTier, number> = {
   enterprise: 0,
   business: 1,
   pro: 2,
+  free: 3,
 };
 const CURRENCY_SORT_ORDER: Record<SupportedCurrency, number> = {
   usd: 0,

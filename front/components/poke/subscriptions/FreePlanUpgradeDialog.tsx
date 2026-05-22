@@ -4,7 +4,11 @@ import {
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
-import { isFreePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
+import {
+  isCreditPricedPlan,
+  isFreePlan,
+  isOldFreePlan,
+} from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { FreePlanUpgradeFormType } from "@app/types/plan";
@@ -143,7 +147,9 @@ export default function FreePlanUpgradeDialog({
                       options={plans
                         .filter(
                           (plan) =>
-                            isFreePlan(plan.code) && !isOldFreePlan(plan.code)
+                            isFreePlan(plan.code) &&
+                            !isOldFreePlan(plan.code) &&
+                            !isCreditPricedPlan(plan.code)
                         )
                         .map((plan) => ({
                           value: plan.code,

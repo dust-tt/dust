@@ -27,7 +27,7 @@ export const LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS = "legacy-pro-annual-eur";
 export const LEGACY_BUSINESS_EUR_PACKAGE_ALIAS = "legacy-business-eur";
 export const LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS = "legacy-enterprise-eur";
 
-export type MetronomePackageTier = "pro" | "business" | "enterprise";
+export type MetronomePackageTier = "free" | "pro" | "business" | "enterprise";
 
 export const PAYG_ELIGIBLE_TIERS: readonly MetronomePackageTier[] = [
   "enterprise",
@@ -43,7 +43,8 @@ export type BillingFrequency = "MONTHLY" | "ANNUAL";
 /**
  * Classify a Metronome package by its display name. The match is a
  * case-insensitive whole-word search ordered by specificity:
- * "enterprise" → enterprise, "business" → business, "pro" → pro.
+ * "enterprise" → enterprise, "business" → business, "pro" → pro,
+ * "free" → free.
  *
  * Names lacking any of those keywords return `null` — callers refuse such
  * packages explicitly. This is a deliberate trade-off vs. a closed-set
@@ -63,6 +64,9 @@ export function classifyMetronomePackageByName(
   }
   if (/\bpro\b/.test(normalized)) {
     return "pro";
+  }
+  if (/\bfree\b/.test(normalized)) {
+    return "free";
   }
   return null;
 }

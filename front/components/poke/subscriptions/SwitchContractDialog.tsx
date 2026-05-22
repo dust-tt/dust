@@ -7,6 +7,8 @@ import { clientFetch } from "@app/lib/egress/client";
 import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
+  CREDIT_PRICED_FREE_PLAN_CODE,
+  isCreditPricedPlan,
   isEntreprisePlanPrefix,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
@@ -47,7 +49,8 @@ const SwitchContractFormSchema = z
     metronomePackageId: z.string().min(1, "Required"),
     planCode: z.string().min(1, "Required"),
     startingAt: z.string().optional(),
-    stripeCustomerId: z.string().min(1, "Required"),
+    startImmediately: z.boolean().default(false),
+    stripeCustomerId: z.string(),
     paygEnabled: z.boolean().default(false),
     paygCapDollars: z
       .number()
@@ -131,6 +134,7 @@ export default function SwitchContractDialog({
       metronomePackageId: "",
       planCode: "",
       startingAt: "",
+      startImmediately: false,
       stripeCustomerId: stripeCustomerId ?? "",
       paygEnabled: initialPaygCapMicroUsd !== null,
       paygCapDollars:
@@ -153,18 +157,23 @@ export default function SwitchContractDialog({
 
   // Split packages into Current vs Legacy sections (name contains "legacy",
   // case-insensitive). Each section preserves the lib-side sort order.
+  // Free-tier packages are currency-agnostic (price is 0) and surface
+  // regardless of the resolved Stripe currency.
   const packageGroups = useMemo(() => {
-    const inCurrency = metronomePackages.filter(
-      (p) => p.currency === resolvedCurrency
+    const visible = metronomePackages.filter(
+      (p) => p.tier === "free" || p.currency === resolvedCurrency
     );
-    const toOption = (p: (typeof inCurrency)[number]) => ({
+    const toOption = (p: (typeof visible)[number]) => ({
       value: p.id,
-      display: `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
+      display:
+        p.tier === "free"
+          ? `${p.name} (${p.tier})`
+          : `${p.name} (${p.tier}, ${p.currency.toUpperCase()})`,
     });
     return [
       {
         label: "Current",
-        options: inCurrency
+        options: visible
           .filter((p) => !isLegacyPackageName(p.name))
           .map(toOption),
       },
@@ -185,11 +194,13 @@ export default function SwitchContractDialog({
   const selectedName = selectedPackage?.name ?? null;
 
   // Clear a stale package selection when the resolved currency changes so a
-  // previously-picked package can't survive a currency switch silently.
+  // previously-picked package can't survive a currency switch silently. Free
+  // packages are currency-agnostic and exempt from this check.
   useEffect(() => {
     if (
       resolvedCurrency &&
       selectedPackage &&
+      selectedPackage.tier !== "free" &&
       selectedPackage.currency !== resolvedCurrency
     ) {
       form.setValue("metronomePackageId", "");
@@ -208,6 +219,7 @@ export default function SwitchContractDialog({
         assert("There is no non-legacy pro plan");
       }
       form.setValue("startingAt", "");
+      form.setValue("startImmediately", false);
     } else if (selectedTier === "business") {
       if (isLegacyPackageName(selectedName ?? "")) {
         form.setValue("planCode", PRO_PLAN_SEAT_39_CODE);
@@ -215,9 +227,15 @@ export default function SwitchContractDialog({
         form.setValue("planCode", CREDIT_PRICED_BUSINESS_PLAN_CODE);
       }
       form.setValue("startingAt", "");
+      form.setValue("startImmediately", false);
     } else if (selectedTier === "enterprise") {
       form.setValue("planCode", "");
       form.setValue("startingAt", minStartingAtLocal);
+      form.setValue("startImmediately", false);
+    } else if (selectedTier === "free") {
+      form.setValue("planCode", CREDIT_PRICED_FREE_PLAN_CODE);
+      form.setValue("startingAt", "");
+      form.setValue("startImmediately", false);
     }
     if (selectedTier && !isPaygEligibleTier(selectedTier)) {
       form.setValue("paygEnabled", false);
@@ -225,10 +243,15 @@ export default function SwitchContractDialog({
     }
   }, [selectedTier, selectedName, form, minStartingAtLocal]);
 
+  const startImmediately = form.watch("startImmediately");
+
   const enterprisePlanOptions = useMemo(
     () =>
       plans
-        .filter((plan) => isEntreprisePlanPrefix(plan.code))
+        .filter(
+          (plan) =>
+            isEntreprisePlanPrefix(plan.code) && isCreditPricedPlan(plan.code)
+        )
         .map((plan) => ({
           value: plan.code,
           display: `${plan.name} (${plan.code})`,
@@ -242,16 +265,25 @@ export default function SwitchContractDialog({
 
   const onSubmit = useCallback(
     (values: SwitchContractFormValues) => {
+      const trimmedStripe = values.stripeCustomerId.trim();
       const cleaned: Record<string, unknown> = {
         metronomePackageId: values.metronomePackageId.trim(),
         planCode: values.planCode.trim(),
-        stripeCustomerId: values.stripeCustomerId.trim(),
         paygEnabled: values.paygEnabled,
       };
+      // For free-tier switches, the operator can omit the Stripe customer —
+      // the resulting Metronome contract has no Stripe billing link.
+      if (trimmedStripe) {
+        cleaned.stripeCustomerId = trimmedStripe;
+      }
       if (values.paygEnabled && values.paygCapDollars !== undefined) {
         cleaned.paygCapDollars = values.paygCapDollars;
       }
-      if (selectedTier === "enterprise" && values.startingAt) {
+      if (
+        selectedTier === "enterprise" &&
+        !values.startImmediately &&
+        values.startingAt
+      ) {
         // datetime-local strings have no timezone — convert to ISO so the
         // server's Date.parse is unambiguous.
         cleaned.startingAt = new Date(values.startingAt).toISOString();
@@ -319,7 +351,7 @@ export default function SwitchContractDialog({
                 <InputField
                   control={form.control}
                   name="stripeCustomerId"
-                  title="Stripe Customer Id"
+                  title="Stripe Customer Id (optional for free plans)"
                   placeholder="cus_1234567890"
                   readOnly={stripeCustomerId !== null}
                 />
@@ -348,12 +380,16 @@ export default function SwitchContractDialog({
                 )}
                 {!isPackagesLoading &&
                   !packagesError &&
-                  resolvedCurrency &&
-                  !isCurrencyLoading && (
+                  !isCurrencyLoading &&
+                  (resolvedCurrency || !trimmedStripeCustomerId) && (
                     <SelectField
                       control={form.control}
                       name="metronomePackageId"
-                      title={`Metronome Package (${resolvedCurrency.toUpperCase()})`}
+                      title={
+                        resolvedCurrency
+                          ? `Metronome Package (${resolvedCurrency.toUpperCase()})`
+                          : "Metronome Package (free only — no Stripe customer)"
+                      }
                       mountPortalContainer={portalContainer}
                       groups={packageGroups}
                     />
@@ -367,18 +403,34 @@ export default function SwitchContractDialog({
                       mountPortalContainer={portalContainer}
                       options={enterprisePlanOptions}
                     />
-                    <InputField
-                      control={form.control}
-                      name="startingAt"
-                      title="Starts At (local time, ≥ 1h from now, on the hour)"
-                      type="datetime-local"
-                      min={minStartingAtLocal}
-                      step={3600}
-                      transformValue={snapDatetimeLocalToHour}
-                    />
+                    <div className="flex items-center gap-2">
+                      <SliderToggle
+                        selected={startImmediately}
+                        onClick={() =>
+                          form.setValue("startImmediately", !startImmediately)
+                        }
+                      />
+                      <Label className="text-sm">
+                        Start immediately (swap at current hour, bypass the 1h
+                        delay)
+                      </Label>
+                    </div>
+                    {!startImmediately && (
+                      <InputField
+                        control={form.control}
+                        name="startingAt"
+                        title="Starts At (local time, ≥ 1h from now, on the hour)"
+                        type="datetime-local"
+                        min={minStartingAtLocal}
+                        step={3600}
+                        transformValue={snapDatetimeLocalToHour}
+                      />
+                    )}
                   </>
                 )}
-                {(selectedTier === "pro" || selectedTier === "business") && (
+                {(selectedTier === "pro" ||
+                  selectedTier === "business" ||
+                  selectedTier === "free") && (
                   <div className="text-sm text-muted-foreground">
                     Target plan:{" "}
                     <span className="font-mono">{form.watch("planCode")}</span>{" "}
@@ -415,7 +467,10 @@ export default function SwitchContractDialog({
                     type="submit"
                     variant="warning"
                     label="Switch"
-                    disabled={!selectedTier || !resolvedCurrency}
+                    disabled={
+                      !selectedTier ||
+                      (selectedTier !== "free" && !resolvedCurrency)
+                    }
                   />
                 </DialogFooter>
               </form>

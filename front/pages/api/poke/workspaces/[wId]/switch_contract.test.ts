@@ -259,7 +259,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
     expect(sub!.metronomeContractId).toBe(EXISTING_CONTRACT_ID);
   });
 
-  it("rejects when startingAt is missing", async () => {
+  it("starts immediately when startingAt is omitted", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -272,9 +272,14 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain(
-      "startingAt is required"
+    expect(res._getStatusCode()).toBe(200);
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metronomeCustomerId: METRONOME_CUSTOMER_ID,
+        packageAlias: "enterprise",
+        planCode: ENT_PLAN_CODE,
+        swapAt: "current-hour",
+      })
     );
   });
 
@@ -512,7 +517,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
     expect(res._getJSONData().error.message).toContain("does not match");
   });
 
-  it("rejects when target plan is free", async () => {
+  it("rejects when target plan tier does not match the package tier (pro pkg, free plan)", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
@@ -525,7 +530,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain("free plan");
+    expect(res._getJSONData().error.message).toContain("does not match");
   });
 
   it("rejects when the workspace is Stripe-billed", async () => {
