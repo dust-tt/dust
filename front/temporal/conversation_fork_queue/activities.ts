@@ -39,6 +39,10 @@ export async function copyConversationGCSMountActivity({
       await ConversationForkResource.markFileCopied(auth, {
         childConversationModelId: dest.id,
       });
+    } else {
+      await ConversationForkResource.markFileCopiedByDestSId(auth, {
+        childConversationSId: destConversationId,
+      });
     }
 
     return;
