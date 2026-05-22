@@ -69,7 +69,7 @@ export const instrumentationSinks: InjectedSinks<AgentLoopInstrumentationSinks> 
           const stepDurationMs = Date.now() - stepStartTime;
           // We use different tags to avoid having a cardinality (number of time series to be precise) too high.
           const incrementTags = [`step:${step}`];
-          const distributionTags = [`step:${step <= 16 ? step : "16+"}`];
+          const distributionTags = [`step:${step < 16 ? step : "16+"}`];
 
           getStatsDClient().increment(METRICS.STEP_STARTS, 1, incrementTags);
           getStatsDClient().increment(
