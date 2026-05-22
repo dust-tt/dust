@@ -32,6 +32,9 @@ vi.mock("@app/lib/utils/statsd", () => ({
 vi.mock("@app/lib/file_storage", () => ({
   getWebhookRequestsBucket: () => ({
     uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+    uploadSmallRawContentToBucketAsNewFile: vi
+      .fn()
+      .mockResolvedValue(undefined),
   }),
 }));
 
