@@ -151,6 +151,10 @@ const EgressHealthcheckOutputSchema = z.object({
   nft_dns_udp_redirect_ok: z.boolean(),
   nft_dns_tcp_redirect_ok: z.boolean(),
   nft_dns_udp_accept_ok: z.boolean(),
+  nft_tcp_forward_redirect_ok: z.boolean(),
+  nft_udp_drop_ok: z.boolean(),
+  nft_icmp_drop_ok: z.boolean(),
+  nft_ipv6_drop_ok: z.boolean(),
   bundle_ok: z.boolean(),
 });
 
@@ -186,13 +190,21 @@ function parseEgressHealthcheckOutput(
   }
 
   const data = validation.data;
+  // nftablesOk mirrors the full enforcement boundary, not just the DNS rules:
+  // DNS interception alone isn't load-bearing without the generic UDP/ICMP/
+  // IPv6 drops and the broad TCP redirect to the forwarder. Treating a
+  // partially damaged table as healthy would silently reopen non-53 UDP.
   return {
     portOk: data.forwarder_port_ok,
     resolverOk: data.resolver_udp_ok && data.resolver_tcp_ok,
     nftablesOk:
       data.nft_dns_udp_redirect_ok &&
       data.nft_dns_tcp_redirect_ok &&
-      data.nft_dns_udp_accept_ok,
+      data.nft_dns_udp_accept_ok &&
+      data.nft_tcp_forward_redirect_ok &&
+      data.nft_udp_drop_ok &&
+      data.nft_icmp_drop_ok &&
+      data.nft_ipv6_drop_ok,
     bundleOk: data.bundle_ok,
   };
 }
@@ -215,6 +227,8 @@ export async function checkEgressForwarderHealth(
     sandboxId: sandbox.sId,
   };
 
+  // Root is required: `nft list table` needs CAP_NET_ADMIN, and the probe also
+  // reads /proc/net/{tcp,udp} which is fine non-root but pointless to split.
   const result = await sandbox.exec(
     auth,
     `/opt/bin/dsbx healthcheck ` +
@@ -223,7 +237,7 @@ export async function checkEgressForwarderHealth(
       `--proxied-uid ${EGRESS_PROXIED_UID} ` +
       `--ca-bundle ${shellEscape(MITM_CA_BUNDLE_PATH)} ` +
       `--ca-bundle-marker ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)}`,
-    { timeoutMs: 1_000 }
+    { user: "root", timeoutMs: 1_000 }
   );
 
   if (result.isErr()) {

@@ -77,6 +77,10 @@ type HealthcheckOutput = {
   nft_dns_udp_redirect_ok: boolean;
   nft_dns_tcp_redirect_ok: boolean;
   nft_dns_udp_accept_ok: boolean;
+  nft_tcp_forward_redirect_ok: boolean;
+  nft_udp_drop_ok: boolean;
+  nft_icmp_drop_ok: boolean;
+  nft_ipv6_drop_ok: boolean;
   bundle_ok: boolean;
 };
 
@@ -88,6 +92,10 @@ function healthStdout(overrides: Partial<HealthcheckOutput> = {}): string {
     nft_dns_udp_redirect_ok: true,
     nft_dns_tcp_redirect_ok: true,
     nft_dns_udp_accept_ok: true,
+    nft_tcp_forward_redirect_ok: true,
+    nft_udp_drop_ok: true,
+    nft_icmp_drop_ok: true,
+    nft_ipv6_drop_ok: true,
     bundle_ok: true,
     ...overrides,
   });
@@ -207,6 +215,14 @@ describe("sandbox egress helpers", () => {
     expect(healthCall).toContain("--forwarder-listen '127.0.0.1:9990'");
     expect(healthCall).toContain("--resolver-listen '127.0.0.1:1053'");
     expect(healthCall).toContain("--proxied-uid 1003");
+    // The healthcheck inspects nftables, which requires CAP_NET_ADMIN, so it
+    // must run as root. Pin the exec options to prevent silent regression.
+    expect(sandbox.exec).toHaveBeenNthCalledWith(
+      3,
+      auth,
+      expect.stringContaining("/opt/bin/dsbx healthcheck"),
+      { user: "root", timeoutMs: 1_000 }
+    );
     const installCall = sandbox.exec.mock.calls[4][1] as string;
     expect(installCall).toContain("/usr/local/bin/dust-install-trust-bundle");
     expect(installCall).toContain("/etc/dust/.ca-bundle.merged");
@@ -485,6 +501,41 @@ describe("sandbox egress helpers", () => {
       expect.any(String)
     );
   });
+
+  it.each([
+    "nft_tcp_forward_redirect_ok" as const,
+    "nft_udp_drop_ok" as const,
+    "nft_icmp_drop_ok" as const,
+    "nft_ipv6_drop_ok" as const,
+  ])(
+    "fails closed when %s is false (broader no-UDP/no-IPv6 invariant)",
+    async (missing) => {
+      const sandbox = {
+        providerId: "provider-sandbox-id",
+        sId: "sandbox-id",
+        exec: vi.fn().mockResolvedValueOnce(
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ [missing]: false }),
+            stderr: "",
+          })
+        ),
+      };
+
+      const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+        wokeFromSleep: false,
+      });
+
+      expect(result.isErr()).toBe(true);
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "egress.enforcement_health_fail",
+          nftablesOk: false,
+        }),
+        expect.any(String)
+      );
+    }
+  );
 
   it("does a full restart when the port is not listening", async () => {
     const sandbox = {

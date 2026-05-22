@@ -32,9 +32,18 @@ struct EgressHealthcheck {
     forwarder_port_ok: bool,
     resolver_udp_ok: bool,
     resolver_tcp_ok: bool,
+    // DNS-specific redirects to the local resolver.
     nft_dns_udp_redirect_ok: bool,
     nft_dns_tcp_redirect_ok: bool,
     nft_dns_udp_accept_ok: bool,
+    // Broader no-UDP / no-IPv6 / TCP-via-forwarder invariant. Validating only
+    // the DNS rules would let a partially damaged ruleset pass health while
+    // reopening non-53 UDP or IPv6 egress, so the runtime check mirrors the
+    // full enforcement set.
+    nft_tcp_forward_redirect_ok: bool,
+    nft_udp_drop_ok: bool,
+    nft_icmp_drop_ok: bool,
+    nft_ipv6_drop_ok: bool,
     bundle_ok: bool,
     ok: bool,
 }
@@ -51,38 +60,50 @@ fn run_healthcheck(args: &HealthcheckArgs) -> EgressHealthcheck {
     let resolver_tcp_ok = socket_listening("/proc/net/tcp", args.resolver_listen, Some("0A"));
     let bundle_ok = file_nonempty(&args.ca_bundle) && args.ca_bundle_marker.is_file();
 
-    let nft_rules = nft_ipv4_ruleset();
+    let ipv4_rules = nft_ruleset("ip");
+    let ipv6_rules = nft_ruleset("ip6");
     let dns_stub_port = args.resolver_listen.port();
-    let nft_dns_udp_redirect_ok = nft_rules
-        .as_deref()
-        .map(|rules| {
-            contains_uid_rule(
-                rules,
-                args.proxied_uid,
-                &format!("udp dport 53 redirect to :{dns_stub_port}"),
-            )
-        })
-        .unwrap_or(false);
-    let nft_dns_tcp_redirect_ok = nft_rules
-        .as_deref()
-        .map(|rules| {
-            contains_uid_rule(
-                rules,
-                args.proxied_uid,
-                &format!("tcp dport 53 redirect to :{dns_stub_port}"),
-            )
-        })
-        .unwrap_or(false);
-    let nft_dns_udp_accept_ok = nft_rules
-        .as_deref()
-        .map(|rules| {
-            contains_uid_rule(
-                rules,
-                args.proxied_uid,
-                &format!("ip daddr 127.0.0.1 udp dport {dns_stub_port} accept"),
-            )
-        })
-        .unwrap_or(false);
+    let forwarder_port = args.forwarder_listen.port();
+    let uid_rule = |rules: &Option<String>, fragment: &str| {
+        rules
+            .as_deref()
+            .map(|r| contains_uid_rule(r, args.proxied_uid, fragment))
+            .unwrap_or(false)
+    };
+
+    let nft_dns_udp_redirect_ok = uid_rule(
+        &ipv4_rules,
+        &format!("udp dport 53 redirect to :{dns_stub_port}"),
+    );
+    let nft_dns_tcp_redirect_ok = uid_rule(
+        &ipv4_rules,
+        &format!("tcp dport 53 redirect to :{dns_stub_port}"),
+    );
+    let nft_dns_udp_accept_ok = uid_rule(
+        &ipv4_rules,
+        &format!("ip daddr 127.0.0.1 udp dport {dns_stub_port} accept"),
+    );
+    let nft_tcp_forward_redirect_ok = uid_rule(
+        &ipv4_rules,
+        &format!("tcp dport != 0 redirect to :{forwarder_port}"),
+    );
+    let nft_udp_drop_ok = uid_rule(&ipv4_rules, "meta l4proto udp drop");
+    let nft_icmp_drop_ok = uid_rule(&ipv4_rules, "meta l4proto icmp drop");
+    // The ip6 table has a single catch-all drop for the proxied uid; match on
+    // the bare `drop` verdict scoped to that uid.
+    let nft_ipv6_drop_ok = uid_rule(&ipv6_rules, "drop");
+
+    let ok = forwarder_port_ok
+        && resolver_udp_ok
+        && resolver_tcp_ok
+        && nft_dns_udp_redirect_ok
+        && nft_dns_tcp_redirect_ok
+        && nft_dns_udp_accept_ok
+        && nft_tcp_forward_redirect_ok
+        && nft_udp_drop_ok
+        && nft_icmp_drop_ok
+        && nft_ipv6_drop_ok
+        && bundle_ok;
 
     EgressHealthcheck {
         forwarder_port_ok,
@@ -91,14 +112,12 @@ fn run_healthcheck(args: &HealthcheckArgs) -> EgressHealthcheck {
         nft_dns_udp_redirect_ok,
         nft_dns_tcp_redirect_ok,
         nft_dns_udp_accept_ok,
+        nft_tcp_forward_redirect_ok,
+        nft_udp_drop_ok,
+        nft_icmp_drop_ok,
+        nft_ipv6_drop_ok,
         bundle_ok,
-        ok: forwarder_port_ok
-            && resolver_udp_ok
-            && resolver_tcp_ok
-            && nft_dns_udp_redirect_ok
-            && nft_dns_tcp_redirect_ok
-            && nft_dns_udp_accept_ok
-            && bundle_ok,
+        ok,
     }
 }
 
@@ -141,17 +160,17 @@ fn file_nonempty(path: &PathBuf) -> bool {
         .unwrap_or(false)
 }
 
-fn nft_ipv4_ruleset() -> Option<String> {
-    // Any failure path here surfaces to the caller as `nft_dns_*_ok: false`
-    // (DNS enforcement reads as missing), which is the right safety posture.
+fn nft_ruleset(family: &str) -> Option<String> {
+    // Any failure path here surfaces to the caller as `nft_*_ok: false`
+    // (enforcement reads as missing), which is the right safety posture.
     // Log the reason on stderr so we don't lose the diagnostic.
     let output = match Command::new("nft")
-        .args(["-n", "list", "table", "ip", "dust-egress"])
+        .args(["-n", "list", "table", family, "dust-egress"])
         .output()
     {
         Ok(output) => output,
         Err(error) => {
-            warn!(error = %error, "failed to invoke nft for healthcheck");
+            warn!(error = %error, family = family, "failed to invoke nft for healthcheck");
             return None;
         }
     };
@@ -160,14 +179,15 @@ fn nft_ipv4_ruleset() -> Option<String> {
         warn!(
             exit_code = ?output.status.code(),
             stderr = %stderr,
-            "nft list table ip dust-egress exited non-zero"
+            family = family,
+            "nft list table dust-egress exited non-zero"
         );
         return None;
     }
     match String::from_utf8(output.stdout) {
         Ok(rules) => Some(rules),
         Err(error) => {
-            warn!(error = %error, "nft stdout was not valid UTF-8");
+            warn!(error = %error, family = family, "nft stdout was not valid UTF-8");
             None
         }
     }
