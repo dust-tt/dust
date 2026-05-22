@@ -1,6 +1,5 @@
 import type { RegionType } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import {
   isByokTransitioningPlan,
   isDustCompanyPlan,
@@ -120,28 +119,12 @@ export function getSmallWhitelistedModel(
 
 export function getLargeWhitelistedModel(
   auth: Authenticator,
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  { forBatch = false }: { forBatch?: boolean } = {}
 ): ModelConfigurationType | null {
   return _getLargeWhitelistedModel(
-    getWhitelistedProviders(auth).difference(excludeProviders)
-  );
-}
-
-export async function getLargeWhitelistedModelWithBatchMode(
-  auth: Authenticator
-): Promise<ModelConfigurationType | null> {
-  // TODO: remove this when vertex supports batch mode
-  const useVertex = await hasFeatureFlag(
-    auth,
-    "use_vertex_for_anthropic_models"
-  );
-  const excludedProviders: Set<ModelProviderIdType> = useVertex
-    ? new Set(["anthropic"])
-    : new Set();
-
-  return _getLargeWhitelistedModel(
-    getWhitelistedProviders(auth).difference(excludedProviders),
-    { forBatch: true }
+    getWhitelistedProviders(auth).difference(excludeProviders),
+    { forBatch }
   );
 }
 

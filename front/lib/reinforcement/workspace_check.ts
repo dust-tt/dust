@@ -1,6 +1,6 @@
-import { getLargeWhitelistedModelWithBatchMode } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { getLargeWhitelistedModelWithBatchMode } from "@app/lib/reinforcement/models";
 
 /**
  * Check whether reinforcement is enabled for the workspace:
