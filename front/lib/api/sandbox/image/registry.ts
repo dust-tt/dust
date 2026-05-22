@@ -4,7 +4,7 @@ import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import {
   DSBX_TOOL_NAME,
   PROXY_ONLY_NETWORK_POLICY,
-  SANDBOX_UNTRUSTED_UIDS,
+  SANDBOX_AGENT_PROXIED_UID,
   type ToolEntry,
 } from "@app/lib/api/sandbox/image/types";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
@@ -17,7 +17,10 @@ import path from "path";
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
 const DUST_BASE_IMAGE_VERSION = "0.8.19";
 const DSBX_CLI_VERSION = "0.1.15";
-const AGENT_PROXIED_UID = SANDBOX_UNTRUSTED_UIDS[0];
+// Identity, not coverage list: agent-proxied is a specific Linux user. The
+// nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
+// list must not silently change this user's UID.
+const AGENT_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";

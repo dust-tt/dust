@@ -470,6 +470,33 @@ describe("sandbox egress helpers", () => {
     );
   });
 
+  it("logs stderr when dsbx healthcheck exits zero but reports unhealthy", async () => {
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      exec: vi.fn().mockResolvedValueOnce(
+        new Ok({
+          exitCode: 0,
+          stdout: healthStdout({ nft_dns_udp_redirect_ok: false }),
+          stderr: "nft: command not found",
+        })
+      ),
+    };
+
+    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+      wokeFromSleep: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "egress.healthcheck_parse",
+        stderr: "nft: command not found",
+      }),
+      expect.stringContaining("diagnostic stderr")
+    );
+  });
+
   it("fails closed when DNS enforcement health is missing", async () => {
     const sandbox = {
       providerId: "provider-sandbox-id",

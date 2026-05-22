@@ -256,9 +256,26 @@ export async function checkEgressForwarderHealth(
     return new Ok(FAILED_EGRESS_HEALTH_STATE);
   }
 
-  return new Ok(
-    parseEgressHealthcheckOutput(result.value.stdout.trim(), logContext)
+  const state = parseEgressHealthcheckOutput(
+    result.value.stdout.trim(),
+    logContext
   );
+
+  // dsbx healthcheck exits 0 with `nft_*_ok: false` when it could read JSON
+  // but the underlying probe (missing nft binary, EPERM, non-UTF8 output)
+  // logged a diagnostic to stderr. Surface that stderr here so the reason
+  // is not lost just because the JSON parse succeeded.
+  const trimmedStderr = result.value.stderr.trim();
+  const anyUnhealthy =
+    !state.portOk || !state.resolverOk || !state.nftablesOk || !state.bundleOk;
+  if (anyUnhealthy && trimmedStderr.length > 0) {
+    logger.warn(
+      { ...logContext, stderr: trimmedStderr, state },
+      "Sandbox egress healthcheck exited zero but reported unhealthy with diagnostic stderr"
+    );
+  }
+
+  return new Ok(state);
 }
 
 // Egress prep that runs before GCS mounts: in prod, starts the forwarder; in
