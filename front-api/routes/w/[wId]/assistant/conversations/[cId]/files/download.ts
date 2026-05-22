@@ -6,8 +6,8 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@front-api/middlewares/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import { validate } from "@front-api/middlewares/validator";
-import { Hono } from "hono";
 import path from "path";
 import { z } from "zod";
 
@@ -16,7 +16,7 @@ const PostDownloadBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files/download.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", PostDownloadBodySchema), async (ctx) => {
   const auth = ctx.get("auth");

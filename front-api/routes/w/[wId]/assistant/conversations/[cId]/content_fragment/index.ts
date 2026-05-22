@@ -5,15 +5,15 @@ import type { ContentFragmentType } from "@app/types/content_fragment";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import { validate } from "@front-api/middlewares/validator";
-import { Hono } from "hono";
 
 export type PostContentFragmentResponseBody = {
   contentFragment: ContentFragmentType;
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/content_fragment.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

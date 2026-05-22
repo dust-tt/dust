@@ -12,14 +12,14 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import { validate } from "@front-api/middlewares/validator";
-import { Hono } from "hono";
 
 export type ConversationFileRelResponseBody = Record<string, never>;
 
 // Catch-all for /api/w/:wId/assistant/conversations/:cId/files/<...rel>.
 // Mounted from files/index.ts at the root path.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/:rel{.+}", async (ctx) => {
   const auth = ctx.get("auth");

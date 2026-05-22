@@ -9,12 +9,12 @@ import logger from "@app/logger/logger";
 import { isSupportedImageContentType } from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
-import { Hono } from "hono";
 import path from "path";
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files/thumbnail.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

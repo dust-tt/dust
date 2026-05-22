@@ -2,8 +2,8 @@ import { createConversationFork } from "@app/lib/api/assistant/conversation/fork
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import { validate } from "@front-api/middlewares/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const PostConversationForkBodySchema = z.object({
@@ -17,7 +17,7 @@ export type PostConversationForkResponseBody = {
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/forks.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",
