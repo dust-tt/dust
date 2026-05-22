@@ -573,7 +573,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       fileId: z
         .string()
         .describe(
-          "The Dust fileId from the conversation attachments to upload."
+          "The file reference from the conversation. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
         ),
       parentId: z
         .string()
