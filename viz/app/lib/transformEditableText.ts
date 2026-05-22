@@ -52,11 +52,13 @@ function collectJsxTextNodes(code: string): JSXTextReplacement[] {
 // re-executing the viz.
 export function getEditableSpansMeta(code: string): EditableSpanMeta[] {
   try {
-    return collectJsxTextNodes(code).map(({ rawText, ctxBefore, ctxAfter }) => ({
-      rawText,
-      ctxBefore,
-      ctxAfter,
-    }));
+    return collectJsxTextNodes(code).map(
+      ({ rawText, ctxBefore, ctxAfter }) => ({
+        rawText,
+        ctxBefore,
+        ctxAfter,
+      })
+    );
   } catch (err) {
     logger.error({ err }, "Failed to extract editable span metadata");
     return [];

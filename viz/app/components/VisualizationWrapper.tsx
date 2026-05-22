@@ -78,12 +78,20 @@ async function resolveFileRef(
           const nestedKey = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
           return [
             nestedKey,
-            await resolveFileRef(nestedKey, dataAPI, baseImports, cache, isEditable),
+            await resolveFileRef(
+              nestedKey,
+              dataAPI,
+              baseImports,
+              cache,
+              isEditable
+            ),
           ] as const;
         })
       );
       const nestedScope = Object.fromEntries(nestedEntries);
-      return importCode(codeToUse, { import: { ...baseImports, ...nestedScope } });
+      return importCode(codeToUse, {
+        import: { ...baseImports, ...nestedScope },
+      });
     }
 
     return { default: file };
@@ -435,7 +443,13 @@ export function VisualizationWrapper({
             const key = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
             return [
               key,
-              await resolveFileRef(key, api.data, baseImports, cache, isEditable),
+              await resolveFileRef(
+                key,
+                api.data,
+                baseImports,
+                cache,
+                isEditable
+              ),
             ] as const;
           })
         );
