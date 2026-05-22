@@ -1,5 +1,6 @@
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useMetronomeInvoice } from "@app/lib/swr/workspaces";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -19,18 +20,7 @@ function formatBillingPeriod(period: string): string {
   return period.charAt(0).toUpperCase() + period.slice(1);
 }
 
-function formatDate(msEpoch: number): string {
-  return new Date(msEpoch).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-export function BillingOverview({
-  owner,
-  subscription,
-}: BillingOverviewProps) {
+export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
   const { invoice, isMetronomeInvoiceLoading } = useMetronomeInvoice({
     workspaceId: owner.sId,
     disabled: !subscription.metronomeContractId,
@@ -64,7 +54,11 @@ export function BillingOverview({
           <div className="flex items-center gap-2">
             <Icon visual={ActionCalendarIcon} size="xs" />
             <span>
-              Next billing date: {formatDate(invoice.currentPeriodEndMs)}
+              Next billing date:{" "}
+              {formatTimestampToFriendlyDate(
+                invoice.currentPeriodEndMs,
+                "short"
+              )}
             </span>
           </div>
           <div className="flex items-center gap-2">
