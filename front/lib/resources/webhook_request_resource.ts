@@ -7,7 +7,6 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   TriggerType,
@@ -290,32 +289,25 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       "Cleaning up old webhook requests"
     );
 
-    const totalRequestsCount = await this.model.count({
-      where: {
-        workspaceId: workspace.id,
-      },
+    const excessiveRequests = await this.baseFetch(auth, {
+      order: [["createdAt", "DESC"]],
+      offset: maxWebhookRequestsToKeep,
     });
-    const excessiveRequestsCount = Math.max(
-      totalRequestsCount - maxWebhookRequestsToKeep,
-      0
-    );
-    const excessiveRequestsDeletedCount =
-      excessiveRequestsCount > 0
-        ? await this.model.destroy({
-            where: {
-              workspaceId: workspace.id,
-            },
-            limit: excessiveRequestsCount,
-          })
-        : 0;
 
     logger.info(
       {
-        toDelete: excessiveRequestsDeletedCount,
-        workspaceId: workspace.sId,
+        toDelete: excessiveRequests.length,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
       "Cleaning up excessive webhook requests"
     );
+
+    await this.model.destroy({
+      where: {
+        workspaceId: workspace.id,
+        id: excessiveRequests.map((request) => request.id),
+      },
+    });
   }
 
   /**
