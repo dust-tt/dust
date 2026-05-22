@@ -11,7 +11,12 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
-import type { ApiError, Bucket, File } from "@google-cloud/storage";
+import type {
+  ApiError,
+  Bucket,
+  File,
+  SaveOptions,
+} from "@google-cloud/storage";
 import { RETRYABLE_ERR_FN_DEFAULT, Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
@@ -77,10 +82,12 @@ export class FileStorage {
     content,
     contentType,
     filePath,
+    saveOptions,
   }: {
     content: string;
     contentType: AllSupportedFileContentType;
     filePath: string;
+    saveOptions?: Pick<SaveOptions, "preconditionOpts" | "resumable">;
   }) {
     const gcsFile = this.file(filePath);
 
@@ -88,6 +95,7 @@ export class FileStorage {
 
     await gcsFile.save(contentToSave, {
       contentType,
+      ...saveOptions,
     });
   }
 

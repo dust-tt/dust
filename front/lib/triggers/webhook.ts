@@ -50,6 +50,10 @@ export const HEADERS_ALLOWED_LIST = [
   "webhook-timestamp",
 ];
 
+// GCS generations are object versions. Matching generation 0 means "create only
+// if the object does not already exist".
+const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
+
 export function checkSignature({
   headerName,
   algorithm,
@@ -523,6 +527,15 @@ export async function storePayloadInGCS(
       content,
       contentType: "application/json",
       filePath: gcsPath,
+      // Webhook payloads are capped at 2MB, so resumable uploads add overhead
+      // without helping. The path includes the webhook request id and should be
+      // unique; the generation match makes that create-only write retryable.
+      saveOptions: {
+        resumable: false,
+        preconditionOpts: {
+          ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+        },
+      },
     });
   } catch (error: unknown) {
     // Log the error, but do not throw, as we want to continue processing the webhook.
