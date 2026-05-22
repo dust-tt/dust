@@ -4,7 +4,7 @@ import {
   isMembershipSeatType,
   type MembershipSeatType,
 } from "@app/types/memberships";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionCreditCoinsIcon,
@@ -64,7 +64,8 @@ function seatTypeGroup(seatType: MembershipSeatType): MembershipSeatType {
     case "max_yearly":
       return "max";
     default:
-      return assertNever(seatType);
+      assertNeverAndIgnore(seatType);
+      return seatType;
   }
 }
 
@@ -84,7 +85,8 @@ function yearlySeatTypeForGroup(
     case "max":
       return "max_yearly";
     default:
-      return assertNever(seatType);
+      assertNeverAndIgnore(seatType);
+      return null;
   }
 }
 
