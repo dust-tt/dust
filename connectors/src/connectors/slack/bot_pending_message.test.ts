@@ -6,7 +6,7 @@ vi.mock("@connectors/lib/bot/conversation_utils", () => ({
   makeConversationUrl: () => "https://dust.test/conversation",
 }));
 
-import { resolveSlackPendingUserMessage } from "./bot";
+import { resolveSlackPendingUserMessage } from "./bot_pending_message";
 
 type PendingMessage =
   | { sId: string; type: "user_message"; visibility: "pending" | "visible" }
@@ -37,10 +37,12 @@ function makeConversation(content: PendingMessage[][] = []) {
 async function resolvePending({
   events = [],
   refetchedConversation = makeConversation([[pendingUserMessage]]),
+  stopRejects = false,
   timeoutMs = 100,
 }: {
   events?: ConversationEvent[];
   refetchedConversation?: ReturnType<typeof makeConversation>;
+  stopRejects?: boolean;
   timeoutMs?: number;
 } = {}) {
   const dustAPI = {
@@ -62,7 +64,11 @@ async function resolvePending({
     },
   };
   const streamHandler = {
-    stop: vi.fn(async () => undefined),
+    stop: vi.fn(async () => {
+      if (stopRejects) {
+        throw new Error("stop failed");
+      }
+    }),
   };
 
   const res = await resolveSlackPendingUserMessage({
@@ -110,7 +116,7 @@ describe("resolveSlackPendingUserMessage", () => {
   });
 
   it("posts a fallback when the pending message is not promoted", async () => {
-    const ctx = await resolvePending({ timeoutMs: 1 });
+    const ctx = await resolvePending({ stopRejects: true, timeoutMs: 1 });
 
     expect(ctx.res).toEqual(new Ok(null));
     expect(ctx.streamHandler.stop).toHaveBeenCalledTimes(1);
