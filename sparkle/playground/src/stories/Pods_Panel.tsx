@@ -479,7 +479,7 @@ function Projects_Panel() {
 
   // ── P2 content ────────────────────────────────────────────────────────────
   const p2Label = (() => {
-    if (p2View.kind === "space") return selectedSpace?.name ?? "Project";
+    if (p2View.kind === "space") return selectedSpace?.name ?? "Pod";
     if (p2View.kind === "conversation")
       return selectedConversation?.title ?? "Conversation";
     if (p2View.kind === "profile") return "Profile";
@@ -536,6 +536,9 @@ function Projects_Panel() {
           spacePublicSettings={spacePublicSettings}
           activeTab={spaceActiveTab}
           onTabChange={setSpaceActiveTab}
+          selectedConversationId={
+            p3View?.kind === "conversation" ? p3View.conversationId : null
+          }
         />
       );
     // welcome
@@ -631,7 +634,7 @@ function Projects_Panel() {
           {
             value: "settings",
             icon: Cog6ToothIcon,
-            tooltip: "Room settings",
+            tooltip: "Pod settings",
           },
         ]}
       />
@@ -929,10 +932,10 @@ function Projects_Panel() {
             )}
 
             <NavigationList className="s-px-2">
-              {/* Projects */}
+              {/* Pods */}
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
-                  label="Projects"
+                  label="Pods"
                   type="collapse"
                   defaultOpen={true}
                   visibleItems={4}
@@ -1044,7 +1047,7 @@ function Projects_Panel() {
                                 </DropdownMenuSubContent>
                               </DropdownMenuSub>
                               <DropdownMenuSeparator />
-                              <DropdownMenuLabel label="Project" />
+                              <DropdownMenuLabel label="Pod" />
                               <DropdownMenuItem
                                 label="Rename"
                                 icon={PencilSquareIcon}

@@ -1,3 +1,4 @@
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
   AnimatedText,
   ArchiveIcon,
@@ -5,6 +6,7 @@ import {
   ArrowRightIcon,
   ArrowUpOnSquareIcon,
   Avatar,
+  Breadcrumbs,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
@@ -14,6 +16,8 @@ import {
   CheckDoubleIcon,
   CheckIcon,
   Chip,
+  CloudArrowLeftRightIcon,
+  CloudArrowUpIcon,
   ContentMessage,
   ConversationListItem,
   DataTable,
@@ -39,7 +43,9 @@ import {
   FolderIcon,
   Icon,
   Input,
+  ListCheckIcon,
   ListGroup,
+  ListIcon,
   ListItemSection,
   MagicIcon,
   MoreIcon,
@@ -70,12 +76,22 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent,
   type ReactNode,
 } from "react";
 
-import { Separator } from "@radix-ui/react-dropdown-menu";
 import { getAgentById } from "../data/agents";
-import { getDataSourcesBySpaceId } from "../data/dataSources";
+import {
+  getDataSourceChildren,
+  getDataSourceIcon,
+  getDataSourcesBySpaceId,
+  getDataSourcesInFolderTree,
+  getFolderPath,
+  getItemTypeLabel,
+  isDataSourceFolder,
+  moveDataSource,
+  sortDataSourcesForDisplay,
+} from "../data/dataSources";
 import type {
   Agent,
   Conversation,
@@ -105,6 +121,7 @@ interface GroupConversationViewProps {
   isProjectJoined?: boolean;
   onJoinProject?: () => void;
   onLeaveProject?: () => void;
+  selectedConversationId?: string | null;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
 }
@@ -132,6 +149,15 @@ type UniversalSearchItem =
       score: number;
     };
 
+function getParticipantSeedId(participant: {
+  type: "user" | "agent";
+  data: User | Agent;
+}) {
+  return participant.type === "user"
+    ? (participant.data as User).id
+    : (participant.data as Agent).id;
+}
+
 // Helper function to get random participants for a conversation
 function getRandomParticipants(
   conversation: Conversation,
@@ -157,10 +183,14 @@ function getRandomParticipants(
     }
   });
 
-  // Shuffle and select 1-6 participants
-  const shuffled = [...allParticipants].sort(() => Math.random() - 0.5);
+  // Shuffle and select 1-6 participants deterministically per row.
+  const shuffled = [...allParticipants].sort(
+    (a, b) =>
+      seededRandom(`${conversation.id}-${getParticipantSeedId(a)}`, 0) -
+      seededRandom(`${conversation.id}-${getParticipantSeedId(b)}`, 0)
+  );
   const count = Math.min(
-    Math.max(1, Math.floor(Math.random() * 6) + 1),
+    Math.max(1, Math.floor(seededRandom(conversation.id, 1) * 6) + 1),
     shuffled.length
   );
   return shuffled.slice(0, count);
@@ -176,7 +206,10 @@ function getRandomCreator(
   }
   const creatorId =
     conversation.userParticipants[
-      Math.floor(Math.random() * conversation.userParticipants.length)
+      Math.floor(
+        seededRandom(`${conversation.id}-creator`, 0) *
+          conversation.userParticipants.length
+      )
     ];
   return getUserById(creatorId) || null;
 }
@@ -235,10 +268,42 @@ function getDateBucket(
   }
 }
 
+const GENERATED_CONVERSATION_TITLES = [
+  "Scope alignment notes",
+  "Budget trade-off review",
+  "Launch checklist sync",
+  "Customer feedback triage",
+  "Milestone planning thread",
+  "Design direction review",
+  "Open blockers roundup",
+  "Rollout readiness check",
+  "Data quality investigation",
+  "Stakeholder update draft",
+  "Implementation plan review",
+  "Risk register cleanup",
+  "Experiment results debrief",
+  "Dependency mapping session",
+  "Support handoff notes",
+  "Roadmap decision recap",
+  "Integration follow-up",
+  "QA findings review",
+  "Weekly progress pulse",
+  "Next steps planning",
+];
+
+const GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES = [
+  "Project discussion covering {title}, owners, open questions, and the next decisions needed to keep work moving.",
+  "Follow-up thread for {title}, including context from recent conversations and proposed action items.",
+  "Working notes about {title}, with blockers, assumptions, and coordination details for the project team.",
+  "Planning conversation focused on {title}, timelines, dependencies, and expected outcomes.",
+  "Review thread for {title}, summarizing what changed, what remains unclear, and who should follow up.",
+];
+
 // Helper function to generate more conversations with varied dates
 function generateConversationsWithDates(
   conversations: Conversation[],
-  count: number
+  count: number,
+  seed: string
 ): Conversation[] {
   const now = new Date();
   const generated: Conversation[] = [];
@@ -246,9 +311,23 @@ function generateConversationsWithDates(
   // Duplicate and vary existing conversations
   for (let i = 0; i < count; i++) {
     const baseConversation = conversations[i % conversations.length];
-    const daysAgo = Math.floor(Math.random() * 35); // Up to 35 days ago
-    const hoursAgo = Math.floor(Math.random() * 24);
-    const minutesAgo = Math.floor(Math.random() * 60);
+    const rowSeed = `${seed}-${baseConversation.id}-${i}`;
+    const daysAgo = Math.floor(seededRandom(rowSeed, 0) * 35); // Up to 35 days ago
+    const hoursAgo = Math.floor(seededRandom(rowSeed, 1) * 24);
+    const minutesAgo = Math.floor(seededRandom(rowSeed, 2) * 60);
+    const title =
+      GENERATED_CONVERSATION_TITLES[
+        Math.floor(
+          seededRandom(rowSeed, 3) * GENERATED_CONVERSATION_TITLES.length
+        )
+      ];
+    const descriptionTemplate =
+      GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES[
+        Math.floor(
+          seededRandom(rowSeed, 4) *
+            GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES.length
+        )
+      ];
 
     const updatedAt = new Date(now);
     updatedAt.setDate(updatedAt.getDate() - daysAgo);
@@ -256,14 +335,17 @@ function generateConversationsWithDates(
     updatedAt.setMinutes(updatedAt.getMinutes() - minutesAgo);
 
     const createdAt = new Date(updatedAt);
-    createdAt.setDate(createdAt.getDate() - Math.floor(Math.random() * 5));
+    createdAt.setDate(
+      createdAt.getDate() - Math.floor(seededRandom(rowSeed, 5) * 5)
+    );
 
     generated.push({
       ...baseConversation,
       id: `${baseConversation.id}-${i}`,
       updatedAt,
       createdAt,
-      title: baseConversation.title,
+      title,
+      description: descriptionTemplate.replace("{title}", title.toLowerCase()),
     });
   }
 
@@ -1123,7 +1205,7 @@ function GroupConversationTabContent({
       <div className="s-flex s-h-full s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-5">
         <div
           className={cn(
-            "s-mx-auto s-flex s-w-full s-h-full s-max-w-4xl s-flex-col s-py-8 s-gap-6",
+            "s-mx-auto s-flex s-w-full s-h-full s-max-w-4xl s-flex-col s-py-8 s-gap-3",
             contentClassName
           )}
         >
@@ -1154,6 +1236,7 @@ function ProjectSetupEmptyState({
         size="md"
         variant="highlight"
         onClick={onSetupProject}
+        isPulsing
       />
     </div>
   );
@@ -1175,11 +1258,16 @@ export function GroupConversationView({
   isProjectJoined = false,
   onJoinProject = () => {},
   onLeaveProject = () => {},
+  selectedConversationId,
   activeTab: controlledActiveTab,
   onTabChange,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [selectedConversationRow, setSelectedConversationRow] = useState<{
+    rowId: string;
+    conversationId: string;
+  } | null>(null);
   const [goodToKnowFilter, setGoodToKnowFilter] = useState<
     "all" | "shared" | "mine"
   >("all");
@@ -1296,6 +1384,15 @@ export function GroupConversationView({
     string | null
   >(null);
   const [knowledgeSearchText, setKnowledgeSearchText] = useState("");
+  const [filesViewMode, setFilesViewMode] = useState<"list" | "grid">("list");
+  const [filesSearchScope, setFilesSearchScope] = useState<"folder" | "all">(
+    "folder"
+  );
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [draggingFileId, setDraggingFileId] = useState<string | null>(null);
+  const [dropHoverTargetId, setDropHoverTargetId] = useState<string | null>(
+    null
+  );
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSource | null>(null);
   const [isDocumentSheetOpen, setIsDocumentSheetOpen] = useState(false);
@@ -1330,7 +1427,7 @@ export function GroupConversationView({
 
     // Generate at least 20 conversations, more if we have fewer originals
     const targetCount = Math.max(20, conversations.length * 4);
-    return generateConversationsWithDates(conversations, targetCount);
+    return generateConversationsWithDates(conversations, targetCount, space.id);
   }, [conversations, space.id]);
 
   const searchResults = useMemo((): UniversalSearchItem[] => {
@@ -1395,8 +1492,14 @@ export function GroupConversationView({
 
   const handleSearchItemSelect = (item: UniversalSearchItem) => {
     if (item.type === "document") {
-      setSelectedDataSource(item.dataSource);
-      setIsDocumentSheetOpen(true);
+      if (isDataSourceFolder(item.dataSource)) {
+        setActiveTab("knowledge");
+        setCurrentFolderId(item.dataSource.id);
+        setKnowledgeSearchText("");
+      } else {
+        setSelectedDataSource(item.dataSource);
+        setIsDocumentSheetOpen(true);
+      }
       setIsSearchOpen(false);
       return;
     }
@@ -1563,6 +1666,48 @@ export function GroupConversationView({
     return titleMap;
   }, [expandedConversations]);
 
+  const conversationListItemsById = useMemo(() => {
+    const itemMap = new Map<
+      string,
+      {
+        avatarProps: ReturnType<typeof participantsToAvatarProps>;
+        creator: User | null;
+        mentionCount: number;
+        messageCount: number;
+        replyCount: number;
+        time: string;
+      }
+    >();
+
+    expandedConversations.forEach((conversation) => {
+      const rowSeed = `${space.id}-${conversation.id}-list-item`;
+      const participants = getRandomParticipants(conversation, users, agents);
+      const replyCount = Math.floor(seededRandom(rowSeed, 0) * 8) + 1;
+      const messageCount =
+        Math.floor(seededRandom(rowSeed, 1) * replyCount) + 1;
+      const mentionCount = Math.floor(
+        seededRandom(rowSeed, 2) * (messageCount + 1)
+      );
+
+      itemMap.set(conversation.id, {
+        avatarProps: participantsToAvatarProps(participants),
+        creator: getRandomCreator(conversation, users),
+        mentionCount,
+        messageCount,
+        replyCount,
+        time: conversation.updatedAt
+          .toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          })
+          .replace("24:", "00:"),
+      });
+    });
+
+    return itemMap;
+  }, [agents, expandedConversations, space.id, users]);
+
   const getAutoCheckRationales = (
     summary: OngoingSummary,
     relatedConversations: SummaryRelatedConversations,
@@ -1710,6 +1855,15 @@ export function GroupConversationView({
     selection?.addRange(range);
     pendingFocusTodoItemKeyRef.current = null;
   });
+
+  useEffect(() => {
+    if (
+      selectedConversationRow &&
+      selectedConversationRow.conversationId !== selectedConversationId
+    ) {
+      setSelectedConversationRow(null);
+    }
+  }, [selectedConversationId, selectedConversationRow]);
 
   useEffect(() => {
     return () => {
@@ -1952,18 +2106,221 @@ export function GroupConversationView({
   // Reset data sources when space changes
   useEffect(() => {
     setDataSources(getDataSourcesBySpaceId(space.id));
+    setCurrentFolderId(null);
+    setDraggingFileId(null);
+    setDropHoverTargetId(null);
+    setFilesSearchScope("folder");
   }, [space.id]);
 
-  // Transform data sources to include onClick handlers
-  const dataSourcesWithClick = useMemo(() => {
-    return dataSources.map((ds) => ({
-      ...ds,
-      onClick: () => {
-        setSelectedDataSource(ds);
-        setIsDocumentSheetOpen(true);
+  useEffect(() => {
+    setFilesSearchScope("folder");
+  }, [currentFolderId]);
+
+  const isKnowledgeSearchActive = knowledgeSearchText.trim().length > 0;
+
+  const currentFolder = useMemo(
+    () =>
+      currentFolderId
+        ? dataSources.find((item) => item.id === currentFolderId)
+        : undefined,
+    [currentFolderId, dataSources]
+  );
+
+  const handleFileDragEnd = useCallback(() => {
+    setDraggingFileId(null);
+    setDropHoverTargetId(null);
+  }, []);
+
+  const handleMoveFile = useCallback(
+    (fileId: string, targetParentId: string | null) => {
+      setDataSources((prev) => moveDataSource(prev, fileId, targetParentId));
+      setDraggingFileId(null);
+      setDropHoverTargetId(null);
+    },
+    []
+  );
+
+  const handleFileDragStart = useCallback(
+    (fileId: string, event: DragEvent<HTMLTableRowElement>) => {
+      event.dataTransfer.setData("text/plain", fileId);
+      event.dataTransfer.effectAllowed = "move";
+      setDraggingFileId(fileId);
+    },
+    []
+  );
+
+  const handleDragOverTarget = useCallback(
+    (targetId: string, event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "move";
+      setDropHoverTargetId(targetId);
+    },
+    []
+  );
+
+  const handleDropOnTarget = useCallback(
+    (
+      targetId: string,
+      targetParentId: string | null,
+      event: DragEvent<HTMLElement>
+    ) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const fileId = event.dataTransfer.getData("text/plain") || draggingFileId;
+      if (!fileId) {
+        return;
+      }
+
+      const file = dataSources.find((item) => item.id === fileId);
+      if (!file || file.parentId === targetParentId) {
+        handleFileDragEnd();
+        return;
+      }
+
+      handleMoveFile(fileId, targetParentId);
+    },
+    [dataSources, draggingFileId, handleFileDragEnd, handleMoveFile]
+  );
+
+  const visibleItems = useMemo(
+    () =>
+      sortDataSourcesForDisplay(
+        getDataSourceChildren(dataSources, currentFolderId)
+      ),
+    [dataSources, currentFolderId]
+  );
+
+  const folderBreadcrumbItems = useMemo((): BreadcrumbItem[] => {
+    const path = getFolderPath(dataSources, currentFolderId);
+    const isDragActive = draggingFileId !== null;
+
+    const getDropProps = (
+      targetId: string,
+      targetParentId: string | null
+    ): Pick<
+      BreadcrumbItem,
+      "isPulsing" | "isDropHighlight" | "onDragOver" | "onDragLeave" | "onDrop"
+    > => ({
+      isPulsing: isDragActive,
+      isDropHighlight: dropHoverTargetId === targetId,
+      onDragOver: (event) => handleDragOverTarget(targetId, event),
+      onDragLeave: (event) => {
+        event.preventDefault();
       },
-    }));
-  }, [dataSources]);
+      onDrop: (event) => handleDropOnTarget(targetId, targetParentId, event),
+    });
+
+    const items: BreadcrumbItem[] = [
+      currentFolderId === null
+        ? { label: "Files", icon: FolderIcon }
+        : {
+            label: "Files",
+            icon: FolderIcon,
+            onClick: () => {
+              setCurrentFolderId(null);
+              setKnowledgeSearchText("");
+            },
+            ...getDropProps("root", null),
+          },
+    ];
+
+    path.forEach((folder, index) => {
+      const isLast = index === path.length - 1;
+      if (isLast) {
+        items.push({ label: folder.fileName, icon: FolderIcon });
+        return;
+      }
+
+      items.push({
+        label: folder.fileName,
+        icon: FolderIcon,
+        onClick: () => setCurrentFolderId(folder.id),
+        ...getDropProps(folder.id, folder.id),
+      });
+    });
+
+    return items;
+  }, [
+    currentFolderId,
+    dataSources,
+    draggingFileId,
+    dropHoverTargetId,
+    handleDragOverTarget,
+    handleDropOnTarget,
+  ]);
+
+  const tableItems = useMemo(() => {
+    const searchLower = knowledgeSearchText.trim().toLowerCase();
+    const searchSource =
+      searchLower && filesSearchScope === "folder" && currentFolderId
+        ? getDataSourcesInFolderTree(dataSources, currentFolderId)
+        : dataSources;
+
+    const base = searchLower
+      ? sortDataSourcesForDisplay(
+          searchSource.filter((dataSource) =>
+            dataSource.fileName.toLowerCase().includes(searchLower)
+          )
+        )
+      : visibleItems;
+
+    return base.map((dataSource) => {
+      const item = {
+        ...dataSource,
+        onClick: () => {
+          if (isDataSourceFolder(dataSource)) {
+            setCurrentFolderId(dataSource.id);
+            setKnowledgeSearchText("");
+            return;
+          }
+
+          setSelectedDataSource(dataSource);
+          setIsDocumentSheetOpen(true);
+        },
+      };
+
+      if (isKnowledgeSearchActive) {
+        return item;
+      }
+
+      if (isDataSourceFolder(dataSource)) {
+        return {
+          ...item,
+          onDragOver: (event: DragEvent<HTMLTableRowElement>) =>
+            handleDragOverTarget(dataSource.id, event),
+          onDragLeave: (event: DragEvent<HTMLTableRowElement>) => {
+            event.preventDefault();
+          },
+          onDrop: (event: DragEvent<HTMLTableRowElement>) =>
+            handleDropOnTarget(dataSource.id, dataSource.id, event),
+          isDropHighlight: dropHoverTargetId === dataSource.id,
+        };
+      }
+
+      return {
+        ...item,
+        draggable: true,
+        onDragStart: (event: DragEvent<HTMLTableRowElement>) =>
+          handleFileDragStart(dataSource.id, event),
+        onDragEnd: handleFileDragEnd,
+        isDragging: draggingFileId === dataSource.id,
+      };
+    });
+  }, [
+    dataSources,
+    draggingFileId,
+    dropHoverTargetId,
+    handleDragOverTarget,
+    handleDropOnTarget,
+    handleFileDragEnd,
+    handleFileDragStart,
+    isKnowledgeSearchActive,
+    knowledgeSearchText,
+    filesSearchScope,
+    currentFolderId,
+    visibleItems,
+  ]);
 
   // Transform spaceMemberIds into Member objects with joinedAt dates
   const members: Member[] = useMemo(() => {
@@ -2660,19 +3017,68 @@ export function GroupConversationView({
         accessorKey: "fileName",
         header: "File name",
         id: "fileName",
-        sortingFn: "text",
+        sortingFn: (rowA, rowB) => {
+          const a = rowA.original;
+          const b = rowB.original;
+          if (a.kind !== b.kind) {
+            return a.kind === "folder" ? -1 : 1;
+          }
+          return a.fileName.localeCompare(b.fileName);
+        },
         meta: {
           className: "s-w-full",
         },
+        cell: (info) => {
+          const icon = getDataSourceIcon(info.row.original);
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-2">
+                {icon && <Icon visual={icon} size="sm" />}
+                <span>{info.getValue() as string}</span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "source",
+        header: "Source",
+        id: "source",
+        meta: {
+          className: "s-w-[84px]",
+        },
+        cell: (info) => {
+          const source = info.getValue() as DataSource["source"];
+          if (source !== "company") {
+            return <DataTable.BasicCellContent label="" />;
+          }
+
+          return (
+            <DataTable.CellContent>
+              <Icon
+                visual={CloudArrowLeftRightIcon}
+                size="sm"
+                className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+              />
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "fileType",
+        header: "Type",
+        id: "fileType",
+        sortingFn: (rowA, rowB) =>
+          getItemTypeLabel(rowA.original).localeCompare(
+            getItemTypeLabel(rowB.original)
+          ),
+        meta: {
+          className: "s-w-[84px]",
+        },
         cell: (info) => (
-          <DataTable.CellContent>
-            <div className="s-flex s-items-center s-gap-2">
-              {info.row.original.icon && (
-                <Icon visual={info.row.original.icon} size="sm" />
-              )}
-              <span>{info.getValue() as string}</span>
-            </div>
-          </DataTable.CellContent>
+          <DataTable.BasicCellContent
+            label={getItemTypeLabel(info.row.original)}
+          />
         ),
       },
       {
@@ -2680,7 +3086,7 @@ export function GroupConversationView({
         header: "Created by",
         id: "createdBy",
         meta: {
-          className: "s-w-[180px]",
+          className: "s-w-[140px]",
         },
         cell: (info) => {
           const userId = info.getValue() as string;
@@ -2706,7 +3112,7 @@ export function GroupConversationView({
         header: "Last Updated",
         id: "lastUpdated",
         meta: {
-          className: "s-w-[140px]",
+          className: "s-w-[100px]",
         },
         cell: (info) => {
           const date = info.getValue() as Date;
@@ -2837,7 +3243,7 @@ export function GroupConversationView({
               },
               {
                 kind: "item",
-                label: "Remove from Room",
+                label: "Remove from the Pod",
                 icon: TrashIcon,
                 variant: "warning",
                 onClick: () => {
@@ -2881,110 +3287,64 @@ export function GroupConversationView({
         {/* Conversations Tab */}
         <GroupConversationTabContent value="conversations">
           {/* New conversation section */}
-          <div className="s-flex s-flex-col s-h-full s-gap-3">
-            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-              {getProjectPageTitle("conversation")}
-            </h2>
+          <InputBar placeholder={`Start a conversation in ${space.name}`} />
 
-            {/* Suggestions for empty rooms */}
-            {!hasHistory && (
-              <div className="s-flex s-flex-col s-gap-5">
-                <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                  Start a first conversation!
-                </h3>
-              </div>
-            )}
-            <InputBar placeholder={`Get work done in ${space.name}`} />
-            {hasHistory && (
-              <div className="s-flex s-w-full s-gap-2 s-px-4">
-                <SearchInputWithPopover
-                  name="conversation-search"
-                  value={searchText}
-                  onChange={(value) => {
-                    setSearchText(value);
-                    if (!value.trim()) {
-                      setIsSearchOpen(false);
-                    }
-                  }}
-                  open={isSearchOpen}
-                  onOpenChange={setIsSearchOpen}
-                  placeholder={`Search in ${space.name}`}
-                  className="s-w-full"
-                  items={searchResults}
-                  availableHeight
-                  noResults={
-                    searchText.trim()
-                      ? "No results found"
-                      : "Start typing to search"
-                  }
-                  onItemSelect={handleSearchItemSelect}
-                  renderItem={(item, selected) => (
-                    <SearchResultItem item={item} selected={selected} />
-                  )}
-                />
-              </div>
-            )}
-
-            {!hasHistory && (
-              <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
-            )}
-          </div>
+          {!hasHistory && (
+            <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
+          )}
           {/* Conversations list */}
-          <div className="s-flex s-flex-col s-gap-3">
-            {hasHistory &&
-              ongoingSummary &&
-              ongoingSummary.projectPulse.length > 0 && (
-                <div className="s-flex s-flex-col s-gap-2">
-                  <div className="s-inline-flex s-items-center s-gap-2 s-flex-wrap">
-                    <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                      {isSummaryUpdating ? (
-                        <AnimatedText
-                          variant="primary"
-                          className="s-text-muted-foreground"
-                        >
-                          Catching-up
-                        </AnimatedText>
-                      ) : (
-                        "Catching-up"
-                      )}
-                    </h3>
-                  </div>
-                  <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    {ongoingSummary.projectPulse.map((item, index) => {
-                      const itemKey = getSummaryItemKey("projectPulse", item);
-                      const relatedConversationIds =
-                        summaryRelatedConversations[itemKey] ?? [];
-                      const shouldTypePulseItem =
-                        typingItemKeys.has(itemKey) &&
-                        (summaryItemDiffByKey[itemKey] === "modified" ||
-                          summaryItemDiffByKey[itemKey] === "added");
+          {hasHistory &&
+            ongoingSummary &&
+            ongoingSummary.projectPulse.length > 0 && (
+              <>
+                <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                  {isSummaryUpdating ? (
+                    <AnimatedText
+                      variant="primary"
+                      className="s-text-muted-foreground"
+                    >
+                      Catching-up
+                    </AnimatedText>
+                  ) : (
+                    "Catching-up"
+                  )}
+                </h3>
+                <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  {ongoingSummary.projectPulse.map((item, index) => {
+                    const itemKey = getSummaryItemKey("projectPulse", item);
+                    const relatedConversationIds =
+                      summaryRelatedConversations[itemKey] ?? [];
+                    const shouldTypePulseItem =
+                      typingItemKeys.has(itemKey) &&
+                      (summaryItemDiffByKey[itemKey] === "modified" ||
+                        summaryItemDiffByKey[itemKey] === "added");
 
-                      return (
-                        <span key={itemKey}>
-                          {shouldTypePulseItem ? (
-                            <TypingAnimation
-                              key={`${itemKey}-${typingVersion}`}
-                              text={item.segments
-                                .map((segment) => segment.text)
-                                .join("")}
-                              duration={16}
-                            />
-                          ) : (
-                            renderProjectPulseItemWithInlineLinks(
-                              item,
-                              relatedConversationIds,
-                              false
-                            )
-                          )}
-                          {index < ongoingSummary.projectPulse.length - 1
-                            ? " "
-                            : null}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <Separator className="s-mt-4" />
-                  <div className="s-flex s-w-full s-items-center s-justify-between s-gap-2">
+                    return (
+                      <span key={itemKey}>
+                        {shouldTypePulseItem ? (
+                          <TypingAnimation
+                            key={`${itemKey}-${typingVersion}`}
+                            text={item.segments
+                              .map((segment) => segment.text)
+                              .join("")}
+                            duration={16}
+                          />
+                        ) : (
+                          renderProjectPulseItemWithInlineLinks(
+                            item,
+                            relatedConversationIds,
+                            false
+                          )
+                        )}
+                        {index < ongoingSummary.projectPulse.length - 1
+                          ? " "
+                          : null}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div className="s-@container s-w-full">
+                  <div className="s-flex s-w-full s-flex-row s-items-center s-gap-2">
                     <ButtonsSwitchList
                       defaultValue={goodToKnowFilter}
                       onValueChange={(value) => {
@@ -3014,34 +3374,55 @@ export function GroupConversationView({
                       />
                     </ButtonsSwitchList>
                     {hasHistory && (
-                      <SearchInputWithPopover
-                        name="conversation-search"
-                        value={searchText}
-                        onChange={(value) => {
-                          setSearchText(value);
-                          if (!value.trim()) {
-                            setIsSearchOpen(false);
+                      <div className="s-min-w-0 s-flex-1">
+                        <SearchInputWithPopover
+                          name="conversation-search"
+                          value={searchText}
+                          onChange={(value) => {
+                            setSearchText(value);
+                            if (!value.trim()) {
+                              setIsSearchOpen(false);
+                            }
+                          }}
+                          open={isSearchOpen}
+                          onOpenChange={setIsSearchOpen}
+                          placeholder={`Search in ${space.name}`}
+                          className="s-w-full"
+                          items={searchResults}
+                          availableHeight
+                          noResults={
+                            searchText.trim()
+                              ? "No results found"
+                              : "Start typing to search"
                           }
-                        }}
-                        open={isSearchOpen}
-                        onOpenChange={setIsSearchOpen}
-                        placeholder={`Search in ${space.name}`}
-                        className="s-w-full"
-                        items={searchResults}
-                        availableHeight
-                        noResults={
-                          searchText.trim()
-                            ? "No results found"
-                            : "Start typing to search"
-                        }
-                        onItemSelect={handleSearchItemSelect}
-                        renderItem={(item, selected) => (
-                          <SearchResultItem item={item} selected={selected} />
-                        )}
-                      />
+                          onItemSelect={handleSearchItemSelect}
+                          renderItem={(item, selected) => (
+                            <SearchResultItem item={item} selected={selected} />
+                          )}
+                        />
+                      </div>
                     )}
                     <Button
                       size="sm"
+                      variant="outline"
+                      icon={CheckDoubleIcon}
+                      className="@sm:s-hidden"
+                      tooltip="Mark all as read"
+                      onClick={() => {
+                        setCheckedSummaryItems((previous) => ({
+                          ...previous,
+                          ...Object.fromEntries(
+                            ongoingSummary.projectPulse.map((item) => [
+                              getSummaryItemKey("projectPulse", item),
+                              true,
+                            ])
+                          ),
+                        }));
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      className="s-hidden @sm:s-inline-flex"
                       variant="outline"
                       icon={CheckDoubleIcon}
                       label="Mark all as read"
@@ -3059,183 +3440,167 @@ export function GroupConversationView({
                     />
                   </div>
                 </div>
-              )}
-            {expandedConversations.length > 0 && (
-              <>
-                <div className="s-flex s-flex-col">
-                  {(
-                    ["Today", "Yesterday", "Last Week", "Last Month"] as const
-                  ).map((bucketKey) => {
-                    const bucketConversations =
-                      conversationsByBucket[bucketKey];
-                    if (bucketConversations.length === 0) return null;
-
-                    return (
-                      <Fragment key={bucketKey}>
-                        <ListItemSection>{bucketKey}</ListItemSection>
-                        <ListGroup className="!s-border-transparent">
-                          {bucketConversations.map((conversation) => {
-                            const participants = getRandomParticipants(
-                              conversation,
-                              users,
-                              agents
-                            );
-                            const creator = getRandomCreator(
-                              conversation,
-                              users
-                            );
-                            const avatarProps =
-                              participantsToAvatarProps(participants);
-
-                            // Format time from updatedAt
-                            const time = conversation.updatedAt
-                              .toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: false,
-                              })
-                              .replace("24:", "00:");
-
-                            // Generate random counts respecting mentionCount <= unreadCount <= replyCount
-                            const replyCount = Math.floor(
-                              Math.random() * 8 + 1
-                            );
-                            const messageCount = Math.floor(
-                              Math.random() * replyCount + 1
-                            );
-                            const mentionCount = Math.floor(
-                              Math.random() * (messageCount + 1)
-                            );
-
-                            const baseConversationId = getBaseConversationId(
-                              conversation,
-                              conversations
-                            );
-
-                            const conversationForLookup = {
-                              ...conversation,
-                              id: baseConversationId,
-                            };
-
-                            return (
-                              <div
-                                id={getConversationRowDomId(conversation.id)}
-                                key={conversation.id}
-                              >
-                                <ConversationListItem
-                                  conversation={conversation}
-                                  creator={creator || undefined}
-                                  className="s-border-border s-border-t dark:s-border-border-night"
-                                  time={time}
-                                  showFocus={
-                                    conversationIdToShowFocus ===
-                                    conversation.id
-                                  }
-                                  replySection={
-                                    <ReplySection
-                                      replyCount={replyCount}
-                                      unreadCount={
-                                        bucketKey === "Today" ? messageCount : 0
-                                      }
-                                      mentionCount={
-                                        bucketKey === "Today" ? mentionCount : 0
-                                      }
-                                      avatars={avatarProps}
-                                      lastMessageBy={
-                                        avatarProps[0]?.name || "Unknown"
-                                      }
-                                    />
-                                  }
-                                  onClick={() => {
-                                    onConversationClick?.(
-                                      conversationForLookup
-                                    );
-                                  }}
-                                />
-                              </div>
-                            );
-                          })}
-                        </ListGroup>
-                      </Fragment>
-                    );
-                  })}
-                </div>
-                <div className="s-flex s-flex-col s-gap-3 s-py-8">
-                  <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                    Do more with your project!
-                  </h3>
-                  <CardGrid>
-                    {[
-                      {
-                        id: "kickoff",
-                        label: "Get your project running",
-                        icon: MagicIcon,
-                        variant: "highlight" as const,
-                        description:
-                          "Answer a few questions and an agent will fill in your project details.",
-                        onClick: () => {},
-                        isPulsing: true,
-                      },
-                      {
-                        id: "add-knowledge",
-                        label: "Add files",
-                        variant: "primary" as const,
-                        icon: FolderIcon,
-                        description:
-                          "Add files, links, or data sources relevant to this project.",
-                        onClick: () => setActiveTab("knowledge"),
-                        isPulsing: false,
-                      },
-                      {
-                        id: "invite-members",
-                        label: "Manage members",
-                        variant: "primary" as const,
-                        icon: UserGroupIcon,
-                        description:
-                          "Invite people to this project as members or editors.",
-                        onClick: () => onInviteMembers?.(),
-                        isPulsing: false,
-                      },
-                    ].map((suggestion) => (
-                      <Card
-                        key={suggestion.id}
-                        variant={suggestion.variant}
-                        size="lg"
-                        onClick={suggestion.onClick}
-                        className="s-cursor-pointer"
-                      >
-                        <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-base">
-                          <div
-                            className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
-                              suggestion.variant === "highlight"
-                                ? "s-text-highlight-600 dark:s-text-highlight-400"
-                                : "s-text-foreground dark:s-text-foreground-night"
-                            }`}
-                          >
-                            <Icon visual={suggestion.icon} size="sm" />
-                            <div className="s-w-full">{suggestion.label}</div>
-                          </div>
-                          {suggestion.description && (
-                            <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-                              {suggestion.description}
-                            </div>
-                          )}
-                        </div>
-                      </Card>
-                    ))}
-                  </CardGrid>
-                </div>
               </>
             )}
-          </div>
+          {expandedConversations.length > 0 && (
+            <>
+              <div className="-s-mx-5 s-flex s-flex-col">
+                {(
+                  ["Today", "Yesterday", "Last Week", "Last Month"] as const
+                ).map((bucketKey) => {
+                  const bucketConversations = conversationsByBucket[bucketKey];
+                  if (bucketConversations.length === 0) return null;
+
+                  return (
+                    <Fragment key={bucketKey}>
+                      <ListItemSection className="s-pl-6">
+                        {bucketKey}
+                      </ListItemSection>
+                      <ListGroup className="!s-border-transparent">
+                        {bucketConversations.map((conversation) => {
+                          const listItem = conversationListItemsById.get(
+                            conversation.id
+                          );
+                          if (!listItem) {
+                            return null;
+                          }
+
+                          const baseConversationId = getBaseConversationId(
+                            conversation,
+                            conversations
+                          );
+
+                          const conversationForLookup = {
+                            ...conversation,
+                            id: baseConversationId,
+                          };
+                          const isSelectedConversation =
+                            selectedConversationRow?.rowId === conversation.id;
+
+                          return (
+                            <div
+                              id={getConversationRowDomId(conversation.id)}
+                              key={conversation.id}
+                            >
+                              <ConversationListItem
+                                conversation={conversation}
+                                creator={listItem.creator || undefined}
+                                className={cn(
+                                  "s-px-5",
+                                  isSelectedConversation &&
+                                    "s-bg-highlight-50 dark:s-bg-highlight-50-night"
+                                )}
+                                time={listItem.time}
+                                showFocus={
+                                  conversationIdToShowFocus === conversation.id
+                                }
+                                replySection={
+                                  <ReplySection
+                                    replyCount={listItem.replyCount}
+                                    unreadCount={
+                                      bucketKey === "Today"
+                                        ? listItem.messageCount
+                                        : 0
+                                    }
+                                    mentionCount={
+                                      bucketKey === "Today"
+                                        ? listItem.mentionCount
+                                        : 0
+                                    }
+                                    avatars={listItem.avatarProps}
+                                    lastMessageBy={
+                                      listItem.avatarProps[0]?.name || "Unknown"
+                                    }
+                                  />
+                                }
+                                onClick={() => {
+                                  setSelectedConversationRow({
+                                    rowId: conversation.id,
+                                    conversationId: conversationForLookup.id,
+                                  });
+                                  onConversationClick?.(conversationForLookup);
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </ListGroup>
+                    </Fragment>
+                  );
+                })}
+              </div>
+              <div className="s-flex s-flex-col s-gap-3 s-py-8">
+                <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                  Do more with your project!
+                </h3>
+                <CardGrid>
+                  {[
+                    {
+                      id: "kickoff",
+                      label: "Get your project running",
+                      icon: MagicIcon,
+                      variant: "highlight" as const,
+                      description:
+                        "Answer a few questions and an agent will fill in your project details.",
+                      onClick: () => {},
+                      isPulsing: true,
+                    },
+                    {
+                      id: "add-knowledge",
+                      label: "Add files",
+                      variant: "primary" as const,
+                      icon: FolderIcon,
+                      description:
+                        "Add files, links, or data sources relevant to this project.",
+                      onClick: () => setActiveTab("knowledge"),
+                      isPulsing: false,
+                    },
+                    {
+                      id: "invite-members",
+                      label: "Manage members",
+                      variant: "primary" as const,
+                      icon: UserGroupIcon,
+                      description:
+                        "Invite people to this project as members or editors.",
+                      onClick: () => onInviteMembers?.(),
+                      isPulsing: false,
+                    },
+                  ].map((suggestion) => (
+                    <Card
+                      key={suggestion.id}
+                      variant={suggestion.variant}
+                      size="lg"
+                      onClick={suggestion.onClick}
+                      className="s-cursor-pointer"
+                    >
+                      <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-base">
+                        <div
+                          className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
+                            suggestion.variant === "highlight"
+                              ? "s-text-highlight-600 dark:s-text-highlight-400"
+                              : "s-text-foreground dark:s-text-foreground-night"
+                          }`}
+                        >
+                          <Icon visual={suggestion.icon} size="sm" />
+                          <div className="s-w-full">{suggestion.label}</div>
+                        </div>
+                        {suggestion.description && (
+                          <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                            {suggestion.description}
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </CardGrid>
+              </div>
+            </>
+          )}
         </GroupConversationTabContent>
 
         {/* Tasks Tab */}
         <GroupConversationTabContent value="todos" contentClassName="s-gap-4">
           <div className="s-flex s-flex-col s-gap-3">
-            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-              {getProjectPageTitle("tasks")}
-            </h2>
             <TodoInputBar
               placeholder="Describe the tasks to create"
               onCreateTasks={handleCreateTodoSuggestions}
@@ -3490,7 +3855,6 @@ export function GroupConversationView({
                                       ) ?? conversationId,
                                   })
                                 )}
-                                actionsClassName="s-pr-4"
                                 editorRef={(node) => {
                                   if (node) {
                                     todoItemEditorRefs.current.set(
@@ -3666,16 +4030,6 @@ export function GroupConversationView({
           value="knowledge"
           contentClassName="s-gap-3"
         >
-          <div className="s-flex s-gap-2">
-            <h3 className="s-heading-2xl s-flex-1 s-items-center">
-              {getProjectPageTitle("files")}
-            </h3>
-            <Button
-              variant="outline"
-              icon={ArrowDownOnSquareIcon}
-              label="Add files"
-            />
-          </div>
           {dataSources.length === 0 ? (
             <EmptyCTA
               message="No files in this room yet."
@@ -3688,20 +4042,111 @@ export function GroupConversationView({
             />
           ) : (
             <>
-              <SearchInput
-                name="knowledge-search"
-                value={knowledgeSearchText}
-                onChange={setKnowledgeSearchText}
-                placeholder="Search files..."
-                className="s-w-full"
-              />
-              <DataTable
-                columns={columns}
-                data={dataSourcesWithClick}
-                filter={knowledgeSearchText}
-                filterColumn="fileName"
-                sorting={[{ id: "fileName", desc: false }]}
-              />
+              <div className="s-flex s-gap-2">
+                <SearchInput
+                  name="knowledge-search"
+                  value={knowledgeSearchText}
+                  onChange={setKnowledgeSearchText}
+                  placeholder="Search files..."
+                  className="s-flex-1"
+                />
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      icon={filesViewMode === "list" ? ListCheckIcon : ListIcon}
+                      isSelect
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuRadioGroup
+                      value={filesViewMode}
+                      onValueChange={(value) => {
+                        if (value === "list" || value === "grid") {
+                          setFilesViewMode(value);
+                        }
+                      }}
+                    >
+                      <DropdownMenuRadioItem
+                        value="list"
+                        label="List"
+                        icon={ListCheckIcon}
+                      />
+                      <DropdownMenuRadioItem
+                        value="grid"
+                        label="Grid"
+                        icon={ListIcon}
+                      />
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      icon={ArrowDownOnSquareIcon}
+                      label="Add files"
+                      isSelect
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      icon={CloudArrowLeftRightIcon}
+                      label="From Company Data"
+                      onClick={() => {}}
+                    />
+                    <DropdownMenuItem
+                      icon={FolderIcon}
+                      label="New folder"
+                      onClick={() => {}}
+                    />
+                    <DropdownMenuItem
+                      icon={CloudArrowUpIcon}
+                      label="Upload file"
+                      onClick={() => {}}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {!isKnowledgeSearchActive && currentFolderId !== null && (
+                <Breadcrumbs
+                  items={folderBreadcrumbItems}
+                  size="sm"
+                  hasLighterFont
+                />
+              )}
+              {isKnowledgeSearchActive && currentFolderId !== null && (
+                <ButtonsSwitchList
+                  key={currentFolderId}
+                  defaultValue={filesSearchScope}
+                  size="xs"
+                  className="s-w-fit s-self-start"
+                  onValueChange={(value) => {
+                    if (value === "folder" || value === "all") {
+                      setFilesSearchScope(value);
+                    }
+                  }}
+                >
+                  <ButtonsSwitch
+                    value="folder"
+                    label={`In ${currentFolder?.fileName ?? "folder"}`}
+                  />
+                  <ButtonsSwitch value="all" label="All files" />
+                </ButtonsSwitchList>
+              )}
+              {tableItems.length === 0 && !isKnowledgeSearchActive ? (
+                <div className="s-flex s-w-full s-flex-col s-items-center s-justify-center s-gap-2 s-rounded-xl s-border s-border-border s-bg-muted-background s-p-12 dark:s-border-border-night dark:s-bg-muted-background-night">
+                  <p className="s-text-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    This folder is empty.
+                  </p>
+                </div>
+              ) : (
+                <DataTable
+                  columns={columns}
+                  data={tableItems}
+                  sorting={[{ id: "fileName", desc: false }]}
+                />
+              )}
             </>
           )}
         </GroupConversationTabContent>
@@ -3709,9 +4154,6 @@ export function GroupConversationView({
         {/* About Tab */}
         {showToolsAndAboutTabs && (
           <GroupConversationTabContent value="about" contentClassName="s-gap-4">
-            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-              {getProjectPageTitle("about")}
-            </h2>
             <p className="s-text-foreground dark:s-text-foreground-night">
               {space.description}
             </p>
@@ -3723,9 +4165,9 @@ export function GroupConversationView({
           value="settings"
           contentClassName="s-gap-8"
         >
-          {/* Room Name Section */}
+          {/* pod Name Section */}
           <div className="s-flex s-gap-2">
-            <h3 className="s-heading-2xl s-flex-1">
+            <h3 className="s-heading-lg s-flex-1">
               {getProjectPageTitle("settings")}
             </h3>
             <DropdownMenu>

@@ -6,6 +6,7 @@ import {
   SidebarLeftOpenIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { customColors } from "@dust-tt/sparkle/lib/colors";
 import {
   useCallback,
   useLayoutEffect,
@@ -105,7 +106,7 @@ function ResizeHandle({
         className={[
           "s-mx-auto s-w-px s-bg-separator s-transition-all s-duration-[120ms] dark:s-bg-separator-night",
           visible
-            ? "group-hover:s-w-[2px] group-hover:s-bg-primary-600 group-active:s-w-[2px] group-active:s-bg-primary-600"
+            ? "group-hover:s-w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:s-w-[2px] group-active:[background:var(--panel-resize-focus-border)]"
             : "",
         ].join(" ")}
       />
@@ -377,6 +378,14 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       ref={stageRef}
       className="s-relative s-flex s-w-full s-h-[100vh] s-overflow-hidden"
     >
+      <style>{`
+        :root {
+          --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.gray[100]}, ${customColors.blue[400]}, ${customColors.gray[100]});
+        }
+        .s-dark {
+          --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.gray[900]}, ${customColors.blue[600]}, ${customColors.gray[900]});
+        }
+      `}</style>
       <div className="s-relative s-flex s-h-full s-min-w-0 s-flex-1 s-overflow-hidden">
         {/* ── Nav panel (P1) ── */}
         {navChild &&

@@ -749,7 +749,7 @@ function DustMain() {
             <NavigationList className="s-px-2">
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
-                  label="Projects"
+                  label="Pods"
                   type="collapse"
                   defaultOpen={true}
                   visibleItems={4}
@@ -875,7 +875,7 @@ function DustMain() {
                                 </DropdownMenuSubContent>
                               </DropdownMenuSub>
                               <DropdownMenuSeparator />
-                              <DropdownMenuLabel label="Project" />
+                              <DropdownMenuLabel label="Pod" />
                               <DropdownMenuItem
                                 label="Rename"
                                 icon={PencilSquareIcon}

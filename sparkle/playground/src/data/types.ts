@@ -154,10 +154,26 @@ export interface Space {
   isPublic?: boolean;
 }
 
+export type DataSourceFileType =
+  | "pdf"
+  | "doc"
+  | "docx"
+  | "xlsx"
+  | "csv"
+  | "pptx"
+  | "txt"
+  | "md"
+  | "frame";
+
+export type DataSourceSource = "pod" | "company";
+
 export interface DataSource {
   id: string;
+  kind: "file" | "folder";
   fileName: string;
-  fileType: "pdf" | "doc" | "docx" | "xlsx" | "pptx" | "txt" | "md";
+  parentId: string | null;
+  source: DataSourceSource;
+  fileType?: DataSourceFileType;
   createdBy: string; // user ID
   createdAt: Date;
   updatedAt: Date;

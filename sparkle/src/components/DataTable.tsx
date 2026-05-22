@@ -69,6 +69,14 @@ interface TBaseData {
   onDoubleClick?: () => void;
   dropdownMenuProps?: React.ComponentPropsWithoutRef<typeof DropdownMenu>;
   menuItems?: MenuItem[];
+  draggable?: boolean;
+  onDragStart?: React.DragEventHandler<HTMLTableRowElement>;
+  onDragEnd?: React.DragEventHandler<HTMLTableRowElement>;
+  onDragOver?: React.DragEventHandler<HTMLTableRowElement>;
+  onDragLeave?: React.DragEventHandler<HTMLTableRowElement>;
+  onDrop?: React.DragEventHandler<HTMLTableRowElement>;
+  isDropHighlight?: boolean;
+  isDragging?: boolean;
 }
 
 interface ColumnBreakpoint {
@@ -860,9 +868,19 @@ DataTable.Row = function Row({
             "s-cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-background dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s-bg-muted-background-night",
           props["data-selected"] &&
             "s-bg-muted-background/50 dark:s-bg-muted-background-night/50",
+          rowData?.draggable && "s-cursor-grab active:s-cursor-grabbing",
+          rowData?.isDragging && "s-opacity-50",
+          rowData?.isDropHighlight &&
+            "s-bg-muted-background dark:s-bg-muted-background-night",
           widthClassName,
           className
         )}
+        draggable={rowData?.draggable}
+        onDragStart={rowData?.onDragStart}
+        onDragEnd={rowData?.onDragEnd}
+        onDragOver={rowData?.onDragOver}
+        onDragLeave={rowData?.onDragLeave}
+        onDrop={rowData?.onDrop}
         onClick={onClick || undefined}
         onDoubleClick={onDoubleClick || undefined}
         onContextMenu={handleContextMenu}
