@@ -4,6 +4,7 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import checkName from "./[checkName]";
+import run from "./run";
 
 export type GetProductionChecksResponseBody = {
   checks: CheckSummary[];
@@ -17,6 +18,7 @@ app.get("/", async (ctx): HandlerResult<GetProductionChecksResponseBody> => {
   return ctx.json({ checks });
 });
 
+app.route("/run", run);
 app.route("/:checkName", checkName);
 
 export default app;
