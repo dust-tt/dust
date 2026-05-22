@@ -1,8 +1,7 @@
-import { Readable } from "node:stream";
-import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isString } from "@app/types/shared/utils/general";
+import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 
@@ -55,10 +54,8 @@ app.get("/", async (ctx) => {
   }
 
   const readStream = file.getReadStream({ auth, version: "original" });
-  const webStream = Readable.toWeb(
-    readStream
-  ) as NodeReadableStream<Uint8Array>;
-  return new Response(webStream as unknown as ReadableStream, {
+  const webStream = readableToReadableStream(readStream);
+  return new Response(webStream, {
     status: 200,
     headers: { "Content-Type": file.contentType },
   });

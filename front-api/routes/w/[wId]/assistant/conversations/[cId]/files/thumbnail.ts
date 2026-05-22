@@ -1,5 +1,3 @@
-import { Readable } from "node:stream";
-import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import {
   getConversationFilesBasePath,
   parseScopedFilePath,
@@ -10,6 +8,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { isSupportedImageContentType } from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
+import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { apiError } from "@front-api/middleware/utils";
 import { Hono } from "hono";
 import path from "path";
@@ -89,11 +88,9 @@ app.get("/", async (ctx) => {
     }
 
     const readStream = fileResource.getContentReadStream(auth);
-    const webStream = Readable.toWeb(
-      readStream
-    ) as NodeReadableStream<Uint8Array>;
+    const webStream = readableToReadableStream(readStream);
 
-    return new Response(webStream as unknown as ReadableStream, {
+    return new Response(webStream, {
       status: 200,
       headers: {
         "Content-Type": fileResource.contentType,
