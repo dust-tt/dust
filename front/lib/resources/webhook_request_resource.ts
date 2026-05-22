@@ -6,6 +6,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -227,10 +228,10 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
-  static async getWorkspaceIdsWithTooManyRequests({
+  static async getWorkspacesWithTooManyRequests({
     webhookRequestTtl = WEBHOOK_REQUEST_TTL,
     maxWebhookRequestsToKeep = MAX_WEBHOOK_REQUESTS_TO_KEEP,
-  }: Partial<CleanUpWorkspaceOptions> = {}) {
+  }: Partial<CleanUpWorkspaceOptions> = {}): Promise<WorkspaceResource[]> {
     // biome-ignore lint/plugin/noRawSql: automatic suppress
     const rows = await frontSequelize.query<{
       workspaceId: ModelId;
@@ -258,7 +259,9 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       }
     );
 
-    return rows.map((row) => row.workspaceId);
+    return WorkspaceResource.fetchByModelIds(
+      rows.map((row) => row.workspaceId)
+    );
   }
 
   static async cleanUpWorkspace(
