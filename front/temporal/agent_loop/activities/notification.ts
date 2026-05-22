@@ -1,5 +1,4 @@
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import type { AuthenticatorType } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { launchConversationUnreadNotificationWorkflow } from "@app/temporal/notifications_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -7,22 +6,12 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 /**
  * Launch conversation unread notification activity.
  */
-export async function conversationUnreadNotificationActivity(
-  authType: AuthenticatorType,
+export async function conversationUnreadNotification(
+  auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  // Use `getWorkspaceInfos` for lightweight workspace info.
-  const owner = await getWorkspaceInfos(authType.workspaceId);
-  if (!owner) {
-    logger.warn(
-      { workspaceId: authType.workspaceId },
-      "Failed to fetch workspace infos for conversation unread notification"
-    );
-    return;
-  }
-
   const result = await launchConversationUnreadNotificationWorkflow({
-    authType,
+    authType: auth.toJSON(),
     agentLoopArgs,
   });
 
@@ -31,7 +20,7 @@ export async function conversationUnreadNotificationActivity(
       {
         agentMessageId: agentLoopArgs.agentMessageId,
         error: result.error,
-        workspaceId: authType.workspaceId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
       "Failed to launch conversation unread notification workflow"
     );

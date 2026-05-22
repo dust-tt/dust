@@ -112,7 +112,6 @@ async function reportSelfImprovingSkillsStepUsage({
     return;
   }
 
-  const authType = auth.toJSON();
   // Reinforcement messages are created with default version 0 and are never
   // retried at a higher version (Temporal retries create new message sIds).
   const agentLoopArgs: AgentLoopArgs = {
@@ -129,9 +128,9 @@ async function reportSelfImprovingSkillsStepUsage({
 
   try {
     await Promise.all([
-      launchAgentMessageAnalytics(authType, agentLoopArgs),
-      launchTrackProgrammaticUsage(authType, agentLoopArgs),
-      launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
+      launchAgentMessageAnalytics(auth, agentLoopArgs),
+      launchTrackProgrammaticUsage(auth, agentLoopArgs),
+      launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     ]);
   } catch (err) {
     logger.warn(
