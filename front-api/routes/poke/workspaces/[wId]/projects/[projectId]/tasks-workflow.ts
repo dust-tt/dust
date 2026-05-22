@@ -1,7 +1,10 @@
 import config from "@app/lib/api/config";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
+import {
+  describeTemporalWorkflow,
+  getTemporalClientForFrontNamespace,
+} from "@app/lib/temporal";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -55,16 +58,18 @@ app.get("/", async (ctx): HandlerResult<PokeGetProjectWorkflow> => {
 
   const temporalClient = await getTemporalClientForFrontNamespace();
 
-  const description = await temporalClient.workflow
-    .getHandle(workflowId)
-    .describe();
-  const latestWorkflow: PokeProjectWorkflowInfo = {
+  const description = await describeTemporalWorkflow(temporalClient, {
     workflowId,
-    runId: description.runId,
-    status: description.status.name,
-    startTime: description.startTime?.getTime() ?? null,
-    closeTime: description.closeTime?.getTime() ?? null,
-  };
+  });
+  const latestWorkflow: PokeProjectWorkflowInfo | null = description
+    ? {
+        workflowId,
+        runId: description.runId,
+        status: description.status.name,
+        startTime: description.startTime?.getTime() ?? null,
+        closeTime: description.closeTime?.getTime() ?? null,
+      }
+    : null;
 
   return ctx.json({
     metadata: metadata ? metadata.toJSON() : null,

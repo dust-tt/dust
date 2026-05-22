@@ -6,7 +6,10 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
+import {
+  describeTemporalWorkflow,
+  getTemporalClientForFrontNamespace,
+} from "@app/lib/temporal";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
@@ -75,17 +78,18 @@ async function handler(
 
       const temporalClient = await getTemporalClientForFrontNamespace();
 
-      let latestWorkflow: PokeProjectWorkflowInfo | null = null;
-      const description = await temporalClient.workflow
-        .getHandle(workflowId)
-        .describe();
-      latestWorkflow = {
+      const description = await describeTemporalWorkflow(temporalClient, {
         workflowId,
-        runId: description.runId,
-        status: description.status.name,
-        startTime: description.startTime?.getTime() ?? null,
-        closeTime: description.closeTime?.getTime() ?? null,
-      };
+      });
+      const latestWorkflow: PokeProjectWorkflowInfo | null = description
+        ? {
+            workflowId,
+            runId: description.runId,
+            status: description.status.name,
+            startTime: description.startTime?.getTime() ?? null,
+            closeTime: description.closeTime?.getTime() ?? null,
+          }
+        : null;
 
       return res.status(200).json({
         metadata: metadata ? metadata.toJSON() : null,
