@@ -18,6 +18,10 @@ enum Commands {
     Version,
     /// Forward sandbox egress traffic to the Dust egress proxy
     Forward(commands::forward::ForwardArgs),
+    /// Run the local synthetic DNS resolver for proxied agent traffic
+    Resolve(commands::resolve::ResolveArgs),
+    /// Report sandbox egress enforcement health as JSON
+    Healthcheck(commands::healthcheck::HealthcheckArgs),
     /// Interact with MCP servers and tools
     Tools {
         /// Server name (omit to list all servers)
@@ -46,6 +50,8 @@ async fn run() -> anyhow::Result<()> {
     match cli.command {
         Commands::Version => commands::cmd_version(),
         Commands::Forward(args) => commands::cmd_forward(args).await?,
+        Commands::Resolve(args) => commands::cmd_resolve(args).await?,
+        Commands::Healthcheck(args) => commands::cmd_healthcheck(args)?,
         Commands::Tools {
             server_name,
             tool_name,
