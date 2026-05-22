@@ -4,7 +4,6 @@ import {
   getConversationFilePath,
   getConversationFilesBasePath,
   getPodFilesBasePath,
-  getProjectFilesBasePath,
   makeProcessedMountFileName,
   normalizeAndValidateMountRelativeFilePath,
   normalizeMountParentRelativePath,
@@ -15,8 +14,6 @@ import {
   resolveMountFileSourcePath,
   resolveMoveSourcePath,
   resolveScopedMountFilePath,
-  toPodMountFilePath,
-  toProjectMountFilePath,
   validateMountFolderName,
 } from "@app/lib/api/files/mount_path";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -43,85 +40,11 @@ describe("mount_path helpers", () => {
     });
   });
 
-  describe("getProjectFilesBasePath", () => {
-    it("should return full project files path", () => {
-      expect(
-        getProjectFilesBasePath({ workspaceId: "ws1", projectId: "spc1" })
-      ).toBe("w/ws1/projects/spc1/files/");
-    });
-  });
-
   describe("getPodFilesBasePath", () => {
     it("should return full pod files path", () => {
       expect(getPodFilesBasePath({ workspaceId: "ws1", podId: "spc1" })).toBe(
         "w/ws1/pods/spc1/files/"
       );
-    });
-  });
-
-  describe("toPodMountFilePath", () => {
-    it("converts a project mount file path to its pods/ counterpart", () => {
-      expect(toPodMountFilePath("w/ws1/projects/p1/files/report.pdf")).toBe(
-        "w/ws1/pods/p1/files/report.pdf"
-      );
-    });
-
-    it("preserves nested directory structure", () => {
-      expect(
-        toPodMountFilePath("w/ws1/projects/p1/files/dir/sub/report.pdf")
-      ).toBe("w/ws1/pods/p1/files/dir/sub/report.pdf");
-    });
-
-    it("returns null for conversation paths", () => {
-      expect(
-        toPodMountFilePath("w/ws1/conversations/c1/files/report.pdf")
-      ).toBeNull();
-    });
-
-    it("returns null for already-pods paths (no double-rewrite)", () => {
-      expect(toPodMountFilePath("w/ws1/pods/p1/files/report.pdf")).toBeNull();
-    });
-
-    it("returns null when the w/ workspace prefix is missing", () => {
-      expect(toPodMountFilePath("projects/p1/files/report.pdf")).toBeNull();
-    });
-
-    it("returns null when nothing follows projects/", () => {
-      expect(toPodMountFilePath("w/ws1/projects/")).toBeNull();
-    });
-  });
-
-  describe("toProjectMountFilePath", () => {
-    it("converts a pod mount file path to its projects/ counterpart", () => {
-      expect(toProjectMountFilePath("w/ws1/pods/p1/files/report.pdf")).toBe(
-        "w/ws1/projects/p1/files/report.pdf"
-      );
-    });
-
-    it("preserves nested directory structure", () => {
-      expect(
-        toProjectMountFilePath("w/ws1/pods/p1/files/dir/sub/report.pdf")
-      ).toBe("w/ws1/projects/p1/files/dir/sub/report.pdf");
-    });
-
-    it("returns null for conversation paths", () => {
-      expect(
-        toProjectMountFilePath("w/ws1/conversations/c1/files/report.pdf")
-      ).toBeNull();
-    });
-
-    it("returns null for already-projects paths (no double-rewrite)", () => {
-      expect(
-        toProjectMountFilePath("w/ws1/projects/p1/files/report.pdf")
-      ).toBeNull();
-    });
-
-    it("returns null when the w/ workspace prefix is missing", () => {
-      expect(toProjectMountFilePath("pods/p1/files/report.pdf")).toBeNull();
-    });
-
-    it("returns null when nothing follows pods/", () => {
-      expect(toProjectMountFilePath("w/ws1/pods/")).toBeNull();
     });
   });
 
