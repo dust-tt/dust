@@ -240,14 +240,5 @@ export async function resolveSlackPendingUserMessage<
     );
   }
 
-  logger.info(
-    {
-      connectorId: connector.id,
-      conversationId: conversation.sId,
-      userMessageId: userMessage.sId,
-    },
-    "Posted Slack pending user message fallback after promotion timeout."
-  );
-
   return new Ok(null);
 }

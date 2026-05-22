@@ -12,23 +12,12 @@ type PendingMessage =
   | { sId: string; type: "user_message"; visibility: "pending" | "visible" }
   | { type: "agent_message"; parentMessageId: string };
 
-const connector = {
-  id: 123,
-  workspaceId: "w_test",
-};
-
-const slackMessageTs = "1700000000.000001";
+const connector = { id: 123, workspaceId: "w_test" };
 const pendingUserMessage = {
   sId: "user_msg_1",
   type: "user_message",
   visibility: "pending",
 } satisfies PendingMessage;
-
-const promotedEvent = {
-  type: "user_message_promoted",
-  created: Date.now(),
-  messageId: pendingUserMessage.sId,
-} satisfies ConversationEvent;
 
 function makeConversation(content: PendingMessage[][] = []) {
   return { sId: "conv_1", content };
@@ -51,16 +40,11 @@ async function resolvePending({
         return new Ok({ eventStream: pendingEventsStream(events, signal) });
       }
     ),
-    getConversation: vi.fn(async () => {
-      return new Ok(refetchedConversation);
-    }),
+    getConversation: vi.fn(async () => new Ok(refetchedConversation)),
   };
   const slackClient = {
     chat: {
-      postMessage: vi.fn(async () => ({
-        ok: true,
-        ts: "fallback_ts",
-      })),
+      postMessage: vi.fn(async () => undefined),
     },
   };
   const streamHandler = {
@@ -78,7 +62,7 @@ async function resolvePending({
     slack: {
       slackChannelId: "C123",
       slackClient,
-      slackMessageTs,
+      slackMessageTs: "1700000000.000001",
     },
     streamHandler,
     timeoutMs,
@@ -108,7 +92,13 @@ describe("resolveSlackPendingUserMessage", () => {
       [{ type: "agent_message", parentMessageId: pendingUserMessage.sId }],
     ]);
     const ctx = await resolvePending({
-      events: [promotedEvent],
+      events: [
+        {
+          type: "user_message_promoted",
+          created: Date.now(),
+          messageId: pendingUserMessage.sId,
+        },
+      ],
       refetchedConversation: promotedConversation,
     });
 
@@ -123,7 +113,7 @@ describe("resolveSlackPendingUserMessage", () => {
     expect(ctx.slackClient.chat.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         channel: "C123",
-        thread_ts: slackMessageTs,
+        thread_ts: "1700000000.000001",
         text: expect.stringContaining("Continue on Dust"),
       })
     );
