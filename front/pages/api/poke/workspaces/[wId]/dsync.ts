@@ -18,7 +18,9 @@ async function handler(
   >,
   session: SessionWithUser
 ) {
-  if (!isString(req.query.wId)) {
+  const { wId } = req.query;
+
+  if (!isString(wId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -28,7 +30,7 @@ async function handler(
     });
   }
 
-  const auth = await Authenticator.fromSuperUserSession(session, req.query.wId);
+  const auth = await Authenticator.fromSuperUserSession(session, wId);
 
   const owner = auth.workspace();
 
