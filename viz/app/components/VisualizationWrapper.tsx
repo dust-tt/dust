@@ -71,7 +71,12 @@ async function resolveFileRef(
 
     if (FRAME_MIME_TYPES.has(file.type)) {
       const text = await file.text();
-      const codeToUse = isEditable ? transformEditableText(text, key) : text;
+      // Only make child-frame text editable when imported via a fil_ ID. Scoped paths
+      // (e.g. ./Foo) have no stable file ID to route edits back to.
+      const codeToUse =
+        isEditable && key.startsWith("fil_")
+          ? transformEditableText(text, key)
+          : text;
       const refs = extractFileRefs(codeToUse);
       const nestedEntries = await Promise.all(
         refs.map(async (ref) => {

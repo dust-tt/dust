@@ -19,6 +19,9 @@ export interface EditableSpanMeta {
 // even when the same visible text appears multiple times in the file (e.g. repeated table labels).
 const CONTEXT_CHARS = 60;
 
+// Prefix on data-file-id attributes so extractFileRefs skips them (avoids deadlocking the cache).
+export const EDITABLE_FILE_ID_PREFIX = "edit:";
+
 function collectJsxTextNodes(code: string): JSXTextReplacement[] {
   const replacements: JSXTextReplacement[] = [];
 
@@ -91,7 +94,7 @@ export function transformEditableText(code: string, fileId?: string): string {
       `data-raw-text="${encodeURIComponent(rawText)}"`,
       `data-ctx-before="${encodeURIComponent(ctxBefore)}"`,
       `data-ctx-after="${encodeURIComponent(ctxAfter)}"`,
-      ...(fileId ? [`data-file-id="edit:${fileId}"`] : []),
+      ...(fileId ? [`data-file-id="${EDITABLE_FILE_ID_PREFIX}${fileId}"`] : []),
       `className="cursor-text rounded-sm"`,
       `>`,
     ];
