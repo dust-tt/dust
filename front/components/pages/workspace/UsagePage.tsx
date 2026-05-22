@@ -7,7 +7,10 @@ import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitMod
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { isCreditPricedPlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
+import {
+  isCreditPricedPlanPrefix,
+  isUpgraded,
+} from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,

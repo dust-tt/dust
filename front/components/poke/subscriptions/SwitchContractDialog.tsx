@@ -250,7 +250,8 @@ export default function SwitchContractDialog({
       plans
         .filter(
           (plan) =>
-            isEntreprisePlanPrefix(plan.code) && isCreditPricedPlanPrefix(plan.code)
+            isEntreprisePlanPrefix(plan.code) &&
+            isCreditPricedPlanPrefix(plan.code)
         )
         .map((plan) => ({
           value: plan.code,

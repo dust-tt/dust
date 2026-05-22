@@ -129,7 +129,7 @@ export function isSubscriptionMetronomeBilled(
  *   metronome)
  */
 export function isCreditPricedPlan(plan: PlanType): boolean {
-  return !isCreditPricedPlanPrefix(plan.code);
+  return isCreditPricedPlanPrefix(plan.code);
 }
 
 export type BillingPeriod = "monthly" | "yearly";

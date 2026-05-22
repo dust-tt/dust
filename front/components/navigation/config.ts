@@ -264,7 +264,7 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/workspace`,
           current: isCurrent("workspace"),
         },
-        ...(isCreditPricedPlanPrefix(subscription.plan.code)
+        ...(isCreditPricedPlan(subscription.plan)
           ? [
               {
                 id: "usage" as const,
