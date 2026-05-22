@@ -240,6 +240,41 @@ describe("createGCSMountDirectory", () => {
     }
     expect(saveMock).not.toHaveBeenCalled();
   });
+
+  it("dual-writes the placeholder on the pods/ mirror for project use-case", async () => {
+    const entryRes = await createGCSMountDirectory(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeDirPath: "reports/q1" }
+    );
+
+    assert(entryRes.isOk());
+    const bucket = vi.mocked(getPrivateUploadBucket)();
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${workspaceId}/projects/proj123/files/reports/q1/`
+    );
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${workspaceId}/pods/proj123/files/reports/q1/`
+    );
+    expect(saveMock).toHaveBeenCalledTimes(2);
+    expect(saveMock).toHaveBeenNthCalledWith(1, Buffer.alloc(0), {
+      contentType: "application/x-directory",
+    });
+    expect(saveMock).toHaveBeenNthCalledWith(2, Buffer.alloc(0), {
+      contentType: "application/x-directory",
+    });
+  });
+
+  it("does not write to pods/ for conversation use-case", async () => {
+    const entryRes = await createGCSMountDirectory(
+      auth,
+      { useCase: "conversation", conversationId },
+      { relativeDirPath: "reports/q1" }
+    );
+
+    assert(entryRes.isOk());
+    expect(saveMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("listGCSMountFiles", () => {
