@@ -1,11 +1,15 @@
+import { resolveSlackPendingUserMessage } from "@connectors/connectors/slack/bot_pending_message";
 import {
   makeErrorBlock,
   makeMarkdownBlock,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
 import { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
-import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
+import {
+  SLACK_USER_ACTION_IDLE_TIMEOUT_MS,
+  streamConversationToSlack,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+} from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
   getBotUserIdResponse,
   getUserInfo,
@@ -1164,6 +1168,7 @@ async function answerMessage(
       | "getConversation"
       | "createConversation"
       | "postUserMessage"
+      | "waitForUserMessagePromotion"
       | "streamConversationToSlack"
   ) => {
     logger.error(
@@ -1287,6 +1292,30 @@ async function answerMessage(
     slackChatBotMessage.conversationId = conversation.sId;
     await slackChatBotMessage.save();
   }
+
+  const pendingUserMessageRes = await resolveSlackPendingUserMessage({
+    connector,
+    conversation,
+    dustAPI,
+    slack: {
+      slackChannelId: slackChannel,
+      slackClient,
+      slackMessageTs,
+    },
+    streamHandler,
+    timeoutMs: SLACK_USER_ACTION_IDLE_TIMEOUT_MS,
+    userMessage,
+  });
+  if (pendingUserMessageRes.isErr()) {
+    return buildSlackMessageError(
+      pendingUserMessageRes,
+      "waitForUserMessagePromotion"
+    );
+  }
+  if (pendingUserMessageRes.value === null) {
+    return new Ok(undefined);
+  }
+  conversation = pendingUserMessageRes.value;
 
   const streamRes = await streamConversationToSlack(dustAPI, {
     assistantName: mention.agentName,
