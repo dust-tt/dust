@@ -3,6 +3,7 @@ import type {
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import { getSeatBillingFrequency } from "@app/lib/api/credits/seat_plan";
 import { amountCents } from "@app/lib/metronome/amounts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
@@ -22,22 +23,6 @@ import { apiError } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/seats/plan.
 const app = workspaceApp();
-
-function getSeatBillingFrequency(
-  billingFrequency: string
-): SeatBillingFrequency {
-  switch (billingFrequency) {
-    case "WEEKLY":
-      return "weekly";
-    case "QUARTERLY":
-      return "quarterly";
-    case "ANNUAL":
-      return "annual";
-    case "MONTHLY":
-    default:
-      return "monthly";
-  }
-}
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

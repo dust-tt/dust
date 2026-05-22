@@ -45,7 +45,7 @@ export type SeatPlanResponseBody = Partial<
   Record<MembershipSeatType, SeatTypeInfo>
 >;
 
-function getSeatBillingFrequency(
+export function getSeatBillingFrequency(
   billingFrequency: string
 ): SeatBillingFrequency {
   switch (billingFrequency) {
