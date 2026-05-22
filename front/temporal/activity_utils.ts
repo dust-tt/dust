@@ -3,7 +3,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import { Context } from "@temporalio/activity";
 
-const DEFAULT_WORKSPACE_CONCURRENCY = 50;
+const DEFAULT_WORKSPACE_CONCURRENCY = 32;
 
 /**
  * List all workspaces and run `fn` on each in parallel (activity-safe, heartbeats
