@@ -182,13 +182,16 @@ export class FileStorage {
 
   /**
    * Lists all objects under `prefix` by following GCS list pagination.
+   * Pass `versions: true` to include noncurrent (deleted) object versions.
    */
   async getAllFilesByPrefix({
     prefix,
     pageSize = 1000,
+    versions = false,
   }: {
     prefix: string;
     pageSize?: number;
+    versions?: boolean;
   }): Promise<{ files: File[]; pageFetchCount: number }> {
     const allFiles: File[] = [];
     let pageToken: string | undefined;
@@ -200,6 +203,7 @@ export class FileStorage {
         maxResults: pageSize,
         pageToken,
         autoPaginate: false,
+        versions,
       });
       pageFetchCount++;
       allFiles.push(...files);

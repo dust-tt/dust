@@ -684,6 +684,98 @@ export async function copyConversationGCSMount(
       { concurrency: GCS_MOUNT_COPY_CONCURRENCY }
     );
 
+    // Second pass: files that existed at the fork point but were deleted afterward
+    // are invisible in the live listing above. Only needed on the slow path.
+    if (sourceTimestampMs !== undefined) {
+      const copiedPaths = new Set(currentFiles.map((f) => f.name));
+
+      const { files: allVersions, pageFetchCount } =
+        await bucket.getAllFilesByPrefix({
+          prefix: sourcePrefix,
+          versions: true,
+        });
+
+      if (pageFetchCount > 1) {
+        logger.warn(
+          {
+            workspaceId: owner.sId,
+            sourceConversationId: source.sId,
+            pageFetchCount,
+            versionCount: allVersions.length,
+          },
+          "GCS mount fork copy: versioned listing required multiple pages; conversation has many file versions."
+        );
+      }
+
+      // Group all versions by path, sorted newest-first by generation, so we can
+      // find the pre-fork generation without firing per-file GCS RPCs.
+      const versionsByPath = new Map<string, (typeof allVersions)[number][]>();
+      for (const v of allVersions) {
+        const list = versionsByPath.get(v.name) ?? [];
+        list.push(v);
+        versionsByPath.set(v.name, list);
+      }
+      for (const versions of versionsByPath.values()) {
+        versions.sort(
+          (a, b) =>
+            Number(b.metadata.generation ?? 0) -
+            Number(a.metadata.generation ?? 0)
+        );
+      }
+
+      // Collect unique paths where a version was made noncurrent at or after the
+      // fork (>= is consistent with the first pass's <= on `updated`). Paths
+      // already in copiedPaths are live files handled above; their noncurrent
+      // generations may also have timeDeleted set, but we must not re-copy them.
+      const deletedFilePaths = new Set<string>();
+      for (const v of allVersions) {
+        if (
+          !copiedPaths.has(v.name) &&
+          isString(v.metadata.timeDeleted) &&
+          new Date(v.metadata.timeDeleted).getTime() >= forkTimestampMs
+        ) {
+          deletedFilePaths.add(v.name);
+        }
+      }
+
+      await concurrentExecutor(
+        [...deletedFilePaths],
+        async (filePath) => {
+          const relativePath = filePath.slice(sourcePrefix.length);
+          const destPath = `${destPrefix}${relativePath}`;
+
+          const versions = versionsByPath.get(filePath) ?? [];
+          const preFork = versions.find((v) => {
+            if (
+              !isString(v.metadata.updated) ||
+              !isString(v.metadata.generation)
+            ) {
+              logger.warn(
+                {
+                  workspaceId: owner.sId,
+                  sourceConversationId: source.sId,
+                  fileName: filePath,
+                },
+                "GCS mount versioned copy (deleted): skipping file version with missing metadata."
+              );
+              return false;
+            }
+            return new Date(v.metadata.updated).getTime() <= forkTimestampMs;
+          });
+
+          if (!preFork) {
+            return; // created and deleted entirely after the fork point
+          }
+
+          await bucket.copyFile(filePath, destPath, undefined, {
+            sourceGeneration: String(preFork.metadata.generation),
+          });
+          copiedCount++;
+        },
+        { concurrency: GCS_MOUNT_COPY_CONCURRENCY }
+      );
+    }
+
     return new Ok({ copiedCount });
   } catch (err) {
     return new Err(normalizeError(err));

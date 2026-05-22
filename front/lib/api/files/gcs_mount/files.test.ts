@@ -604,16 +604,21 @@ describe("copyConversationGCSMount", () => {
 
   describe("slow path (sourceTimestampMs)", () => {
     let getSortedFileVersionsMock: ReturnType<typeof vi.fn>;
+    let getAllFilesByPrefixMock: ReturnType<typeof vi.fn>;
     const forkMs = new Date("2025-06-01T12:00:00.000Z").getTime();
     const beforeFork = "2025-06-01T11:59:00.000Z";
     const afterFork = "2025-06-01T12:01:00.000Z";
 
     beforeEach(() => {
       getSortedFileVersionsMock = vi.fn().mockResolvedValue(new Ok([]));
+      getAllFilesByPrefixMock = vi
+        .fn()
+        .mockResolvedValue({ files: [], pageFetchCount: 0 });
       vi.mocked(getPrivateUploadBucket).mockReturnValue({
         getFiles: getFilesMock,
         copyFile: copyFileMock,
         getSortedFileVersions: getSortedFileVersionsMock,
+        getAllFilesByPrefix: getAllFilesByPrefixMock,
       } as unknown as ReturnType<typeof getPrivateUploadBucket>);
     });
 
@@ -763,6 +768,188 @@ describe("copyConversationGCSMount", () => {
         undefined,
         { sourceGeneration: "100" }
       );
+    });
+
+    describe("deleted files (second pass)", () => {
+      it("copies a file deleted after the fork at its pre-fork generation", async () => {
+        const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+        const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+        const deletedPath = `${sourcePrefix}deleted.txt`;
+
+        getFilesMock.mockResolvedValue([]); // no live files
+        // Both the noncurrent generation (the deleted one) and the pre-fork
+        // generation are returned by the versioned listing.
+        getAllFilesByPrefixMock.mockResolvedValue({
+          files: [
+            {
+              name: deletedPath,
+              metadata: {
+                updated: afterFork,
+                generation: "99",
+                timeDeleted: afterFork,
+              },
+            },
+            {
+              name: deletedPath,
+              metadata: { updated: beforeFork, generation: "42" },
+            },
+          ],
+          pageFetchCount: 1,
+        });
+
+        const result = await copyConversationGCSMount(auth, {
+          source,
+          dest,
+          sourceTimestampMs: forkMs,
+        });
+
+        assert(result.isOk());
+        expect(result.value.copiedCount).toBe(1);
+        expect(getAllFilesByPrefixMock).toHaveBeenCalledWith({
+          prefix: sourcePrefix,
+          versions: true,
+        });
+        // No per-file getSortedFileVersions RPC — versions are read from allVersions.
+        expect(getSortedFileVersionsMock).not.toHaveBeenCalled();
+        expect(copyFileMock).toHaveBeenCalledWith(
+          deletedPath,
+          `${destPrefix}deleted.txt`,
+          undefined,
+          { sourceGeneration: "42" }
+        );
+      });
+
+      it("skips a file whose timeDeleted predates the fork (was already gone at fork time)", async () => {
+        const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+        const deletedPath = `${sourcePrefix}old-deleted.txt`;
+
+        getFilesMock.mockResolvedValue([]);
+        getAllFilesByPrefixMock.mockResolvedValue({
+          files: [
+            {
+              name: deletedPath,
+              metadata: { timeDeleted: beforeFork, generation: "5" },
+            },
+          ],
+          pageFetchCount: 1,
+        });
+
+        const result = await copyConversationGCSMount(auth, {
+          source,
+          dest,
+          sourceTimestampMs: forkMs,
+        });
+
+        assert(result.isOk());
+        expect(result.value.copiedCount).toBe(0);
+        expect(getSortedFileVersionsMock).not.toHaveBeenCalled();
+        expect(copyFileMock).not.toHaveBeenCalled();
+      });
+
+      it("skips a file created and deleted entirely after the fork", async () => {
+        const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+        const deletedPath = `${sourcePrefix}ephemeral.txt`;
+
+        getFilesMock.mockResolvedValue([]);
+        // Only one version exists and it was both created and deleted after the fork.
+        getAllFilesByPrefixMock.mockResolvedValue({
+          files: [
+            {
+              name: deletedPath,
+              metadata: {
+                updated: afterFork,
+                generation: "77",
+                timeDeleted: afterFork,
+              },
+            },
+          ],
+          pageFetchCount: 1,
+        });
+
+        const result = await copyConversationGCSMount(auth, {
+          source,
+          dest,
+          sourceTimestampMs: forkMs,
+        });
+
+        assert(result.isOk());
+        expect(result.value.copiedCount).toBe(0);
+        expect(getSortedFileVersionsMock).not.toHaveBeenCalled();
+        expect(copyFileMock).not.toHaveBeenCalled();
+      });
+
+      it("does not double-copy a live file whose noncurrent generation has timeDeleted >= forkMs", async () => {
+        const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+        const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+        const livePath = `${sourcePrefix}live.txt`;
+
+        // File is live but was updated after the fork; the old version has timeDeleted set.
+        getFilesMock.mockResolvedValue([
+          { name: livePath, metadata: { updated: afterFork } },
+        ]);
+        // First pass: version lookup for the live file (updated > fork).
+        getSortedFileVersionsMock.mockResolvedValue(
+          new Ok([
+            {
+              name: livePath,
+              metadata: { updated: afterFork, generation: "200" },
+            },
+            {
+              name: livePath,
+              metadata: { updated: beforeFork, generation: "100" },
+            },
+          ])
+        );
+        // Second pass versioned listing includes the old noncurrent generation.
+        getAllFilesByPrefixMock.mockResolvedValue({
+          files: [
+            {
+              name: livePath,
+              metadata: { updated: afterFork, generation: "200" },
+            },
+            {
+              name: livePath,
+              metadata: {
+                updated: beforeFork,
+                generation: "100",
+                timeDeleted: afterFork,
+              },
+            },
+          ],
+          pageFetchCount: 1,
+        });
+
+        const result = await copyConversationGCSMount(auth, {
+          source,
+          dest,
+          sourceTimestampMs: forkMs,
+        });
+
+        assert(result.isOk());
+        expect(result.value.copiedCount).toBe(1);
+        // Only one copy call: from the first pass (live file at its pre-fork version).
+        expect(copyFileMock).toHaveBeenCalledTimes(1);
+        expect(copyFileMock).toHaveBeenCalledWith(
+          livePath,
+          `${destPrefix}live.txt`,
+          undefined,
+          { sourceGeneration: "100" }
+        );
+      });
+
+      it("does not run the second pass when sourceTimestampMs is omitted (fast path)", async () => {
+        const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+        getFilesMock.mockResolvedValue([
+          {
+            name: `${sourcePrefix}file.txt`,
+            metadata: { updated: beforeFork },
+          },
+        ]);
+
+        await copyConversationGCSMount(auth, { source, dest });
+
+        expect(getAllFilesByPrefixMock).not.toHaveBeenCalled();
+      });
     });
   });
 });
