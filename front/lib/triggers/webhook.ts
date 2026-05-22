@@ -50,6 +50,9 @@ export const HEADERS_ALLOWED_LIST = [
   "webhook-timestamp",
 ];
 
+// GCS uses ifGenerationMatch=0 for create-only writes.
+const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
+
 export function checkSignature({
   headerName,
   algorithm,
@@ -523,6 +526,12 @@ export async function storePayloadInGCS(
       content,
       contentType: "application/json",
       filePath: gcsPath,
+      saveOptions: {
+        resumable: false,
+        preconditionOpts: {
+          ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+        },
+      },
     });
   } catch (error: unknown) {
     // Log the error, but do not throw, as we want to continue processing the webhook.

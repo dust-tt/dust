@@ -2,7 +2,13 @@ import { Authenticator } from "@app/lib/auth";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
+
+const { mockUploadRawContentToBucket } = vi.hoisted(() => ({
+  mockUploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+}));
 
 // Mock raw-body to return JSON.stringify(req.body) — the handler disables
 // Next.js body parsing and reads the stream via getRawBody.
@@ -31,13 +37,18 @@ vi.mock("@app/lib/utils/statsd", () => ({
 
 vi.mock("@app/lib/file_storage", () => ({
   getWebhookRequestsBucket: () => ({
-    uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+    uploadRawContentToBucket: mockUploadRawContentToBucket,
   }),
 }));
 
 import handler from ".";
 
 describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUrlSecret]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUploadRawContentToBucket.mockResolvedValue(undefined);
+  });
+
   it("returns 200 when workspace and webhook source exist", async () => {
     const { req, res, workspace } = await createPublicApiMockRequest({
       method: "POST",
@@ -70,6 +81,17 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true });
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentType: "application/json",
+        saveOptions: {
+          resumable: false,
+          preconditionOpts: {
+            ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+          },
+        },
+      })
+    );
   });
 
   it("returns 404 when webhook source does not exist", async () => {
