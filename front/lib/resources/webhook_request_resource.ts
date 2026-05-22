@@ -271,8 +271,11 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       maxWebhookRequestsToKeep = MAX_WEBHOOK_REQUESTS_TO_KEEP,
     }: Partial<CleanUpWorkspaceOptions> = {}
   ) {
-    const oldRequests = await this.baseFetch(auth, {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const oldRequestsDeletedCount = await this.model.destroy({
       where: {
+        workspaceId: workspace.id,
         createdAt: {
           [Op.lt]: literal(`now() - interval '${webhookRequestTtl}'`),
         },
@@ -281,39 +284,37 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
 
     logger.info(
       {
-        toDelete: oldRequests.length,
-        workspaceId: auth.getNonNullableWorkspace().sId,
+        toDelete: oldRequestsDeletedCount,
+        workspaceId: workspace.sId,
       },
       "Cleaning up old webhook requests"
     );
 
-    await concurrentExecutor(
-      oldRequests,
-      async (request) => {
-        await request.delete(auth);
+    const totalRequestsCount = await this.model.count({
+      where: {
+        workspaceId: workspace.id,
       },
-      { concurrency: 16 }
-    );
-
-    const excessiveRequests = await this.baseFetch(auth, {
-      order: [["createdAt", "DESC"]],
-      offset: maxWebhookRequestsToKeep,
     });
+    const excessiveRequestsCount = Math.max(
+      totalRequestsCount - maxWebhookRequestsToKeep,
+      0
+    );
+    const excessiveRequestsDeletedCount =
+      excessiveRequestsCount > 0
+        ? await this.model.destroy({
+            where: {
+              workspaceId: workspace.id,
+            },
+            limit: excessiveRequestsCount,
+          })
+        : 0;
 
     logger.info(
       {
-        toDelete: excessiveRequests.length,
-        workspaceId: auth.getNonNullableWorkspace().sId,
+        toDelete: excessiveRequestsDeletedCount,
+        workspaceId: workspace.sId,
       },
       "Cleaning up excessive webhook requests"
-    );
-
-    await concurrentExecutor(
-      excessiveRequests,
-      async (request) => {
-        await request.delete(auth);
-      },
-      { concurrency: 16 }
     );
   }
 
