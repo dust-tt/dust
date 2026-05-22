@@ -1,3 +1,4 @@
+import { isLegacyPlan } from "@app/lib/metronome/plan_type";
 import { isCreditPricedPlan } from "@app/lib/plans/plan_codes";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
@@ -79,6 +80,7 @@ export type SubNavigationAssistantsId =
 
 export type SubNavigationAdminId =
   | "subscription"
+  | "billing"
   | "workspace"
   | "model_providers"
   | "members"
@@ -97,6 +99,7 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
   subscription: ["/w/[wId]/subscription"],
+  billing: ["/w/[wId]/subscription"],
   api_keys: ["/w/[wId]/developers/api-keys"],
   credits_usage: ["/w/[wId]/developers/credits-usage"],
   providers: ["/w/[wId]/developers/providers"],
@@ -288,13 +291,21 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/analytics`,
           current: isCurrent("analytics"),
         },
-        {
-          id: "subscription",
-          label: "Subscription",
-          icon: CardIcon,
-          href: `/w/${owner.sId}/subscription`,
-          current: isCurrent("subscription"),
-        },
+        subscription.plan && !isLegacyPlan(subscription.plan)
+          ? {
+              id: "billing",
+              label: "Billing",
+              icon: CardIcon,
+              href: `/w/${owner.sId}/subscription`,
+              current: isCurrent("subscription"),
+            }
+          : {
+              id: "subscription",
+              label: "Subscription",
+              icon: CardIcon,
+              href: `/w/${owner.sId}/subscription`,
+              current: isCurrent("subscription"),
+            },
       ],
     });
 
