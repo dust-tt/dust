@@ -1,6 +1,7 @@
 "use client";
 
 import { useVizContext } from "@viz/app/components/VizContext";
+import { EDITABLE_FILE_ID_PREFIX } from "@viz/app/lib/transformEditableText";
 import {
   Tooltip,
   TooltipContent,
@@ -139,6 +140,10 @@ export function EditableFrame({ children }: EditableFrameProps) {
       const rawText = decodeURIComponent(target.dataset.rawText ?? "");
       const ctxBefore = decodeURIComponent(target.dataset.ctxBefore ?? "");
       const ctxAfter = decodeURIComponent(target.dataset.ctxAfter ?? "");
+      const rawFileId = target.dataset.fileId;
+      const targetFileId = rawFileId?.startsWith(EDITABLE_FILE_ID_PREFIX)
+        ? rawFileId.slice(EDITABLE_FILE_ID_PREFIX.length)
+        : undefined;
       // rawText may start/end with \n+indent (multi-line JSX) that the browser strips from
       // textContent. Re-attach only that newline-based whitespace so the file replacement matches
       // the exact source bytes. Inline spaces are already present in textContent, so we skip them.
@@ -149,7 +154,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
       const newText = ctxBefore + newRawText + ctxAfter;
 
       isSavingRef.current = true;
-      void editText({ oldText, newText })
+      void editText({ oldText, newText, targetFileId })
         .then((result) => {
           if (!result.success) {
             target.textContent = originalVisibleText;

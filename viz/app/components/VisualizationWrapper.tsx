@@ -55,7 +55,8 @@ async function resolveFileRef(
   key: string,
   dataAPI: VisualizationDataAPI,
   baseImports: Record<string, unknown>,
-  cache: Map<string, Promise<unknown>>
+  cache: Map<string, Promise<unknown>>,
+  isEditable: boolean
 ): Promise<unknown> {
   const cached = cache.get(key);
   if (cached) {
@@ -70,18 +71,32 @@ async function resolveFileRef(
 
     if (FRAME_MIME_TYPES.has(file.type)) {
       const text = await file.text();
-      const refs = extractFileRefs(text);
+      // Only make child-frame text editable when imported via a fil_ ID. Scoped paths
+      // (e.g. ./Foo) have no stable file ID to route edits back to.
+      const codeToUse =
+        isEditable && key.startsWith("fil_")
+          ? transformEditableText(text, key)
+          : text;
+      const refs = extractFileRefs(codeToUse);
       const nestedEntries = await Promise.all(
         refs.map(async (ref) => {
           const nestedKey = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
           return [
             nestedKey,
-            await resolveFileRef(nestedKey, dataAPI, baseImports, cache),
+            await resolveFileRef(
+              nestedKey,
+              dataAPI,
+              baseImports,
+              cache,
+              isEditable
+            ),
           ] as const;
         })
       );
       const nestedScope = Object.fromEntries(nestedEntries);
-      return importCode(text, { import: { ...baseImports, ...nestedScope } });
+      return importCode(codeToUse, {
+        import: { ...baseImports, ...nestedScope },
+      });
     }
 
     return { default: file };
@@ -174,10 +189,19 @@ export function useVisualizationAPI(
   }, [sendCrossDocumentMessage]);
 
   const editText = useCallback(
-    async ({ newText, oldText }: { newText: string; oldText: string }) => {
+    async ({
+      newText,
+      oldText,
+      targetFileId,
+    }: {
+      newText: string;
+      oldText: string;
+      targetFileId?: string;
+    }) => {
       return await sendCrossDocumentMessage("editText", {
         oldText,
         newText,
+        targetFileId,
       });
     },
     [sendCrossDocumentMessage]
@@ -424,7 +448,13 @@ export function VisualizationWrapper({
             const key = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
             return [
               key,
-              await resolveFileRef(key, api.data, baseImports, cache),
+              await resolveFileRef(
+                key,
+                api.data,
+                baseImports,
+                cache,
+                isEditable
+              ),
             ] as const;
           })
         );

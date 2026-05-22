@@ -73,6 +73,7 @@ const DisplayCodeRequestSchema = VisualizationRPCRequestBaseSchema.extend({
 const EditTextParamsSchema = z.object({
   newText: z.string(),
   oldText: z.string(),
+  targetFileId: z.string().optional(),
 });
 
 type EditTextParams = z.infer<typeof EditTextParamsSchema>;
