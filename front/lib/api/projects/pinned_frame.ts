@@ -24,8 +24,8 @@ export async function validatePinnedFramePath(
     podId: space.sId,
   });
 
-  // Some DB rows still carry the legacy `project/` scope prefix; treat them as `pod/`
-  // for the existence check so re-submitting an unchanged value doesn't fail validation.
+  // Some DB rows still carry the legacy `project/` scope prefix; as they have not been
+  // migrated to the new `pod/` scope, treat them as `pod/`
   const normalizedScopedPath = pinnedFramePath.startsWith("project/")
     ? `pod/${pinnedFramePath.slice("project/".length)}`
     : pinnedFramePath;
