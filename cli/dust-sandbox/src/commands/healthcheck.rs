@@ -87,10 +87,10 @@ fn run_healthcheck(args: &HealthcheckArgs) -> EgressHealthcheck {
         &ipv4_rules,
         &format!("tcp dport != 0 redirect to :{forwarder_port}"),
     );
-    // `nft list` normalizes `meta l4proto udp` to `meta l4proto 17` and
-    // `meta l4proto icmp` to `meta l4proto 1`, even though the script writes
-    // the named form. Accept both so the check works regardless of how nft
-    // prints the ruleset on a given kernel/nft version.
+    // `nft list` may print `meta l4proto` matches either by name (`udp`,
+    // `icmp`) or by IANA protocol number (17, 1). Accept both so the check
+    // works regardless of how nft prints the ruleset on a given kernel/nft
+    // version.
     let nft_udp_drop_ok = uid_rule(&ipv4_rules, "meta l4proto 17 drop")
         || uid_rule(&ipv4_rules, "meta l4proto udp drop");
     let nft_icmp_drop_ok = uid_rule(&ipv4_rules, "meta l4proto 1 drop")
