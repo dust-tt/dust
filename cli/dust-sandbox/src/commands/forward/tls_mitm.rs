@@ -20,6 +20,7 @@ use tokio::sync::Mutex;
 
 const CA_COMMON_NAME: &str = "Dust Sandbox Egress MITM CA";
 const LEAF_CACHE_CAPACITY: usize = 256;
+pub(super) const H2_ALPN: &[u8] = b"h2";
 pub(super) const HTTP_1_1_ALPN: &[u8] = b"http/1.1";
 
 pub struct MitmCa {
@@ -122,7 +123,7 @@ impl MitmCa {
         let mut config = ServerConfig::builder()
             .with_no_client_auth()
             .with_cert_resolver(Arc::new(resolver));
-        config.alpn_protocols = vec![HTTP_1_1_ALPN.to_vec()];
+        config.alpn_protocols = vec![H2_ALPN.to_vec(), HTTP_1_1_ALPN.to_vec()];
         Ok(Arc::new(config))
     }
 
@@ -401,12 +402,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn server_config_for_forces_http1_alpn() -> Result<()> {
+    async fn server_config_for_advertises_h2_then_http1_alpn() -> Result<()> {
         let ca = Arc::new(MitmCa::generate()?);
 
         let config = ca.server_config_for("api.openai.com").await?;
 
-        assert_eq!(config.alpn_protocols, vec![HTTP_1_1_ALPN.to_vec()]);
+        assert_eq!(
+            config.alpn_protocols,
+            vec![H2_ALPN.to_vec(), HTTP_1_1_ALPN.to_vec()]
+        );
         Ok(())
     }
 

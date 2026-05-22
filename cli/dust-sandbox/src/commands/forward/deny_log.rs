@@ -21,6 +21,7 @@ pub enum DenyReason {
     AbsoluteUriAuthorityMismatch,
     Port80Placeholder,
     HeaderSizeExceeded,
+    H2WebsocketUnsupported,
 }
 
 impl DenyReason {
@@ -39,6 +40,7 @@ impl DenyReason {
             Self::AbsoluteUriAuthorityMismatch => "absolute_uri_authority_mismatch",
             Self::Port80Placeholder => "port_80_placeholder",
             Self::HeaderSizeExceeded => "header_size_exceeded",
+            Self::H2WebsocketUnsupported => "h2_websocket_unsupported",
         }
     }
 }

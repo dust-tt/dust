@@ -56,10 +56,7 @@ pub(super) struct RequestParts {
 
 pub(super) enum Authority<'a> {
     HostHeader,
-    #[allow(dead_code)]
-    Explicit {
-        value: &'a str,
-    },
+    Explicit { value: &'a str },
 }
 
 #[allow(dead_code)]

@@ -1,5 +1,6 @@
 mod deny_log;
 mod handshake;
+mod http2_rewriter;
 mod http_host;
 mod http_rewriter;
 mod original_dst;
@@ -29,6 +30,7 @@ use crate::egress_secrets::SecretTable;
 
 use self::deny_log::{append_deny_log, DenyLogEntry, DenyReason};
 use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
+use self::http2_rewriter::{run_h2_to_h1_bridge, BoxedAsyncReadWrite, OpenH1Upstream};
 use self::http_host::parse_http_host;
 use self::http_rewriter::{
     copy_responses_with_websocket_watch, forward_http1_requests, HttpRewriteError,
@@ -36,7 +38,7 @@ use self::http_rewriter::{
 use self::original_dst::resolve_original_dst;
 use self::rewrite_policy::RewriteMode as HttpRewriteMode;
 use self::sni::parse_client_hello_sni;
-use self::tls_mitm::{MitmCa, HTTP_1_1_ALPN};
+use self::tls_mitm::{MitmCa, H2_ALPN, HTTP_1_1_ALPN};
 
 const DOMAIN_PEEK_TIMEOUT: Duration = Duration::from_secs(2);
 const DOMAIN_PEEK_RETRY_DELAY: Duration = Duration::from_millis(25);
@@ -384,15 +386,42 @@ where
         .await
         .context("failed to accept agent TLS for MITM")?;
 
-    let inbound_alpn = agent_tls.get_ref().1.alpn_protocol();
-    let inbound_alpn = if inbound_alpn == Some(HTTP_1_1_ALPN) {
-        "http/1.1"
-    } else {
-        "<none>"
-    };
+    let inbound_alpn = agent_tls
+        .get_ref()
+        .1
+        .alpn_protocol()
+        .map(|value| value.to_vec());
+    if inbound_alpn.as_deref() == Some(H2_ALPN) {
+        info!(
+            domain = sni,
+            inbound_alpn = "h2",
+            outbound_alpn = "http/1.1",
+            "starting h2 MITM bridge session"
+        );
+        let runtime = runtime.clone();
+        let sni = sni.to_string();
+        let secret_table = Arc::clone(&runtime.secret_table);
+        let deny_log = Arc::clone(&runtime.deny_log);
+        let opener_sni = sni.clone();
+        let opener: OpenH1Upstream = Arc::new(move || {
+            let runtime = runtime.clone();
+            let sni = opener_sni.clone();
+            Box::pin(async move {
+                let proxy_stream = open_allowed_proxy_tunnel(&runtime, &sni, 443)
+                    .await
+                    .context("failed to open per-stream proxy tunnel")?;
+                let upstream_tls = connect_mitm_upstream_tls(&runtime, &sni, proxy_stream)
+                    .await
+                    .context("failed to establish per-stream upstream TLS")?;
+                Ok(Box::new(upstream_tls) as BoxedAsyncReadWrite)
+            })
+        });
+        return run_h2_to_h1_bridge(agent_tls, sni, secret_table, deny_log, opener).await;
+    }
+
     info!(
         domain = sni,
-        inbound_alpn,
+        inbound_alpn = "http/1.1",
         outbound_alpn = "http/1.1",
         "starting h1 MITM session"
     );
@@ -729,10 +758,8 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        let agent_connector = test_tls_connector(
-            mitm_ca.ca_cert_der(),
-            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
-        )?;
+        let agent_connector =
+            test_tls_connector(mitm_ca.ca_cert_der(), vec![HTTP_1_1_ALPN.to_vec()])?;
         let agent_task = tokio::spawn(async move {
             let server_name =
                 ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
@@ -820,10 +847,8 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        let agent_connector = test_tls_connector(
-            mitm_ca.ca_cert_der(),
-            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
-        )?;
+        let agent_connector =
+            test_tls_connector(mitm_ca.ca_cert_der(), vec![HTTP_1_1_ALPN.to_vec()])?;
         let request =
             format!("GET / HTTP/1.1\r\nHost: {sni}\r\nAuthorization: Bearer {placeholder}\r\n\r\n");
         let agent_task = tokio::spawn(async move {
@@ -922,10 +947,8 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        let agent_connector = test_tls_connector(
-            mitm_ca.ca_cert_der(),
-            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
-        )?;
+        let agent_connector =
+            test_tls_connector(mitm_ca.ca_cert_der(), vec![HTTP_1_1_ALPN.to_vec()])?;
         let agent_task = tokio::spawn(async move {
             let server_name =
                 ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
@@ -1041,10 +1064,8 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        let agent_connector = test_tls_connector(
-            mitm_ca.ca_cert_der(),
-            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
-        )?;
+        let agent_connector =
+            test_tls_connector(mitm_ca.ca_cert_der(), vec![HTTP_1_1_ALPN.to_vec()])?;
         let agent_task = tokio::spawn(async move {
             let server_name =
                 ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
