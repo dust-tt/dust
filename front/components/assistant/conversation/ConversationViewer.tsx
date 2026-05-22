@@ -1327,6 +1327,8 @@ export const ConversationViewer = ({
           className={cn(
             "dd-privacy-mask",
             "@container/conversation",
+            "touch-pan-y",
+            "overscroll-contain",
             "h-full w-full px-5",
             !agentBuilderContext && "md:px-8"
           )}
