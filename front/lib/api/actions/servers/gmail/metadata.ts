@@ -37,13 +37,13 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe(
-          "The email addresses of the recipients. Optional if replyToMessageId is provided then Dust will automatically use the recipients from the original message."
+          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
         ),
-      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
+      cc: z.array(z.string()).optional().describe("The CC email addresses (optional if replyToMessageId is set, acts as override)"),
       bcc: z
         .array(z.string())
         .optional()
-        .describe("The email addresses to BCC"),
+        .describe("The BCC email addresses (optional if replyToMessageId is set, acts as override)."),
       subject: z.string().describe("The subject line of the email"),
       contentType: z
         .enum(["text/plain", "text/html"])
@@ -182,13 +182,13 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe(
-          "The email addresses of the recipients. Optional if replyToMessageId is provided then Dust will automatically use the recipients from the original message."
+          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
         ),
-      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
+      cc: z.array(z.string()).optional().describe("The CC email addresses (optional if replyToMessageId is set, acts as override)."),
       bcc: z
         .array(z.string())
         .optional()
-        .describe("The email addresses to BCC"),
+        .describe("The BCC email addresses (optional if replyToMessageId is set, acts as override)."),
       from: z
         .string()
         .email()
