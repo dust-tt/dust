@@ -61,8 +61,8 @@
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import { isSupportedModel } from "@app/types/assistant/assistant";

@@ -5,12 +5,12 @@ import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversat
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import {
   createGCSMountFile,
   type GCSMountFileEntry,
 } from "@app/lib/api/files/gcs_mount/files";
-import { isProviderWhitelisted } from "@app/lib/assistant";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";

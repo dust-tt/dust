@@ -26,6 +26,7 @@ import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
+import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -57,7 +58,7 @@ import {
 } from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
+import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";

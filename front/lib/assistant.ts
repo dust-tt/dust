@@ -87,14 +87,6 @@ export function getWhitelistedProviders(
   return whiteListedProviders.intersection(configuredProviders);
 }
 
-export function isProviderWhitelisted(
-  auth: Authenticator,
-  providerId: ModelProviderIdType
-): boolean {
-  const whitelistedProviders = getWhitelistedProviders(auth);
-  return whitelistedProviders.has(providerId);
-}
-
 export function getFastestWhitelistedModel(
   auth: Authenticator
 ): ModelConfigurationType | null {

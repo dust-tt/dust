@@ -1,6 +1,6 @@
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { isProviderWhitelisted } from "@app/lib/assistant";
+import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
 import { isSupportedModel } from "@app/types/assistant/assistant";
 import type { CompactionMessageType } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
