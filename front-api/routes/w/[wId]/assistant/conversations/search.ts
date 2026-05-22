@@ -1,9 +1,9 @@
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type SearchConversationsResponseBody = {
   conversations: Array<

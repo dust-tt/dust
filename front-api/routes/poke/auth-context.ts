@@ -1,6 +1,6 @@
 import type { UserType } from "@app/types/user";
-import { pokeApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetPokeNoWorkspaceAuthContextResponseType = {
   user: UserType;

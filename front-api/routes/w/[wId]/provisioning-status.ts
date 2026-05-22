@@ -3,8 +3,8 @@ import {
   BUILDER_GROUP_NAME,
   GroupResource,
 } from "@app/lib/resources/group_resource";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetProvisioningStatusResponseBody = {
   hasAdminGroup: boolean;

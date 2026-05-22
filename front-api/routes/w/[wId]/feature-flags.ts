@@ -1,6 +1,6 @@
 import { getFeatureFlags } from "@app/lib/auth";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { workspaceApp } from "@front-api/middleware/env";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 export type GetWorkspaceFeatureFlagsResponseType = {
   feature_flags: WhitelistableFeature[];

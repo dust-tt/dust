@@ -1,7 +1,7 @@
 import type { MCPServersUsageByAgent } from "@app/lib/api/agent_actions";
 import { getToolsUsage } from "@app/lib/api/agent_actions";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetMCPServersUsageResponseBody = {
   usage: MCPServersUsageByAgent;

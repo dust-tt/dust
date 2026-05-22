@@ -1,6 +1,6 @@
 import { buildExistingAgentPrompt } from "@app/lib/api/assistant/builder/sidekick_prompts";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/assistant/builder/sidekick/prompt/existing.
 const app = workspaceApp();

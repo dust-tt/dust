@@ -2,8 +2,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import wakeup from "./[wuId]";
 

@@ -3,8 +3,8 @@ import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isString } from "@app/types/shared/utils/general";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/skills/:sId/files/:fileId/content.
 const app = workspaceApp();

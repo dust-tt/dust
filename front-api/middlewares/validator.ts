@@ -1,4 +1,4 @@
-import { apiError } from "@front-api/middleware/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { zValidator } from "@hono/zod-validator";
 import type { ValidationTargets } from "hono";
 import type { ZodType } from "zod";

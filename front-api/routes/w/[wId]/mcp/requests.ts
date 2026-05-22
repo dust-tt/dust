@@ -1,4 +1,4 @@
-import { workspaceApp } from "@front-api/middleware/env";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { Context } from "hono";
 
 // Mounted at /api/w/:wId/mcp/requests.

@@ -5,8 +5,8 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { isInteractiveContentType } from "@app/types/files";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
 
 export interface GetShareFrameMetadataResponseBody {

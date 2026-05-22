@@ -14,8 +14,8 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { isConversationFileUseCase } from "@app/types/files";
-import type { WorkspaceAuthEnv } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 import type { HttpBindings } from "@hono/node-server";
 import type { Context } from "hono";
 import { Hono } from "hono";
@@ -63,7 +63,7 @@ function getSecureFileAction(
 }
 
 // Mounted at /api/w/:wId/files/:fileId.
-const app = new Hono<WorkspaceAuthEnv & { Bindings: HttpBindings }>();
+const app = new Hono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

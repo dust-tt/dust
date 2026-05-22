@@ -1,7 +1,7 @@
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type PokeGetTriggerExecutionStats = {
   statusBreakdown: Record<string, number>;
@@ -15,7 +15,7 @@ export type PokeGetTriggerExecutionStats = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/triggers/:tId/execution_stats.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetTriggerExecutionStats> => {
   const auth = ctx.get("auth");

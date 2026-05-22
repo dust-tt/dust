@@ -1,7 +1,7 @@
 import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const GetLookupRequestSchema = z.object({

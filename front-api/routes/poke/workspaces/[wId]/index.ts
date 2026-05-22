@@ -1,9 +1,9 @@
 import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
 import type { LightWorkspaceType } from "@app/types/user";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { pokeWorkspaceAuth } from "@front-api/middleware/poke_workspace_auth";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { withPokeWorkspace } from "@front-api/middlewares/poke_auth";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import analytics from "./analytics";
@@ -39,18 +39,17 @@ export type SegmentWorkspaceResponseBody = {
 };
 
 // Mounted at /api/poke/workspaces/:wId.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
-// `auth-context` runs without `pokeWorkspaceAuth` because it needs to handle
+// `auth-context` runs without `withPokeWorkspace` because it needs to handle
 // the missing-workspace case (cross-region redirect). It owns its own
 // session-based auth flow internally. Must be mounted before the
-// `pokeWorkspaceAuth` middleware below.
+// `withPokeWorkspace` middleware below.
 app.route("/auth-context", authContext);
 
-// Every route below inherits pokeWorkspaceAuth, which resolves the
-// super-user Authenticator for the target workspace and stashes it on the
-// context.
-app.use("*", pokeWorkspaceAuth);
+// Every route below re-scopes the unscoped Poke `Authenticator` (set by the
+// parent /poke `pokeAuth`) to the target workspace.
+app.use("*", withPokeWorkspace);
 
 app.patch(
   "/",

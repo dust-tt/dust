@@ -11,7 +11,7 @@ import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import { getUserEmailFromHeaders } from "@app/types/user";
-import type { PublicApiAuthEnv } from "@front-api/middleware/env";
+import type { PublicApiCtx } from "@front-api/middlewares/ctx";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 
@@ -104,7 +104,7 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
  * not yet ported — it is only used by `run_dust_app`, and we'll add it as a
  * factory variant when we migrate that endpoint.
  */
-export const publicApiAuth = createMiddleware<PublicApiAuthEnv>(
+export const publicApiAuth = createMiddleware<PublicApiCtx>(
   async (ctx, next) => {
     const wId = ctx.req.param("wId");
     if (!wId) {

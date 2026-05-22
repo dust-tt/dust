@@ -1,6 +1,6 @@
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type SuggestResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];

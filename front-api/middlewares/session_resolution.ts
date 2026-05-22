@@ -1,7 +1,7 @@
 import { getWorkOSSessionWithSetCookies } from "@app/lib/api/workos/user";
 import { getSessionFromBearerToken } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { apiError, parseCookieHeader } from "@front-api/middleware/utils";
+import { apiError, parseCookieHeader } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
 
 /**

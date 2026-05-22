@@ -1,5 +1,5 @@
-import { publicApiApp } from "@front-api/middleware/env";
-import { publicApiAuth } from "@front-api/middleware/public_api_auth";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import { publicApiAuth } from "@front-api/middlewares/public_api_auth";
 
 import featureFlags from "./feature_flags";
 import spaces from "./spaces";

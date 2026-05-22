@@ -1,6 +1,6 @@
 import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import { ConversationError } from "@app/types/assistant/conversation";
-import { apiError } from "@front-api/middleware/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
 
 /**

@@ -1,8 +1,8 @@
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
+import { pokeApp } from "@front-api/middlewares/ctx";
 
 import details from "./details";
 
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.route("/details", details);
 

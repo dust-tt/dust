@@ -1,10 +1,10 @@
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { CouponDiscountType } from "@app/types/coupon";
 import { CreateCouponBodySchema } from "@app/types/coupon";
-import { pokeApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 
 import couponId from "./[couponId]";
 

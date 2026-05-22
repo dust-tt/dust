@@ -7,12 +7,12 @@ import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
-import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
-import { withSpace } from "@front-api/middleware/with_space";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 import contentNodes from "./content-nodes";
 import documents from "./documents";

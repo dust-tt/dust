@@ -1,14 +1,14 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type PokeGetSkillVersions = {
   versions: SkillWithVersionType[];
 };
 
 // Mounted at /api/poke/workspaces/:wId/skills/:sId/versions.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetSkillVersions> => {
   const auth = ctx.get("auth");

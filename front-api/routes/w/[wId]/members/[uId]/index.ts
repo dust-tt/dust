@@ -18,9 +18,9 @@ import type {
 } from "@app/pages/api/w/[wId]/members/[uId]/index";
 import { isMembershipRoleType } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import seatType from "./seat-type";

@@ -1,6 +1,6 @@
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetExtensionConfigResponseBody = {
   blacklistedDomains: string[];

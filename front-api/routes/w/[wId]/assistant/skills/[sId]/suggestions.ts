@@ -3,10 +3,10 @@ import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check"
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { SkillSuggestionSchema } from "@app/types/suggestions/skill_suggestion";
-import { workspaceAuthWithSkillApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { skillApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
@@ -50,7 +50,7 @@ export type PatchSkillSuggestionResponseBody = z.infer<
 // Mounted at /api/w/:wId/assistant/skills/:sId/suggestions.
 // The `skill` context variable is set by the parent skills/[sId]/index.ts
 // middleware, which also enforces canWrite.
-const app = workspaceAuthWithSkillApp();
+const app = skillApp();
 
 app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
   const auth = ctx.get("auth");

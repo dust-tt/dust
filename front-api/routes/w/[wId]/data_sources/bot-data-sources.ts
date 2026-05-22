@@ -1,8 +1,8 @@
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceType } from "@app/types/data_source";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type GetBotDataSourcesResponseBody = {
   slackBotDataSource: DataSourceType | null;

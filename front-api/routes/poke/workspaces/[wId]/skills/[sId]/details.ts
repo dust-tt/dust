@@ -3,8 +3,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { SpaceType } from "@app/types/space";
 import type { UserType } from "@app/types/user";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type PokeGetSkillDetails = {
   skill: SkillType;
@@ -13,7 +13,7 @@ export type PokeGetSkillDetails = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/skills/:sId/details.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetSkillDetails> => {
   const auth = ctx.get("auth");

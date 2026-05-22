@@ -2,8 +2,8 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetUserTriggersResponseBody = {
   triggers: (TriggerType & {

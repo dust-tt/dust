@@ -1,9 +1,9 @@
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { CouponType } from "@app/types/coupon";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 export type GetCouponValidateResponseBody = {

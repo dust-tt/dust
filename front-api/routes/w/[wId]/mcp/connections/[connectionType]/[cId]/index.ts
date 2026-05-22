@@ -1,7 +1,7 @@
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
 
 // Mounted at /api/w/:wId/mcp/connections/:connectionType/:cId.

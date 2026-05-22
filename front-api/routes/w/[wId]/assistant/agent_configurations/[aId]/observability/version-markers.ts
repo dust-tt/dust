@@ -2,9 +2,9 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { fetchVersionMarkers } from "@app/lib/api/assistant/observability/version_markers";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const QuerySchema = z.object({

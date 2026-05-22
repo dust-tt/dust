@@ -3,9 +3,9 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { estypes } from "@elastic/elasticsearch";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 

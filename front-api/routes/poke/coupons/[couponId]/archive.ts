@@ -1,8 +1,8 @@
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import type { CouponDiscountType } from "@app/types/coupon";
-import { pokeApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 // `expirationDate` and `archivedAt` are `Date | null` in
 // `CouponResource.toJSON()` but JSON-serialize to ISO strings on the wire;

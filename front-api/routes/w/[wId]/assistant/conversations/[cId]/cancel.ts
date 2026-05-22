@@ -3,10 +3,10 @@ import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { workspaceApp } from "@front-api/middleware/env";
-import { streamingTag } from "@front-api/middleware/streaming";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { streamingTag } from "@front-api/middlewares/streaming";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 export type PostMessageEventResponseBody = {

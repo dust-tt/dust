@@ -9,10 +9,10 @@ import type {
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 export type GetDataSourcePermissionsResponseBody<

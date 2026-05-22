@@ -4,17 +4,17 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import logger from "@app/logger/logger";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
-import { sessionAuthApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { sessionApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
-import { sessionAuth } from "../middleware/session_auth";
+import { sessionAuth } from "../middlewares/session_auth";
 
 export type GetPendingInvitationsLookupResponseBody = {
   pendingInvitations: PendingInvitationOption[];
 };
 
-export const invitationsApp = sessionAuthApp();
+export const invitationsApp = sessionApp();
 
 invitationsApp.use("*", sessionAuth);
 

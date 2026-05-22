@@ -1,4 +1,4 @@
-import { workspaceApp } from "@front-api/middleware/env";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 import channelsLinkedWithAgent from "./channels_linked_with_agent";
 

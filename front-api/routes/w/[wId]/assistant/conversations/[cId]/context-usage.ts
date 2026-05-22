@@ -1,8 +1,8 @@
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SupportedModel } from "@app/types/assistant/models/types";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type GetConversationContextUsageResponse = {
   model: SupportedModel | null;

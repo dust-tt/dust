@@ -1,7 +1,7 @@
 import { listWebhookSourcesWithCounts } from "@app/lib/api/webhook_source";
 import type { WebhookSourceType } from "@app/types/triggers/webhooks";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import wsId from "./[wsId]";
 
@@ -12,7 +12,7 @@ export type PokeListWebhookSources = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/webhook_sources.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeListWebhookSources> => {
   const auth = ctx.get("auth");

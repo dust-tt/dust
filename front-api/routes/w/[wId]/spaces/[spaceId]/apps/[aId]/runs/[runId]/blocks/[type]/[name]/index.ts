@@ -3,10 +3,10 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { BlockType, RunType } from "@app/types/run";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { withSpace } from "@front-api/middleware/with_space";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 export type GetRunBlockResponseBody = {
   run: RunType | null;

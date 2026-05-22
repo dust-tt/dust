@@ -17,8 +17,8 @@ import {
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/seats/plan.
 const app = workspaceApp();

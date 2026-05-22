@@ -7,8 +7,8 @@ import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_reso
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 import type formidable from "formidable";
 
 const privateUploadGcs = getPrivateUploadBucket();

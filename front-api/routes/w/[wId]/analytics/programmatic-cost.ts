@@ -23,9 +23,9 @@ import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import type { estypes } from "@elastic/elasticsearch";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const GROUP_BY_KEYS = ["agent", "origin", "apiKey"] as const;

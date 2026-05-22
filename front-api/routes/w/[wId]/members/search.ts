@@ -2,10 +2,10 @@ import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { GROUP_KINDS } from "@app/types/groups";
 import type { UserTypeWithWorkspace } from "@app/types/user";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const DEFAULT_PAGE_LIMIT = 25;

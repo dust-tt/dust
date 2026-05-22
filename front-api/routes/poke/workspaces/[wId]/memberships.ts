@@ -3,8 +3,8 @@ import { getMembers } from "@app/lib/api/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type PokeGetMemberships = {
   members: UserTypeWithWorkspaces[];
@@ -12,7 +12,7 @@ export type PokeGetMemberships = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/memberships.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetMemberships> => {
   const auth = ctx.get("auth");

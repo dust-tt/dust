@@ -2,8 +2,8 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
 import fId from "./[fId]";
 

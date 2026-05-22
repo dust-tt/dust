@@ -2,8 +2,8 @@ import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversa
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetConversationAttachmentsResponseBody = {
   attachments: ConversationAttachmentType[];

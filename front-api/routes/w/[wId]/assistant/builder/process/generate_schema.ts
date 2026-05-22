@@ -4,9 +4,9 @@ import {
   getSmallWhitelistedModel,
 } from "@app/lib/assistant";
 import { InternalPostBuilderGenerateSchemaRequestBodySchema } from "@app/types/api/internal/assistant";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 
 // Mounted at /api/w/:wId/assistant/builder/process/generate_schema.
 const app = workspaceApp();

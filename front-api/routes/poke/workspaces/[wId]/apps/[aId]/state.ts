@@ -1,8 +1,8 @@
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { AppType } from "@app/types/app";
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const PostStateRequestBodySchema = z.object({
@@ -16,7 +16,7 @@ type PostStateResponseBody = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/apps/:aId/state.
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.post(
   "/",

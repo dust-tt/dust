@@ -8,9 +8,9 @@ import {
   isInteractiveContentType,
   MAX_EMAILS_PER_INVITE,
 } from "@app/types/files";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 import { z } from "zod";
 

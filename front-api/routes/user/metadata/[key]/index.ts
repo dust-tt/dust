@@ -2,10 +2,10 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { APIErrorResponse } from "@app/types/error";
 import type { UserMetadataType } from "@app/types/user";
-import { sessionAuthApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { sessionApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import type { Context, TypedResponse } from "hono";
 import { Op } from "sequelize";
 import { z } from "zod";
@@ -24,7 +24,7 @@ const PostUserMetadataBodySchema = z.object({
 
 // Mounted at /api/user/metadata/:key. sessionAuth is applied by the parent
 // `/api/user` sub-app.
-const app = sessionAuthApp();
+const app = sessionApp();
 
 async function loadUserAndWorkspace(
   ctx: Context

@@ -1,10 +1,10 @@
 import apiConfig from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { withDataSource } from "@front-api/middleware/with_data_source";
-import { withSpace } from "@front-api/middleware/with_space";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { withDataSource } from "@front-api/middlewares/with_data_source";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId/folders/:fId.
 const app = workspaceApp();

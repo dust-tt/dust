@@ -1,9 +1,9 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { UserType } from "@app/types/user";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type GetAgentLastAuthorResponseBody = {
   user: UserType | null;

@@ -2,9 +2,9 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getMessageConversationId } from "@app/lib/api/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const PatchBodySchema = z.object({

@@ -11,8 +11,8 @@ import {
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
 
 // Mounted at /api/w/:wId/dsync.

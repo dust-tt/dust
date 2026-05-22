@@ -1,5 +1,5 @@
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
-import { workspaceApp } from "@front-api/middleware/env";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 export type GetTrialMessageUsageResponseType = {
   count: number;

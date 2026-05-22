@@ -2,14 +2,14 @@ import { finalizeConnection } from "@app/lib/api/oauth";
 import { Authenticator } from "@app/lib/auth";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import { isOAuthProvider } from "@app/types/oauth/lib";
-import { sessionAuthApp } from "@front-api/middleware/env";
-import { sessionAuth } from "@front-api/middleware/session_auth";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import { sessionApp } from "@front-api/middlewares/ctx";
+import { sessionAuth } from "@front-api/middlewares/session_auth";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type GetOauthFinalizeResponseBody = { connection: OAuthConnectionType };
 
-const app = sessionAuthApp();
+const app = sessionApp();
 
 app.use("*", sessionAuth);
 

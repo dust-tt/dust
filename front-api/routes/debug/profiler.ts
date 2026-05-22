@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import { profileCPU, profileHeap } from "@app/lib/api/debug/profiler";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
 
 export interface GetProfilerResponse {

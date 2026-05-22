@@ -8,8 +8,8 @@ import {
 import { isBlacklistedEmailDomain } from "@app/lib/utils/blacklisted_email_domains";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import type {
   AuthenticationActionResponseData,
   ResponsePayload,

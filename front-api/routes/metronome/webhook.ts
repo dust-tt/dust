@@ -8,7 +8,7 @@ import {
 } from "@app/lib/metronome/webhook_idempotency";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
 import { z } from "zod";
 

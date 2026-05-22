@@ -1,10 +1,10 @@
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { PROJECT_TASK_STATUSES } from "@app/types/project_task";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
-import { withSpace } from "@front-api/middleware/with_space";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 
 const BulkActionsBodySchema = z.discriminatedUnion("action", [

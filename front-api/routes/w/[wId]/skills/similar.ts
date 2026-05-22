@@ -1,8 +1,8 @@
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type GetSimilarSkillsResponseBody = {
   similar_skills: string[];

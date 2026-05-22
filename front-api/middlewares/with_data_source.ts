@@ -1,11 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type {
-  DataSourceEnv,
-  SpaceEnv,
-  WorkspaceAuthEnv,
-} from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import type { DataSourceCtx } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
 interface WithDataSourceOptions {
@@ -42,37 +38,35 @@ function hasPermission(
  * `withDataSourceFromRoute` in `front/lib/api/resource_wrappers.ts`.
  */
 export function withDataSource(options: WithDataSourceOptions) {
-  return createMiddleware<WorkspaceAuthEnv & SpaceEnv & DataSourceEnv>(
-    async (ctx, next) => {
-      const auth = ctx.get("auth");
-      const space = ctx.get("space");
-      const dsId = ctx.req.param("dsId");
-      if (!dsId) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid path parameters.",
-          },
-        });
-      }
-      const ds = await DataSourceResource.fetchById(auth, dsId);
-      if (
-        !ds ||
-        ds.space.sId !== space.sId ||
-        space.isConversations() ||
-        !hasPermission(auth, ds, options)
-      ) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "The data source you requested was not found.",
-          },
-        });
-      }
-      ctx.set("dataSource", ds);
-      await next();
+  return createMiddleware<DataSourceCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const dsId = ctx.req.param("dsId");
+    if (!dsId) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid path parameters.",
+        },
+      });
     }
-  );
+    const ds = await DataSourceResource.fetchById(auth, dsId);
+    if (
+      !ds ||
+      ds.space.sId !== space.sId ||
+      space.isConversations() ||
+      !hasPermission(auth, ds, options)
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+    ctx.set("dataSource", ds);
+    await next();
+  });
 }

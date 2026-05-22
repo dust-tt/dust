@@ -6,8 +6,8 @@ import type {
   GetCreditsResponseBody,
   PendingCreditData,
 } from "@app/types/credits";
-import { workspaceApp } from "@front-api/middleware/env";
-import { apiError } from "@front-api/middleware/utils";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
 import awuPoolSummary from "./awu-pool-summary";
 import membersUsage from "./members-usage";

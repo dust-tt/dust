@@ -29,7 +29,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
 
 export type PostResponseBody = {

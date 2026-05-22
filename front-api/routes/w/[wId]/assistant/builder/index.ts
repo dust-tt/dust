@@ -1,4 +1,4 @@
-import { workspaceApp } from "@front-api/middleware/env";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 import process from "./process";
 import sidekick from "./sidekick";

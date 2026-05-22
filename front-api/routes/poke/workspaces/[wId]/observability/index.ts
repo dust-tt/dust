@@ -1,8 +1,8 @@
-import { pokeWorkspaceApp } from "@front-api/middleware/env";
+import { pokeApp } from "@front-api/middlewares/ctx";
 
 import datasourceRetrieval from "./datasource-retrieval";
 
-const app = pokeWorkspaceApp();
+const app = pokeApp();
 
 app.route("/datasource-retrieval", datasourceRetrieval);
 
