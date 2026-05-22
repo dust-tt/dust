@@ -41,6 +41,14 @@ vi.mock("@app/lib/metronome/plan_type", async () => {
   };
 });
 
+vi.mock("@app/types/plan", async () => {
+  const actual = await vi.importActual("@app/types/plan");
+  return {
+    ...actual,
+    isCreditPricedPlan: vi.fn(),
+  };
+});
+
 vi.mock("@app/lib/plans/stripe", async () => {
   const actual = await vi.importActual("@app/lib/plans/stripe");
   return {
