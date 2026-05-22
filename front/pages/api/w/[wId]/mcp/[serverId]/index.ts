@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import type { CustomResourceIconType } from "@app/components/resources/resources_icons";
 import {

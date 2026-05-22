@@ -11,6 +11,8 @@ import { apiError } from "@front-api/middlewares/utils";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
+import view from "./[viewId]";
+
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
 type MCPViewsRequestAvailabilityType = z.infer<
   typeof MCPViewsRequestAvailabilitySchema
@@ -128,5 +130,7 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
     })),
   });
 });
+
+app.route("/:viewId", view);
 
 export default app;
