@@ -22,6 +22,7 @@ import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
@@ -220,6 +221,8 @@ export async function createSandboxChildAction(
       conversation,
       step: parentAction.stepContent.step,
     });
+
+    await ConversationResource.markAsActionRequired(auth, { conversation });
   } else {
     const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
       messageId: agentMessage.sId,
