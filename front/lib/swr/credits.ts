@@ -1,4 +1,5 @@
 import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
+import type { GetMembersSeatsResponseBody } from "@app/lib/api/credits/members_seats";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -326,6 +327,42 @@ export function useAwuPurchaseInfo({
 }
 
 const EMPTY_SEAT_PLANS: SeatPlanResponseBody = {};
+
+const EMPTY_MEMBERS_SEATS: GetMembersSeatsResponseBody["seatTypes"] = {
+  free: 0,
+  workspace: 0,
+  workspace_yearly: 0,
+  pro: 0,
+  pro_yearly: 0,
+  max: 0,
+  max_yearly: 0,
+};
+
+export function useMembersSeats({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const membersSeatsFetcher: Fetcher<GetMembersSeatsResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/members-seats`,
+    membersSeatsFetcher,
+    { disabled }
+  );
+
+  return {
+    membersSeats: data?.seatTypes ?? EMPTY_MEMBERS_SEATS,
+    totalMembersSeats: data?.total ?? 0,
+    isMembersSeatsLoading: !error && !data && !disabled,
+    isMembersSeatsError: error,
+    isMembersSeatsValidating: isValidating,
+    mutateMembersSeats: mutate,
+  };
+}
 
 export function useSeatPlan({
   workspaceId,
