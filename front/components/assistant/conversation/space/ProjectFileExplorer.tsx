@@ -65,7 +65,6 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   FolderIcon,
-  PlusIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -99,7 +98,12 @@ function AttachKnowledgeDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button label={buttonLabel} icon={PlusIcon} disabled={isDisabled} />
+        <Button
+          label={buttonLabel}
+          isSelect
+          variant="highlight"
+          disabled={isDisabled}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem

@@ -305,12 +305,14 @@ export function FileExplorer({
       ? () => setPreviewFile(fileEntriesAtLevel[previewIndex + 1] ?? null)
       : undefined;
 
+  const inPanel = !!onClose;
+
   return (
     <>
       <div className="flex h-full w-full min-h-0 flex-1 flex-col">
-        {onClose && (
+        {inPanel && (
           <AppLayoutTitle
-            className={cn("pt-5", hideTitleBorder ? "border-b-0" : undefined)}
+            className={hideTitleBorder ? "border-b-0" : undefined}
           >
             <div
               className={cn(
@@ -328,9 +330,13 @@ export function FileExplorer({
           </AppLayoutTitle>
         )}
         <div
-          className={cn("flex flex-1 min-h-0 flex-col gap-5", contentClassName)}
+          className={cn(
+            "flex flex-1 min-h-0 flex-col gap-5",
+            contentClassName,
+            inPanel ? "pt-5" : undefined
+          )}
         >
-          <div className="px-4">
+          <div className={inPanel ? "px-4" : undefined}>
             <FileExplorerToolbar
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
@@ -342,7 +348,7 @@ export function FileExplorer({
             />
           </div>
           {Object.keys(filterCounts).length > 1 && (
-            <div className="px-4">
+            <div className={inPanel ? "px-4" : undefined}>
               <FileExplorerFilters
                 active={activeFilter}
                 onActiveChange={setActiveFilter}
@@ -351,7 +357,7 @@ export function FileExplorer({
             </div>
           )}
           {currentFolderPath !== "" && (
-            <div className="px-4">
+            <div className={inPanel ? "px-4" : undefined}>
               <FileExplorerBreadcrumb
                 currentFolderPath={currentFolderPath}
                 onNavigate={handleBreadcrumbNavigate}
