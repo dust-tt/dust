@@ -11,7 +11,7 @@ export function SkillBuilderEnableSuggestionsSection({
   selfImprovementLock,
 }: SkillBuilderEnableSuggestionsSectionProps) {
   const { owner } = useSkillBuilderContext();
-  const isAllowedByWorkspace = owner.metadata?.allowReinforcement !== false;
+  const isAllowedByWorkspace = owner.metadata?.allowReinforcement === true;
   const isDisabled = !isAllowedByWorkspace || selfImprovementLock;
 
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();

@@ -20,7 +20,7 @@ export function useSelfImprovingToggle({ owner }: UseSelfImprovingToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
-    owner.metadata?.allowReinforcement !== false
+    owner.metadata?.allowReinforcement === true
   );
 
   const doToggleReinforcement = async () => {
