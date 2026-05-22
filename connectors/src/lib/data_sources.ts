@@ -132,9 +132,7 @@ async function _upsertDataSourceDocument({
         endpoint,
         parents,
       });
-      const statsDTags = [
-        `workspace_id:${dataSourceConfig.workspaceId}`,
-      ];
+      const statsDTags = [`workspace_id:${dataSourceConfig.workspaceId}`];
 
       localLogger.info("Attempting to upload document to Dust.");
       statsDClient.increment(
