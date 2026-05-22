@@ -130,6 +130,11 @@ ContentFragmentModel.init(
         fields: ["workspaceId", "spaceId"],
         concurrently: true,
       },
+      {
+        fields: ["nodeDataSourceViewId", "workspaceId"],
+        concurrently: true,
+        name: "content_fragments_node_dsv_id_workspace_id",
+      },
     ],
   }
 );
