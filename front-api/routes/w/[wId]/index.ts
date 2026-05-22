@@ -21,6 +21,7 @@ import auditLogs from "./audit-logs";
 import authContext from "./auth-context";
 import builder from "./builder";
 import coupon from "./coupon";
+import credentials from "./credentials";
 import credits from "./credits";
 import dataSourceViews from "./data_source_views";
 import dataSources from "./data_sources";
@@ -545,6 +546,7 @@ app.post(
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
 app.route("/builder", builder);
+app.route("/credentials", credentials);
 app.route("/credits", credits);
 app.route("/data-classification-labels", dataClassificationLabels);
 app.route("/data_source_views", dataSourceViews);
