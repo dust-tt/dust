@@ -11,9 +11,16 @@ import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import { getUserEmailFromHeaders } from "@app/types/user";
-import type { Context, MiddlewareHandler } from "hono";
+import type { Context } from "hono";
+import { createMiddleware } from "hono/factory";
 
 import { apiError } from "./utils";
+
+export type PublicApiAuthEnv = {
+  Variables: {
+    auth: Authenticator;
+  };
+};
 
 type HeaderRecord = Record<string, string | string[] | undefined>;
 
@@ -102,81 +109,122 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
  * not yet ported — it is only used by `run_dust_app`, and we'll add it as a
  * factory variant when we migrate that endpoint.
  */
-export const publicApiAuth: MiddlewareHandler = async (ctx, next) => {
-  const wId = ctx.req.param("wId");
-  if (!wId) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
-
-  const authHeader = ctx.req.header("authorization");
-  if (!authHeader) {
-    return apiError(ctx, {
-      status_code: 401,
-      api_error: {
-        type: "not_authenticated",
-        message: "The request does not have valid authentication credentials.",
-      },
-    });
-  }
-
-  const headers = readHeaders(ctx);
-
-  // 1) Sandbox token.
-  const token = authHeader.replace("Bearer ", "");
-  if (token && isSandboxTokenPrefix(token)) {
-    const payload = await verifySandboxExecToken(token);
-    if (!payload) {
+export const publicApiAuth = createMiddleware<PublicApiAuthEnv>(
+  async (ctx, next) => {
+    const wId = ctx.req.param("wId");
+    if (!wId) {
       return apiError(ctx, {
-        status_code: 401,
+        status_code: 404,
         api_error: {
-          type: "invalid_sandbox_token_error",
-          message: "The sandbox token is invalid or expired.",
+          type: "workspace_not_found",
+          message: "The workspace was not found.",
         },
       });
     }
-    const authRes = await Authenticator.fromSandboxToken(payload, wId);
-    if (authRes.isErr()) {
-      return apiError(ctx, authRes.error);
-    }
-    const auth = authRes.value;
-    applyClientIp(auth, headers);
-    ctx.set("auth", auth);
-    await next();
-    return;
-  }
 
-  // 2) OAuth bearer token (resolves to a workspace user session).
-  const bearerRes = await getSessionFromBearerToken(authHeader);
-  if (bearerRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 401,
-      api_error: {
-        type: bearerRes.error,
-        message: "The request does not have valid authentication credentials.",
-      },
-    });
-  }
-  const session = bearerRes.value;
-  if (session?.authenticationMethod === "bearer") {
-    const auth = await Authenticator.fromSession(session, wId);
-
-    if (auth.user() === null) {
+    const authHeader = ctx.req.header("authorization");
+    if (!authHeader) {
       return apiError(ctx, {
         status_code: 401,
         api_error: {
-          type: "user_not_found",
+          type: "not_authenticated",
           message:
-            "The user does not have an active session or is not authenticated.",
+            "The request does not have valid authentication credentials.",
         },
       });
     }
-    if (!auth.isUser()) {
+
+    const headers = readHeaders(ctx);
+
+    // 1) Sandbox token.
+    const token = authHeader.replace("Bearer ", "");
+    if (token && isSandboxTokenPrefix(token)) {
+      const payload = await verifySandboxExecToken(token);
+      if (!payload) {
+        return apiError(ctx, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_sandbox_token_error",
+            message: "The sandbox token is invalid or expired.",
+          },
+        });
+      }
+      const authRes = await Authenticator.fromSandboxToken(payload, wId);
+      if (authRes.isErr()) {
+        return apiError(ctx, authRes.error);
+      }
+      const auth = authRes.value;
+      applyClientIp(auth, headers);
+      ctx.set("auth", auth);
+      await next();
+      return;
+    }
+
+    // 2) OAuth bearer token (resolves to a workspace user session).
+    const bearerRes = await getSessionFromBearerToken(authHeader);
+    if (bearerRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 401,
+        api_error: {
+          type: bearerRes.error,
+          message:
+            "The request does not have valid authentication credentials.",
+        },
+      });
+    }
+    const session = bearerRes.value;
+    if (session?.authenticationMethod === "bearer") {
+      const auth = await Authenticator.fromSession(session, wId);
+
+      if (auth.user() === null) {
+        return apiError(ctx, {
+          status_code: 401,
+          api_error: {
+            type: "user_not_found",
+            message:
+              "The user does not have an active session or is not authenticated.",
+          },
+        });
+      }
+      if (!auth.isUser()) {
+        return apiError(ctx, {
+          status_code: 401,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only users of the workspace can access this content.",
+          },
+        });
+      }
+      const workspaceError = validateWorkspaceFromAuth(auth);
+      if (workspaceError) {
+        return apiError(ctx, workspaceError);
+      }
+      applyClientIp(auth, headers);
+      ctx.set("auth", auth);
+      await next();
+      return;
+    }
+
+    // 3) API key.
+    const keyRes = await getAPIKey(authHeader);
+    if (keyRes.isErr()) {
+      return apiError(ctx, keyRes.error);
+    }
+
+    const keyAndWorkspaceAuth = await Authenticator.fromKey(
+      keyRes.value,
+      wId,
+      getGroupIdsFromHeaders(headers),
+      getRoleFromHeaders(headers)
+    );
+    let { workspaceAuth } = keyAndWorkspaceAuth;
+
+    const workspaceError = validateWorkspaceFromAuth(workspaceAuth);
+    if (workspaceError) {
+      return apiError(ctx, workspaceError);
+    }
+
+    if (!workspaceAuth.isUser()) {
       return apiError(ctx, {
         status_code: 401,
         api_error: {
@@ -185,68 +233,34 @@ export const publicApiAuth: MiddlewareHandler = async (ctx, next) => {
         },
       });
     }
-    const workspaceError = validateWorkspaceFromAuth(auth);
-    if (workspaceError) {
-      return apiError(ctx, workspaceError);
+
+    // x-api-user-email: system-key-only impersonation.
+    const userEmailFromHeader = getUserEmailFromHeaders(headers);
+    if (userEmailFromHeader) {
+      workspaceAuth =
+        (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
+          workspaceAuth,
+          {
+            userEmail: userEmailFromHeader,
+          }
+        )) ?? workspaceAuth;
     }
-    applyClientIp(auth, headers);
-    ctx.set("auth", auth);
+
+    // x-api-key-name: system-key-only key name override (for analytics).
+    const apiKeyNameFromHeader = getApiKeyNameFromHeaders(headers);
+    const key = workspaceAuth.key();
+    if (apiKeyNameFromHeader && key && key.isSystem) {
+      workspaceAuth = workspaceAuth.exchangeKey({
+        id: key.id,
+        name: apiKeyNameFromHeader,
+        isSystem: key.isSystem,
+        role: key.role,
+        monthlyCapMicroUsd: key.monthlyCapMicroUsd,
+      });
+    }
+
+    applyClientIp(workspaceAuth, headers);
+    ctx.set("auth", workspaceAuth);
     await next();
-    return;
   }
-
-  // 3) API key.
-  const keyRes = await getAPIKey(authHeader);
-  if (keyRes.isErr()) {
-    return apiError(ctx, keyRes.error);
-  }
-
-  const keyAndWorkspaceAuth = await Authenticator.fromKey(
-    keyRes.value,
-    wId,
-    getGroupIdsFromHeaders(headers),
-    getRoleFromHeaders(headers)
-  );
-  let { workspaceAuth } = keyAndWorkspaceAuth;
-
-  const workspaceError = validateWorkspaceFromAuth(workspaceAuth);
-  if (workspaceError) {
-    return apiError(ctx, workspaceError);
-  }
-
-  if (!workspaceAuth.isUser()) {
-    return apiError(ctx, {
-      status_code: 401,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Only users of the workspace can access this content.",
-      },
-    });
-  }
-
-  // x-api-user-email: system-key-only impersonation.
-  const userEmailFromHeader = getUserEmailFromHeaders(headers);
-  if (userEmailFromHeader) {
-    workspaceAuth =
-      (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(workspaceAuth, {
-        userEmail: userEmailFromHeader,
-      })) ?? workspaceAuth;
-  }
-
-  // x-api-key-name: system-key-only key name override (for analytics).
-  const apiKeyNameFromHeader = getApiKeyNameFromHeaders(headers);
-  const key = workspaceAuth.key();
-  if (apiKeyNameFromHeader && key && key.isSystem) {
-    workspaceAuth = workspaceAuth.exchangeKey({
-      id: key.id,
-      name: apiKeyNameFromHeader,
-      isSystem: key.isSystem,
-      role: key.role,
-      monthlyCapMicroUsd: key.monthlyCapMicroUsd,
-    });
-  }
-
-  applyClientIp(workspaceAuth, headers);
-  ctx.set("auth", workspaceAuth);
-  await next();
-};
+);

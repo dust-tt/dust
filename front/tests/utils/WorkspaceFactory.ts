@@ -1,6 +1,8 @@
 import { PlanModel } from "@app/lib/models/plan";
+import { upsertFreePlans } from "@app/lib/plans/free_plans";
 import {
   FREE_BYOK_PLAN_CODE,
+  FREE_TEST_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -26,6 +28,13 @@ export class WorkspaceFactory {
 
   static async byok(overrides?: WorkspaceOverrides): Promise<WorkspaceType> {
     return this.create(FREE_BYOK_PLAN_CODE, overrides);
+  }
+
+  static async freeNoProductAccess(
+    overrides?: WorkspaceOverrides
+  ): Promise<WorkspaceType> {
+    await upsertFreePlans(FREE_TEST_PLAN_CODE);
+    return this.create(FREE_TEST_PLAN_CODE, overrides);
   }
 
   static async metronome(

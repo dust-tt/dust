@@ -6,8 +6,7 @@ import conversations from "./conversations";
 import mentions from "./mentions";
 import skills from "./skills";
 
-// Mounted at /api/w/:wId/assistant. workspaceAuth is applied by the parent
-// workspace sub-app.
+// Mounted at /api/w/:wId/assistant.
 const app = new Hono();
 
 app.route("/agent_configurations", agentConfigurations);

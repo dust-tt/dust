@@ -13,8 +13,7 @@ import awuPoolSummary from "./awu-pool-summary";
 import membersUsage from "./members-usage";
 import metronomeBalances from "./metronome-balances";
 
-// Mounted at /api/w/:wId/credits. workspaceAuth is applied by the parent
-// workspace sub-app.
+// Mounted at /api/w/:wId/credits.
 const app = new Hono();
 
 app.route("/awu-pool-summary", awuPoolSummary);
