@@ -87,7 +87,10 @@ async function areTemporalWorkflowsRunning(
   client: Client,
   notionConnector: NotionConnector,
   logger: Logger
-) {
+): Promise<{
+  isRunning: boolean;
+  isNotStalled: boolean;
+}> {
   const descriptions = await withRetries(logger, getWorkflowDescriptions, {
     retries: TEMPORAL_WORKFLOW_CHECK_RETRIES,
   })({
@@ -200,13 +203,11 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
         connectorId: notionConnector.id,
         workspaceId: notionConnector.workspaceId,
       });
-    } else {
-      if (!isNotStalled) {
-        stalledWorkflows.push({
-          connectorId: notionConnector.id,
-          workspaceId: notionConnector.workspaceId,
-        });
-      }
+    } else if (!isNotStalled) {
+      stalledWorkflows.push({
+        connectorId: notionConnector.id,
+        workspaceId: notionConnector.workspaceId,
+      });
     }
   }
 
