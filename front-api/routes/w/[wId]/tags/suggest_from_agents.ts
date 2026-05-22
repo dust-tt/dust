@@ -92,11 +92,10 @@ app.get("/", async (ctx): HandlerResult<GetSuggestionsResponseBody> => {
     });
   }
 
+  const agentsBySId = new Map(agents.map((a) => [a.sId, a]));
   const suggestions = suggestionsResponse.value.suggestions?.map((s) => ({
     name: s.name,
-    agents: removeNulls(
-      s.agentIds.map((id) => agents.find((agent) => agent.sId === id))
-    ),
+    agents: removeNulls(s.agentIds.map((id) => agentsBySId.get(id) ?? null)),
   }));
 
   return ctx.json({ suggestions });

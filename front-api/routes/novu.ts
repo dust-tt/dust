@@ -10,14 +10,17 @@ import { Hono } from "hono";
 // This endpoint exposes our code-based notification workflows to the Novu
 // platform. The Novu platform calls this endpoint to execute workflow steps.
 // See: https://docs.novu.co/framework/endpoint
-//
-// We reuse the `@novu/framework/next` adapter because Next 13+ App Router and
-// Hono both operate on the Fetch API. The adapter only reads the standard
-// `Request` surface (url/method/headers/body) — `c.req.raw` is structurally
-// compatible at runtime, but its type is `Request`, not the adapter's
-// `NextRequest`, so we cast through the adapter's own parameter type to
-// avoid importing from `next/*` in shared code.
-const handler = serve({
+
+// `@novu/framework/next` types its handlers against `NextRequest`, but at
+// runtime they only touch the standard Fetch `Request` surface
+// (url/method/headers/body). We can't import `next/*` in `front-api` per
+// [API9], and there is no type guard that turns a `Request` into a
+// `NextRequest` (the extra fields don't exist at runtime — Novu doesn't read
+// them). We re-type the adapter once, at this boundary, against the actual
+// runtime contract so the call sites below stay clean.
+type FetchHandler = (req: Request, ctx?: unknown) => Promise<Response>;
+
+const novu = serve({
   workflows: [
     conversationUnreadWorkflow,
     agentMessageFeedbackWorkflow,
@@ -26,16 +29,12 @@ const handler = serve({
     projectAddedAsMemberWorkflow,
     providerCredentialsHealthUpdatedWorkflow,
   ],
-});
-
-type NovuReq = Parameters<typeof handler.POST>[0];
+}) as unknown as Record<"GET" | "POST" | "OPTIONS", FetchHandler>;
 
 const app = new Hono();
 
-app.get("/", (ctx) => handler.GET(ctx.req.raw as unknown as NovuReq, ctx));
-app.post("/", (ctx) => handler.POST(ctx.req.raw as unknown as NovuReq, ctx));
-app.options("/", (ctx) =>
-  handler.OPTIONS(ctx.req.raw as unknown as NovuReq, ctx)
-);
+app.get("/", (ctx) => novu.GET(ctx.req.raw, ctx));
+app.post("/", (ctx) => novu.POST(ctx.req.raw, ctx));
+app.options("/", (ctx) => novu.OPTIONS(ctx.req.raw, ctx));
 
 export default app;
