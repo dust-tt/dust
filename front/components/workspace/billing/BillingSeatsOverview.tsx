@@ -6,7 +6,17 @@ import {
 } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Spinner, ValueCard } from "@dust-tt/sparkle";
+import {
+  ActionCreditCoinsIcon,
+  Avatar,
+  Icon,
+  SeatFreeIcon,
+  SeatMaxIcon,
+  SeatProIcon,
+  Spinner,
+  UserIcon,
+} from "@dust-tt/sparkle";
+import type React from "react";
 
 interface BillingSeatsOverviewProps {
   owner: LightWorkspaceType;
@@ -16,6 +26,16 @@ const SEAT_TYPE_ORDER: Partial<Record<MembershipSeatType, number>> = {
   free: 0,
   pro: 1,
   max: 2,
+};
+
+const SEAT_TYPE_ICONS: Record<MembershipSeatType, React.ComponentType> = {
+  free: SeatFreeIcon,
+  workspace: SeatProIcon,
+  workspace_yearly: SeatProIcon,
+  pro: SeatProIcon,
+  pro_yearly: SeatProIcon,
+  max: SeatMaxIcon,
+  max_yearly: SeatMaxIcon,
 };
 
 function seatTypeGroup(seatType: MembershipSeatType): MembershipSeatType {
@@ -127,31 +147,42 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       {orderedPlansWithMembers.map(
         ({ seatType, primaryPlan, membersCount }) => (
-          <ValueCard
+          <div
             key={seatType}
-            title={primaryPlan.name}
-            className="min-h-32"
-            content={
-              <div className="flex flex-col gap-3">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold text-foreground dark:text-foreground-night">
-                    {membersCount.toLocaleString()}
-                  </span>
-                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {membersCount === 1 ? "member" : "members"}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  <div className="text-muted-foreground dark:text-muted-foreground-night">
-                    Included credits
-                  </div>
-                  <div className="font-medium text-foreground dark:text-foreground-night">
-                    {primaryPlan.awuCredits.toLocaleString()}
-                  </div>
-                </div>
+            className="flex min-h-28 flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night"
+          >
+            <div className="flex items-center gap-2">
+              <Avatar
+                icon={SEAT_TYPE_ICONS[seatType]}
+                size="xs"
+                backgroundColor={
+                  seatType === "max" ? "s-bg-golden-100" : "s-bg-blue-100"
+                }
+                iconColor={
+                  seatType === "max" ? "s-text-golden-600" : "s-text-blue-600"
+                }
+              />
+              <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
+                {primaryPlan.name}
               </div>
-            }
-          />
+            </div>
+
+            <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              <div className="flex items-center gap-2">
+                <Icon visual={UserIcon} size="xs" />
+                <span>
+                  {membersCount.toLocaleString()}{" "}
+                  {membersCount === 1 ? "seat assigned" : "seats assigned"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Icon visual={ActionCreditCoinsIcon} size="xs" />
+                <span>
+                  {primaryPlan.awuCredits.toLocaleString()} credits per month
+                </span>
+              </div>
+            </div>
+          </div>
         )
       )}
     </div>
