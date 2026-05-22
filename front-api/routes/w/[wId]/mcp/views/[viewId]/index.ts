@@ -9,7 +9,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import type { Context, MiddlewareHandler } from "hono";
+import type { Context } from "hono";
 import { z } from "zod";
 
 const PatchMCPServerViewBodySchema = z
@@ -35,27 +35,23 @@ export type PatchMCPServerViewResponseBody = {
 // Mounted at /api/w/:wId/mcp/views/:viewId.
 const app = workspaceApp();
 
-const requireUser: MiddlewareHandler = async (ctx, next) => {
-  const auth = ctx.get("auth");
-  if (!auth?.isUser?.()) {
-    return apiError(ctx, {
-      status_code: 401,
-      api_error: {
-        type: "mcp_auth_error",
-        message:
-          "You are not authorized to make request to inspect an MCP server view.",
-      },
-    });
-  }
-  await next();
-};
-
 app.patch(
   "/",
-  requireUser,
   validate("json", PatchMCPServerViewBodySchema),
   async (ctx): HandlerResult<PatchMCPServerViewResponseBody> => {
     const auth = ctx.get("auth");
+
+    if (!auth.isUser()) {
+      return apiError(ctx, {
+        status_code: 401,
+        api_error: {
+          type: "mcp_auth_error",
+          message:
+            "You are not authorized to make request to inspect an MCP server view.",
+        },
+      });
+    }
+
     const viewId = ctx.req.param("viewId") ?? "";
     const body = ctx.req.valid("json");
 
