@@ -8,7 +8,6 @@ import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   CREDIT_PRICED_FREE_PLAN_CODE,
-  isCreditPricedPlan,
   isEntreprisePlanPrefix,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
@@ -20,6 +19,7 @@ import {
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
 import assert from "@app/lib/utils/assert";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -250,7 +250,7 @@ export default function SwitchContractDialog({
       plans
         .filter(
           (plan) =>
-            isEntreprisePlanPrefix(plan.code) && isCreditPricedPlan(plan.code)
+            isEntreprisePlanPrefix(plan.code) && isCreditPricedPlan(plan)
         )
         .map((plan) => ({
           value: plan.code,
