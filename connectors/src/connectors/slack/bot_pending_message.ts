@@ -211,7 +211,7 @@ export async function resolveSlackPendingUserMessage<
     connector.workspaceId,
     conversation.sId
   );
-  const fallbackText = `:hourglass_flowing_sand: _Dust is still finishing the previous request, so this Slack reply could not start in time.${
+  const fallbackText = `:hourglass_flowing_sand: _Dust is still finishing the previous request.${
     conversationUrl ? ` <${conversationUrl}|Continue on Dust>.` : ""
   }_`;
 
