@@ -393,7 +393,7 @@ export async function processMetronomeWebhook({
         payment_status: paymentStatus,
         error_message: errorMessage,
       } = event.properties;
-      if (paymentStatus === "succeeded") {
+      if (paymentStatus === "paid") {
         logger.info(
           { customerId, contractId, invoiceId, paymentStatus },
           "[Metronome Webhook] Payment-gated commit paid"
@@ -406,7 +406,7 @@ export async function processMetronomeWebhook({
           contractId,
           invoiceId,
         });
-      } else {
+      } else if (paymentStatus === "failed") {
         logger.warn(
           {
             customerId,
@@ -423,6 +423,19 @@ export async function processMetronomeWebhook({
           errorMessage: errorMessage ?? "Payment failed",
           invoiceId: invoiceId || undefined,
         });
+      } else {
+        // Non-terminal `payment_status` values — log and leave the attempt
+        // pending; the terminal "paid" / "failed" event will follow.
+        logger.info(
+          {
+            customerId,
+            contractId,
+            invoiceId,
+            paymentStatus,
+            errorMessage,
+          },
+          "[Metronome Webhook] Payment-gated commit intermediate status, leaving attempt pending"
+        );
       }
       break;
     }
