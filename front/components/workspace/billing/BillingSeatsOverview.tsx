@@ -18,21 +18,37 @@ import {
 } from "@dust-tt/sparkle";
 import type React from "react";
 
-const SEAT_TYPE_ORDER: Partial<Record<MembershipSeatType, number>> = {
+const SEAT_TYPE_ORDER: Record<string, number> = {
   free: 0,
   pro: 1,
   max: 2,
 };
 
-const SEAT_TYPE_ICONS: Record<MembershipSeatType, React.ComponentType> = {
+const SEAT_TYPE_ICONS: Record<string, React.ComponentType> = {
   free: SeatFreeIcon,
-  workspace: SeatProIcon,
-  workspace_yearly: SeatProIcon,
   pro: SeatProIcon,
-  pro_yearly: SeatProIcon,
   max: SeatMaxIcon,
-  max_yearly: SeatMaxIcon,
 };
+
+function seatTypeAvatarColors(seatType: MembershipSeatType) {
+  switch (seatType) {
+    case "free":
+      return {
+        backgroundColor: "bg-gray-100",
+        iconColor: "text-gray-600",
+      };
+    case "max":
+      return {
+        backgroundColor: "bg-golden-100",
+        iconColor: "text-golden-600",
+      };
+    default:
+      return {
+        backgroundColor: "bg-blue-100",
+        iconColor: "text-blue-600",
+      };
+  }
+}
 
 function seatTypeGroup(seatType: MembershipSeatType): MembershipSeatType {
   switch (seatType) {
@@ -146,44 +162,44 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       {orderedPlansWithMembers.map(
-        ({ seatType, primaryPlan, membersCount }) => (
-          <div
-            key={seatType}
-            className="flex min-h-28 flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night"
-          >
-            <div className="flex items-center gap-2">
-              <Avatar
-                icon={SEAT_TYPE_ICONS[seatType]}
-                size="xs"
-                backgroundColor={
-                  seatType === "max" ? "bg-golden-100" : "bg-blue-100"
-                }
-                iconColor={
-                  seatType === "max" ? "text-golden-600" : "text-blue-600"
-                }
-              />
-              <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
-                {primaryPlan.name.replace("Seat", "seat")}
-              </div>
-            </div>
+        ({ seatType, primaryPlan, membersCount }) => {
+          const avatarColors = seatTypeAvatarColors(seatType);
 
-            <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+          return (
+            <div
+              key={seatType}
+              className="flex min-h-28 flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night"
+            >
               <div className="flex items-center gap-2">
-                <Icon visual={UserIcon} size="xs" />
-                <span>
-                  {membersCount.toLocaleString()}{" "}
-                  {membersCount === 1 ? "seat assigned" : "seats assigned"}
-                </span>
+                <Avatar
+                  icon={SEAT_TYPE_ICONS[seatType] ?? SeatProIcon}
+                  size="xs"
+                  backgroundColor={avatarColors.backgroundColor}
+                  iconColor={avatarColors.iconColor}
+                />
+                <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
+                  {primaryPlan.name.replace("Seat", "seat")}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Icon visual={ActionCreditCoinsIcon} size="xs" />
-                <span>
-                  {primaryPlan.awuCredits.toLocaleString()} credits per month
-                </span>
+
+              <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                <div className="flex items-center gap-2">
+                  <Icon visual={UserIcon} size="xs" />
+                  <span>
+                    {membersCount.toLocaleString()}{" "}
+                    {membersCount === 1 ? "seat assigned" : "seats assigned"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Icon visual={ActionCreditCoinsIcon} size="xs" />
+                  <span>
+                    {primaryPlan.awuCredits.toLocaleString()} credits per month
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        )
+          );
+        }
       )}
     </div>
   );
