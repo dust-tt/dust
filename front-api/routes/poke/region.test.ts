@@ -10,7 +10,7 @@ vi.mock("@app/lib/api/regions/config", async (importOriginal) => {
     ...mod,
     config: {
       ...mod.config,
-      getCurrentRegion: vi.fn(),
+      getCurrentRegion: vi.fn().mockReturnValue("us-central1"),
       getRegionUrl: vi.fn(),
     },
   };
