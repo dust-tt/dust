@@ -1,4 +1,5 @@
 import type { SupportedCurrency } from "@app/types/currency";
+
 /**
  * Convert a Metronome amount to cents.
  *
@@ -55,4 +56,31 @@ export function awuCreditsToCurrency(
   currency: SupportedCurrency
 ): number {
   return credits * AWU_PRICE_PER_CREDIT[currency];
+}
+
+export function formatCurrencyAmount({
+  amount,
+  currency,
+}: {
+  amount: number;
+  currency: SupportedCurrency;
+}): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+export function formatCurrencyAmountCents({
+  amountCents,
+  currency,
+}: {
+  amountCents: number;
+  currency: SupportedCurrency;
+}): string {
+  return formatCurrencyAmount({
+    amount: amountCents / 100,
+    currency,
+  });
 }
