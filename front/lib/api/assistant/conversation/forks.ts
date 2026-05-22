@@ -684,6 +684,9 @@ export async function createConversationFork(
       childConversationId: childConversation.sId,
       forkCompactionModel,
       sourceMessageRank: sourceMessage.value.rank,
+      sourceMessageCreatedAtMs: sourceMessageId
+        ? sourceMessage.value.agentMessage?.updatedAt.getTime()
+        : undefined,
     });
   });
 
@@ -700,6 +703,8 @@ export async function createConversationFork(
     workspaceId: auth.getNonNullableWorkspace().sId,
     sourceConversationId: parentConversation.sId,
     destConversationId: childConversationId.value.childConversationId,
+    sourceMessageTimestampMs:
+      childConversationId.value.sourceMessageCreatedAtMs,
   });
   if (launchForkWorkflowResult.isErr()) {
     logger.error(

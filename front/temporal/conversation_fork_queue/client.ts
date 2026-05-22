@@ -12,10 +12,12 @@ export async function launchConversationForkWorkflow({
   workspaceId,
   sourceConversationId,
   destConversationId,
+  sourceMessageTimestampMs,
 }: {
   workspaceId: string;
   sourceConversationId: string;
   destConversationId: string;
+  sourceMessageTimestampMs?: number;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeConversationForkWorkflowId({
@@ -25,7 +27,14 @@ export async function launchConversationForkWorkflow({
 
   try {
     await client.workflow.start(conversationForkWorkflow, {
-      args: [{ workspaceId, sourceConversationId, destConversationId }],
+      args: [
+        {
+          workspaceId,
+          sourceConversationId,
+          destConversationId,
+          sourceMessageTimestampMs,
+        },
+      ],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: {

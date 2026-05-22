@@ -3147,7 +3147,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          attributes: ["status"],
+          attributes: ["status", "updatedAt"],
           where: {
             status: { [Op.ne]: "created" },
           },

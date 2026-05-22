@@ -579,9 +579,13 @@ export async function copyConversationGCSMount(
   {
     source,
     dest,
+    sourceTimestampMs,
   }: {
     source: ConversationResource;
     dest: ConversationResource;
+    // When set, only copy file versions that existed at or before this timestamp.
+    // Used when branching from a specific mid-conversation message.
+    sourceTimestampMs?: number;
   }
 ): Promise<Result<{ copiedCount: number }, Error>> {
   const owner = auth.getNonNullableWorkspace();
@@ -602,12 +606,12 @@ export async function copyConversationGCSMount(
   const bucket = getPrivateUploadBucket();
 
   try {
-    const gcsFiles = await bucket.getFiles({
+    const currentFiles = await bucket.getFiles({
       prefix: sourcePrefix,
       maxResults: GCS_MOUNT_COPY_MAX_FILES,
     });
 
-    if (gcsFiles.length >= GCS_MOUNT_COPY_MAX_FILES) {
+    if (currentFiles.length >= GCS_MOUNT_COPY_MAX_FILES) {
       logger.warn(
         {
           workspaceId: owner.sId,
@@ -622,17 +626,65 @@ export async function copyConversationGCSMount(
       throw new Error("GCS mount copy hit the max files cap");
     }
 
+    // Single path for both cases. Using `Date.now()` as the cutoff when no
+    // timestamp is given means every live file predates it, so all pass the
+    // `isUnchanged` check and are copied directly — no version lookups needed.
+    // When branching from a specific message, files unchanged since the fork
+    // are copied directly while modified files get a per-file version lookup.
+    const forkTimestampMs = sourceTimestampMs ?? Date.now();
+    let copiedCount = 0;
+
     await concurrentExecutor(
-      gcsFiles,
+      currentFiles,
       async (gcsFile) => {
         const relativePath = gcsFile.name.slice(sourcePrefix.length);
         const destPath = `${destPrefix}${relativePath}`;
-        await bucket.copyFile(gcsFile.name, destPath);
+
+        const isUnchanged =
+          isString(gcsFile.metadata.updated) &&
+          new Date(gcsFile.metadata.updated).getTime() <= forkTimestampMs;
+
+        if (isUnchanged) {
+          await bucket.copyFile(gcsFile.name, destPath);
+          copiedCount++;
+          return;
+        }
+
+        const versionsResult = await bucket.getSortedFileVersions({
+          filePath: gcsFile.name,
+        });
+        if (versionsResult.isErr()) {
+          throw versionsResult.error;
+        }
+        const preFork = versionsResult.value.find((v) => {
+          if (
+            !isString(v.metadata.updated) ||
+            !isString(v.metadata.generation)
+          ) {
+            logger.warn(
+              {
+                workspaceId: owner.sId,
+                sourceConversationId: source.sId,
+                fileName: gcsFile.name,
+              },
+              "GCS mount versioned copy: skipping file version with missing metadata."
+            );
+            return false;
+          }
+          return new Date(v.metadata.updated).getTime() <= forkTimestampMs;
+        });
+        if (!preFork) {
+          return; // file didn't exist before the fork point
+        }
+        await bucket.copyFile(gcsFile.name, destPath, undefined, {
+          sourceGeneration: String(preFork.metadata.generation),
+        });
+        copiedCount++;
       },
       { concurrency: GCS_MOUNT_COPY_CONCURRENCY }
     );
 
-    return new Ok({ copiedCount: gcsFiles.length });
+    return new Ok({ copiedCount });
   } catch (err) {
     return new Err(normalizeError(err));
   }

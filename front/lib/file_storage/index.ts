@@ -223,7 +223,7 @@ export class FileStorage {
   }: {
     filePath: string;
     maxResults?: number;
-  }) {
+  }): Promise<Result<File[], Error>> {
     try {
       const [files] = await this.bucket.getFiles({
         prefix: filePath,
@@ -234,21 +234,21 @@ export class FileStorage {
       // Filter to only the exact file path and sort by generation (newest first)
       // Generation represents the version order in GCS
       // can be string or number per GCS types, though in practice it seems to always be a number
-      const versions = files
-        .filter((file) => file.name === filePath)
-        .sort((a, b) => {
-          const genA = isNumber(a.metadata.generation)
-            ? a.metadata.generation
-            : Number(a.metadata.generation ?? 0);
-          const genB = isNumber(b.metadata.generation)
-            ? b.metadata.generation
-            : Number(b.metadata.generation ?? 0);
-          return genB - genA;
-        });
-
-      return versions;
-    } catch {
-      return [];
+      return new Ok(
+        files
+          .filter((file) => file.name === filePath)
+          .sort((a, b) => {
+            const genA = isNumber(a.metadata.generation)
+              ? a.metadata.generation
+              : Number(a.metadata.generation ?? 0);
+            const genB = isNumber(b.metadata.generation)
+              ? b.metadata.generation
+              : Number(b.metadata.generation ?? 0);
+            return genB - genA;
+          })
+      );
+    } catch (err) {
+      return new Err(normalizeError(err));
     }
   }
 
@@ -285,13 +285,17 @@ export class FileStorage {
   async copyFile(
     srcPath: string,
     destPath: string,
-    destinationStorage: FileStorage = this
+    destinationStorage: FileStorage = this,
+    { sourceGeneration }: { sourceGeneration?: string } = {}
   ): Promise<void> {
     const destinationFile = destinationStorage.file(destPath);
+    const sourceFile = sourceGeneration
+      ? this.bucket.file(srcPath, { generation: sourceGeneration })
+      : this.file(srcPath);
 
     for (let attempt = 1; attempt <= GCS_COPY_MAX_RETRIES; attempt++) {
       try {
-        await this.file(srcPath).copy(destinationFile);
+        await sourceFile.copy(destinationFile);
         return;
       } catch (err) {
         if (attempt === GCS_COPY_MAX_RETRIES) {
