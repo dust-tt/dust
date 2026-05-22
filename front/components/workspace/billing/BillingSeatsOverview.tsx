@@ -18,10 +18,6 @@ import {
 } from "@dust-tt/sparkle";
 import type React from "react";
 
-interface BillingSeatsOverviewProps {
-  owner: LightWorkspaceType;
-}
-
 const SEAT_TYPE_ORDER: Partial<Record<MembershipSeatType, number>> = {
   free: 0,
   pro: 1,
@@ -74,6 +70,10 @@ function yearlySeatTypeForGroup(
     default:
       return assertNever(seatType);
   }
+}
+
+interface BillingSeatsOverviewProps {
+  owner: LightWorkspaceType;
 }
 
 export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
@@ -156,14 +156,14 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                 icon={SEAT_TYPE_ICONS[seatType]}
                 size="xs"
                 backgroundColor={
-                  seatType === "max" ? "s-bg-golden-100" : "s-bg-blue-100"
+                  seatType === "max" ? "bg-golden-100" : "bg-blue-100"
                 }
                 iconColor={
-                  seatType === "max" ? "s-text-golden-600" : "s-text-blue-600"
+                  seatType === "max" ? "text-golden-600" : "text-blue-600"
                 }
               />
               <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
-                {primaryPlan.name}
+                {primaryPlan.name.replace("Seat", "seat")}
               </div>
             </div>
 

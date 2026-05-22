@@ -15,8 +15,6 @@ export function BillingPage() {
         description="Edit your subscription and billing information."
       />
       <BillingSeatsOverview owner={owner} />
-      {/* TODO: Settings section*/}
-      <div> TODO </div>
     </Page.Vertical>
   );
 }
