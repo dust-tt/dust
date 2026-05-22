@@ -216,6 +216,11 @@ export async function launchSandboxChildToolWorkflow(
     actionModelId: action.id,
   });
 
+  await ConversationResource.clearActionRequired(
+    auth,
+    agentLoopArgs.conversationId
+  );
+
   if (waitForCompletion) {
     try {
       const handle = client.workflow.getHandle(workflowId);
