@@ -10,9 +10,9 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-import { workspaceApp } from "@front-api/middlewares/ctx";
 import { validate } from "@front-api/middlewares/validator";
 
 export type ConversationFileRelResponseBody = Record<string, never>;

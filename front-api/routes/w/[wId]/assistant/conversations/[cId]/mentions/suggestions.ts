@@ -2,9 +2,9 @@ import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/menti
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-import { workspaceApp } from "@front-api/middlewares/ctx";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 

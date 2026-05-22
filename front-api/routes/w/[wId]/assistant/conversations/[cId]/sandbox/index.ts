@@ -1,9 +1,9 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-import { workspaceApp } from "@front-api/middlewares/ctx";
 
 export type GetConversationSandboxResponseBody = {
   sandboxStatus: SandboxStatus | null;
