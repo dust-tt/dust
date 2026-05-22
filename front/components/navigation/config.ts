@@ -97,7 +97,7 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
   subscription: ["/w/[wId]/subscription"],
-  billing: ["/w/[wId]/subscription"],
+  billing: ["/w/[wId]/billing"],
   api_keys: ["/w/[wId]/developers/api-keys"],
   credits_usage: ["/w/[wId]/developers/credits-usage"],
   providers: ["/w/[wId]/developers/providers"],
@@ -207,6 +207,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/workspace",
           "/w/[wId]/model-providers",
           "/w/[wId]/subscription",
+          "/w/[wId]/billing",
           "/w/[wId]/analytics",
           "/w/[wId]/actions",
           "/w/[wId]/developers/credits-usage",
@@ -294,8 +295,8 @@ export const subNavigationAdmin = ({
               id: "billing",
               label: "Billing",
               icon: CardIcon,
-              href: `/w/${owner.sId}/subscription`,
-              current: isCurrent("subscription"),
+              href: `/w/${owner.sId}/billing`,
+              current: isCurrent("billing"),
             }
           : {
               id: "subscription",
