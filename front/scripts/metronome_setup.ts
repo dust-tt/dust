@@ -1259,8 +1259,8 @@ function getFreeExcessRecurringCredits(
     product_name: "Excess Credits",
     access_amount: {
       credit_type_id: creditTypeId,
-      unit_price: 0,
-      quantity,
+      unit_price: quantity,
+      quantity: 1,
     },
     commit_duration: { value: 1, unit: "PERIODS" },
     priority: 999,
