@@ -42,7 +42,12 @@ export function ManageSubscriptionPage() {
     }
 
     void redirectToStripePortal();
-  }, [owner.sId, subscription, router]);
+  }, [
+    owner.sId,
+    subscription.trialing,
+    subscription.stripeSubscriptionId,
+    router,
+  ]);
 
   return (
     <div className="flex h-dvh w-full items-center justify-center">
