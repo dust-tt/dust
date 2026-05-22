@@ -1,6 +1,6 @@
 import {
-  getMembersSeats,
   type GetMembersSeatsResponseBody,
+  getMembersSeats,
 } from "@app/lib/api/credits/members_seats";
 import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
