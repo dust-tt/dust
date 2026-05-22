@@ -121,11 +121,14 @@ export async function getTemporalClientForConnectorsNamespace() {
   return getTemporalClientForNamespace("connectors");
 }
 
-export async function describeTemporalWorkflow(temporalClient: Client, {
-  workflowId,
-}: {
-  workflowId: string;
-}): Promise<WorkflowExecutionDescription | null> {
+export async function describeTemporalWorkflow(
+  temporalClient: Client,
+  {
+    workflowId,
+  }: {
+    workflowId: string;
+  }
+): Promise<WorkflowExecutionDescription | null> {
   try {
     return await temporalClient.workflow.getHandle(workflowId).describe();
   } catch (err) {
