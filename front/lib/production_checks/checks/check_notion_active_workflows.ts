@@ -21,6 +21,17 @@ interface NotionConnector {
   pausedAt: Date | null;
 }
 
+type MissingWorkflow = {
+  connectorId: number;
+  workspaceId: string;
+  details: string;
+};
+
+type StalledWorkflow = {
+  connectorId: number;
+  workspaceId: string;
+};
+
 async function listAllNotionConnectors() {
   const connectorsDb = getConnectorsPrimaryDbConnection();
 
@@ -206,17 +217,6 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
   const client = await getTemporalClientForConnectorsNamespace();
 
   logger.info(`Found ${notionConnectors.length} Notion connectors.`);
-
-  type MissingWorkflow = {
-    connectorId: number;
-    workspaceId: string;
-    details: string;
-  };
-
-  type StalledWorkflow = {
-    connectorId: number;
-    workspaceId: string;
-  };
 
   const missingActiveWorkflows: MissingWorkflow[] = [];
   const stalledWorkflows: StalledWorkflow[] = [];
