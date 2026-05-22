@@ -1,8 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { MembershipSeatType } from "@app/types/memberships";
 
 export type GetMembersSeatsResponseBody = {
-  seatTypes: Record<string, number>;
+  seatTypes: Partial<Record<MembershipSeatType, number>>;
   total: number;
 };
 

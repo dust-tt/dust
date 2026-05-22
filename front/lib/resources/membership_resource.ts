@@ -18,11 +18,12 @@ import {
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
-import type {
-  MembershipOriginType,
-  MembershipRoleType,
-  MembershipSeatType,
-  UserCreditState,
+import {
+  isMembershipSeatType,
+  type MembershipOriginType,
+  type MembershipRoleType,
+  type MembershipSeatType,
+  type UserCreditState,
 } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -707,15 +708,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
-  // We use Record<string, number> instead of Record<MembershipSeatType, number> because it's likely
-  // that we will add new seat types dynamically in the near future.
   static async getActiveSeatTypeCountsForWorkspace({
     workspace,
     transaction,
   }: {
     workspace: LightWorkspaceType;
     transaction?: Transaction;
-  }): Promise<Record<string, number>> {
+  }): Promise<Partial<Record<MembershipSeatType, number>>> {
     const now = new Date();
     const rows = await this.model.count({
       where: {
@@ -733,10 +732,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       transaction,
     });
 
-    const counts: Record<string, number> = {};
+    const counts: Partial<Record<MembershipSeatType, number>> = {};
     for (const row of rows) {
       const { seatType } = row;
-      if (typeof seatType === "string") {
+      if (isMembershipSeatType(seatType)) {
         counts[seatType] = row.count;
       }
     }

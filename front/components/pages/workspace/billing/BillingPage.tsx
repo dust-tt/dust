@@ -2,7 +2,7 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { CardIcon, Page } from "@dust-tt/sparkle";
 
 export function BillingPage() {
-  const owner = useWorkspace();
+  // const owner = useWorkspace();
   // const { subscription } = useAuth();
   // const router = useAppRouter();
 
