@@ -13,7 +13,7 @@ describe("WebhookRequestResource", () => {
       });
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 1000,
           webhookRequestTtl: "30 day",
         });
@@ -55,7 +55,7 @@ describe("WebhookRequestResource", () => {
       await WebhookRequestModel.bulkCreate(requests);
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
@@ -95,7 +95,7 @@ describe("WebhookRequestResource", () => {
 
       // With custom limit of 3, this workspace should be returned
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
@@ -127,7 +127,7 @@ describe("WebhookRequestResource", () => {
       });
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 1000,
           webhookRequestTtl: "30 day",
         });
@@ -159,7 +159,7 @@ describe("WebhookRequestResource", () => {
       });
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 1000,
           webhookRequestTtl: "30 day",
         });
@@ -247,7 +247,7 @@ describe("WebhookRequestResource", () => {
       });
 
       const workspaces =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
@@ -301,7 +301,7 @@ describe("WebhookRequestResource", () => {
       });
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 1000,
           webhookRequestTtl: "30 day",
         });
@@ -367,7 +367,7 @@ describe("WebhookRequestResource", () => {
       await WebhookRequestModel.bulkCreate(requests);
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
@@ -408,7 +408,7 @@ describe("WebhookRequestResource", () => {
 
       // Call with only the custom maxWebhookRequestsToKeep to test defaults for TTL
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
         });
 
@@ -446,7 +446,7 @@ describe("WebhookRequestResource", () => {
       await WebhookRequestModel.bulkCreate(requests);
 
       let result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
@@ -465,7 +465,7 @@ describe("WebhookRequestResource", () => {
         updatedAt: new Date(),
       });
 
-      result = await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+      result = await WebhookRequestResource.getWorkspacesWithTooManyRequests({
         maxWebhookRequestsToKeep: 3,
         webhookRequestTtl: "30 day",
       });

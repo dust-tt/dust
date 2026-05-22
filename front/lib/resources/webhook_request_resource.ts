@@ -228,7 +228,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
-  static async getWorkspaceIdsWithTooManyRequests({
+  static async getWorkspacesWithTooManyRequests({
     webhookRequestTtl = WEBHOOK_REQUEST_TTL,
     maxWebhookRequestsToKeep = MAX_WEBHOOK_REQUESTS_TO_KEEP,
   }: Partial<CleanUpWorkspaceOptions> = {}): Promise<WorkspaceResource[]> {

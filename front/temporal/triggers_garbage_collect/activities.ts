@@ -4,7 +4,7 @@ import logger from "@app/logger/logger";
 
 export async function webhookCleanupActivity() {
   const workspacesToCleanup =
-    await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests();
+    await WebhookRequestResource.getWorkspacesWithTooManyRequests();
 
   if (workspacesToCleanup.length === 0) {
     logger.info("No workspaces with too many webhook requests to cleanup.");
