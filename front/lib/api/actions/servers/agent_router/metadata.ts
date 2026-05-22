@@ -6,14 +6,15 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const AGENT_ROUTER_SERVER_NAME = "agent_router" as const;
 export const AGENT_ROUTER_ACTION_DESCRIPTION =
-  "Tools with access to the published agents of the workspace.";
+  "Tools with access to the agents of the workspace.";
 
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content" as const;
 
 export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
   list_all_published_agents: {
     description:
-      "Returns a complete list of all published agents in the workspace. " +
+      "Returns a complete list of all agents accessible to the user in the workspace, " +
+      "including their personal (unpublished) agents. " +
       "Each agent includes its name, description, and mention directive " +
       "(e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link to the agent.",
     schema: {},

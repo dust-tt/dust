@@ -34,10 +34,10 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
 
     // We cannot call the internal getAgentConfigurations() here because it causes a circular dependency.
     // Instead, we call the public API endpoint.
-    // Since this endpoint is using the workspace credentials we do not have the user and as a result
-    // we cannot use the "list" view, meaning we do not have the user's unpublished agents.
+    // When the user is available, use the "list" view to include the user's unpublished agents
+    // (the x-api-user-email header allows the API to resolve the user from the system key).
     const res = await api.getAgentConfigurations({
-      view: "all",
+      view: user ? "list" : "all",
     });
     if (res.isErr()) {
       return new Err(new MCPError("Error fetching agent configurations"));
@@ -56,7 +56,7 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: `# Published Agents\n\n${formattedAgents}`,
+        text: `# Available Agents\n\n${formattedAgents}`,
       },
     ]);
   },
@@ -80,10 +80,10 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
 
     // We cannot call the internal getAgentConfigurations() here because it causes a circular dependency.
     // Instead, we call the public API endpoint.
-    // Since this endpoint is using the workspace credentials we do not have the user and as a result
-    // we cannot use the "list" view, meaning we do not have the user's unpublished agents.
+    // When the user is available, use the "list" view to include the user's unpublished agents
+    // (the x-api-user-email header allows the API to resolve the user from the system key).
     const getAgentsRes = await api.getAgentConfigurations({
-      view: "all",
+      view: user ? "list" : "all",
     });
     if (getAgentsRes.isErr()) {
       logger.error(
