@@ -5,7 +5,6 @@ import type {
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -14,6 +13,11 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { MCPApproveExecutionEvent } from "@dust-tt/client";
 import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+type MCPActionOutputItemWithContent = {
+  content: CallToolResult["content"][number];
+};
 
 /**
  * Server-only utility for processing exit/pause events from MCP tool outputs.
@@ -29,7 +33,7 @@ export async function getExitOrPauseEvents(
     agentMessage,
     conversation,
   }: {
-    outputItems: AgentMCPActionOutputItemModel[];
+    outputItems: MCPActionOutputItemWithContent[];
     action: AgentMCPActionResource;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;

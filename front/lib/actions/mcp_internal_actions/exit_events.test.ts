@@ -1,7 +1,6 @@
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { makeMCPToolExit } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -21,7 +20,7 @@ describe("getExitOrPauseEvents", () => {
     const events = await getExitOrPauseEvents({} as Authenticator, {
       outputItems: output.content.map((content) => ({
         content,
-      })) as unknown as AgentMCPActionOutputItemModel[],
+      })),
       action: {} as AgentMCPActionResource,
       agentConfiguration: {
         sId: "agent-configuration-id",

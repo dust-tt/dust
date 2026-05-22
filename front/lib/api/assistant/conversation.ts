@@ -161,17 +161,18 @@ import { col } from "sequelize";
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
 
-const FAILURE_PROTECTED_AGENT_MESSAGE_STATUSES = [
-  "cancelled",
-  "interrupted",
-] as const satisfies readonly AgentMessageStatus[];
+type FailureProtectedAgentMessageStatus = Extract<
+  AgentMessageStatus,
+  "cancelled" | "interrupted"
+>;
+
+const FAILURE_PROTECTED_AGENT_MESSAGE_STATUSES: readonly AgentMessageStatus[] =
+  ["cancelled", "interrupted"];
 
 function isFailureProtectedAgentMessageStatus(
   status: AgentMessageStatus
-): status is (typeof FAILURE_PROTECTED_AGENT_MESSAGE_STATUSES)[number] {
-  return FAILURE_PROTECTED_AGENT_MESSAGE_STATUSES.includes(
-    status as (typeof FAILURE_PROTECTED_AGENT_MESSAGE_STATUSES)[number]
-  );
+): status is FailureProtectedAgentMessageStatus {
+  return FAILURE_PROTECTED_AGENT_MESSAGE_STATUSES.includes(status);
 }
 
 /** Citations and generated files aggregated from source MCP output items (e.g. branch merge). */

@@ -256,21 +256,17 @@ async function executeToolStreaming(
 
         return { deferredEvents };
 
-      case "tool_early_exit":
+      case "tool_early_exit": {
+        const isError =
+          event.reason === "user_cancellation" ? false : event.isError;
+
         updateActiveObservation(
           {
             output: {
-              status:
-                event.reason === "user_cancellation"
-                  ? "cancelled"
-                  : "early_exit",
-              isError:
-                event.reason === "user_cancellation" ? false : event.isError,
+              status: "early_exit",
+              isError,
             },
-            level:
-              event.reason === "user_cancellation" || !event.isError
-                ? "WARNING"
-                : "ERROR",
+            level: isError ? "ERROR" : "WARNING",
             statusMessage: event.text ?? "Early exit",
           },
           { asType: "tool" }
@@ -353,6 +349,7 @@ async function executeToolStreaming(
         });
 
         return { deferredEvents, shouldPauseAgentLoop: true };
+      }
 
       case "tool_personal_auth_required":
       case "tool_file_auth_required":

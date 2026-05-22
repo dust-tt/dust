@@ -88,5 +88,5 @@ export type ToolEarlyExitEvent = {
   conversationId: string;
   text: string;
   isError: boolean;
-  reason?: "user_cancellation";
+  reason?: "deploy_interruption" | "user_cancellation" | "none";
 };

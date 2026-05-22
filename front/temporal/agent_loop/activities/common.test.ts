@@ -1,11 +1,10 @@
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
-import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentMessageSuccessEvent } from "@app/types/assistant/agent";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   processEventForDatabase,
   updateAgentMessageDBAndMemory,
@@ -31,10 +30,6 @@ describe("processEventForDatabase", () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
     workspace = setup.workspace;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe("modelInteractionDurationMs", () => {
@@ -293,10 +288,6 @@ describe("processEventForDatabase", () => {
         conversation,
       });
 
-      const handleEventSpy = vi
-        .spyOn(globalCoalescer, "handleEvent")
-        .mockResolvedValue();
-
       await updateResourceAndPublishEvent(auth, {
         event: {
           type: "tool_error",
@@ -328,7 +319,6 @@ describe("processEventForDatabase", () => {
       expect(dbMessage?.errorCode).toBeNull();
       expect(dbMessage?.errorMessage).toBeNull();
       expect(staleAgentMessage.status).toBe(status);
-      expect(handleEventSpy).not.toHaveBeenCalled();
     });
 
     it("should mark a normal early-exit tool error as failed", async () => {

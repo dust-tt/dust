@@ -544,10 +544,7 @@ export async function* tryCallMCPTool(
         return makeMCPToolExit({
           message: TOOL_EXECUTION_CANCELLED_MESSAGE,
           isError: true,
-          reason:
-            abortClassification === "user_cancellation"
-              ? "user_cancellation"
-              : undefined,
+          reason: abortClassification,
         });
       }
 
