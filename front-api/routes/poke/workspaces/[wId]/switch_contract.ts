@@ -16,7 +16,7 @@ import {
 } from "@app/lib/metronome/contracts";
 import {
   clearMetronomePaygCapAlert,
-  syncMetronomePaygCapAlert,
+  upsertMetronomePaygCapAlert,
 } from "@app/lib/metronome/payg_alerts";
 import {
   isPaygEligibleTier,
@@ -38,9 +38,9 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 export interface PokeSwitchContractSuccessResponseBody {
@@ -114,7 +114,7 @@ function validatePlanPackageCompat(
 }
 
 // Mounted at /api/poke/workspaces/:wId/switch_contract.
-const app = new Hono();
+const app = pokeApp();
 
 app.post(
   "/",
@@ -371,14 +371,14 @@ app.post(
     if (owner.metronomeCustomerId) {
       const alertResult =
         body.paygEnabled && body.paygCapDollars !== undefined
-          ? await syncMetronomePaygCapAlert({
+          ? await upsertMetronomePaygCapAlert({
               metronomeCustomerId: owner.metronomeCustomerId,
               paygCapDollars: body.paygCapDollars,
-              workspaceSId: owner.sId,
+              workspaceId: owner.sId,
             })
           : await clearMetronomePaygCapAlert({
               metronomeCustomerId: owner.metronomeCustomerId,
-              workspaceSId: owner.sId,
+              workspaceId: owner.sId,
             });
       if (alertResult.isErr()) {
         const errorMessage = `Failed to sync Metronome PAYG cap alert: ${alertResult.error.message}`;

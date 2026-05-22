@@ -13,8 +13,8 @@ import {
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { EnterpriseUpgradeFormSchema } from "@app/types/plan";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { fromError } from "zod-validation-error";
 
 export interface PokeUpgradeEnterpriseSuccessResponseBody {
@@ -22,7 +22,7 @@ export interface PokeUpgradeEnterpriseSuccessResponseBody {
 }
 
 // Mounted at /api/poke/workspaces/:wId/upgrade_enterprise.
-const app = new Hono();
+const app = pokeApp();
 
 app.post(
   "/",

@@ -5,8 +5,8 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { FreePlanUpgradeFormSchema } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { fromError } from "zod-validation-error";
 
 export type PokeUpgradeWorkspaceResponseBody = {
@@ -14,7 +14,7 @@ export type PokeUpgradeWorkspaceResponseBody = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/upgrade.
-const app = new Hono();
+const app = pokeApp();
 
 app.post("/", async (ctx): HandlerResult<PokeUpgradeWorkspaceResponseBody> => {
   const auth = ctx.get("auth");

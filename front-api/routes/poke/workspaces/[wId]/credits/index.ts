@@ -5,8 +5,8 @@ import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type PokeCreditType = {
   id: number;
@@ -35,7 +35,7 @@ export type PokeListCreditsResponseBody = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/credits.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeListCreditsResponseBody> => {
   const auth = ctx.get("auth");

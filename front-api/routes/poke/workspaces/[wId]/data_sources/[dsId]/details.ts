@@ -12,8 +12,8 @@ import type { CoreAPIDataSource } from "@app/types/core/data_source";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type PokeDataSourceFeatures = {
   slackBotEnabled: boolean;
@@ -43,7 +43,7 @@ export type PokeGetDataSourceDetails = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/details.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetDataSourceDetails> => {
   const auth = ctx.get("auth");
