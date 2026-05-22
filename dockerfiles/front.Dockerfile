@@ -161,7 +161,7 @@ RUN if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then 
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=$NEXT_PUBLIC_DATADOG_SERVICE; \
-fi
+  fi
 
 # Frontend image (Next.js standalone) for front deployment
 FROM node:24.14.0 AS front
@@ -301,8 +301,6 @@ ARG NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
 ARG NEXT_PUBLIC_NOVU_API_URL
 ARG NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 ARG NEXT_PUBLIC_BUILD_DATE
-ARG CONTENTFUL_SPACE_ID
-ARG CONTENTFUL_ACCESS_TOKEN
 
 ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
 ENV NEXT_PUBLIC_BUILD_DATE=$NEXT_PUBLIC_BUILD_DATE
@@ -320,23 +318,6 @@ ENV NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY=$NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY
 ENV NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER=$NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
 ENV NEXT_PUBLIC_NOVU_API_URL=$NEXT_PUBLIC_NOVU_API_URL
 ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
-ENV CONTENTFUL_SPACE_ID=$CONTENTFUL_SPACE_ID
-ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
-
-WORKDIR /app/front
-
-# front-api only serves /api/* traffic; trim marketing/landing pages so they
-# aren't compiled into .next/ (smaller image, faster build).
-RUN rm -rf pages/blog pages/customers pages/home pages/landing \
-           pages/academy pages/integrations \
-        && rm -f pages/index.tsx
-
-# Distinct cache id so the marketing-trimmed build doesn't contaminate the front-nextjs-build cache.
-RUN --mount=type=cache,id=next-cache-api,target=/app/front/.next/cache \
-    FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" \
-    NODE_OPTIONS="--max-old-space-size=8192" \
-    npm run build -- --no-lint && \
-    npm run sitemap
 
 WORKDIR /app/front-api
 RUN npm run build
@@ -355,7 +336,6 @@ COPY --from=front-api-build /app/node_modules ./node_modules
 COPY --from=front-api-build /app/package.json ./package.json
 COPY --from=front-api-build /app/package-lock.json ./package-lock.json
 
-# Full front workspace including source + .next build (needed at runtime by Next.js).
 COPY --from=front-api-build /app/front ./front
 
 # front-api workspace (server.ts, app.ts, routes/, middleware/).
