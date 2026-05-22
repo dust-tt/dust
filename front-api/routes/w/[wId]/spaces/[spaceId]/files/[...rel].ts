@@ -16,12 +16,12 @@ import logger from "@app/logger/logger";
 import type { APIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
 import type { Context, TypedResponse } from "hono";
-import { Hono } from "hono";
 
 export type ProjectFileRelResponseBody = Record<string, never>;
 
@@ -29,7 +29,7 @@ export type ProjectFileRelResponseBody = Record<string, never>;
 //
 // Mounted from `files/index.ts` at the root path. Hono's `:rel{.+}` wildcard
 // captures everything past `/files/` (matching Next's `[...rel]`).
-const app = new Hono();
+const app = workspaceApp();
 
 async function buildContext(ctx: Context): Promise<
   | {

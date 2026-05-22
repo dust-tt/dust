@@ -1,15 +1,15 @@
 import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PostSendOnboardingResponseBody = {
   conversationId: string | null;
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/send-onboarding.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", async (ctx): HandlerResult<PostSendOnboardingResponseBody> => {
   const auth = ctx.get("auth");

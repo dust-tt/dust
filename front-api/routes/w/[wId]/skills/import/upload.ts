@@ -4,12 +4,12 @@ import { join } from "node:path";
 import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/import_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import type formidable from "formidable";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/skills/import/upload.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", async (ctx) => {
   const auth = ctx.get("auth");

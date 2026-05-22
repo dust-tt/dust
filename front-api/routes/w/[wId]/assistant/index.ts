@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 import agentConfigurations from "./agent_configurations";
 import builder from "./builder";
@@ -7,7 +7,7 @@ import mentions from "./mentions";
 import skills from "./skills";
 
 // Mounted at /api/w/:wId/assistant.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/agent_configurations", agentConfigurations);
 app.route("/builder", builder);

@@ -1,8 +1,8 @@
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetReinforcementDailySpendResponseBody = {
   // ISO date strings ("YYYY-MM-DD") → spend in microUSD for that day.
@@ -12,7 +12,7 @@ export type GetReinforcementDailySpendResponseBody = {
 };
 
 // Mounted at /api/w/:wId/skills/reinforcement_daily_spend.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

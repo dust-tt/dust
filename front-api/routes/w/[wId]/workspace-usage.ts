@@ -6,10 +6,10 @@ import {
 } from "@app/lib/workspace_usage";
 import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage_retention";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { endOfMonth } from "date-fns/endOfMonth";
-import { Hono } from "hono";
 import JSZip from "jszip";
 import { z } from "zod";
 
@@ -51,7 +51,7 @@ const GetUsageQueryParamsSchema = z.discriminatedUnion("mode", [
 ]);
 
 // Mounted at /api/w/:wId/workspace-usage.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", validate("query", GetUsageQueryParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");

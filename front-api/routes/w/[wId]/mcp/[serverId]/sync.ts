@@ -1,9 +1,9 @@
 import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type SyncMCPServerResponseBody = {
   success: boolean;
@@ -12,7 +12,7 @@ export type SyncMCPServerResponseBody = {
 
 // Mounted at /api/w/:wId/mcp/:serverId/sync. Admin-only — refreshes the cached
 // metadata for a remote MCP server.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", async (ctx): HandlerResult<SyncMCPServerResponseBody> => {
   const auth = ctx.get("auth");

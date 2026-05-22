@@ -4,9 +4,9 @@ import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { escape } from "html-escaper";
 import { z } from "zod";
 
@@ -22,7 +22,7 @@ export type PostRequestActionsAccessBody = z.infer<
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 
 // Mounted at /api/w/:wId/mcp/request_access.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

@@ -1,7 +1,7 @@
 import type { GlobalAgentFeedbackItem } from "@app/lib/api/poke/global_agent_feedbacks";
 import { listGlobalAgentFeedbacks } from "@app/lib/api/poke/global_agent_feedbacks";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export interface GetGlobalAgentFeedbacksResponseBody {
   feedbacks: GlobalAgentFeedbackItem[];
@@ -10,7 +10,7 @@ export interface GetGlobalAgentFeedbacksResponseBody {
 
 // Mounted at /api/poke/global-agent-feedbacks. pokeAuth is applied by the
 // parent poke sub-app.
-const app = new Hono();
+const app = pokeApp();
 
 app.get(
   "/",

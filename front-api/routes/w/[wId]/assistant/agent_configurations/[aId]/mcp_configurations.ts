@@ -1,16 +1,16 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentMcpConfigurationSummary } from "@app/lib/api/assistant/mcp_configurations";
 import { listAgentMcpConfigurationsForAgent } from "@app/lib/api/assistant/mcp_configurations";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetAgentMcpConfigurationsResponseBody = {
   configurations: AgentMcpConfigurationSummary[];
 };
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/mcp_configurations.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

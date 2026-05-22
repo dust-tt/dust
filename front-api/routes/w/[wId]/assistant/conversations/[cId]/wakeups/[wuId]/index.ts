@@ -2,16 +2,16 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type DeleteConversationWakeUpResponseBody = {
   wakeUp: WakeUpType;
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/wakeups/:wuId.
-const app = new Hono();
+const app = workspaceApp();
 
 app.delete(
   "/",

@@ -14,8 +14,8 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import actions from "./actions";
 import answerQuestion from "./answer-question";
@@ -31,7 +31,7 @@ import skills from "./skills";
 import validateAction from "./validate-action";
 
 // Mounted under /api/w/:wId/assistant/conversations/:cId/messages/:mId.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

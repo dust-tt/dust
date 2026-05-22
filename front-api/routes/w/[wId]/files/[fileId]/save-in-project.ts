@@ -5,10 +5,10 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { FileTypeWithMetadata } from "@app/types/files";
 import { isConversationFileUseCase } from "@app/types/files";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type SaveInProjectResponseBody = {
@@ -20,7 +20,7 @@ const SaveInProjectRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/files/:fileId/save-in-project.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

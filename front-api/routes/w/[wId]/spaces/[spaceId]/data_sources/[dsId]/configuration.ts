@@ -6,12 +6,12 @@ import {
   ConnectorsAPI,
   UpdateConnectorConfigurationTypeSchema,
 } from "@app/types/connectors/connectors_api";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withDataSource } from "@front-api/middleware/with_data_source";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 export type GetDataSourceConfigurationResponseBody = {
   configuration: ConnectorConfiguration;
@@ -23,7 +23,7 @@ export type PatchDataSourceConfigurationResponseBody =
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/configuration.
 // Only Slack and Webcrawler connectors have configurations; Slack is set from
 // Poke, so this route is effectively for webcrawler-managed data sources.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

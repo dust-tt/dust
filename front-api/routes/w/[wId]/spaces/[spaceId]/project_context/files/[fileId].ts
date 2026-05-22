@@ -1,8 +1,8 @@
 import { removeFileFromProject } from "@app/lib/api/projects/context";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 export type DeleteProjectContextFileResponseBody = Record<string, never>;
 
@@ -10,7 +10,7 @@ export type DeleteProjectContextFileResponseBody = Record<string, never>;
 //
 // The Next handler enforces these as project-only and require write access;
 // we keep the same checks here.
-const app = new Hono();
+const app = workspaceApp();
 
 app.delete(
   "/",

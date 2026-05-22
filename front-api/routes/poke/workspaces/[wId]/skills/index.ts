@@ -1,7 +1,7 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import sId from "./[sId]";
 import suggestions from "./suggestions";
@@ -11,7 +11,7 @@ export type GetPokeSkillsResponseBody = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/skills.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetPokeSkillsResponseBody> => {
   const auth = ctx.get("auth");

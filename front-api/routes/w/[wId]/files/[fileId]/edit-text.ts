@@ -6,9 +6,9 @@ import {
   isConversationFileUseCase,
   isInteractiveContentType,
 } from "@app/types/files";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const EditTextRequestBodySchema = z.object({
@@ -17,7 +17,7 @@ const EditTextRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/files/:fileId/edit-text.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", EditTextRequestBodySchema), async (ctx) => {
   const auth = ctx.get("auth");

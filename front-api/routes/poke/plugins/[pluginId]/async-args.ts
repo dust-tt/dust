@@ -3,9 +3,9 @@ import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
 import { supportedResourceTypes } from "@app/types/poke/plugins";
+import { pokeApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export interface PokeGetPluginAsyncArgsResponseBody {
@@ -22,7 +22,7 @@ const AsyncArgsQuerySchema = z.object({
 });
 
 // Mounted at /api/poke/plugins/:pluginId/async-args.
-const app = new Hono();
+const app = pokeApp();
 
 app.get(
   "/",

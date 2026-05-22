@@ -2,13 +2,12 @@ import {
   ExportQuerySchema,
   getProgrammaticCostExport,
 } from "@app/lib/api/analytics/programmatic_cost_export";
-
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/analytics/programmatic-cost-export.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", validate("query", ExportQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");

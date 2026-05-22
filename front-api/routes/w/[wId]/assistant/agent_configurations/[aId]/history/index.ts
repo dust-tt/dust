@@ -4,9 +4,9 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { GetAgentConfigurationsHistoryQuerySchema } from "@app/types/api/internal/agent_configuration";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 import { fromError } from "zod-validation-error";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -14,7 +14,7 @@ export type GetAgentConfigurationsResponseBody = {
 };
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/history.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
   const auth = ctx.get("auth");

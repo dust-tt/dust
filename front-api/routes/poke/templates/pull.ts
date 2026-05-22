@@ -1,8 +1,8 @@
 import { pullTemplatesFromMainRegion } from "@app/lib/api/poke/templates";
 import { config } from "@app/lib/api/regions/config";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PullTemplatesResponseBody = {
   success: true;
@@ -11,7 +11,7 @@ export type PullTemplatesResponseBody = {
 
 // Mounted at /api/poke/templates/pull. pokeAuth is applied by the parent poke
 // sub-app.
-const app = new Hono();
+const app = pokeApp();
 
 app.post("/", async (ctx): HandlerResult<PullTemplatesResponseBody> => {
   if (!config.getDustRegionSyncEnabled()) {

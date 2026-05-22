@@ -1,8 +1,8 @@
 import { getWorkOSOrganizationDSyncDirectories } from "@app/lib/api/workos/organization";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PokeDsyncResponseBody = Omit<
   WorkOSConnectionSyncStatus,
@@ -10,7 +10,7 @@ export type PokeDsyncResponseBody = Omit<
 >;
 
 // Mounted at /api/poke/workspaces/:wId/dsync.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeDsyncResponseBody> => {
   const auth = ctx.get("auth");

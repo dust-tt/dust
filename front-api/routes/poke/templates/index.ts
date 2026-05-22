@@ -8,10 +8,10 @@ import {
   isTemplateTagCodeArray,
 } from "@app/types/assistant/templates";
 import { isDevelopment } from "@app/types/shared/env";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { isLeft } from "fp-ts/lib/Either";
-import { Hono } from "hono";
 import * as reporter from "io-ts-reporters";
 
 import tId from "./[tId]";
@@ -32,7 +32,7 @@ interface PokeFetchAssistantTemplatesResponse {
 // `CreateTemplateFormSchema` is a shared io-ts codec also used by the
 // template form component (`ioTsResolver`); migrating it to zod is out of
 // scope for this PR, so io-ts is used inline here.
-const app = new Hono();
+const app = pokeApp();
 
 app.get(
   "/",

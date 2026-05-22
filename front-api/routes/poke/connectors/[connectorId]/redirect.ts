@@ -1,9 +1,9 @@
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 interface GetConnectorRedirectResponse {
   redirectUrl: string;
@@ -11,7 +11,7 @@ interface GetConnectorRedirectResponse {
 
 // Mounted at /api/poke/connectors/:connectorId/redirect. pokeAuth is applied
 // by the parent poke sub-app.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<GetConnectorRedirectResponse> => {
   const connectorId = ctx.req.param("connectorId") ?? "";

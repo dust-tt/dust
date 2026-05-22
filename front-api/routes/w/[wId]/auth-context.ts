@@ -6,9 +6,9 @@ import type { SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { sessionAuthApp } from "@front-api/middleware/env";
 import { sessionAuth } from "@front-api/middleware/session_auth";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetWorkspaceAuthContextResponseType = {
   user: UserType;
@@ -28,7 +28,7 @@ export type GetWorkspaceAuthContextResponseType = {
 // can't be resolved locally: it falls back to a cross-region lookup so the
 // SPA can redirect to the correct region. We therefore use `sessionAuth`
 // (not `workspaceAuth`) and resolve the `Authenticator` inline.
-const app = new Hono();
+const app = sessionAuthApp();
 
 app.use("*", sessionAuth);
 

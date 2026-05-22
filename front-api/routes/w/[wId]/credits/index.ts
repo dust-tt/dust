@@ -6,15 +6,15 @@ import type {
   GetCreditsResponseBody,
   PendingCreditData,
 } from "@app/types/credits";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import awuPoolSummary from "./awu-pool-summary";
 import membersUsage from "./members-usage";
 import metronomeBalances from "./metronome-balances";
 
 // Mounted at /api/w/:wId/credits.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/awu-pool-summary", awuPoolSummary);
 app.route("/members-usage", membersUsage);

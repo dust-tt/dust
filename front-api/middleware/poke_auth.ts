@@ -1,13 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
+import type { PokeAuthEnv } from "@front-api/middleware/env";
 import { resolveSession } from "@front-api/middleware/session_resolution";
 import { apiError } from "@front-api/middleware/utils";
 import { createMiddleware } from "hono/factory";
-
-export type PokeAuthEnv = {
-  Variables: {
-    auth: Authenticator;
-  };
-};
 
 /**
  * Authenticates a Poke (super-user) request and stores the resolved

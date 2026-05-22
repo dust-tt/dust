@@ -2,10 +2,9 @@ import {
   MCPServerInstanceLimitError,
   registerMCPServer,
 } from "@app/lib/api/actions/mcp/client_side_registry";
-
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const MIN_SERVER_NAME_LENGTH = 5;
@@ -27,7 +26,7 @@ export type PostMCPRegisterRequestBody = z.infer<
 >;
 
 // Mounted at /api/w/:wId/mcp/register.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

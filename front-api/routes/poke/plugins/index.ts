@@ -3,9 +3,9 @@ import type { PluginListItem } from "@app/lib/api/poke/types";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import { isSupportedResourceType } from "@app/types/poke/plugins";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import pluginId from "./[pluginId]";
@@ -24,7 +24,7 @@ const ListPluginsQuerySchema = z.object({
 });
 
 // Mounted at /api/poke/plugins.
-const app = new Hono();
+const app = pokeApp();
 
 app.get(
   "/",

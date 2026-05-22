@@ -4,10 +4,10 @@ import { isProviderWhitelisted } from "@app/lib/assistant";
 import { isSupportedModel } from "@app/types/assistant/assistant";
 import type { CompactionMessageType } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PostConversationCompactResponseBody = {
@@ -22,7 +22,7 @@ const PostConversationCompactionsBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/compactions.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

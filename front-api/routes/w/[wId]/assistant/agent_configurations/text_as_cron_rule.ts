@@ -5,10 +5,10 @@ import {
   TOO_FREQUENT_MESSAGE,
 } from "@app/lib/api/assistant/configuration/triggers";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PostTextAsCronRuleResponseBody =
@@ -48,7 +48,7 @@ const PostTextAsCronRuleRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/text_as_cron_rule.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

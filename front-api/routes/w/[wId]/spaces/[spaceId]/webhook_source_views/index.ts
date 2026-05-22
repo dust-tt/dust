@@ -1,11 +1,11 @@
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { SpaceKind } from "@app/types/space";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import webhookSourceViewId from "./[webhookSourceViewId]";
@@ -25,7 +25,7 @@ const PostWebhookSourceViewBodySchema = z.object({
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/webhook_source_views.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

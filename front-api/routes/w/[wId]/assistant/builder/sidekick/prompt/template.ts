@@ -1,10 +1,10 @@
 import { buildTemplatePrompt } from "@app/lib/api/assistant/builder/sidekick_prompts";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/builder/sidekick/prompt/template.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const templateId = ctx.req.query("templateId");

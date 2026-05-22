@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { pokeApp } from "@front-api/middleware/env";
 
 import connectorId from "./[connectorId]";
 
 // Mounted at /api/poke/connectors.
-const app = new Hono();
+const app = pokeApp();
 
 app.route("/:connectorId", connectorId);
 

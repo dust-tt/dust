@@ -1,14 +1,14 @@
 import { AppResource } from "@app/lib/resources/app_resource";
 import { type ExportedApp, exportAppWithDatasets } from "@app/lib/utils/apps";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type ExportAppResponseBody = {
   app: ExportedApp;
 };
 
 // Mounted at /api/poke/workspaces/:wId/apps/:aId/export.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<ExportAppResponseBody> => {
   const auth = ctx.get("auth");

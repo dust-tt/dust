@@ -2,13 +2,13 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import fId from "./[fId]";
 
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/feedbacks.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

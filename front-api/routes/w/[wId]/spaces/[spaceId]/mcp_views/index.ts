@@ -15,11 +15,11 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 import svId from "./[svId]";
 import notActivated from "./not_activated";
@@ -113,7 +113,7 @@ async function notifyWorkspaceAdminsAboutAffectedAgents(
 }
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

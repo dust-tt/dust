@@ -1,15 +1,14 @@
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetSubscriptionTrialInfoResponseBody = {
   trialDaysRemaining: number | null;
 };
 
 // Mounted at /api/w/:wId/subscriptions/trial-info.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

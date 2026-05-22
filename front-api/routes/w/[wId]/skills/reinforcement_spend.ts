@@ -1,9 +1,9 @@
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetSkillsSpendResponseBody = {
   // Map from skill sId to total spent in the current billing period (microUSD).
@@ -12,7 +12,7 @@ export type GetSkillsSpendResponseBody = {
 };
 
 // Mounted at /api/w/:wId/skills/reinforcement_spend.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetSkillsSpendResponseBody> => {
   const auth = ctx.get("auth");

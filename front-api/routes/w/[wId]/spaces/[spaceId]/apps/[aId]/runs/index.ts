@@ -11,12 +11,12 @@ import { CoreAPI } from "@app/types/core/core_api";
 import type { APIErrorResponse } from "@app/types/error";
 import type { RunType } from "@app/types/run";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import { sessionAuth } from "@front-api/middleware/session_auth";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
 import type { Context, TypedResponse } from "hono";
-import { Hono } from "hono";
 
 import runId from "./[runId]";
 
@@ -30,7 +30,7 @@ export type PostRunsResponseBody = {
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs.
-const app = new Hono();
+const app = workspaceApp();
 
 // Shared prelude for GET and POST: resolves the app from `:aId`, verifies it
 // belongs to the current space, and enforces write access on it. Returns

@@ -3,10 +3,10 @@ import logger from "@app/logger/logger";
 import type { AdminResponseType } from "@app/types/connectors/admin/cli";
 import { AdminCommandSchema } from "@app/types/connectors/admin/cli";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { isLeft } from "fp-ts/lib/Either";
-import { Hono } from "hono";
 import * as reporter from "io-ts-reporters";
 
 // Mounted at /api/poke/admin. pokeAuth is applied by the parent poke sub-app.
@@ -14,7 +14,7 @@ import * as reporter from "io-ts-reporters";
 // The request body uses `AdminCommandSchema`, a large shared io-ts union
 // (~880 lines) consumed by the connectors API type system. Migrating it to
 // zod is outside the scope of this PR; we keep io-ts decoding inline here.
-const app = new Hono();
+const app = pokeApp();
 
 app.post("/", async (ctx): HandlerResult<AdminResponseType> => {
   const body = await ctx.req.json().catch(() => null);

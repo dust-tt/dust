@@ -3,9 +3,9 @@ import {
   fetchWorkspaceDatasourceRetrievalMetrics,
   type WorkspaceDatasourceRetrievalData,
 } from "@app/lib/api/assistant/observability/datasource_retrieval";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -19,7 +19,7 @@ const QuerySchema = z.object({
 });
 
 // Mounted at /api/poke/workspaces/:wId/observability/datasource-retrieval.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get(
   "/",

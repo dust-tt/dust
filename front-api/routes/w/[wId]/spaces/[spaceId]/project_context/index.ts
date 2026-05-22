@@ -7,11 +7,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentNodeType } from "@app/types/core/content_node";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import contentNodes from "./content_nodes";
@@ -68,7 +68,7 @@ function attachmentTitleMatchesQuery(title: string, q: string): boolean {
 }
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_context.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

@@ -1,10 +1,10 @@
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/mark_read.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");

@@ -1,9 +1,9 @@
 import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
 import { getStripeCustomer } from "@app/lib/plans/stripe";
 import type { SupportedCurrency } from "@app/types/currency";
+import { pokeApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const PostPokeStripeCustomerCurrencyBodySchema = z.object({
@@ -15,7 +15,7 @@ export type PostPokeStripeCustomerCurrencyResponseBody = {
 };
 
 // Mounted at /api/poke/stripe/customers/currency.
-const app = new Hono();
+const app = pokeApp();
 
 app.post(
   "/",

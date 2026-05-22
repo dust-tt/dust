@@ -6,11 +6,11 @@ import {
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isRemoteDatabase } from "@app/lib/data_sources";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withDataSource } from "@front-api/middleware/with_data_source";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import configuration from "./configuration";
@@ -23,7 +23,7 @@ const PatchDataSourceWithoutProviderRequestBodySchema = z.object({
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId.
-const app = new Hono();
+const app = workspaceApp();
 
 app.patch(
   "/",

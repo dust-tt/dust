@@ -1,9 +1,9 @@
 import { UserQuestionAnswerSchema } from "@app/lib/actions/types";
 import { registerUserAnswer } from "@app/lib/api/assistant/conversation/answer_user_question";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const AnswerQuestionRequestSchema = z.object({
@@ -12,7 +12,7 @@ const AnswerQuestionRequestSchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/answer-question.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", AnswerQuestionRequestSchema), async (ctx) => {
   const auth = ctx.get("auth");

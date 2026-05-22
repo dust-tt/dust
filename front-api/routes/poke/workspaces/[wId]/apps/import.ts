@@ -1,9 +1,9 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApp } from "@app/lib/utils/apps";
 import type { AppType } from "@app/types/app";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 type ImportAppResponseBody = {
@@ -48,7 +48,7 @@ const ImportQuerySchema = z.object({
 });
 
 // Mounted at /api/poke/workspaces/:wId/apps/import.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.post(
   "/",

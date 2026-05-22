@@ -1,8 +1,8 @@
-import { Hono } from "hono";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 
 import svId from "./[svId]";
 
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.route("/:svId", svId);
 

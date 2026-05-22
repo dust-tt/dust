@@ -1,15 +1,15 @@
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetSimilarSkillsResponseBody = {
   similar_skills: string[];
 };
 
 // Mounted at /api/w/:wId/skills/similar.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", async (ctx) => {
   const auth = ctx.get("auth");

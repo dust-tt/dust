@@ -2,10 +2,10 @@ import {
   archiveAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PostAgentConfigurationArchiveResponseBody = {
@@ -17,7 +17,7 @@ const PostAgentConfigurationArchiveSchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/delete.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

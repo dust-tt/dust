@@ -3,9 +3,9 @@ import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ProjectType } from "@app/types/space";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type SearchProjectsResponseBody = {
   spaces: Array<ProjectType & { isMember: boolean }>;
@@ -14,7 +14,7 @@ export type SearchProjectsResponseBody = {
 };
 
 // Mounted under /api/w/:wId/spaces/search_projects.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<SearchProjectsResponseBody> => {
   const auth = ctx.get("auth");

@@ -3,9 +3,9 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetSlackChannelsLinkedWithAgentResponseBody = {
   provider: Extract<ConnectorProvider, "slack" | "slack_bot">;
@@ -19,7 +19,7 @@ export type GetSlackChannelsLinkedWithAgentResponseBody = {
 };
 
 // Mounted at /api/w/:wId/assistant/builder/slack/channels_linked_with_agent.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

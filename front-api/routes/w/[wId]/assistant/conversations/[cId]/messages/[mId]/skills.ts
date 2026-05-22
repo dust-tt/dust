@@ -1,16 +1,16 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetAgentMessageSkillsResponseBody = {
   skills: SkillType[];
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/skills.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetAgentMessageSkillsResponseBody> => {
   const auth = ctx.get("auth");

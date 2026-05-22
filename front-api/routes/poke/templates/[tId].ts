@@ -7,10 +7,10 @@ import {
   isTemplateTagCodeArray,
 } from "@app/types/assistant/templates";
 import { isDevelopment } from "@app/types/shared/env";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { isLeft } from "fp-ts/lib/Either";
-import { Hono } from "hono";
 import * as reporter from "io-ts-reporters";
 
 export type PokeFetchAssistantTemplateResponse = ReturnType<
@@ -23,7 +23,7 @@ interface PokeCreateTemplateResponseBody {
 
 // Mounted at /api/poke/templates/:tId. pokeAuth is applied by the parent poke
 // sub-app.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<PokeFetchAssistantTemplateResponse> => {
   const templateId = ctx.req.param("tId") ?? "";

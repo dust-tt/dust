@@ -1,16 +1,16 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { UserType } from "@app/types/user";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetAgentLastAuthorResponseBody = {
   user: UserType | null;
 };
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/last_author.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetAgentLastAuthorResponseBody> => {
   const auth = ctx.get("auth");

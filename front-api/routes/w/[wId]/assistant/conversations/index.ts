@@ -21,10 +21,10 @@ import type {
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import conversation from "./[cId]";
@@ -66,7 +66,7 @@ function isConversationNotFoundError(err: unknown): err is ConversationError {
 }
 
 // Mounted under /api/w/:wId/assistant/conversations.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetConversationsResponseBody> => {
   const auth = ctx.get("auth");

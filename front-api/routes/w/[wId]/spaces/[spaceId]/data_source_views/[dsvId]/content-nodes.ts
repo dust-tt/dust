@@ -4,11 +4,11 @@ import {
   SortingParamsCodec,
 } from "@app/lib/api/pagination";
 import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const ContentNodesBody = z.object({
@@ -20,7 +20,7 @@ const ContentNodesBody = z.object({
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/content-nodes.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

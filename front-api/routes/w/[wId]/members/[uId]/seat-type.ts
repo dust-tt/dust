@@ -5,8 +5,8 @@ import {
   type MembershipSeatType,
 } from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -20,7 +20,7 @@ type PatchMemberSeatTypeResponseBody = {
 };
 
 // Mounted at /api/w/:wId/members/:uId/seat-type.
-const app = new Hono();
+const app = workspaceApp();
 
 app.patch("/", async (ctx) => {
   const auth = ctx.get("auth");

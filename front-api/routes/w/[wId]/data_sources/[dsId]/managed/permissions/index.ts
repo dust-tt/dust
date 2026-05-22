@@ -9,10 +9,10 @@ import type {
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type GetDataSourcePermissionsResponseBody<
@@ -35,7 +35,7 @@ const SetConnectorPermissionsRequestBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/permissions.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

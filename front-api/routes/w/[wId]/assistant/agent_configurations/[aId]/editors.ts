@@ -6,10 +6,10 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type GetAgentEditorsResponseBody = {
@@ -37,7 +37,7 @@ const PatchAgentEditorsRequestBodySchema = z
   );
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/editors.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetAgentEditorsResponseBody> => {
   const auth = ctx.get("auth");

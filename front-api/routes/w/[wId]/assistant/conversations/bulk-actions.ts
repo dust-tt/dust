@@ -1,6 +1,6 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const MarkAllAsReadBodySchema = z.object({
@@ -9,7 +9,7 @@ const MarkAllAsReadBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/bulk-actions.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", MarkAllAsReadBodySchema), async (ctx) => {
   const auth = ctx.get("auth");

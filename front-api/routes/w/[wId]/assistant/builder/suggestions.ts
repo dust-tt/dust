@@ -1,11 +1,11 @@
 import { getBuilderSuggestions } from "@app/lib/api/assistant/suggestions";
 import { InternalPostBuilderSuggestionsRequestBodySchema } from "@app/types/api/internal/assistant";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/builder/suggestions.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

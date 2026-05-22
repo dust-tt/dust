@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 import member from "./[uId]";
 import lookup from "./lookup";
@@ -6,7 +6,7 @@ import me from "./me";
 import search from "./search";
 
 // Mounted under /api/w/:wId/members.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/lookup", lookup);
 app.route("/me", me);

@@ -1,9 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
+import { sessionAuthApp } from "@front-api/middleware/env";
 import { sessionAuth } from "@front-api/middleware/session_auth";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const PostStripePortalRequestBody = z.object({
@@ -15,7 +15,7 @@ export type PostStripePortalResponseBody = {
 };
 
 // Mounted at /api/stripe/portal.
-const app = new Hono();
+const app = sessionAuthApp();
 
 app.use("*", sessionAuth);
 

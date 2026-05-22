@@ -2,11 +2,11 @@ import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { CoreAPIDocument } from "@app/types/core/data_source";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 export type GetDataSourceViewDocumentResponseBody = {
   document: CoreAPIDocument;
@@ -14,7 +14,7 @@ export type GetDataSourceViewDocumentResponseBody = {
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/documents/:documentId.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

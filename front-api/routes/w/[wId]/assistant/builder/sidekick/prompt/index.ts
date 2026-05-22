@@ -1,11 +1,11 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 import existing from "./existing";
 import shrinkWrap from "./shrink-wrap";
 import template from "./template";
 
 // Mounted under /api/w/:wId/assistant/builder/sidekick/prompt.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/template", template);
 app.route("/existing", existing);

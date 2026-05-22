@@ -3,15 +3,15 @@ import {
   getRegisteredCheck,
 } from "@app/lib/api/poke/production_checks";
 import type { CheckHistoryRun } from "@app/types/production_checks";
+import { pokeApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetCheckHistoryResponseBody = {
   runs: CheckHistoryRun[];
 };
 
 // Mounted at /api/poke/production-checks/:checkName/history.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<GetCheckHistoryResponseBody> => {
   const checkName = ctx.req.param("checkName");

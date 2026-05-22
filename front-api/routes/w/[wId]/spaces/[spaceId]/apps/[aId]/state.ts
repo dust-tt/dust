@@ -1,10 +1,10 @@
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { AppType } from "@app/types/app";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PostStateResponseBody = {
@@ -18,7 +18,7 @@ const PostStateBodySchema = z.object({
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/state.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

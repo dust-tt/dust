@@ -5,12 +5,12 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/join.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

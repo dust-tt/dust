@@ -1,8 +1,8 @@
 import { exportInteractiveContentFileAsPdf } from "@app/lib/api/files/pdf_export";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const PostPdfExportBodySchema = z.object({
@@ -10,7 +10,7 @@ const PostPdfExportBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/files/:fileId/export/pdf.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", PostPdfExportBodySchema), async (ctx) => {
   const auth = ctx.get("auth");

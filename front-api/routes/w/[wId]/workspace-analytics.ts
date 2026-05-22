@@ -2,11 +2,11 @@ import {
   getWorkspaceAnalytics,
   type WorkspaceAnalytics,
 } from "@app/lib/api/workspace_analytics";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/workspace-analytics.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<WorkspaceAnalytics> => {
   const auth = ctx.get("auth");

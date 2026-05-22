@@ -2,9 +2,9 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import type { AvailableSkill } from "@app/lib/api/assistant/observability/skill_usage";
 import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const QuerySchema = z.object({
@@ -16,7 +16,7 @@ export type GetWorkspaceSkillsResponse = {
 };
 
 // Mounted at /api/w/:wId/analytics/skills.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");

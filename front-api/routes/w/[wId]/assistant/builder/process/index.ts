@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 import generateSchema from "./generate_schema";
 
 // Mounted under /api/w/:wId/assistant/builder/process.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/generate_schema", generateSchema);
 

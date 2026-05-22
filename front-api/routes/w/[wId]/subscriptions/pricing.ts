@@ -1,15 +1,14 @@
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
-
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetSubscriptionPricingResponseBody = {
   perSeatPricing: SubscriptionPerSeatPricing | null;
 };
 
 // Mounted at /api/w/:wId/subscriptions/pricing.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetSubscriptionPricingResponseBody> => {
   const auth = ctx.get("auth");

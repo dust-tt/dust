@@ -3,10 +3,10 @@ import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { config as documentBodyParserConfig } from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 import type { PlanType } from "@app/types/plan";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type GetPokePlansResponseBody = {
@@ -67,7 +67,7 @@ export const PlanTypeSchema = z.object({
 });
 
 // Mounted at /api/poke/plans. pokeAuth is applied by the parent poke sub-app.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<GetPokePlansResponseBody> => {
   const planModels = await PlanModel.findAll({

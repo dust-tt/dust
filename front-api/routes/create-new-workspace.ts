@@ -2,12 +2,12 @@ import { createAndTrackMembership } from "@app/lib/api/membership";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { sessionAuthApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import { sessionAuth } from "../middleware/session_auth";
 
-export const createNewWorkspaceApp = new Hono();
+export const createNewWorkspaceApp = sessionAuthApp();
 
 createNewWorkspaceApp.use("*", sessionAuth);
 

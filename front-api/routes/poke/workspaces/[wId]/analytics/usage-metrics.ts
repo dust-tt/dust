@@ -8,9 +8,9 @@ import {
   buildAgentAnalyticsBaseQuery,
   timezoneSchema,
 } from "@app/lib/api/assistant/observability/utils";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -29,7 +29,7 @@ export type PokeGetWorkspaceUsageMetricsResponse = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/analytics/usage-metrics.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");

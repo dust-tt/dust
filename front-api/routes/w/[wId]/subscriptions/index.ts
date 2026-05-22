@@ -8,11 +8,11 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import type { CheckoutUrlResult, SubscriptionType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import type { Context } from "hono";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import checkoutStatus from "./checkout-status";
@@ -41,7 +41,7 @@ const PatchSubscriptionRequestBody = z.object({
 
 // Mounted under /api/w/:wId/subscriptions. The bare `/` handles GET, POST,
 // and PATCH on the workspace's subscription itself; admin-only.
-const app = new Hono();
+const app = workspaceApp();
 
 function requireAdmin(ctx: Context) {
   const auth = ctx.get("auth");

@@ -1,8 +1,8 @@
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ProjectTaskType } from "@app/types/project_task";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 // `ProjectTaskType` declares several `Date` fields (`doneAt`,
 // `agentSuggestionReviewedAt`, `createdAt`, `updatedAt`). On the wire these
@@ -23,7 +23,7 @@ export type PokeListProjectTasks = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/projects/:projectId/tasks.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeListProjectTasks> => {
   const auth = ctx.get("auth");

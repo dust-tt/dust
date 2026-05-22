@@ -1,10 +1,10 @@
-import { Hono } from "hono";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 
 import connectorKnowledge from "./connector-knowledge";
 import tasks from "./tasks";
 import tasksWorkflow from "./tasks-workflow";
 
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.route("/connector-knowledge", connectorKnowledge);
 app.route("/tasks-workflow", tasksWorkflow);

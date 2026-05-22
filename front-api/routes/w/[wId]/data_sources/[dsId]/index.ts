@@ -1,10 +1,9 @@
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceType } from "@app/types/data_source";
-
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import files from "./files";
@@ -23,7 +22,7 @@ const PostDataSourceBodySchema = z
 
 // Mounted under /api/w/:wId/data_sources/:dsId. The bare `/` handles POST to
 // update the data source settings.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

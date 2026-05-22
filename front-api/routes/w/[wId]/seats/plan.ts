@@ -1,4 +1,5 @@
 import type {
+  SeatBillingFrequency,
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
@@ -9,17 +10,18 @@ import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   getAwuAllocationForSeatType,
   getProductSeatTypes,
+  getSeatSubscriptionsFromContract,
   getSeatTypesByProductIdFromContract,
   isMauContract,
 } from "@app/lib/metronome/seat_types";
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/seats/plan.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");
@@ -73,6 +75,27 @@ app.get("/", async (ctx) => {
   if (seatTypesByProductId.size === 0) {
     const empty: SeatPlanResponseBody = {};
     return ctx.json(empty);
+  }
+
+  // Resolve each seat's billing frequency from the matching subscription on
+  // the contract. Default to "monthly" if the subscription declares anything
+  // other than ANNUAL — Metronome's enum has WEEKLY / QUARTERLY too, but we
+  // only ship monthly and annual seats.
+  const billingFrequencyBySeatType = new Map<
+    MembershipSeatType,
+    SeatBillingFrequency
+  >();
+  const seatSubscriptions = getSeatSubscriptionsFromContract(
+    contract,
+    productSeatTypes
+  );
+  for (const [seatType, sub] of seatSubscriptions) {
+    billingFrequencyBySeatType.set(
+      seatType,
+      sub.subscription_rate.billing_frequency === "ANNUAL"
+        ? "annual"
+        : "monthly"
+    );
   }
 
   const monthlyPriceCentsBySeatType = new Map<MembershipSeatType, number>();
@@ -150,6 +173,7 @@ app.get("/", async (ctx) => {
       ),
       priceCents,
       currency,
+      billingFrequency: billingFrequencyBySeatType.get(seatType) ?? "monthly",
     };
     response[seatType] = info;
   }

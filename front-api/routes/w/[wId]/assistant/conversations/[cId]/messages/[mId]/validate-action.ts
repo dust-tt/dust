@@ -1,8 +1,8 @@
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const ValidateActionSchema = z.object({
@@ -12,7 +12,7 @@ const ValidateActionSchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/validate-action.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", ValidateActionSchema), async (ctx) => {
   const auth = ctx.get("auth");

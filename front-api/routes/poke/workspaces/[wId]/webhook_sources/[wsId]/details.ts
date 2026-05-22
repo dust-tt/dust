@@ -6,8 +6,8 @@ import type {
   WebhookSourceViewForAdminType,
 } from "@app/types/triggers/webhooks";
 import type { UserType } from "@app/types/user";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PokeGetWebhookSourceDetails = {
   webhookSource: WebhookSourceForAdminType;
@@ -17,7 +17,7 @@ export type PokeGetWebhookSourceDetails = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/webhook_sources/:wsId/details.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetWebhookSourceDetails> => {
   const auth = ctx.get("auth");

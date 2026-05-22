@@ -3,8 +3,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ProjectListItemType } from "@app/types/space";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import spaceId from "./[spaceId]";
 
@@ -36,7 +36,7 @@ export function sortSpacesSummary<T extends { id: number }>(
 }
 
 // Mounted under /api/w/:wId/assistant/conversations/spaces.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
   const auth = ctx.get("auth");

@@ -12,9 +12,9 @@ import {
   supportedResourceTypes,
 } from "@app/types/poke/plugins";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { pokeApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -46,7 +46,7 @@ export interface PokeRunPluginResponseBody {
 }
 
 // Mounted at /api/poke/plugins/:pluginId/run.
-const app = new Hono();
+const app = pokeApp();
 
 app.post(
   "/",

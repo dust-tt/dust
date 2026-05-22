@@ -1,6 +1,6 @@
 import { deregisterMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
+import { workspaceApp } from "@front-api/middleware/env";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const PostMCPDeregisterRequestBodySchema = z.object({
@@ -12,7 +12,7 @@ export type PostMCPDeregisterRequestBody = z.infer<
 >;
 
 // Mounted at /api/w/:wId/mcp/deregister.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

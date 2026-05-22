@@ -2,13 +2,13 @@ import {
   getPokeWorkspaceInfo,
   type PokeWorkspaceInfo,
 } from "@app/lib/api/poke/workspace_info";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PokeGetWorkspaceInfo = PokeWorkspaceInfo;
 
 // Mounted at /api/poke/workspaces/:wId/workspace-info.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetWorkspaceInfo> => {
   const auth = ctx.get("auth");

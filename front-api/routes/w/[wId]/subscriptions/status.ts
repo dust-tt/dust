@@ -1,8 +1,8 @@
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetSubscriptionStatusResponseBody = {
   shouldRedirect: boolean;
@@ -10,7 +10,7 @@ export type GetSubscriptionStatusResponseBody = {
 };
 
 // Mounted at /api/w/:wId/subscriptions/status.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetSubscriptionStatusResponseBody> => {
   const auth = ctx.get("auth");

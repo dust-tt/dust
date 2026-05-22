@@ -1,9 +1,9 @@
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import { GroupKindCodec } from "@app/types/groups";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type GetGroupsResponseBody = {
@@ -16,7 +16,7 @@ const GetGroupsQuerySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/groups.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

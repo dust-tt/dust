@@ -5,10 +5,10 @@ import {
   getCacheResourceById,
 } from "@app/types/shared/cache_resource_registry";
 import { isString } from "@app/types/shared/utils/general";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import type { Context } from "hono";
-import { Hono } from "hono";
 
 export interface RedisCacheResult {
   value: unknown | null;
@@ -30,7 +30,7 @@ export type DeletePokeCacheResponseBody = {
 };
 
 // Mounted at /api/poke/cache. pokeAuth is applied by the parent poke sub-app.
-const app = new Hono();
+const app = pokeApp();
 
 function resolveCacheKey(
   ctx: Context

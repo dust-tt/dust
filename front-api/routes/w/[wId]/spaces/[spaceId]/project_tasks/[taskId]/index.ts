@@ -2,11 +2,11 @@ import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { ProjectTaskType } from "@app/types/project_task";
 import { PROJECT_TASK_STATUSES } from "@app/types/project_task";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import start from "./start";
@@ -50,7 +50,7 @@ const PatchProjectTaskBodySchema = z
   );
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/:taskId.
-const app = new Hono();
+const app = workspaceApp();
 
 app.patch(
   "/",

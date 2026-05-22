@@ -1,7 +1,7 @@
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GroupType } from "@app/types/groups";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import groupId from "./[groupId]";
 
@@ -10,7 +10,7 @@ export type PokeListGroups = {
 };
 
 // Mounted at /api/poke/workspaces/:wId/groups.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeListGroups> => {
   const auth = ctx.get("auth");

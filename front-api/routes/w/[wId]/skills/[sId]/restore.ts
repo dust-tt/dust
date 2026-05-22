@@ -1,15 +1,15 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type RestoreSkillConfigurationResponseBody = {
   success: true;
 };
 
 // Mounted at /api/w/:wId/skills/:sId/restore.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

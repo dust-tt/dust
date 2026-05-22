@@ -15,11 +15,11 @@ import type {
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import type { Context, TypedResponse } from "hono";
-import { Hono } from "hono";
 import uniq from "lodash/uniq";
 import { z } from "zod";
 
@@ -109,7 +109,7 @@ async function loadSkill(
 }
 
 // Mounted at /api/w/:wId/skills/:sId.
-const app = new Hono();
+const app = workspaceApp();
 
 // Sub-routes for this skill.
 app.route("/editors", editors);

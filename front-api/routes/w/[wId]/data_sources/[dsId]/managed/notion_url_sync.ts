@@ -6,10 +6,10 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import { DataSourceResource as DataSourceResourceClass } from "@app/lib/resources/data_source_resource";
 import type { GetPostNotionSyncResponseBody } from "@app/types/api/internal/spaces";
 import { PostNotionSyncPayloadSchema } from "@app/types/api/internal/spaces";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import type { Context } from "hono";
-import { Hono } from "hono";
 
 const RECENT_URLS_COUNT = 100;
 
@@ -76,7 +76,7 @@ function errorJson(
 }
 
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion_url_sync.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

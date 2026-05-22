@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 import search from "./search";
 
 // Mounted under /api/w/:wId/data_source_views/tags.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/search", search);
 

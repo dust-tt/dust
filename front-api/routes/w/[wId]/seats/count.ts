@@ -1,15 +1,14 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetWorkspaceSeatsCountResponseBody = {
   seatsCount: number;
 };
 
 // Mounted at /api/w/:wId/seats/count.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetWorkspaceSeatsCountResponseBody> => {
   const auth = ctx.get("auth");

@@ -7,10 +7,10 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { SKILL_REINFORCEMENT_MODES } from "@app/types/assistant/skill_configuration";
 import { isString } from "@app/types/shared/utils/general";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const PatchSkillReinforcementBodySchema = z
@@ -37,7 +37,7 @@ export type PatchSkillReinforcementResponseBody = {
 };
 
 // Mounted at /api/w/:wId/skills/:sId/reinforcement.
-const app = new Hono();
+const app = workspaceApp();
 
 app.patch(
   "/",

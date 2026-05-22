@@ -6,11 +6,11 @@ import type { SearchWarningCode } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withDataSourceView } from "@front-api/middleware/with_data_source_view";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 export type SearchTablesResponseBody = {
   tables: DataSourceViewContentNode[];
@@ -20,7 +20,7 @@ export type SearchTablesResponseBody = {
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables/search.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

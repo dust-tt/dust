@@ -8,9 +8,9 @@ import config from "@app/lib/api/config";
 import { generateWorkOSAdminPortalUrl } from "@app/lib/api/workos/organization";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const PostAuditLogsRequestBodySchema = z.object({
@@ -22,7 +22,7 @@ export type AuditLogsPortalResponse = {
 };
 
 // Mounted at /api/w/:wId/audit-logs.
-const app = new Hono();
+const app = workspaceApp();
 
 // Generates a WorkOS portal URL on click and emits an audit event.
 // WorkOS portal links are org-scoped (not user-scoped), so this is the

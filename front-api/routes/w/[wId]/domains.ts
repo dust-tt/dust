@@ -10,10 +10,10 @@ import {
 import { removeWorkOSOrganizationDomain } from "@app/lib/api/workos/organization_primitives";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import type { Organization } from "@workos-inc/node";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const DeleteWorkspaceDomainRequestBodySchema = z.object({
@@ -26,7 +26,7 @@ export interface GetWorkspaceDomainsResponseBody {
 }
 
 // Mounted at /api/w/:wId/domains.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetWorkspaceDomainsResponseBody> => {
   const auth = ctx.get("auth");

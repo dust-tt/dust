@@ -3,9 +3,9 @@ import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observabili
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { estypes } from "@elastic/elasticsearch";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -23,7 +23,7 @@ type OverviewAggs = {
 };
 
 // Mounted at /api/w/:wId/analytics/overview.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");

@@ -1,9 +1,8 @@
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceType } from "@app/types/data_source";
-
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetBotDataSourcesResponseBody = {
   slackBotDataSource: DataSourceType | null;
@@ -12,7 +11,7 @@ export type GetBotDataSourcesResponseBody = {
 };
 
 // Mounted at /api/w/:wId/data_sources/bot-data-sources.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetBotDataSourcesResponseBody> => {
   const auth = ctx.get("auth");

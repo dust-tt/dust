@@ -3,17 +3,17 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { RunType } from "@app/types/run";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 export type GetRunStatusResponseBody = {
   run: RunType | null;
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/status.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

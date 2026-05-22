@@ -14,11 +14,11 @@ import type {
   DataSourceViewsWithDetails,
   DataSourceViewType,
 } from "@app/types/data_source_view";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 import dsvId from "./[dsvId]";
 
@@ -35,7 +35,7 @@ export type PostSpaceDataSourceViewsResponseBody = {
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_source_views.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

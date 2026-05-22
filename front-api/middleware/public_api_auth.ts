@@ -11,16 +11,11 @@ import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import { getUserEmailFromHeaders } from "@app/types/user";
+import type { PublicApiAuthEnv } from "@front-api/middleware/env";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 
 import { apiError } from "./utils";
-
-export type PublicApiAuthEnv = {
-  Variables: {
-    auth: Authenticator;
-  };
-};
 
 type HeaderRecord = Record<string, string | string[] | undefined>;
 

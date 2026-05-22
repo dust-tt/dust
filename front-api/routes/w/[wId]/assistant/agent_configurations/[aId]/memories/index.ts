@@ -1,8 +1,8 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import mId from "./[mId]";
 
@@ -18,7 +18,7 @@ export type GetAgentMemoriesResponseBody = {
 };
 
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/memories.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetAgentMemoriesResponseBody> => {
   const auth = ctx.get("auth");

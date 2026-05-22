@@ -5,9 +5,9 @@ import { cleanSpecificationFromCore } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import type { AppType, SpecificationType } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PokeGetAppDetails = {
@@ -21,7 +21,7 @@ const DetailsQuerySchema = z.object({
 });
 
 // Mounted at /api/poke/workspaces/:wId/apps/:aId/details.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get(
   "/",

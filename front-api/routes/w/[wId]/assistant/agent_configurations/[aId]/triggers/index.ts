@@ -5,10 +5,10 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 import tId from "./[tId]";
@@ -43,7 +43,7 @@ function isWebhookTriggerData(trigger: {
 }
 
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/triggers.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetTriggersResponseBody> => {
   const auth = ctx.get("auth");

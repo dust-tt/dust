@@ -1,8 +1,8 @@
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SupportedModel } from "@app/types/assistant/models/types";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetConversationContextUsageResponse = {
   model: SupportedModel | null;
@@ -17,7 +17,7 @@ const PENDING_CONTEXT_USAGE_RESPONSE: GetConversationContextUsageResponse = {
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/context-usage.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

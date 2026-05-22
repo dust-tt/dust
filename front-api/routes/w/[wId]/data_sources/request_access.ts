@@ -3,9 +3,9 @@ import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { escape } from "html-escaper";
 import { z } from "zod";
 
@@ -17,7 +17,7 @@ const PostRequestAccessBodySchema = z.object({
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 
 // Mounted at /api/w/:wId/data_sources/request_access.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post("/", validate("json", PostRequestAccessBodySchema), async (ctx) => {
   const auth = ctx.get("auth");

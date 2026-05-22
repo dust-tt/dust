@@ -7,11 +7,11 @@ import {
 } from "@app/temporal/project_task/client";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 
 export type GetProjectMetadataResponseBody = {
   projectMetadata: ProjectMetadataType | null;
@@ -23,7 +23,7 @@ export type PatchProjectMetadataResponseBody = {
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_metadata. All routes
 // require the space to be a project; this is checked inline per handler.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

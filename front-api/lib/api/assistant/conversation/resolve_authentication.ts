@@ -4,9 +4,9 @@ import {
   resolveAuthentication,
 } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 
 /**
  * Hono counterpart of `makeResolveAuthenticationHandler` from
@@ -19,7 +19,7 @@ export function makeResolveAuthenticationApp(
   kind: ResolveAuthenticationKind,
   label: string
 ) {
-  const app = new Hono();
+  const app = workspaceApp();
 
   app.post("/", validate("json", ResolveAuthenticationSchema), async (ctx) => {
     const auth = ctx.get("auth");

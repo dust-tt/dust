@@ -1,10 +1,10 @@
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const UpdateMCPToolSettingsBodySchema = z
@@ -28,7 +28,7 @@ export type PatchMCPServerToolsPermissionsResponseBody = {
 };
 
 // Mounted at /api/w/:wId/mcp/:serverId/tools/:toolName.
-const app = new Hono();
+const app = workspaceApp();
 
 app.patch(
   "/",

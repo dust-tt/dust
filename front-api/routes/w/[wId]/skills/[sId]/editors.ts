@@ -4,10 +4,10 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import type { Context } from "hono";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const PatchSkillEditorsRequestBodySchema = z
@@ -83,7 +83,7 @@ async function loadSkillAndEditorGroup(
 }
 
 // Mounted at /api/w/:wId/skills/:sId/editors.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

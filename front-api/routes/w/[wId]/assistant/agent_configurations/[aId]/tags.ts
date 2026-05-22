@@ -3,10 +3,10 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { TagType } from "@app/types/tag";
 import { isBuilder } from "@app/types/user";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type PatchAgentTagsResponseBody = {
@@ -28,7 +28,7 @@ const PatchAgentTagsRequestBodySchema = z
   );
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/tags.
-const app = new Hono();
+const app = workspaceApp();
 
 app.patch(
   "/",

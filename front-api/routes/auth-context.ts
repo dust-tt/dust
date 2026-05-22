@@ -1,11 +1,11 @@
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { fetchUserFromSession } from "@app/lib/iam/users";
+import { sessionAuthApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import { sessionAuth } from "../middleware/session_auth";
 
-export const authContextApp = new Hono();
+export const authContextApp = sessionAuthApp();
 
 authContextApp.use("*", sessionAuth);
 

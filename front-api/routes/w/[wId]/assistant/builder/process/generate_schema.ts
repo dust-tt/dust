@@ -4,12 +4,12 @@ import {
   getSmallWhitelistedModel,
 } from "@app/lib/assistant";
 import { InternalPostBuilderGenerateSchemaRequestBodySchema } from "@app/types/api/internal/assistant";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 
 // Mounted at /api/w/:wId/assistant/builder/process/generate_schema.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

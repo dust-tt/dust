@@ -1,9 +1,9 @@
 import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
 import type { APIErrorType } from "@app/types/error";
+import { workspaceApp } from "@front-api/middleware/env";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 const PostStartProjectTaskBodySchema = z.object({
@@ -12,7 +12,7 @@ const PostStartProjectTaskBodySchema = z.object({
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/:taskId/start.
-const app = new Hono();
+const app = workspaceApp();
 
 app.post(
   "/",

@@ -2,15 +2,15 @@ import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversa
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetConversationAttachmentsResponseBody = {
   attachments: ConversationAttachmentType[];
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/attachments.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

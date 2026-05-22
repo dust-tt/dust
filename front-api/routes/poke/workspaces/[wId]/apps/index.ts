@@ -1,7 +1,7 @@
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { AppType } from "@app/types/app";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 import aId from "./[aId]";
 import importApp from "./import";
@@ -12,7 +12,7 @@ export type PokeListApps = {
 
 // Mounted at /api/poke/workspaces/:wId/apps. pokeWorkspaceAuth is applied by
 // the parent workspaces/[wId] sub-app.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeListApps> => {
   const auth = ctx.get("auth");

@@ -1,10 +1,10 @@
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { isKillSwitchType } from "@app/lib/poke/types";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { pokeApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type GetKillSwitchesResponseBody = {
@@ -21,7 +21,7 @@ const KillSwitchTypeSchema = z.object({
 });
 
 // Mounted at /api/poke/kill. pokeAuth is applied by the parent poke sub-app.
-const app = new Hono();
+const app = pokeApp();
 
 app.get("/", async (ctx): HandlerResult<GetKillSwitchesResponseBody> => {
   const killSwitches = await KillSwitchResource.listEnabledKillSwitches();

@@ -1,11 +1,11 @@
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { UserProjectNotificationPreference } from "@app/types/notification_preferences";
 import { NOTIFICATION_CONDITION_OPTIONS } from "@app/types/notification_preferences";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
 import { withSpace } from "@front-api/middleware/with_space";
-import { Hono } from "hono";
 import { z } from "zod";
 
 export type GetUserProjectNotificationPreferenceResponseBody = {
@@ -21,7 +21,7 @@ const PatchUserProjectNotificationPreferenceBodySchema = z.object({
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_notification_preferences.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

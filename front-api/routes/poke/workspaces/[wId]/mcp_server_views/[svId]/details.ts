@@ -1,15 +1,15 @@
 import { mcpServerViewToPokeJSON } from "@app/lib/poke/utils";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { PokeMCPServerViewType } from "@app/types/poke";
+import { pokeWorkspaceApp } from "@front-api/middleware/env";
 import { apiError, type HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type PokeGetMCPServerViewDetails = {
   mcpServerView: PokeMCPServerViewType;
 };
 
 // Mounted at /api/poke/workspaces/:wId/mcp_server_views/:svId/details.
-const app = new Hono();
+const app = pokeWorkspaceApp();
 
 app.get("/", async (ctx): HandlerResult<PokeGetMCPServerViewDetails> => {
   const auth = ctx.get("auth");

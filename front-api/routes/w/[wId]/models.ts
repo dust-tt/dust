@@ -10,8 +10,8 @@ import {
 import { getFeatureFlags } from "@app/lib/auth";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
-import { Hono } from "hono";
 
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];
@@ -19,7 +19,7 @@ export type GetAvailableModelsResponseType = {
 };
 
 // Mounted at /api/w/:wId/models.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetAvailableModelsResponseType> => {
   const auth = ctx.get("auth");

@@ -2,10 +2,10 @@ import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { workspaceApp } from "@front-api/middleware/env";
 import type { HandlerResult } from "@front-api/middleware/utils";
 import { apiError } from "@front-api/middleware/utils";
 import { validate } from "@front-api/middleware/validator";
-import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -29,7 +29,7 @@ const QuerySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/observability/overview.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",

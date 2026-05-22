@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middleware/env";
 
 import configByKey from "./config/[key]";
 import notion from "./notion";
@@ -9,7 +9,7 @@ import permissions from "./permissions";
 import update from "./update";
 
 // Mounted under /api/w/:wId/data_sources/:dsId/managed.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/config/:key", configByKey);
 app.route("/notion", notion);
