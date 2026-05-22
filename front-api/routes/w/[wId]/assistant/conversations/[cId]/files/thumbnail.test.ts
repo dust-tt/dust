@@ -46,11 +46,7 @@ async function setup() {
   return { workspace, auth, conversation, basePath };
 }
 
-function thumbnail(
-  workspace: { sId: string },
-  cId: string,
-  filePath?: string
-) {
+function thumbnail(workspace: { sId: string }, cId: string, filePath?: string) {
   const qs = filePath ? `?filePath=${encodeURIComponent(filePath)}` : "";
   return honoApp.request(
     `/api/w/${workspace.sId}/assistant/conversations/${cId}/files/thumbnail${qs}`

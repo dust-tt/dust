@@ -57,8 +57,7 @@ app.get("/:rel{.+}", async (ctx) => {
     relPath: rel,
     expectedPrefix: "conversation",
     mountBasePath,
-    outsideScopeMessage:
-      "Access denied: path is outside conversation scope.",
+    outsideScopeMessage: "Access denied: path is outside conversation scope.",
   });
   if (pathRes.isErr()) {
     const { code, message } = pathRes.error;

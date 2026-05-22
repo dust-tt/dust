@@ -143,10 +143,7 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/files/:rel", () => {
   it("should use conversation-scoped GCS path", async () => {
     const { workspace, conversation } = await setup();
 
-    await getFile(workspace, conversation.sId, [
-      "conversation",
-      "chart.png",
-    ]);
+    await getFile(workspace, conversation.sId, ["conversation", "chart.png"]);
 
     expect(mockGetFileContentType).toHaveBeenCalledWith(
       `w/${workspace.sId}/conversations/${conversation.sId}/files/chart.png`

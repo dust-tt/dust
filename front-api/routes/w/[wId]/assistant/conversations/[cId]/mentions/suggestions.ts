@@ -14,9 +14,7 @@ export type MentionSuggestionsResponseBody = {
 
 const MentionSuggestionsQuerySchema = z.object({
   query: z.string().optional().default(""),
-  select: z
-    .union([z.string(), z.array(z.string())])
-    .optional(),
+  select: z.union([z.string(), z.array(z.string())]).optional(),
   current: z.string().optional(),
 });
 
@@ -43,8 +41,11 @@ app.get(
 
     const spaceId = conversationRes.space?.sId;
 
-    const { query: queryParam, select: selectParam, current } =
-      ctx.req.valid("query");
+    const {
+      query: queryParam,
+      select: selectParam,
+      current,
+    } = ctx.req.valid("query");
     const query = isString(queryParam) ? queryParam.trim().toLowerCase() : "";
 
     // Parse select parameter: can be "agents", "users", or array.
@@ -53,9 +54,7 @@ app.get(
         return { agents: true, users: true };
       }
 
-      const selectValues = isString(selectParam)
-        ? [selectParam]
-        : selectParam;
+      const selectValues = isString(selectParam) ? [selectParam] : selectParam;
       const agents = selectValues.includes("agents");
       const users = selectValues.includes("users");
 

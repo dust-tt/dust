@@ -18,31 +18,28 @@ export type GetConversationFilesResponseBody = {
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files.
 const app = new Hono();
 
-app.get(
-  "/",
-  async (ctx): HandlerResult<GetConversationFilesResponseBody> => {
-    const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
+app.get("/", async (ctx): HandlerResult<GetConversationFilesResponseBody> => {
+  const auth = ctx.get("auth");
+  const cId = ctx.req.param("cId") ?? "";
 
-    const conversation = await ConversationResource.fetchById(auth, cId);
-    if (!conversation) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "conversation_not_found",
-          message: "Conversation not found.",
-        },
-      });
-    }
-
-    const files = await listGCSMountFiles(auth, {
-      useCase: "conversation",
-      conversationId: cId,
+  const conversation = await ConversationResource.fetchById(auth, cId);
+  if (!conversation) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found.",
+      },
     });
-
-    return ctx.json({ files });
   }
-);
+
+  const files = await listGCSMountFiles(auth, {
+    useCase: "conversation",
+    conversationId: cId,
+  });
+
+  return ctx.json({ files });
+});
 
 app.route("/download", download);
 app.route("/thumbnail", thumbnail);
