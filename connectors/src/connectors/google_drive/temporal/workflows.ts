@@ -297,7 +297,7 @@ export async function googleDriveIncrementalSync(
 
   await syncSucceeded(connectorId);
 
-  await sleep("5 minutes");
+  await sleep("10 minutes");
   await continueAsNew<typeof googleDriveIncrementalSync>(connectorId);
 }
 
@@ -799,6 +799,6 @@ export async function googleDriveIncrementalSyncV2(
   await syncSucceeded(connectorId);
 
   // Sleep and continue
-  await sleep("5 minutes");
+  await sleep("10 minutes");
   await continueAsNew<typeof googleDriveIncrementalSyncV2>(connectorId);
 }
