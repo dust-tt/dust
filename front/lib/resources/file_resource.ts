@@ -771,20 +771,14 @@ export class FileResource extends BaseResource<FileModel> {
   /**
    * Get sorted file versions from GCS (newest first).
    * Used for reverting Interactive Content files to previous versions.
-   * Returns an empty array if versions cannot be retrieved.
    */
   private async getSortedFileVersions(
     auth: Authenticator,
     maxResults?: number
-  ): Promise<File[]> {
+  ): Promise<Result<File[], Error>> {
     const filePath = this.getCloudStoragePath(auth, "original");
     const fileStorage = getPrivateUploadBucket();
-
-    try {
-      return await fileStorage.getSortedFileVersions({ filePath, maxResults });
-    } catch {
-      return [];
-    }
+    return fileStorage.getSortedFileVersions({ filePath, maxResults });
   }
 
   /**
@@ -801,7 +795,8 @@ export class FileResource extends BaseResource<FileModel> {
     }
   ): Promise<Result<undefined, string>> {
     // Get all versions of the file (sorted newest to oldest)
-    const versions = await this.getSortedFileVersions(auth);
+    const versionsResult = await this.getSortedFileVersions(auth);
+    const versions = versionsResult.isOk() ? versionsResult.value : [];
 
     // Check if there's a previous version available before attempting revert
     if (versions.length < 2) {

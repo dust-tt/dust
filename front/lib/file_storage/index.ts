@@ -223,27 +223,33 @@ export class FileStorage {
   }: {
     filePath: string;
     maxResults?: number;
-  }) {
-    const [files] = await this.bucket.getFiles({
-      prefix: filePath,
-      versions: true,
-      maxResults,
-    });
-
-    // Filter to only the exact file path and sort by generation (newest first)
-    // Generation represents the version order in GCS
-    // can be string or number per GCS types, though in practice it seems to always be a number
-    return files
-      .filter((file) => file.name === filePath)
-      .sort((a, b) => {
-        const genA = isNumber(a.metadata.generation)
-          ? a.metadata.generation
-          : Number(a.metadata.generation ?? 0);
-        const genB = isNumber(b.metadata.generation)
-          ? b.metadata.generation
-          : Number(b.metadata.generation ?? 0);
-        return genB - genA;
+  }): Promise<Result<File[], Error>> {
+    try {
+      const [files] = await this.bucket.getFiles({
+        prefix: filePath,
+        versions: true,
+        maxResults,
       });
+
+      // Filter to only the exact file path and sort by generation (newest first)
+      // Generation represents the version order in GCS
+      // can be string or number per GCS types, though in practice it seems to always be a number
+      return new Ok(
+        files
+          .filter((file) => file.name === filePath)
+          .sort((a, b) => {
+            const genA = isNumber(a.metadata.generation)
+              ? a.metadata.generation
+              : Number(a.metadata.generation ?? 0);
+            const genB = isNumber(b.metadata.generation)
+              ? b.metadata.generation
+              : Number(b.metadata.generation ?? 0);
+            return genB - genA;
+          })
+      );
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
   }
 
   get name() {

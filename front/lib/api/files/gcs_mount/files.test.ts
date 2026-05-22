@@ -19,6 +19,7 @@ import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -608,7 +609,7 @@ describe("copyConversationGCSMount", () => {
     const afterFork = "2025-06-01T12:01:00.000Z";
 
     beforeEach(() => {
-      getSortedFileVersionsMock = vi.fn().mockResolvedValue([]);
+      getSortedFileVersionsMock = vi.fn().mockResolvedValue(new Ok([]));
       vi.mocked(getPrivateUploadBucket).mockReturnValue({
         getFiles: getFilesMock,
         copyFile: copyFileMock,
@@ -646,13 +647,18 @@ describe("copyConversationGCSMount", () => {
       getFilesMock.mockResolvedValue([
         { name: filePath, metadata: { updated: afterFork } },
       ]);
-      getSortedFileVersionsMock.mockResolvedValue([
-        { name: filePath, metadata: { updated: afterFork, generation: "456" } },
-        {
-          name: filePath,
-          metadata: { updated: beforeFork, generation: "123" },
-        },
-      ]);
+      getSortedFileVersionsMock.mockResolvedValue(
+        new Ok([
+          {
+            name: filePath,
+            metadata: { updated: afterFork, generation: "456" },
+          },
+          {
+            name: filePath,
+            metadata: { updated: beforeFork, generation: "123" },
+          },
+        ])
+      );
 
       const result = await copyConversationGCSMount(auth, {
         source,
@@ -678,9 +684,14 @@ describe("copyConversationGCSMount", () => {
       getFilesMock.mockResolvedValue([
         { name: filePath, metadata: { updated: afterFork } },
       ]);
-      getSortedFileVersionsMock.mockResolvedValue([
-        { name: filePath, metadata: { updated: afterFork, generation: "456" } },
-      ]);
+      getSortedFileVersionsMock.mockResolvedValue(
+        new Ok([
+          {
+            name: filePath,
+            metadata: { updated: afterFork, generation: "456" },
+          },
+        ])
+      );
 
       const result = await copyConversationGCSMount(auth, {
         source,
@@ -708,23 +719,27 @@ describe("copyConversationGCSMount", () => {
       getSortedFileVersionsMock.mockImplementation(
         ({ filePath }: { filePath: string }) => {
           if (filePath === modifiedPath) {
-            return Promise.resolve([
-              {
-                name: modifiedPath,
-                metadata: { updated: afterFork, generation: "200" },
-              },
-              {
-                name: modifiedPath,
-                metadata: { updated: beforeFork, generation: "100" },
-              },
-            ]);
+            return Promise.resolve(
+              new Ok([
+                {
+                  name: modifiedPath,
+                  metadata: { updated: afterFork, generation: "200" },
+                },
+                {
+                  name: modifiedPath,
+                  metadata: { updated: beforeFork, generation: "100" },
+                },
+              ])
+            );
           }
-          return Promise.resolve([
-            {
-              name: newPath,
-              metadata: { updated: afterFork, generation: "300" },
-            },
-          ]);
+          return Promise.resolve(
+            new Ok([
+              {
+                name: newPath,
+                metadata: { updated: afterFork, generation: "300" },
+              },
+            ])
+          );
         }
       );
 

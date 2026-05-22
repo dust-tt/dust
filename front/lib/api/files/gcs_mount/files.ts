@@ -650,10 +650,13 @@ export async function copyConversationGCSMount(
           return;
         }
 
-        const versions = await bucket.getSortedFileVersions({
+        const versionsResult = await bucket.getSortedFileVersions({
           filePath: gcsFile.name,
         });
-        const preFork = versions.find((v) => {
+        if (versionsResult.isErr()) {
+          throw versionsResult.error;
+        }
+        const preFork = versionsResult.value.find((v) => {
           if (
             !isString(v.metadata.updated) ||
             !isString(v.metadata.generation)
