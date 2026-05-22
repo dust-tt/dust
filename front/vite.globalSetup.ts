@@ -52,6 +52,8 @@ export default async function setup() {
 
     // Variables that modify the behavior of certain tests
     UPDATE_MCP_METADATA_SNAPSHOT: process.env.UPDATE_MCP_METADATA_SNAPSHOT,
+    UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT:
+      process.env.UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT,
   };
 
   // Execute the db migration script

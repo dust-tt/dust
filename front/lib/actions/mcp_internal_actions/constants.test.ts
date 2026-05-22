@@ -1,3 +1,13 @@
+/**
+ * Internal MCP server availability snapshot test
+ *
+ * Compares INTERNAL_MCP_SERVERS against internal_mcp_server_availability.snapshot.json.
+ *
+ * Usage:
+ * - Run tests: npm run test -- lib/actions/mcp_internal_actions/constants.test.ts
+ * - Update snapshot: npm run test:update-internal-mcp-availability-snapshot
+ */
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -5,6 +15,14 @@ import {
   INTERNAL_MCP_SERVERS,
   LEGACY_INTERNAL_MCP_SERVER_IDS,
 } from "./constants";
+import {
+  collectInternalToolsByAvailability,
+  loadInternalToolAvailabilitySnapshot,
+  shouldUpdateInternalToolAvailabilitySnapshot,
+  UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_COMMAND,
+  validateInternalToolAvailabilitySnapshots,
+  writeInternalToolAvailabilitySnapshot,
+} from "./internal_mcp_server_availability_snapshots";
 
 describe("INTERNAL_MCP_SERVERS", () => {
   it("should have unique IDs for all servers", () => {
@@ -24,59 +42,34 @@ describe("INTERNAL_MCP_SERVERS", () => {
     ).toBe(0);
   });
 
-  it("manipulating the list of auto internal tools may requires a migration", () => {
-    const autoInternalTools: { name: string; id: number }[] = [];
+  it("changing internal tool availability may require a migration", () => {
+    const { auto: currentAuto, manual: currentManual } =
+      collectInternalToolsByAvailability(INTERNAL_MCP_SERVERS);
 
-    for (const [key, value] of Object.entries(INTERNAL_MCP_SERVERS)) {
-      if (
-        value.availability === "auto" ||
-        value.availability === "auto_hidden_builder"
-      ) {
-        autoInternalTools.push({ name: key, id: value.id });
-      }
+    if (shouldUpdateInternalToolAvailabilitySnapshot()) {
+      writeInternalToolAvailabilitySnapshot({
+        auto: currentAuto,
+        manual: currentManual,
+      });
+      return;
     }
-    const HARD_CODED_AUTO_INTERNAL_TOOLS = [
-      { name: "image_generation", id: 2 },
-      { name: "file_generation", id: 3 },
-      { name: "web_search_&_browse", id: 5 },
-      { name: "agent_router", id: 8 },
-      { name: "include_data", id: 9 },
-      { name: "run_dust_app", id: 10 },
-      { name: "extract_data", id: 12 },
-      { name: "missing_action_catcher", id: 13 },
-      { name: "conversation_files", id: 17 },
-      { name: "agent_memory", id: 21 },
-      { name: "interactive_content", id: 23 },
-      { name: "slideshow", id: 28 },
-      { name: "speech_generator", id: 34 },
-      { name: "search", id: 1006 },
-      { name: "run_agent", id: 1008 },
-      { name: "query_tables_v2", id: 1009 },
-      { name: "data_sources_file_system", id: 1010 },
-      { name: "agent_management", id: 1011 },
-      { name: "data_warehouses", id: 1012 },
-      { name: "toolsets", id: 1013 },
-      { name: "common_utilities", id: 1017 },
-      { name: "skill_management", id: 1019 },
-      { name: "schedules_management", id: 1020 },
-      { name: "pod_manager", id: 1021 },
-      {
-        name: "pod_tasks",
-        id: 1029,
-      },
-      { name: "agent_sidekick_context", id: 1022 },
-      { name: "agent_sidekick_agent_state", id: 1023 },
-      { name: "sandbox", id: 1024 },
-      { name: "user_mentions", id: 1026 },
-      { name: "ask_user_question", id: 1028 },
-      { name: "wakeups", id: 1031 },
-      { name: "plan_mode", id: 1032 },
-      { name: "files", id: 1033 },
-    ];
+
+    const { auto: previousAuto, manual: previousManual } =
+      loadInternalToolAvailabilitySnapshot();
+
+    const validation = validateInternalToolAvailabilitySnapshots({
+      previousAuto,
+      previousManual,
+      currentAuto,
+      currentManual,
+    });
+
     expect(
-      autoInternalTools,
-      "Internal tools with availability auto or auto_hidden_builder are not up to date.\nIf you are adding or removing a tool, just update the hard coded list.\nHowever, if you are changing the availability from auto(_xxx) to manual, you need to run a migration on existing agents that were configured with that tool to update their requestedGroupIds (see getAgentConfigurationGroupIdsFromActions())."
-    ).toEqual(HARD_CODED_AUTO_INTERNAL_TOOLS);
+      validation.ok,
+      !validation.ok
+        ? `${validation.message}\n\nTo update the snapshot:\n  ${UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_COMMAND}`
+        : undefined
+    ).toBe(true);
   });
 });
 
