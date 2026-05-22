@@ -37,7 +37,7 @@ type ImportResult = Result<
   APIErrorWithStatusCode
 >;
 
-type AssistantRequestBody =
+type PatchRequestBody =
   PostOrPatchAgentConfigurationRequestBody["assistant"];
 
 const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
@@ -46,7 +46,7 @@ const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
 });
 
 interface ResolvedEditors {
-  editors: AssistantRequestBody["editors"];
+  editors: PatchRequestBody["editors"];
   authorId: ModelId;
 }
 
@@ -117,7 +117,7 @@ async function resolveEditorUsersFromAgentConfiguration(
 async function resolveTags(
   auth: Authenticator,
   yamlTags: AgentYAMLConfig["tags"]
-): Promise<Result<AssistantRequestBody["tags"], APIErrorWithStatusCode>> {
+): Promise<Result<PatchRequestBody["tags"], APIErrorWithStatusCode>> {
   const tagNames = yamlTags.map((t) => t.name);
   const resolvedTags = await TagResource.findByNames(auth, tagNames);
   const resolvedTagNames = new Set(resolvedTags.map((t) => t.name));
@@ -163,7 +163,7 @@ async function saveAgentConfigurationFromAssistant({
   agentConfigurationId,
 }: {
   auth: Authenticator;
-  assistant: AssistantRequestBody;
+  assistant: PatchRequestBody;
   skippedActions: SkippedAction[];
   authorId: ModelId;
   agentConfigurationId?: string;
@@ -323,8 +323,6 @@ export async function patchAgentConfigurationFromJSON(
   }
 
   const agentConfiguration = agentResult.value;
-  const actions: AssistantRequestBody["actions"] =
-    agentConfiguration.actions.filter(isServerSideMCPServerConfiguration);
 
   const editorsResult = await resolveEditorUsersFromAgentConfiguration(
     auth,
@@ -339,7 +337,7 @@ export async function patchAgentConfigurationFromJSON(
     agentConfiguration
   );
   const patch = parsed.data;
-  const assistant: AssistantRequestBody = {
+  const assistant: PatchRequestBody = {
     name: agentConfiguration.name,
     description: agentConfiguration.description,
     instructions: agentConfiguration.instructions,
@@ -348,7 +346,7 @@ export async function patchAgentConfigurationFromJSON(
     status: agentConfiguration.status,
     scope: agentConfiguration.scope,
     model: agentConfiguration.model,
-    actions,
+    actions: agentConfiguration.actions.filter(isServerSideMCPServerConfiguration),
     templateId: agentConfiguration.templateId,
     tags: agentConfiguration.tags,
     editors: editorsResult.value.editors,
@@ -361,21 +359,21 @@ export async function patchAgentConfigurationFromJSON(
   let skippedActions: SkippedAction[] = [];
 
   if (patch.agent) {
-    if (patch.agent.handle !== undefined) {
+    if (patch.agent.handle) {
       assistant.name = patch.agent.handle;
     }
-    if (patch.agent.description !== undefined) {
+    if (patch.agent.description) {
       assistant.description = patch.agent.description;
     }
-    if (patch.agent.avatar_url !== undefined) {
+    if (patch.agent.avatar_url) {
       assistant.pictureUrl = patch.agent.avatar_url;
     }
-    if (patch.agent.scope !== undefined) {
+    if (patch.agent.scope) {
       assistant.scope = patch.agent.scope;
     }
   }
 
-  if (patch.instructions !== undefined) {
+  if (patch.instructions) {
     assistant.instructions = patch.instructions;
     assistant.instructionsHtml = null;
   }
@@ -435,16 +433,16 @@ export async function patchAgentConfigurationFromJSON(
     skippedActions = patchActionsResult.value.skippedActions;
   }
 
-  if (patch.skills !== undefined) {
+  if (patch.skills) {
     assistant.skills = patch.skills.map((skill) => ({
       sId: skill.sId,
     }));
   }
 
   if (
-    patch.spaces !== undefined ||
-    patch.toolset !== undefined ||
-    patch.skills !== undefined
+    patch.spaces ||
+    patch.toolset ||
+    patch.skills
   ) {
     assistant.additionalRequestedSpaceIds =
       patch.spaces?.map((space) => space.space_id) ?? [];
