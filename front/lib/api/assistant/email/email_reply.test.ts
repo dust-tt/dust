@@ -9,7 +9,9 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { getAgentLoopDataWithAuth } from "@app/types/assistant/agent_run";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/configuration/agent", () => ({
@@ -30,12 +32,6 @@ vi.mock("@app/lib/api/config", () => ({
   },
 }));
 
-vi.mock("@app/lib/auth", () => ({
-  Authenticator: {
-    fromJSON: vi.fn(),
-  },
-}));
-
 vi.mock("@app/lib/resources/agent_mcp_action_resource", () => ({
   AgentMCPActionResource: {
     listBlockedActionsForConversation: vi.fn(),
@@ -53,23 +49,25 @@ vi.mock("@app/lib/utils/router", () => ({
 }));
 
 vi.mock("@app/types/assistant/agent_run", () => ({
-  getAgentLoopData: vi.fn(),
+  getAgentLoopDataWithAuth: vi.fn(),
 }));
 
 import { sendEmailReplyOnCompletion } from "@app/lib/api/assistant/email/email_reply";
 
 describe("sendEmailReplyOnCompletion", () => {
+  async function makeAuth({ allowEmailAgents }: { allowEmailAgents: boolean }) {
+    const workspace = await WorkspaceFactory.basic();
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      allowEmailAgents,
+    });
+    expect(updateResult.isOk()).toBe(true);
+
+    return Authenticator.internalAdminForWorkspace(workspace.sId);
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
 
-    vi.mocked(Authenticator.fromJSON).mockResolvedValue({
-      isErr: () => false,
-      value: {
-        getNonNullableWorkspace: () => ({
-          metadata: { allowEmailAgents: true },
-        }),
-      },
-    } as never);
     vi.mocked(ConversationResource.fetchById).mockResolvedValue({} as never);
     vi.mocked(
       AgentMCPActionResource.listBlockedActionsForConversation
@@ -93,10 +91,9 @@ describe("sendEmailReplyOnCompletion", () => {
       replyCc: ["security@dust.tt"],
     } as never);
 
-    vi.mocked(getAgentLoopData).mockResolvedValue({
+    vi.mocked(getAgentLoopDataWithAuth).mockResolvedValue({
       isErr: () => false,
       value: {
-        auth: {},
         agentMessage: {
           sId: "agent-message-1",
           content: "Done",
@@ -107,16 +104,15 @@ describe("sendEmailReplyOnCompletion", () => {
       },
     } as never);
 
-    await sendEmailReplyOnCompletion(
-      { workspaceId: "workspace-1" } as never,
-      {
-        agentMessageId: "agent-message-1",
-        userMessageOrigin: "email",
-      } as never
-    );
+    const auth = await makeAuth({ allowEmailAgents: true });
+
+    await sendEmailReplyOnCompletion(auth, {
+      agentMessageId: "agent-message-1",
+      userMessageOrigin: "email",
+    } as never);
 
     expect(deleteEmailReplyContext).toHaveBeenCalledWith(
-      "workspace-1",
+      auth.getNonNullableWorkspace().sId,
       "agent-message-1"
     );
     expect(replyToEmail).toHaveBeenCalledWith(
@@ -130,14 +126,6 @@ describe("sendEmailReplyOnCompletion", () => {
   });
 
   it("skips the reply when email agents are disabled in workspace metadata", async () => {
-    vi.mocked(Authenticator.fromJSON).mockResolvedValue({
-      isErr: () => false,
-      value: {
-        getNonNullableWorkspace: () => ({
-          metadata: { allowEmailAgents: false },
-        }),
-      },
-    } as never);
     vi.mocked(getEmailReplyContext).mockResolvedValue({
       subject: "Test",
       originalText: "Hello",
@@ -150,10 +138,9 @@ describe("sendEmailReplyOnCompletion", () => {
       workspaceId: "workspace-1",
       conversationId: "conversation-1",
     } as never);
-    vi.mocked(getAgentLoopData).mockResolvedValue({
+    vi.mocked(getAgentLoopDataWithAuth).mockResolvedValue({
       isErr: () => false,
       value: {
-        auth: {},
         agentMessage: {
           sId: "agent-message-1",
           content: "Done",
@@ -164,16 +151,15 @@ describe("sendEmailReplyOnCompletion", () => {
       },
     } as never);
 
-    await sendEmailReplyOnCompletion(
-      { workspaceId: "workspace-1" } as never,
-      {
-        agentMessageId: "agent-message-1",
-        userMessageOrigin: "email",
-      } as never
-    );
+    const auth = await makeAuth({ allowEmailAgents: false });
+
+    await sendEmailReplyOnCompletion(auth, {
+      agentMessageId: "agent-message-1",
+      userMessageOrigin: "email",
+    } as never);
 
     expect(deleteEmailReplyContext).toHaveBeenCalledWith(
-      "workspace-1",
+      auth.getNonNullableWorkspace().sId,
       "agent-message-1"
     );
     expect(replyToEmail).not.toHaveBeenCalled();

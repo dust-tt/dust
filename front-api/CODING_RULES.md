@@ -211,8 +211,8 @@ into `front/`:
 
 ```ts
 // front-api/routes/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search.ts
-import { validate } from "@front-api/middleware/validator";        // self
-import { withSpace } from "@front-api/middleware/with_space";
+import { validate } from "@front-api/middlewares/validator";        // self
+import { withSpace } from "@front-api/middlewares/with_space";
 import { CoreAPI } from "@app/types/core/core_api";                // front
 ```
 

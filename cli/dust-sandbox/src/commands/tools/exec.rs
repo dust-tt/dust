@@ -1,6 +1,6 @@
 use anyhow::{bail, Context};
 
-use crate::api::{ContentBlock, DustApiClient};
+use crate::api::{parse_content_block, ContentBlock, DustApiClient};
 
 const MAX_FILE_ARG_SIZE_BYTES: u64 = 100 * 1024 * 1024;
 
@@ -9,6 +9,7 @@ pub async fn cmd_exec(
     server_name: &str,
     tool_name: &str,
     raw_args: &[String],
+    json: bool,
 ) -> anyhow::Result<()> {
     let views = client.list_tools(Some(server_name), false).await?;
 
@@ -32,37 +33,41 @@ pub async fn cmd_exec(
 
     let resp = client.call_tool(&view.s_id, tool_name, arguments).await?;
 
-    // All content blocks (text and sentinel markers) go to stdout so a caller
-    // capturing stdout sees the full tool output. stderr is reserved for
-    // ambient diagnostics.
-    for block in &resp.result.content {
-        match block {
-            ContentBlock::Text { text } => {
-                println!("{text}");
-            }
-            ContentBlock::Image { mime_type, .. } => {
-                println!("[image: {mime_type}]");
-            }
-            ContentBlock::Audio { mime_type, .. } => {
-                println!("[audio: {mime_type}]");
-            }
-            ContentBlock::Resource { resource } => {
-                if let Some(text) = &resource.text {
+    if json {
+        println!("{}", serde_json::to_string_pretty(&resp.result)?);
+    } else {
+        // All content blocks (text and sentinel markers) go to stdout so a
+        // caller capturing stdout sees the full tool output. stderr is
+        // reserved for ambient diagnostics.
+        for value in &resp.result.content {
+            match parse_content_block(value) {
+                ContentBlock::Text { text } => {
                     println!("{text}");
-                } else if resource.blob.is_some() {
-                    println!("[binary resource: {}]", resource.uri);
-                } else {
-                    println!("[resource: {}]", resource.uri);
                 }
-            }
-            ContentBlock::ResourceLink { uri, name } => {
-                if let Some(name) = name {
-                    println!("[resource link: {name} - {uri}]");
-                } else {
-                    println!("[resource link: {uri}]");
+                ContentBlock::Image { mime_type, .. } => {
+                    println!("[image: {mime_type}]");
                 }
+                ContentBlock::Audio { mime_type, .. } => {
+                    println!("[audio: {mime_type}]");
+                }
+                ContentBlock::Resource { resource } => {
+                    if let Some(text) = &resource.text {
+                        println!("{text}");
+                    } else if resource.blob.is_some() {
+                        println!("[binary resource: {}]", resource.uri);
+                    } else {
+                        println!("[resource: {}]", resource.uri);
+                    }
+                }
+                ContentBlock::ResourceLink { uri, name } => {
+                    if let Some(name) = name {
+                        println!("[resource link: {name} - {uri}]");
+                    } else {
+                        println!("[resource link: {uri}]");
+                    }
+                }
+                ContentBlock::Unknown => {}
             }
-            ContentBlock::Unknown => {}
         }
     }
 

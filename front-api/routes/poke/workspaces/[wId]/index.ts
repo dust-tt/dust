@@ -6,10 +6,12 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import agentConfigurations from "./agent_configurations";
 import analytics from "./analytics";
 import apps from "./apps";
 import assistants from "./assistants";
 import authContext from "./auth-context";
+import conversations from "./conversations";
 import dataRetention from "./data_retention";
 import dataSourceViews from "./data_source_views";
 import dataSources from "./data_sources";
@@ -67,9 +69,11 @@ app.patch(
   }
 );
 
+app.route("/agent_configurations", agentConfigurations);
 app.route("/analytics", analytics);
 app.route("/apps", apps);
 app.route("/assistants", assistants);
+app.route("/conversations", conversations);
 app.route("/data_retention", dataRetention);
 app.route("/data_source_views", dataSourceViews);
 app.route("/data_sources", dataSources);

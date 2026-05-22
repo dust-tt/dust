@@ -9,14 +9,17 @@ import {
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
 import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
-import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
+import {
+  copyMountFile,
+  getGCSPathFromScopedPath,
+} from "@app/lib/api/files/gcs_mount/files";
+import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
   isInteractiveContentType,
   stripMimeParameters,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 
 export async function copyHandler(
@@ -99,12 +102,31 @@ export async function copyHandler(
     );
   }
 
-  try {
-    await sourceFile.copy(bucket.file(destGcsPath));
-  } catch (err) {
+  const sourceParsed = parseScopedFilePath(source);
+  const destParsed = parseScopedFilePath(dest);
+  if (!sourceParsed || !destParsed) {
     return new Err(
       new MCPError(
-        `Failed to copy \`${source}\` to \`${dest}\`: ${normalizeError(err).message}`
+        "Invalid path: `source` or `dest` does not match the resolved mount point.",
+        { tracked: false }
+      )
+    );
+  }
+
+  const copyRes = await copyMountFile(auth, {
+    source: {
+      scope: sourceMountRes.value.scope,
+      relativeFilePath: sourceParsed.rel,
+    },
+    dest: {
+      scope: destMountRes.value.scope,
+      relativeFilePath: destParsed.rel,
+    },
+  });
+  if (copyRes.isErr()) {
+    return new Err(
+      new MCPError(
+        `Failed to copy \`${source}\` to \`${dest}\`: ${copyRes.error.message}`
       )
     );
   }

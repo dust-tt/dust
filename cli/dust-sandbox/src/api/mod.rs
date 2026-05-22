@@ -2,4 +2,4 @@ mod client;
 mod types;
 
 pub use client::DustApiClient;
-pub use types::ContentBlock;
+pub use types::{parse_content_block, ContentBlock};

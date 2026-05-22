@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AvailableTool } from "@app/lib/api/assistant/workspace_capabilities";

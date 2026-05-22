@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 
 import { cors } from "./middlewares/cors";
+import { requestLogger } from "./middlewares/request_logger";
+import { unhandledErrorHandler } from "./middlewares/utils";
 import preStopApp from "./routes/[preStopSecret]";
 import { appStatusApp } from "./routes/app-status";
 import { loginApp } from "./routes/auth/login";
@@ -21,6 +23,7 @@ import oauthApp from "./routes/oauth";
 import pokeApp from "./routes/poke";
 import shareApp from "./routes/share";
 import stripeApp from "./routes/stripe";
+import tApp from "./routes/t";
 import templatesApp from "./routes/templates";
 import userApp from "./routes/user";
 import publicWorkspaceApp from "./routes/v1/w/[wId]";
@@ -50,6 +53,7 @@ apiApp.route("/poke", pokeApp);
 apiApp.route("/share", shareApp);
 apiApp.route("/stripe", stripeApp);
 apiApp.route("/templates", templatesApp);
+apiApp.route("/t", tApp);
 apiApp.route("/user", userApp);
 apiApp.route("/workos", workosApp);
 apiApp.route("/workspace-lookup", workspaceLookupApp);
@@ -64,5 +68,7 @@ apiApp.route("/v1/w/:wId", publicWorkspaceApp);
 apiApp.route("/:preStopSecret", preStopApp);
 
 export const honoApp = new Hono();
+honoApp.use("*", requestLogger);
 honoApp.use("*", cors);
 honoApp.route("/api", apiApp);
+honoApp.onError(unhandledErrorHandler);

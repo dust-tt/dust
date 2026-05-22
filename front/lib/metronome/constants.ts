@@ -90,6 +90,15 @@ export const SEAT_TYPE_CUSTOM_FIELD_KEY = "DUST_SEAT_TYPE";
 // for Metronome Product '…'".
 export const STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY = "STRIPE_PRODUCT_ID";
 
+// Custom field stamped on contract credits / commits to identify whether they
+// belong to the workspace pool ("pool") or are excess-overage accounting
+// credits ("excess"). Default Metronome alerts filter on this field to
+// exclude excess credits from low-balance notifications.
+export const CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY =
+  "DUST_CONTRACT_CREDIT_TYPE";
+export const CONTRACT_CREDIT_TYPE_EXCESS = "excess";
+export const CONTRACT_CREDIT_TYPE_POOL = "pool";
+
 // AWU (Agentic Work Units) differs per environment.
 export const DEV_CREDIT_TYPE_AWU_ID = "eb003cc7-4935-467d-a41c-c1738c1c9dc2";
 export const PROD_CREDIT_TYPE_AWU_ID = "8dfc9846-a38e-44f8-a625-bd9372af681c";

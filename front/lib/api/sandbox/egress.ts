@@ -5,6 +5,7 @@ import {
   EGRESS_SECRETS_PATH,
   writeEgressSecretsFile,
 } from "@app/lib/api/sandbox/egress_secrets";
+import { SANDBOX_AGENT_PROXIED_UID } from "@app/lib/api/sandbox/image/types";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,8 +15,12 @@ import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const EGRESS_FORWARDER_LISTEN_ADDR = "127.0.0.1:9990";
+const EGRESS_RESOLVER_LISTEN_ADDR = "127.0.0.1:1053";
+const EGRESS_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
 const EGRESS_TOKEN_PATH = "/etc/dust/egress-token";
 const EGRESS_DENY_LOG_PATH = "/tmp/dust-egress-denied.log";
 const EGRESS_DENY_LOG_OFFSET_PATH = "/tmp/.dust-egress-deny-offset";
@@ -134,40 +139,150 @@ export function mintEgressInvalidationJwt({
 
 type EgressHealthState = {
   portOk: boolean;
+  resolverOk: boolean;
+  nftablesOk: boolean;
   bundleOk: boolean;
 };
+
+const EgressHealthcheckOutputSchema = z.object({
+  forwarder_port_ok: z.boolean(),
+  resolver_udp_ok: z.boolean(),
+  resolver_tcp_ok: z.boolean(),
+  nft_dns_udp_redirect_ok: z.boolean(),
+  nft_dns_tcp_redirect_ok: z.boolean(),
+  nft_dns_udp_accept_ok: z.boolean(),
+  nft_tcp_forward_redirect_ok: z.boolean(),
+  nft_udp_drop_ok: z.boolean(),
+  nft_icmp_drop_ok: z.boolean(),
+  nft_ipv6_drop_ok: z.boolean(),
+  bundle_ok: z.boolean(),
+});
+
+const FAILED_EGRESS_HEALTH_STATE: EgressHealthState = {
+  portOk: false,
+  resolverOk: false,
+  nftablesOk: false,
+  bundleOk: false,
+};
+
+function parseEgressHealthcheckOutput(
+  stdout: string,
+  logContext: Record<string, unknown>
+): EgressHealthState {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch (error) {
+    logger.warn(
+      { ...logContext, error: normalizeError(error).message, stdout },
+      "Sandbox egress healthcheck stdout was not valid JSON"
+    );
+    return FAILED_EGRESS_HEALTH_STATE;
+  }
+
+  const validation = EgressHealthcheckOutputSchema.safeParse(parsed);
+  if (!validation.success) {
+    logger.warn(
+      { ...logContext, error: fromError(validation.error).toString(), stdout },
+      "Sandbox egress healthcheck output did not match expected schema"
+    );
+    return FAILED_EGRESS_HEALTH_STATE;
+  }
+
+  const data = validation.data;
+  // nftablesOk mirrors the full enforcement boundary, not just the DNS rules:
+  // DNS interception alone isn't load-bearing without the generic UDP/ICMP/
+  // IPv6 drops and the broad TCP redirect to the forwarder. Treating a
+  // partially damaged table as healthy would silently reopen non-53 UDP.
+  const nftablesOk =
+    data.nft_dns_udp_redirect_ok &&
+    data.nft_dns_tcp_redirect_ok &&
+    data.nft_dns_udp_accept_ok &&
+    data.nft_tcp_forward_redirect_ok &&
+    data.nft_udp_drop_ok &&
+    data.nft_icmp_drop_ok &&
+    data.nft_ipv6_drop_ok;
+  if (!nftablesOk) {
+    logger.warn(
+      { ...logContext, signals: data },
+      "Sandbox egress healthcheck aggregate failed; per-signal breakdown"
+    );
+  }
+  return {
+    portOk: data.forwarder_port_ok,
+    resolverOk: data.resolver_udp_ok && data.resolver_tcp_ok,
+    nftablesOk,
+    bundleOk: data.bundle_ok,
+  };
+}
 
 export async function checkEgressForwarderHealth(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<EgressHealthState, Error>> {
-  // Probe both signals in one exec. ss avoids opening a real TCP connection
-  // through the forwarder (nc -z would trigger a proxy round-trip and a noisy
-  // <unknown> deny log entry on every check). The bundle check looks for the
-  // merge sentinel rather than just the bundle file, because the image seeds
-  // a system-only ca-bundle.pem at build time so SSL_CERT_FILE always points
-  // at a valid file; bare `-s` would be true even before installMitmTrustBundle
-  // ever ran. The two signals are reported separately so callers can remediate
-  // them independently (a missing bundle does not require a dsbx restart).
+  // dsbx healthcheck reads kernel state directly (proc/net + nft list) so we
+  // avoid the noisy <unknown> deny log entry that a real connect-through-the-
+  // forwarder probe would generate. The bundle signal looks for the merge
+  // sentinel, not just the bundle file: the image seeds a system-only
+  // ca-bundle.pem so a bare `[ -s ]` would be true before installMitmTrustBundle
+  // ever ran. Signals are reported separately so callers can remediate the
+  // forwarder and bundle independently while failing closed on missing DNS
+  // enforcement.
+  const logContext = {
+    event: "egress.healthcheck_parse",
+    providerId: sandbox.providerId,
+    sandboxId: sandbox.sId,
+  };
+
+  // Root is required: `nft list table` needs CAP_NET_ADMIN, and the probe also
+  // reads /proc/net/{tcp,udp} which is fine non-root but pointless to split.
   const result = await sandbox.exec(
     auth,
-    `p=0; b=0; ` +
-      `ss -tln sport = :9990 | grep -q LISTEN && p=1; ` +
-      `[ -s ${shellEscape(MITM_CA_BUNDLE_PATH)} ] && ` +
-      `[ -f ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)} ] && b=1; ` +
-      `echo "$p $b"`,
-    { timeoutMs: 1_000 }
+    `/opt/bin/dsbx healthcheck ` +
+      `--forwarder-listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
+      `--resolver-listen ${shellEscape(EGRESS_RESOLVER_LISTEN_ADDR)} ` +
+      `--proxied-uid ${EGRESS_PROXIED_UID} ` +
+      `--ca-bundle ${shellEscape(MITM_CA_BUNDLE_PATH)} ` +
+      `--ca-bundle-marker ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)}`,
+    { user: "root", timeoutMs: 1_000 }
   );
 
   if (result.isErr()) {
     return result;
   }
 
-  const [portRaw, bundleRaw] = result.value.stdout.trim().split(/\s+/);
-  return new Ok({
-    portOk: portRaw === "1",
-    bundleOk: bundleRaw === "1",
-  });
+  if (result.value.exitCode !== 0) {
+    logger.warn(
+      {
+        ...logContext,
+        exitCode: result.value.exitCode,
+        stderr: result.value.stderr,
+      },
+      "Sandbox egress healthcheck exited non-zero (treating as fully unhealthy)"
+    );
+    return new Ok(FAILED_EGRESS_HEALTH_STATE);
+  }
+
+  const state = parseEgressHealthcheckOutput(
+    result.value.stdout.trim(),
+    logContext
+  );
+
+  // dsbx healthcheck exits 0 with `nft_*_ok: false` when it could read JSON
+  // but the underlying probe (missing nft binary, EPERM, non-UTF8 output)
+  // logged a diagnostic to stderr. Surface that stderr here so the reason
+  // is not lost just because the JSON parse succeeded.
+  const trimmedStderr = result.value.stderr.trim();
+  const anyUnhealthy =
+    !state.portOk || !state.resolverOk || !state.nftablesOk || !state.bundleOk;
+  if (anyUnhealthy && trimmedStderr.length > 0) {
+    logger.warn(
+      { ...logContext, stderr: trimmedStderr, state },
+      "Sandbox egress healthcheck exited zero but reported unhealthy with diagnostic stderr"
+    );
+  }
+
+  return new Ok(state);
 }
 
 // Egress prep that runs before GCS mounts: in prod, starts the forwarder; in
@@ -217,7 +332,7 @@ export async function ensureSandboxEgressOnExec(
     return healthResult;
   }
 
-  const { portOk, bundleOk } = healthResult.value;
+  const { portOk, resolverOk, nftablesOk, bundleOk } = healthResult.value;
   const baseLogContext = {
     providerId: sandbox.providerId,
     sandboxId: sandbox.sId,
@@ -229,6 +344,21 @@ export async function ensureSandboxEgressOnExec(
       "Sandbox egress forwarder port not listening, restarting"
     );
     return setupEgressForwarder(auth, sandbox, { restartExisting: true });
+  }
+
+  if (!resolverOk || !nftablesOk) {
+    logger.warn(
+      {
+        ...baseLogContext,
+        event: "egress.enforcement_health_fail",
+        resolverOk,
+        nftablesOk,
+      },
+      "Sandbox egress DNS enforcement health check failed"
+    );
+    return new Err(
+      new Error("Sandbox egress DNS enforcement health check failed")
+    );
   }
 
   if (!bundleOk) {
@@ -243,7 +373,7 @@ export async function ensureSandboxEgressOnExec(
 
   logger.info(
     { ...baseLogContext, event: "egress.health_ok" },
-    "Sandbox egress forwarder health check succeeded"
+    "Sandbox egress health check succeeded"
   );
   return new Ok(undefined);
 }
@@ -266,7 +396,7 @@ export async function teardownInSandboxEgressRedirect(
   }
 
   const command =
-    "systemctl disable --now dust-egress-nftables.service >/dev/null 2>&1 || true; " +
+    "systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service >/dev/null 2>&1 || true; " +
     "nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
     "nft delete table ip6 dust-egress >/dev/null 2>&1 || true";
 
@@ -364,19 +494,21 @@ export async function setupEgressForwarder(
     if (healthResult.isErr()) {
       return healthResult;
     }
-    // Setup only waits on the port; the bundle gets installed below and is
-    // checked on subsequent execs by ensureSandboxEgressOnExec.
-    if (healthResult.value.portOk) {
-      logger.info(logContext, "Sandbox egress forwarder is healthy");
+    // Setup waits on the forwarder and DNS enforcement. The bundle gets
+    // installed below and is checked on subsequent execs.
+    if (
+      healthResult.value.portOk &&
+      healthResult.value.resolverOk &&
+      healthResult.value.nftablesOk
+    ) {
+      logger.info(logContext, "Sandbox egress is healthy");
       return installMitmTrustBundle(auth, sandbox);
     }
 
     await sleep(EGRESS_SETUP_WAIT_MS);
   }
 
-  return new Err(
-    new Error("Sandbox egress forwarder did not become healthy in time")
-  );
+  return new Err(new Error("Sandbox egress did not become healthy in time"));
 }
 
 async function killEgressForwarder(
@@ -386,10 +518,13 @@ async function killEgressForwarder(
   // Restarts only happen when no client is using dsbx (after wake, before the
   // agent loop runs; or after a failed health check, when the listener isn't
   // serving anyway). SIGKILL is fine, no graceful shutdown needed.
+  //
+  // The regex is anchored to `/opt/bin/dsbx forward` to avoid killing the
+  // co-resident `dsbx resolve` subcommand that runs the DNS stub.
   return runSuccessfulSandboxCommand(
     auth,
     sandbox,
-    "pkill -KILL dsbx >/dev/null 2>&1 || true",
+    "pkill -KILL -f '^/opt/bin/dsbx forward( |$)' >/dev/null 2>&1 || true",
     "root"
   );
 }

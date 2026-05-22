@@ -309,6 +309,13 @@ export async function provisionMetronomeContract({
     return new Err(syncResult.error);
   }
 
+  // Pool credit state reconciliation: handled by the credit.segment.start /
+  // commit.segment.start webhooks, which fire on every new contract's
+  // recurring credit/commit. We don't call syncPoolCreditStateFromBalance
+  // here because lib/metronome is a transport layer and importing the
+  // credit_state_dispatcher would create a cycle through auth →
+  // subscription_resource → contracts.
+
   return new Ok({ metronomeContractId });
 }
 

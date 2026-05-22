@@ -7,7 +7,6 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   TriggerType,
@@ -287,13 +286,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       "Cleaning up old webhook requests"
     );
 
-    await concurrentExecutor(
-      oldRequests,
-      async (request) => {
-        await request.delete(auth);
-      },
-      { concurrency: 16 }
-    );
+    await this.deleteMany(auth, oldRequests);
 
     const excessiveRequests = await this.baseFetch(auth, {
       order: [["createdAt", "DESC"]],
@@ -308,13 +301,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       "Cleaning up excessive webhook requests"
     );
 
-    await concurrentExecutor(
-      excessiveRequests,
-      async (request) => {
-        await request.delete(auth);
-      },
-      { concurrency: 16 }
-    );
+    await this.deleteMany(auth, excessiveRequests);
   }
 
   /**
@@ -472,6 +459,29 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     webRequestId: ModelId;
   }): string {
     return `${workspaceId}/webhook_source_${webhookSourceId}/webhook_request_${webRequestId}.json`;
+  }
+
+  private static async deleteMany(
+    auth: Authenticator,
+    webhookRequests: WebhookRequestResource[]
+  ) {
+    const owner = auth.getNonNullableWorkspace();
+
+    const webhookRequestModelIds = webhookRequests.map((request) => request.id);
+
+    await WebhookRequestTriggerModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        webhookRequestId: webhookRequestModelIds,
+      },
+    });
+
+    await this.model.destroy({
+      where: {
+        workspaceId: owner.id,
+        id: webhookRequestModelIds,
+      },
+    });
   }
 
   async delete(

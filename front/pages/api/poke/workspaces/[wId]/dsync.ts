@@ -8,6 +8,7 @@ import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
@@ -17,11 +18,21 @@ async function handler(
   >,
   session: SessionWithUser
 ) {
-  const auth = await Authenticator.fromSuperUserSession(
-    session,
-    req.query.wId as string
-  );
-  const owner = auth.getNonNullableWorkspace();
+  const { wId } = req.query;
+
+  if (!isString(wId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Missing or invalid workspace id.",
+      },
+    });
+  }
+
+  const auth = await Authenticator.fromSuperUserSession(session, wId);
+
+  const owner = auth.workspace();
 
   if (!owner || !auth.isDustSuperUser()) {
     return apiError(req, res, {

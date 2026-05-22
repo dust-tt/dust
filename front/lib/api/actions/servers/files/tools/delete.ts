@@ -4,10 +4,13 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
-import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
+import {
+  deleteGCSMountFile,
+  getGCSPathFromScopedPath,
+} from "@app/lib/api/files/gcs_mount/files";
+import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export async function deleteHandler(
   { path }: { path: string },
@@ -35,7 +38,8 @@ export async function deleteHandler(
     scopedPath: path,
     useCase: scope.useCase,
   });
-  if (!gcsPath) {
+  const parsed = parseScopedFilePath(path);
+  if (!gcsPath || !parsed) {
     return new Err(
       new MCPError(
         `Invalid path: \`${path}\` does not match the resolved mount point.`,
@@ -45,21 +49,20 @@ export async function deleteHandler(
   }
 
   const bucket = getPrivateUploadBucket();
-  const file = bucket.file(gcsPath);
-
-  const [exists] = await file.exists();
+  const [exists] = await bucket.file(gcsPath).exists();
   if (!exists) {
     return new Err(
       new MCPError(`File not found: \`${path}\`.`, { tracked: false })
     );
   }
 
-  try {
-    await file.delete();
-  } catch (err) {
+  const deleteRes = await deleteGCSMountFile(auth, scope, {
+    relativeFilePath: parsed.rel,
+  });
+  if (deleteRes.isErr()) {
     return new Err(
       new MCPError(
-        `Failed to delete file \`${path}\`: ${normalizeError(err).message}`
+        `Failed to delete file \`${path}\`: ${deleteRes.error.message}`
       )
     );
   }

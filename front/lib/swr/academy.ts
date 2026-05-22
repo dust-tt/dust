@@ -1,7 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { CourseProgressData } from "@app/pages/api/academy/progress/courses";
+import type { CourseProgressData } from "@app/pages/api/marketing/academy/progress/courses";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -104,8 +104,8 @@ export function useAcademyContentProgress({
   // becomes available (it starts as null during SSR). The server ignores it;
   // the actual browserId is sent via the X-Academy-Browser-Id header.
   const url = browserId
-    ? `/api/academy/progress?contentType=${contentType}&contentSlug=${contentSlug}&_bid=${browserId}`
-    : `/api/academy/progress?contentType=${contentType}&contentSlug=${contentSlug}`;
+    ? `/m/api/academy/progress?contentType=${contentType}&contentSlug=${contentSlug}&_bid=${browserId}`
+    : `/m/api/academy/progress?contentType=${contentType}&contentSlug=${contentSlug}`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, progressFetcher, {
     disabled,
@@ -134,8 +134,8 @@ export function useAcademyCourseProgress({
   // becomes available (it starts as null during SSR). The server ignores it;
   // the actual browserId is sent via the X-Academy-Browser-Id header.
   const url = browserId
-    ? `/api/academy/progress/courses?_bid=${browserId}`
-    : `/api/academy/progress/courses`;
+    ? `/m/api/academy/progress/courses?_bid=${browserId}`
+    : `/m/api/academy/progress/courses`;
 
   const { data, error, mutate } = useSWRWithDefaults(
     url,
@@ -183,7 +183,7 @@ export function useRecordQuizAttempt({
           headers["X-Academy-Browser-Id"] = browserId;
         }
 
-        const response = await clientFetch("/api/academy/progress", {
+        const response = await clientFetch("/m/api/academy/progress", {
           method: "POST",
           headers,
           body: JSON.stringify({
@@ -204,7 +204,7 @@ export function useRecordQuizAttempt({
         // Invalidate all progress and course progress caches.
         void globalMutate(
           (key) =>
-            typeof key === "string" && key.startsWith("/api/academy/progress")
+            typeof key === "string" && key.startsWith("/m/api/academy/progress")
         );
 
         if (result.isNewCompletion) {
@@ -249,7 +249,7 @@ export function useAcademyBackfill({
 
     void (async () => {
       try {
-        const res = await clientFetch("/api/academy/progress/backfill", {
+        const res = await clientFetch("/m/api/academy/progress/backfill", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ browserId }),

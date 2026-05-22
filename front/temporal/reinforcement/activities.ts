@@ -112,7 +112,6 @@ async function reportSelfImprovingSkillsStepUsage({
     return;
   }
 
-  const authType = auth.toJSON();
   // Reinforcement messages are created with default version 0 and are never
   // retried at a higher version (Temporal retries create new message sIds).
   const agentLoopArgs: AgentLoopArgs = {
@@ -129,9 +128,9 @@ async function reportSelfImprovingSkillsStepUsage({
 
   try {
     await Promise.all([
-      launchAgentMessageAnalytics(authType, agentLoopArgs),
-      launchTrackProgrammaticUsage(authType, agentLoopArgs),
-      launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
+      launchAgentMessageAnalytics(auth, agentLoopArgs),
+      launchTrackProgrammaticUsage(auth, agentLoopArgs),
+      launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     ]);
   } catch (err) {
     logger.warn(
@@ -178,7 +177,9 @@ async function runReinforcedSkillsStep({
   approvedSourceSuggestionIds: string[];
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
-  const llm = await getReinforcedSkillsLLM(auth, operationType);
+  const llm = await getReinforcedSkillsLLM(auth, operationType, {
+    forBatch: false,
+  });
   if (!llm) {
     logger.error(
       { contextId, workspaceId: auth.getNonNullableWorkspace().sId },
@@ -924,7 +925,8 @@ export async function checkBatchStatusActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation"
+    "reinforcement_analyze_conversation",
+    { forBatch: true }
   );
   if (!llm) {
     throw ApplicationFailure.nonRetryable(
@@ -962,7 +964,8 @@ export async function startSkillConversationAnalysisBatchActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation"
+    "reinforcement_analyze_conversation",
+    { forBatch: true }
   );
   if (!llm) {
     logger.warn(
@@ -1094,7 +1097,8 @@ export async function processSkillConversationAnalysisBatchResultActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation"
+    "reinforcement_analyze_conversation",
+    { forBatch: true }
   );
   if (!llm) {
     return [];
@@ -1257,7 +1261,8 @@ export async function startSkillAggregationBatchActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_aggregate_suggestions"
+    "reinforcement_aggregate_suggestions",
+    { forBatch: true }
   );
   if (!llm) {
     logger.warn(
@@ -1367,7 +1372,8 @@ export async function processSkillAggregationBatchResultActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_aggregate_suggestions"
+    "reinforcement_aggregate_suggestions",
+    { forBatch: true }
   );
   if (!llm) {
     return {

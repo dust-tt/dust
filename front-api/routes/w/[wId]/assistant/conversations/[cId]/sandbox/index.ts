@@ -1,16 +1,16 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type GetConversationSandboxResponseBody = {
   sandboxStatus: SandboxStatus | null;
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/sandbox.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetConversationSandboxResponseBody> => {
   const auth = ctx.get("auth");

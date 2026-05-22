@@ -1,5 +1,4 @@
-import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
@@ -8,15 +7,9 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export async function snapshotAgentMessageSkills(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    return;
-  }
-
-  const auth = authResult.value;
   const owner = auth.getNonNullableWorkspace();
 
   const { agentMessageId } = agentLoopArgs;

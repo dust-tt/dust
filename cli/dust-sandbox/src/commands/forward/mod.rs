@@ -3,9 +3,11 @@ mod handshake;
 mod http_host;
 mod http_rewriter;
 mod original_dst;
+mod rewrite_policy;
 mod sni;
 mod tls_mitm;
 
+use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -29,9 +31,10 @@ use self::deny_log::{append_deny_log, DenyLogEntry, DenyReason};
 use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
 use self::http_host::parse_http_host;
 use self::http_rewriter::{
-    copy_responses_with_websocket_watch, forward_http1_requests, HttpRewriteError, HttpRewriteMode,
+    copy_responses_with_websocket_watch, forward_http1_requests, HttpRewriteError,
 };
 use self::original_dst::resolve_original_dst;
+use self::rewrite_policy::RewriteMode as HttpRewriteMode;
 use self::sni::parse_client_hello_sni;
 use self::tls_mitm::{MitmCa, HTTP_1_1_ALPN};
 
@@ -242,6 +245,13 @@ async fn handle_connection(
         &runtime.secret_table,
     );
 
+    if let Some(sni) = mitm_target {
+        run_mitm_session(&runtime, sni, client_stream)
+            .await
+            .context("MITM session failed")?;
+        return Ok(());
+    }
+
     let server_name = ServerName::try_from(runtime.proxy_tls_name.to_string())
         .context("invalid proxy TLS server name")?;
     let proxy_stream = TcpStream::connect(runtime.proxy_addr)
@@ -267,15 +277,11 @@ async fn handle_connection(
                 peer_addr = %peer_addr,
                 original_port,
                 domain = display_domain(&domain_extraction.domain),
-                mitm = mitm_target.is_some(),
+                mitm = false,
                 "proxy allowed forwarded connection"
             );
 
-            if let Some(sni) = mitm_target {
-                run_mitm_session(&runtime, sni, client_stream, proxy_stream)
-                    .await
-                    .context("MITM session failed")?;
-            } else if original_port == 80 {
+            if original_port == 80 {
                 run_plain_http_session(
                     &runtime,
                     &domain_extraction.domain,
@@ -345,24 +351,28 @@ fn mitm_target_for<'a>(
     Some(domain)
 }
 
-async fn run_mitm_session<C, S>(
+async fn run_mitm_session<C>(runtime: &ForwardRuntime, sni: &str, client_stream: C) -> Result<()>
+where
+    C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    run_mitm_session_with_proxy_opener(runtime, sni, client_stream, || {
+        open_allowed_proxy_tunnel(runtime, sni, 443)
+    })
+    .await
+}
+
+async fn run_mitm_session_with_proxy_opener<C, S, F, Fut>(
     runtime: &ForwardRuntime,
     sni: &str,
     client_stream: C,
-    proxy_stream: S,
+    open_proxy_tunnel: F,
 ) -> Result<()>
 where
     C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    F: FnOnce() -> Fut,
+    Fut: Future<Output = Result<S>>,
 {
-    let upstream_server_name =
-        ServerName::try_from(sni.to_string()).context("invalid upstream SNI for MITM TLS")?;
-    let upstream_tls = runtime
-        .mitm_tls_connector
-        .connect(upstream_server_name, proxy_stream)
-        .await
-        .context("failed to establish MITM TLS to upstream via proxy tunnel")?;
-
     let server_config = runtime
         .mitm_ca
         .server_config_for(sni)
@@ -374,6 +384,25 @@ where
         .await
         .context("failed to accept agent TLS for MITM")?;
 
+    let inbound_alpn = agent_tls.get_ref().1.alpn_protocol();
+    let inbound_alpn = if inbound_alpn == Some(HTTP_1_1_ALPN) {
+        "http/1.1"
+    } else {
+        "<none>"
+    };
+    info!(
+        domain = sni,
+        inbound_alpn,
+        outbound_alpn = "http/1.1",
+        "starting h1 MITM session"
+    );
+    let proxy_stream = open_proxy_tunnel()
+        .await
+        .context("failed to open MITM proxy tunnel")?;
+    let upstream_tls = connect_mitm_upstream_tls(runtime, sni, proxy_stream)
+        .await
+        .context("failed to establish MITM TLS to upstream via proxy tunnel")?;
+
     run_rewritten_http_session(
         runtime,
         HttpRewriteMode::Tls { sni },
@@ -381,6 +410,71 @@ where
         upstream_tls,
     )
     .await
+}
+
+async fn connect_mitm_upstream_tls<S>(
+    runtime: &ForwardRuntime,
+    sni: &str,
+    proxy_stream: S,
+) -> Result<tokio_rustls::client::TlsStream<S>>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    let upstream_server_name =
+        ServerName::try_from(sni.to_string()).context("invalid upstream SNI for MITM TLS")?;
+    runtime
+        .mitm_tls_connector
+        .connect(upstream_server_name, proxy_stream)
+        .await
+        .context("failed to establish MITM TLS to upstream via proxy tunnel")
+}
+
+async fn open_allowed_proxy_tunnel(
+    runtime: &ForwardRuntime,
+    domain: &str,
+    port: u16,
+) -> Result<tokio_rustls::client::TlsStream<TcpStream>> {
+    let server_name = ServerName::try_from(runtime.proxy_tls_name.to_string())
+        .context("invalid proxy TLS server name")?;
+    let proxy_stream = TcpStream::connect(runtime.proxy_addr)
+        .await
+        .with_context(|| format!("failed to connect to proxy {}", runtime.proxy_addr))?;
+    let mut proxy_stream = runtime
+        .tls_connector
+        .connect(server_name, proxy_stream)
+        .await
+        .context("failed to establish TLS connection to proxy")?;
+
+    let frame = build_handshake_frame(&runtime.token, domain, port)
+        .context("failed to build proxy handshake frame")?;
+    proxy_stream
+        .write_all(&frame)
+        .await
+        .context("failed to write proxy handshake frame")?;
+
+    match read_proxy_response(&mut proxy_stream).await {
+        ProxyDecision::Allow => Ok(proxy_stream),
+        ProxyDecision::Deny => {
+            append_deny_log(
+                &runtime.deny_log,
+                DenyLogEntry::proxy(domain, port, DenyReason::ProxyDenied),
+            )
+            .await
+            .context("failed to append proxy deny log entry")?;
+            Err(anyhow::anyhow!("proxy denied per-stream tunnel"))
+        }
+        ProxyDecision::ProtocolError => {
+            append_deny_log(
+                &runtime.deny_log,
+                DenyLogEntry::proxy(domain, port, DenyReason::ProxyProtocolError),
+            )
+            .await
+            .context("failed to append proxy protocol-error deny log entry")?;
+            Err(anyhow::anyhow!(
+                "proxy returned invalid per-stream response"
+            ))
+        }
+    }
 }
 
 async fn run_plain_http_session<C, S>(
@@ -402,9 +496,9 @@ where
     .await
 }
 
-async fn run_rewritten_http_session<C, S>(
-    runtime: &ForwardRuntime,
-    mode: HttpRewriteMode<'_>,
+async fn run_rewritten_http_session<'a, C, S>(
+    runtime: &'a ForwardRuntime,
+    mode: HttpRewriteMode<'a>,
     client_stream: C,
     upstream_stream: S,
 ) -> Result<()>
@@ -665,7 +759,10 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        run_mitm_session(&runtime, sni, agent_dsbx_io, dsbx_proxy_io).await?;
+        run_mitm_session_with_proxy_opener(&runtime, sni, agent_dsbx_io, || async {
+            Ok(dsbx_proxy_io)
+        })
+        .await?;
         agent_task.await.context("test agent task panicked")??;
         upstream_task
             .await
@@ -759,7 +856,10 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        run_mitm_session(&runtime, sni, agent_dsbx_io, dsbx_proxy_io).await?;
+        run_mitm_session_with_proxy_opener(&runtime, sni, agent_dsbx_io, || async {
+            Ok(dsbx_proxy_io)
+        })
+        .await?;
         agent_task.await.context("test agent task panicked")??;
         upstream_task
             .await
@@ -873,7 +973,10 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        run_mitm_session(&runtime, sni, agent_dsbx_io, dsbx_proxy_io).await?;
+        run_mitm_session_with_proxy_opener(&runtime, sni, agent_dsbx_io, || async {
+            Ok(dsbx_proxy_io)
+        })
+        .await?;
         agent_task.await.context("test agent task panicked")??;
         upstream_task
             .await
@@ -985,7 +1088,10 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        run_mitm_session(&runtime, sni, agent_dsbx_io, dsbx_proxy_io).await?;
+        run_mitm_session_with_proxy_opener(&runtime, sni, agent_dsbx_io, || async {
+            Ok(dsbx_proxy_io)
+        })
+        .await?;
         agent_task.await.context("test agent task panicked")??;
         upstream_task
             .await

@@ -4,6 +4,7 @@ import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import {
   DSBX_TOOL_NAME,
   PROXY_ONLY_NETWORK_POLICY,
+  SANDBOX_AGENT_PROXIED_UID,
   type ToolEntry,
 } from "@app/lib/api/sandbox/image/types";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
@@ -14,9 +15,12 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.18";
-const DSBX_CLI_VERSION = "0.1.14";
-const AGENT_PROXIED_UID = 1003;
+const DUST_BASE_IMAGE_VERSION = "0.8.20";
+const DSBX_CLI_VERSION = "0.1.16";
+// Identity, not coverage list: agent-proxied is a specific Linux user. The
+// nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
+// list must not silently change this user's UID.
+const AGENT_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
@@ -152,6 +156,13 @@ function getAgentProxiedSetupCommand(): string {
   ].join(" && ");
 }
 
+function getEgressResolverUserSetupCommand(): string {
+  return [
+    "groupadd --system dust-egress-resolver",
+    "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver",
+  ].join(" && ");
+}
+
 const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   `dust-sbx-bedrock:${DUST_BEDROCK_IMAGE_VERSION}`
 )
@@ -181,6 +192,7 @@ SHELLEOF`,
     { user: "root" }
   )
   .runCmd("chmod 755 /home/agent/.bin/token-server.sh", { user: "root" })
+  .runCmd(getEgressResolverUserSetupCommand(), { user: "root" })
   // Add sentinel file to indicate when the conversation mount is pending. We intentionally do
   // NOT add an equivalent marker under /files/project: the project mount is conditional (only
   // happens for project conversations), so a baked marker would be misleading in non-project
@@ -394,8 +406,13 @@ SHELLEOF`,
     "/etc/systemd/system/dust-egress-nftables.service",
     { user: "root" }
   )
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "dust-egress-resolver.service"),
+    "/etc/systemd/system/dust-egress-resolver.service",
+    { user: "root" }
+  )
   .runCmd(
-    "systemctl daemon-reload && systemctl enable dust-egress-nftables.service",
+    "systemctl daemon-reload && systemctl enable dust-egress-resolver.service dust-egress-nftables.service",
     { user: "root" }
   )
   // Profile functions (no install needed, provided by profile scripts)

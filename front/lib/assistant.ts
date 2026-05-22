@@ -119,10 +119,12 @@ export function getSmallWhitelistedModel(
 
 export function getLargeWhitelistedModel(
   auth: Authenticator,
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  { forBatch = false }: { forBatch?: boolean } = {}
 ): ModelConfigurationType | null {
   return _getLargeWhitelistedModel(
-    getWhitelistedProviders(auth).difference(excludeProviders)
+    getWhitelistedProviders(auth).difference(excludeProviders),
+    { forBatch }
   );
 }
 
@@ -147,25 +149,25 @@ function _getSmallWhitelistedModel(
   return null;
 }
 
+const LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  GPT_5_5_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
+  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
+];
+
 function _getLargeWhitelistedModel(
-  whitelistedProviders: Set<ModelProviderIdType>
+  whitelistedProviders: Set<ModelProviderIdType>,
+  { forBatch: hasBatch }: { forBatch?: boolean } = {}
 ): ModelConfigurationType | null {
-  if (whitelistedProviders.has("anthropic")) {
-    return CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("openai")) {
-    return GPT_5_5_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("google_ai_studio")) {
-    return GEMINI_3_PRO_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("mistral")) {
-    return MISTRAL_MEDIUM_3_5_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("xai")) {
-    return GROK_4_MODEL_CONFIG;
-  }
-  return null;
+  const compatibleModels = LARGE_MODEL_CONFIGS.filter(
+    (m) =>
+      whitelistedProviders.has(m.providerId) &&
+      (!hasBatch || m.supportsBatchProcessing)
+  );
+
+  return compatibleModels[0] ?? null;
 }
 
 // Returns true if the model is available to the workspace for use.

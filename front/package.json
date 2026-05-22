@@ -27,6 +27,7 @@
     "docs:check": "npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
     "tsgo": "tsgo",
     "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
+    "test:update-internal-mcp-availability-snapshot": "UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT=1 npm run test -- lib/actions/mcp_internal_actions/constants.test.ts",
     "test:watch": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --watch",
     "test:ci": "vitest --reporter=junit --watch=false --test-timeout=30000",
     "coverage": "vitest --coverage",

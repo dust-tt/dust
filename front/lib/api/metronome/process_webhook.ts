@@ -4,6 +4,7 @@ import {
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
   dispatchPoolExhausted,
+  syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
@@ -18,11 +19,19 @@ import {
   YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
 import {
+  getMetronomeClient,
   getMetronomeContractById,
   listMetronomeContracts,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
-import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import {
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_EXCESS,
+  CONTRACT_CREDIT_TYPE_POOL,
+  getCreditTypeAwuId,
+  getProductExcessCreditsId,
+  PLAN_CODE_CUSTOM_FIELD_KEY,
+} from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
@@ -46,6 +55,95 @@ export class ProcessMetronomeWebhookError extends Error {
   }
 }
 
+/**
+ * Stamp `DUST_CONTRACT_CREDIT_TYPE` on a contract_credit. Idempotent — bails
+ * out if the field is already set on the credit. Used by both `credit.create`
+ * and `credit.segment.start` handlers so every newly visible credit gets
+ * tagged regardless of which event Metronome fires first.
+ *
+ *   - excess product → "excess" (filtered out of default alerts)
+ *   - per-seat (INDIVIDUAL allocation) → unstamped (workspace pool alerts
+ *     don't track per-seat balances)
+ *   - everything else (incl. customer-level credits) → "pool" (counted)
+ */
+async function stampContractCreditType({
+  customerId,
+  contractId,
+  creditId,
+  creditCustomFields,
+  eventType,
+}: {
+  customerId: string;
+  contractId: string | null | undefined;
+  creditId: string;
+  creditCustomFields?: Record<string, string> | null;
+  eventType: string;
+}): Promise<Result<void, ProcessMetronomeWebhookError>> {
+  if (creditCustomFields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]) {
+    return new Ok(undefined);
+  }
+
+  let value:
+    | typeof CONTRACT_CREDIT_TYPE_POOL
+    | typeof CONTRACT_CREDIT_TYPE_EXCESS = CONTRACT_CREDIT_TYPE_POOL;
+
+  if (contractId) {
+    const contractResult = await getMetronomeContractById({
+      metronomeCustomerId: customerId,
+      metronomeContractId: contractId,
+    });
+    if (contractResult.isErr()) {
+      logger.error(
+        { customerId, contractId, creditId, error: contractResult.error },
+        `[Metronome Webhook] ${eventType}: failed to fetch contract for stamping`
+      );
+      return new Err(
+        new ProcessMetronomeWebhookError(
+          "processing_failed",
+          `Error fetching contract: ${contractResult.error.message}`
+        )
+      );
+    }
+
+    const credit = contractResult.value.credits?.find((c) => c.id === creditId);
+    if (!credit) {
+      logger.info(
+        { customerId, contractId, creditId },
+        `[Metronome Webhook] ${eventType}: credit not found on contract, skipping stamp`
+      );
+      return new Ok(undefined);
+    }
+
+    // Re-check after the fresh fetch — Metronome may have stamped it between
+    // event emission and our processing (e.g. if both credit.create and
+    // credit.segment.start fire).
+    if (credit.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]) {
+      return new Ok(undefined);
+    }
+
+    if (credit.subscription_config?.allocation === "INDIVIDUAL") {
+      return new Ok(undefined);
+    }
+
+    if (credit.product.id === getProductExcessCreditsId()) {
+      value = CONTRACT_CREDIT_TYPE_EXCESS;
+    }
+  }
+
+  await getMetronomeClient().v1.customFields.setValues({
+    entity: "contract_credit",
+    entity_id: creditId,
+    custom_fields: {
+      [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: value,
+    },
+  });
+  logger.info(
+    { customerId, contractId, creditId, value, eventType },
+    `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE`
+  );
+  return new Ok(undefined);
+}
+
 export async function processMetronomeWebhook({
   event,
 }: {
@@ -61,6 +159,14 @@ export async function processMetronomeWebhook({
     : null;
 
   if (!workspace) {
+    logger.info(
+      {
+        eventId: event.id,
+        eventType: event.type,
+        customerId,
+      },
+      "[Metronome Webhook] No workspace mapped to customer, ack and skip"
+    );
     return new Ok(undefined);
   }
 
@@ -241,17 +347,38 @@ export async function processMetronomeWebhook({
     case "commit.create":
     case "commit.edit":
     case "commit.segment.end":
-    case "commit.segment.start":
     case "contract.archive":
     case "contract.create":
     case "contract.edit":
     case "credit.archive":
-    case "credit.create":
     case "credit.edit":
     case "credit.segment.end":
     case "invoice.billing_provider_error":
     case "invoice.finalized":
       break;
+
+    case "credit.create": {
+      logger.info(
+        {
+          customerId: event.customer_id,
+          contractId: event.contract_id,
+          creditId: event.credit_id,
+          workspaceId: workspace.sId,
+        },
+        "[Metronome Webhook] credit.create: handler entered"
+      );
+      const stampResult = await stampContractCreditType({
+        customerId: event.customer_id,
+        contractId: event.contract_id ?? null,
+        creditId: event.credit_id,
+        creditCustomFields: event.credit_custom_fields,
+        eventType: "credit.create",
+      });
+      if (stampResult.isErr()) {
+        return stampResult;
+      }
+      break;
+    }
 
     // Payment-gated commit lifecycle. Metronome activates the commit
     // itself on success, so we don't grant credits here — just log the
@@ -266,7 +393,7 @@ export async function processMetronomeWebhook({
         payment_status: paymentStatus,
         error_message: errorMessage,
       } = event.properties;
-      if (paymentStatus === "succeeded") {
+      if (paymentStatus === "paid") {
         logger.info(
           { customerId, contractId, invoiceId, paymentStatus },
           "[Metronome Webhook] Payment-gated commit paid"
@@ -279,7 +406,7 @@ export async function processMetronomeWebhook({
           contractId,
           invoiceId,
         });
-      } else {
+      } else if (paymentStatus === "failed") {
         logger.warn(
           {
             customerId,
@@ -296,6 +423,19 @@ export async function processMetronomeWebhook({
           errorMessage: errorMessage ?? "Payment failed",
           invoiceId: invoiceId || undefined,
         });
+      } else {
+        // Non-terminal `payment_status` values — log and leave the attempt
+        // pending; the terminal "paid" / "failed" event will follow.
+        logger.info(
+          {
+            customerId,
+            contractId,
+            invoiceId,
+            paymentStatus,
+            errorMessage,
+          },
+          "[Metronome Webhook] Payment-gated commit intermediate status, leaving attempt pending"
+        );
       }
       break;
     }
@@ -304,6 +444,57 @@ export async function processMetronomeWebhook({
     case "payment_gate.threshold_reached":
     case "payment_gate.external_initiate":
       break;
+
+    // Fresh AWU credits / commits arriving (new period, contract switch,
+    // manual grant): reconcile the workspace pool credit state with the live
+    // AWU balance. Without this, a workspace stuck in `depleted` would
+    // never transition out — `low_remaining..._resolved` doesn't fire if
+    // no `low_remaining..._reached` was ever fired against the previous
+    // balance. Non-AWU segments (programmatic USD, EUR seat credits, etc.)
+    // are out of scope for the pool state machine and are skipped.
+    case "commit.segment.start": {
+      const customerId = event.customer_id;
+      const contractId = event.contract_id;
+      const commitId = event.commit_id;
+
+      if (!contractId) {
+        break;
+      }
+
+      const contractResult = await getMetronomeContractById({
+        metronomeCustomerId: customerId,
+        metronomeContractId: contractId,
+      });
+      if (contractResult.isErr()) {
+        logger.error(
+          { customerId, contractId, commitId, error: contractResult.error },
+          "[Metronome Webhook] commit.segment.start: failed to fetch contract"
+        );
+        return new Err(
+          new ProcessMetronomeWebhookError(
+            "processing_failed",
+            `Error fetching contract: ${contractResult.error.message}`
+          )
+        );
+      }
+
+      const commit = contractResult.value.commits?.find(
+        (c) => c.id === commitId
+      );
+      if (!commit) {
+        break;
+      }
+
+      if (commit.access_schedule?.credit_type?.id !== getCreditTypeAwuId()) {
+        break;
+      }
+
+      await syncPoolCreditStateFromBalance({
+        workspace,
+        metronomeCustomerId: customerId,
+      });
+      break;
+    }
 
     case "credit.segment.start": {
       const {
@@ -357,6 +548,16 @@ export async function processMetronomeWebhook({
           "[Metronome Webhook] credit.segment.start: credit not found on contract, ignoring"
         );
         break;
+      }
+
+      // Reconcile pool state only for AWU credits — non-AWU segments
+      // (programmatic USD free credits, EUR seat credits, etc.) are out of
+      // scope for the workspace pool state machine.
+      if (credit.access_schedule?.credit_type?.id === getCreditTypeAwuId()) {
+        await syncPoolCreditStateFromBalance({
+          workspace,
+          metronomeCustomerId: customerId,
+        });
       }
 
       if (!isMetronomeFreeCredit(credit)) {
@@ -511,6 +712,17 @@ export async function processMetronomeWebhook({
 
     case "contract.start": {
       const { contract_id: contractId, customer_id: customerId } = event;
+
+      // Reconcile the workspace pool credit state against the new contract's
+      // live AWU balance. Replaces the in-process call we previously made
+      // from `provisionMetronomeContract` (removed to break a dependency
+      // cycle through auth → subscription_resource → contracts). Without
+      // this, a workspace whose previous contract ended `depleted` would
+      // stay stuck after the new contract spins up with a fresh commit.
+      await syncPoolCreditStateFromBalance({
+        workspace,
+        metronomeCustomerId: customerId,
+      });
 
       // Read the PLAN_CODE custom field to know which plan to swap the
       // workspace subscription onto. The actual swap is gated below on

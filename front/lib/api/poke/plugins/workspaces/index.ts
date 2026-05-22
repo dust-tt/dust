@@ -34,6 +34,7 @@ export * from "./send_onboarding_conversation";
 export * from "./soft_delete_conversation";
 export * from "./switch_to_metronome_billing";
 export * from "./sync_missing_transcripts_date_range";
+export * from "./sync_pool_credit_state";
 export * from "./toggle_auto_create_space";
 export * from "./toggle_disable_manual_invitations";
 export * from "./toggle_feature_flag";

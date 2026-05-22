@@ -263,8 +263,8 @@ export function buildLlmUsageEvents({
       cache_creation_tokens: group.cacheCreationTokens,
       // Provider cost without markup — markup is applied in Metronome rate card. Only used for legacy rates.
       cost_micro_usd: group.costMicroUsd,
-      // TODO: This is a temporary conversion factor. Includes markup. Actual cost TBD.
-      cost_awu: Math.ceil((group.costMicroUsd * 1.3) / 10_000),
+      // 1 AWU credit = $0.0085
+      cost_awu: Math.ceil(group.costMicroUsd / 0.85 / 10_000),
       // TODO: Remove is_programmatic_usage & is_free_usage, this is replaced by single property "usage type"
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
       is_free_usage: "false",

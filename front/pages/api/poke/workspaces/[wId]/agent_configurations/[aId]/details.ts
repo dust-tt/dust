@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
