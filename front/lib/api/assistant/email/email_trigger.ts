@@ -471,8 +471,9 @@ export async function userAndWorkspaceFromEmail({
   );
 
   if (eligibleWorkspaceModels.length === 0) {
+    // The user exists locally, so this should not use a relay-eligible error type.
     return new Err({
-      type: "workspace_not_found",
+      type: "invalid_email_error",
       message:
         "Email interactions with agents are not enabled for any of your workspaces.",
     });

@@ -6,8 +6,12 @@ import {
   buildReplyThreadingHeaders,
   parseEmailReplyContext,
   sendToolValidationEmail,
+  userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
 import { sendEmail } from "@app/lib/api/email";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -130,6 +134,24 @@ describe("parseEmailReplyContext", () => {
     });
     expect(parsed).not.toHaveProperty("replyTo");
     expect(parsed).not.toHaveProperty("replyCc");
+  });
+});
+
+describe("userAndWorkspaceFromEmail", () => {
+  it("does not classify disabled email agents as a missing workspace", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+
+    const result = await userAndWorkspaceFromEmail({ email: user.email });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe("invalid_email_error");
+      expect(result.error.message).toBe(
+        "Email interactions with agents are not enabled for any of your workspaces."
+      );
+    }
   });
 });
 
