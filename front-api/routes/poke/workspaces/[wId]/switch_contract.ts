@@ -36,12 +36,13 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export interface PokeSwitchContractSuccessResponseBody {
   success: boolean;
@@ -55,7 +56,9 @@ const SwitchContractBodySchema = z
     // selected package is enterprise-tier; forbidden otherwise (Pro/Business
     // swap at the current hour).
     startingAt: z.string().optional(),
-    stripeCustomerId: z.string().min(1),
+    // Optional: required for paid tiers (pro/business/enterprise), omitted
+    // for free-tier switches where Metronome contracts have no Stripe link.
+    stripeCustomerId: z.string().min(1).optional(),
     paygEnabled: z.boolean().default(false),
     paygCapDollars: z
       .number()
@@ -71,9 +74,7 @@ const SwitchContractBodySchema = z
     path: ["paygCapDollars"],
   });
 
-type PlanTier = MetronomePackageTier | "free";
-
-function classifyPlanCode(planCode: string): PlanTier {
+function classifyPlanCode(planCode: string): MetronomePackageTier {
   if (isEntreprisePlanPrefix(planCode)) {
     return "enterprise";
   }
@@ -94,14 +95,6 @@ function validatePlanPackageCompat(
   packageTier: MetronomePackageTier
 ): Result<void, Error> {
   const planTier = classifyPlanCode(planCode);
-  if (planTier === "free") {
-    return new Err(
-      new Error(
-        `Plan ${planCode} is a free plan; the switch-contract flow only ` +
-          "handles paid plans. Use the dedicated free-plan action instead."
-      )
-    );
-  }
   if (planTier !== packageTier) {
     return new Err(
       new Error(
@@ -118,20 +111,33 @@ const app = pokeApp();
 
 app.post(
   "/",
-  validate("json", SwitchContractBodySchema),
   async (ctx): HandlerResult<PokeSwitchContractSuccessResponseBody> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
-    const body = ctx.req.valid("json");
+    const rawBody = await ctx.req.json().catch(() => ({}));
 
     const plugin = pluginManager.getNonNullablePlugin("switch-contract");
     const pluginRun = await PluginRunResource.makeNew(
       plugin,
-      body,
+      rawBody,
       auth.getNonNullableUser(),
       owner,
       { resourceId: owner.sId, resourceType: "workspaces" }
     );
+
+    const validation = SwitchContractBodySchema.safeParse(rawBody);
+    if (!validation.success) {
+      const errorMessage = `The request body is invalid: ${fromError(validation.error).toString()}`;
+      await pluginRun.recordError(errorMessage);
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: errorMessage,
+        },
+      });
+    }
+    const body = validation.data;
 
     // Workspace must be Metronome-billed (current sub Metronome-only) or
     // freshly Metronome-eligible (Metronome billing enabled + no Stripe sub).
@@ -155,16 +161,22 @@ app.post(
     const programmaticConfig =
       await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-    const stripeCustomer = await getStripeCustomer(body.stripeCustomerId);
-    if (!stripeCustomer) {
-      const errorMessage = `Stripe customer not found: ${body.stripeCustomerId}.`;
-      await pluginRun.recordError(errorMessage);
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: { type: "invalid_request_error", message: errorMessage },
-      });
+    // Validate the Stripe customer exists before we touch Metronome.
+    // For free-tier switches the operator may omit the Stripe customer entirely
+    // — the contract is created without Stripe billing wired in.
+    let resolvedCurrency: SupportedCurrency | null = null;
+    if (body.stripeCustomerId) {
+      const stripeCustomer = await getStripeCustomer(body.stripeCustomerId);
+      if (!stripeCustomer) {
+        const errorMessage = `Stripe customer not found: ${body.stripeCustomerId}.`;
+        await pluginRun.recordError(errorMessage);
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message: errorMessage },
+        });
+      }
+      resolvedCurrency = resolveCurrencyFromStripe({ stripeCustomer });
     }
-    const resolvedCurrency = resolveCurrencyFromStripe({ stripeCustomer });
 
     const customerResult = await ensureMetronomeCustomerForWorkspace({
       workspace: renderLightWorkspaceType({ workspace: owner }),
@@ -200,7 +212,14 @@ app.post(
         api_error: { type: "invalid_request_error", message: errorMessage },
       });
     }
-    if (pkg.currency !== resolvedCurrency) {
+    // Free packages are currency-agnostic (price is 0) — skip the currency
+    // match check. For paid tiers, the resolved Stripe currency must match the
+    // package's currency.
+    if (
+      pkg.tier !== "free" &&
+      resolvedCurrency &&
+      pkg.currency !== resolvedCurrency
+    ) {
       const errorMessage =
         `Metronome package ${body.metronomePackageId} is ${pkg.currency.toUpperCase()}, ` +
         `but Stripe customer ${body.stripeCustomerId} resolves to ` +
@@ -285,7 +304,7 @@ app.post(
       packageAlias,
       startingAt: startingAtDate,
       swapAt,
-      enableStripeBilling: true,
+      enableStripeBilling: body.stripeCustomerId !== undefined,
       planCode: body.planCode,
     });
     if (provisionResult.isErr()) {

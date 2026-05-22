@@ -504,7 +504,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error.message).toContain("is a free plan");
+    expect(data.error.message).toContain("does not match");
   });
 
   it("rejects when the workspace is Stripe-billed", async () => {

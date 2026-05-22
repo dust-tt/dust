@@ -15,7 +15,7 @@ import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
-export type PokeDataSourceFeatures = {
+export type FeaturesType = {
   slackBotEnabled: boolean;
   googleDrivePdfEnabled: boolean;
   googleDriveLargeFilesEnabled: boolean;
@@ -33,7 +33,7 @@ export type PokeGetDataSourceDetails = {
   dataSourceViews: DataSourceViewType[];
   coreDataSource: CoreAPIDataSource;
   connector: InternalConnectorType | null;
-  features: PokeDataSourceFeatures;
+  features: FeaturesType;
   temporalWorkspace: string;
   temporalRunningWorkflows: {
     workflowId: string;
@@ -121,7 +121,7 @@ app.get("/", async (ctx): HandlerResult<PokeGetDataSourceDetails> => {
     }
   }
 
-  const features: PokeDataSourceFeatures = {
+  const features: FeaturesType = {
     slackBotEnabled: false,
     googleDrivePdfEnabled: false,
     googleDriveLargeFilesEnabled: false,
