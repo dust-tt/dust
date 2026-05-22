@@ -76,6 +76,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional. The ID of the message to reply to. If provided, the draft will be created as a reply in the existing thread, with proper threading headers and the original message quoted."
         ),
+        attachmentFileId: z
+        .string()
+        .optional()
+        .describe("Optional. The file ID of a conversation attachment to include in the email. The file must be present in the current conversation.")
     },
     stake: "medium",
     displayLabels: {
@@ -242,6 +246,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional. The ID of the message to reply to. If provided, the email will be sent as a reply in the existing thread, with proper threading headers and the original message quoted."
         ),
+        attachmentFileId: z
+        .string()
+        .optional()
+        .describe("Optional. The file ID of a conversation attachment to include in the email. The file must be present in the current conversation.")
     },
     stake: "high",
     displayLabels: {
