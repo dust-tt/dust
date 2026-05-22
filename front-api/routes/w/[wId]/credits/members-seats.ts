@@ -2,9 +2,10 @@ import {
   type GetMembersSeatsResponseBody,
   getMembersSeats,
 } from "@app/lib/api/credits/members_seats";
-import { workspaceApp } from "@front-api/middleware/env";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
+import type { WorkspaceType } from "@app/types/user";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/credits/members-seats.
 const app = workspaceApp();
