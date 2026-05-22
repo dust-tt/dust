@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 
 export async function webhookCleanupActivity() {
@@ -12,12 +11,7 @@ export async function webhookCleanupActivity() {
     return;
   }
 
-  for (const workspaceId of workspacesToCleanup) {
-    const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
-    if (!workspace) {
-      logger.error({ workspaceId }, "Workspace not found.");
-      continue;
-    }
+  for (const workspace of workspacesToCleanup) {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     await WebhookRequestResource.cleanUpWorkspace(auth);
     logger.info(
