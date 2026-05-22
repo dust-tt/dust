@@ -143,6 +143,7 @@ async function areTemporalWorkflowsRunning(
       client: Client;
       descriptions: NotionWorkflowDescriptions;
     }): Promise<(Date | null)[]> => {
+      // Bounded (only 3 elements in NotionWorkflowDescriptions), Temporal-only Promise.all.
       return Promise.all(
         descriptions.map((description) =>
           getLatestWorkflowEventTime({ client, description })
