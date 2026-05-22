@@ -123,71 +123,71 @@ function flattenStuckWorkflows(info: StuckWorkflowInfo): StuckWorkflowInfo[] {
 
 async function checkWorkflowStuck(
   client: Client,
-  {
-    workflowId,
-    visitedWorkflowIds = new Set(),
-  }: {
-    workflowId: string;
-    visitedWorkflowIds?: Set<string>;
-  }
+  { workflowId }: { workflowId: string }
 ): Promise<StuckWorkflowInfo | null> {
-  // Prevent infinite loops if there are circular child workflows.
-  if (visitedWorkflowIds.has(workflowId)) {
-    return null;
-  }
-  visitedWorkflowIds.add(workflowId);
+  // `visited` is shared across the whole recursion via the closure below, so
+  // sibling children dedupe against each other. It must not be passed as a
+  // parameter (GEN5).
+  const visited = new Set<string>();
 
-  let description: WorkflowExecutionDescription;
-  try {
-    const handle = client.workflow.getHandle(workflowId);
-    description = await handle.describe();
-  } catch {
-    return null;
-  }
-
-  const pendingActivities: PendingActivityInfo[] = [];
-  const stuckActivities: PendingActivityInfo[] = [];
-
-  if (description.raw.pendingActivities) {
-    for (const activity of description.raw.pendingActivities) {
-      const activityInfo: PendingActivityInfo = {
-        activityId: activity.activityId ?? "unknown",
-        activityType: activity.activityType?.name ?? "unknown",
-        attempt: activity.attempt ?? 0,
-        lastFailure: activity.lastFailure?.message ?? null,
-        state: activity.state?.toString() ?? "unknown",
-      };
-
-      pendingActivities.push(activityInfo);
-
-      if (activityInfo.attempt >= STUCK_THRESHOLD) {
-        stuckActivities.push(activityInfo);
-      }
+  async function visit(id: string): Promise<StuckWorkflowInfo | null> {
+    // Prevent infinite loops if there are circular child workflows.
+    if (visited.has(id)) {
+      return null;
     }
-  }
+    visited.add(id);
 
-  const childWorkflows: StuckWorkflowInfo[] = [];
-  if (description.raw.pendingChildren) {
-    for (const child of description.raw.pendingChildren) {
-      if (child.workflowId) {
-        const childInfo = await checkWorkflowStuck(client, {
-          workflowId: child.workflowId,
-          visitedWorkflowIds,
-        });
-        if (childInfo) {
-          childWorkflows.push(childInfo);
+    let description: WorkflowExecutionDescription;
+    try {
+      const handle = client.workflow.getHandle(id);
+      description = await handle.describe();
+    } catch {
+      return null;
+    }
+
+    const pendingActivities: PendingActivityInfo[] = [];
+    const stuckActivities: PendingActivityInfo[] = [];
+
+    if (description.raw.pendingActivities) {
+      for (const activity of description.raw.pendingActivities) {
+        const activityInfo: PendingActivityInfo = {
+          activityId: activity.activityId ?? "unknown",
+          activityType: activity.activityType?.name ?? "unknown",
+          attempt: activity.attempt ?? 0,
+          lastFailure: activity.lastFailure?.message ?? null,
+          state: activity.state?.toString() ?? "unknown",
+        };
+
+        pendingActivities.push(activityInfo);
+
+        if (activityInfo.attempt >= STUCK_THRESHOLD) {
+          stuckActivities.push(activityInfo);
         }
       }
     }
+
+    const childWorkflows: StuckWorkflowInfo[] = [];
+    if (description.raw.pendingChildren) {
+      for (const child of description.raw.pendingChildren) {
+        if (child.workflowId) {
+          const childInfo = await visit(child.workflowId);
+          if (childInfo) {
+            childWorkflows.push(childInfo);
+          }
+        }
+      }
+    }
+
+    return {
+      workflowId: id,
+      status: description.status.name,
+      pendingActivities,
+      stuckActivities,
+      childWorkflows,
+    };
   }
 
-  return {
-    workflowId,
-    status: description.status.name,
-    pendingActivities,
-    stuckActivities,
-    childWorkflows,
-  };
+  return visit(workflowId);
 }
 
 /**
