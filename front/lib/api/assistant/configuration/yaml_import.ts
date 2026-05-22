@@ -1,3 +1,4 @@
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
 import {
@@ -257,9 +258,13 @@ async function importAgentConfiguration(
       pictureUrl: yamlConfig.agent.avatar_url ?? "",
       status: "active",
       scope: yamlConfig.agent.scope,
-      model: AgentYAMLConverter.generationSettingsToModel(
-        yamlConfig.generation_settings
-      ),
+      model: {
+        modelId: yamlConfig.generation_settings.model_id,
+        providerId: yamlConfig.generation_settings.provider_id,
+        temperature: yamlConfig.generation_settings.temperature,
+        reasoningEffort: yamlConfig.generation_settings.reasoning_effort,
+        responseFormat: yamlConfig.generation_settings.response_format,
+      },
       actions: actionsResult.value.actions,
       templateId: null,
       tags: tagsResult.value,
@@ -338,9 +343,38 @@ export async function patchAgentConfigurationFromJSON(
   }
 
   const agentConfiguration = agentResult.value;
-  const actions =
-    AgentYAMLConverter.agentConfigurationActionsToAssistantActions(
-      agentConfiguration.actions
+  const actions: AssistantRequestBody["actions"] = agentConfiguration.actions
+    .filter(isServerSideMCPServerConfiguration)
+    .map(
+      ({
+        additionalConfiguration,
+        childAgentId,
+        dataSources,
+        description,
+        dustAppConfiguration,
+        dustProject,
+        jsonSchema,
+        mcpServerViewId,
+        name,
+        secretName,
+        tables,
+        timeFrame,
+        type,
+      }) => ({
+        additionalConfiguration,
+        childAgentId,
+        dataSources,
+        description,
+        dustAppConfiguration,
+        dustProject,
+        jsonSchema,
+        mcpServerViewId,
+        name,
+        secretName,
+        tables,
+        timeFrame,
+        type,
+      })
     );
 
   const editorsResult = await resolveEditorUsersFromAgentConfiguration(
@@ -397,10 +431,21 @@ export async function patchAgentConfigurationFromJSON(
     assistant.instructionsHtml = null;
   }
 
-  assistant.model = AgentYAMLConverter.mergeGenerationSettingsPatch(
-    assistant.model,
-    patch.generation_settings
-  );
+  const {
+    model_id = assistant.model.modelId,
+    provider_id = assistant.model.providerId,
+    reasoning_effort = assistant.model.reasoningEffort,
+    response_format = assistant.model.responseFormat,
+    temperature = assistant.model.temperature,
+  } = patch.generation_settings ?? {};
+  assistant.model = {
+    ...assistant.model,
+    modelId: model_id,
+    providerId: provider_id,
+    temperature,
+    reasoningEffort: reasoning_effort,
+    responseFormat: response_format,
+  };
 
   if (patch.tags !== undefined) {
     const tagsResult = await resolveTags(auth, patch.tags);
