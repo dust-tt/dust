@@ -24,6 +24,7 @@ import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useCo
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
+import { classNames } from "@app/lib/utils";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
@@ -89,6 +90,23 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   );
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
+  const [isInputBarExpanded, setIsInputBarExpanded] = useState(true);
+  const prevListOffsetRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (prevListOffsetRef.current === null) {
+      prevListOffsetRef.current = listOffset;
+      return;
+    }
+
+    if (listOffset !== prevListOffsetRef.current) {
+      prevListOffsetRef.current = listOffset;
+      setIsInputBarExpanded(false);
+    }
+  }, [listOffset]);
+
+  const isInputBarCompact =
+    isMobile && !agentBuilderContext && !isInputBarExpanded;
 
   const allMessages = methods.data.get();
 
@@ -453,9 +471,9 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
 
   return (
     <div
-      className={
+      className={classNames(
         "relative z-20 mx-auto flex max-h-dvh w-full flex-col py-4 sm:w-full sm:max-w-conversation"
-      }
+      )}
     >
       <div className="flex w-full justify-center gap-2">
         {showNavigationContainer && (
@@ -577,6 +595,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
         submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
+        isCompact={isInputBarCompact}
+        onExpandInputBar={() => setIsInputBarExpanded(true)}
       />
     </div>
   );

@@ -65,6 +65,8 @@ interface InputBarProps {
   disableInput?: boolean;
   submitBlockMessage?: string | null;
   placeholder?: string;
+  isCompact?: boolean;
+  onExpandInputBar?: () => void;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -84,6 +86,8 @@ export const InputBar = React.memo(function InputBar({
   disableInput = false,
   submitBlockMessage = null,
   placeholder,
+  isCompact = false,
+  onExpandInputBar,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
@@ -386,7 +390,12 @@ export const InputBar = React.memo(function InputBar({
   }, [isSubmitting]);
 
   return (
-    <div className="flex w-full flex-col">
+    <div
+      className={classNames(
+        "flex w-full flex-col",
+        isCompact && "items-center"
+      )}
+    >
       <PlanCard
         conversationId={conversation?.sId ?? null}
         workspaceId={owner.sId}
@@ -395,36 +404,50 @@ export const InputBar = React.memo(function InputBar({
         onAnimationEnd={() => setIsShaking(false)}
         className={classNames(
           isShaking && "animate-shake",
-          "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
-          "rounded-2xl transition-all",
-          "bg-muted-background dark:bg-muted-background-night",
-          "border",
-          "border-border-dark dark:border-border-dark/10",
-          "sm:border-border-dark/50 sm:has-[.tiptap:focus]:border-border-dark",
-          "dark:has-[.tiptap:focus]:border-border-dark-night sm:has-[.tiptap:focus]:border-border-dark",
-          isFloating
+          "relative flex flex-col items-stretch gap-0 sm:flex-row",
+          "transition-all duration-300",
+          !isCompact && "w-full flex-1 self-stretch",
+          isCompact
             ? classNames(
-                "has-[.tiptap:focus]:ring-1 dark:has-[.tiptap:focus]:ring-1",
-                "dark:has-[.tiptap:focus]:ring-highlight/30-night has-[.tiptap:focus]:ring-highlight/30",
-                "sm:has-[.tiptap:focus]:ring-2 dark:sm:has-[.tiptap:focus]:ring-2"
+                "w-fit shrink-0 rounded-full border border-border/30 bg-muted-background/70 px-1 py-0.5 dark:border-border-night/30 dark:bg-muted-background-night/70"
               )
             : classNames(
-                "has-[.tiptap:focus]:border-highlight-300",
-                "dark:has-[.tiptap:focus]:border-highlight-300-night"
-              ),
-          "duration-300"
+                "w-full rounded-2xl",
+                "bg-muted-background dark:bg-muted-background-night",
+                "border",
+                "border-border-dark dark:border-border-dark/10",
+                "sm:border-border-dark/50 sm:has-[.tiptap:focus]:border-border-dark",
+                "dark:has-[.tiptap:focus]:border-border-dark-night sm:has-[.tiptap:focus]:border-border-dark",
+                isFloating
+                  ? classNames(
+                      "has-[.tiptap:focus]:ring-1 dark:has-[.tiptap:focus]:ring-1",
+                      "dark:has-[.tiptap:focus]:ring-highlight/30-night has-[.tiptap:focus]:ring-highlight/30",
+                      "sm:has-[.tiptap:focus]:ring-2 dark:sm:has-[.tiptap:focus]:ring-2"
+                    )
+                  : classNames(
+                      "has-[.tiptap:focus]:border-highlight-300",
+                      "dark:has-[.tiptap:focus]:border-highlight-300-night"
+                    )
+              )
         )}
       >
-        <div className="relative flex w-full flex-1 flex-col">
-          <InputBarAttachments
-            owner={owner}
-            files={{ service: fileUploaderService }}
-            nodes={{
-              items: attachedNodes,
-              onRemove: handleNodesAttachmentRemove,
-            }}
-            conversationId={conversation?.sId}
-          />
+        <div
+          className={classNames(
+            "relative flex flex-col",
+            !isCompact && "w-full flex-1"
+          )}
+        >
+          {!isCompact && (
+            <InputBarAttachments
+              owner={owner}
+              files={{ service: fileUploaderService }}
+              nodes={{
+                items: attachedNodes,
+                onRemove: handleNodesAttachmentRemove,
+              }}
+              conversationId={conversation?.sId}
+            />
+          )}
           <InputBarContainer
             actions={actions}
             disableAutoFocus={disableAutoFocus}
@@ -457,6 +480,8 @@ export const InputBar = React.memo(function InputBar({
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
             placeholder={placeholder}
             onShake={handleShake}
+            isCompact={isCompact}
+            onExpandInputBar={onExpandInputBar}
           />
         </div>
       </div>
