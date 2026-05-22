@@ -2677,6 +2677,53 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
       );
       return false;
     }
+    if (
+      match.access_amount.unit_price !== desiredCredit.access_amount.unit_price
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" unit_price ${match.access_amount.unit_price} → ${desiredCredit.access_amount.unit_price}`
+      );
+      return false;
+    }
+    if (
+      (match.access_amount.quantity ?? undefined) !==
+      (desiredCredit.access_amount.quantity ?? undefined)
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" quantity ${match.access_amount.quantity} → ${desiredCredit.access_amount.quantity}`
+      );
+      return false;
+    }
+    if (
+      Number(match.commit_duration.value) !==
+      desiredCredit.commit_duration.value
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" commit_duration ${match.commit_duration.value} → ${desiredCredit.commit_duration.value}`
+      );
+      return false;
+    }
+    if (
+      match.starting_at_offset.unit !== desiredCredit.starting_at_offset.unit ||
+      Number(match.starting_at_offset.value) !==
+        desiredCredit.starting_at_offset.value
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" starting_at_offset ${match.starting_at_offset.unit}:${match.starting_at_offset.value} → ${desiredCredit.starting_at_offset.unit}:${desiredCredit.starting_at_offset.value}`
+      );
+      return false;
+    }
+    if (
+      !arraysEqual(
+        [...(match.applicable_product_tags ?? [])].sort(),
+        [...(desiredCredit.applicable_product_tags ?? [])].sort()
+      )
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" applicable_product_tags [${match.applicable_product_tags ?? ""}] → [${desiredCredit.applicable_product_tags ?? ""}]`
+      );
+      return false;
+    }
     if (match.priority !== desiredCredit.priority) {
       console.log(
         `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" priority ${match.priority} → ${desiredCredit.priority}`
