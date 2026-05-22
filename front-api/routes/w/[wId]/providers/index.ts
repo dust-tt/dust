@@ -2,8 +2,10 @@ import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import type { ProviderType } from "@app/types/provider";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import check from "./[pId]/check";
+import models from "./[pId]/models";
+import provider from "./[pId]/index";
 
 export type GetProvidersResponseBody = {
   providers: ProviderType[];
@@ -49,5 +51,9 @@ app.get("/", async (ctx): HandlerResult<GetProvidersResponseBody> => {
     })),
   });
 });
+
+app.route("/:pId/check", check);
+app.route("/:pId/models", models);
+app.route("/:pId", provider);
 
 export default app;
