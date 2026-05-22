@@ -1,5 +1,5 @@
 import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
-import { getProjectFilesBasePath } from "@app/lib/api/files/mount_path";
+import { getPodFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -7,7 +7,7 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 
 /**
  * Validate a pinned frame path for a project space.
- * Path must be scoped under `project/` and resolve to an existing GCS object.
+ * Path must be scoped under `pod/` and resolve to an existing GCS object.
  */
 export async function validatePinnedFramePath(
   auth: Authenticator,
@@ -19,14 +19,20 @@ export async function validatePinnedFramePath(
   }
 
   const owner = auth.getNonNullableWorkspace();
-  const prefix = getProjectFilesBasePath({
+  const prefix = getPodFilesBasePath({
     workspaceId: owner.sId,
-    projectId: space.sId,
+    podId: space.sId,
   });
+
+  // Some DB rows still carry the legacy `project/` scope prefix; treat them as `pod/`
+  // for the existence check so re-submitting an unchanged value doesn't fail validation.
+  const normalizedScopedPath = pinnedFramePath.startsWith("project/")
+    ? `pod/${pinnedFramePath.slice("project/".length)}`
+    : pinnedFramePath;
 
   const gcsPath = getGCSPathFromScopedPath({
     prefix,
-    scopedPath: pinnedFramePath,
+    scopedPath: normalizedScopedPath,
     useCase: "pod",
   });
   if (!gcsPath) {
