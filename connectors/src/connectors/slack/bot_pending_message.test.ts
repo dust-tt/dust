@@ -44,7 +44,7 @@ async function resolvePending({
   };
   const slackClient = {
     chat: {
-      postMessage: vi.fn(async () => undefined),
+      postMessage: vi.fn(async () => ({ ok: true, ts: "fallback_ts" })),
     },
   };
   const streamHandler = {
