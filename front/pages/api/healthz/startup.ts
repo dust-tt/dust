@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 /** @ignoreswagger */
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { frontSequelize } from "@app/lib/resources/storage";
