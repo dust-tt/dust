@@ -50,36 +50,6 @@ interface ResolvedEditors {
   authorId: ModelId;
 }
 
-async function resolveYAMLActions(
-  auth: Authenticator,
-  toolset: AgentYAMLConfig["toolset"]
-): Promise<
-  Result<
-    {
-      actions: AssistantRequestBody["actions"];
-      skippedActions: SkippedAction[];
-    },
-    APIErrorWithStatusCode
-  >
-> {
-  const result = await AgentYAMLConverter.convertYAMLToolsetToAssistantActions(
-    auth,
-    toolset
-  );
-
-  if (result.isErr()) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Error converting YAML actions: ${result.error.message}`,
-      },
-    });
-  }
-
-  return new Ok(result.value);
-}
-
 function resolveEditorUsers(
   auth: Authenticator,
   editorUsers: UserResource[]
@@ -231,9 +201,19 @@ async function importAgentConfiguration(
     return saveEnabledResult;
   }
 
-  const actionsResult = await resolveYAMLActions(auth, yamlConfig.toolset);
+  const actionsResult =
+    await AgentYAMLConverter.convertYAMLToolsetToAssistantActions(
+      auth,
+      yamlConfig.toolset
+    );
   if (actionsResult.isErr()) {
-    return actionsResult;
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Error converting YAML actions: ${actionsResult.error.message}`,
+      },
+    });
   }
 
   const editorsResult = await resolveEditorUsersFromEmails(
@@ -343,8 +323,8 @@ export async function patchAgentConfigurationFromJSON(
   }
 
   const agentConfiguration = agentResult.value;
-  const actions: AssistantRequestBody["actions"] = agentConfiguration.actions
-    .filter(isServerSideMCPServerConfiguration);
+  const actions: AssistantRequestBody["actions"] =
+    agentConfiguration.actions.filter(isServerSideMCPServerConfiguration);
 
   const editorsResult = await resolveEditorUsersFromAgentConfiguration(
     auth,
@@ -437,9 +417,19 @@ export async function patchAgentConfigurationFromJSON(
   }
 
   if (patch.toolset !== undefined) {
-    const patchActionsResult = await resolveYAMLActions(auth, patch.toolset);
+    const patchActionsResult =
+      await AgentYAMLConverter.convertYAMLToolsetToAssistantActions(
+        auth,
+        patch.toolset
+      );
     if (patchActionsResult.isErr()) {
-      return patchActionsResult;
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Error converting YAML actions: ${patchActionsResult.error.message}`,
+        },
+      });
     }
     assistant.actions = patchActionsResult.value.actions;
     skippedActions = patchActionsResult.value.skippedActions;
