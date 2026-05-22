@@ -133,7 +133,6 @@ async function _upsertDataSourceDocument({
         parents,
       });
       const statsDTags = [
-        `data_source_Id:${dataSourceConfig.dataSourceId}`,
         `workspace_id:${dataSourceConfig.workspaceId}`,
       ];
 
