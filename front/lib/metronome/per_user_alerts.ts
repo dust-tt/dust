@@ -1,9 +1,10 @@
+import type { MetronomeAlert } from "@app/lib/metronome/alerts";
 import {
   clearMetronomeAlert,
   findMetronomeAlert,
+  listMetronomeAlerts,
   upsertMetronomeAlert,
 } from "@app/lib/metronome/alerts";
-import { getMetronomeClient } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -25,8 +26,8 @@ function perUserAlertUniquenessKey(
 
 /**
  * Look up the current per-user cap (if any) for a workspace/user pair by
- * matching `uniqueness_key`. Returns the alert id and threshold, or
- * `null` if no cap is configured.
+ * matching `uniqueness_key`. Returns the alert id, threshold and current
+ * Metronome evaluation state, or `null` if no cap is configured.
  */
 export async function getMetronomePerUserCap({
   metronomeCustomerId,
@@ -36,25 +37,18 @@ export async function getMetronomePerUserCap({
   metronomeCustomerId: string;
   workspaceId: string;
   userId: string;
-}): Promise<Result<{ alertId: string; threshold: number } | null, Error>> {
-  const findResult = await findMetronomeAlert({
+}): Promise<Result<MetronomeAlert | null, Error>> {
+  return findMetronomeAlert({
     metronomeCustomerId,
     uniquenessKey: perUserAlertUniquenessKey(workspaceId, userId),
   });
-  if (findResult.isErr()) {
-    return new Err(findResult.error);
-  }
-  const existing = findResult.value;
-  if (!existing) {
-    return new Ok(null);
-  }
-  return new Ok({ alertId: existing.id, threshold: existing.threshold });
 }
 
 /**
- * List per-user cap thresholds for a workspace. Returns a `Map<userId,
- * threshold>` built from all enabled/disabled alerts whose
- * `uniqueness_key` matches the per-user cap pattern for this workspace.
+ * List per-user caps for a workspace. Returns a `Map<userId, MetronomeAlert>`
+ * built from all enabled alerts whose `uniqueness_key` matches the per-user
+ * cap pattern for this workspace. Each entry exposes the current threshold
+ * and Metronome evaluation state.
  */
 export async function listMetronomePerUserCapsForWorkspace({
   metronomeCustomerId,
@@ -62,16 +56,15 @@ export async function listMetronomePerUserCapsForWorkspace({
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<Result<Map<string, number>, Error>> {
+}): Promise<Result<Map<string, MetronomeAlert>, Error>> {
   const prefix = perUserAlertUniquenessKeyPrefix(workspaceId);
-  const caps = new Map<string, number>();
+  const caps = new Map<string, MetronomeAlert>();
   try {
-    const client = getMetronomeClient();
-    for await (const entry of client.v1.customers.alerts.list({
+    for await (const alert of listMetronomeAlerts({
       customer_id: metronomeCustomerId,
       alert_statuses: ["ENABLED"],
     })) {
-      const key = entry.alert.uniqueness_key;
+      const key = alert.uniquenessKey;
       if (!key || !key.startsWith(prefix)) {
         continue;
       }
@@ -79,7 +72,7 @@ export async function listMetronomePerUserCapsForWorkspace({
       if (!userId) {
         continue;
       }
-      caps.set(userId, entry.alert.threshold);
+      caps.set(userId, alert);
     }
     return new Ok(caps);
   } catch (err) {
