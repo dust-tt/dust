@@ -1,5 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/payg";
+import { listMetronomeBalances } from "@app/lib/metronome/client";
+import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
 import { clearUserCapBlocked } from "@app/lib/metronome/user_block";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
@@ -151,4 +154,53 @@ async function transitionWorkspacePool(
     workspaceId: workspace.sId,
     paygEnabled,
   });
+}
+
+/**
+ * Reconcile the workspace pool credit state with the current Metronome AWU
+ * balance. Used after a new contract is provisioned: the cached pool state
+ * may be stale (e.g. `depleted` from the previous contract) and Metronome
+ * alert webhooks won't fire until the new balance crosses a threshold.
+ *
+ * Invalidates the pool credits cache, reads the live AWU balance, then
+ * dispatches `credits_added` (balance > 0) or `pool_exhausted` (balance == 0)
+ * so the state machine routes to the correct state. On balance-fetch
+ * failure, logs and skips — the next Metronome alert webhook will converge.
+ */
+export async function syncPoolCreditStateFromBalance({
+  workspace,
+  metronomeCustomerId,
+}: {
+  workspace: WorkspaceResource;
+  metronomeCustomerId: string;
+}): Promise<void> {
+  await invalidateWorkspacePoolCredits(workspace.sId, metronomeCustomerId);
+
+  const balancesResult = await listMetronomeBalances(metronomeCustomerId);
+
+  if (balancesResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        error: balancesResult.error,
+      },
+      "[CreditStateDispatcher] syncPoolCreditStateFromBalance: failed to fetch balances, skipping dispatch"
+    );
+    return;
+  }
+
+  const awuCreditTypeId = getCreditTypeAwuId();
+  const awuBalance = balancesResult.value.reduce((sum, entry) => {
+    if (entry.access_schedule?.credit_type?.id !== awuCreditTypeId) {
+      return sum;
+    }
+    return sum + (entry.balance ?? 0);
+  }, 0);
+
+  if (awuBalance > 0) {
+    await dispatchCreditsAdded({ workspace });
+  } else {
+    await dispatchPoolExhausted({ workspace });
+  }
 }

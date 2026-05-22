@@ -70,6 +70,37 @@ import {
 } from "./egress";
 import { SANDBOX_TRUST_ENV_VARS } from "./trust_env";
 
+type HealthcheckOutput = {
+  forwarder_port_ok: boolean;
+  resolver_udp_ok: boolean;
+  resolver_tcp_ok: boolean;
+  nft_dns_udp_redirect_ok: boolean;
+  nft_dns_tcp_redirect_ok: boolean;
+  nft_dns_udp_accept_ok: boolean;
+  nft_tcp_forward_redirect_ok: boolean;
+  nft_udp_drop_ok: boolean;
+  nft_icmp_drop_ok: boolean;
+  nft_ipv6_drop_ok: boolean;
+  bundle_ok: boolean;
+};
+
+function healthStdout(overrides: Partial<HealthcheckOutput> = {}): string {
+  return JSON.stringify({
+    forwarder_port_ok: true,
+    resolver_udp_ok: true,
+    resolver_tcp_ok: true,
+    nft_dns_udp_redirect_ok: true,
+    nft_dns_tcp_redirect_ok: true,
+    nft_dns_udp_accept_ok: true,
+    nft_tcp_forward_redirect_ok: true,
+    nft_udp_drop_ok: true,
+    nft_icmp_drop_ok: true,
+    nft_ipv6_drop_ok: true,
+    bundle_ok: true,
+    ...overrides,
+  });
+}
+
 describe("sandbox egress helpers", () => {
   const auth = {
     getNonNullableWorkspace: () => ({ sId: "workspace-id" }),
@@ -111,10 +142,21 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(
-          new Ok({ exitCode: 0, stdout: "0 0", stderr: "" })
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({
+              forwarder_port_ok: false,
+              bundle_ok: false,
+            }),
+            stderr: "",
+          })
         )
         .mockResolvedValueOnce(
-          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ bundle_ok: false }),
+            stderr: "",
+          })
         )
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
@@ -168,6 +210,19 @@ describe("sandbox egress helpers", () => {
       expect.stringContaining("/run/dust/egress-ca.pem"),
       { user: "root" }
     );
+    const healthCall = sandbox.exec.mock.calls[2][1] as string;
+    expect(healthCall).toContain("/opt/bin/dsbx healthcheck");
+    expect(healthCall).toContain("--forwarder-listen '127.0.0.1:9990'");
+    expect(healthCall).toContain("--resolver-listen '127.0.0.1:1053'");
+    expect(healthCall).toContain("--proxied-uid 1003");
+    // The healthcheck inspects nftables, which requires CAP_NET_ADMIN, so it
+    // must run as root. Pin the exec options to prevent silent regression.
+    expect(sandbox.exec).toHaveBeenNthCalledWith(
+      3,
+      auth,
+      expect.stringContaining("/opt/bin/dsbx healthcheck"),
+      { user: "root", timeoutMs: 1_000 }
+    );
     const installCall = sandbox.exec.mock.calls[4][1] as string;
     expect(installCall).toContain("/usr/local/bin/dust-install-trust-bundle");
     expect(installCall).toContain("/etc/dust/.ca-bundle.merged");
@@ -188,7 +243,7 @@ describe("sandbox egress helpers", () => {
         providerId: "provider-sandbox-id",
         sandboxId: "sandbox-id",
       }),
-      "Sandbox egress forwarder is healthy"
+      "Sandbox egress is healthy"
     );
   });
 
@@ -204,13 +259,17 @@ describe("sandbox egress helpers", () => {
         .fn()
         // First call: health probe with empty stdout.
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
-        // Restart path: chmod token, start dsbx, kill old dsbx, then health
-        // returns 1 0, then install bundle.
+        // Restart path: chmod token, kill old forwarder, start dsbx, then health
+        // returns healthy except for the not-yet-installed bundle.
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(
-          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ bundle_ok: false }),
+            stderr: "",
+          })
         )
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
@@ -319,7 +378,11 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(
-          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ bundle_ok: false }),
+            stderr: "",
+          })
         )
         .mockResolvedValueOnce(
           new Ok({ exitCode: 1, stdout: "", stderr: "trust install failed" })
@@ -345,7 +408,11 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(
-          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ bundle_ok: false }),
+            stderr: "",
+          })
         )
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
@@ -359,7 +426,7 @@ describe("sandbox egress helpers", () => {
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,
-      expect.stringContaining("pkill -KILL dsbx"),
+      expect.stringContaining("dsbx forward"),
       { user: "root" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
@@ -377,7 +444,11 @@ describe("sandbox egress helpers", () => {
       exec: vi
         .fn()
         .mockResolvedValueOnce(
-          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ bundle_ok: false }),
+            stderr: "",
+          })
         )
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
@@ -399,6 +470,97 @@ describe("sandbox egress helpers", () => {
     );
   });
 
+  it("logs stderr when dsbx healthcheck exits zero but reports unhealthy", async () => {
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      exec: vi.fn().mockResolvedValueOnce(
+        new Ok({
+          exitCode: 0,
+          stdout: healthStdout({ nft_dns_udp_redirect_ok: false }),
+          stderr: "nft: command not found",
+        })
+      ),
+    };
+
+    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+      wokeFromSleep: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "egress.healthcheck_parse",
+        stderr: "nft: command not found",
+      }),
+      expect.stringContaining("diagnostic stderr")
+    );
+  });
+
+  it("fails closed when DNS enforcement health is missing", async () => {
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      exec: vi.fn().mockResolvedValueOnce(
+        new Ok({
+          exitCode: 0,
+          stdout: healthStdout({ resolver_udp_ok: false }),
+          stderr: "",
+        })
+      ),
+    };
+
+    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+      wokeFromSleep: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("DNS enforcement");
+    }
+    expect(sandbox.exec).toHaveBeenCalledTimes(1);
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "egress.enforcement_health_fail",
+        resolverOk: false,
+        nftablesOk: true,
+      }),
+      expect.any(String)
+    );
+  });
+
+  it.each([
+    "nft_tcp_forward_redirect_ok" as const,
+    "nft_udp_drop_ok" as const,
+    "nft_icmp_drop_ok" as const,
+    "nft_ipv6_drop_ok" as const,
+  ])("fails closed when %s is false (broader no-UDP/no-IPv6 invariant)", async (missing) => {
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      exec: vi.fn().mockResolvedValueOnce(
+        new Ok({
+          exitCode: 0,
+          stdout: healthStdout({ [missing]: false }),
+          stderr: "",
+        })
+      ),
+    };
+
+    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+      wokeFromSleep: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "egress.enforcement_health_fail",
+        nftablesOk: false,
+      }),
+      expect.any(String)
+    );
+  });
+
   it("does a full restart when the port is not listening", async () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
@@ -407,13 +569,24 @@ describe("sandbox egress helpers", () => {
       exec: vi
         .fn()
         .mockResolvedValueOnce(
-          new Ok({ exitCode: 0, stdout: "0 0", stderr: "" })
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({
+              forwarder_port_ok: false,
+              bundle_ok: false,
+            }),
+            stderr: "",
+          })
         )
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(
-          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ bundle_ok: false }),
+            stderr: "",
+          })
         )
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
@@ -426,7 +599,7 @@ describe("sandbox egress helpers", () => {
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       3,
       auth,
-      expect.stringContaining("pkill -KILL dsbx"),
+      expect.stringContaining("dsbx forward"),
       { user: "root" }
     );
     expect(mockLoggerWarn).toHaveBeenCalledWith(
@@ -442,7 +615,7 @@ describe("sandbox egress helpers", () => {
       exec: vi
         .fn()
         .mockResolvedValueOnce(
-          new Ok({ exitCode: 0, stdout: "1 1", stderr: "" })
+          new Ok({ exitCode: 0, stdout: healthStdout(), stderr: "" })
         ),
     };
 
@@ -491,7 +664,7 @@ describe("sandbox egress helpers", () => {
       expect(sandbox.exec).toHaveBeenCalledTimes(1);
       const command = sandbox.exec.mock.calls[0][1] as string;
       expect(command).toContain(
-        "systemctl disable --now dust-egress-nftables.service"
+        "systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service"
       );
       expect(command).toContain("nft delete table ip dust-egress");
       expect(command).toContain("nft delete table ip6 dust-egress");

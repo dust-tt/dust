@@ -3,16 +3,17 @@ use std::fmt;
 use std::io::ErrorKind;
 
 use anyhow::{anyhow, Context};
-use base64::{engine::general_purpose, Engine as _};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::egress_secrets::{
-    Secret, SecretTable, PLACEHOLDER_HEX_LEN, PLACEHOLDER_PREFIX as PLACEHOLDER_PREFIX_STR,
-    PLACEHOLDER_SUFFIX as PLACEHOLDER_SUFFIX_STR,
-};
+use crate::egress_secrets::SecretTable;
 
 use super::deny_log::{DenyLogEntry, DenyReason};
+use super::rewrite_policy::{
+    deny_entry, normalize_host, normalized_authority, rewrite_request_headers,
+    validate_request_line_policy, Authority, HeaderPart, RequestParts,
+    RewriteMode as HttpRewriteMode,
+};
 
 // Limits are intentionally generous compared to nginx/Apache defaults
 // (~8-32 KiB / ~100 headers). This rewriter sits in front of arbitrary
@@ -32,40 +33,6 @@ const MAX_TRAILER_BLOCK_BYTES: usize = 64 * 1024;
 // hundred bytes; well past that we treat the upstream as non-HTTP and stop
 // sniffing rather than buffer responses indefinitely.
 const MAX_STATUS_LINE_BYTES: usize = 16 * 1024;
-
-const PLACEHOLDER_PREFIX: &[u8] = PLACEHOLDER_PREFIX_STR.as_bytes();
-const PLACEHOLDER_SUFFIX: &[u8] = PLACEHOLDER_SUFFIX_STR.as_bytes();
-const PLACEHOLDER_LEN: usize =
-    PLACEHOLDER_PREFIX_STR.len() + PLACEHOLDER_HEX_LEN + PLACEHOLDER_SUFFIX_STR.len();
-
-#[derive(Clone, Copy, Debug)]
-pub(super) enum HttpRewriteMode<'a> {
-    Tls { sni: &'a str },
-    PlainHttp { domain: &'a str },
-}
-
-impl HttpRewriteMode<'_> {
-    fn port(self) -> u16 {
-        match self {
-            Self::Tls { .. } => 443,
-            Self::PlainHttp { .. } => 80,
-        }
-    }
-
-    fn domain(&self) -> Option<&str> {
-        match self {
-            Self::Tls { sni } => Some(sni),
-            Self::PlainHttp { domain } => Some(domain),
-        }
-    }
-
-    fn sni(&self) -> Option<&str> {
-        match self {
-            Self::Tls { sni } => Some(sni),
-            Self::PlainHttp { .. } => None,
-        }
-    }
-}
 
 #[derive(Debug)]
 pub(super) enum HttpRewriteError {
@@ -129,14 +96,7 @@ impl HttpRewriteError {
         secret_name: Option<&str>,
         host: Option<&str>,
     ) -> Self {
-        Self::Denied(DenyLogEntry::mitm(
-            reason,
-            mode.domain(),
-            mode.port(),
-            secret_name,
-            mode.sni(),
-            host,
-        ))
+        Self::Denied(deny_entry(mode, reason, secret_name, host))
     }
 }
 
@@ -361,19 +321,6 @@ enum HeaderRead {
     NonHttp,
 }
 
-#[derive(Clone, Debug)]
-struct RequestParts {
-    method: String,
-    uri: String,
-    headers: Vec<HeaderPart>,
-}
-
-#[derive(Clone, Debug)]
-struct HeaderPart {
-    name: String,
-    value: Vec<u8>,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum BodyKind {
     None,
@@ -434,7 +381,7 @@ fn parse_request(bytes: &[u8], mode: HttpRewriteMode<'_>) -> RewriteResult<Reque
 
     Ok(RequestParts {
         method: method.to_string(),
-        uri: uri.to_string(),
+        target: uri.to_string(),
         headers,
     })
 }
@@ -444,40 +391,11 @@ fn process_request(
     secret_table: &SecretTable,
     mode: HttpRewriteMode<'_>,
 ) -> RewriteResult<ProcessedRequest> {
-    // CONNECT requests-inside an already-established session ask the receiver
-    // to act as a tunneling proxy. The upstream TCP destination is pinned to
-    // the SNI/domain that gated this session, so forwarding CONNECT to it
-    // would never establish a real tunnel. We deny up front rather than
-    // forward nonsense bytes that future refactors might start honoring.
-    if request.method.eq_ignore_ascii_case("CONNECT") {
-        return Err(HttpRewriteError::denied(
-            mode,
-            DenyReason::ConnectMethodForbidden,
-            None,
-            None,
-        ));
-    }
-
-    let request_line = format!("{} {} HTTP/1.1", request.method, request.uri);
-    if contains_placeholder(request_line.as_bytes()) {
-        return Err(match mode {
-            HttpRewriteMode::PlainHttp { .. } => HttpRewriteError::denied(
-                mode,
-                DenyReason::Port80Placeholder,
-                None,
-                normalized_host_for_log(request, mode).as_deref(),
-            ),
-            HttpRewriteMode::Tls { .. } => HttpRewriteError::denied(
-                mode,
-                DenyReason::UrlLinePlaceholder,
-                None,
-                normalized_host_for_log(request, mode).as_deref(),
-            ),
-        });
-    }
-
-    let host = normalized_single_host(request, mode)?;
-    validate_absolute_uri_authority(&request.uri, &host, mode)?;
+    let request_line = format!("{} {} HTTP/1.1", request.method, request.target);
+    validate_request_line_policy(request, mode).map_err(HttpRewriteError::Denied)?;
+    let host = normalized_authority(request, Authority::HostHeader, mode)
+        .map_err(HttpRewriteError::Denied)?;
+    validate_absolute_uri_authority(&request.target, &host, mode)?;
 
     let mut header_bytes = Vec::new();
     header_bytes.extend_from_slice(request_line.as_bytes());
@@ -485,10 +403,11 @@ fn process_request(
 
     let body_kind = body_kind(request, mode, Some(&host))?;
     let websocket_upgrade = is_websocket_upgrade(request);
+    let rewritten_headers = rewrite_request_headers(request, &host, secret_table, mode)
+        .map_err(HttpRewriteError::Denied)?;
 
-    for header in &request.headers {
-        let rewritten_value = rewrite_header_value(header, &host, secret_table, mode)?;
-        let line_len = header.name.len() + 2 + rewritten_value.len() + 2;
+    for header in &rewritten_headers {
+        let line_len = header.name.len() + 2 + header.value.len() + 2;
         if line_len > MAX_HEADER_LINE_BYTES {
             return Err(HttpRewriteError::denied(
                 mode,
@@ -500,7 +419,7 @@ fn process_request(
 
         header_bytes.extend_from_slice(header.name.as_bytes());
         header_bytes.extend_from_slice(b": ");
-        header_bytes.extend_from_slice(&rewritten_value);
+        header_bytes.extend_from_slice(&header.value);
         header_bytes.extend_from_slice(b"\r\n");
     }
 
@@ -519,248 +438,6 @@ fn process_request(
         body_kind,
         websocket_upgrade,
     })
-}
-
-fn normalized_host_for_log(request: &RequestParts, mode: HttpRewriteMode<'_>) -> Option<String> {
-    request
-        .headers
-        .iter()
-        .find(|header| header.name.eq_ignore_ascii_case("host"))
-        .and_then(|header| {
-            std::str::from_utf8(&header.value)
-                .ok()
-                .and_then(|value| normalize_host(value, mode.port()).ok())
-        })
-}
-
-fn rewrite_header_value(
-    header: &HeaderPart,
-    host: &str,
-    secret_table: &SecretTable,
-    mode: HttpRewriteMode<'_>,
-) -> RewriteResult<Vec<u8>> {
-    if matches!(mode, HttpRewriteMode::PlainHttp { .. }) && contains_placeholder(&header.value) {
-        return Err(HttpRewriteError::denied(
-            mode,
-            DenyReason::Port80Placeholder,
-            None,
-            Some(host),
-        ));
-    }
-
-    if header.name.eq_ignore_ascii_case("authorization") {
-        if let Some(value) = rewrite_basic_auth(&header.value, host, secret_table, mode)? {
-            return Ok(value);
-        }
-    }
-
-    match substitute_placeholders(&header.value, host, secret_table, mode)? {
-        Some(rewritten) => Ok(rewritten),
-        None => Ok(header.value.clone()),
-    }
-}
-
-fn rewrite_basic_auth(
-    value: &[u8],
-    host: &str,
-    secret_table: &SecretTable,
-    mode: HttpRewriteMode<'_>,
-) -> RewriteResult<Option<Vec<u8>>> {
-    let Ok(value_text) = std::str::from_utf8(value) else {
-        return Ok(None);
-    };
-    let trimmed = value_text.trim();
-    let Some(rest) = strip_basic_prefix(trimmed) else {
-        return Ok(None);
-    };
-
-    // If base64 decode fails (malformed Basic auth value), fall back to the
-    // general substitution path so any placeholder in the raw header bytes
-    // still gets rewritten on TLS, or rejected by the plain-HTTP guard above.
-    let Ok(decoded) = general_purpose::STANDARD.decode(rest.trim()) else {
-        return Ok(None);
-    };
-
-    if matches!(mode, HttpRewriteMode::PlainHttp { .. }) && contains_placeholder(&decoded) {
-        return Err(HttpRewriteError::denied(
-            mode,
-            DenyReason::Port80Placeholder,
-            None,
-            Some(host),
-        ));
-    }
-
-    let Some(rewritten_decoded) = substitute_placeholders(&decoded, host, secret_table, mode)?
-    else {
-        return Ok(None);
-    };
-    let encoded = general_purpose::STANDARD.encode(rewritten_decoded);
-    Ok(Some(format!("Basic {encoded}").into_bytes()))
-}
-
-fn strip_basic_prefix(value: &str) -> Option<&str> {
-    // Operate on bytes: `value.split_at("basic".len())` panics when the first
-    // 5 bytes don't sit on a char boundary (e.g. `Authorization: ééééé`).
-    let bytes = value.as_bytes();
-    if bytes.len() <= "basic".len() {
-        return None;
-    }
-    let (scheme, rest) = bytes.split_at("basic".len());
-    if !scheme.eq_ignore_ascii_case(b"basic") {
-        return None;
-    }
-    if !rest[0].is_ascii_whitespace() {
-        return None;
-    }
-    std::str::from_utf8(rest).ok()
-}
-
-fn substitute_placeholders(
-    input: &[u8],
-    host: &str,
-    secret_table: &SecretTable,
-    mode: HttpRewriteMode<'_>,
-) -> RewriteResult<Option<Vec<u8>>> {
-    let mut output = Vec::with_capacity(input.len());
-    let mut last_copied = 0;
-    let mut cursor = 0;
-    let mut changed = false;
-
-    while cursor + PLACEHOLDER_LEN <= input.len() {
-        if !input[cursor..].starts_with(PLACEHOLDER_PREFIX) {
-            cursor += 1;
-            continue;
-        }
-
-        let candidate_end = cursor + PLACEHOLDER_LEN;
-        if !is_valid_placeholder_bytes(&input[cursor..candidate_end]) {
-            cursor += 1;
-            continue;
-        }
-
-        let placeholder = std::str::from_utf8(&input[cursor..candidate_end]).map_err(|_| {
-            HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, Some(host))
-        })?;
-        let secret = secret_table
-            .by_placeholder
-            .get(placeholder)
-            .ok_or_else(|| {
-                // Leave `secret_name` as None: the formatter substitutes
-                // "unknown" so the deny log stays distinguishable from a real
-                // secret literally named "unknown".
-                HttpRewriteError::denied(
-                    mode,
-                    DenyReason::PlaceholderOnNonAllowed,
-                    None,
-                    Some(host),
-                )
-            })?;
-
-        validate_secret_for_host(secret, host, mode)?;
-        output.extend_from_slice(&input[last_copied..cursor]);
-        output.extend_from_slice(secret.value.as_bytes());
-        changed = true;
-        cursor = candidate_end;
-        last_copied = candidate_end;
-    }
-
-    if !changed {
-        return Ok(None);
-    }
-
-    output.extend_from_slice(&input[last_copied..]);
-    Ok(Some(output))
-}
-
-fn validate_secret_for_host(
-    secret: &Secret,
-    host: &str,
-    mode: HttpRewriteMode<'_>,
-) -> RewriteResult<()> {
-    // In TLS mode `normalized_single_host` has already pinned `host == SNI`,
-    // so a single allowlist check covers both. Plain HTTP has no SNI so the
-    // host check is all we have.
-    if !secret.allowed_domains.matches(host) {
-        return Err(HttpRewriteError::denied(
-            mode,
-            DenyReason::PlaceholderOnNonAllowed,
-            Some(&secret.name),
-            Some(host),
-        ));
-    }
-
-    Ok(())
-}
-
-fn contains_placeholder(bytes: &[u8]) -> bool {
-    let mut cursor = 0;
-    while cursor + PLACEHOLDER_LEN <= bytes.len() {
-        if bytes[cursor..].starts_with(PLACEHOLDER_PREFIX)
-            && is_valid_placeholder_bytes(&bytes[cursor..cursor + PLACEHOLDER_LEN])
-        {
-            return true;
-        }
-        cursor += 1;
-    }
-    false
-}
-
-fn is_valid_placeholder_bytes(value: &[u8]) -> bool {
-    value.len() == PLACEHOLDER_LEN
-        && value.starts_with(PLACEHOLDER_PREFIX)
-        && value.ends_with(PLACEHOLDER_SUFFIX)
-        && value[PLACEHOLDER_PREFIX.len()..PLACEHOLDER_PREFIX.len() + PLACEHOLDER_HEX_LEN]
-            .iter()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte))
-}
-
-fn normalized_single_host(
-    request: &RequestParts,
-    mode: HttpRewriteMode<'_>,
-) -> RewriteResult<String> {
-    let hosts = request
-        .headers
-        .iter()
-        .filter(|header| header.name.eq_ignore_ascii_case("host"))
-        .collect::<Vec<_>>();
-
-    if hosts.is_empty() {
-        return Err(HttpRewriteError::denied(
-            mode,
-            DenyReason::MissingHost,
-            None,
-            None,
-        ));
-    }
-    if hosts.len() > 1 {
-        return Err(HttpRewriteError::denied(
-            mode,
-            DenyReason::DuplicateHost,
-            None,
-            None,
-        ));
-    }
-
-    let host_value = std::str::from_utf8(&hosts[0].value)
-        .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None))?;
-    let host = normalize_host(host_value, mode.port())
-        .map_err(|_| HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None))?;
-
-    if let HttpRewriteMode::Tls { sni } = mode {
-        let normalized_sni = normalize_host(sni, 443).map_err(|_| {
-            HttpRewriteError::denied(mode, DenyReason::HostSniMismatch, None, Some(&host))
-        })?;
-        if normalized_sni != host {
-            return Err(HttpRewriteError::denied(
-                mode,
-                DenyReason::HostSniMismatch,
-                None,
-                Some(&host),
-            ));
-        }
-    }
-
-    Ok(host)
 }
 
 fn validate_absolute_uri_authority(
@@ -1195,44 +872,6 @@ fn header_tokens(value: &[u8]) -> HashSet<String> {
         .unwrap_or_default()
 }
 
-fn normalize_host(value: &str, default_port: u16) -> Result<String, ()> {
-    let value = value.trim().to_ascii_lowercase();
-    let value = value.strip_suffix('.').unwrap_or(&value).to_string();
-    if value.is_empty() {
-        return Err(());
-    }
-
-    if let Some(rest) = value.strip_prefix('[') {
-        let Some((inside, after_bracket)) = rest.split_once(']') else {
-            return Err(());
-        };
-        if after_bracket.is_empty() {
-            return Ok(inside.to_string());
-        }
-        let Some(port) = after_bracket.strip_prefix(':') else {
-            return Err(());
-        };
-        return if port.parse::<u16>().ok() == Some(default_port) {
-            Ok(inside.to_string())
-        } else {
-            Ok(format!("[{inside}]:{port}"))
-        };
-    }
-
-    if value.matches(':').count() == 1 {
-        let (host, port) = value.rsplit_once(':').ok_or(())?;
-        return if port.parse::<u16>().ok() == Some(default_port) {
-            Ok(host.strip_suffix('.').unwrap_or(host).to_string())
-        } else if port.chars().all(|c| c.is_ascii_digit()) {
-            Ok(format!("{}:{port}", host.strip_suffix('.').unwrap_or(host)))
-        } else {
-            Err(())
-        };
-    }
-
-    Ok(value)
-}
-
 fn is_definitely_non_http(bytes: &[u8]) -> bool {
     let Some(first) = bytes.first() else {
         return false;
@@ -1266,7 +905,7 @@ mod tests {
     use anyhow::Result;
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
-    use crate::egress_secrets::DomainSet;
+    use crate::egress_secrets::{DomainSet, Secret};
     use base64::{engine::general_purpose, Engine as _};
 
     use super::*;
@@ -1716,6 +1355,43 @@ mod tests {
         .await
         .expect_err("placeholder in URL line should be denied on TLS");
         assert_deny_reason(error, DenyReason::UrlLinePlaceholder);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_placeholder_shaped_http_method_in_tls_mode() -> Result<()> {
+        let placeholder = "__DSEC_55555555555555556666666666666666__";
+        let table = table_with_secret("X", placeholder, "sk-real", &["api.openai.com"])?;
+        let input = format!("{placeholder} /items HTTP/1.1\r\nHost: api.openai.com\r\n\r\n");
+
+        let error = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("placeholder-shaped method should be denied on TLS");
+        assert_deny_reason(error, DenyReason::UrlLinePlaceholder);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn validates_absolute_uri_before_rewriting_headers() -> Result<()> {
+        let table = empty_table()?;
+        let input = b"GET https://evil.example/ HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: Bearer __DSEC_99999999999999999999999999999999__\r\n\r\n";
+
+        let error = rewrite_once(
+            input,
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("absolute URI mismatch should be denied before header rewrite");
+        assert_deny_reason(error, DenyReason::AbsoluteUriAuthorityMismatch);
         Ok(())
     }
 

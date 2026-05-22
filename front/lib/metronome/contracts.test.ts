@@ -78,6 +78,16 @@ vi.mock("@app/lib/metronome/seats", () => ({
   syncSeatCount: mockSyncSeatCount,
 }));
 
+vi.mock("@app/lib/api/metronome/credit_state_dispatcher", () => ({
+  syncPoolCreditStateFromBalance: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@app/lib/resources/workspace_resource", () => ({
+  WorkspaceResource: {
+    fetchById: vi.fn().mockResolvedValue(null),
+  },
+}));
+
 vi.mock("@app/lib/plans/stripe", () => ({
   getStripeClient: () => ({ prices: mockPrices }),
   getStripeCustomer: mockGetStripeCustomer,

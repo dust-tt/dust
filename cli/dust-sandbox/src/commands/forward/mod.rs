@@ -3,6 +3,7 @@ mod handshake;
 mod http_host;
 mod http_rewriter;
 mod original_dst;
+mod rewrite_policy;
 mod sni;
 mod tls_mitm;
 
@@ -29,9 +30,10 @@ use self::deny_log::{append_deny_log, DenyLogEntry, DenyReason};
 use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
 use self::http_host::parse_http_host;
 use self::http_rewriter::{
-    copy_responses_with_websocket_watch, forward_http1_requests, HttpRewriteError, HttpRewriteMode,
+    copy_responses_with_websocket_watch, forward_http1_requests, HttpRewriteError,
 };
 use self::original_dst::resolve_original_dst;
+use self::rewrite_policy::RewriteMode as HttpRewriteMode;
 use self::sni::parse_client_hello_sni;
 use self::tls_mitm::{MitmCa, HTTP_1_1_ALPN};
 

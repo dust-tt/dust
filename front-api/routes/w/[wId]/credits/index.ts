@@ -10,6 +10,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 
 import awuPoolSummary from "./awu-pool-summary";
+import membersSeats from "./members-seats";
 import membersUsage from "./members-usage";
 import metronomeBalances from "./metronome-balances";
 
@@ -17,6 +18,7 @@ import metronomeBalances from "./metronome-balances";
 const app = workspaceApp();
 
 app.route("/awu-pool-summary", awuPoolSummary);
+app.route("/members-seats", membersSeats);
 app.route("/members-usage", membersUsage);
 app.route("/metronome-balances", metronomeBalances);
 

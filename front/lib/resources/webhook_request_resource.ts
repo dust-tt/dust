@@ -7,7 +7,6 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   TriggerType,
@@ -271,8 +270,11 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       maxWebhookRequestsToKeep = MAX_WEBHOOK_REQUESTS_TO_KEEP,
     }: Partial<CleanUpWorkspaceOptions> = {}
   ) {
-    const oldRequests = await this.baseFetch(auth, {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const oldRequestsDeletedCount = await this.model.destroy({
       where: {
+        workspaceId: workspace.id,
         createdAt: {
           [Op.lt]: literal(`now() - interval '${webhookRequestTtl}'`),
         },
@@ -281,18 +283,10 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
 
     logger.info(
       {
-        toDelete: oldRequests.length,
-        workspaceId: auth.getNonNullableWorkspace().sId,
+        toDelete: oldRequestsDeletedCount,
+        workspaceId: workspace.sId,
       },
       "Cleaning up old webhook requests"
-    );
-
-    await concurrentExecutor(
-      oldRequests,
-      async (request) => {
-        await request.delete(auth);
-      },
-      { concurrency: 16 }
     );
 
     const excessiveRequests = await this.baseFetch(auth, {
@@ -308,13 +302,12 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       "Cleaning up excessive webhook requests"
     );
 
-    await concurrentExecutor(
-      excessiveRequests,
-      async (request) => {
-        await request.delete(auth);
+    await this.model.destroy({
+      where: {
+        workspaceId: workspace.id,
+        id: excessiveRequests.map((request) => request.id),
       },
-      { concurrency: 16 }
-    );
+    });
   }
 
   /**

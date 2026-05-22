@@ -107,6 +107,14 @@ function getMaxFileSizeToUpload(contentType: SupportedFileContentType): number {
 // Pattern to match +mention, ~mention, or =mention at the beginning of the string.
 const SLACK_MENTION_PATTERN = /^\s*([+~=][a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/;
 
+function makeSlackAssistantThreadStatus(
+  agentName: string,
+  status: "thinking" | "queued"
+) {
+  const statusText = `is ${status}...`;
+  return agentName === "dust" ? statusText : `(${agentName}) ${statusText}`;
+}
+
 type BotAnswerParams = {
   responseUrl?: string;
   slackTeamId: string;
@@ -1155,9 +1163,7 @@ async function answerMessage(
     slackUserId,
   });
   await streamHandler.setThinking(
-    mention.agentName === "dust"
-      ? "is thinking..."
-      : `(${mention.agentName}) is thinking...`
+    makeSlackAssistantThreadStatus(mention.agentName, "thinking")
   );
 
   const buildSlackMessageError = (
@@ -1293,6 +1299,14 @@ async function answerMessage(
     await slackChatBotMessage.save();
   }
 
+  const isPendingUserMessage = userMessage.visibility === "pending";
+  if (isPendingUserMessage) {
+    await streamHandler.setThinking(
+      makeSlackAssistantThreadStatus(mention.agentName, "queued"),
+      "Queued..."
+    );
+  }
+
   const pendingUserMessageRes = await resolveSlackPendingUserMessage({
     connector,
     conversation,
@@ -1316,6 +1330,11 @@ async function answerMessage(
     return new Ok(undefined);
   }
   conversation = pendingUserMessageRes.value;
+  if (isPendingUserMessage) {
+    await streamHandler.setThinking(
+      makeSlackAssistantThreadStatus(mention.agentName, "thinking")
+    );
+  }
 
   const streamRes = await streamConversationToSlack(dustAPI, {
     assistantName: mention.agentName,

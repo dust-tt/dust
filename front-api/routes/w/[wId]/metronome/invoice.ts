@@ -1,7 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
-/** @ignoreswagger */
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
 import { amountCents } from "@app/lib/metronome/amounts";
 import { listMetronomeDraftInvoices } from "@app/lib/metronome/client";
 import {
@@ -11,11 +7,11 @@ import {
   getProductMauTierIds,
   getProductWorkspaceSeatId,
 } from "@app/lib/metronome/constants";
-import { apiError } from "@app/logger/withlogging";
 import type { SupportedCurrency } from "@app/types/currency";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { BillingPeriod } from "@app/types/plan";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type MetronomeInvoiceSummary = {
   currency: SupportedCurrency;
@@ -57,13 +53,14 @@ function inferBillingPeriod(startMs: number, endMs: number): BillingPeriod {
   return spanDays > 60 ? "yearly" : "monthly";
 }
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetMetronomeInvoiceResponseBody>>,
-  auth: Authenticator
-): Promise<void> {
+// Mounted at /api/w/:wId/metronome/invoice.
+const app = workspaceApp();
+
+app.get("/", async (ctx): HandlerResult<GetMetronomeInvoiceResponseBody> => {
+  const auth = ctx.get("auth");
+
   if (!auth.isAdmin()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -73,33 +70,23 @@ async function handler(
     });
   }
 
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
-    });
-  }
-
   const subscription = auth.subscription();
   const owner = auth.workspace();
   if (!subscription || !owner) {
-    return res.status(200).json({ invoice: null });
+    return ctx.json({ invoice: null });
   }
 
   const { metronomeContractId } = subscription;
   const { metronomeCustomerId } = owner;
   if (!metronomeContractId || !metronomeCustomerId) {
-    return res.status(200).json({ invoice: null });
+    return ctx.json({ invoice: null });
   }
 
   const nowMs = Date.now();
 
   const invoicesResult = await listMetronomeDraftInvoices(metronomeCustomerId);
   if (invoicesResult.isErr()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 502,
       api_error: {
         type: "internal_server_error",
@@ -121,12 +108,12 @@ async function handler(
   });
 
   if (!invoice || !invoice.start_timestamp || !invoice.end_timestamp) {
-    return res.status(200).json({ invoice: null });
+    return ctx.json({ invoice: null });
   }
 
   const currency = creditTypeIdToCurrency(invoice.credit_type.id);
   if (!currency) {
-    return res.status(200).json({ invoice: null });
+    return ctx.json({ invoice: null });
   }
 
   const seatProductId = getProductWorkspaceSeatId();
@@ -196,7 +183,7 @@ async function handler(
       : null,
   };
 
-  return res.status(200).json({ invoice: summary });
-}
+  return ctx.json({ invoice: summary });
+});
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default app;

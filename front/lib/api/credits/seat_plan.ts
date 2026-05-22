@@ -127,18 +127,27 @@ export async function handleSeatPlanRequest(
   const monthlyPriceCentsBySeatType = new Map<MembershipSeatType, number>();
   const nameBySeatType = new Map<MembershipSeatType, string>();
   try {
-    const startingAt = new Date().toISOString();
+    // Use the contract-level rate schedule (not the rate card's) so contract
+    // overrides on entitlement and price are applied. This endpoint only
+    // returns entitled rates and exposes `override_rate` when a contract
+    // override changes the price.
+    const at = new Date().toISOString();
     let nextPage: string | null | undefined = undefined;
     do {
       const rateSchedule =
-        await getMetronomeClient().v1.contracts.rateCards.retrieveRateSchedule({
-          rate_card_id: contract.rate_card_id,
-          starting_at: startingAt,
+        await getMetronomeClient().v1.contracts.retrieveRateSchedule({
+          contract_id: contract.id,
+          customer_id: contract.customer_id,
+          at,
           ...(nextPage ? { next_page: nextPage } : {}),
         });
 
       for (const entry of rateSchedule.data ?? []) {
-        if (!entry.entitled || entry.rate.price === undefined) {
+        if (!entry.entitled) {
+          continue;
+        }
+        const price = entry.override_rate?.price ?? entry.list_rate.price;
+        if (price === undefined) {
           continue;
         }
         const seatType = seatTypesByProductId.get(entry.product_id);
@@ -148,10 +157,7 @@ export async function handleSeatPlanRequest(
         // Metronome quotes prices in its per-currency native unit (USD in
         // cents, others in whole units); normalize to actual cents here.
         // TODO (https://github.com/dust-tt/tasks/issues/8072): Add annual pricing
-        monthlyPriceCentsBySeatType.set(
-          seatType,
-          amountCents(entry.rate.price, currency)
-        );
+        monthlyPriceCentsBySeatType.set(seatType, amountCents(price, currency));
         nameBySeatType.set(seatType, entry.product_name);
       }
 

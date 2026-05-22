@@ -1,7 +1,9 @@
+import { BillingSeatsOverview } from "@app/components/workspace/billing/BillingSeatsOverview";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { CardIcon, Page } from "@dust-tt/sparkle";
 
 export function BillingPage() {
-  // const owner = useWorkspace();
+  const owner = useWorkspace();
   // const { subscription } = useAuth();
   // const router = useAppRouter();
 
@@ -12,8 +14,7 @@ export function BillingPage() {
         icon={CardIcon}
         description="Edit your subscription and billing information."
       />
-      {/* TODO: Settings section*/}
-      <div> TODO </div>
+      <BillingSeatsOverview owner={owner} />
     </Page.Vertical>
   );
 }

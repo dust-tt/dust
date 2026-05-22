@@ -3,9 +3,9 @@ import {
   listGCSMountFiles,
 } from "@app/lib/api/files/gcs_mount/files";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 import download from "./download";
 import rel from "./rel";
@@ -16,7 +16,7 @@ export type GetConversationFilesResponseBody = {
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/files.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get("/", async (ctx): HandlerResult<GetConversationFilesResponseBody> => {
   const auth = ctx.get("auth");
