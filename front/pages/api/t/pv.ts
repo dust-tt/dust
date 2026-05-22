@@ -5,8 +5,8 @@
 import { trackPageview } from "@app/lib/api/track_pageview";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { isString } from "@app/types/shared/utils/general";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 // TODO: Use getClientIp from @app/lib/utils/request once front uses the same Hono-based implementation as front-api.

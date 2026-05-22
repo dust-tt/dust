@@ -3,8 +3,8 @@
 
 import { trackPageview } from "@app/lib/api/track_pageview";
 import { getClientIp } from "@app/lib/utils/request";
-import type { HandlerResult } from "@front-api/middlewares/utils";
 import { unauthedApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 import { getConnInfo } from "@hono/node-server/conninfo";
 
 export type PostTrackPageviewResponseBody = {
