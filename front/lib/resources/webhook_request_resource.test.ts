@@ -19,7 +19,9 @@ describe("WebhookRequestResource", () => {
         });
 
       expect(Array.isArray(result)).toBe(true);
-      expect(result).not.toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).not.toContain(
+        workspace.id
+      );
     });
 
     it("should return workspaces that exceed max webhook requests limit", async () => {
@@ -58,7 +60,7 @@ describe("WebhookRequestResource", () => {
           webhookRequestTtl: "30 day",
         });
 
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
 
     it("should respect the custom maxWebhookRequestsToKeep parameter", async () => {
@@ -98,7 +100,7 @@ describe("WebhookRequestResource", () => {
           webhookRequestTtl: "30 day",
         });
 
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
 
     it("should return workspaces with old requests beyond TTL", async () => {
@@ -130,7 +132,7 @@ describe("WebhookRequestResource", () => {
           webhookRequestTtl: "30 day",
         });
 
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
 
     it("should not return workspaces with old requests within TTL", async () => {
@@ -162,7 +164,9 @@ describe("WebhookRequestResource", () => {
           webhookRequestTtl: "30 day",
         });
 
-      expect(result).not.toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).not.toContain(
+        workspace.id
+      );
     });
 
     it("should handle multiple workspaces correctly", async () => {
@@ -242,16 +246,18 @@ describe("WebhookRequestResource", () => {
         updatedAt: oldDate,
       });
 
-      const result =
+      const workspaces =
         await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
 
+      const workspaceIds = workspaces.map((workspace) => workspace.id);
+
       // Workspace 1 and 3 should be returned, but not workspace 2
-      expect(result).toContain(workspace1.id);
-      expect(result).not.toContain(workspace2.id);
-      expect(result).toContain(workspace3.id);
+      expect(workspaceIds).toContain(workspace1.id);
+      expect(workspaceIds).not.toContain(workspace2.id);
+      expect(workspaceIds).toContain(workspace3.id);
     });
 
     it("should return results sorted by workspaceId ascending", async () => {
@@ -301,9 +307,9 @@ describe("WebhookRequestResource", () => {
         });
 
       // Filter to only include our test workspaces
-      const testResult = result.filter(
-        (id) => id === workspace1.id || id === workspace2.id
-      );
+      const testResult = result
+        .filter(({ id }) => id === workspace1.id || id === workspace2.id)
+        .map(({ id }) => id);
 
       // Verify sorted order
       if (testResult.length > 1) {
@@ -367,7 +373,7 @@ describe("WebhookRequestResource", () => {
         });
 
       // Total of 5 requests, should exceed limit of 3
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
 
     it("should use default constants when not provided", async () => {
@@ -406,7 +412,7 @@ describe("WebhookRequestResource", () => {
           maxWebhookRequestsToKeep: 3,
         });
 
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
 
     it("should handle edge case at boundary of max requests", async () => {
@@ -446,7 +452,9 @@ describe("WebhookRequestResource", () => {
         });
 
       // Should not be returned (HAVING COUNT(*) > limit)
-      expect(result).not.toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).not.toContain(
+        workspace.id
+      );
 
       // Add one more request to exceed limit
       await WebhookRequestModel.create({
@@ -463,7 +471,7 @@ describe("WebhookRequestResource", () => {
       });
 
       // Should now be returned (4 > 3)
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
   });
 
