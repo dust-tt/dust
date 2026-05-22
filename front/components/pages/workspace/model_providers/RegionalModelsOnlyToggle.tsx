@@ -16,9 +16,9 @@ export const REGIONAL_MODELS_ONLY_TOGGLE_CONFIG: Record<
   RegionalModelsOnlyToggleConfig | null
 > = {
   "europe-west1": {
-    label: "EU only",
+    label: "EU-hosted models only",
     description:
-      "Restrict available models to those whose endpoint is hosted in the EU.",
+      "Limit available models to EU-based ones. Useful for data residency requirements.",
     icon: <RegionalFlag region="europe-west1" size={32} />,
   },
   "us-central1": null,

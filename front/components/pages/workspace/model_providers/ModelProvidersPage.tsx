@@ -24,7 +24,7 @@ export function ModelProvidersPage() {
       <Page.Header
         title="Model Providers"
         icon={BrainIcon}
-        description="Configure model providers."
+        description="Choose which AI providers and models are available to your workspace."
       />
       <Page.Vertical align="stretch" gap="md">
         <ModelProvidersPageContent
