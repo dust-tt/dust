@@ -76,7 +76,7 @@ async function getWorkflowDescriptions({
   ]);
 }
 
-async function getLatestWorkflowEventTime({
+async function getLatestWorkflowEventDate({
   client,
   description,
 }: {
@@ -146,7 +146,7 @@ async function areTemporalWorkflowsRunning(
       // Bounded (only 3 elements in NotionWorkflowDescriptions), Temporal-only Promise.all.
       return Promise.all(
         descriptions.map((description) =>
-          getLatestWorkflowEventTime({ client, description })
+          getLatestWorkflowEventDate({ client, description })
         )
       );
     },
