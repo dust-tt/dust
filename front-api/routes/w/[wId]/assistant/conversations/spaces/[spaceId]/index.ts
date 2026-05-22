@@ -29,6 +29,8 @@ function parseFilter(value: string | undefined): SpaceConversationsFilter {
   }
 }
 
+import unread from "./unread";
+
 // Mounted at /api/w/:wId/assistant/conversations/spaces/:spaceId.
 const app = workspaceApp();
 
@@ -113,5 +115,7 @@ app.get("/", async (ctx): HandlerResult<GetSpaceConversationsResponseBody> => {
     isEmpty,
   });
 });
+
+app.route("/unread", unread);
 
 export default app;
