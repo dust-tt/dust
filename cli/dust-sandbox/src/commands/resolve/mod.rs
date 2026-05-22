@@ -11,7 +11,11 @@ const DNS_HEADER_SIZE: usize = 12;
 const DNS_POINTER_TO_QUESTION: u16 = 0xC00C;
 const DNS_TYPE_A: u16 = 1;
 const DNS_CLASS_IN: u16 = 1;
-const DNS_TTL_SECONDS: u32 = 60;
+// 24h: the sentinel never resolves to anything useful and never changes for
+// the lifetime of a sandbox. A short TTL just makes clients re-query the
+// stub for the same answer. Behavioral changes ship via image rebuilds +
+// sandbox recreation, not via stub-side TTL expiry.
+const DNS_TTL_SECONDS: u32 = 86_400;
 const SENTINEL_A_RECORD: [u8; 4] = [240, 0, 0, 1];
 const SENTINEL_A_RECORD_LEN: u16 = SENTINEL_A_RECORD.len() as u16;
 
