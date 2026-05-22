@@ -80,6 +80,10 @@ const UsagePage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/UsagePage"),
   "UsagePage"
 );
+const BillingPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/workspace/billing/BillingPage"),
+  "BillingPage"
+);
 
 export const adminRoutes: RouteObject[] = [
   { path: "me", element: <ProfilePage /> },
@@ -92,6 +96,7 @@ export const adminRoutes: RouteObject[] = [
       { path: "analytics", element: <AnalyticsPage /> },
       { path: "usage", element: <UsagePage /> },
       { path: "subscription", element: <SubscriptionPage /> },
+      { path: "billing", element: <BillingPage /> },
       {
         path: "subscription/manage",
         element: <ManageSubscriptionPage />,
