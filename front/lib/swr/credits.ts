@@ -328,16 +328,6 @@ export function useAwuPurchaseInfo({
 
 const EMPTY_SEAT_PLANS: SeatPlanResponseBody = {};
 
-const EMPTY_MEMBERS_SEATS: GetMembersSeatsResponseBody["seatTypes"] = {
-  free: 0,
-  workspace: 0,
-  workspace_yearly: 0,
-  pro: 0,
-  pro_yearly: 0,
-  max: 0,
-  max_yearly: 0,
-};
-
 export function useMembersSeats({
   workspaceId,
   disabled,
@@ -355,7 +345,7 @@ export function useMembersSeats({
   );
 
   return {
-    membersSeats: data?.seatTypes ?? EMPTY_MEMBERS_SEATS,
+    membersSeats: data?.seatTypes ?? {},
     totalMembersSeats: data?.total ?? 0,
     isMembersSeatsLoading: !error && !data && !disabled,
     isMembersSeatsError: error,
