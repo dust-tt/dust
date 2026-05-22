@@ -1,49 +1,20 @@
+// This endpoint must exist in both front and front-api since
+// it's used in both public homepage and app.
+
 /** @ignoreswagger */
-import config from "@app/lib/api/config";
-import { DUST_COOKIES_ACCEPTED } from "@app/lib/cookies";
+import { trackPageview } from "@app/lib/api/track_pageview";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { readAnonymousIdFromCookies } from "@app/lib/utils/anonymous_id";
-import { rateLimiter } from "@app/lib/utils/rate_limiter";
-import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { PostHog } from "posthog-node";
 
-const POSTHOG_HOST = "https://eu.i.posthog.com";
-
-let posthogClient: PostHog | null = null;
-
-function getClient(): PostHog | null {
-  if (posthogClient) {
-    return posthogClient;
-  }
-
-  const apiKey = config.getPostHogApiKey();
-  if (!apiKey) {
-    return null;
-  }
-
-  posthogClient = new PostHog(apiKey, { host: POSTHOG_HOST });
-  return posthogClient;
-}
-
+// TODO: Use getClientIp from @app/lib/utils/request once front uses the same Hono-based implementation as front-api.
 function getClientIp(req: NextApiRequest): string | undefined {
   const forwarded = req.headers["x-forwarded-for"];
   return isString(forwarded)
     ? forwarded.split(",")[0].trim()
     : req.socket.remoteAddress;
-}
-
-function getCookieValue(req: NextApiRequest, name: string): string | undefined {
-  const cookies = req.headers.cookie;
-  if (!cookies) {
-    return undefined;
-  }
-  const prefix = `${name}=`;
-  const match = cookies.split("; ").find((c) => c.startsWith(prefix));
-  return match ? decodeURIComponent(match.slice(prefix.length)) : undefined;
 }
 
 async function handler(
@@ -63,66 +34,16 @@ async function handler(
 
   const ip = getClientIp(req);
 
-  // Rate limit: max 4 requests per 2 seconds per IP.
-  if (ip) {
-    const remaining = await rateLimiter({
-      key: `server_pageview:${ip}`,
-      maxPerTimeframe: 4,
-      timeframeSeconds: 2,
-      logger,
-    });
-    if (remaining <= 0) {
-      res.status(429).json({ ok: false });
-      return;
-    }
-  }
+  const result = await trackPageview({
+    ip,
+    cookieHeader: req.headers.cookie,
+    userAgent: req.headers["user-agent"],
+    body: req.body,
+  });
 
-  const client = getClient();
-  if (!client) {
-    res.status(200).json({ ok: true });
+  if (result.type === "rate_limited") {
+    res.status(429).json({ ok: false });
     return;
-  }
-
-  const body = req.body;
-  const page_url =
-    typeof body?.page_url === "string" ? body.page_url : undefined;
-  const referrer =
-    typeof body?.referrer === "string" ? body.referrer : undefined;
-
-  // Read anonymous ID from body or cookie fallback.
-  const anonymousIdFromBody =
-    typeof body?.anonymous_id === "string" ? body.anonymous_id : undefined;
-  const anonymousId =
-    anonymousIdFromBody ??
-    readAnonymousIdFromCookies(req.headers.cookie) ??
-    undefined;
-
-  // Determine consent status from cookie.
-  const consentCookie = getCookieValue(req, DUST_COOKIES_ACCEPTED);
-  const hasConsent = consentCookie === "true" || consentCookie === "auto";
-
-  const userAgent = req.headers["user-agent"] ?? undefined;
-
-  // The anonymous device ID is the primary identifier. If the user is logged
-  // in, the PostHog alias created at login time will link events to their
-  // identified person profile.
-  const distinctId = anonymousId ?? `anon_${Date.now()}`;
-
-  try {
-    client.capture({
-      distinctId,
-      event: "server_pageview",
-      properties: {
-        page_url: page_url ?? undefined,
-        referrer: referrer ?? undefined,
-        user_agent: userAgent,
-        // Only include IP when the visitor has given consent (or is non-GDPR auto-accepted).
-        ip: hasConsent ? ip : null,
-        dust_anonymous_id: anonymousId ?? null,
-      },
-    });
-  } catch (err) {
-    logger.error({ err }, "Failed to capture server_pageview on PostHog");
   }
 
   res.status(200).json({ ok: true });
