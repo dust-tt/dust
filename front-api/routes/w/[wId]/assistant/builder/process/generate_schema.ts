@@ -1,8 +1,6 @@
 import { getBuilderJsonSchemaGenerator } from "@app/lib/api/assistant/json_schema_generator";
-import {
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/lib/assistant";
+import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
+import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import { InternalPostBuilderGenerateSchemaRequestBodySchema } from "@app/types/api/internal/assistant";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";

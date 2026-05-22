@@ -6,11 +6,11 @@ import type {
   PrefetchedDataSourcesType,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
-import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
 import {
-  getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-} from "@app/lib/assistant";
+  isProviderWhitelisted,
+} from "@app/lib/api/assistant/models";
+import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,

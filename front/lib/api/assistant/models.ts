@@ -1,10 +1,21 @@
 import type { Authenticator } from "@app/lib/auth";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_FLASH_MODEL_CONFIG,
+} from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
+import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import {
   BYOK_MODEL_PROVIDER_IDS,
   MODEL_PROVIDER_IDS,
 } from "@app/types/assistant/models/providers";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelConfigurationType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
+import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 
 export function getWhitelistedProviders(
   auth: Authenticator
@@ -52,4 +63,47 @@ export function isProviderWhitelisted(
 ): boolean {
   const whitelistedProviders = getWhitelistedProviders(auth);
   return whitelistedProviders.has(providerId);
+}
+
+export function getFastestWhitelistedModel(
+  auth: Authenticator
+): ModelConfigurationType | null {
+  const whitelistedProviders = getWhitelistedProviders(auth);
+  if (whitelistedProviders.has("mistral")) {
+    return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  if (whitelistedProviders.has("google_ai_studio")) {
+    return GEMINI_2_5_FLASH_MODEL_CONFIG;
+  }
+  return _getSmallWhitelistedModel(whitelistedProviders);
+}
+
+export function getSmallWhitelistedModel(
+  auth: Authenticator,
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
+): ModelConfigurationType | null {
+  return _getSmallWhitelistedModel(
+    getWhitelistedProviders(auth).difference(excludeProviders)
+  );
+}
+
+function _getSmallWhitelistedModel(
+  whitelistedProviders: Set<ModelProviderIdType>
+): ModelConfigurationType | null {
+  if (whitelistedProviders.has("openai")) {
+    return GPT_5_MINI_MODEL_CONFIG;
+  }
+  if (whitelistedProviders.has("anthropic")) {
+    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
+  }
+  if (whitelistedProviders.has("google_ai_studio")) {
+    return GEMINI_3_FLASH_MODEL_CONFIG;
+  }
+  if (whitelistedProviders.has("mistral")) {
+    return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  if (whitelistedProviders.has("xai")) {
+    return GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG;
+  }
+  return null;
 }

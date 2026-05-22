@@ -1,7 +1,9 @@
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
+import {
+  getSmallWhitelistedModel,
+  getWhitelistedProviders,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
