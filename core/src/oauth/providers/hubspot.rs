@@ -60,19 +60,50 @@ impl Provider for HubspotConnectionProvider {
             .as_u64()
             .ok_or_else(|| anyhow!("Missing expires_in in response"))?;
 
+        let access_token = result["access_token"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing access_token in response"))?
+            .to_string();
+
+        // HubSpot does not return granted scopes in the token response, so we call the
+        // introspection endpoint once at finalization time to store them in metadata.
+        let introspect_params = [
+            ("client_id", OAUTH_HUBSPOT_CLIENT_ID.as_str()),
+            ("client_secret", OAUTH_HUBSPOT_CLIENT_SECRET.as_str()),
+            ("token", access_token.as_str()),
+            ("token_type_hint", "access_token"),
+        ];
+        let introspect_req = self
+            .reqwest_client()
+            .post("https://api.hubapi.com/oauth/2026-03/token/introspect")
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .form(&introspect_params);
+        let introspect_result = execute_request(ConnectionProvider::Hubspot, introspect_req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
+
+        let extra_metadata = introspect_result["scopes"].as_array().map(|scopes| {
+            let scope_str = scopes
+                .iter()
+                .filter_map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join(" ");
+            serde_json::Map::from_iter([(
+                "scope".to_string(),
+                serde_json::Value::String(scope_str),
+            )])
+        });
+
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
-            access_token: result["access_token"]
-                .as_str()
-                .ok_or_else(|| anyhow!("Missing access_token in response"))?
-                .to_string(),
+            access_token,
             access_token_expiry: Some(
                 crate::utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
             refresh_token: result["refresh_token"].as_str().map(|s| s.to_string()),
             raw_json: result,
-            extra_metadata: None,
+            extra_metadata,
         })
     }
 
