@@ -117,7 +117,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      if (!auth.isUser()) {
+      if (!auth.user()) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
