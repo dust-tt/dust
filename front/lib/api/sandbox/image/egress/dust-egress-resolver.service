@@ -1,0 +1,14 @@
+[Unit]
+Description=Dust local DNS resolver for agent-proxied
+After=network.target
+Before=dust-egress-nftables.service
+
+[Service]
+User=dust-egress-resolver
+Group=dust-egress-resolver
+ExecStart=/opt/bin/dsbx resolve --listen 127.0.0.1:1053
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

@@ -5,6 +5,7 @@ import {
   EGRESS_SECRETS_PATH,
   writeEgressSecretsFile,
 } from "@app/lib/api/sandbox/egress_secrets";
+import { SANDBOX_UNTRUSTED_UIDS } from "@app/lib/api/sandbox/image/types";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,6 +17,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 
 const EGRESS_FORWARDER_LISTEN_ADDR = "127.0.0.1:9990";
+const EGRESS_RESOLVER_LISTEN_ADDR = "127.0.0.1:1053";
+const EGRESS_PROXIED_UID = SANDBOX_UNTRUSTED_UIDS[0];
 const EGRESS_TOKEN_PATH = "/etc/dust/egress-token";
 const EGRESS_DENY_LOG_PATH = "/tmp/dust-egress-denied.log";
 const EGRESS_DENY_LOG_OFFSET_PATH = "/tmp/.dust-egress-deny-offset";
@@ -134,28 +137,107 @@ export function mintEgressInvalidationJwt({
 
 type EgressHealthState = {
   portOk: boolean;
+  resolverOk: boolean;
+  nftablesOk: boolean;
   bundleOk: boolean;
 };
+
+type EgressHealthcheckOutput = {
+  forwarder_port_ok: boolean;
+  resolver_udp_ok: boolean;
+  resolver_tcp_ok: boolean;
+  nft_dns_udp_redirect_ok: boolean;
+  nft_dns_tcp_redirect_ok: boolean;
+  nft_dns_udp_accept_ok: boolean;
+  bundle_ok: boolean;
+};
+
+const EGRESS_HEALTHCHECK_BOOLEAN_FIELDS: readonly (keyof EgressHealthcheckOutput)[] =
+  [
+    "forwarder_port_ok",
+    "resolver_udp_ok",
+    "resolver_tcp_ok",
+    "nft_dns_udp_redirect_ok",
+    "nft_dns_tcp_redirect_ok",
+    "nft_dns_udp_accept_ok",
+    "bundle_ok",
+  ];
+
+const FAILED_EGRESS_HEALTH_STATE: EgressHealthState = {
+  portOk: false,
+  resolverOk: false,
+  nftablesOk: false,
+  bundleOk: false,
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object";
+}
+
+function hasBooleanField(
+  value: Record<string, unknown>,
+  key: keyof EgressHealthcheckOutput
+): boolean {
+  return value[key] === true || value[key] === false;
+}
+
+function isEgressHealthcheckOutput(
+  value: unknown
+): value is EgressHealthcheckOutput {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return EGRESS_HEALTHCHECK_BOOLEAN_FIELDS.every((key) =>
+    hasBooleanField(value, key)
+  );
+}
+
+function parseEgressHealthcheckOutput(stdout: string): EgressHealthState {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    return FAILED_EGRESS_HEALTH_STATE;
+  }
+
+  if (!isEgressHealthcheckOutput(parsed)) {
+    return FAILED_EGRESS_HEALTH_STATE;
+  }
+
+  return {
+    portOk: parsed.forwarder_port_ok,
+    resolverOk: parsed.resolver_udp_ok && parsed.resolver_tcp_ok,
+    nftablesOk:
+      parsed.nft_dns_udp_redirect_ok &&
+      parsed.nft_dns_tcp_redirect_ok &&
+      parsed.nft_dns_udp_accept_ok,
+    bundleOk: parsed.bundle_ok,
+  };
+}
 
 export async function checkEgressForwarderHealth(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<EgressHealthState, Error>> {
-  // Probe both signals in one exec. ss avoids opening a real TCP connection
-  // through the forwarder (nc -z would trigger a proxy round-trip and a noisy
-  // <unknown> deny log entry on every check). The bundle check looks for the
-  // merge sentinel rather than just the bundle file, because the image seeds
-  // a system-only ca-bundle.pem at build time so SSL_CERT_FILE always points
-  // at a valid file; bare `-s` would be true even before installMitmTrustBundle
-  // ever ran. The two signals are reported separately so callers can remediate
-  // them independently (a missing bundle does not require a dsbx restart).
+  // Probe all egress signals in one exec. The dsbx healthcheck reads kernel
+  // state directly instead of opening a TCP connection through the forwarder
+  // (nc -z would trigger a proxy round-trip and a noisy <unknown> deny log
+  // entry on every check). The bundle check looks for the merge sentinel
+  // rather than just the bundle file, because the image seeds a system-only
+  // ca-bundle.pem at build time so SSL_CERT_FILE always points at a valid
+  // file; bare `-s` would be true before installMitmTrustBundle ever ran.
+  // The signals are reported separately so callers can remediate the forwarder
+  // and bundle independently while failing closed on missing DNS enforcement.
   const result = await sandbox.exec(
     auth,
-    `p=0; b=0; ` +
-      `ss -tln sport = :9990 | grep -q LISTEN && p=1; ` +
-      `[ -s ${shellEscape(MITM_CA_BUNDLE_PATH)} ] && ` +
-      `[ -f ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)} ] && b=1; ` +
-      `echo "$p $b"`,
+    `/opt/bin/dsbx healthcheck ` +
+      `--forwarder-listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
+      `--resolver-listen ${shellEscape(EGRESS_RESOLVER_LISTEN_ADDR)} ` +
+      `--proxied-uid ${EGRESS_PROXIED_UID} ` +
+      `--ca-bundle ${shellEscape(MITM_CA_BUNDLE_PATH)} ` +
+      `--ca-bundle-marker ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)} ` +
+      `2>/dev/null || true`,
     { timeoutMs: 1_000 }
   );
 
@@ -163,11 +245,7 @@ export async function checkEgressForwarderHealth(
     return result;
   }
 
-  const [portRaw, bundleRaw] = result.value.stdout.trim().split(/\s+/);
-  return new Ok({
-    portOk: portRaw === "1",
-    bundleOk: bundleRaw === "1",
-  });
+  return new Ok(parseEgressHealthcheckOutput(result.value.stdout.trim()));
 }
 
 // Egress prep that runs before GCS mounts: in prod, starts the forwarder; in
@@ -217,7 +295,7 @@ export async function ensureSandboxEgressOnExec(
     return healthResult;
   }
 
-  const { portOk, bundleOk } = healthResult.value;
+  const { portOk, resolverOk, nftablesOk, bundleOk } = healthResult.value;
   const baseLogContext = {
     providerId: sandbox.providerId,
     sandboxId: sandbox.sId,
@@ -229,6 +307,21 @@ export async function ensureSandboxEgressOnExec(
       "Sandbox egress forwarder port not listening, restarting"
     );
     return setupEgressForwarder(auth, sandbox, { restartExisting: true });
+  }
+
+  if (!resolverOk || !nftablesOk) {
+    logger.warn(
+      {
+        ...baseLogContext,
+        event: "egress.enforcement_health_fail",
+        resolverOk,
+        nftablesOk,
+      },
+      "Sandbox egress DNS enforcement health check failed"
+    );
+    return new Err(
+      new Error("Sandbox egress DNS enforcement health check failed")
+    );
   }
 
   if (!bundleOk) {
@@ -243,7 +336,7 @@ export async function ensureSandboxEgressOnExec(
 
   logger.info(
     { ...baseLogContext, event: "egress.health_ok" },
-    "Sandbox egress forwarder health check succeeded"
+    "Sandbox egress health check succeeded"
   );
   return new Ok(undefined);
 }
@@ -266,7 +359,7 @@ export async function teardownInSandboxEgressRedirect(
   }
 
   const command =
-    "systemctl disable --now dust-egress-nftables.service >/dev/null 2>&1 || true; " +
+    "systemctl disable --now dust-egress-resolver.service dust-egress-nftables.service >/dev/null 2>&1 || true; " +
     "nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
     "nft delete table ip6 dust-egress >/dev/null 2>&1 || true";
 
@@ -364,19 +457,21 @@ export async function setupEgressForwarder(
     if (healthResult.isErr()) {
       return healthResult;
     }
-    // Setup only waits on the port; the bundle gets installed below and is
-    // checked on subsequent execs by ensureSandboxEgressOnExec.
-    if (healthResult.value.portOk) {
-      logger.info(logContext, "Sandbox egress forwarder is healthy");
+    // Setup waits on the forwarder and DNS enforcement. The bundle gets
+    // installed below and is checked on subsequent execs.
+    if (
+      healthResult.value.portOk &&
+      healthResult.value.resolverOk &&
+      healthResult.value.nftablesOk
+    ) {
+      logger.info(logContext, "Sandbox egress is healthy");
       return installMitmTrustBundle(auth, sandbox);
     }
 
     await sleep(EGRESS_SETUP_WAIT_MS);
   }
 
-  return new Err(
-    new Error("Sandbox egress forwarder did not become healthy in time")
-  );
+  return new Err(new Error("Sandbox egress did not become healthy in time"));
 }
 
 async function killEgressForwarder(
@@ -389,7 +484,7 @@ async function killEgressForwarder(
   return runSuccessfulSandboxCommand(
     auth,
     sandbox,
-    "pkill -KILL dsbx >/dev/null 2>&1 || true",
+    "pkill -KILL -f '^/opt/bin/dsbx forward( |$)' >/dev/null 2>&1 || true",
     "root"
   );
 }

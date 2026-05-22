@@ -23,6 +23,11 @@ export function formatSandboxImageId(id: SandboxImageId): string {
 // sandbox-enabled workspaces and the flag goes away.
 export const DSBX_TOOL_NAME = "dsbx";
 
+// UIDs that can execute untrusted workspace or model-driven code inside the
+// sandbox. Every UID in this list must be covered by the egress nftables
+// ruleset, otherwise it inherits provider DNS/networking.
+export const SANDBOX_UNTRUSTED_UIDS = [1003] as const;
+
 // ---------------------------------------------------------------------------
 // Tool Runtime & Profile
 // ---------------------------------------------------------------------------

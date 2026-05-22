@@ -1,5 +1,8 @@
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
-import type { Operation } from "@app/lib/api/sandbox/image/types";
+import {
+  type Operation,
+  SANDBOX_UNTRUSTED_UIDS,
+} from "@app/lib/api/sandbox/image/types";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import { describe, expect, test } from "vitest";
 
@@ -48,11 +51,24 @@ function getCopiedContent(
   return typeof content === "string" ? content : content.toString("utf-8");
 }
 
+function expectContentInOrder(
+  content: string,
+  firstNeedle: string,
+  secondNeedle: string
+): void {
+  const firstIndex = content.indexOf(firstNeedle);
+  const secondIndex = content.indexOf(secondNeedle);
+
+  expect(firstIndex).toBeGreaterThanOrEqual(0);
+  expect(secondIndex).toBeGreaterThanOrEqual(0);
+  expect(firstIndex).toBeLessThan(secondIndex);
+}
+
 describe("sandbox image registry", () => {
-  test("bumps the base image for the scoped MITM rollout", () => {
+  test("bumps the base image for the DNS resolver rollout", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.18",
+      tag: "0.8.19",
     });
   });
 
@@ -73,11 +89,14 @@ describe("sandbox image registry", () => {
         expect.stringContaining(
           "setfacl -R -m g::rwx /home/agent /files/conversation"
         ),
+        expect.stringContaining(
+          "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver"
+        ),
       ])
     );
   });
 
-  test("copies the nftables boot assets and enables the systemd oneshot", () => {
+  test("copies the egress boot assets and enables the systemd units", () => {
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);
     const copyOperations = getCopyOperations(operations);
@@ -89,11 +108,15 @@ describe("sandbox image registry", () => {
       copyOperations,
       "/etc/systemd/system/dust-egress-nftables.service"
     );
+    const resolverUnit = getCopiedContent(
+      copyOperations,
+      "/etc/systemd/system/dust-egress-resolver.service"
+    );
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
         "chmod 755 /etc/dust/egress-nftables.sh",
-        "systemctl daemon-reload && systemctl enable dust-egress-nftables.service",
+        "systemctl daemon-reload && systemctl enable dust-egress-resolver.service dust-egress-nftables.service",
       ])
     );
 
@@ -109,8 +132,23 @@ describe("sandbox image registry", () => {
     expect(serviceUnit).toContain("RemainAfterExit=yes");
     expect(serviceUnit).toContain("ExecStart=/etc/dust/egress-nftables.sh");
     expect(serviceUnit).toContain("WantedBy=multi-user.target");
+    expect(serviceUnit).not.toContain("Requires=dust-egress-resolver.service");
+
+    expect(resolverUnit).toContain(
+      "Description=Dust local DNS resolver for agent-proxied"
+    );
+    expect(resolverUnit).toContain("Before=dust-egress-nftables.service");
+    expect(resolverUnit).toContain("User=dust-egress-resolver");
+    expect(resolverUnit).toContain("Group=dust-egress-resolver");
+    expect(resolverUnit).toContain(
+      "ExecStart=/opt/bin/dsbx resolve --listen 127.0.0.1:1053"
+    );
+    expect(resolverUnit).toContain("Restart=on-failure");
+    expect(resolverUnit).toContain("RestartSec=2s");
+    expect(resolverUnit).toContain("WantedBy=multi-user.target");
 
     expect(nftablesScript).toContain("nft add table ip dust-egress");
+    expect(nftablesScript).toContain("DNS_STUB_PORT=1053");
     expect(nftablesScript).toContain(
       "nft add chain ip dust-egress nat_output '{ type nat hook output priority -100 ; policy accept ; }'"
     );
@@ -121,10 +159,16 @@ describe("sandbox image registry", () => {
       "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 return"
     );
     expect(nftablesScript).toContain(
+      "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID udp dport 53 redirect to :$DNS_STUB_PORT"
+    );
+    expect(nftablesScript).toContain(
+      "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID tcp dport 53 redirect to :$DNS_STUB_PORT"
+    );
+    expect(nftablesScript).toContain(
       "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID tcp dport != 0 redirect to :9990"
     );
     expect(nftablesScript).toContain(
-      'nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID udp dport 53 ip daddr "$NS" accept'
+      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 udp dport $DNS_STUB_PORT accept"
     );
     expect(nftablesScript).toContain(
       "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 169.254.169.254 drop"
@@ -132,6 +176,36 @@ describe("sandbox image registry", () => {
     expect(nftablesScript).toContain(
       "nft add rule ip6 dust-egress filter_output meta skuid $PROXIED_UID drop"
     );
+    expect(nftablesScript).not.toContain("/etc/resolv.conf");
+    expect(nftablesScript).not.toContain('ip daddr "$NS"');
+
+    expectContentInOrder(
+      nftablesScript,
+      "udp dport 53 redirect to :$DNS_STUB_PORT",
+      "ip daddr 127.0.0.0/8 return"
+    );
+    expectContentInOrder(
+      nftablesScript,
+      "tcp dport 53 redirect to :$DNS_STUB_PORT",
+      "tcp dport != 0 redirect to :9990"
+    );
+    expectContentInOrder(
+      nftablesScript,
+      "udp dport $DNS_STUB_PORT accept",
+      "meta l4proto udp drop"
+    );
+  });
+
+  test("keeps the nftables UID filter aligned with untrusted sandbox UIDs", () => {
+    const copyOperations = getCopyOperations(getDustBaseImageOperations());
+    const nftablesScript = getCopiedContent(
+      copyOperations,
+      "/etc/dust/egress-nftables.sh"
+    );
+    const proxiedUidMatch = /^PROXIED_UID=(\d+)$/m.exec(nftablesScript);
+    const configuredUids = proxiedUidMatch ? [Number(proxiedUidMatch[1])] : [];
+
+    expect(configuredUids).toEqual([...SANDBOX_UNTRUSTED_UIDS]);
   });
 
   test("installs trust env defaults and the runtime trust helper", () => {
