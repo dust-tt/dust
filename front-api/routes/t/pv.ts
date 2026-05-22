@@ -3,16 +3,16 @@
 
 import { trackPageview } from "@app/lib/api/track_pageview";
 import { getClientIp } from "@app/lib/utils/request";
-import type { HandlerResult } from "@front-api/middleware/utils";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { unauthedApp } from "@front-api/middlewares/ctx";
 import { getConnInfo } from "@hono/node-server/conninfo";
-import { Hono } from "hono";
 
 export type PostTrackPageviewResponseBody = {
   ok: boolean;
 };
 
 // Mounted at /api/t/pv.
-const app = new Hono();
+const app = unauthedApp();
 
 app.post("/", async (ctx): HandlerResult<PostTrackPageviewResponseBody> => {
   const connInfo = getConnInfo(ctx);
