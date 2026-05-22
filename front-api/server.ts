@@ -14,7 +14,6 @@ const honoListener = getRequestListener(honoApp.fetch);
 
 function main() {
   const server = createServer((req, res) => {
-    logger.info(`Hono handling ${req.method} ${req.url}`);
     void honoListener(req, res);
   });
 

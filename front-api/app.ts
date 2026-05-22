@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 
 import { cors } from "./middlewares/cors";
+import { requestLogger } from "./middlewares/request_logger";
+import { unhandledErrorHandler } from "./middlewares/utils";
 import preStopApp from "./routes/[preStopSecret]";
 import { appStatusApp } from "./routes/app-status";
 import { loginApp } from "./routes/auth/login";
@@ -66,5 +68,7 @@ apiApp.route("/v1/w/:wId", publicWorkspaceApp);
 apiApp.route("/:preStopSecret", preStopApp);
 
 export const honoApp = new Hono();
+honoApp.use("*", requestLogger);
 honoApp.use("*", cors);
 honoApp.route("/api", apiApp);
+honoApp.onError(unhandledErrorHandler);
