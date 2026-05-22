@@ -180,9 +180,9 @@ AgentMCPServerConfigurationModel.init(
         concurrently: true,
       },
       {
-        fields: ["mcpServerViewId", "workspaceId"],
+        fields: ["mcpServerViewId"],
         concurrently: true,
-        name: "agent_mcp_srv_config_mcp_view_id_w_id",
+        name: "agent_mcp_srv_config_mcp_srv_view_id",
       },
     ],
   }
