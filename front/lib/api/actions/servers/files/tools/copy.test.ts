@@ -187,7 +187,7 @@ describe("copyHandler", () => {
     expect(result.error.message).toContain("Pod conversations");
   });
 
-  it("writes a single copyFile to the resolved Pod path", async () => {
+  it("dual-writes to the projects/ mirror when copying to a Pod mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
     const workspaceId = auth.getNonNullableWorkspace().sId;
     const podId = conversation.spaceId;
@@ -214,8 +214,38 @@ describe("copyHandler", () => {
 
     const sourcePath = `w/${workspaceId}/conversations/${conversation.sId}/files/report.pdf`;
     const destPodPath = `w/${workspaceId}/pods/${podId}/files/report.pdf`;
+    const destProjectsPath = `w/${workspaceId}/projects/${podId}/files/report.pdf`;
 
+    expect(copyFileMock).toHaveBeenCalledTimes(2);
+    expect(copyFileMock).toHaveBeenNthCalledWith(1, sourcePath, destPodPath);
+    expect(copyFileMock).toHaveBeenNthCalledWith(
+      2,
+      sourcePath,
+      destProjectsPath
+    );
+  });
+
+  it("does not write to projects/ when copying to a conversation mount", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+
+    const copyFileMock = vi.fn().mockResolvedValue(undefined);
+    const getMetadataMock = vi
+      .fn()
+      .mockResolvedValue([{ contentType: "application/pdf", size: "100" }]);
+    const mockBucket = {
+      file: vi.fn(() => ({ getMetadata: getMetadataMock })),
+      copyFile: copyFileMock,
+    };
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(
+      mockBucket as unknown as ReturnType<typeof getPrivateUploadBucket>
+    );
+
+    const result = await copyHandler(
+      { source: "pod/spec.md", dest: "conversation/spec.md" },
+      makeExtra(auth, conversation)
+    );
+
+    assert(result.isOk());
     expect(copyFileMock).toHaveBeenCalledTimes(1);
-    expect(copyFileMock).toHaveBeenCalledWith(sourcePath, destPodPath);
   });
 });

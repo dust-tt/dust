@@ -51,7 +51,7 @@ async function setupProjectConversation(
 }
 
 describe("deleteHandler", () => {
-  it("issues a single delete to the resolved Pod path", async () => {
+  it("dual-deletes from the projects/ mirror when deleting from a Pod mount", async () => {
     const { auth, conversation } = await setupProjectConversation();
     const workspaceId = auth.getNonNullableWorkspace().sId;
     const podId = conversation.spaceId;
@@ -75,9 +75,13 @@ describe("deleteHandler", () => {
     assert(result.isOk());
 
     const podPath = `w/${workspaceId}/pods/${podId}/files/report.pdf`;
+    const projectsPath = `w/${workspaceId}/projects/${podId}/files/report.pdf`;
 
-    expect(deleteMock).toHaveBeenCalledTimes(1);
-    expect(deleteMock).toHaveBeenCalledWith(podPath, {
+    expect(deleteMock).toHaveBeenCalledTimes(2);
+    expect(deleteMock).toHaveBeenNthCalledWith(1, podPath, {
+      ignoreNotFound: true,
+    });
+    expect(deleteMock).toHaveBeenNthCalledWith(2, projectsPath, {
       ignoreNotFound: true,
     });
   });

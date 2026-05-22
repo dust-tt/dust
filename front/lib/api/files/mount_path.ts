@@ -90,6 +90,20 @@ export function toPodMountFilePath(
 }
 
 /**
+ * Convert a pod mount file path (`w/{wId}/pods/{pId}/files/...`) to its projects/ counterpart
+ * (`w/{wId}/projects/{pId}/files/...`). Returns `null` if the input is not a pod mount path.
+ */
+export function toProjectMountFilePath(
+  podMountFilePath: string
+): string | null {
+  const match = podMountFilePath.match(/^(w\/[^/]+\/)pods\/(.+)$/);
+  if (!match) {
+    return null;
+  }
+  return `${match[1]}projects/${match[2]}`;
+}
+
+/**
  * Given a mount file path like "w/.../files/report.pdf",
  * returns "w/.../files/report.processed.pdf".
  * For files without extension: "w/.../files/Makefile" -> "w/.../files/Makefile.processed".
