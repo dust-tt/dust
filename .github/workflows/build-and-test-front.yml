@@ -6,6 +6,7 @@ on:
       - package-lock.json
       - sdks/js/**
       - front/**
+      - front-api/**
       - sparkle/**
       - .github/workflows/build-and-test-front.yml
 
@@ -68,6 +69,23 @@ jobs:
           flaky_summary: true
           group_suite: true
           check_name: Tests Report (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+      - name: Run Front-API Tests
+        working-directory: front-api
+        env:
+          FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test_shard_${{ matrix.shardIndex }}"
+          REDIS_CACHE_URI: "redis://localhost:5434"
+          REDIS_URI: "redis://localhost:5434"
+          NODE_ENV: test
+        run: npm run test:ci -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --outputFile=junit-shard-${{ matrix.shardIndex }}.xml
+      - name: Build Front-API Tests Report
+        if: always()
+        uses: mikepenz/action-junit-report@bccf2e31636835cf0874589931c4116687171386 # v6.4.0
+        with:
+          report_paths: "front-api/junit-shard-${{ matrix.shardIndex }}.xml"
+          detailed_summary: true
+          flaky_summary: true
+          group_suite: true
+          check_name: Front-API Tests Report (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
   tsgo:
     runs-on: ubuntu-latest
     steps:
