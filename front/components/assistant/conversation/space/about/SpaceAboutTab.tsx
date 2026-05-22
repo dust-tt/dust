@@ -23,13 +23,8 @@ import {
   ArrowUpOnSquareIcon,
   Button,
   ContentMessage,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   GlobeAltIcon,
   Input,
-  MoreIcon,
   ScrollArea,
   SearchInput,
   SliderToggle,
@@ -221,34 +216,6 @@ export function SpaceAboutTab({
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-8">
-        <div className="flex gap-2">
-          <h2 className="heading-2xl flex-1 text-foreground dark:text-foreground-night">
-            Settings
-          </h2>
-          {isProjectEditor && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" icon={MoreIcon} />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {projectMetadata?.archivedAt ? (
-                  <DropdownMenuItem
-                    icon={ArrowUpOnSquareIcon}
-                    label="Unarchive Pod"
-                    onClick={handleArchiveToggle}
-                  />
-                ) : (
-                  <DropdownMenuItem
-                    icon={ArchiveIcon}
-                    label="Archive Pod"
-                    variant="warning"
-                    onClick={handleArchiveToggle}
-                  />
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
         {space.archivedAt && (
           <ContentMessage variant="info" size="lg">
             This Pod has been archived.

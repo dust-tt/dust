@@ -11,6 +11,7 @@ import { useSpaceUnreadConversationIds } from "@app/hooks/conversations";
 import type { SpaceConversationListFilter } from "@app/hooks/conversations/useSpaceConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
+import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
@@ -38,7 +39,7 @@ import {
 } from "@dust-tt/sparkle";
 import moment from "moment";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 type GroupLabel =
   | "Today"
@@ -145,6 +146,11 @@ export function SpaceConversationsTab({
     [owner.sId, router, setSearchText]
   );
 
+  const [greeting, setGreeting] = useState<string>("");
+  useEffect(() => {
+    setGreeting(getRandomGreetingForName(user.firstName));
+  }, [user]);
+
   const isProjectEmpty = !isConversationsLoading && isSpaceEmpty;
   const isFilteredEmpty =
     !isConversationsLoading && !isSpaceEmpty && !hasHistory;
@@ -163,6 +169,7 @@ export function SpaceConversationsTab({
           )}
         >
           <div className="flex w-full flex-col gap-3">
+            <PodPinnedBanner owner={owner} spaceInfo={spaceInfo} />
             <div className="flex items-center gap-2">
               <h2
                 className={cn(
@@ -171,17 +178,12 @@ export function SpaceConversationsTab({
                     "text-muted-foreground dark:text-muted-foreground-night"
                 )}
               >
-                {spaceInfo.name}
+                {greeting}
               </h2>
               {spaceInfo.archivedAt && (
                 <Chip size="xs" color="rose" label="Archived" />
               )}
             </div>
-            {isProjectEmpty && (
-              <h3 className="heading-lg text-foreground dark:text-foreground-night">
-                Start a first conversation!
-              </h3>
-            )}
             {spaceInfo.archivedAt ? (
               <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
                 <EmptyCTA
@@ -209,8 +211,6 @@ export function SpaceConversationsTab({
               />
             )}
           </div>
-
-          <PodPinnedBanner owner={owner} spaceInfo={spaceInfo} />
 
           {/* Suggestions for empty rooms */}
           {isProjectEmpty ? (

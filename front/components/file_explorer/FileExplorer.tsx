@@ -60,7 +60,7 @@ function FileExplorerBreadcrumb({
     })),
   ];
 
-  return <Breadcrumbs items={items} size="sm" />;
+  return <Breadcrumbs items={items} size="sm" buttonVariant="outline" />;
 }
 
 interface FileExplorerProps {
@@ -71,7 +71,7 @@ interface FileExplorerProps {
   hideTitleBorder?: boolean;
   files: GCSMountEntry[];
   getFileUrl: (path: string) => string;
-  headerActions?: React.ReactNode;
+  toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
   navigationResetKey?: number;
   onClose?: () => void;
@@ -96,7 +96,7 @@ export function FileExplorer({
   emptyState,
   files,
   getFileUrl,
-  headerActions,
+  toolbarExtraActions,
   hideTitleBorder = false,
   isLoading,
   navigationResetKey,
@@ -308,35 +308,27 @@ export function FileExplorer({
   return (
     <>
       <div className="flex h-full w-full min-h-0 flex-1 flex-col">
-        <AppLayoutTitle className={hideTitleBorder ? "border-b-0" : undefined}>
-          <div
-            className={cn(
-              "flex h-full items-center justify-between gap-2 px-4",
-              contentClassName
-            )}
+        {onClose && (
+          <AppLayoutTitle
+            className={cn("pt-5", hideTitleBorder ? "border-b-0" : undefined)}
           >
-            <FileExplorerBreadcrumb
-              currentFolderPath={currentFolderPath}
-              onNavigate={handleBreadcrumbNavigate}
-            />
-            <div className="flex items-center gap-2">
-              {headerActions}
-              {onClose && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={XMarkIcon}
-                  onClick={onClose}
-                />
+            <div
+              className={cn(
+                "flex h-full items-center justify-end gap-2 px-4",
+                contentClassName
               )}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={XMarkIcon}
+                onClick={onClose}
+              />
             </div>
-          </div>
-        </AppLayoutTitle>
+          </AppLayoutTitle>
+        )}
         <div
-          className={cn(
-            "flex flex-1 min-h-0 flex-col gap-5 pt-5",
-            contentClassName
-          )}
+          className={cn("flex flex-1 min-h-0 flex-col gap-5", contentClassName)}
         >
           <div className="px-4">
             <FileExplorerToolbar
@@ -346,15 +338,26 @@ export function FileExplorer({
               onViewModeChange={setViewMode}
               sortMode={sortMode}
               onSortModeChange={setSortMode}
+              toolbarExtraActions={toolbarExtraActions}
             />
           </div>
-          <div className="px-4">
-            <FileExplorerFilters
-              active={activeFilter}
-              onActiveChange={setActiveFilter}
-              counts={filterCounts}
-            />
-          </div>
+          {Object.keys(filterCounts).length > 1 && (
+            <div className="px-4">
+              <FileExplorerFilters
+                active={activeFilter}
+                onActiveChange={setActiveFilter}
+                counts={filterCounts}
+              />
+            </div>
+          )}
+          {currentFolderPath !== "" && (
+            <div className="px-4">
+              <FileExplorerBreadcrumb
+                currentFolderPath={currentFolderPath}
+                onNavigate={handleBreadcrumbNavigate}
+              />
+            </div>
+          )}
           <FileExplorerContent
             isLoading={isLoading}
             sortedNodes={sortedNodes}

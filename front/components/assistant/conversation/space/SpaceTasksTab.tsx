@@ -24,11 +24,6 @@ export function SpaceTasksTab({
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-8">
-        <div className="flex gap-2">
-          <h3 className="heading-2xl flex-1 items-center">
-            {`${spaceInfo.name}'s Tasks`}
-          </h3>
-        </div>
         <ProjectTasksPanelProvider
           owner={owner}
           spaceId={spaceInfo.sId}

@@ -1,4 +1,8 @@
-import { Button, ICON_SIZE_MAP } from "@sparkle/components/Button";
+import {
+  Button,
+  type ButtonVariantType,
+  ICON_SIZE_MAP,
+} from "@sparkle/components/Button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,6 +89,7 @@ interface BreadcrumbItemProps {
   isLast: boolean;
   itemsHidden?: BreadcrumbItem[];
   size?: "xs" | "sm";
+  buttonVariant?: ButtonVariantType;
   hasLighterFont?: boolean;
   truncateLengthMiddle?: number;
   truncateLengthEnd?: number;
@@ -95,6 +100,7 @@ function BreadcrumbItem({
   isLast,
   itemsHidden,
   size = "sm",
+  buttonVariant = "ghost",
   hasLighterFont = true,
   truncateLengthMiddle = DEFAULT_LABEL_TRUNCATE_LENGTH_MIDDLE,
   truncateLengthEnd = DEFAULT_LABEL_TRUNCATE_LENGTH_END,
@@ -104,7 +110,7 @@ function BreadcrumbItem({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="ghost"
+            variant={buttonVariant}
             label={ELLIPSIS_STRING}
             icon={item.icon}
             size={size}
@@ -146,7 +152,7 @@ function BreadcrumbItem({
       <Button
         href={item.href}
         icon={item.icon}
-        variant={isLast ? "ghost" : "ghost-secondary"}
+        variant={buttonVariant ?? (isLast ? "ghost" : "ghost-secondary")}
         label={truncatedLabel}
         tooltip={isLabelTruncated ? item.label : undefined}
         size={size}
@@ -160,7 +166,7 @@ function BreadcrumbItem({
       <Button
         onClick={item.onClick}
         icon={item.icon}
-        variant={isLast ? "ghost" : "ghost-secondary"}
+        variant={buttonVariant ?? (isLast ? "ghost" : "ghost-secondary")}
         label={truncatedLabel}
         tooltip={isLabelTruncated ? item.label : undefined}
         size={size}
@@ -191,6 +197,7 @@ interface BreadcrumbProps {
   items: BreadcrumbItem[];
   className?: string;
   size?: "xs" | "sm";
+  buttonVariant?: ButtonVariantType;
   hasLighterFont?: boolean;
   truncateLengthMiddle?: number;
   truncateLengthEnd?: number;
@@ -205,6 +212,7 @@ export function Breadcrumbs({
   items,
   className,
   size = "sm",
+  buttonVariant = "ghost",
   hasLighterFont = true,
   truncateLengthMiddle,
   truncateLengthEnd,
@@ -237,6 +245,7 @@ export function Breadcrumbs({
               isLast={index === itemsShown.length - 1}
               itemsHidden={itemsHidden}
               size={size}
+              buttonVariant={buttonVariant}
               hasLighterFont={hasLighterFont}
               truncateLengthMiddle={truncateLengthMiddle}
               truncateLengthEnd={truncateLengthEnd}

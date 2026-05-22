@@ -752,7 +752,7 @@ function ProjectFileExplorerContent({
         onRename={!isArchived ? onRename : undefined}
         onOpenInteractive={(entry) => setFrameFileId(entry.fileId)}
         getExtraFileMenuItems={getExtraFileMenuItems}
-        headerActions={addButton}
+        toolbarExtraActions={addButton}
         isLoading={isLoading}
       />
     </>
