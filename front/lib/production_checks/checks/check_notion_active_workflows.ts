@@ -7,7 +7,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { getNotionWorkflowId } from "@app/types/connectors/workflows";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { withRetries } from "@app/types/shared/retries";
-import type { Client } from "@temporalio/client";
+import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
 import type pino from "pino";
 import { QueryTypes } from "sequelize";
 
@@ -93,7 +93,7 @@ async function getLatestWorkflowEventTime({
   description,
 }: {
   client: Client;
-  description: Pick<WorkflowExecutionDescription, "workflowId" | "runId">;
+  description: WorkflowExecutionDescription;
 }): Promise<Date | null> {
   const response =
     await client.workflowService.getWorkflowExecutionHistoryReverse({
@@ -153,55 +153,20 @@ async function areTemporalWorkflowsRunning(
       };
     }
 
-    const latests = await withRetries(
+    const latestEventTimes = await withRetries(
       logger,
       async ({
         client,
         descriptions,
-        logger,
-        notionConnector,
       }: {
         client: Client;
         descriptions: NotionWorkflowDescriptions;
-        logger: pino.Logger;
-        notionConnector: NotionConnector;
       }): Promise<(Date | null)[]> => {
-        const [
-          incrementalSyncDescription,
-          garbageCollectorDescription,
-          processDatabaseUpsertQueueDescription,
-        ] = descriptions;
-
-        logger.info(
-          {
-            connectorId: notionConnector.id,
-          },
-          "Retrieving latest history events"
+        return Promise.all(
+          descriptions.map((description) =>
+            getLatestWorkflowEventTime({ client, description })
+          )
         );
-
-        const latestEventTimes = await Promise.all([
-          getLatestWorkflowEventTime({
-            client,
-            description: incrementalSyncDescription,
-          }),
-          getLatestWorkflowEventTime({
-            client,
-            description: garbageCollectorDescription,
-          }),
-          getLatestWorkflowEventTime({
-            client,
-            description: processDatabaseUpsertQueueDescription,
-          }),
-        ]);
-
-        logger.info(
-          {
-            connectorId: notionConnector.id,
-          },
-          "Retrieved latest history events"
-        );
-
-        return latestEventTimes;
       },
       {
         retries: TEMPORAL_WORKFLOW_CHECK_RETRIES,
@@ -209,17 +174,14 @@ async function areTemporalWorkflowsRunning(
     )({
       client,
       descriptions,
-      logger,
-      notionConnector,
     });
+
+    const now = new Date().getTime();
 
     return {
       isRunning,
-      isNotStalled: latests.every(
-        (d) =>
-          d &&
-          new Date().getTime() - d.getTime() <
-            TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS
+      isNotStalled: latestEventTimes.every(
+        (d) => d && now - d.getTime() < TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS
       ),
       details,
     };
