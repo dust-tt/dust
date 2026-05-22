@@ -81,10 +81,7 @@ const UsagePage = withSuspense(
   "UsagePage"
 );
 const BillingPage = withSuspense(
-  () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/billing/BillingPage"
-    ),
+  () => import("@dust-tt/front/components/pages/workspace/billing/BillingPage"),
   "BillingPage"
 );
 

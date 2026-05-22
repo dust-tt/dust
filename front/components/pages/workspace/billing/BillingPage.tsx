@@ -13,7 +13,7 @@ export function BillingPage() {
         description="Edit your subscription and billing information."
       />
       {/* TODO: Settings section*/}
-        <div> TODO </div>
+      <div> TODO </div>
     </Page.Vertical>
   );
 }
