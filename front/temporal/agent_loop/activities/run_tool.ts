@@ -259,12 +259,39 @@ async function executeToolStreaming(
       case "tool_early_exit":
         updateActiveObservation(
           {
-            output: { status: "early_exit", isError: event.isError },
-            level: event.isError ? "ERROR" : "WARNING",
+            output: {
+              status:
+                event.reason === "user_cancellation"
+                  ? "cancelled"
+                  : "early_exit",
+              isError:
+                event.reason === "user_cancellation" ? false : event.isError,
+            },
+            level:
+              event.reason === "user_cancellation" || !event.isError
+                ? "WARNING"
+                : "ERROR",
             statusMessage: event.text ?? "Early exit",
           },
           { asType: "tool" }
         );
+
+        if (event.reason === "user_cancellation") {
+          await handleNonDeferredEvents(auth, {
+            event: {
+              type: "agent_generation_cancelled",
+              created: event.created,
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              status: "cancelled",
+            },
+            agentMessage,
+            conversation,
+            step,
+          });
+
+          return { deferredEvents, shouldPauseAgentLoop: true };
+        }
 
         let updatedAgentMessage = agentMessage;
         if (

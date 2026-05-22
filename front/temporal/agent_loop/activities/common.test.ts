@@ -249,6 +249,129 @@ describe("processEventForDatabase", () => {
     });
   });
 
+  describe("terminal errors after cancellation", () => {
+    it.each(["cancelled", "interrupted"] as const)(
+      "should keep a %s message when a late early-exit tool error arrives",
+      async (status) => {
+        const agentConfig = await AgentConfigurationFactory.createTestAgent(
+          auth,
+          {
+            name: "Test Agent",
+          }
+        );
+        const conversation = await ConversationFactory.create(auth, {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+        });
+        const { agentMessage } = await ConversationFactory.createAgentMessage(
+          auth,
+          {
+            workspace,
+            conversation,
+            agentConfig,
+          }
+        );
+        const staleAgentMessage = { ...agentMessage };
+
+        await processEventForDatabase(auth, {
+          event: {
+            type: "agent_generation_cancelled",
+            created: Date.now(),
+            configurationId: agentConfig.sId,
+            messageId: agentMessage.sId,
+            status,
+          },
+          agentMessage,
+          step: 0,
+          conversation,
+        });
+
+        await processEventForDatabase(auth, {
+          event: {
+            type: "tool_error",
+            created: Date.now(),
+            configurationId: agentConfig.sId,
+            messageId: agentMessage.sId,
+            conversationId: conversation.sId,
+            error: {
+              code: "early_exit",
+              message: "The tool execution was cancelled.",
+              metadata: {
+                errorTitle: "Early exit",
+              },
+            },
+            isLastBlockingEventForStep: true,
+          },
+          agentMessage: staleAgentMessage,
+          step: 0,
+          conversation,
+        });
+
+        const dbMessage = await AgentMessageModel.findOne({
+          where: {
+            id: agentMessage.agentMessageId,
+            workspaceId: workspace.id,
+          },
+        });
+        expect(dbMessage?.status).toBe(status);
+        expect(dbMessage?.errorCode).toBeNull();
+        expect(dbMessage?.errorMessage).toBeNull();
+        expect(staleAgentMessage.status).toBe(status);
+      }
+    );
+
+    it("should mark a normal early-exit tool error as failed", async () => {
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Test Agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [],
+      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
+
+      await processEventForDatabase(auth, {
+        event: {
+          type: "tool_error",
+          created: Date.now(),
+          configurationId: agentConfig.sId,
+          messageId: agentMessage.sId,
+          conversationId: conversation.sId,
+          error: {
+            code: "early_exit",
+            message: "The tool execution stopped unexpectedly.",
+            metadata: {
+              errorTitle: "Early exit",
+            },
+          },
+          isLastBlockingEventForStep: true,
+        },
+        agentMessage,
+        step: 0,
+        conversation,
+      });
+
+      const dbMessage = await AgentMessageModel.findOne({
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(dbMessage?.status).toBe("failed");
+      expect(dbMessage?.errorCode).toBe("early_exit");
+      expect(dbMessage?.errorMessage).toBe(
+        "The tool execution stopped unexpectedly."
+      );
+    });
+  });
+
   describe("runIds", () => {
     it("should merge runIds when event contains runIds", async () => {
       // Arrange: Create agent message

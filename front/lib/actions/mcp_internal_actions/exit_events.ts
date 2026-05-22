@@ -51,7 +51,7 @@ export async function getExitOrPauseEvents(
   if (exitOutputItem) {
     switch (exitOutputItem.type) {
       case "tool_early_exit": {
-        const { isError, text } = exitOutputItem;
+        const { isError, reason, text } = exitOutputItem;
         return [
           {
             type: "tool_early_exit",
@@ -61,6 +61,7 @@ export async function getExitOrPauseEvents(
             messageId: agentMessage.sId,
             text: text,
             isError: isError,
+            reason,
           },
         ];
       }

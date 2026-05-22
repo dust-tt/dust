@@ -161,6 +161,19 @@ import { col } from "sequelize";
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
 
+const FAILURE_PROTECTED_AGENT_MESSAGE_STATUSES = [
+  "cancelled",
+  "interrupted",
+] as const satisfies readonly AgentMessageStatus[];
+
+function isFailureProtectedAgentMessageStatus(
+  status: AgentMessageStatus
+): status is (typeof FAILURE_PROTECTED_AGENT_MESSAGE_STATUSES)[number] {
+  return FAILURE_PROTECTED_AGENT_MESSAGE_STATUSES.includes(
+    status as (typeof FAILURE_PROTECTED_AGENT_MESSAGE_STATUSES)[number]
+  );
+}
+
 /** Citations and generated files aggregated from source MCP output items (e.g. branch merge). */
 export type CitationsAndFilesFromOutputItemsType = {
   citationsAllocated: number;
@@ -2761,8 +2774,35 @@ export async function updateAgentMessageWithFinalStatus(
     promotedUserMessages,
     promotedAuth,
     agentMessage: newAgentMessage,
+    completedAt: persistedCompletedAt,
+    status: persistedStatus,
   } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
+
+    // Primary-key lookup under the conversation lock: a late tool/model failure must not
+    // overwrite a user cancellation or interruption already finalized by another activity.
+    const currentAgentMessage = await AgentMessageModel.findOne({
+      attributes: ["status", "completedAt"],
+      where: {
+        id: agentMessage.agentMessageId,
+        workspaceId: owner.id,
+      },
+      transaction: t,
+    });
+    assert(currentAgentMessage, "Agent message not found");
+
+    if (
+      status === "failed" &&
+      isFailureProtectedAgentMessageStatus(currentAgentMessage.status)
+    ) {
+      return {
+        promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
+        promotedAuth: auth,
+        agentMessage: null as AgentMessageType | null,
+        completedAt: currentAgentMessage.completedAt ?? completedAt,
+        status: currentAgentMessage.status,
+      };
+    }
 
     await AgentMessageModel.update(
       {
@@ -2805,6 +2845,8 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
         promotedAuth: auth,
         agentMessage: null as AgentMessageType | null,
+        completedAt,
+        status,
       };
     }
 
@@ -2860,6 +2902,8 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages,
         promotedAuth,
         agentMessage: null,
+        completedAt,
+        status,
       };
     }
 
@@ -2871,6 +2915,8 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages,
         promotedAuth,
         agentMessage: null,
+        completedAt,
+        status,
       };
     }
 
@@ -2897,6 +2943,8 @@ export async function updateAgentMessageWithFinalStatus(
       promotedUserMessages,
       promotedAuth,
       agentMessage: agentMessages[0] ?? null,
+      completedAt,
+      status,
     };
   });
 
@@ -2945,7 +2993,7 @@ export async function updateAgentMessageWithFinalStatus(
   }
 
   return {
-    completedTs: completedAt.getTime(),
-    status,
+    completedTs: persistedCompletedAt.getTime(),
+    status: persistedStatus,
   };
 }

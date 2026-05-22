@@ -27,6 +27,7 @@ import {
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
+  AgentMessageStatus,
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
@@ -44,6 +45,11 @@ const SUB_AGENT_FLUSH_INTERVAL_MS = 2 * DEFAULT_EVENT_FLUSH_INTERVAL_MS;
 const DEEP_CONVERSATION_FLUSH_INTERVAL_MS =
   10 * DEFAULT_EVENT_FLUSH_INTERVAL_MS;
 
+type AgentMessageStatusUpdate = Extract<
+  AgentMessageStatus,
+  "succeeded" | "cancelled" | "interrupted" | "gracefully_stopped"
+>;
+
 /**
  * Update in database as well as in-memory agent message.
  * Note that we are mutating the agentMessage object in memory and not returning a new object.
@@ -58,7 +64,7 @@ export async function updateAgentMessageDBAndMemory(
         update:
           | {
               type: "status";
-              status: "succeeded" | "cancelled" | "gracefully_stopped";
+              status: AgentMessageStatusUpdate;
             }
           | {
               type: "error";
@@ -102,7 +108,9 @@ export async function updateAgentMessageDBAndMemory(
           });
           agentMessage.status = result.status;
           agentMessage.completedTs = result.completedTs;
-          agentMessage.error = update.error;
+          if (result.status === "failed") {
+            agentMessage.error = update.error;
+          }
         }
         break;
 
@@ -195,7 +203,7 @@ export async function markAgentMessageAsFailed(
     conversation: ConversationWithoutContentType;
     error: ToolErrorEvent["error"];
   }
-): Promise<void> {
+): Promise<boolean> {
   await updateAgentMessageDBAndMemory(auth, {
     agentMessage,
     conversation,
@@ -204,6 +212,8 @@ export async function markAgentMessageAsFailed(
       error,
     },
   });
+
+  return agentMessage.status === "failed";
 }
 
 // Process database operations for agent events before publishing to Redis.
@@ -249,11 +259,15 @@ export async function processEventForDatabase(
   switch (event.type) {
     case "agent_error":
       // Store error in database.
-      await markAgentMessageAsFailed(auth, {
-        agentMessage,
-        conversation,
-        error: event.error,
-      });
+      if (
+        !(await markAgentMessageAsFailed(auth, {
+          agentMessage,
+          conversation,
+          error: event.error,
+        }))
+      ) {
+        break;
+      }
 
       // Mark the conversation as errored.
       await ConversationResource.markHasError(auth, {
@@ -281,11 +295,15 @@ export async function processEventForDatabase(
       break;
 
     case "tool_error":
-      await markAgentMessageAsFailed(auth, {
-        agentMessage,
-        conversation,
-        error: event.error,
-      });
+      if (
+        !(await markAgentMessageAsFailed(auth, {
+          agentMessage,
+          conversation,
+          error: event.error,
+        }))
+      ) {
+        break;
+      }
 
       // Mark the conversation as errored.
       await ConversationResource.markHasError(auth, {
@@ -300,7 +318,7 @@ export async function processEventForDatabase(
         conversation,
         update: {
           type: "status",
-          status: "cancelled",
+          status: event.status,
         },
       });
       break;

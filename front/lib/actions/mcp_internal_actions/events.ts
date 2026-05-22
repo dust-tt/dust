@@ -88,4 +88,5 @@ export type ToolEarlyExitEvent = {
   conversationId: string;
   text: string;
   isError: boolean;
+  reason?: "user_cancellation";
 };
