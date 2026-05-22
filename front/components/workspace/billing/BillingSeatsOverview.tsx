@@ -69,27 +69,6 @@ function seatTypeGroup(seatType: MembershipSeatType): MembershipSeatType {
   }
 }
 
-function yearlySeatTypeForGroup(
-  seatType: MembershipSeatType
-): MembershipSeatType | null {
-  switch (seatType) {
-    case "free":
-    case "workspace_yearly":
-    case "pro_yearly":
-    case "max_yearly":
-      return null;
-    case "workspace":
-      return "workspace_yearly";
-    case "pro":
-      return "pro_yearly";
-    case "max":
-      return "max_yearly";
-    default:
-      assertNeverAndIgnore(seatType);
-      return null;
-  }
-}
-
 interface BillingSeatsOverviewProps {
   owner: LightWorkspaceType;
 }
@@ -126,6 +105,20 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
     plansBySeatType.set(groupSeatType, plans);
   });
 
+  const membersCountBySeatType = new Map<MembershipSeatType, number>();
+
+  Object.entries(membersSeats).forEach(([seatType, count]) => {
+    if (!isMembershipSeatType(seatType)) {
+      return;
+    }
+
+    const groupSeatType = seatTypeGroup(seatType);
+    membersCountBySeatType.set(
+      groupSeatType,
+      (membersCountBySeatType.get(groupSeatType) ?? 0) + count
+    );
+  });
+
   const plansWithMembers: Array<{
     seatType: MembershipSeatType;
     primaryPlan: SeatTypeInfo;
@@ -136,16 +129,11 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
       return [];
     }
 
-    const yearlySeatType = yearlySeatTypeForGroup(seatType);
-    const membersCount =
-      (membersSeats[seatType] ?? 0) +
-      (yearlySeatType ? (membersSeats[yearlySeatType] ?? 0) : 0);
-
     return [
       {
         seatType,
         primaryPlan,
-        membersCount,
+        membersCount: membersCountBySeatType.get(seatType) ?? 0,
       },
     ];
   });
