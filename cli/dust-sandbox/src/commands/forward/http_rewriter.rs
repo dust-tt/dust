@@ -10,7 +10,8 @@ use crate::egress_secrets::SecretTable;
 
 use super::deny_log::{DenyLogEntry, DenyReason};
 use super::rewrite_policy::{
-    deny_entry, normalize_host, process_request_policy, Authority, HeaderPart, RequestParts,
+    deny_entry, normalize_host, normalized_authority, rewrite_request_headers,
+    validate_request_line_policy, Authority, HeaderPart, RequestParts,
     RewriteMode as HttpRewriteMode,
 };
 
@@ -390,26 +391,29 @@ fn process_request(
     secret_table: &SecretTable,
     mode: HttpRewriteMode<'_>,
 ) -> RewriteResult<ProcessedRequest> {
-    let policy = process_request_policy(request, Authority::HostHeader, secret_table, mode)
-        .map_err(HttpRewriteError::Denied)?;
     let request_line = format!("{} {} HTTP/1.1", request.method, request.target);
-    validate_absolute_uri_authority(&request.target, &policy.host, mode)?;
+    validate_request_line_policy(request, mode).map_err(HttpRewriteError::Denied)?;
+    let host = normalized_authority(request, Authority::HostHeader, mode)
+        .map_err(HttpRewriteError::Denied)?;
+    validate_absolute_uri_authority(&request.target, &host, mode)?;
 
     let mut header_bytes = Vec::new();
     header_bytes.extend_from_slice(request_line.as_bytes());
     header_bytes.extend_from_slice(b"\r\n");
 
-    let body_kind = body_kind(request, mode, Some(&policy.host))?;
+    let body_kind = body_kind(request, mode, Some(&host))?;
     let websocket_upgrade = is_websocket_upgrade(request);
+    let rewritten_headers = rewrite_request_headers(request, &host, secret_table, mode)
+        .map_err(HttpRewriteError::Denied)?;
 
-    for header in &policy.headers {
+    for header in &rewritten_headers {
         let line_len = header.name.len() + 2 + header.value.len() + 2;
         if line_len > MAX_HEADER_LINE_BYTES {
             return Err(HttpRewriteError::denied(
                 mode,
                 DenyReason::HeaderSizeExceeded,
                 None,
-                Some(&policy.host),
+                Some(&host),
             ));
         }
 
@@ -425,7 +429,7 @@ fn process_request(
             mode,
             DenyReason::HeaderSizeExceeded,
             None,
-            Some(&policy.host),
+            Some(&host),
         ));
     }
 
@@ -1351,6 +1355,43 @@ mod tests {
         .await
         .expect_err("placeholder in URL line should be denied on TLS");
         assert_deny_reason(error, DenyReason::UrlLinePlaceholder);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_placeholder_shaped_http_method_in_tls_mode() -> Result<()> {
+        let placeholder = "__DSEC_55555555555555556666666666666666__";
+        let table = table_with_secret("X", placeholder, "sk-real", &["api.openai.com"])?;
+        let input = format!("{placeholder} /items HTTP/1.1\r\nHost: api.openai.com\r\n\r\n");
+
+        let error = rewrite_once(
+            input.as_bytes(),
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("placeholder-shaped method should be denied on TLS");
+        assert_deny_reason(error, DenyReason::UrlLinePlaceholder);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn validates_absolute_uri_before_rewriting_headers() -> Result<()> {
+        let table = empty_table()?;
+        let input = b"GET https://evil.example/ HTTP/1.1\r\nHost: api.openai.com\r\nAuthorization: Bearer __DSEC_99999999999999999999999999999999__\r\n\r\n";
+
+        let error = rewrite_once(
+            input,
+            &table,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await
+        .expect_err("absolute URI mismatch should be denied before header rewrite");
+        assert_deny_reason(error, DenyReason::AbsoluteUriAuthorityMismatch);
         Ok(())
     }
 

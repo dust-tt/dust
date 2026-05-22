@@ -62,17 +62,30 @@ pub(super) enum Authority<'a> {
     },
 }
 
+#[allow(dead_code)]
 pub(super) struct ProcessedPolicyRequest {
     pub host: String,
     pub headers: Vec<HeaderPart>,
 }
 
+#[allow(dead_code)]
 pub(super) fn process_request_policy(
     request: &RequestParts,
     authority: Authority<'_>,
     secret_table: &SecretTable,
     mode: RewriteMode<'_>,
 ) -> Result<ProcessedPolicyRequest, DenyLogEntry> {
+    validate_request_line_policy(request, mode)?;
+    let host = normalized_authority(request, authority, mode)?;
+    let headers = rewrite_request_headers(request, &host, secret_table, mode)?;
+
+    Ok(ProcessedPolicyRequest { host, headers })
+}
+
+pub(super) fn validate_request_line_policy(
+    request: &RequestParts,
+    mode: RewriteMode<'_>,
+) -> Result<(), DenyLogEntry> {
     if request.method.eq_ignore_ascii_case("CONNECT") {
         return Err(deny_entry(
             mode,
@@ -82,7 +95,8 @@ pub(super) fn process_request_policy(
         ));
     }
 
-    if contains_placeholder(request.target.as_bytes()) {
+    let request_line = format!("{} {} HTTP/1.1", request.method, request.target);
+    if contains_placeholder(request_line.as_bytes()) {
         return Err(match mode {
             RewriteMode::PlainHttp { .. } => deny_entry(
                 mode,
@@ -99,8 +113,16 @@ pub(super) fn process_request_policy(
         });
     }
 
-    let host = normalized_authority(request, authority, mode)?;
-    let rewritten_headers = request
+    Ok(())
+}
+
+pub(super) fn rewrite_request_headers(
+    request: &RequestParts,
+    host: &str,
+    secret_table: &SecretTable,
+    mode: RewriteMode<'_>,
+) -> Result<Vec<HeaderPart>, DenyLogEntry> {
+    request
         .headers
         .iter()
         .map(|header| {
@@ -109,12 +131,7 @@ pub(super) fn process_request_policy(
                 value,
             })
         })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    Ok(ProcessedPolicyRequest {
-        host,
-        headers: rewritten_headers,
-    })
+        .collect::<Result<Vec<_>, _>>()
 }
 
 pub(super) fn deny_entry(
@@ -241,6 +258,8 @@ fn rewrite_basic_auth(
         return Ok(None);
     };
 
+    // Malformed Basic payloads are still normal Authorization headers; leave
+    // them on the generic placeholder substitution path below.
     let Ok(decoded) = general_purpose::STANDARD.decode(rest.trim()) else {
         return Ok(None);
     };
@@ -351,7 +370,7 @@ fn is_valid_placeholder_bytes(value: &[u8]) -> bool {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte))
 }
 
-fn normalized_authority(
+pub(super) fn normalized_authority(
     request: &RequestParts,
     authority: Authority<'_>,
     mode: RewriteMode<'_>,
