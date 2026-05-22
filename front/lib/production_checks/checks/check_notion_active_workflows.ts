@@ -213,17 +213,21 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 
   if (missingActiveWorkflows.length > 0) {
     const actionLinks: ActionLink[] = [
-      ...missingActiveWorkflows.map((c) => ({
-        label: `Missing: connector ${c.connectorId}`,
-        url: `/poke/connectors/${c.connectorId}`,
+      ...missingActiveWorkflows.map(({ connectorId }) => ({
+        label: `Missing: connector ${connectorId}`,
+        url: `/poke/connectors/${connectorId}`,
       })),
-      ...stalledWorkflows.map((c) => ({
-        label: `Stalled: connector ${c.connectorId}`,
-        url: `/poke/connectors/${c.connectorId}`,
+      ...stalledWorkflows.map(({ connectorId }) => ({
+        label: `Stalled: connector ${connectorId}`,
+        url: `/poke/connectors/${connectorId}`,
       })),
     ];
     reportFailure(
-      { missingActiveWorkflows, stalledWorkflows, actionLinks },
+      {
+        missingActiveWorkflows,
+        stalledWorkflows,
+        actionLinks,
+      },
       "Missing or stalled Notion temporal workflows"
     );
   } else {
