@@ -35,7 +35,7 @@ export const REINFORCEMENT_EXCLUDED_PLAN_CODES = new Set([
 ]);
 
 // Credit priced plan billed/tracked through Metronome and not legacy.
-export const isCreditPricedPlan = (planCode: string) =>
+export const isCreditPricedPlanPrefix = (planCode: string) =>
   planCode.startsWith("CP_");
 
 // If the plan code starts with ENT_, it's an entreprise plan

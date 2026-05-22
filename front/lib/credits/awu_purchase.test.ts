@@ -5,13 +5,13 @@ import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import {
   type CachedContract,
   getActiveContract,
-  isLegacyPlan,
 } from "@app/lib/metronome/plan_type";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -99,7 +99,7 @@ describe("getAwuPurchaseInfo", () => {
       workspace.sId
     );
 
-    vi.mocked(isLegacyPlan).mockReturnValue(false);
+    vi.mocked(isCreditPricedPlan).mockReturnValue(true);
     vi.mocked(getMetronomeCustomerStripeCustomerId).mockResolvedValue(
       new Ok("cus_123")
     );

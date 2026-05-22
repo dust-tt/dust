@@ -19,11 +19,14 @@ import {
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
-import { getActiveContract, isLegacyPlan } from "@app/lib/metronome/plan_type";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
-import { isSubscriptionMetronomeBilled } from "@app/types/plan";
+import {
+  isCreditPricedPlan,
+  isSubscriptionMetronomeBilled,
+} from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
@@ -126,7 +129,7 @@ async function checkAwuPurchaseEligibility(
     return new Err({ code: "not_metronome_billed" });
   }
 
-  if (isLegacyPlan(subscription.plan)) {
+  if (!isCreditPricedPlan(subscription.plan)) {
     return new Err({ code: "legacy_plan" });
   }
 

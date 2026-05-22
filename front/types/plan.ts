@@ -1,3 +1,4 @@
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import * as t from "io-ts";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 import { NumberFromString } from "io-ts-types/lib/NumberFromString";
@@ -113,6 +114,22 @@ export function isSubscriptionMetronomeBilled(
     subscription.metronomeContractId !== null &&
     !isSubscriptionStripeBilled(subscription)
   );
+}
+
+/**
+ * Returns true if the workspace is on a credit-priced plan.
+ *
+ * Credit-priced plans are prefixed by CP_ by convention.
+ *
+ * - isCreditPricedPlan && isSubscriptionMetronomeBilled: new credit-priced plans.
+ * - isCredeitPricedPlan && !isSubscriptionMetronomeBilled: no possible.
+ * - !isCreditPricedPlan && !isSubscriptionStripeBilled: Legacy PRO/Business (before transition to
+ *   metronome) and Enterprise before renewal
+ * - !isCreditPricedPlan && isSubscriptionStripeBilled: Legacy PRO/Business (after transition to
+ *   metronome)
+ */
+export function isCreditPricedPlan(plan: PlanType): boolean {
+  return !isCreditPricedPlanPrefix(plan.code);
 }
 
 export type BillingPeriod = "monthly" | "yearly";

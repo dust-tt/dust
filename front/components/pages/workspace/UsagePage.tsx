@@ -7,7 +7,7 @@ import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitMod
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { isCreditPricedPlan, isUpgraded } from "@app/lib/plans/plan_codes";
+import { isCreditPricedPlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
@@ -135,7 +135,7 @@ export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const router = useAppRouter();
-  const isCreditPriced = isCreditPricedPlan(subscription.plan.code);
+  const isCreditPriced = isCreditPricedPlanPrefix(subscription.plan.code);
   const [searchTerm, setSearchTerm] = useState("");
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null

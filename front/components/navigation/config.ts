@@ -1,5 +1,4 @@
-import { isLegacyPlan } from "@app/lib/metronome/plan_type";
-import { isCreditPricedPlan } from "@app/lib/plans/plan_codes";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
 import type { SubscriptionType } from "@app/types/plan";
@@ -266,7 +265,7 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/workspace`,
           current: isCurrent("workspace"),
         },
-        ...(isCreditPricedPlan(subscription.plan.code)
+        ...(isCreditPricedPlanPrefix(subscription.plan.code)
           ? [
               {
                 id: "usage" as const,
@@ -291,7 +290,7 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/analytics`,
           current: isCurrent("analytics"),
         },
-        subscription.plan && !isLegacyPlan(subscription.plan)
+        subscription.plan && isCreditPricedPlanPrefix(subscription.plan.code)
           ? {
               id: "billing",
               label: "Billing",

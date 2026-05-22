@@ -61,7 +61,6 @@ import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
-import { isLegacyPlan } from "@app/lib/metronome/plan_type";
 import { isUserBlocked } from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
@@ -146,6 +145,7 @@ import type {
   ContentFragmentType,
 } from "@app/types/content_fragment";
 import type { APIErrorWithStatusCode } from "@app/types/error";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2391,7 +2391,7 @@ async function checkMessagesLimit(
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.subscription()?.plan;
   const user = auth.user();
-  if (owner.metronomeCustomerId && plan && !isLegacyPlan(plan) && user) {
+  if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan) && user) {
     const blocked = await isUserBlocked(owner.sId, user.sId);
     if (blocked) {
       return new Err({

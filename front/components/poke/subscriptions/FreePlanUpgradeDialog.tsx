@@ -5,7 +5,7 @@ import {
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  isCreditPricedPlan,
+  isCreditPricedPlanPrefix,
   isFreePlan,
   isOldFreePlan,
 } from "@app/lib/plans/plan_codes";
@@ -149,7 +149,7 @@ export default function FreePlanUpgradeDialog({
                           (plan) =>
                             isFreePlan(plan.code) &&
                             !isOldFreePlan(plan.code) &&
-                            !isCreditPricedPlan(plan.code)
+                            !isCreditPricedPlanPrefix(plan.code)
                         )
                         .map((plan) => ({
                           value: plan.code,

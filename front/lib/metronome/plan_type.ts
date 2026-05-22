@@ -1,10 +1,8 @@
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import { SubscriptionModel } from "@app/lib/models/plan";
-import { isCreditPricedPlan } from "@app/lib/plans/plan_codes";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import type { PlanType } from "@app/types/plan";
 import type { ContractV2 } from "@metronome/sdk/resources";
 
 // Commits and credits are stripped before caching — their balances/ledgers change
@@ -83,17 +81,6 @@ export async function getActiveContract(
   workspaceId: string
 ): Promise<CachedContract | null> {
   return await getCachedActiveContract(workspaceId);
-}
-
-/**
- * Returns true if the workspace is on a legacy Metronome plan.
- *
- * Legacy plans price the `Programmatic Usage` product (programmatic-USD credit
- * type); new plans bill all usage in AWU. Fails open (returns true) when the
- * plan cannot be determined.
- */
-export function isLegacyPlan(plan: PlanType): boolean {
-  return !isCreditPricedPlan(plan.code);
 }
 
 /**
