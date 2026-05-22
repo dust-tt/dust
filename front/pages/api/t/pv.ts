@@ -9,6 +9,14 @@ import { isString } from "@app/types/shared/utils/general";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+// TODO: Use getClientIp from @app/lib/utils/request once front uses the same Hono-based implementation as front-api.
+function getClientIp(req: NextApiRequest): string | undefined {
+  const forwarded = req.headers["x-forwarded-for"];
+  return isString(forwarded)
+    ? forwarded.split(",")[0].trim()
+    : req.socket.remoteAddress;
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<{ ok: boolean }>>,
@@ -24,10 +32,7 @@ async function handler(
     });
   }
 
-  const forwarded = req.headers["x-forwarded-for"];
-  const ip = isString(forwarded)
-    ? forwarded.split(",")[0].trim()
-    : req.socket.remoteAddress;
+  const ip = getClientIp(req);
 
   const result = await trackPageview({
     ip,
