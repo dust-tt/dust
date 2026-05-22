@@ -235,6 +235,7 @@ export type EmailTriggerError = {
     | "unauthenticated_error"
     | "user_not_found"
     | "workspace_not_found"
+    | "email_agents_disabled"
     | "invalid_email_error"
     | "assistant_not_found"
     | "message_creation_error";
@@ -473,9 +474,10 @@ export async function userAndWorkspaceFromEmail({
   if (eligibleWorkspaceModels.length === 0) {
     // The user exists locally, so this should not use a relay-eligible error type.
     return new Err({
-      type: "invalid_email_error",
+      type: "email_agents_disabled",
       message:
-        "Email interactions with agents are not enabled for any of your workspaces.",
+        "Email agents are disabled for all workspaces associated with your email. " +
+        "Ask a workspace admin to enable Email Agents in workspace settings before interacting with agents over email.",
     });
   }
 

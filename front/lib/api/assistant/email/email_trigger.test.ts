@@ -150,9 +150,10 @@ describe("userAndWorkspaceFromEmail", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.type).toBe("invalid_email_error");
+      expect(result.error.type).toBe("email_agents_disabled");
       expect(result.error.message).toBe(
-        "Email interactions with agents are not enabled for any of your workspaces."
+        "Email agents are disabled for all workspaces associated with your email. " +
+          "Ask a workspace admin to enable Email Agents in workspace settings before interacting with agents over email."
       );
     }
   });
