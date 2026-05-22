@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/mention_suggestions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

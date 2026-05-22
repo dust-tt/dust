@@ -1,40 +1,28 @@
-// @migration-status: MIGRATED_TO_HONO
-/** @ignoreswagger */
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   getConversationFilesBasePath,
   parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
-import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isSupportedImageContentType } from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import { apiError } from "@front-api/middleware/utils";
+import { Hono } from "hono";
 import path from "path";
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<never>>,
-  auth: Authenticator
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "Only GET method is supported.",
-      },
-    });
-  }
+// Mounted at /api/w/:wId/assistant/conversations/:cId/files/thumbnail.
+const app = new Hono();
 
-  const { cId, filePath } = req.query;
-  if (!isString(cId) || !isString(filePath)) {
-    return apiError(req, res, {
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const cId = ctx.req.param("cId") ?? "";
+  const filePath = ctx.req.query("filePath");
+
+  if (!isString(filePath)) {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -46,7 +34,7 @@ async function handler(
 
   const conversation = await ConversationResource.fetchById(auth, cId);
   if (!conversation) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "conversation_not_found",
@@ -57,7 +45,7 @@ async function handler(
 
   const scopedPath = parseScopedFilePath(filePath);
   if (!scopedPath || scopedPath.prefix !== "conversation") {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -74,7 +62,7 @@ async function handler(
   });
   const normalizedPath = path.posix.normalize(`${basePath}${scopedPath.rel}`);
   if (!normalizedPath.startsWith(basePath)) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -90,7 +78,7 @@ async function handler(
   // If a FileResource exists, stream its best available version (processed if available).
   if (fileResource) {
     if (!isSupportedImageContentType(fileResource.contentType)) {
-      return apiError(req, res, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -98,27 +86,24 @@ async function handler(
         },
       });
     }
-    res.setHeader("Content-Type", fileResource.contentType);
-    // It's safe to cache as file resources can't be updated (except for frame files).
-    res.setHeader("Cache-Control", "private, max-age=3600");
+
     const readStream = fileResource.getContentReadStream(auth);
-    readStream.on("error", (err) => {
-      logger.error(
-        { err, filePath: normalizedPath },
-        "Error streaming thumbnail (FileResource)"
-      );
-      readStream.destroy();
-      res.end();
+    const webStream = readableToReadableStream(readStream);
+
+    return new Response(webStream, {
+      status: 200,
+      headers: {
+        "Content-Type": fileResource.contentType,
+        "Cache-Control": "private, max-age=3600",
+      },
     });
-    readStream.pipe(res);
-    return;
   }
 
   // No FileResource, stream directly from GCS (sandbox-generated file).
   const bucket = getPrivateUploadBucket();
   const contentTypeResult = await bucket.getFileContentType(normalizedPath);
   if (contentTypeResult.isErr()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -129,7 +114,7 @@ async function handler(
 
   const contentType = contentTypeResult.value ?? "application/octet-stream";
   if (!isSupportedImageContentType(contentType)) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -138,18 +123,32 @@ async function handler(
     });
   }
 
-  res.setHeader("Content-Type", contentType);
-  res.setHeader("Cache-Control", "private, max-age=3600");
   const readStream = bucket.file(normalizedPath).createReadStream();
-  readStream.on("error", (err) => {
-    logger.error(
-      { err, filePath: normalizedPath },
-      "Error streaming thumbnail (GCS)"
-    );
-    readStream.destroy();
-    res.end();
-  });
-  readStream.pipe(res);
-}
 
-export default withSessionAuthenticationForWorkspace(handler);
+  const webStream = new ReadableStream({
+    start(controller) {
+      readStream.on("data", (chunk) => controller.enqueue(chunk));
+      readStream.on("end", () => controller.close());
+      readStream.on("error", (err) => {
+        logger.error(
+          { err, filePath: normalizedPath },
+          "Error streaming thumbnail (GCS)"
+        );
+        controller.error(err);
+      });
+    },
+    cancel() {
+      readStream.destroy();
+    },
+  });
+
+  return new Response(webStream, {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": "private, max-age=3600",
+    },
+  });
+});
+
+export default app;
