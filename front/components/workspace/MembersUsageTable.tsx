@@ -352,7 +352,8 @@ export function MembersUsageTable({
     if (
       seatTypeFilter !== null &&
       seatTypeFilter !== "none" &&
-      m.seatType !== seatTypeFilter
+      m.seatType &&
+      !m.seatType.startsWith(seatTypeFilter)
     ) {
       return false;
     }

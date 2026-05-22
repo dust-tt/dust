@@ -25,8 +25,11 @@ export function isMembershipOriginType(
 export const MEMBERSHIP_SEAT_TYPES = [
   "free",
   "workspace",
+  "workspace_yearly",
   "pro",
+  "pro_yearly",
   "max",
+  "max_yearly",
 ] as const;
 
 export type MembershipSeatType = (typeof MEMBERSHIP_SEAT_TYPES)[number];

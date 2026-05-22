@@ -1,5 +1,6 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type {
+  SeatBillingFrequency,
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
@@ -22,23 +23,34 @@ import {
   SeatFreeIcon,
   SeatMaxIcon,
   SeatProIcon,
+  Tabs,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
 // Per-seat-type display icon. The label / name comes from the API
 // (`SeatTypeInfo.name`) so adding a new seat tier only requires tagging the
 // product in Metronome — no code change here.
-const SEAT_TYPE_ICONS: Partial<
-  Record<MembershipSeatType, React.ComponentType>
-> = {
+const SEAT_TYPE_ICONS: Record<MembershipSeatType, React.ComponentType> = {
   free: SeatFreeIcon,
   pro: SeatProIcon,
+  pro_yearly: SeatProIcon,
   max: SeatMaxIcon,
+  max_yearly: SeatMaxIcon,
+  workspace: SeatProIcon,
+  workspace_yearly: SeatProIcon,
 };
 
 // Display order when multiple seat tiers are returned by the endpoint. Seat
 // types not in this list are appended in the order they came in.
-const SEAT_DISPLAY_ORDER: MembershipSeatType[] = ["free", "pro", "max"];
+const SEAT_DISPLAY_ORDER: MembershipSeatType[] = [
+  "free",
+  "pro",
+  "pro_yearly",
+  "max",
+  "max_yearly",
+];
 
 function sortSeatTypes(seatTypes: MembershipSeatType[]): MembershipSeatType[] {
   const indexOf = (s: MembershipSeatType) => {
@@ -48,10 +60,17 @@ function sortSeatTypes(seatTypes: MembershipSeatType[]): MembershipSeatType[] {
   return [...seatTypes].sort((a, b) => indexOf(a) - indexOf(b));
 }
 
-function formatPriceCents(cents: number, currency: SupportedCurrency): string {
+function formatPriceCents(
+  cents: number,
+  currency: SupportedCurrency,
+  billingFrequency: SeatBillingFrequency
+): string {
   const symbol = CURRENCY_SYMBOLS[currency];
   const amount = (cents / 100).toFixed(2).replace(/\.00$/, "");
-  return currency === "usd" ? `${symbol}${amount}/mo` : `${amount}${symbol}/mo`;
+  const suffix = billingFrequency === "annual" ? "/yr" : "/mo";
+  return currency === "usd"
+    ? `${symbol}${amount}${suffix}`
+    : `${amount}${symbol}${suffix}`;
 }
 
 function formatAwuCredits(awuCredits: number): string {
@@ -168,6 +187,34 @@ export function ChangeSeatModal({
     setIsSaving(false);
   }, [displayedMemberId, displayedMemberSeatType, firstSeatType, isOpen]);
 
+  const seatTypesByFrequency: Record<
+    SeatBillingFrequency,
+    MembershipSeatType[]
+  > = {
+    monthly: [],
+    annual: [],
+  };
+  for (const seatType of seatTypes) {
+    const info = seatPlans[seatType];
+    if (info) {
+      seatTypesByFrequency[info.billingFrequency].push(seatType);
+    }
+  }
+
+  const availableFrequencies: SeatBillingFrequency[] = (
+    ["monthly", "annual"] as const
+  ).filter((f) => seatTypesByFrequency[f].length > 0);
+
+  // Default the active tab to the frequency of the user's current seat — falls
+  // back to the first frequency that has any seats to show.
+  const currentFrequency =
+    currentSeatType && seatPlans[currentSeatType]
+      ? seatPlans[currentSeatType].billingFrequency
+      : null;
+  const [activeFrequency, setActiveFrequency] = useState<SeatBillingFrequency>(
+    currentFrequency ?? availableFrequencies[0] ?? "monthly"
+  );
+
   function getBadge(
     seatType: MembershipSeatType,
     info: SeatTypeInfo
@@ -181,7 +228,11 @@ export function ChangeSeatModal({
     }
     return (
       <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-        {formatPriceCents(info.priceCents, info.currency)}
+        {formatPriceCents(
+          info.priceCents,
+          info.currency,
+          info.billingFrequency
+        )}
       </span>
     );
   }
@@ -242,13 +293,22 @@ export function ChangeSeatModal({
         </DialogHeader>
         <DialogContainer>
           <div className="flex flex-col gap-2">
-            <div className="mb-1 flex items-center gap-1">
-              <span className="rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-foreground dark:bg-muted-night dark:text-foreground-night">
-                Monthly
-              </span>
-            </div>
+            {availableFrequencies.length > 1 && (
+              <Tabs value={activeFrequency} className="mb-1">
+                <TabsList border={false}>
+                  {availableFrequencies.map((f) => (
+                    <TabsTrigger
+                      key={f}
+                      value={f}
+                      label={f === "annual" ? "Annual" : "Monthly"}
+                      onClick={() => setActiveFrequency(f)}
+                    />
+                  ))}
+                </TabsList>
+              </Tabs>
+            )}
 
-            {seatTypes.map((seatType) => {
+            {seatTypesByFrequency[activeFrequency].map((seatType) => {
               const info = seatPlans[seatType];
               if (!info) {
                 return null;
