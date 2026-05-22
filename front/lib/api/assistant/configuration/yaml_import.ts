@@ -344,38 +344,7 @@ export async function patchAgentConfigurationFromJSON(
 
   const agentConfiguration = agentResult.value;
   const actions: AssistantRequestBody["actions"] = agentConfiguration.actions
-    .filter(isServerSideMCPServerConfiguration)
-    .map(
-      ({
-        additionalConfiguration,
-        childAgentId,
-        dataSources,
-        description,
-        dustAppConfiguration,
-        dustProject,
-        jsonSchema,
-        mcpServerViewId,
-        name,
-        secretName,
-        tables,
-        timeFrame,
-        type,
-      }) => ({
-        additionalConfiguration,
-        childAgentId,
-        dataSources,
-        description,
-        dustAppConfiguration,
-        dustProject,
-        jsonSchema,
-        mcpServerViewId,
-        name,
-        secretName,
-        tables,
-        timeFrame,
-        type,
-      })
-    );
+    .filter(isServerSideMCPServerConfiguration);
 
   const editorsResult = await resolveEditorUsersFromAgentConfiguration(
     auth,
