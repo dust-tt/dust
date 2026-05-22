@@ -6,6 +6,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import agentConfigurations from "./agent_configurations";
 import analytics from "./analytics";
 import apps from "./apps";
 import assistants from "./assistants";
@@ -68,6 +69,7 @@ app.patch(
   }
 );
 
+app.route("/agent_configurations", agentConfigurations);
 app.route("/analytics", analytics);
 app.route("/apps", apps);
 app.route("/assistants", assistants);
