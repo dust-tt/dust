@@ -22,12 +22,14 @@ const {
   mockGetEmailValidationSecret,
   mockSendEmail,
   mockSendEmailToRecipients,
+  mockSendProactiveTrialCancelledEmail,
 } = vi.hoisted(() => ({
   mockGetAppUrl: vi.fn(),
   mockGetCurrentRegion: vi.fn(),
   mockGetEmailValidationSecret: vi.fn(),
   mockSendEmail: vi.fn(),
   mockSendEmailToRecipients: vi.fn(),
+  mockSendProactiveTrialCancelledEmail: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/config", () => ({
@@ -40,6 +42,7 @@ vi.mock("@app/lib/api/config", () => ({
 vi.mock("@app/lib/api/email", () => ({
   sendEmail: mockSendEmail,
   sendEmailToRecipients: mockSendEmailToRecipients,
+  sendProactiveTrialCancelledEmail: mockSendProactiveTrialCancelledEmail,
 }));
 
 vi.mock("@app/lib/api/regions/config", () => ({
