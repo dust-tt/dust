@@ -3112,7 +3112,7 @@ const ALERTS: AlertDef[] = [
     name: "Default: Empty contract credit + commit balance (AWU)",
     alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
     threshold: 0,
-    uniqueness_key: "default-low-contract-credit-and-commit-balance-zero-awu",
+    uniqueness_key: "default-low-contract-credit-and-commit-balance-zero-awu-pooled",
     credit_type: "AWU",
     custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
   },
