@@ -5,7 +5,10 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { getLargeWhitelistedModel } from "@app/lib/assistant";
+import {
+  getLargeWhitelistedModel,
+  getLargeWhitelistedModelWithBatchMode,
+} from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
   hasSuggestionSelfConflict,
@@ -318,14 +321,17 @@ export async function createReinforcedSkillsConversation(
  */
 export async function getReinforcedSkillsLLM(
   auth: Authenticator,
-  operationType: ReinforcedSkillsOperationType
+  operationType: ReinforcedSkillsOperationType,
+  { forBatch }: { forBatch?: boolean } = {}
 ): Promise<LLM | null> {
   const owner = auth.workspace();
   if (!owner) {
     return null;
   }
 
-  const model = getLargeWhitelistedModel(auth);
+  const model = forBatch
+    ? await getLargeWhitelistedModelWithBatchMode(auth)
+    : getLargeWhitelistedModel(auth);
   if (!model) {
     return null;
   }

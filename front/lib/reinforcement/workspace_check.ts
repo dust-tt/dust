@@ -1,3 +1,4 @@
+import { getLargeWhitelistedModelWithBatchMode } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 
@@ -19,13 +20,13 @@ export async function hasReinforcementEnabled(
 
 /**
  * Check whether batch mode is allowed for reinforcement in this workspace.
- * Defaults to true when not explicitly set.
+ * Requires a batch-capable model to be available and the workspace setting to allow it.
  */
 export async function isReinforcementBatchModeAllowed(
   auth: Authenticator
 ): Promise<boolean> {
-  // Vertex AI does not currently support batch processing.
-  if (await hasFeatureFlag(auth, "use_vertex_for_anthropic_models")) {
+  const model = await getLargeWhitelistedModelWithBatchMode(auth);
+  if (!model) {
     return false;
   }
 
