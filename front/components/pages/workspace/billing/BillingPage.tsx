@@ -1,4 +1,3 @@
-import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { CardIcon, Page } from "@dust-tt/sparkle";
 
 export function BillingPage() {

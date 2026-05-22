@@ -3,8 +3,8 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
-  getMembersSeats,
   type GetMembersSeatsResponseBody,
+  getMembersSeats,
 } from "@app/lib/api/credits/members_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
