@@ -11,6 +11,23 @@ import type { PokeItemBase } from "@app/types/poke";
 import { useEffect, useState } from "react";
 import type { Fetcher } from "swr";
 
+// Deduplicate regions by URL. In dev, all regions point to the same localhost
+// server, so without this we would fire one identical request per region and
+// list every workspace once per region.
+function getUniqueRegions(
+  regionUrls: Record<RegionType, string>
+): RegionType[] {
+  const seen = new Set<string>();
+  return SUPPORTED_REGIONS.filter((region) => {
+    const url = regionUrls[region];
+    if (seen.has(url)) {
+      return false;
+    }
+    seen.add(url);
+    return true;
+  });
+}
+
 export function usePokeSearch({
   disabled,
   search,
@@ -73,18 +90,20 @@ export function usePokeSearchAllRegions({
 
     const run = async () => {
       try {
-        const regionPromises = SUPPORTED_REGIONS.map(async (region) => {
-          const baseUrl = regionUrls[region];
-          const url = `${baseUrl}/api/poke/search?${queryParams.toString()}`;
+        const regionPromises = getUniqueRegions(regionUrls).map(
+          async (region) => {
+            const baseUrl = regionUrls[region];
+            const url = `${baseUrl}/api/poke/search?${queryParams.toString()}`;
 
-          const response = await clientFetch(url, { credentials: "include" });
-          if (!response.ok) {
-            throw new Error(`Failed to fetch from ${region}`);
+            const response = await clientFetch(url, { credentials: "include" });
+            if (!response.ok) {
+              throw new Error(`Failed to fetch from ${region}`);
+            }
+
+            const data: GetPokeSearchItemsResponseBody = await response.json();
+            return data.results.map((item) => ({ ...item, region }));
           }
-
-          const data: GetPokeSearchItemsResponseBody = await response.json();
-          return data.results.map((item) => ({ ...item, region }));
-        });
+        );
 
         const settledResults = await Promise.allSettled(regionPromises);
         const allResults: PokeItemBase[] = [];
@@ -178,21 +197,23 @@ export function usePokeWorkspacesAllRegions({
 
     const run = async () => {
       try {
-        const regionPromises = SUPPORTED_REGIONS.map(async (region) => {
-          const baseUrl = regionUrls[region];
-          const url = `${baseUrl}/api/poke/workspaces?${queryParams.toString()}`;
+        const regionPromises = getUniqueRegions(regionUrls).map(
+          async (region) => {
+            const baseUrl = regionUrls[region];
+            const url = `${baseUrl}/api/poke/workspaces?${queryParams.toString()}`;
 
-          const response = await clientFetch(url, {
-            credentials: "include",
-            signal: abortController.signal,
-          });
-          if (!response.ok) {
-            throw new Error(`Failed to fetch from ${region}`);
+            const response = await clientFetch(url, {
+              credentials: "include",
+              signal: abortController.signal,
+            });
+            if (!response.ok) {
+              throw new Error(`Failed to fetch from ${region}`);
+            }
+
+            const data: GetPokeWorkspacesResponseBody = await response.json();
+            return data.workspaces.map((ws) => ({ ...ws, region }));
           }
-
-          const data: GetPokeWorkspacesResponseBody = await response.json();
-          return data.workspaces.map((ws) => ({ ...ws, region }));
-        });
+        );
 
         const settledResults = await Promise.allSettled(regionPromises);
         const allWorkspaces: PokeWorkspaceWithRegion[] = [];
