@@ -1,9 +1,9 @@
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
 import type { AgentMessageSuccessEvent } from "@app/types/assistant/agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -256,85 +256,88 @@ describe("processEventForDatabase", () => {
   });
 
   describe("terminal errors after cancellation", () => {
-    it.each(["cancelled", "interrupted"] as const)(
-      "should keep a %s message when a late early-exit tool error arrives",
-      async (status) => {
-        const agentConfig = await AgentConfigurationFactory.createTestAgent(
-          auth,
-          {
-            name: "Test Agent",
-          }
-        );
-        const conversation = await ConversationFactory.create(auth, {
-          agentConfigurationId: agentConfig.sId,
-          messagesCreatedAt: [],
-        });
-        const { agentMessage } = await ConversationFactory.createAgentMessage(
-          auth,
-          {
-            workspace,
-            conversation,
-            agentConfig,
-          }
-        );
-        const staleAgentMessage = { ...agentMessage };
-
-        await processEventForDatabase(auth, {
-          event: {
-            type: "agent_generation_cancelled",
-            created: Date.now(),
-            configurationId: agentConfig.sId,
-            messageId: agentMessage.sId,
-            status,
-          },
-          agentMessage,
-          step: 0,
+    it.each([
+      "cancelled",
+      "interrupted",
+    ] as const)("should keep a %s message when a late early-exit tool error arrives", async (status) => {
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent",
+        }
+      );
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [],
+      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
           conversation,
-        });
+          agentConfig,
+        }
+      );
+      const staleAgentMessage = { ...agentMessage };
 
-        const handleEventSpy = vi
-          .spyOn(globalCoalescer, "handleEvent")
-          .mockResolvedValue();
+      await processEventForDatabase(auth, {
+        event: {
+          type: "agent_generation_cancelled",
+          created: Date.now(),
+          configurationId: agentConfig.sId,
+          messageId: agentMessage.sId,
+          status,
+        },
+        agentMessage,
+        step: 0,
+        conversation,
+      });
 
-        await updateResourceAndPublishEvent(auth, {
-          event: {
-            type: "tool_error",
-            created: Date.now(),
-            configurationId: agentConfig.sId,
-            messageId: agentMessage.sId,
-            conversationId: conversation.sId,
-            error: {
-              code: "early_exit",
-              message: "The tool execution was cancelled.",
-              metadata: {
-                errorTitle: "Early exit",
-              },
+      const handleEventSpy = vi
+        .spyOn(globalCoalescer, "handleEvent")
+        .mockResolvedValue();
+
+      await updateResourceAndPublishEvent(auth, {
+        event: {
+          type: "tool_error",
+          created: Date.now(),
+          configurationId: agentConfig.sId,
+          messageId: agentMessage.sId,
+          conversationId: conversation.sId,
+          error: {
+            code: "early_exit",
+            message: "The tool execution was cancelled.",
+            metadata: {
+              errorTitle: "Early exit",
             },
-            isLastBlockingEventForStep: true,
           },
-          agentMessage: staleAgentMessage,
-          step: 0,
-          conversation,
-        });
+          isLastBlockingEventForStep: true,
+        },
+        agentMessage: staleAgentMessage,
+        step: 0,
+        conversation,
+      });
 
-        const dbMessage = await AgentMessageModel.findOne({
-          where: {
-            id: agentMessage.agentMessageId,
-            workspaceId: workspace.id,
-          },
-        });
-        expect(dbMessage?.status).toBe(status);
-        expect(dbMessage?.errorCode).toBeNull();
-        expect(dbMessage?.errorMessage).toBeNull();
-        expect(staleAgentMessage.status).toBe(status);
-        expect(handleEventSpy).not.toHaveBeenCalled();
-      }
-    );
+      const dbMessage = await AgentMessageModel.findOne({
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(dbMessage?.status).toBe(status);
+      expect(dbMessage?.errorCode).toBeNull();
+      expect(dbMessage?.errorMessage).toBeNull();
+      expect(staleAgentMessage.status).toBe(status);
+      expect(handleEventSpy).not.toHaveBeenCalled();
+    });
 
     it("should mark a normal early-exit tool error as failed", async () => {
-      const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
-        name: "Test Agent",
-      });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent",
+        }
+      );
       const conversation = await ConversationFactory.create(auth, {
         agentConfigurationId: agentConfig.sId,
         messagesCreatedAt: [],

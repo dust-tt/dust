@@ -1,7 +1,7 @@
-import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import { makeMCPToolExit } from "@app/lib/actions/mcp_internal_actions/utils";
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
+import { makeMCPToolExit } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -27,7 +27,9 @@ describe("getExitOrPauseEvents", () => {
         sId: "agent-configuration-id",
       } as AgentConfigurationType,
       agentMessage: { sId: "agent-message-id" } as AgentMessageType,
-      conversation: { sId: "conversation-id" } as ConversationWithoutContentType,
+      conversation: {
+        sId: "conversation-id",
+      } as ConversationWithoutContentType,
     });
 
     expect(events).toHaveLength(1);
