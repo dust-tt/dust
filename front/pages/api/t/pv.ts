@@ -4,8 +4,8 @@
 /** @ignoreswagger */
 import { trackPageview } from "@app/lib/api/track_pageview";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { getClientIp } from "@app/lib/utils/request";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { isString } from "@app/types/shared/utils/general";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -24,11 +24,13 @@ async function handler(
     });
   }
 
-  const ip = getClientIp({ headers: req.headers, socket: req.socket });
-  const normalizedIp = ip === "internal" ? undefined : ip;
+  const forwarded = req.headers["x-forwarded-for"];
+  const ip = isString(forwarded)
+    ? forwarded.split(",")[0].trim()
+    : req.socket.remoteAddress;
 
   const result = await trackPageview({
-    ip: normalizedIp,
+    ip,
     cookieHeader: req.headers.cookie,
     userAgent: req.headers["user-agent"],
     body: req.body,
