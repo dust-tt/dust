@@ -93,7 +93,7 @@ export function SelfImprovingSkillsPage() {
             <span>
               Configure self-improving skills settings for this workspace.{" "}
               <a
-                href="https://docs.dust.tt/docs/reinforcement"
+                href="https://docs.dust.tt/docs/self-improving-skills"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-highlight dark:text-highlight-night underline"
