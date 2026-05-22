@@ -13,6 +13,7 @@ import {
   ListIcon,
   SearchInput,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 const SORT_ITEMS: Record<
   FileExplorerSortMode,
@@ -89,6 +90,7 @@ interface FileExplorerToolbarProps {
   onViewModeChange: (v: ViewMode) => void;
   sortMode: FileExplorerSortMode;
   onSortModeChange: (v: FileExplorerSortMode) => void;
+  toolbarExtraActions?: ReactNode;
 }
 
 export function FileExplorerToolbar({
@@ -98,6 +100,7 @@ export function FileExplorerToolbar({
   onViewModeChange,
   sortMode,
   onSortModeChange,
+  toolbarExtraActions,
 }: FileExplorerToolbarProps) {
   return (
     <div className="flex shrink-0 items-center gap-2">
@@ -110,6 +113,7 @@ export function FileExplorerToolbar({
       />
       <ViewToggle value={viewMode} onValueChange={onViewModeChange} />
       <SortDropdown value={sortMode} onValueChange={onSortModeChange} />
+      {toolbarExtraActions}
     </div>
   );
 }

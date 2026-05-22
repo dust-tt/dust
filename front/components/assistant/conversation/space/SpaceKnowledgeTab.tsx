@@ -9,5 +9,9 @@ interface SpaceKnowledgeTabProps {
 }
 
 export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
-  return <ProjectFileExplorer owner={owner} space={space} />;
+  return (
+    <div className="flex  py-8">
+      <ProjectFileExplorer owner={owner} space={space} />
+    </div>
+  );
 }
