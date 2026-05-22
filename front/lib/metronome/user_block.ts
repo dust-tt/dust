@@ -152,7 +152,7 @@ export async function isUserBlocked(
   );
 
   if (isBlockFlag(userCap) && isBlockFlag(poolDepleted)) {
-    return userCap === BLOCKED_FLAG || poolDepleted === BLOCKED_FLAG;
+    return userCap === BLOCKED_FLAG && poolDepleted === BLOCKED_FLAG;
   }
 
   logger.info(
