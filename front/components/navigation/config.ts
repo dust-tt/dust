@@ -289,7 +289,7 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/analytics`,
           current: isCurrent("analytics"),
         },
-        subscription.plan && isCreditPricedPlan(subscription.plan)
+        isCreditPricedPlan(subscription.plan)
           ? {
               id: "billing",
               label: "Billing",
