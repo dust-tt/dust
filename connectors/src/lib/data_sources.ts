@@ -210,7 +210,10 @@ async function _upsertDataSourceDocument({
           elapsed,
           statsDTags
         );
-        localLogger.info("Successfully uploaded document to Dust.");
+        localLogger.info(
+          { elapsed },
+          "Successfully uploaded document to Dust."
+        );
       } else {
         statsDClient.increment(
           "data_source_upserts_error.count",
