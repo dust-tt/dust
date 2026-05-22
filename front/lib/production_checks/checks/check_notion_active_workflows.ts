@@ -34,19 +34,13 @@ async function listAllNotionConnectors() {
   );
 }
 
-type NotionWorkflowDescriptions = [
-  WorkflowExecutionDescription,
-  WorkflowExecutionDescription,
-  WorkflowExecutionDescription,
-];
-
 async function getWorkflowDescriptions({
   client,
   notionConnector,
 }: {
   client: Client;
   notionConnector: NotionConnector;
-}): Promise<NotionWorkflowDescriptions> {
+}): Promise<WorkflowExecutionDescription[]> {
   const incrementalSyncHandle = client.workflow.getHandle(
     getNotionWorkflowId(notionConnector.id, "sync")
   );
@@ -121,9 +115,9 @@ async function areTemporalWorkflowsRunning(
       descriptions,
     }: {
       client: Client;
-      descriptions: NotionWorkflowDescriptions;
+      descriptions: WorkflowExecutionDescription[];
     }): Promise<(Date | null)[]> => {
-      // Bounded (only 3 elements in NotionWorkflowDescriptions), Temporal-only Promise.all.
+      // Bounded (only three elements), Temporal-only Promise.all.
       return Promise.all(
         descriptions.map((description) =>
           getLatestWorkflowEventDate({ client, description })
