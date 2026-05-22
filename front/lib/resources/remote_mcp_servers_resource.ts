@@ -487,7 +487,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       return new Err(
         new DustError(
           "internal_error",
-          `Failed to discover OAuth metadata for MCP server URL ${serverUrl}: ${error.message}`
+          `Failed to discover OAuth metadata for ${serverUrl}: ${error.message}`
         )
       );
     }
