@@ -3,14 +3,14 @@ import {
   getProgrammaticCost,
   ProgrammaticCostQuerySchema,
 } from "@app/lib/api/analytics/programmatic_cost";
-import { workspaceApp } from "@front-api/middlewares/ctx";
+import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 export type { GetWorkspaceProgrammaticCostResponse };
 
-// Mounted at /api/w/:wId/analytics/programmatic-cost.
-const app = workspaceApp();
+// Mounted at /api/poke/workspaces/:wId/analytics/programmatic-cost.
+const app = pokeApp();
 
 app.get("/", validate("query", ProgrammaticCostQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
