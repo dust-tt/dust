@@ -51,7 +51,7 @@ function collectJsxTextNodes(code: string): JSXTextReplacement[] {
   return replacements;
 }
 
-// Returns span metadata in document order — used to refresh ctx after an edit without
+// Returns span metadata in document order, used to refresh ctx after an edit without
 // re-executing the viz.
 export function getEditableSpansMeta(code: string): EditableSpanMeta[] {
   try {
