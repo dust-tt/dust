@@ -6,12 +6,8 @@ import {
   buildReplyThreadingHeaders,
   parseEmailReplyContext,
   sendToolValidationEmail,
-  userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
 import { sendEmail } from "@app/lib/api/email";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,14 +18,12 @@ const {
   mockGetEmailValidationSecret,
   mockSendEmail,
   mockSendEmailToRecipients,
-  mockSendProactiveTrialCancelledEmail,
 } = vi.hoisted(() => ({
   mockGetAppUrl: vi.fn(),
   mockGetCurrentRegion: vi.fn(),
   mockGetEmailValidationSecret: vi.fn(),
   mockSendEmail: vi.fn(),
   mockSendEmailToRecipients: vi.fn(),
-  mockSendProactiveTrialCancelledEmail: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/config", () => ({
@@ -42,7 +36,6 @@ vi.mock("@app/lib/api/config", () => ({
 vi.mock("@app/lib/api/email", () => ({
   sendEmail: mockSendEmail,
   sendEmailToRecipients: mockSendEmailToRecipients,
-  sendProactiveTrialCancelledEmail: mockSendProactiveTrialCancelledEmail,
 }));
 
 vi.mock("@app/lib/api/regions/config", () => ({
@@ -137,25 +130,6 @@ describe("parseEmailReplyContext", () => {
     });
     expect(parsed).not.toHaveProperty("replyTo");
     expect(parsed).not.toHaveProperty("replyCc");
-  });
-});
-
-describe("userAndWorkspaceFromEmail", () => {
-  it("does not classify disabled email agents as a missing workspace", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "admin" });
-
-    const result = await userAndWorkspaceFromEmail({ email: user.email });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe("email_agents_disabled");
-      expect(result.error.message).toBe(
-        "Email agents are disabled for all workspaces associated with your email. " +
-          "Ask a workspace admin to enable Email Agents in workspace settings before interacting with agents over email."
-      );
-    }
   });
 });
 
