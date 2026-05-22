@@ -187,11 +187,11 @@ describe("copyHandler", () => {
     expect(result.error.message).toContain("Pod conversations");
   });
 
-  it("dual-writes to the pods/ mirror when copying to a project mount", async () => {
+  it("writes a single copyFile to the resolved Pod path", async () => {
     const { auth, conversation } = await setupProjectConversation();
     const workspaceId = auth.getNonNullableWorkspace().sId;
-    const projectId = conversation.spaceId;
-    assert(projectId, "Expected project conversation to have a spaceId");
+    const podId = conversation.spaceId;
+    assert(podId, "Expected Pod conversation to have a spaceId");
 
     const copyFileMock = vi.fn().mockResolvedValue(undefined);
     const getMetadataMock = vi
@@ -206,46 +206,16 @@ describe("copyHandler", () => {
     );
 
     const result = await copyHandler(
-      { source: "conversation/report.pdf", dest: "project/report.pdf" },
+      { source: "conversation/report.pdf", dest: "pod/report.pdf" },
       makeExtra(auth, conversation)
     );
 
     assert(result.isOk());
 
     const sourcePath = `w/${workspaceId}/conversations/${conversation.sId}/files/report.pdf`;
-    const destProjectPath = `w/${workspaceId}/projects/${projectId}/files/report.pdf`;
-    const destPodsPath = `w/${workspaceId}/pods/${projectId}/files/report.pdf`;
+    const destPodPath = `w/${workspaceId}/pods/${podId}/files/report.pdf`;
 
-    expect(copyFileMock).toHaveBeenCalledTimes(2);
-    expect(copyFileMock).toHaveBeenNthCalledWith(
-      1,
-      sourcePath,
-      destProjectPath
-    );
-    expect(copyFileMock).toHaveBeenNthCalledWith(2, sourcePath, destPodsPath);
-  });
-
-  it("does not write to pods/ when copying to a conversation mount", async () => {
-    const { auth, conversation } = await setupProjectConversation();
-
-    const copyFileMock = vi.fn().mockResolvedValue(undefined);
-    const getMetadataMock = vi
-      .fn()
-      .mockResolvedValue([{ contentType: "application/pdf", size: "100" }]);
-    const mockBucket = {
-      file: vi.fn(() => ({ getMetadata: getMetadataMock })),
-      copyFile: copyFileMock,
-    };
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(
-      mockBucket as unknown as ReturnType<typeof getPrivateUploadBucket>
-    );
-
-    const result = await copyHandler(
-      { source: "project/spec.md", dest: "conversation/spec.md" },
-      makeExtra(auth, conversation)
-    );
-
-    assert(result.isOk());
     expect(copyFileMock).toHaveBeenCalledTimes(1);
+    expect(copyFileMock).toHaveBeenCalledWith(sourcePath, destPodPath);
   });
 });

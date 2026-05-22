@@ -537,18 +537,6 @@ export async function createGCSMountDirectory(
     await bucket.file(gcsPath).save(Buffer.alloc(0), {
       contentType: "application/x-directory",
     });
-
-    // Mirror the directory placeholder on the pods/ side for project files.
-    if (scope.useCase === "project") {
-      const podsPrefix = getPodFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.projectId,
-      });
-      const podsGcsPath = `${podsPrefix}${normalized}/`;
-      await bucket.file(podsGcsPath).save(Buffer.alloc(0), {
-        contentType: "application/x-directory",
-      });
-    }
   } catch (error) {
     return new Err(normalizeError(error));
   }
