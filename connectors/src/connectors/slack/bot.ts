@@ -92,8 +92,6 @@ const MAX_IMAGE_FILE_SIZE_TO_UPLOAD = 20 * 1024 * 1024; // 20 MB
 const MAX_AUDIO_FILE_SIZE_TO_UPLOAD = 100 * 1024 * 1024; // 100 MB
 
 const DEFAULT_AGENTS = ["dust", "claude-4-sonnet", "gpt-5"];
-// Slack clears assistant thread statuses after 2 minutes without a new message.
-const SLACK_QUEUED_STATUS_REFRESH_INTERVAL_MS = 90_000;
 
 function getMaxFileSizeToUpload(contentType: SupportedFileContentType): number {
   if (isSupportedImageContentType(contentType)) {
@@ -1301,56 +1299,27 @@ async function answerMessage(
     await slackChatBotMessage.save();
   }
 
-  const postedConversation = conversation;
-  const postedUserMessage = userMessage;
-  const isPendingUserMessage = postedUserMessage.visibility === "pending";
-  let queuedStatusRefreshInterval: ReturnType<typeof setInterval> | undefined =
-    undefined;
+  const isPendingUserMessage = userMessage.visibility === "pending";
   if (isPendingUserMessage) {
-    const refreshQueuedStatus = async () =>
-      streamHandler.setThinking(
-        makeSlackAssistantThreadStatus(mention.agentName, "queued"),
-        "Queued..."
-      );
-
-    await refreshQueuedStatus();
-    queuedStatusRefreshInterval = setInterval(() => {
-      refreshQueuedStatus().catch((error) => {
-        logger.warn(
-          {
-            error,
-            connectorId: connector.id,
-            conversationId: postedConversation.sId,
-            userMessageId: postedUserMessage.sId,
-          },
-          "Failed to refresh Slack queued status."
-        );
-      });
-    }, SLACK_QUEUED_STATUS_REFRESH_INTERVAL_MS);
-    queuedStatusRefreshInterval.unref?.();
+    await streamHandler.setThinking(
+      makeSlackAssistantThreadStatus(mention.agentName, "queued"),
+      "Queued..."
+    );
   }
 
-  const pendingUserMessageRes = await (async () => {
-    try {
-      return await resolveSlackPendingUserMessage({
-        connector,
-        conversation: postedConversation,
-        dustAPI,
-        slack: {
-          slackChannelId: slackChannel,
-          slackClient,
-          slackMessageTs,
-        },
-        streamHandler,
-        timeoutMs: SLACK_USER_ACTION_IDLE_TIMEOUT_MS,
-        userMessage: postedUserMessage,
-      });
-    } finally {
-      if (queuedStatusRefreshInterval) {
-        clearInterval(queuedStatusRefreshInterval);
-      }
-    }
-  })();
+  const pendingUserMessageRes = await resolveSlackPendingUserMessage({
+    connector,
+    conversation,
+    dustAPI,
+    slack: {
+      slackChannelId: slackChannel,
+      slackClient,
+      slackMessageTs,
+    },
+    streamHandler,
+    timeoutMs: SLACK_USER_ACTION_IDLE_TIMEOUT_MS,
+    userMessage,
+  });
   if (pendingUserMessageRes.isErr()) {
     return buildSlackMessageError(
       pendingUserMessageRes,
