@@ -21,6 +21,7 @@ import type { Sequelize } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 
 const BATCH_SIZE = 100;
+const WORKSPACE_CONCURRENCY = 32;
 
 export async function purgeExpiredRunExecutionsActivity() {
   const coreSequelize = getCorePrimaryDbConnection();
@@ -162,10 +163,11 @@ export async function purgeExpiredPendingAgentsActivity(
       } while (hasMore);
 
       return deleted;
-    }
+    },
+    { concurrency: WORKSPACE_CONCURRENCY }
   );
 
-  const totalDeleted = results.reduce((sum, count) => sum + count, 0);
+  const totalDeleted = deletedCounts.reduce((sum, count) => sum + count, 0);
 
   logger.info(
     { totalDeleted },
@@ -206,7 +208,8 @@ export async function purgeExpiredSyntheticSkillSuggestionsActivity(
 
       return deleted;
     },
-    { excludePlanCodes: REINFORCEMENT_EXCLUDED_PLAN_CODES }
+    { concurrency: WORKSPACE_CONCURRENCY,
+      excludePlanCodes: REINFORCEMENT_EXCLUDED_PLAN_CODES }
   );
 
   const totalDeleted = results.reduce((sum, count) => sum + count, 0);
