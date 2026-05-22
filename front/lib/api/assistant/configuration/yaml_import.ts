@@ -7,14 +7,9 @@ import {
   agentYAMLGenerationSettingsSchema,
 } from "@app/lib/agent_yaml_converter/schemas";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
-import {
-  type ExportableAgentConfiguration,
-  getAgentConfigurationForExport,
-} from "@app/lib/api/assistant/configuration/yaml_export";
+import { getAgentConfigurationYAMLContext } from "@app/lib/api/assistant/configuration/yaml_export";
 import type { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
@@ -37,8 +32,7 @@ type ImportResult = Result<
   APIErrorWithStatusCode
 >;
 
-type PatchRequestBody =
-  PostOrPatchAgentConfigurationRequestBody["assistant"];
+type PatchRequestBody = PostOrPatchAgentConfigurationRequestBody["assistant"];
 
 const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
   agent: agentYAMLBasicInfoSchema.partial().optional(),
@@ -88,30 +82,6 @@ async function resolveEditorUsersFromEmails(
   );
 
   return resolveEditorUsers(auth, fetchedEditors);
-}
-
-async function resolveEditorUsersFromAgentConfiguration(
-  auth: Authenticator,
-  agentConfiguration: ExportableAgentConfiguration
-): Promise<Result<ResolvedEditors, APIErrorWithStatusCode>> {
-  const editorsResult = await GroupResource.findEditorGroupForAgent(
-    auth,
-    agentConfiguration
-  );
-  if (editorsResult.isErr()) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Unable to resolve existing agent editors: ${editorsResult.error.message}`,
-      },
-    });
-  }
-
-  return resolveEditorUsers(
-    auth,
-    await editorsResult.value.getActiveMembers(auth)
-  );
 }
 
 async function resolveTags(
@@ -317,25 +287,19 @@ export async function patchAgentConfigurationFromJSON(
     return saveEnabledResult;
   }
 
-  const agentResult = await getAgentConfigurationForExport(auth, agentId);
-  if (agentResult.isErr()) {
-    return agentResult;
+  const contextResult = await getAgentConfigurationYAMLContext(auth, agentId, {
+    requireEditorGroup: true,
+  });
+  if (contextResult.isErr()) {
+    return contextResult;
   }
 
-  const agentConfiguration = agentResult.value;
-
-  const editorsResult = await resolveEditorUsersFromAgentConfiguration(
-    auth,
-    agentConfiguration
-  );
+  const { agentConfiguration, editorUsers, skills } = contextResult.value;
+  const editorsResult = resolveEditorUsers(auth, editorUsers);
   if (editorsResult.isErr()) {
     return editorsResult;
   }
 
-  const skills = await SkillResource.listByAgentConfiguration(
-    auth,
-    agentConfiguration
-  );
   const patch = parsed.data;
   const assistant: PatchRequestBody = {
     name: agentConfiguration.name,
@@ -346,7 +310,9 @@ export async function patchAgentConfigurationFromJSON(
     status: agentConfiguration.status,
     scope: agentConfiguration.scope,
     model: agentConfiguration.model,
-    actions: agentConfiguration.actions.filter(isServerSideMCPServerConfiguration),
+    actions: agentConfiguration.actions.filter(
+      isServerSideMCPServerConfiguration
+    ),
     templateId: agentConfiguration.templateId,
     tags: agentConfiguration.tags,
     editors: editorsResult.value.editors,
@@ -439,11 +405,7 @@ export async function patchAgentConfigurationFromJSON(
     }));
   }
 
-  if (
-    patch.spaces ||
-    patch.toolset ||
-    patch.skills
-  ) {
+  if (patch.spaces || patch.toolset || patch.skills) {
     assistant.additionalRequestedSpaceIds =
       patch.spaces?.map((space) => space.space_id) ?? [];
   }

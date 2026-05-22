@@ -15,6 +15,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -29,6 +30,12 @@ export type ExportableAgentConfiguration = AgentConfigurationType & {
   scope: Exclude<AgentConfigurationType["scope"], "global">;
   status: "active";
 };
+
+interface AgentConfigurationYAMLContext {
+  agentConfiguration: ExportableAgentConfiguration;
+  editorUsers: UserResource[];
+  skills: SkillResource[];
+}
 
 function isExportableAgentConfiguration(
   agentConfiguration: AgentConfigurationType
@@ -71,10 +78,11 @@ export async function getAgentConfigurationForExport(
   return new Ok(agentConfiguration);
 }
 
-export async function getAgentConfigurationAsYAMLConfig(
+export async function getAgentConfigurationYAMLContext(
   auth: Authenticator,
-  agentId: string
-): Promise<Result<AgentYAMLConfig, APIErrorWithStatusCode>> {
+  agentId: string,
+  { requireEditorGroup = false }: { requireEditorGroup?: boolean } = {}
+): Promise<Result<AgentConfigurationYAMLContext, APIErrorWithStatusCode>> {
   const agentResult = await getAgentConfigurationForExport(auth, agentId);
   if (agentResult.isErr()) {
     return agentResult;
@@ -82,8 +90,6 @@ export async function getAgentConfigurationAsYAMLConfig(
 
   const agentConfiguration = agentResult.value;
 
-  const { dataSourceViews, mcpServerViews } =
-    await getAccessibleSourcesAndAppsForActions(auth);
   const skills = await SkillResource.listByAgentConfiguration(
     auth,
     agentConfiguration
@@ -92,6 +98,45 @@ export async function getAgentConfigurationAsYAMLConfig(
     auth,
     agentConfiguration
   );
+
+  if (editorsResult.isErr()) {
+    if (requireEditorGroup) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Unable to resolve existing agent editors: ${editorsResult.error.message}`,
+        },
+      });
+    }
+
+    return new Ok({
+      agentConfiguration,
+      editorUsers: [],
+      skills,
+    });
+  }
+
+  return new Ok({
+    agentConfiguration,
+    editorUsers: await editorsResult.value.getActiveMembers(auth),
+    skills,
+  });
+}
+
+export async function getAgentConfigurationAsYAMLConfig(
+  auth: Authenticator,
+  agentId: string
+): Promise<Result<AgentYAMLConfig, APIErrorWithStatusCode>> {
+  const contextResult = await getAgentConfigurationYAMLContext(auth, agentId);
+  if (contextResult.isErr()) {
+    return contextResult;
+  }
+
+  const { agentConfiguration, editorUsers, skills } = contextResult.value;
+
+  const { dataSourceViews, mcpServerViews } =
+    await getAccessibleSourcesAndAppsForActions(auth);
   const spaceResources = await SpaceResource.fetchByIds(
     auth,
     agentConfiguration.requestedSpaceIds
@@ -110,9 +155,7 @@ export async function getAgentConfigurationAsYAMLConfig(
     mcpServerViews: mcpServerViewsJSON,
   });
 
-  const editors: UserType[] = editorsResult.isOk()
-    ? (await editorsResult.value.getActiveMembers(auth)).map((m) => m.toJSON())
-    : [];
+  const editors: UserType[] = editorUsers.map((m) => m.toJSON());
 
   let slackProvider: "slack" | "slack_bot" | null = null;
   let slackChannels: { slackChannelId: string; slackChannelName: string }[] =
