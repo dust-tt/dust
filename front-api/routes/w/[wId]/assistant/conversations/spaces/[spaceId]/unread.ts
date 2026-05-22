@@ -1,15 +1,15 @@
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { HandlerResult } from "@front-api/middleware/utils";
-import { apiError } from "@front-api/middleware/utils";
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 export type GetSpaceUnreadConversationsResponseBody = {
   unreadConversationIds: string[];
 };
 
 // Mounted at /api/w/:wId/assistant/conversations/spaces/:spaceId/unread.
-const app = new Hono();
+const app = workspaceApp();
 
 app.get(
   "/",
