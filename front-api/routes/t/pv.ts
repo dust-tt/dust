@@ -4,6 +4,7 @@
 import { trackPageview } from "@app/lib/api/track_pageview";
 import { getClientIp } from "@app/lib/utils/request";
 import type { HandlerResult } from "@front-api/middleware/utils";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import { Hono } from "hono";
 
 export type PostTrackPageviewResponseBody = {
@@ -14,11 +15,15 @@ export type PostTrackPageviewResponseBody = {
 const app = new Hono();
 
 app.post("/", async (ctx): HandlerResult<PostTrackPageviewResponseBody> => {
-  const headers: Record<string, string | string[] | undefined> = {};
+  const connInfo = getConnInfo(ctx);
+  const headers: Record<string, string> = {};
   ctx.req.raw.headers.forEach((value, key) => {
     headers[key] = value;
   });
-  const ipRaw = getClientIp({ headers });
+  const ipRaw = getClientIp({
+    headers,
+    socket: { remoteAddress: connInfo.remote.address },
+  });
   const ip = ipRaw === "internal" ? undefined : ipRaw;
 
   const body = await ctx.req.json().catch(() => ({}));
