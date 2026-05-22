@@ -7,8 +7,10 @@ import {
   _getDefaultWebActionsForGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
-import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
-import { getLargeWhitelistedModel } from "@app/lib/assistant";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,

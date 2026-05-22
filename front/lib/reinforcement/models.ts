@@ -1,4 +1,4 @@
-import { getLargeWhitelistedModel } from "@app/lib/assistant";
+import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";

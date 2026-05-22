@@ -25,10 +25,10 @@ import {
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import {
+  getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
 } from "@app/lib/api/assistant/models";
-import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import {

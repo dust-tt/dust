@@ -1,12 +1,22 @@
 import type { Authenticator } from "@app/lib/auth";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
-import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
 import {
   GEMINI_2_5_FLASH_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
-import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
-import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import {
+  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
+} from "@app/types/assistant/models/mistral";
+import {
+  GPT_5_5_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import {
   BYOK_MODEL_PROVIDER_IDS,
   MODEL_PROVIDER_IDS,
@@ -15,7 +25,10 @@ import type {
   ModelConfigurationType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
-import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
+import {
+  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
+} from "@app/types/assistant/models/xai";
 
 export function getWhitelistedProviders(
   auth: Authenticator
@@ -87,6 +100,17 @@ export function getSmallWhitelistedModel(
   );
 }
 
+export function getLargeWhitelistedModel(
+  auth: Authenticator,
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  { forBatch = false }: { forBatch?: boolean } = {}
+): ModelConfigurationType | null {
+  return _getLargeWhitelistedModel(
+    getWhitelistedProviders(auth).difference(excludeProviders),
+    { forBatch }
+  );
+}
+
 function _getSmallWhitelistedModel(
   whitelistedProviders: Set<ModelProviderIdType>
 ): ModelConfigurationType | null {
@@ -106,4 +130,25 @@ function _getSmallWhitelistedModel(
     return GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG;
   }
   return null;
+}
+
+const LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  GPT_5_5_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
+  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
+];
+
+function _getLargeWhitelistedModel(
+  whitelistedProviders: Set<ModelProviderIdType>,
+  { forBatch: hasBatch }: { forBatch?: boolean } = {}
+): ModelConfigurationType | null {
+  const compatibleModels = LARGE_MODEL_CONFIGS.filter(
+    (m) =>
+      whitelistedProviders.has(m.providerId) &&
+      (!hasBatch || m.supportsBatchProcessing)
+  );
+
+  return compatibleModels[0] ?? null;
 }
