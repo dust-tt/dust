@@ -3,6 +3,8 @@ import {
   amountCents,
   awuCreditsToCurrency,
   currencyToAwuCredits,
+  formatCurrencyAmount,
+  formatCurrencyAmountCents,
   metronomeAmount,
 } from "@app/lib/metronome/amounts";
 import { describe, expect, it } from "vitest";
@@ -73,5 +75,25 @@ describe("awuCreditsToCurrency / currencyToAwuCredits", () => {
   it("matches the AWU pricing constants (1 USD = 100 credits, 1 EUR ≈ 114.94 credits)", () => {
     expect(currencyToAwuCredits(1, "usd")).toBe(100);
     expect(currencyToAwuCredits(1, "eur")).toBeCloseTo(1 / 0.0087, 6);
+  });
+});
+
+describe("formatCurrencyAmount / formatCurrencyAmountCents", () => {
+  it("formats currency amounts with the requested currency", () => {
+    expect(formatCurrencyAmount({ amount: 12.34, currency: "usd" })).toBe(
+      "$12.34"
+    );
+    expect(formatCurrencyAmount({ amount: 12.34, currency: "eur" })).toBe(
+      "€12.34"
+    );
+  });
+
+  it("formats normalized cents with the requested currency", () => {
+    expect(
+      formatCurrencyAmountCents({ amountCents: 1234, currency: "usd" })
+    ).toBe("$12.34");
+    expect(
+      formatCurrencyAmountCents({ amountCents: 1234, currency: "eur" })
+    ).toBe("€12.34");
   });
 });
