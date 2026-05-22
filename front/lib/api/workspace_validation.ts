@@ -3,11 +3,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 const ASSISTANT_CONVERSATION_ROUTE_FRAGMENT = "/assistant/conversations/";
 
-/**
- * Domain reason why a workspace-scoped request should be denied. Transport
- * layers (Hono middleware, Next.js wrapper) map this to whatever response
- * shape they need — see [BACK18] in `front/CODING_RULES.md`.
- */
 export type WorkspaceAccessError =
   | { type: "workspace_not_found" }
   | { type: "workspace_cannot_use_product" }
@@ -15,11 +10,6 @@ export type WorkspaceAccessError =
   | { type: "workspace_kill_switched" }
   | { type: "conversation_kill_switched" };
 
-/**
- * Returns the conversation id if the request targets an assistant conversation
- * route, else null. Framework-agnostic — callers pass the request URL and the
- * `cId` route/query param value.
- */
 export function getAssistantConversationIdFromUrl(
   url: string | undefined,
   cId: string | null | undefined
@@ -40,7 +30,7 @@ interface ValidateWorkspaceAccessOptions {
  * `canUseProduct`, maintenance mode, and the workspace-wide / conversation-
  * specific kill switches.
  *
- * Returns a `WorkspaceAccessError` describing the domain reason for denial,
+ * Returns a `WorkspaceAccessError` describing the reason for denial,
  * or `null` if access is allowed. Callers map the error to a response.
  */
 export function validateWorkspaceAccess(
