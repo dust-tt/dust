@@ -1,11 +1,14 @@
+import { getClientIp } from "@app/lib/utils/request";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { getSequelizeErrorDetails } from "@app/logger/withlogging";
 import type {
   APIErrorResponse,
   APIErrorWithStatusCode,
 } from "@app/types/error";
-import type { Context, TypedResponse } from "hono";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Context, ErrorHandler, TypedResponse } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 /**
@@ -69,6 +72,62 @@ export function apiError(
     err.status_code as ContentfulStatusCode
   );
 }
+
+/**
+ * Hono `onError` handler for unhandled exceptions thrown by middlewares or
+ * route handlers. Mirrors the `catch` branch of `withLogging` in
+ * `front/logger/withlogging.ts` so the Hono service produces the same
+ * "Unhandled API Error" log and `api_errors.count` metric as the Next.js
+ * service when a handler throws.
+ *
+ * Returns a 500 JSON envelope. The companion `requestLogger` middleware
+ * deliberately does NOT emit `requests.count` / `requests.duration.distribution`
+ * on the throw path (the throw propagates past its emit code), matching the
+ * Next.js behavior where unhandled errors do not contribute to request
+ * throughput / latency metrics.
+ */
+export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
+  const error = normalizeError(err);
+  const sequelizeDetails = getSequelizeErrorDetails(error);
+
+  const headers: Record<string, string | string[] | undefined> = {};
+  ctx.req.raw.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+
+  logger.error(
+    {
+      clientIp: getClientIp({ headers }),
+      method: ctx.req.method,
+      route: ctx.req.routePath ?? ctx.req.path,
+      url: ctx.req.url,
+      error: {
+        name: error.name,
+        message: error.message || "unknown",
+        stack: error.stack,
+        ...(sequelizeDetails ? { sequelizeDetails } : {}),
+      },
+      error_stack: error.stack,
+    },
+    "Unhandled API Error"
+  );
+
+  getStatsDClient().increment("api_errors.count", 1, [
+    `method:${ctx.req.method}`,
+    `status_code:500`,
+    `error_type:unhandled_internal_server_error`,
+  ]);
+
+  return ctx.json(
+    {
+      error: {
+        type: "internal_server_error",
+        message: `Unhandled internal server error: ${error.message}`,
+      },
+    },
+    500
+  );
+};
 
 export function parseCookieHeader(
   header: string | undefined
