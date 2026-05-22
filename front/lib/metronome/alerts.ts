@@ -4,9 +4,16 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { V1 } from "@metronome/sdk/resources";
 
+// Mirrors the Metronome SDK's `CustomerAlert.customer_status`. `null` means
+// the alert has been archived; the dispatch layer treats it the same as
+// "evaluating" (no-op).
+export type MetronomeAlertState = "ok" | "in_alarm" | "evaluating" | null;
+
 export type MetronomeAlert = {
   id: string;
   threshold: number;
+  state: MetronomeAlertState;
+  uniquenessKey: string | null;
 };
 
 type UpsertMetronomeAlertParams = V1.AlertCreateParams & {
@@ -31,6 +38,24 @@ async function archiveMetronomeAlert(
   });
 }
 
+// Lazily iterates Metronome customer alerts, transparently auto-paginating via
+// the SDK's PagePromise. Callers can `break` to early-exit (no extra pages are
+// fetched) or iterate to the end to scan everything. Errors thrown by the SDK
+// surface through the iterator — callers wrap with try/catch + `Result`.
+export async function* listMetronomeAlerts(
+  params: V1.Customers.AlertListParams
+): AsyncGenerator<MetronomeAlert> {
+  const client = getMetronomeClient();
+  for await (const entry of client.v1.customers.alerts.list(params)) {
+    yield {
+      id: entry.alert.id,
+      threshold: entry.alert.threshold,
+      state: entry.customer_status,
+      uniquenessKey: entry.alert.uniqueness_key ?? null,
+    };
+  }
+}
+
 export async function findMetronomeAlert({
   metronomeCustomerId,
   uniquenessKey,
@@ -39,16 +64,12 @@ export async function findMetronomeAlert({
   uniquenessKey: string;
 }): Promise<Result<MetronomeAlert | null, Error>> {
   try {
-    const client = getMetronomeClient();
-    for await (const entry of client.v1.customers.alerts.list({
+    for await (const alert of listMetronomeAlerts({
       customer_id: metronomeCustomerId,
       alert_statuses: ["ENABLED", "DISABLED"],
     })) {
-      if (entry.alert.uniqueness_key === uniquenessKey) {
-        return new Ok({
-          id: entry.alert.id,
-          threshold: entry.alert.threshold,
-        });
+      if (alert.uniquenessKey === uniquenessKey) {
+        return new Ok(alert);
       }
     }
     return new Ok(null);

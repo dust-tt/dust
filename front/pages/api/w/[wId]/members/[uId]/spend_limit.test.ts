@@ -215,8 +215,10 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
     it("returns limited with threshold when alert exists", async () => {
       vi.mocked(perUserAlerts.getMetronomePerUserCap).mockResolvedValueOnce(
         new Ok({
-          alertId: TEST_ALERT_ID,
+          id: TEST_ALERT_ID,
           threshold: 2500,
+          state: "ok",
+          uniquenessKey: null,
         })
       );
 
