@@ -1,7 +1,6 @@
-import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
-import type { SubscriptionType } from "@app/types/plan";
+import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
@@ -290,7 +289,7 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/analytics`,
           current: isCurrent("analytics"),
         },
-        subscription.plan && isCreditPricedPlanPrefix(subscription.plan.code)
+        subscription.plan && isCreditPricedPlan(subscription.plan)
           ? {
               id: "billing",
               label: "Billing",
