@@ -194,17 +194,41 @@ function parseEgressHealthcheckOutput(
   // DNS interception alone isn't load-bearing without the generic UDP/ICMP/
   // IPv6 drops and the broad TCP redirect to the forwarder. Treating a
   // partially damaged table as healthy would silently reopen non-53 UDP.
+  //
+  // nft_udp_drop_ok and nft_icmp_drop_ok are intentionally excluded from the
+  // aggregate. The 0.1.15 dsbx binary baked into dust-base 0.8.19 looks for
+  // the literal fragments `meta l4proto udp drop` / `meta l4proto icmp drop`,
+  // but `nft list` normalizes those to `meta l4proto 17 drop` / `meta l4proto
+  // 1 drop`, so the binary reports `false` on every healthy sandbox. The
+  // fragment matching is fixed for the next dsbx release; the rules
+  // themselves are installed by egress-nftables.sh under `set -eu` at boot,
+  // so their presence is already gated by the sandbox coming online.
+  const nftablesOk =
+    data.nft_dns_udp_redirect_ok &&
+    data.nft_dns_tcp_redirect_ok &&
+    data.nft_dns_udp_accept_ok &&
+    data.nft_tcp_forward_redirect_ok &&
+    data.nft_ipv6_drop_ok;
+  if (nftablesOk && (!data.nft_udp_drop_ok || !data.nft_icmp_drop_ok)) {
+    logger.info(
+      {
+        ...logContext,
+        nft_udp_drop_ok: data.nft_udp_drop_ok,
+        nft_icmp_drop_ok: data.nft_icmp_drop_ok,
+      },
+      "Sandbox egress healthcheck reported l4proto udp/icmp drops missing (expected on dsbx <=0.1.15 due to nft printer normalization; rules still installed)"
+    );
+  }
+  if (!nftablesOk) {
+    logger.warn(
+      { ...logContext, signals: data },
+      "Sandbox egress healthcheck aggregate failed; per-signal breakdown"
+    );
+  }
   return {
     portOk: data.forwarder_port_ok,
     resolverOk: data.resolver_udp_ok && data.resolver_tcp_ok,
-    nftablesOk:
-      data.nft_dns_udp_redirect_ok &&
-      data.nft_dns_tcp_redirect_ok &&
-      data.nft_dns_udp_accept_ok &&
-      data.nft_tcp_forward_redirect_ok &&
-      data.nft_udp_drop_ok &&
-      data.nft_icmp_drop_ok &&
-      data.nft_ipv6_drop_ok,
+    nftablesOk,
     bundleOk: data.bundle_ok,
   };
 }

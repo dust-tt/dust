@@ -531,35 +531,65 @@ describe("sandbox egress helpers", () => {
 
   it.each([
     "nft_tcp_forward_redirect_ok" as const,
-    "nft_udp_drop_ok" as const,
-    "nft_icmp_drop_ok" as const,
     "nft_ipv6_drop_ok" as const,
-  ])("fails closed when %s is false (broader no-UDP/no-IPv6 invariant)", async (missing) => {
-    const sandbox = {
-      providerId: "provider-sandbox-id",
-      sId: "sandbox-id",
-      exec: vi.fn().mockResolvedValueOnce(
-        new Ok({
-          exitCode: 0,
-          stdout: healthStdout({ [missing]: false }),
-          stderr: "",
-        })
-      ),
-    };
+  ])(
+    "fails closed when %s is false (broader no-IPv6 / TCP-forward invariant)",
+    async (missing) => {
+      const sandbox = {
+        providerId: "provider-sandbox-id",
+        sId: "sandbox-id",
+        exec: vi.fn().mockResolvedValueOnce(
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ [missing]: false }),
+            stderr: "",
+          })
+        ),
+      };
 
-    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
-      wokeFromSleep: false,
-    });
+      const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+        wokeFromSleep: false,
+      });
 
-    expect(result.isErr()).toBe(true);
-    expect(mockLoggerWarn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event: "egress.enforcement_health_fail",
-        nftablesOk: false,
-      }),
-      expect.any(String)
-    );
-  });
+      expect(result.isErr()).toBe(true);
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "egress.enforcement_health_fail",
+          nftablesOk: false,
+        }),
+        expect.any(String)
+      );
+    }
+  );
+
+  it.each(["nft_udp_drop_ok" as const, "nft_icmp_drop_ok" as const])(
+    "tolerates %s=false from old dsbx binaries (rules installed at boot under set -eu)",
+    async (advisory) => {
+      const sandbox = {
+        providerId: "provider-sandbox-id",
+        sId: "sandbox-id",
+        exec: vi.fn().mockResolvedValueOnce(
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ [advisory]: false }),
+            stderr: "",
+          })
+        ),
+      };
+
+      const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+        wokeFromSleep: false,
+      });
+
+      // No enforcement failure raised: the aggregate doesn't gate on these
+      // two signals. With everything else healthy, the function returns Ok.
+      expect(result.isErr()).toBe(false);
+      expect(mockLoggerWarn).not.toHaveBeenCalledWith(
+        expect.objectContaining({ event: "egress.enforcement_health_fail" }),
+        expect.any(String)
+      );
+    }
+  );
 
   it("does a full restart when the port is not listening", async () => {
     const sandbox = {
