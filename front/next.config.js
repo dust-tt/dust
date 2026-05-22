@@ -473,6 +473,21 @@ const config = {
         },
       ],
       afterFiles: [
+        // Marketing website API: public URLs are /m/api/* but the handlers
+        // live under pages/api/marketing/* so Next.js treats them as API
+        // routes.
+        {
+          source: "/m/api/:path*",
+          destination: "/api/marketing/:path*",
+        },
+        // Legacy aliases: the marketing endpoints used to live at
+        // /api/{blog,customers,home,website,academy}/*. Keep those URLs
+        // working side-by-side with /m/api/* during the transition (e.g.
+        // Contentful preview links, cached marketing pages still in flight).
+        ...["blog", "customers", "home", "website", "academy"].map((group) => ({
+          source: `/api/${group}/:path*`,
+          destination: `/api/marketing/${group}/:path*`,
+        })),
         // Legacy endpoint rewrite to maintain compatibility for users still hitting `/vaults/`
         // endpoints on the public API.
         {
