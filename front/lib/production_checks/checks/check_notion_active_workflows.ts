@@ -13,7 +13,7 @@ import type { Logger } from "pino";
 import { QueryTypes } from "sequelize";
 
 const TEMPORAL_WORKFLOW_CHECK_RETRIES = 10;
-const TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS = 12 * 60 * 60 * 1000;
+const TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS = 12 * 60 * 60 * 1000; // 12 hours.
 
 interface NotionConnector {
   id: number;
