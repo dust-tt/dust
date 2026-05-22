@@ -35,6 +35,15 @@ import {
   EXCESS_CREDIT_NAME,
   FREE_ANNUAL_CREDIT_NAME,
   FREE_MONTHLY_CREDIT_NAME,
+  FREE_PACKAGE_ALIAS,
+  LEGACY_BUSINESS_EUR_PACKAGE_ALIAS,
+  LEGACY_BUSINESS_PACKAGE_ALIAS,
+  LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS,
+  LEGACY_ENTERPRISE_PACKAGE_ALIAS,
+  LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS,
+  LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
+  LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS,
+  LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
 } from "@app/lib/metronome/types";
 import type { SupportedCurrency } from "@app/types/currency";
 
@@ -1499,7 +1508,7 @@ function getPackages(): PackageDef[] {
   return [
     {
       name: "Legacy Pro USD",
-      aliases: [{ name: "legacy-pro-monthly" }],
+      aliases: [{ name: LEGACY_PRO_MONTHLY_PACKAGE_ALIAS }],
       rate_card_name: "Legacy Pro USD",
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
@@ -1510,7 +1519,7 @@ function getPackages(): PackageDef[] {
     },
     {
       name: "Legacy Business USD",
-      aliases: [{ name: "legacy-business" }],
+      aliases: [{ name: LEGACY_BUSINESS_PACKAGE_ALIAS }],
       rate_card_name: "Legacy Business USD",
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
@@ -1521,7 +1530,7 @@ function getPackages(): PackageDef[] {
     },
     {
       name: "Legacy Pro Annual USD",
-      aliases: [{ name: "legacy-pro-annual" }],
+      aliases: [{ name: LEGACY_PRO_ANNUAL_PACKAGE_ALIAS }],
       rate_card_name: "Legacy Pro Annual USD",
       subscriptions: [LEGACY_SEAT_ANNUAL_SUBSCRIPTION],
       recurring_credits: [
@@ -1533,7 +1542,7 @@ function getPackages(): PackageDef[] {
     // Enterprise: MAU-based billing, no seat subscriptions.
     {
       name: "Legacy Enterprise USD",
-      aliases: [{ name: "legacy-enterprise" }],
+      aliases: [{ name: LEGACY_ENTERPRISE_PACKAGE_ALIAS }],
       rate_card_name: "Legacy Enterprise MAU USD",
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
@@ -1545,7 +1554,7 @@ function getPackages(): PackageDef[] {
     // EUR variants
     {
       name: "Legacy Pro EUR",
-      aliases: [{ name: "legacy-pro-monthly-eur" }],
+      aliases: [{ name: LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS }],
       rate_card_name: "Legacy Pro EUR",
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
@@ -1556,7 +1565,7 @@ function getPackages(): PackageDef[] {
     },
     {
       name: "Legacy Business EUR",
-      aliases: [{ name: "legacy-business-eur" }],
+      aliases: [{ name: LEGACY_BUSINESS_EUR_PACKAGE_ALIAS }],
       rate_card_name: "Legacy Business EUR",
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
       recurring_credits: [
@@ -1567,7 +1576,7 @@ function getPackages(): PackageDef[] {
     },
     {
       name: "Legacy Pro Annual EUR",
-      aliases: [{ name: "legacy-pro-annual-eur" }],
+      aliases: [{ name: LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS }],
       rate_card_name: "Legacy Pro Annual EUR",
       subscriptions: [LEGACY_SEAT_ANNUAL_SUBSCRIPTION],
       recurring_credits: [
@@ -1578,7 +1587,7 @@ function getPackages(): PackageDef[] {
     },
     {
       name: "Legacy Enterprise EUR",
-      aliases: [{ name: "legacy-enterprise-eur" }],
+      aliases: [{ name: LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS }],
       rate_card_name: "Legacy Enterprise MAU EUR",
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
@@ -1777,7 +1786,7 @@ function getPackages(): PackageDef[] {
     // Free plan — entitles only the Free Seat
     {
       name: "Free plan",
-      aliases: [{ name: "free-plan" }],
+      aliases: [{ name: FREE_PACKAGE_ALIAS }],
       rate_card_name: "Free plan",
       subscriptions: [FREE_SEAT_SUBSCRIPTION],
       scheduled_charges_on_usage_invoices: "ALL",

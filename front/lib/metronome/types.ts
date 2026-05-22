@@ -27,6 +27,9 @@ export const LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS = "legacy-pro-annual-eur";
 export const LEGACY_BUSINESS_EUR_PACKAGE_ALIAS = "legacy-business-eur";
 export const LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS = "legacy-enterprise-eur";
 
+// Free plan
+export const FREE_PACKAGE_ALIAS = "free-plan";
+
 export type MetronomePackageTier = "free" | "pro" | "business" | "enterprise";
 
 export const PAYG_ELIGIBLE_TIERS: readonly MetronomePackageTier[] = [
