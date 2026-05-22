@@ -163,6 +163,16 @@ describe("shouldRelayToOtherRegion", () => {
         },
       })
     ).toBe(false);
+
+    expect(
+      shouldRelayToOtherRegion({
+        headers: {},
+        error: {
+          type: "email_agents_disabled",
+          message: "email agents disabled",
+        },
+      })
+    ).toBe(false);
   });
 });
 
