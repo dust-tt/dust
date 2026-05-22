@@ -1,7 +1,7 @@
+import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
   filterCustomAvailableAndWhitelistedModels,
-  getWhitelistedProviders,
   isModelCustomAvailable,
 } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";

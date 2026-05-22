@@ -1,7 +1,7 @@
+import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import type { RegionType } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  isByokTransitioningPlan,
   isDustCompanyPlan,
   isEntreprisePlanPrefix,
   isUpgraded,
@@ -23,11 +23,7 @@ import {
   GPT_5_5_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
-import {
-  BYOK_MODEL_PROVIDER_IDS,
-  isByokProviderId,
-  MODEL_PROVIDER_IDS,
-} from "@app/types/assistant/models/providers";
+import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -45,46 +41,6 @@ export function isEnterpriseOrDust(plan: PlanType | null): boolean {
     plan !== null &&
     (isEntreprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
   );
-}
-
-export function getWhitelistedProviders(
-  auth: Authenticator
-): Set<ModelProviderIdType> {
-  const owner = auth.getNonNullableWorkspace();
-  const plan = auth.getNonNullablePlan();
-  const whiteListedProviders = new Set<ModelProviderIdType>(
-    owner.whiteListedProviders ?? MODEL_PROVIDER_IDS
-  );
-
-  // noop never sees user data, always whitelisted.
-  whiteListedProviders.add("noop");
-
-  if (!plan.isByok) {
-    return whiteListedProviders;
-  }
-
-  // For BYOK_TRANSITIONING workspaces, we fall back on Dust-managed keys for BYOK providers when
-  // the customer hasn't configured their own. Whitelist all BYOK providers so they remain available
-  // even if not yet configured.
-  if (isByokTransitioningPlan(plan)) {
-    const allByokProviderIds = new Set<ModelProviderIdType>(
-      BYOK_MODEL_PROVIDER_IDS
-    );
-    allByokProviderIds.add("noop");
-
-    return allByokProviderIds;
-  }
-
-  const providersHealth = auth.providersHealth();
-
-  const configuredProviders = new Set(
-    Object.keys(providersHealth ?? {}) as ModelProviderIdType[]
-  );
-
-  // noop never needs credentials.
-  configuredProviders.add("noop");
-
-  return whiteListedProviders.intersection(configuredProviders);
 }
 
 export function getFastestWhitelistedModel(
