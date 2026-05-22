@@ -1208,7 +1208,6 @@ function buildSeatEntitlementFlipOverrides(): PackageOverrideDef[] {
     { product_name: PRO_SEAT_PRODUCT_NAME + YEARLY_SUFFIX, entitled: true },
     { product_name: MAX_SEAT_PRODUCT_NAME, entitled: true },
     { product_name: MAX_SEAT_PRODUCT_NAME + YEARLY_SUFFIX, entitled: true },
-    { product_name: FREE_SEAT_PRODUCT_NAME, entitled: true },
   ];
 }
 
@@ -1628,7 +1627,6 @@ function getPackages(): PackageDef[] {
         PRO_SEAT_ANNUAL_SUBSCRIPTION,
         MAX_SEAT_SUBSCRIPTION,
         MAX_SEAT_ANNUAL_SUBSCRIPTION,
-        FREE_SEAT_SUBSCRIPTION,
       ],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
@@ -1666,7 +1664,6 @@ function getPackages(): PackageDef[] {
         PRO_SEAT_ANNUAL_SUBSCRIPTION,
         MAX_SEAT_SUBSCRIPTION,
         MAX_SEAT_ANNUAL_SUBSCRIPTION,
-        FREE_SEAT_SUBSCRIPTION,
       ],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [
