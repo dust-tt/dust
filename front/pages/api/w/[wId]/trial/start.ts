@@ -2,8 +2,10 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  activateCreditPricedFreePlan,
   activatePhoneTrial,
   isWorkspaceEligibleForTrial,
 } from "@app/lib/plans/trial";
@@ -57,7 +59,11 @@ async function handler(
         });
       }
 
-      await activatePhoneTrial(auth);
+      if (await isMetronomeBillingEnabled(auth)) {
+        await activateCreditPricedFreePlan(auth);
+      } else {
+        await activatePhoneTrial(auth);
+      }
 
       return res.status(200).json({ success: true });
     }
