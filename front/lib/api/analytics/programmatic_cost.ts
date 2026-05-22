@@ -484,36 +484,38 @@ export async function getProgrammaticCost(
     const groups = Object.entries(groupValues)
       .filter(([groupKey]) => !groupBy || groupKey !== "total")
       .map(([groupKey, costMap]) => {
-        const cost = costMap?.get(timestamp);
-        const cumulatedCost =
-          (cumulatedCostMicroUsd[groupKey] ?? 0) + (cost ?? 0);
-        cumulatedCostMicroUsd[groupKey] = cumulatedCost;
+        const costMicroUsd = costMap?.get(timestamp);
+        const cumulatedCostForGroupMicroUsd =
+          (cumulatedCostMicroUsd[groupKey] ?? 0) + (costMicroUsd ?? 0);
+        cumulatedCostMicroUsd[groupKey] = cumulatedCostForGroupMicroUsd;
         return {
           groupKey,
-          costMicroUsd: cost ?? 0,
+          costMicroUsd: costMicroUsd ?? 0,
           cumulatedCostMicroUsd:
-            timestamp <= now.getTime() ? cumulatedCost : undefined,
+            timestamp <= now.getTime()
+              ? cumulatedCostForGroupMicroUsd
+              : undefined,
         };
       });
 
     if (groupBy) {
-      const costForAll = groups.reduce(
+      const costForAllMicroUsd = groups.reduce(
         (acc, group) => acc + group.costMicroUsd,
         0
       );
 
       // Include "others" group
-      const totalCost = groupValues.total?.get(timestamp) ?? 0;
-      const otherCost = totalCost - costForAll;
-      const cumulatedOtherCost =
-        (cumulatedCostMicroUsd["others"] ?? 0) + (otherCost ?? 0);
-      cumulatedCostMicroUsd["others"] = cumulatedOtherCost;
+      const totalCostMicroUsd = groupValues.total?.get(timestamp) ?? 0;
+      const otherCostMicroUsd = totalCostMicroUsd - costForAllMicroUsd;
+      const cumulatedOtherCostMicroUsd =
+        (cumulatedCostMicroUsd["others"] ?? 0) + (otherCostMicroUsd ?? 0);
+      cumulatedCostMicroUsd["others"] = cumulatedOtherCostMicroUsd;
 
       groups.push({
         groupKey: "others",
-        costMicroUsd: otherCost,
+        costMicroUsd: otherCostMicroUsd,
         cumulatedCostMicroUsd:
-          timestamp <= now.getTime() ? cumulatedOtherCost : undefined,
+          timestamp <= now.getTime() ? cumulatedOtherCostMicroUsd : undefined,
       });
     }
 

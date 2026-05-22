@@ -387,27 +387,33 @@ export async function getMetronomeUsage(
     const groups = Object.entries(groupValues)
       .filter(([key]) => !groupBy || key !== "total")
       .map(([key, tsMap]) => {
-        const value = tsMap.get(timestamp) ?? 0;
-        const cumulated = (cumulatedValues[key] ?? 0) + value;
-        cumulatedValues[key] = cumulated;
+        const valueMicroUsd = tsMap.get(timestamp) ?? 0;
+        const cumulatedMicroUsd = (cumulatedValues[key] ?? 0) + valueMicroUsd;
+        cumulatedValues[key] = cumulatedMicroUsd;
         return {
           groupKey: key,
-          valueMicroUsd: value,
-          cumulatedValueMicroUsd: timestamp <= now ? cumulated : undefined,
+          valueMicroUsd,
+          cumulatedValueMicroUsd:
+            timestamp <= now ? cumulatedMicroUsd : undefined,
         };
       });
 
     if (groupBy) {
-      const topSum = groups.reduce((acc, g) => acc + g.valueMicroUsd, 0);
-      const totalValue = groupValues["total"]?.get(timestamp) ?? 0;
-      const othersValue = totalValue - topSum;
-      const cumulatedOthers = (cumulatedValues["others"] ?? 0) + othersValue;
-      cumulatedValues["others"] = cumulatedOthers;
+      const topSumMicroUsd = groups.reduce(
+        (acc, g) => acc + g.valueMicroUsd,
+        0
+      );
+      const totalValueMicroUsd = groupValues["total"]?.get(timestamp) ?? 0;
+      const othersValueMicroUsd = totalValueMicroUsd - topSumMicroUsd;
+      const cumulatedOthersMicroUsd =
+        (cumulatedValues["others"] ?? 0) + othersValueMicroUsd;
+      cumulatedValues["others"] = cumulatedOthersMicroUsd;
 
       groups.push({
         groupKey: "others",
-        valueMicroUsd: othersValue,
-        cumulatedValueMicroUsd: timestamp <= now ? cumulatedOthers : undefined,
+        valueMicroUsd: othersValueMicroUsd,
+        cumulatedValueMicroUsd:
+          timestamp <= now ? cumulatedOthersMicroUsd : undefined,
       });
     }
 
