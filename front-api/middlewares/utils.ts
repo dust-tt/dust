@@ -128,24 +128,3 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
     500
   );
 };
-
-export function parseCookieHeader(
-  header: string | undefined
-): Record<string, string> {
-  if (!header) {
-    return {};
-  }
-  const cookies: Record<string, string> = {};
-  for (const part of header.split(";")) {
-    const trimmed = part.trim();
-    if (!trimmed) {
-      continue;
-    }
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) {
-      continue;
-    }
-    cookies[trimmed.slice(0, eq)] = decodeURIComponent(trimmed.slice(eq + 1));
-  }
-  return cookies;
-}

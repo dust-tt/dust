@@ -1,8 +1,9 @@
 import { getWorkOSSessionWithSetCookies } from "@app/lib/api/workos/user";
 import { getSessionFromBearerToken } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { apiError, parseCookieHeader } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
+import { getCookie } from "hono/cookie";
 
 /**
  * Resolves the session for a Hono request by trying the bearer token first,
@@ -30,9 +31,8 @@ export async function resolveSession(
 
   let session: SessionWithUser | null | undefined = bearerRes.value;
   if (!session) {
-    const cookies = parseCookieHeader(ctx.req.header("cookie"));
     const result = await getWorkOSSessionWithSetCookies(
-      cookies["workos_session"]
+      getCookie(ctx, "workos_session")
     );
     for (const cookie of result.setCookies) {
       ctx.header("Set-Cookie", cookie, { append: true });
