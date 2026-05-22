@@ -275,10 +275,14 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
       enterpriseBody({ startingAt: undefined })
     );
 
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error.message).toContain(
-      "startingAt is required for enterprise packages"
+    expect(response.status).toBe(200);
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metronomeCustomerId: METRONOME_CUSTOMER_ID,
+        packageAlias: "enterprise",
+        planCode: ENT_PLAN_CODE,
+        swapAt: "current-hour",
+      })
     );
   });
 

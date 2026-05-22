@@ -237,8 +237,9 @@ app.post(
     // Resolve when the swap happens.
     //  - startingAt provided: schedule at the requested moment, ceiled to the
     //    next hour boundary. Must be ≥1h in the future.
-    //  - startingAt omitted: swap immediately at the current hour boundary.
-    //    Required when the package is enterprise-tier (no immediate swap).
+    //  - startingAt omitted: swap immediately at the current hour boundary
+    //    (supported for all tiers, including enterprise via the operator's
+    //    explicit "start immediately" opt-in).
     let startingAtDate: Date;
     let swapAt: "current-hour" | "next-hour";
     if (body.startingAt) {
@@ -264,16 +265,6 @@ app.post(
       startingAtDate = new Date(requestedStartMs);
       swapAt = "next-hour";
     } else {
-      if (pkg.tier === "enterprise") {
-        const errorMessage =
-          "startingAt is required for enterprise packages and must be at " +
-          "least one hour in the future.";
-        await pluginRun.recordError(errorMessage);
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: { type: "invalid_request_error", message: errorMessage },
-        });
-      }
       startingAtDate = new Date();
       swapAt = "current-hour";
     }
