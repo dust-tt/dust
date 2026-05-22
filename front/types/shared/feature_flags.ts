@@ -318,11 +318,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
     stage: "dust_only",
   },
-  metronome_billing_usage_page: {
-    description:
-      "Enable the new Usage admin page with credit pool display and workspace usage management.",
-    stage: "dust_only",
-  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

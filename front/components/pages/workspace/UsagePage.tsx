@@ -6,12 +6,8 @@ import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { isCreditPricedPlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
@@ -138,8 +134,8 @@ function CreditPoolUsageBar({
 export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
-  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
+  const isCreditPriced = isCreditPricedPlan(subscription.plan.code);
   const [searchTerm, setSearchTerm] = useState("");
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
@@ -152,10 +148,10 @@ export function UsagePage() {
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
   useEffect(() => {
-    if (!hasFeature("metronome_billing_usage_page")) {
+    if (!isCreditPriced) {
       void router.push(`/w/${owner.sId}/members`);
     }
-  }, [hasFeature, router, owner.sId]);
+  }, [isCreditPriced, router, owner.sId]);
 
   const {
     totalCredits,
@@ -221,7 +217,7 @@ export function UsagePage() {
 
   const resetDateLabel = getResetDateLabel(resetDate);
 
-  if (!hasFeature("metronome_billing_usage_page")) {
+  if (!isCreditPriced) {
     return null;
   }
 

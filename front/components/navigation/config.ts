@@ -1,5 +1,7 @@
+import { isCreditPricedPlan } from "@app/lib/plans/plan_codes";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
+import type { SubscriptionType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
@@ -225,10 +227,12 @@ export const subNavigationAdmin = ({
   owner,
   currentRoute,
   featureFlags: _featureFlags,
+  subscription,
 }: {
   owner: WorkspaceType;
   currentRoute: string;
   featureFlags: WhitelistableFeature[];
+  subscription: SubscriptionType;
 }): SidebarNavigation[] => {
   const nav: SidebarNavigation[] = [];
 
@@ -259,14 +263,17 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/workspace`,
           current: isCurrent("workspace"),
         },
-        {
-          id: "usage",
-          label: "Usage",
-          icon: ActionPieChartIcon,
-          href: `/w/${owner.sId}/usage`,
-          current: isCurrent("usage"),
-          featureFlag: "metronome_billing_usage_page",
-        },
+        ...(isCreditPricedPlan(subscription.plan.code)
+          ? [
+              {
+                id: "usage" as const,
+                label: "Usage",
+                icon: ActionPieChartIcon,
+                href: `/w/${owner.sId}/usage`,
+                current: isCurrent("usage"),
+              },
+            ]
+          : []),
         {
           id: "model_providers",
           label: "Model Providers",
