@@ -7,7 +7,7 @@ import { getModelProviderLogo } from "@app/components/providers/types";
 import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -74,10 +74,12 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
 
   const { regionInfo } = useRegionContext();
   const { hasFeature } = useFeatureFlags();
+  const { subscription } = useAuth();
 
   const showRegionalFlag =
     hasFeature("use_vertex_for_anthropic_models") &&
-    SHOULD_DISPLAY_FLAG[regionInfo.name];
+    SHOULD_DISPLAY_FLAG[regionInfo.name] &&
+    !subscription.plan.isByok;
 
   const flag = showRegionalFlag ? (
     <RegionalFlag region={regionInfo.name} />
