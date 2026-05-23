@@ -41,7 +41,7 @@ const NavTabPillTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "s-group s-inline-flex s-h-8 s-items-center s-justify-center s-whitespace-nowrap s-rounded-lg s-pl-2 [&:not([data-state=active])]:s-pr-2 s-text-sm",
+      "s-group s-inline-flex s-h-8 s-items-center s-justify-center s-whitespace-nowrap s-rounded-lg s-pl-2 data-[state=active]:s-pl-2 [&:not([data-state=active])]:s-pr-2 s-text-sm",
       "s-text-muted-foreground dark:s-text-muted-foreground-night",
       "hover:s-bg-sidebar-100 hover:s-text-foreground dark:hover:s-bg-sidebar-100-night dark:hover:s-text-foreground-night",
       "s-font-medium",
@@ -50,8 +50,9 @@ const NavTabPillTrigger = React.forwardRef<
       "dark:data-[state=active]:s-bg-sidebar-100-night dark:data-[state=active]:s-text-foreground-night",
       "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
       "disabled:s-pointer-events-none disabled:s-opacity-100",
-      "",
-      easingClassName?.trigger ?? "s-ease-out-quint",
+      "data-[state=active]:s-mx-1 data-[state=active]:s-overflow-hidden data-[state=active]:s-shrink",
+      "s-transition-[padding,margin]",
+      
       className
     )}
     {...props}
@@ -59,8 +60,8 @@ const NavTabPillTrigger = React.forwardRef<
     <LinkWrapper href={href} target={target} rel={rel} replace={replace} shallow={shallow}>
       <Icon visual={icon} size="xs" />
       <div className={cn(
-        "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-300 group-data-[state=active]:s-grid-cols-[1fr] s-ease-out-quad overflow-hidden",
-        easingClassName?.grid ?? "s-ease-out"
+        "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-300 group-data-[state=active]:s-grid-cols-[1fr] overflow-hidden",
+        "s-in-out-circ"
       )}>
         <span
           className="s-overflow-hidden s-min-w-0"
@@ -69,7 +70,7 @@ const NavTabPillTrigger = React.forwardRef<
               "linear-gradient(to right, black calc(100% - 8px), transparent)",
           }}
         >
-          <span className="group-data-[state=active]:s-pl-1.5 group-data-[state=active]:s-pr-2 s-transition-[padding] s-duration-300 s-ease-out-quad s-whitespace-nowrap">{children}</span>
+          <span className="group-data-[state=active]:s-pl-1.5 group-data-[state=active]:s-pr-2 s-transition-[padding] s-duration-200 s-whitespace-nowrap">{children}</span>
         </span>
       </div>
     </LinkWrapper>
