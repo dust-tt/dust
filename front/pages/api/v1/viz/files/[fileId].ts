@@ -1,6 +1,6 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 
-import { verifyVizAccessToken } from "@app/lib/api/viz/access_tokens";
+import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
 import {
   canAccessFileInConversation,
   canAccessFileInProject,
@@ -48,50 +48,19 @@ async function handler(
     });
   }
 
-  // Extract and validate access token from Authorization header.
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
+  const tokenRes = extractAndVerifyVizAccessTokenFromHeader(
+    req.headers.authorization
+  );
+  if (tokenRes.isErr()) {
     return apiError(req, res, {
       status_code: 401,
       api_error: {
         type: "workspace_auth_error",
-        message: "Authorization header required.",
+        message: tokenRes.error,
       },
     });
   }
-
-  const bearerPrefix = "Bearer ";
-  if (!authHeader.startsWith(bearerPrefix)) {
-    return apiError(req, res, {
-      status_code: 401,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Authorization header must use Bearer token format.",
-      },
-    });
-  }
-
-  const accessToken = authHeader.substring(bearerPrefix.length).trim();
-  if (!accessToken) {
-    return apiError(req, res, {
-      status_code: 401,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Access token is required.",
-      },
-    });
-  }
-
-  const tokenPayload = verifyVizAccessToken(accessToken);
-  if (!tokenPayload) {
-    return apiError(req, res, {
-      status_code: 401,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Invalid or expired access token.",
-      },
-    });
-  }
+  const tokenPayload = tokenRes.value;
 
   // Get file info using the fileToken from the access token.
   const result = await FileResource.fetchByShareTokenWithContent(
