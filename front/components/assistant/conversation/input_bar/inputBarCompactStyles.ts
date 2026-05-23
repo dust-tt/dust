@@ -14,4 +14,4 @@ export const INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES =
   "motion-safe:origin-center motion-safe:animate-input-bar-compact-nav-in";
 
 export const INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES =
-  "transition-[border-radius,background-color,padding,border-color,box-shadow,opacity] duration-300 ease-out";
+  "transition-[background-color,padding,border-color,box-shadow,opacity] duration-300 ease-out";
