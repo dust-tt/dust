@@ -33,10 +33,11 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
-import { apiError, parseCookieHeader } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { OauthException } from "@workos-inc/node";
 import type { Context } from "hono";
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import { sealData } from "iron-session";
 
 function isValidScreenHint(
@@ -511,9 +512,8 @@ async function handleCallback(ctx: Context) {
 }
 
 async function handleLogout(ctx: Context) {
-  const cookies = parseCookieHeader(ctx.req.header("cookie"));
   const result = await getWorkOSSessionWithSetCookies(
-    cookies["workos_session"]
+    getCookie(ctx, "workos_session")
   );
   for (const cookie of result.setCookies) {
     ctx.header("Set-Cookie", cookie, { append: true });
