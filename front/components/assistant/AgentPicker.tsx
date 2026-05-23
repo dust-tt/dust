@@ -1,5 +1,6 @@
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { useClientType } from "@app/lib/context/clientType";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -30,6 +31,7 @@ interface AgentPickerProps {
   isLoading?: boolean;
   disabled?: boolean;
   mountPortal?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function AgentPicker({
@@ -44,8 +46,10 @@ export function AgentPicker({
   size = "md",
   isLoading = false,
   disabled = false,
+  onOpenChange,
 }: AgentPickerProps) {
   const clientType = useClientType();
+  const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
@@ -56,6 +60,7 @@ export function AgentPicker({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
+        onOpenChange?.(open);
         if (open) {
           setSearchText("");
         }
@@ -83,7 +88,7 @@ export function AgentPicker({
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
-              autoFocus
+              autoFocus={!isMobile}
               name="search-agents"
               placeholder="Search Agents"
               value={searchText}

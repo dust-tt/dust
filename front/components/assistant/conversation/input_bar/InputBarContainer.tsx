@@ -1,12 +1,16 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
-import { INPUT_BAR_COMPACT_PILL_INNER_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import {
+  INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
+  INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
+} from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
+import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
 import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
@@ -124,6 +128,8 @@ export interface InputBarContainerProps {
   isCompact?: boolean;
   onExpandInputBar?: () => void;
   onEditorFocusChange?: (isFocused: boolean) => void;
+  onOverlayOpenChange?: (open: boolean) => void;
+  onVoiceActiveChange?: (active: boolean) => void;
   isSubmitting: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
@@ -173,7 +179,16 @@ const InputBarContainer = ({
   isCompact = false,
   onExpandInputBar,
   onEditorFocusChange,
+  onOverlayOpenChange,
+  onVoiceActiveChange,
 }: InputBarContainerProps) => {
+  const { setOverlayOpen } = useInputBarOverlayTracker(onOverlayOpenChange);
+  const onSuggestionActiveChangeRef = useRef<(active: boolean) => void>(
+    () => {}
+  );
+  onSuggestionActiveChangeRef.current = (active) => {
+    setOverlayOpen("editor-suggestion", active);
+  };
   const isSubmitBlocked = submitBlockMessage !== null;
   const isCompactRef = useRef(isCompact);
   isCompactRef.current = isCompact;
@@ -224,6 +239,7 @@ const InputBarContainer = ({
   >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
+  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
   const shouldEnableSlashSuggestion = actions.includes("capabilities");
@@ -488,6 +504,7 @@ const InputBarContainer = ({
       selectedMCPServerViewIdsRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
+    onSuggestionActiveChangeRef,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -560,6 +577,18 @@ const InputBarContainer = ({
       editor.off("blur", handleBlur);
     };
   }, [editor, onEditorFocusChange]);
+
+  useEffect(() => {
+    setOverlayOpen("capture-dropdown", isCaptureDropdownOpen);
+  }, [isCaptureDropdownOpen, setOverlayOpen]);
+
+  useEffect(() => {
+    setOverlayOpen("knowledge-picker", showKnowledgePicker);
+  }, [showKnowledgePicker, setOverlayOpen]);
+
+  useEffect(() => {
+    setOverlayOpen("toolbar", isToolbarOpen);
+  }, [isToolbarOpen, setOverlayOpen]);
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
@@ -1010,7 +1039,6 @@ const InputBarContainer = ({
     isSubmitBlocked ||
     voiceTranscriberService.status !== "idle";
 
-  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
   const contentEditableClasses = classNames(
@@ -1022,6 +1050,10 @@ const InputBarContainer = ({
 
   const isRecording = voiceTranscriberService.status === "recording";
   const isVoiceActive = voiceTranscriberService.status !== "idle";
+
+  useEffect(() => {
+    onVoiceActiveChange?.(isVoiceActive);
+  }, [isVoiceActive, onVoiceActiveChange]);
 
   submitCompactVoiceMessageRef.current = async () => {
     if (disableAutoFocus) {
@@ -1063,18 +1095,15 @@ const InputBarContainer = ({
         <div
           className={cn(
             INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
-            "relative w-auto px-1 sm:pt-0",
-            isVoiceActive && "pl-2"
+            INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
+            "relative w-auto gap-0 sm:pt-0",
+            isVoiceActive ? "px-0.5" : "px-1"
           )}
         >
           {!isVoiceActive && (
-            <>
+            <div className="flex min-w-0 flex-1 items-center gap-1 px-1">
               <div
-                aria-label={
-                  selectedSingleAgent
-                    ? `Selected agent: ${selectedSingleAgent.label}`
-                    : "No agent selected"
-                }
+                aria-hidden
                 className="inline-flex min-w-0 max-w-24 items-center gap-1"
               >
                 {selectedSingleAgent ? (
@@ -1096,40 +1125,35 @@ const InputBarContainer = ({
                   </>
                 )}
               </div>
-              <Button
-                variant="ghost-secondary"
-                icon={ChevronUpDownIcon}
-                size="xs"
-                tooltip="Expand input"
-                disabled={disableInput}
-                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onExpandInputBar?.();
-                }}
-              />
-            </>
+              <ChevronUpDownIcon className="h-3.5 w-3.5 shrink-0 text-faint dark:text-faint-night" />
+            </div>
           )}
           {!subscription.plan.isByok &&
             owner.metadata?.allowVoiceTranscription !== false &&
             actions.includes("voice") && (
-              <VoicePicker
-                status={voiceTranscriberService.status}
-                level={voiceTranscriberService.level}
-                elapsedSeconds={voiceTranscriberService.elapsedSeconds}
-                onRecordStart={voiceTranscriberService.startRecording}
-                onRecordStop={voiceTranscriberService.stopRecording}
-                size="xs"
-                showStopLabel={false}
-                disabled={disableInput}
-              />
+              <div
+                className="flex shrink-0 flex-row items-center"
+                data-compact-voice
+              >
+                <VoicePicker
+                  status={voiceTranscriberService.status}
+                  level={voiceTranscriberService.level}
+                  elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                  onRecordStart={voiceTranscriberService.startRecording}
+                  onRecordStop={voiceTranscriberService.stopRecording}
+                  size="xs"
+                  compact
+                  showStopLabel={false}
+                  disabled={disableInput}
+                />
+              </div>
             )}
         </div>
       )}
       <div
         id="InputBarContainer"
         className={cn(
-          "relative flex flex-1 cursor-text flex-row sm:pt-0",
+          "relative flex flex-1 cursor-text flex-row transition-opacity duration-200 sm:pt-0",
           isCompact &&
             "pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
         )}
@@ -1252,6 +1276,15 @@ const InputBarContainer = ({
                       selectedMCPServerViews={selectedMCPServerViews}
                       space={space}
                       user={user}
+                      onAgentPickerOpenChange={(open) =>
+                        setOverlayOpen("agent-picker", open)
+                      }
+                      onCapabilitiesPickerOpenChange={(open) =>
+                        setOverlayOpen("capabilities-picker", open)
+                      }
+                      onAttachmentsPickerOpenChange={(open) =>
+                        setOverlayOpen("attachments-picker", open)
+                      }
                     />
                   </div>
                 )}
@@ -1366,7 +1399,8 @@ const InputBarContainer = ({
               )}
               {!subscription.plan.isByok &&
                 owner.metadata?.allowVoiceTranscription !== false &&
-                actions.includes("voice") && (
+                actions.includes("voice") &&
+                !isCompact && (
                   <VoicePicker
                     status={voiceTranscriberService.status}
                     level={voiceTranscriberService.level}

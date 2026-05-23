@@ -15,7 +15,11 @@ import type { RefAttributes } from "react";
 
 export const emojiPluginKey = new PluginKey("emoji-suggestion");
 
-export function createEmojiSuggestion() {
+export function createEmojiSuggestion({
+  onActiveChange,
+}: {
+  onActiveChange?: (active: boolean) => void;
+} = {}) {
   return {
     pluginKey: emojiPluginKey,
     char: ":",
@@ -44,6 +48,7 @@ export function createEmojiSuggestion() {
 
       return {
         onStart: (props: SuggestionProps<{ name: string }>) => {
+          onActiveChange?.(true);
           component = new ReactRenderer(EmojiDropdown, {
             editor: props.editor,
             props: {
@@ -76,6 +81,7 @@ export function createEmojiSuggestion() {
         },
 
         onExit: () => {
+          onActiveChange?.(false);
           component?.element.remove();
           component?.destroy();
         },

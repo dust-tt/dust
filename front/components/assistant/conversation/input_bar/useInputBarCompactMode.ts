@@ -1,0 +1,84 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const SCROLL_COMPACT_THRESHOLD_PX = 12;
+const SCROLL_COMPACT_DEBOUNCE_MS = 150;
+
+interface UseInputBarCompactModeOptions {
+  enabled: boolean;
+  listOffset: number;
+}
+
+export function useInputBarCompactMode({
+  enabled,
+  listOffset,
+}: UseInputBarCompactModeOptions) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+
+  const isInteractingRef = useRef(false);
+  isInteractingRef.current = isEditorFocused || isOverlayOpen || isVoiceActive;
+
+  const prevListOffsetRef = useRef<number | null>(null);
+  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (collapseTimerRef.current) {
+        clearTimeout(collapseTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) {
+      setIsExpanded(true);
+      prevListOffsetRef.current = listOffset;
+      return;
+    }
+
+    if (prevListOffsetRef.current === null) {
+      prevListOffsetRef.current = listOffset;
+      return;
+    }
+
+    const delta = Math.abs(listOffset - prevListOffsetRef.current);
+    prevListOffsetRef.current = listOffset;
+
+    if (delta < SCROLL_COMPACT_THRESHOLD_PX) {
+      return;
+    }
+
+    if (isInteractingRef.current) {
+      return;
+    }
+
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+    }
+
+    collapseTimerRef.current = setTimeout(() => {
+      collapseTimerRef.current = null;
+      if (!isInteractingRef.current) {
+        setIsExpanded(false);
+      }
+    }, SCROLL_COMPACT_DEBOUNCE_MS);
+  }, [enabled, listOffset]);
+
+  const isScrolledCompactIntent = enabled && !isExpanded;
+  const effectiveIsCompact =
+    isScrolledCompactIntent && !isEditorFocused && !isOverlayOpen;
+
+  const expandInputBar = useCallback(() => {
+    setIsExpanded(true);
+  }, []);
+
+  return {
+    effectiveIsCompact,
+    expandInputBar,
+    onEditorFocusChange: setIsEditorFocused,
+    onOverlayOpenChange: setIsOverlayOpen,
+    onVoiceActiveChange: setIsVoiceActive,
+  };
+}

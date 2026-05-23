@@ -22,6 +22,7 @@ export function createMentionSuggestion({
   select,
   includeCurrentUser = false,
   onAgentSelect,
+  onActiveChange,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -32,6 +33,7 @@ export function createMentionSuggestion({
     users: boolean;
   };
   onAgentSelect?: (mention: RichMention) => void;
+  onActiveChange?: (active: boolean) => void;
 }) {
   return {
     pluginKey: mentionPluginKey,
@@ -75,6 +77,7 @@ export function createMentionSuggestion({
 
       return {
         onStart: (props: SuggestionProps<RichMention, RichMention>) => {
+          onActiveChange?.(true);
           component = new ReactRenderer(MentionDropdown, {
             editor: props.editor,
             props: {
@@ -122,6 +125,7 @@ export function createMentionSuggestion({
         },
 
         onExit: () => {
+          onActiveChange?.(false);
           component?.element.remove();
           component?.destroy();
         },

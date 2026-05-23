@@ -39,43 +39,50 @@ function getEmojiFromCache(name: string): EmojiItem | undefined {
   return emojiMapCache?.get(name);
 }
 
-// Create extension that lazily loads emoji data
-export const EmojiExtension = Emoji.extend({
-  renderMarkdown: (node) => {
-    const name = node.attrs?.name;
+export function createEmojiExtension({
+  onActiveChange,
+}: {
+  onActiveChange?: (active: boolean) => void;
+} = {}) {
+  return Emoji.extend({
+    renderMarkdown: (node) => {
+      const name = node.attrs?.name;
 
-    // If name is null/undefined, return empty string to avoid displaying :null:
-    if (!name) {
-      return "";
-    }
+      // If name is null/undefined, return empty string to avoid displaying :null:
+      if (!name) {
+        return "";
+      }
 
-    // Try to get from cache, fallback to shortcode format
-    const emojiItem = getEmojiFromCache(name);
-    return emojiItem?.emoji ?? `:${name}:`;
-  },
+      // Try to get from cache, fallback to shortcode format
+      const emojiItem = getEmojiFromCache(name);
+      return emojiItem?.emoji ?? `:${name}:`;
+    },
 
-  async onCreate() {
-    await loadEmojiData();
-  },
-}).configure({
-  // Disable emoticon conversion to prevent :null: bug
-  // When enableEmoticons is true with an empty emojis array, TipTap creates
-  // an input rule with regex (?:^|\s)() $ which matches any double space,
-  // creating emoji nodes with name: null that render as :null:
-  // TODO: To enable emoticons, we need to either:
-  // 1. Load emoji data synchronously before extension creation, or
-  // 2. Implement a mechanism to update input rules after async data loads
-  enableEmoticons: false,
+    async onCreate() {
+      await loadEmojiData();
+    },
+  }).configure({
+    // Disable emoticon conversion to prevent :null: bug
+    // When enableEmoticons is true with an empty emojis array, TipTap creates
+    // an input rule with regex (?:^|\s)() $ which matches any double space,
+    // creating emoji nodes with name: null that render as :null:
+    // TODO: To enable emoticons, we need to either:
+    // 1. Load emoji data synchronously before extension creation, or
+    // 2. Implement a mechanism to update input rules after async data loads
+    enableEmoticons: false,
 
-  // HTML attributes for styling
-  HTMLAttributes: {
-    class: "inline-block",
-  },
+    // HTML attributes for styling
+    HTMLAttributes: {
+      class: "inline-block",
+    },
 
-  // Configure suggestion plugin for :emoji: syntax
-  suggestion: createEmojiSuggestion(),
+    // Configure suggestion plugin for :emoji: syntax
+    suggestion: createEmojiSuggestion({ onActiveChange }),
 
-  // Start with empty emojis array - this is populated asynchronously in onCreate()
-  // The emoji picker/search uses EmojiDropdown which loads data independently
-  emojis,
-});
+    // Start with empty emojis array - this is populated asynchronously in onCreate()
+    // The emoji picker/search uses EmojiDropdown which loads data independently
+    emojis,
+  });
+}
+
+export const EmojiExtension = createEmojiExtension();

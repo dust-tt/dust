@@ -7,7 +7,11 @@ import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { INPUT_BAR_COMPACT_PILL_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import {
+  INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
+  INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
+  INPUT_BAR_COMPACT_PILL_CLASSES,
+} from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
@@ -66,9 +70,11 @@ interface InputBarProps {
   disableInput?: boolean;
   submitBlockMessage?: string | null;
   placeholder?: string;
-  isCompact?: boolean;
+  effectiveIsCompact?: boolean;
   onExpandInputBar?: () => void;
   onEditorFocusChange?: (focused: boolean) => void;
+  onOverlayOpenChange?: (open: boolean) => void;
+  onVoiceActiveChange?: (active: boolean) => void;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -88,22 +94,14 @@ export const InputBar = React.memo(function InputBar({
   disableInput = false,
   submitBlockMessage = null,
   placeholder,
-  isCompact = false,
+  effectiveIsCompact = false,
   onExpandInputBar,
   onEditorFocusChange,
+  onOverlayOpenChange,
+  onVoiceActiveChange,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
-  const [isEditorFocused, setIsEditorFocused] = useState(false);
-  const effectiveIsCompact = isCompact && !isEditorFocused;
-
-  const handleEditorFocusChange = useCallback(
-    (focused: boolean) => {
-      setIsEditorFocused(focused);
-      onEditorFocusChange?.(focused);
-    },
-    [onEditorFocusChange]
-  );
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
@@ -415,13 +413,29 @@ export const InputBar = React.memo(function InputBar({
       />
       <div
         onAnimationEnd={() => setIsShaking(false)}
+        onClick={(e) => {
+          if (!effectiveIsCompact || disableInput) {
+            return;
+          }
+          if (
+            e.target instanceof HTMLElement &&
+            e.target.closest("[data-compact-voice]")
+          ) {
+            return;
+          }
+          onExpandInputBar?.();
+        }}
         className={classNames(
           isShaking && "animate-shake",
           "relative flex flex-col items-stretch gap-0 sm:flex-row",
-          "transition-all duration-300",
+          INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
           !effectiveIsCompact && "w-full flex-1 self-stretch",
           effectiveIsCompact
-            ? INPUT_BAR_COMPACT_PILL_CLASSES
+            ? classNames(
+                INPUT_BAR_COMPACT_PILL_CLASSES,
+                INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
+                !disableInput && "cursor-pointer"
+              )
             : classNames(
                 "w-full rounded-2xl",
                 "bg-muted-background dark:bg-muted-background-night",
@@ -493,7 +507,9 @@ export const InputBar = React.memo(function InputBar({
             onShake={handleShake}
             isCompact={effectiveIsCompact}
             onExpandInputBar={onExpandInputBar}
-            onEditorFocusChange={handleEditorFocusChange}
+            onEditorFocusChange={onEditorFocusChange}
+            onOverlayOpenChange={onOverlayOpenChange}
+            onVoiceActiveChange={onVoiceActiveChange}
           />
         </div>
       </div>

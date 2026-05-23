@@ -29,6 +29,7 @@ export interface VoicePickerProps {
   size?: Exclude<RegularButtonSize, "xmini" | "mini">;
   disabled?: boolean;
   showStopLabel?: boolean;
+  compact?: boolean;
   pressDelayMs?: number;
   buttonProps?: Omit<
     ButtonProps,
@@ -45,13 +46,26 @@ export function VoicePicker({
   size = "xs",
   disabled = false,
   showStopLabel = false,
+  compact = false,
   pressDelayMs = DEFAULT_PRESS_DELAY_MS,
   buttonProps,
 }: VoicePickerProps): React.ReactElement {
   const [interactionMode, setInteractionMode] =
     React.useState<VoicePickerInteractionMode>("hold");
+  const interactionModeRef = React.useRef<VoicePickerInteractionMode>("hold");
   const pressStartRef = React.useRef<number | null>(null);
   const pressTimeoutRef = React.useRef<number | null>(null);
+  const suppressNextClickRef = React.useRef(false);
+  const ignoreLeaveUntilRef = React.useRef(0);
+
+  const setMode = (mode: VoicePickerInteractionMode): void => {
+    interactionModeRef.current = mode;
+    setInteractionMode(mode);
+  };
+
+  const markRecordingStarted = (): void => {
+    ignoreLeaveUntilRef.current = Date.now() + 300;
+  };
 
   const isRecording = status === "recording";
   const isTranscribing = status === "transcribing";
@@ -85,14 +99,21 @@ export function VoicePicker({
       return;
     }
 
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Ignore if pointer capture is not supported.
+    }
+
     pressStartRef.current = Date.now();
 
     clearPressTimeout();
     pressTimeoutRef.current = window.setTimeout(async () => {
       if (pressStartRef.current !== null) {
-        setInteractionMode("hold");
+        setMode("hold");
         if (status === "idle") {
           await onRecordStart();
+          markRecordingStarted();
         }
       }
     }, pressDelayMs);
@@ -116,13 +137,21 @@ export function VoicePicker({
     clearPressTimeout();
     pressStartRef.current = null;
 
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // Ignore if pointer capture was not set.
+    }
+
     const duration =
       start === null ? Number.POSITIVE_INFINITY : Date.now() - start;
 
     if (duration < pressDelayMs) {
-      setInteractionMode("click");
+      setMode("click");
       if (status === "idle") {
+        suppressNextClickRef.current = true;
         await onRecordStart();
+        markRecordingStarted();
         return;
       }
       await onRecordStop();
@@ -142,7 +171,15 @@ export function VoicePicker({
       return;
     }
 
-    if (disabled || interactionMode !== "hold" || status !== "recording") {
+    if (
+      disabled ||
+      interactionModeRef.current !== "hold" ||
+      status !== "recording"
+    ) {
+      return;
+    }
+
+    if (Date.now() < ignoreLeaveUntilRef.current) {
       return;
     }
 
@@ -163,7 +200,12 @@ export function VoicePicker({
 
     stopEvent(event);
 
-    if (disabled || interactionMode !== "click") {
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      return;
+    }
+
+    if (disabled || interactionModeRef.current !== "click") {
       return;
     }
     if (status === "recording") {
@@ -177,10 +219,11 @@ export function VoicePicker({
   const tooltip = computeTooltip(interactionMode, isRecording, isTranscribing);
 
   return (
-    <>
+    <div className="s-flex s-items-center">
       <div
         className={cn(
-          "s-duration-600 s-flex s-items-center s-justify-end s-gap-2 s-overflow-hidden s-px-2 s-transition-all s-ease-in-out",
+          "s-duration-600 s-flex s-items-center s-justify-end s-gap-2 s-overflow-hidden s-transition-all s-ease-in-out",
+          compact ? "s-px-1" : "s-px-2",
           isRecording ? "s-opacity-100" : "s-hidden"
         )}
       >
@@ -203,7 +246,7 @@ export function VoicePicker({
         onPointerLeave={handlePointerLeave}
         onClick={handleClick}
       />
-    </>
+    </div>
   );
 }
 

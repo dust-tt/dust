@@ -48,6 +48,9 @@ interface InputBarButtonsProps {
   selectedMCPServerViews: MCPServerViewType[];
   space: SpaceType | undefined;
   user: UserType | null;
+  onAgentPickerOpenChange?: (open: boolean) => void;
+  onCapabilitiesPickerOpenChange?: (open: boolean) => void;
+  onAttachmentsPickerOpenChange?: (open: boolean) => void;
 }
 
 export const InputBarButtons = React.memo(function InputBarButtons({
@@ -74,6 +77,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   selectedMCPServerViews,
   space,
   user,
+  onAgentPickerOpenChange,
+  onCapabilitiesPickerOpenChange,
+  onAttachmentsPickerOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
@@ -89,6 +95,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       owner={owner}
       size={buttonSize}
       onAgentDetailsClick={handleAgentDetailsClick}
+      onOpenChange={onAgentPickerOpenChange}
       onItemClick={(c) => {
         handleSingleAgentSelect(toRichAgentMentionType(c));
       }}
@@ -154,6 +161,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       selectedMCPServerViews={selectedMCPServerViews}
       onSelect={onMCPServerViewSelect}
       onSkillSelect={onSkillSelect}
+      onOpenChange={onCapabilitiesPickerOpenChange}
       buttonSize={buttonSize}
       disabled={isInputDisabled}
     />
@@ -183,6 +191,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
           onNodeUnselect={onNodeUnselect}
           attachedNodes={attachedNodes}
           buttonSize={buttonSize}
+          onOpenChange={onAttachmentsPickerOpenChange}
           toolFileUpload={{
             useCase: "conversation",
             useCaseMetadata: {
