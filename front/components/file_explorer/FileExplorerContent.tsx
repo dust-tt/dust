@@ -139,7 +139,7 @@ export function FileExplorerContent({
 
   if (isEmpty && canGoUp) {
     return (
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-5 px-4">
           {viewMode === "list" ? (
             <div className="flex flex-col gap-0.5">{goUpItem}</div>
@@ -155,7 +155,7 @@ export function FileExplorerContent({
   }
 
   return (
-    <ScrollArea className="flex-1">
+    <ScrollArea className="min-h-0 flex-1">
       <div className="flex flex-col gap-5 px-4">
         {viewMode === "list" ? (
           <div className="flex flex-col gap-0.5">

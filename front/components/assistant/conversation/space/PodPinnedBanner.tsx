@@ -8,7 +8,7 @@ import logger from "@app/logger/logger";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionMapPinIcon,
+  ActionPushpinIcon,
   Button,
   cn,
   EyeSlashIcon,
@@ -89,12 +89,12 @@ function PodPinnedBannerControls({
           icon={EyeSlashIcon}
           variant="ghost"
           size="xs"
-          tooltip="Hide banner"
+          tooltip="Hide"
           onClick={onHide}
         />
         {isEditor && (
           <Button
-            icon={ActionMapPinIcon}
+            icon={ActionPushpinIcon}
             variant="ghost"
             size="xs"
             tooltip="Unpin"
@@ -126,7 +126,7 @@ function PodPinnedBannerCollapsedAffordance({
 }: PodPinnedBannerCollapsedAffordanceProps) {
   return (
     <div className="mb-2 flex min-w-0 items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-      <ActionMapPinIcon className="h-3.5 w-3.5 shrink-0" />
+      <ActionPushpinIcon className="h-3.5 w-3.5 shrink-0" />
       <span className="shrink-0">Frame</span>
       <span aria-hidden className="shrink-0 text-muted-foreground/50">
         ·
