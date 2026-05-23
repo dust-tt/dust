@@ -1,21 +1,25 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { findAgentsInMessage } from "@app/lib/utils/find_agents_in_message";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { transcribeStream } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
-import type formidable from "formidable";
+import type { HttpBindings } from "@hono/node-server";
+import formidable from "formidable";
+import { Hono } from "hono";
 import { stream } from "hono/streaming";
 
 export type PostTranscribeResponseBody = { text: string };
 
 // Mounted at /api/w/:wId/services/transcribe.
-const app = workspaceApp();
+//
+// We extend the workspace context with `HttpBindings` so we can reach the
+// underlying Node `IncomingMessage` via `ctx.env.incoming` and hand it to
+// `formidable.parse(...)` — matching the Next handler exactly, which also
+// streamed the multipart body through formidable from the raw request.
+const app = new Hono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 app.post("/", async (ctx) => {
   const auth = ctx.get("auth");
@@ -31,30 +35,22 @@ app.post("/", async (ctx) => {
     });
   }
 
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = await ctx.req.parseBody({ all: true });
-  } catch (err) {
+  const incoming = ctx.env?.incoming;
+  if (!incoming) {
     return apiError(ctx, {
-      status_code: 400,
+      status_code: 500,
       api_error: {
-        type: "invalid_request_error",
-        message: `File upload failed: ${normalizeError(err).message}`,
+        type: "internal_server_error",
+        message: "Multipart upload is not supported in this runtime.",
       },
     });
   }
 
-  const rawFile = parsed.file;
-  const blob =
-    rawFile instanceof File
-      ? rawFile
-      : Array.isArray(rawFile) &&
-          rawFile.length === 1 &&
-          rawFile[0] instanceof File
-        ? rawFile[0]
-        : null;
+  const form = formidable({ multiples: false });
+  const [, files] = await form.parse(incoming);
+  const maybeFiles = files.file;
 
-  if (!blob) {
+  if (!maybeFiles || maybeFiles.length !== 1) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
@@ -63,25 +59,7 @@ app.post("/", async (ctx) => {
       },
     });
   }
-
-  // Persist the blob to a tmp dir so the existing lib code (which reads from
-  // formidable.File.filepath) can keep working unchanged.
-  const tmpDir = await mkdtemp(join(tmpdir(), "transcribe-"));
-  const filepath = join(tmpDir, "upload");
-  const buffer = Buffer.from(await blob.arrayBuffer());
-  await writeFile(filepath, buffer);
-  const file = {
-    filepath,
-    originalFilename: blob.name ?? null,
-    size: blob.size,
-    newFilename: "upload",
-    mimetype: blob.type || null,
-    hash: null,
-    hashAlgorithm: false,
-    mtime: null,
-    toJSON: () => ({}) as never,
-    toString: () => filepath,
-  } as unknown as formidable.File;
+  const file = maybeFiles[0];
 
   const statsd = getStatsDClient();
   const totalStartMs = performance.now();
