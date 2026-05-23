@@ -1,16 +1,12 @@
-import type {
-  BaseKnowledgeItem,
-  KnowledgeItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
   computeHasChildren,
   isFullKnowledgeItem,
-  KnowledgeNodeView,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import type {
+  BaseKnowledgeItem,
+  KnowledgeItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { Node } from "@tiptap/core";
-import type { NodeViewProps } from "@tiptap/react";
-import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
-import type React from "react";
 
 import {
   KNOWLEDGE_TAG,
@@ -28,21 +24,6 @@ const KNOWLEDGE_CHIP_CLASS =
 // namespace elements. Using the emoji in both paths keeps additions and deletions
 // visually consistent in the suggestion diff view.
 const DOCUMENT_ICON = "📄";
-
-const KnowledgeNodeReadOnlyView: React.FC<NodeViewProps> = ({ node }) => {
-  const { selectedItems } = node.attrs;
-  const item = selectedItems[0] as KnowledgeItem | undefined;
-  if (!item) {
-    return null;
-  }
-  // No background or explicit color so diff decorations act on the content directly
-  return (
-    <NodeViewWrapper as="span" className={KNOWLEDGE_CHIP_CLASS}>
-      <span>{DOCUMENT_ICON}</span>
-      <span>{` ${item.label}`}</span>
-    </NodeViewWrapper>
-  );
-};
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -243,12 +224,6 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
         selectedItems: [selectedItem],
       },
     };
-  },
-
-  addNodeView() {
-    return ReactNodeViewRenderer(
-      this.options.readOnly ? KnowledgeNodeReadOnlyView : KnowledgeNodeView
-    );
   },
 
   addCommands() {
