@@ -1,14 +1,78 @@
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import type { AppType, SpecificationType } from "@app/types/app";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { RunConfig, RunType } from "@app/types/run";
+import type { RunConfig, RunType, TraceType } from "@app/types/run";
 import fs from "fs";
 import path from "path";
 import peg from "pegjs";
 
 import { recomputeIndents, restoreTripleBackticks } from "../specification";
+
+/**
+ * Walks an app-run's `block_execution` traces and emits one `RunUsageType` per trace that carries
+ * `meta.token_usage`, attaching the block's provider/model and the computed cost in micro-USD.
+ */
+export function extractUsageFromExecutions(
+  block: { provider_id: ModelProviderIdType; model_id: ModelIdType },
+  traces: TraceType[][]
+): RunUsageType[] {
+  if (!block) {
+    return [];
+  }
+
+  const usages: RunUsageType[] = [];
+
+  traces.forEach((tracesInner) => {
+    tracesInner.forEach((trace) => {
+      if (trace?.meta) {
+        const { token_usage } = trace.meta as {
+          token_usage: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            cached_tokens?: number;
+            cache_creation_input_tokens?: number;
+            reasoning_tokens?: number;
+          };
+        };
+        if (token_usage) {
+          const promptTokens = token_usage.prompt_tokens;
+          const completionTokens = token_usage.completion_tokens;
+          const cachedTokens = token_usage.cached_tokens;
+          const cacheCreationTokens = token_usage.cache_creation_input_tokens;
+
+          const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+            modelId: block.model_id,
+            promptTokens,
+            completionTokens,
+            cachedTokens: cachedTokens ?? null,
+            cacheCreationTokens: cacheCreationTokens ?? null,
+          });
+
+          usages.push({
+            providerId: block.provider_id,
+            modelId: block.model_id,
+            promptTokens,
+            completionTokens,
+            cachedTokens: cachedTokens ?? null,
+            cacheCreationTokens: cacheCreationTokens ?? null,
+            costMicroUsd: usageCostMicroUsd,
+            isBatch: false,
+          });
+        }
+      }
+    });
+  });
+
+  return usages;
+}
 
 export async function getSpecification(
   app: AppType,

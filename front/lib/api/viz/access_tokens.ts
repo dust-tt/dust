@@ -9,6 +9,8 @@ import {
   frameContentType,
   frameSlideshowContentType,
 } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -93,4 +95,31 @@ export function verifyVizAccessToken(
   }
 
   return parseResult.data;
+}
+
+const BEARER_PREFIX = "Bearer ";
+
+/**
+ * Pulls a viz access token out of an `Authorization: Bearer ...` header and verifies it. All
+ * failure cases map to a `401 / workspace_auth_error` at the handler layer; only the user-facing
+ * message differs, which is why the error type is a plain string rather than an HTTP envelope.
+ */
+export function extractAndVerifyVizAccessTokenFromHeader(
+  authHeader: string | undefined
+): Result<VizAccessTokenPayload, string> {
+  if (!authHeader) {
+    return new Err("Authorization header required.");
+  }
+  if (!authHeader.startsWith(BEARER_PREFIX)) {
+    return new Err("Authorization header must use Bearer token format.");
+  }
+  const accessToken = authHeader.substring(BEARER_PREFIX.length).trim();
+  if (!accessToken) {
+    return new Err("Access token is required.");
+  }
+  const tokenPayload = verifyVizAccessToken(accessToken);
+  if (!tokenPayload) {
+    return new Err("Invalid or expired access token.");
+  }
+  return new Ok(tokenPayload);
 }

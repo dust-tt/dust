@@ -3,11 +3,10 @@ import {
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { getActiveUserFromAuthOrEmail } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -140,31 +139,10 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostMessageFeedbackResponseType>>,
   auth: Authenticator
 ): Promise<void> {
-  // Try to get user from auth, or from email header if using API key
-  let userResource = auth.user();
-  let user = userResource ? userResource.toJSON() : null;
-
-  if (!user && auth.isKey()) {
-    // Check if we have a user email header (used by Slack integration)
-    const userEmail = getUserEmailFromHeaders(req.headers);
-    if (userEmail) {
-      // Find user by email
-      const users = await UserResource.listByEmail(userEmail);
-      if (users.length > 0) {
-        const workspace = auth.getNonNullableWorkspace();
-        const { memberships } = await MembershipResource.getActiveMemberships({
-          users,
-          workspace,
-        });
-        const activeUserIds = new Set(memberships.map((m) => m.userId));
-        const firstActive = users.find((u) => activeUserIds.has(u.id));
-        if (firstActive) {
-          userResource = firstActive;
-          user = firstActive.toJSON();
-        }
-      }
-    }
-  }
+  const user = await getActiveUserFromAuthOrEmail(
+    auth,
+    getUserEmailFromHeaders(req.headers)
+  );
 
   if (!user) {
     return apiError(req, res, {
