@@ -1076,18 +1076,18 @@ const InputBarContainer = ({
 
   const prevIsCompactRef = useRef(isCompact);
   useEffect(() => {
-    if (!prevIsCompactRef.current && isCompact) {
-      editorService.blur();
-    } else if (prevIsCompactRef.current && !isCompact) {
-      editorService.focusEnd();
-      if (editor && !editor.isDestroyed) {
-        requestAnimationFrame(() => {
-          editor.view.dispatch(editor.state.tr);
-        });
-      }
+    if (
+      prevIsCompactRef.current &&
+      !isCompact &&
+      editor &&
+      !editor.isDestroyed
+    ) {
+      requestAnimationFrame(() => {
+        editor.view.dispatch(editor.state.tr);
+      });
     }
     prevIsCompactRef.current = isCompact;
-  }, [editor, editorService, isCompact]);
+  }, [editor, isCompact]);
 
   return (
     <>
