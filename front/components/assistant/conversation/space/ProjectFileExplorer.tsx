@@ -49,7 +49,7 @@ import {
 } from "@app/types/files";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionMapPinIcon,
+  ActionPushpinIcon,
   Button,
   CloudArrowLeftRightIcon,
   CloudArrowUpIcon,
@@ -282,7 +282,7 @@ function ProjectFileExplorerContent({
       return [
         {
           label: pinned ? "Unpin from banner" : "Pin as Pod banner",
-          icon: ActionMapPinIcon,
+          icon: ActionPushpinIcon,
           onClick: (e) => {
             e.stopPropagation();
             void togglePin(entry.path, { fileName: entry.fileName });

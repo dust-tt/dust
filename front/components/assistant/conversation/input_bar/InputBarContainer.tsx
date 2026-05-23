@@ -1,6 +1,7 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
+import { INPUT_BAR_COMPACT_PILL_INNER_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -122,6 +123,7 @@ export interface InputBarContainerProps {
   isAgentBuilder?: boolean;
   isCompact?: boolean;
   onExpandInputBar?: () => void;
+  onEditorFocusChange?: (isFocused: boolean) => void;
   isSubmitting: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
@@ -170,6 +172,7 @@ const InputBarContainer = ({
   onShake,
   isCompact = false,
   onExpandInputBar,
+  onEditorFocusChange,
 }: InputBarContainerProps) => {
   const isSubmitBlocked = submitBlockMessage !== null;
   const isCompactRef = useRef(isCompact);
@@ -535,6 +538,28 @@ const InputBarContainer = ({
   editorServiceRef.current = editorService;
   const saveDraftRef = useRef(saveDraft);
   saveDraftRef.current = saveDraft;
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+
+    const handleFocus = () => {
+      onEditorFocusChange?.(true);
+    };
+    const handleBlur = () => {
+      onEditorFocusChange?.(false);
+    };
+
+    editor.on("focus", handleFocus);
+    editor.on("blur", handleBlur);
+    onEditorFocusChange?.(editor.isFocused);
+
+    return () => {
+      editor.off("focus", handleFocus);
+      editor.off("blur", handleBlur);
+    };
+  }, [editor, onEditorFocusChange]);
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
@@ -1037,7 +1062,8 @@ const InputBarContainer = ({
       {isCompact && (
         <div
           className={cn(
-            "relative flex h-8 w-auto flex-row items-center gap-1 px-1 sm:pt-0",
+            INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
+            "relative w-auto px-1 sm:pt-0",
             isVoiceActive && "pl-2"
           )}
         >

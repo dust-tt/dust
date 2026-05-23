@@ -2,6 +2,7 @@ import { useBlockedActionsContext } from "@app/components/assistant/conversation
 import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBarMessageNavigation } from "@app/components/assistant/conversation/input_bar/InputBarMessageNavigation";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -33,16 +34,10 @@ import {
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  BoltIcon,
-  Button,
   ContentMessageAction,
   ContentMessageInline,
   EmptyCTA,
-  IconButton,
   InformationCircleIcon,
-  StopIcon,
 } from "@dust-tt/sparkle";
 import {
   useVirtuosoLocation,
@@ -91,6 +86,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
   const [isInputBarExpanded, setIsInputBarExpanded] = useState(true);
+  const [isEditorFocused, setIsEditorFocused] = useState(false);
   const prevListOffsetRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -107,6 +103,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
 
   const isInputBarCompact =
     isMobile && !agentBuilderContext && !isInputBarExpanded;
+  const effectiveIsCompact = isInputBarCompact && !isEditorFocused;
 
   const allMessages = methods.data.get();
 
@@ -458,6 +455,27 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     void mutateConversation();
   };
 
+  const handleStopClick = () => {
+    if (hasPendingMessages) {
+      void handleAction("interrupt");
+    } else {
+      void handleAction("cancel");
+    }
+  };
+
+  const messageNavigationProps = {
+    showStopButton,
+    showMessageNavigation,
+    stopButtonLabel: getStopButtonLabel(),
+    hasPendingMessages,
+    pendingAction,
+    onStopClick: handleStopClick,
+    canScrollUp,
+    canScrollDown,
+    onScrollUp: scrollToPreviousUserMessage,
+    onScrollDown: scrollToNextUserMessage,
+  };
+
   if (context.projectId && context.isProjectArchived) {
     return (
       <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
@@ -476,52 +494,11 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       )}
     >
       <div className="flex w-full justify-center gap-2">
-        {showNavigationContainer && (
-          <div
-            className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
-            style={{
-              position: "absolute",
-              top: "-2rem",
-            }}
-          >
-            {showStopButton && (
-              <>
-                <Button
-                  variant="ghost"
-                  label={getStopButtonLabel()}
-                  icon={hasPendingMessages ? BoltIcon : StopIcon}
-                  onClick={
-                    hasPendingMessages
-                      ? () => handleAction("interrupt")
-                      : () => handleAction("cancel")
-                  }
-                  disabled={pendingAction !== null}
-                  size="xs"
-                />
-                {showMessageNavigation && (
-                  <div className="h-4 w-px bg-border dark:bg-border-night" />
-                )}
-              </>
-            )}
-            {showMessageNavigation && (
-              <>
-                <IconButton
-                  icon={ArrowUpIcon}
-                  onClick={scrollToPreviousUserMessage}
-                  disabled={!canScrollUp}
-                  size="xs"
-                  tooltip="Previous user message"
-                />
-                <IconButton
-                  icon={ArrowDownIcon}
-                  onClick={scrollToNextUserMessage}
-                  disabled={!canScrollDown}
-                  size="xs"
-                  tooltip="Next user message"
-                />
-              </>
-            )}
-          </div>
+        {showNavigationContainer && !effectiveIsCompact && (
+          <InputBarMessageNavigation
+            variant="floating"
+            {...messageNavigationProps}
+          />
         )}
       </div>
       {blockedActions.length > 0 && (
@@ -582,22 +559,38 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           isOwner={isActiveWakeUpOwner}
         />
       )}
-      <InputBar
-        owner={context.owner}
-        user={context.user}
-        onSubmit={context.handleSubmit}
-        stickyMentions={autoMentions}
-        conversation={context.conversation}
-        draftKey={context.draftKey}
-        disableAutoFocus={isMobile || hasUserAnswerRequired}
-        disableUserMentions={!!agentBuilderContext}
-        actions={agentBuilderContext?.actionsToShow}
-        isSubmitting={agentBuilderContext?.isSubmitting === true}
-        isAgentBuilder={!!agentBuilderContext}
-        submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
-        isCompact={isInputBarCompact}
-        onExpandInputBar={() => setIsInputBarExpanded(true)}
-      />
+      <div
+        className={classNames(
+          "relative w-full",
+          effectiveIsCompact && "flex justify-center"
+        )}
+      >
+        {effectiveIsCompact && showNavigationContainer && (
+          <div className="absolute right-0 top-1/2 z-10 -translate-y-1/2">
+            <InputBarMessageNavigation
+              variant="compact"
+              {...messageNavigationProps}
+            />
+          </div>
+        )}
+        <InputBar
+          owner={context.owner}
+          user={context.user}
+          onSubmit={context.handleSubmit}
+          stickyMentions={autoMentions}
+          conversation={context.conversation}
+          draftKey={context.draftKey}
+          disableAutoFocus={isMobile || hasUserAnswerRequired}
+          disableUserMentions={!!agentBuilderContext}
+          actions={agentBuilderContext?.actionsToShow}
+          isSubmitting={agentBuilderContext?.isSubmitting === true}
+          isAgentBuilder={!!agentBuilderContext}
+          submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
+          isCompact={isInputBarCompact}
+          onExpandInputBar={() => setIsInputBarExpanded(true)}
+          onEditorFocusChange={setIsEditorFocused}
+        />
+      </div>
     </div>
   );
 };

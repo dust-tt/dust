@@ -1,5 +1,6 @@
 import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
 import type { FileExplorerSortMode } from "@app/components/file_explorer/types";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   ActionTimeIcon,
   ArrowDownIcon,
@@ -54,6 +55,7 @@ interface SortDropdownProps {
 }
 
 function SortDropdown({ value, onValueChange }: SortDropdownProps) {
+  const isMobile = useIsMobile();
   const current = SORT_ITEMS[value];
   return (
     <DropdownMenu>
@@ -62,7 +64,8 @@ function SortDropdown({ value, onValueChange }: SortDropdownProps) {
           variant="outline"
           size="sm"
           icon={current.icon}
-          label={current.label}
+          label={isMobile ? undefined : current.label}
+          tooltip={isMobile ? current.label : undefined}
           isSelect
         />
       </DropdownMenuTrigger>

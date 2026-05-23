@@ -7,6 +7,7 @@ import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { INPUT_BAR_COMPACT_PILL_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
@@ -67,6 +68,7 @@ interface InputBarProps {
   placeholder?: string;
   isCompact?: boolean;
   onExpandInputBar?: () => void;
+  onEditorFocusChange?: (focused: boolean) => void;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -88,9 +90,20 @@ export const InputBar = React.memo(function InputBar({
   placeholder,
   isCompact = false,
   onExpandInputBar,
+  onEditorFocusChange,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
+  const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const effectiveIsCompact = isCompact && !isEditorFocused;
+
+  const handleEditorFocusChange = useCallback(
+    (focused: boolean) => {
+      setIsEditorFocused(focused);
+      onEditorFocusChange?.(focused);
+    },
+    [onEditorFocusChange]
+  );
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
@@ -393,7 +406,7 @@ export const InputBar = React.memo(function InputBar({
     <div
       className={classNames(
         "flex w-full flex-col",
-        isCompact && "items-center"
+        effectiveIsCompact && "items-center"
       )}
     >
       <PlanCard
@@ -406,11 +419,9 @@ export const InputBar = React.memo(function InputBar({
           isShaking && "animate-shake",
           "relative flex flex-col items-stretch gap-0 sm:flex-row",
           "transition-all duration-300",
-          !isCompact && "w-full flex-1 self-stretch",
-          isCompact
-            ? classNames(
-                "w-fit shrink-0 rounded-full border border-border/30 bg-muted-background/70 px-1 py-0.5 dark:border-border-night/30 dark:bg-muted-background-night/70"
-              )
+          !effectiveIsCompact && "w-full flex-1 self-stretch",
+          effectiveIsCompact
+            ? INPUT_BAR_COMPACT_PILL_CLASSES
             : classNames(
                 "w-full rounded-2xl",
                 "bg-muted-background dark:bg-muted-background-night",
@@ -434,10 +445,10 @@ export const InputBar = React.memo(function InputBar({
         <div
           className={classNames(
             "relative flex flex-col",
-            !isCompact && "w-full flex-1"
+            !effectiveIsCompact && "w-full flex-1"
           )}
         >
-          {!isCompact && (
+          {!effectiveIsCompact && (
             <InputBarAttachments
               owner={owner}
               files={{ service: fileUploaderService }}
@@ -480,8 +491,9 @@ export const InputBar = React.memo(function InputBar({
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
             placeholder={placeholder}
             onShake={handleShake}
-            isCompact={isCompact}
+            isCompact={effectiveIsCompact}
             onExpandInputBar={onExpandInputBar}
+            onEditorFocusChange={handleEditorFocusChange}
           />
         </div>
       </div>
