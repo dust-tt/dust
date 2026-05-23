@@ -3,7 +3,7 @@ import {
   BLOCK_ID_UNIQUE_ID_NODE_TYPES,
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
-import { KNOWLEDGE_TAG_REGEX } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { KNOWLEDGE_TAG_REGEX } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeConstants";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";

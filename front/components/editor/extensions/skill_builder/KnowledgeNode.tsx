@@ -12,6 +12,11 @@ import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import type React from "react";
 
+import {
+  KNOWLEDGE_TAG,
+  KNOWLEDGE_TAG_REGEX,
+} from "./KnowledgeNodeConstants";
+
 export interface KnowledgeNodeAttributes {
   selectedItems: KnowledgeItem[];
 }
@@ -48,11 +53,6 @@ declare module "@tiptap/core" {
 }
 
 export const KNOWLEDGE_NODE_TYPE = "knowledgeNode";
-
-const KNOWLEDGE_TAG = "knowledge";
-export const KNOWLEDGE_TAG_REGEX = new RegExp(
-  `^<${KNOWLEDGE_TAG}\\s+([^>]+)\\s*/>`
-);
 
 export interface KnowledgeNodeOptions {
   readOnly: boolean;
