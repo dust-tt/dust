@@ -40,11 +40,13 @@ import me from "./me";
 import members from "./members";
 import metronome from "./metronome";
 import models from "./models";
+import projectTasks from "./project_tasks";
 import providers from "./providers";
 import provisioningStatus from "./provisioning-status";
 import sandbox from "./sandbox";
 import search from "./search";
 import seats from "./seats";
+import services from "./services";
 import skills from "./skills";
 import spaces from "./spaces";
 import sso from "./sso";
@@ -226,6 +228,10 @@ app.use(
 );
 app.use(
   "/subscriptions/trial-info/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+app.use(
+  "/subscriptions/checkout/*",
   workspaceAuth({ doesNotRequireCanUseProduct: true })
 );
 
@@ -566,11 +572,13 @@ app.route("/me", me);
 app.route("/members", members);
 app.route("/metronome", metronome);
 app.route("/models", models);
+app.route("/project_tasks", projectTasks);
 app.route("/providers", providers);
 app.route("/provisioning-status", provisioningStatus);
 app.route("/sandbox", sandbox);
 app.route("/search", search);
 app.route("/seats", seats);
+app.route("/services", services);
 app.route("/skills", skills);
 app.route("/sso", sso);
 app.route("/spaces", spaces);

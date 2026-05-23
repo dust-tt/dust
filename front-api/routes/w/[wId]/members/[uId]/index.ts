@@ -24,6 +24,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import seatType from "./seat-type";
+import spendLimit from "./spend_limit";
 
 const PostMemberBodySchema = z.object({
   role: z.string(),
@@ -34,6 +35,7 @@ const PostMemberBodySchema = z.object({
 const app = workspaceApp();
 
 app.route("/seat-type", seatType);
+app.route("/spend_limit", spendLimit);
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

@@ -15,6 +15,9 @@ import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 import { z } from "zod";
 
+import awuPurchase from "./awu-purchase";
+import awuPurchaseStatus from "./awu-purchase-status";
+import checkout from "./checkout";
 import checkoutStatus from "./checkout-status";
 import pricing from "./pricing";
 import status from "./status";
@@ -247,6 +250,9 @@ app.patch(
   }
 );
 
+app.route("/awu-purchase", awuPurchase);
+app.route("/awu-purchase-status", awuPurchaseStatus);
+app.route("/checkout", checkout);
 app.route("/checkout-status", checkoutStatus);
 app.route("/pricing", pricing);
 app.route("/status", status);
