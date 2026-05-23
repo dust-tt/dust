@@ -165,7 +165,6 @@ export default function SpaceSideBarMenu({
               <div className="flex items-center justify-between pr-1">
                 <NavigationListLabel
                   label={sectionDetails.label}
-                  variant="primary"
                 />
                 {sectionDetails.displayCreateSpaceButton &&
                   isAdmin &&
