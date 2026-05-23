@@ -1,15 +1,14 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_resource";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
-import type formidable from "formidable";
+import type { HttpBindings } from "@hono/node-server";
+import { IncomingForm } from "formidable";
+import { Hono } from "hono";
 
 const privateUploadGcs = getPrivateUploadBucket();
 
@@ -26,7 +25,11 @@ function isValidContentFormat(
 }
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/raw_content_fragment.
-const app = workspaceApp();
+//
+// POST consumes multipart via formidable on the raw Node `IncomingMessage`
+// exposed by `@hono/node-server` (`ctx.env.incoming`) — matching the Next
+// handler.
+const app = new Hono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");
@@ -106,17 +109,24 @@ app.post("/", async (ctx) => {
     contentFormat: "raw",
   });
 
-  try {
-    const parsed = await ctx.req.parseBody({ all: true });
-    const rawFiles = parsed.file;
-    const file =
-      rawFiles instanceof File
-        ? rawFiles
-        : Array.isArray(rawFiles) && rawFiles[0] instanceof File
-          ? rawFiles[0]
-          : null;
+  const incoming = ctx.env?.incoming;
+  if (!incoming) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Multipart upload is not supported in this runtime.",
+      },
+    });
+  }
 
-    if (!file) {
+  try {
+    const form = new IncomingForm();
+    const [, files] = await form.parse(incoming);
+
+    const maybeFiles = files.file;
+
+    if (!maybeFiles) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -126,26 +136,9 @@ app.post("/", async (ctx) => {
       });
     }
 
-    // Persist to a temp file so the existing lib code (which reads from
-    // formidable.File.filepath) can keep working unchanged.
-    const tmpDir = await mkdtemp(join(tmpdir(), "raw-content-fragment-"));
-    const localPath = join(tmpDir, "upload");
-    await writeFile(localPath, Buffer.from(await file.arrayBuffer()));
+    const [file] = maybeFiles;
 
-    const formidableFile: formidable.File = {
-      filepath: localPath,
-      originalFilename: file.name ?? null,
-      size: file.size,
-      newFilename: "upload",
-      mimetype: file.type || null,
-      hash: null,
-      hashAlgorithm: false,
-      mtime: null,
-      toJSON: () => ({}) as never,
-      toString: () => localPath,
-    } as unknown as formidable.File;
-
-    await privateUploadGcs.uploadFileToBucket(formidableFile, filePath);
+    await privateUploadGcs.uploadFileToBucket(file, filePath);
 
     return ctx.json({ sourceUrl: downloadUrl });
   } catch (error) {

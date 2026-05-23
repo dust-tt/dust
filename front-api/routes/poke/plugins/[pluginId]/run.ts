@@ -1,6 +1,3 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { PluginResponse } from "@app/lib/api/poke/types";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
@@ -12,28 +9,14 @@ import {
   supportedResourceTypes,
 } from "@app/types/poke/plugins";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { pokeApp } from "@front-api/middlewares/ctx";
+import type { PokeCtx } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { HttpBindings } from "@hono/node-server";
+import { IncomingForm } from "formidable";
+import { Hono } from "hono";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
-
-// Subset of `formidable.File` that poke plugins consume from file args
-// (the plugin Zod schema declares files as `z.any()`, so this is the
-// runtime contract). Used to bridge Web `File` to formidable-style on the
-// multipart path without an `as` cast.
-interface BridgedFormidableFile {
-  filepath: string;
-  originalFilename: string | null;
-  size: number;
-  newFilename: string;
-  mimetype: string | null;
-  hash: null;
-  hashAlgorithm: false;
-  mtime: null;
-  toJSON: () => Record<string, never>;
-  toString: () => string;
-}
 
 const RunPluginQuerySchema = z.object({
   resourceType: z.enum(supportedResourceTypes),
@@ -46,7 +29,11 @@ export interface PokeRunPluginResponseBody {
 }
 
 // Mounted at /api/poke/plugins/:pluginId/run.
-const app = pokeApp();
+//
+// We extend the poke context with `HttpBindings` so we can hand the raw Node
+// `IncomingMessage` (exposed by `@hono/node-server` on `ctx.env.incoming`) to
+// `formidable.parse(...)` — matching the Next handler.
+const app = new Hono<PokeCtx & { Bindings: HttpBindings }>();
 
 app.post(
   "/",
@@ -120,9 +107,28 @@ app.post(
       contentType.includes("multipart/form-data") ||
       contentType.includes("application/x-www-form-urlencoded")
     ) {
-      let parsed: Record<string, string | File>;
+      const incoming = ctx.env?.incoming;
+      if (!incoming) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Multipart upload is not supported in this runtime.",
+          },
+        });
+      }
+
       try {
-        parsed = await ctx.req.parseBody();
+        const form = new IncomingForm();
+        const [fields, files] = await form.parse(incoming);
+
+        // Flatten fields and files into a single object (formidable returns
+        // every value as an array; collapse to the first entry to match the
+        // Next handler).
+        formData = Object.fromEntries([
+          ...Object.entries(fields).map(([key, value]) => [key, value?.[0]]),
+          ...Object.entries(files).map(([key, value]) => [key, value?.[0]]),
+        ]);
       } catch (err) {
         return apiError(ctx, {
           status_code: 400,
@@ -132,37 +138,6 @@ app.post(
           },
         });
       }
-
-      // Bridge Web `File` instances to a formidable.File-like shape so
-      // existing plugins that read `file.filepath` keep working unchanged.
-      const bridged: Record<string, BridgedFormidableFile | string> = {};
-      let tmpDir: string | null = null;
-      let fileIndex = 0;
-      for (const [key, value] of Object.entries(parsed)) {
-        if (value instanceof File) {
-          if (!tmpDir) {
-            tmpDir = await mkdtemp(join(tmpdir(), "poke-plugin-run-"));
-          }
-          const filename = `upload-${fileIndex++}`;
-          const filepath = join(tmpDir, filename);
-          await writeFile(filepath, Buffer.from(await value.arrayBuffer()));
-          bridged[key] = {
-            filepath,
-            originalFilename: value.name || null,
-            size: value.size,
-            newFilename: filename,
-            mimetype: value.type || null,
-            hash: null,
-            hashAlgorithm: false,
-            mtime: null,
-            toJSON: () => ({}),
-            toString: () => filepath,
-          };
-        } else {
-          bridged[key] = value;
-        }
-      }
-      formData = bridged;
     } else {
       return apiError(ctx, {
         status_code: 400,
