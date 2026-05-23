@@ -17,7 +17,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
@@ -27,7 +27,7 @@ const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 export async function getAgentConfigurationAsYAMLConfig(
   auth: Authenticator,
   agentId: string
-): Promise<Result<AgentYAMLConfig, APIErrorWithStatusCode>> {
+): Promise<Result<AgentYAMLConfig, APIErrorWithContentfulStatusCode>> {
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId,
     variant: "full",
@@ -181,7 +181,10 @@ export async function exportAgentConfigurationAsYAML(
   auth: Authenticator,
   agentId: string
 ): Promise<
-  Result<{ yamlContent: string; filename: string }, APIErrorWithStatusCode>
+  Result<
+    { yamlContent: string; filename: string },
+    APIErrorWithContentfulStatusCode
+  >
 > {
   const yamlConfigResult = await getAgentConfigurationAsYAMLConfig(
     auth,

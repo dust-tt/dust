@@ -8,7 +8,7 @@ import {
 } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getClientIp } from "@app/lib/utils/request";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import { getUserEmailFromHeaders } from "@app/types/user";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
@@ -29,7 +29,7 @@ function readHeaders(ctx: Context): HeaderRecord {
 
 function validateWorkspaceFromAuth(
   auth: Authenticator
-): APIErrorWithStatusCode | null {
+): APIErrorWithContentfulStatusCode | null {
   const owner = auth.workspace();
   const plan = auth.plan();
   if (!owner || !plan) {

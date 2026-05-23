@@ -14,6 +14,7 @@ import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
 
 const COMPOSITE_AGG_SIZE = 10000;
@@ -59,7 +60,7 @@ export type ProgrammaticCostExport = {
 };
 
 type ProgrammaticCostExportError = {
-  status: number;
+  status: ContentfulStatusCode;
   error: APIError;
 };
 

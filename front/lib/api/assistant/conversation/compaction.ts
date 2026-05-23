@@ -25,7 +25,7 @@ import {
   isCompactionMessageType,
 } from "@app/types/assistant/conversation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -48,7 +48,10 @@ export async function compactConversation(
     sourceConversation?: CompactionSourceConversation;
   }
 ): Promise<
-  Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
+  Result<
+    { compactionMessage: CompactionMessageType },
+    APIErrorWithContentfulStatusCode
+  >
 > {
   const owner = auth.getNonNullableWorkspace();
 

@@ -1,11 +1,15 @@
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationErrorType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { isOverflowingDBString } from "@app/types/shared/utils/general";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
+const STATUS_FOR_ERROR_TYPE: Record<
+  ConversationErrorType,
+  ContentfulStatusCode
+> = {
   conversation_access_restricted: 403,
   conversation_not_found: 404,
   conversation_with_unavailable_agent: 403,
@@ -21,7 +25,9 @@ const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
  * shape. Use this from any framework (Next or Hono) — only the response
  * dispatch differs.
  */
-export function getConversationApiError(error: Error): APIErrorWithStatusCode {
+export function getConversationApiError(
+  error: Error
+): APIErrorWithContentfulStatusCode {
   if (error instanceof ConversationError) {
     return {
       status_code: STATUS_FOR_ERROR_TYPE[error.type],

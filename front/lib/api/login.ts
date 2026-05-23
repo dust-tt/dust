@@ -22,7 +22,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { readAnonymousIdFromCookies } from "@app/lib/utils/anonymous_id";
 import type { UTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export interface PerformLoginOptions {
@@ -55,7 +55,7 @@ export interface PerformLoginRequest {
 export type LoginOutcome =
   | { kind: "redirect"; url: string }
   | { kind: "unauthorized" }
-  | { kind: "apiError"; error: APIErrorWithStatusCode };
+  | { kind: "apiError"; error: APIErrorWithContentfulStatusCode };
 
 function resolveClientIp(request: PerformLoginRequest): string | undefined {
   const { forwardedFor, remoteAddress } = request;

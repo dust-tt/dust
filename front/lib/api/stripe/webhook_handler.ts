@@ -55,7 +55,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -667,7 +667,7 @@ async function handleStripeCheckoutCompleted({
  * the event is constructed, this function does everything else.
  *
  * Returns `Ok(undefined)` on success (route should respond 200) and an
- * `APIErrorWithStatusCode` on failures the caller should surface as an HTTP
+ * `APIErrorWithContentfulStatusCode` on failures the caller should surface as an HTTP
  * error response.
  */
 export async function processStripeWebhookEvent({
@@ -678,7 +678,7 @@ export async function processStripeWebhookEvent({
   event: Stripe.Event;
   stripe: Stripe;
   now: Date;
-}): Promise<Result<void, APIErrorWithStatusCode>> {
+}): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
   logger.info({ stripeError: false, event }, "Processing Stripe event.");
 
   let stripeSubscription;

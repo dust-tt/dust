@@ -13,7 +13,7 @@ import {
   MCPServerConnectionResource,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -63,14 +63,16 @@ type PostConnectionAuthReference =
   | { kind: "oauth_connection"; connectionId: string }
   | { kind: "credential"; credentialId: string };
 
-function makeInvalidRequestError(message: string): APIErrorWithStatusCode {
+function makeInvalidRequestError(
+  message: string
+): APIErrorWithContentfulStatusCode {
   return {
     status_code: 400,
     api_error: { type: "invalid_request_error", message },
   };
 }
 
-function makeCredentialNotFoundError(): APIErrorWithStatusCode {
+function makeCredentialNotFoundError(): APIErrorWithContentfulStatusCode {
   return {
     status_code: 404,
     api_error: {
@@ -105,7 +107,7 @@ async function validateCredentialAuthReference(
     serverType: ReturnType<typeof getServerTypeAndIdFromSId>["serverType"];
     credentialId: string;
   }
-): Promise<APIErrorWithStatusCode | null> {
+): Promise<APIErrorWithContentfulStatusCode | null> {
   if (connectionType !== "workspace") {
     return makeInvalidRequestError(
       "Credential-backed MCP server connections are only supported for workspace connections."
@@ -174,7 +176,7 @@ async function validateAuthReferenceForMCPConnection(
     connectionType: MCPServerConnectionConnectionType;
     serverType: ReturnType<typeof getServerTypeAndIdFromSId>["serverType"];
   }
-): Promise<APIErrorWithStatusCode | null> {
+): Promise<APIErrorWithContentfulStatusCode | null> {
   if (authReference.kind === "oauth_connection") {
     const ownershipRes = await checkConnectionOwnership(
       auth,

@@ -17,7 +17,7 @@ import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -190,7 +190,9 @@ export async function handleMembershipInvitations(
     invitationRequests: MembershipInvitationBlob[];
     force?: boolean;
   }
-): Promise<Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>> {
+): Promise<
+  Result<HandleMembershipInvitationResult[], APIErrorWithContentfulStatusCode>
+> {
   const { maxUsers } = subscription.plan.limits.users;
 
   // Emails are sent after the transaction commits so the DB transaction is
@@ -199,7 +201,7 @@ export async function handleMembershipInvitations(
     async (
       t
     ): Promise<
-      Result<InvitationTransactionPayload, APIErrorWithStatusCode>
+      Result<InvitationTransactionPayload, APIErrorWithContentfulStatusCode>
     > => {
       if (maxUsers !== -1) {
         await getWorkspaceAdministrationVersionLock(owner, t);

@@ -26,7 +26,7 @@ import {
   type WakeUpStatus,
   type WakeUpType,
 } from "@app/types/assistant/wakeups";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -342,7 +342,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   static async canUserInteract(
     auth: Authenticator,
     conversation: ConversationWithoutContentType
-  ): Promise<Result<void, APIErrorWithStatusCode>> {
+  ): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
     const activeWakeUps = await this.listByConversation(auth, conversation, {
       status: ACTIVE_WAKE_UP_STATUSES,
     });
