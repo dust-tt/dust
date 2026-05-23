@@ -15,13 +15,12 @@ import { isAdmin } from "@app/types/user";
 import {
   CollapseButton,
   cn,
-  NavTabPill,
-  NavTabPillContent,
-  NavTabPillList,
-  NavTabPillTrigger,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
+  NavTabPill,
+  NavTabPillList,
+  NavTabPillTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useContext, useMemo, useState } from "react";
@@ -81,7 +80,10 @@ export const NavigationSidebar = React.forwardRef<
           <SidebarBanners />
         </div>
         {navs.length > 1 && (
-          <NavTabPill value={currentTab?.id ?? "conversations"} className="mx-sidebar-side-spacing">
+          <NavTabPill
+            value={currentTab?.id ?? "conversations"}
+            className="mx-sidebar-side-spacing"
+          >
             <NavTabPillList>
               {navs.map((tab) => (
                 <div key={tab.id} ref={tab.ref ?? undefined}>
@@ -105,41 +107,44 @@ export const NavigationSidebar = React.forwardRef<
               )}
             </NavTabPillList>
             {navs.map((tab) => (
-                <NavigationList key={tab.id}>
-                  {subNavigation &&
-                    tab.isCurrent(activePath) &&
-                    subNavigation.map((nav) => (
-                      <React.Fragment key={`nav-${nav.label}`}>
-                        {nav.label && (
-                          <NavigationListLabel
-                            label={nav.label}
-                          />
-                        )}
-                        {nav.menus
-                          .filter(
-                            (menu) =>
-                              !menu.featureFlag ||
-                              featureFlags.includes(menu.featureFlag)
-                          )
-                          .map((menu) => (
-                            <React.Fragment key={menu.id}>
-                              <NavigationListItem
-                                selected={menu.current}
-                                label={menu.label}
-                                icon={menu.icon}
-                                href={menu.href}
-                                target={menu.target}
-                              />
-                            </React.Fragment>
-                          ))}
-                      </React.Fragment>
-                    ))}
-                </NavigationList>
+              <NavigationList key={tab.id}>
+                {subNavigation &&
+                  tab.isCurrent(activePath) &&
+                  subNavigation.map((nav) => (
+                    <React.Fragment key={`nav-${nav.label}`}>
+                      {nav.label && <NavigationListLabel label={nav.label} />}
+                      {nav.menus
+                        .filter(
+                          (menu) =>
+                            !menu.featureFlag ||
+                            featureFlags.includes(menu.featureFlag)
+                        )
+                        .map((menu) => (
+                          <React.Fragment key={menu.id}>
+                            <NavigationListItem
+                              selected={menu.current}
+                              label={menu.label}
+                              icon={menu.icon}
+                              href={menu.href}
+                              target={menu.target}
+                            />
+                          </React.Fragment>
+                        ))}
+                    </React.Fragment>
+                  ))}
+              </NavigationList>
             ))}
           </NavTabPill>
         )}
       </div>
-      <div className={cn("flex grow flex-col", currentTab?.id !== "conversations" && "mx-sidebar-side-spacing")}>{children}</div>
+      <div
+        className={cn(
+          "flex grow flex-col",
+          currentTab?.id !== "conversations" && "mx-sidebar-side-spacing"
+        )}
+      >
+        {children}
+      </div>
       {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
         <div className="mx-3 mb-3">
           <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />

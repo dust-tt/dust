@@ -35,15 +35,11 @@ export const Default: Story = {
             Settings
           </NavTabPillTrigger>
         </NavTabPillList>
-        <NavTabPillContent value="overview">
-          Overview content
-        </NavTabPillContent>
+        <NavTabPillContent value="overview">Overview content</NavTabPillContent>
         <NavTabPillContent value="analytics">
           Analytics content
         </NavTabPillContent>
-        <NavTabPillContent value="settings">
-          Settings content
-        </NavTabPillContent>
+        <NavTabPillContent value="settings">Settings content</NavTabPillContent>
       </NavTabPill>
     </div>
   ),

@@ -36,7 +36,7 @@ const NavigationListItemStyles = cva(
           "s-bg-stone-100 dark:s-bg-primary-200-night"
         ),
         unselected: "",
-          // "s-text-muted-foreground dark:s-text-muted-foreground-night",
+        // "s-text-muted-foreground dark:s-text-muted-foreground-night",
       },
     },
     defaultVariants: {
@@ -170,7 +170,13 @@ const NavigationListItem = React.forwardRef<
             onMouseDown={handleMouseDown}
             onMouseUp={() => setIsPressed(false)}
           >
-            {icon && <Icon visual={icon} size="xs" className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night" />}
+            {icon && (
+              <Icon
+                visual={icon}
+                size="xs"
+                className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night"
+              />
+            )}
             {avatar}
             {label && (
               <span
@@ -349,7 +355,7 @@ const collapseableStyles = cva(
     "s-text-sm s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
     "s-select-none",
     "s-outline-none s-rounded-xl",
-    "data-[disabled]:s-pointer-events-none",
+    "data-[disabled]:s-pointer-events-none"
   ),
   {
     variants: {
@@ -419,9 +425,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     const actionElement = action && (
       <div
-        className={cn(
-          "s-flex s-gap-1 s-transition-opacity",
-        )}
+        className={cn("s-flex s-gap-1 s-transition-opacity")}
         onClick={(e) => {
           e.stopPropagation();
         }}

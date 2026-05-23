@@ -26,12 +26,36 @@ const EASINGS = [
     description:
       "The default choice for most UI animations. Starts fast, giving an immediate feeling of responsiveness, then decelerates naturally. Use for user-initiated interactions: opening dropdowns, modals, toasts, enter/exit animations.",
     items: [
-      { label: "out-quad", class: "s-ease-out-quad", cp: [0.25, 0.46, 0.45, 0.94] as const },
-      { label: "out-cubic", class: "s-ease-out-cubic", cp: [0.215, 0.61, 0.355, 1] as const },
-      { label: "out-quart", class: "s-ease-out-quart", cp: [0.165, 0.84, 0.44, 1] as const },
-      { label: "out-quint", class: "s-ease-out-quint", cp: [0.23, 1, 0.32, 1] as const },
-      { label: "out-expo", class: "s-ease-out-expo", cp: [0.19, 1, 0.22, 1] as const },
-      { label: "out-circ", class: "s-ease-out-circ", cp: [0.075, 0.82, 0.165, 1] as const },
+      {
+        label: "out-quad",
+        class: "s-ease-out-quad",
+        cp: [0.25, 0.46, 0.45, 0.94] as const,
+      },
+      {
+        label: "out-cubic",
+        class: "s-ease-out-cubic",
+        cp: [0.215, 0.61, 0.355, 1] as const,
+      },
+      {
+        label: "out-quart",
+        class: "s-ease-out-quart",
+        cp: [0.165, 0.84, 0.44, 1] as const,
+      },
+      {
+        label: "out-quint",
+        class: "s-ease-out-quint",
+        cp: [0.23, 1, 0.32, 1] as const,
+      },
+      {
+        label: "out-expo",
+        class: "s-ease-out-expo",
+        cp: [0.19, 1, 0.22, 1] as const,
+      },
+      {
+        label: "out-circ",
+        class: "s-ease-out-circ",
+        cp: [0.075, 0.82, 0.165, 1] as const,
+      },
     ],
   },
   {
@@ -39,12 +63,36 @@ const EASINGS = [
     description:
       "For elements already visible on screen that move to a new position or morph shape (resizing panels, morphing containers, expanding/collapsing in place). Mimics natural acceleration and deceleration.",
     items: [
-      { label: "in-out-quad", class: "s-ease-in-out-quad", cp: [0.455, 0.03, 0.515, 0.955] as const },
-      { label: "in-out-cubic", class: "s-ease-in-out-cubic", cp: [0.645, 0.045, 0.355, 1] as const },
-      { label: "in-out-quart", class: "s-ease-in-out-quart", cp: [0.77, 0, 0.175, 1] as const },
-      { label: "in-out-quint", class: "s-ease-in-out-quint", cp: [0.86, 0, 0.07, 1] as const },
-      { label: "in-out-expo", class: "s-ease-in-out-expo", cp: [1, 0, 0, 1] as const },
-      { label: "in-out-circ", class: "s-ease-in-out-circ", cp: [0.785, 0.135, 0.15, 0.86] as const },
+      {
+        label: "in-out-quad",
+        class: "s-ease-in-out-quad",
+        cp: [0.455, 0.03, 0.515, 0.955] as const,
+      },
+      {
+        label: "in-out-cubic",
+        class: "s-ease-in-out-cubic",
+        cp: [0.645, 0.045, 0.355, 1] as const,
+      },
+      {
+        label: "in-out-quart",
+        class: "s-ease-in-out-quart",
+        cp: [0.77, 0, 0.175, 1] as const,
+      },
+      {
+        label: "in-out-quint",
+        class: "s-ease-in-out-quint",
+        cp: [0.86, 0, 0.07, 1] as const,
+      },
+      {
+        label: "in-out-expo",
+        class: "s-ease-in-out-expo",
+        cp: [1, 0, 0, 1] as const,
+      },
+      {
+        label: "in-out-circ",
+        class: "s-ease-in-out-circ",
+        cp: [0.785, 0.135, 0.15, 0.86] as const,
+      },
     ],
   },
   {
@@ -52,12 +100,36 @@ const EASINGS = [
     description:
       "Almost never use for UI. The slow start makes interfaces feel sluggish and unresponsive. It accelerates at the end, which is the opposite of what our brain expects — things should settle, not speed up.",
     items: [
-      { label: "in-quad", class: "s-ease-in-quad", cp: [0.55, 0.085, 0.68, 0.53] as const },
-      { label: "in-cubic", class: "s-ease-in-cubic", cp: [0.55, 0.055, 0.675, 0.19] as const },
-      { label: "in-quart", class: "s-ease-in-quart", cp: [0.895, 0.03, 0.685, 0.22] as const },
-      { label: "in-quint", class: "s-ease-in-quint", cp: [0.755, 0.05, 0.855, 0.06] as const },
-      { label: "in-expo", class: "s-ease-in-expo", cp: [0.95, 0.05, 0.795, 0.035] as const },
-      { label: "in-circ", class: "s-ease-in-circ", cp: [0.6, 0.04, 0.98, 0.335] as const },
+      {
+        label: "in-quad",
+        class: "s-ease-in-quad",
+        cp: [0.55, 0.085, 0.68, 0.53] as const,
+      },
+      {
+        label: "in-cubic",
+        class: "s-ease-in-cubic",
+        cp: [0.55, 0.055, 0.675, 0.19] as const,
+      },
+      {
+        label: "in-quart",
+        class: "s-ease-in-quart",
+        cp: [0.895, 0.03, 0.685, 0.22] as const,
+      },
+      {
+        label: "in-quint",
+        class: "s-ease-in-quint",
+        cp: [0.755, 0.05, 0.855, 0.06] as const,
+      },
+      {
+        label: "in-expo",
+        class: "s-ease-in-expo",
+        cp: [0.95, 0.05, 0.795, 0.035] as const,
+      },
+      {
+        label: "in-circ",
+        class: "s-ease-in-circ",
+        cp: [0.6, 0.04, 0.98, 0.335] as const,
+      },
     ],
   },
 ];
@@ -194,7 +266,11 @@ function EasingRow({
 interface EasingGroupProps {
   group: string;
   description?: string;
-  items: { label: string; class: string; cp: readonly [number, number, number, number] }[];
+  items: {
+    label: string;
+    class: string;
+    cp: readonly [number, number, number, number];
+  }[];
 }
 
 function EasingGroup({ group, description, items }: EasingGroupProps) {
@@ -263,8 +339,8 @@ export const EaseIn: Story = {
 function NavTabPillEasingsPlayground() {
   const easeOutItems = EASINGS[0].items;
 
-  const [activeValues, setActiveValues] = useState<Record<string, string>>(
-    () => Object.fromEntries(easeOutItems.map((e) => [e.label, "overview"]))
+  const [activeValues, setActiveValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(easeOutItems.map((e) => [e.label, "overview"]))
   );
 
   const playAll = () => {
@@ -278,9 +354,12 @@ function NavTabPillEasingsPlayground() {
   return (
     <div className="s-flex s-w-[600px] s-flex-col s-gap-6 s-p-8">
       <div>
-        <h2 className="s-text-xl s-font-semibold">NavTabPill — Ease Out Comparison</h2>
+        <h2 className="s-text-xl s-font-semibold">
+          NavTabPill — Ease Out Comparison
+        </h2>
         <p className="s-mt-1 s-text-sm s-text-muted-foreground">
-          Compare how each ease-out curve feels on the NavTabPill expand animation.
+          Compare how each ease-out curve feels on the NavTabPill expand
+          animation.
         </p>
       </div>
       <button
@@ -306,21 +385,30 @@ function NavTabPillEasingsPlayground() {
                 <NavTabPillTrigger
                   value="overview"
                   icon={CommandIcon}
-                  easingClassName={{ trigger: easing.class, grid: easing.class }}
+                  easingClassName={{
+                    trigger: easing.class,
+                    grid: easing.class,
+                  }}
                 >
                   Overview
                 </NavTabPillTrigger>
                 <NavTabPillTrigger
                   value="analytics"
                   icon={LightbulbIcon}
-                  easingClassName={{ trigger: easing.class, grid: easing.class }}
+                  easingClassName={{
+                    trigger: easing.class,
+                    grid: easing.class,
+                  }}
                 >
                   Analytics
                 </NavTabPillTrigger>
                 <NavTabPillTrigger
                   value="settings"
                   icon={Cog6ToothIcon}
-                  easingClassName={{ trigger: easing.class, grid: easing.class }}
+                  easingClassName={{
+                    trigger: easing.class,
+                    grid: easing.class,
+                  }}
                 >
                   Settings
                 </NavTabPillTrigger>

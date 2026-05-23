@@ -67,7 +67,6 @@ import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
-  CheckDoubleIcon,
   Chip,
   cn,
   DocumentIcon,
@@ -280,7 +279,7 @@ function SearchResults({
           action={
             <>
               <Button
-                size="icon-mini"
+                size="icon-xs"
                 icon={PlusIcon}
                 label="New"
                 variant="ghost-secondary"
@@ -935,7 +934,11 @@ export function AgentSidebarMenu({
                   {!hideActions && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button icon={MoreIcon} variant="outline" size="icon-sm" />
+                        <Button
+                          icon={MoreIcon}
+                          variant="outline"
+                          size="icon-sm"
+                        />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {!isRestrictedFromAgentCreation && (
@@ -1254,10 +1257,7 @@ const ConversationList = ({
   return (
     <ConversationListContainer>
       {dateLabel !== "Today" && (
-        <NavigationListLabel
-          label={dateLabel}
-          isSticky
-        />
+        <NavigationListLabel label={dateLabel} isSticky />
       )}
 
       {conversations.map((conversation) => (
@@ -1395,7 +1395,9 @@ const ConversationListItem = memo(
             activeConversationId={conversation.sId}
             conversation={conversation}
             owner={owner}
-            trigger={() => <NavigationListItemAction forceVisible={isMenuOpen} />}
+            trigger={() => (
+              <NavigationListItemAction forceVisible={isMenuOpen} />
+            )}
             isConversationDisplayed={activeConversationId === conversation.sId}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}

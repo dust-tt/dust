@@ -604,7 +604,10 @@ module.exports = {
           },
         },
         background: { DEFAULT: colors.white, night: colors.gray[950] },
-        "app-background": { DEFAULT: "#FAFAF9", night: customColors.stone[900] },
+        "app-background": {
+          DEFAULT: "#FAFAF9",
+          night: customColors.stone[900],
+        },
         foreground: {
           DEFAULT: colors.gray[950],
           night: colors.gray[200],
