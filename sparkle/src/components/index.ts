@@ -228,6 +228,12 @@ export type { SpinnerBrandProps } from "./SpinnerBrand";
 export { SpinnerBrand } from "./SpinnerBrand";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
+export {
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
+} from "./NavTabPill";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export { Timeline, TimelineItem } from "./Timeline";
 export type {

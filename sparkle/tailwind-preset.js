@@ -709,6 +709,10 @@ module.exports = {
             DEFAULT: customColors.stone[800],
             night: "#D6D3D1",
           },
+          100: {
+            DEFAULT: customColors.stone[100],
+            night: customColors.stone[900],
+          },
         },
         info: {
           DEFAULT: customColors.golden[500],
