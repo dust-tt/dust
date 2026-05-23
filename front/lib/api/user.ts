@@ -14,12 +14,46 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
   LightWorkspaceType,
+  UserType,
   UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
 } from "@app/types/user";
 
 import { MembershipResource } from "../resources/membership_resource";
 import { findWorkOSOrganizationsForUserId } from "./workos/organization_membership";
+
+/**
+ * Returns the acting user for an authenticated request. Falls back to looking up the user by
+ * email when auth is an API key (used by the Slack integration to attribute actions to the
+ * Slack user via the user-email header).
+ */
+export async function getActiveUserFromAuthOrEmail(
+  auth: Authenticator,
+  fallbackEmail: string | null | undefined
+): Promise<UserType | null> {
+  const authUser = auth.user();
+  if (authUser) {
+    return authUser.toJSON();
+  }
+
+  if (!auth.isKey() || !fallbackEmail) {
+    return null;
+  }
+
+  const users = await UserResource.listByEmail(fallbackEmail);
+  if (users.length === 0) {
+    return null;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace,
+  });
+  const activeUserIds = new Set(memberships.map((m) => m.userId));
+  const firstActive = users.find((u) => activeUserIds.has(u.id));
+  return firstActive ? firstActive.toJSON() : null;
+}
 
 export async function getUserForWorkspace(
   auth: Authenticator,
