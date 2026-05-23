@@ -1,17 +1,12 @@
-// @migration-status: MIGRATED_TO_HONO
-/** @ignoreswagger */
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getStripeCheckoutSessionStatus } from "@app/lib/api/stripe/checkout_status";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
-import type { Authenticator } from "@app/lib/auth";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
 import { calculateTax, getStripeClient } from "@app/lib/plans/stripe";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
-import { apiError } from "@app/logger/withlogging";
 import type { SupportedCurrency } from "@app/types/currency";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetPreparePaymentResponseBody =
   | { status: "pending" }
@@ -30,23 +25,14 @@ export type GetPreparePaymentResponseBody =
       sepaLast4?: string;
     };
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetPreparePaymentResponseBody>>,
-  auth: Authenticator
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
-    });
-  }
+// Mounted at /api/w/:wId/subscriptions/checkout/prepare-payment.
+const app = workspaceApp();
+
+app.get("/", async (ctx): HandlerResult<GetPreparePaymentResponseBody> => {
+  const auth = ctx.get("auth");
 
   if (!auth.isAdmin()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -59,7 +45,7 @@ async function handler(
 
   const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
   if (!useMetronomeBilling) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -69,11 +55,11 @@ async function handler(
   }
 
   // Prevent HTTP caching as session status can change on every call.
-  res.setHeader("Cache-Control", "no-store");
+  ctx.header("Cache-Control", "no-store");
 
-  const { setup_session_id } = req.query;
+  const setup_session_id = ctx.req.query("setup_session_id");
   if (!isString(setup_session_id)) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -86,7 +72,7 @@ async function handler(
   // We return "pending" so the client can retry instead of blocking here.
   const sessionStatus = await getStripeCheckoutSessionStatus(setup_session_id);
   if (sessionStatus?.status !== "complete") {
-    return res.status(200).json({ status: "pending" });
+    return ctx.json<GetPreparePaymentResponseBody>({ status: "pending" });
   }
 
   const stripe = getStripeClient();
@@ -101,7 +87,7 @@ async function handler(
     isString(setupIntent) ||
     setupIntent.status !== "succeeded"
   ) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -110,7 +96,7 @@ async function handler(
     });
   }
   if (setupSession.client_reference_id !== owner.sId) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -123,7 +109,7 @@ async function handler(
     setupSession.metadata ?? {};
 
   if (!isString(seatCountStr) || !isString(pricePerSeatCentsStr)) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -139,7 +125,7 @@ async function handler(
   const stripeCustomerId = setupSession.customer;
 
   if (!isString(stripeCustomerId)) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -167,7 +153,7 @@ async function handler(
 
   const customer = await stripe.customers.retrieve(stripeCustomerId);
   if (customer.deleted) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -198,7 +184,7 @@ async function handler(
     currency,
   });
   if (taxResult.isErr()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -207,7 +193,7 @@ async function handler(
     });
   }
 
-  return res.status(200).json({
+  return ctx.json<GetPreparePaymentResponseBody>({
     status: "success",
     subtotalCents,
     taxCents: taxResult.value.taxCents,
@@ -221,8 +207,6 @@ async function handler(
     cardLast4,
     sepaLast4,
   });
-}
-
-export default withSessionAuthenticationForWorkspace(handler, {
-  doesNotRequireCanUseProduct: true,
 });
+
+export default app;
