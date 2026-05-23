@@ -20,6 +20,7 @@ import {
   useSkillWithRelations,
 } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
@@ -309,6 +310,7 @@ interface CapabilitiesPickerProps {
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function CapabilitiesPicker({
@@ -320,7 +322,9 @@ export function CapabilitiesPicker({
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
+  onOpenChange,
 }: CapabilitiesPickerProps) {
+  const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -593,6 +597,7 @@ export function CapabilitiesPicker({
         open={isOpen}
         onOpenChange={(open) => {
           setIsOpen(open);
+          onOpenChange?.(open);
           if (open) {
             setIsClosing(false);
             trackEvent({
@@ -625,7 +630,7 @@ export function CapabilitiesPicker({
           }}
         >
           <DropdownMenuSearchbar
-            autoFocus
+            autoFocus={!isMobile}
             name="search-capabilities"
             placeholder="Search capabilities"
             value={searchText}

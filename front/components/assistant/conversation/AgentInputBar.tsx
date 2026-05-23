@@ -3,6 +3,8 @@ import { ContextUsageWarningBanner } from "@app/components/assistant/conversatio
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarMessageNavigation } from "@app/components/assistant/conversation/input_bar/InputBarMessageNavigation";
+import { INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import { useInputBarCompactMode } from "@app/components/assistant/conversation/input_bar/useInputBarCompactMode";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -85,25 +87,16 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   );
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
-  const [isInputBarExpanded, setIsInputBarExpanded] = useState(true);
-  const [isEditorFocused, setIsEditorFocused] = useState(false);
-  const prevListOffsetRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (prevListOffsetRef.current === null) {
-      prevListOffsetRef.current = listOffset;
-      return;
-    }
-
-    if (listOffset !== prevListOffsetRef.current) {
-      prevListOffsetRef.current = listOffset;
-      setIsInputBarExpanded(false);
-    }
-  }, [listOffset]);
-
-  const isInputBarCompact =
-    isMobile && !agentBuilderContext && !isInputBarExpanded;
-  const effectiveIsCompact = isInputBarCompact && !isEditorFocused;
+  const {
+    effectiveIsCompact,
+    expandInputBar,
+    onEditorFocusChange,
+    onOverlayOpenChange,
+    onVoiceActiveChange,
+  } = useInputBarCompactMode({
+    enabled: isMobile && !agentBuilderContext,
+    listOffset,
+  });
 
   const allMessages = methods.data.get();
 
@@ -567,10 +560,12 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       >
         {effectiveIsCompact && showNavigationContainer && (
           <div className="absolute right-0 top-1/2 z-10 -translate-y-1/2">
-            <InputBarMessageNavigation
-              variant="compact"
-              {...messageNavigationProps}
-            />
+            <div className={INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES}>
+              <InputBarMessageNavigation
+                variant="compact"
+                {...messageNavigationProps}
+              />
+            </div>
           </div>
         )}
         <InputBar
@@ -586,9 +581,11 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           isSubmitting={agentBuilderContext?.isSubmitting === true}
           isAgentBuilder={!!agentBuilderContext}
           submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
-          isCompact={isInputBarCompact}
-          onExpandInputBar={() => setIsInputBarExpanded(true)}
-          onEditorFocusChange={setIsEditorFocused}
+          effectiveIsCompact={effectiveIsCompact}
+          onExpandInputBar={expandInputBar}
+          onEditorFocusChange={onEditorFocusChange}
+          onOverlayOpenChange={onOverlayOpenChange}
+          onVoiceActiveChange={onVoiceActiveChange}
         />
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
-import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
+import { createEmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import {
   InputBarSlashSuggestionExtension,
@@ -213,6 +213,9 @@ export interface CustomEditorProps {
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
+  onSuggestionActiveChangeRef?: React.RefObject<
+    ((active: boolean) => void) | undefined
+  >;
 }
 
 export const buildEditorExtensions = ({
@@ -227,6 +230,7 @@ export const buildEditorExtensions = ({
   onFirstAgentMentionPasteRef,
   slashSuggestion,
   placeholderOverride,
+  onSuggestionActiveChangeRef,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -241,7 +245,12 @@ export const buildEditorExtensions = ({
   >;
   slashSuggestion?: CustomEditorProps["slashSuggestion"];
   placeholderOverride?: string | null;
+  onSuggestionActiveChangeRef?: CustomEditorProps["onSuggestionActiveChangeRef"];
 }) => {
+  const notifySuggestionActiveChange = (active: boolean) => {
+    onSuggestionActiveChangeRef?.current?.(active);
+  };
+
   const extensions = [
     KeyboardShortcutsExtension,
     StarterKit.configure({
@@ -316,10 +325,11 @@ export const buildEditorExtensions = ({
           users: !disableUserMentions,
         },
         onAgentSelect,
+        onActiveChange: notifySuggestionActiveChange,
       }),
     }),
     SkillNode,
-    EmojiExtension,
+    createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),
     Placeholder.configure({
       placeholder: ({ node }) => {
         if (node.type.name !== "paragraph") {
@@ -344,6 +354,7 @@ export const buildEditorExtensions = ({
         onSelectRef: slashSuggestion.onSelectRef,
         selectedMCPServerViewIdsRef:
           slashSuggestion.selectedMCPServerViewIdsRef,
+        onActiveChangeRef: onSuggestionActiveChangeRef,
       })
     );
   }
@@ -375,6 +386,7 @@ const useCustomEditor = ({
   onFirstAgentMentionPasteRef,
   slashSuggestion,
   placeholderOverride,
+  onSuggestionActiveChangeRef,
 }: CustomEditorProps) => {
   const editor = useEditor(
     {
@@ -391,6 +403,7 @@ const useCustomEditor = ({
         onFirstAgentMentionPasteRef,
         slashSuggestion,
         placeholderOverride,
+        onSuggestionActiveChangeRef,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {

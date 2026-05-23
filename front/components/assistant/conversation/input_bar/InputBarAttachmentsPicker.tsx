@@ -23,6 +23,7 @@ import type {
 } from "@app/lib/search/tools/types";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
@@ -105,6 +106,7 @@ interface InputBarAttachmentsPickerProps {
   onFileChange?: () => void;
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
+  onOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
@@ -274,8 +276,10 @@ export const InputBarAttachmentsPicker = ({
   onFileChange,
   externalOpen,
   onExternalOpenChange,
+  onOpenChange,
   anchorRef,
 }: InputBarAttachmentsPickerProps) => {
+  const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [internalOpen, setInternalOpen] = useState(false);
@@ -549,6 +553,7 @@ export const InputBarAttachmentsPicker = ({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
+        onOpenChange?.(open);
         if (open) {
           setSearch("");
         }
@@ -625,7 +630,7 @@ export const InputBarAttachmentsPicker = ({
               multiple={true}
             />
             <DropdownMenuSearchbar
-              autoFocus
+              autoFocus={!isMobile}
               name="search-files"
               placeholder="Search"
               value={search}

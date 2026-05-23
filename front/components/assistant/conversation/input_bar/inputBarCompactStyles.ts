@@ -3,3 +3,15 @@ export const INPUT_BAR_COMPACT_PILL_CLASSES =
 
 export const INPUT_BAR_COMPACT_PILL_INNER_CLASSES =
   "flex h-8 flex-row items-center gap-1";
+
+export const INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES =
+  "motion-safe:origin-bottom motion-safe:animate-input-bar-compact-in";
+
+export const INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES =
+  "motion-safe:animate-input-bar-compact-content-in";
+
+export const INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES =
+  "motion-safe:origin-center motion-safe:animate-input-bar-compact-nav-in";
+
+export const INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES =
+  "transition-[border-radius,background-color,padding,border-color,box-shadow,opacity] duration-300 ease-out";

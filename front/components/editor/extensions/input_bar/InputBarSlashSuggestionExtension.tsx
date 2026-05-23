@@ -47,6 +47,7 @@ export interface InputBarSlashSuggestionExtensionOptions {
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >;
   selectedMCPServerViewIdsRef: RefObject<Set<string>>;
+  onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
 }
 
 export const InputBarSlashSuggestionExtension =
@@ -126,6 +127,7 @@ export const InputBarSlashSuggestionExtension =
                   return;
                 }
 
+                extensionOptions.onActiveChangeRef?.current?.(true);
                 activeEditorView = props.editor.view;
                 component = new ReactRenderer(InputBarSlashSuggestionDropdown, {
                   props: {
@@ -171,6 +173,7 @@ export const InputBarSlashSuggestionExtension =
               },
 
               onExit() {
+                extensionOptions.onActiveChangeRef?.current?.(false);
                 activeEditorView = null;
                 activeTriggerStart = null;
                 component?.element?.remove();
