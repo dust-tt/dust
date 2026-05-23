@@ -1,5 +1,10 @@
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -9,7 +14,7 @@ import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_v
 import logger from "@app/logger/logger";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   WebhookSourceForAdminType,
@@ -190,4 +195,106 @@ export async function getWebhookSourceAdminDetails(
     triggers: triggersWithEditors,
     requestStats,
   };
+}
+
+export async function propagateWebhookSourceViewName(
+  auth: Authenticator,
+  webhookSourceView: WebhookSourcesViewResource,
+  newName: string
+): Promise<Result<undefined, DustError<"unauthorized">>> {
+  const systemView =
+    await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
+      auth,
+      webhookSourceView.webhookSource.sId
+    );
+
+  if (!systemView) {
+    // This should never happen as we already validated that the view is a system view
+    return new Err(new DustError("unauthorized", "Only system views allowed"));
+  }
+
+  // Get all views with the same webhook source (excluding the system view already updated)
+  const allViews = await WebhookSourcesViewResource.listByWebhookSource(
+    auth,
+    webhookSourceView.webhookSourceId
+  );
+
+  // Check that the user can administrate all views
+  for (const view of allViews) {
+    if (view.sId !== webhookSourceView.sId && !view.canAdministrate(auth)) {
+      return new Err(
+        new DustError("unauthorized", "Not allowed to update all views.")
+      );
+    }
+  }
+
+  // Get IDs of views to update (excluding the system view)
+  const viewIdsToUpdate = allViews
+    .filter((view) => view.sId !== webhookSourceView.sId)
+    .map((view) => view.id);
+
+  if (viewIdsToUpdate.length === 0) {
+    return new Ok(undefined);
+  }
+
+  // Bulk update all views at once
+  await WebhookSourcesViewResource.bulkUpdateName(
+    auth,
+    viewIdsToUpdate,
+    newName
+  );
+
+  return new Ok(undefined);
+}
+
+export async function propagateWebhookSourceViewDescriptionAndIcon(
+  auth: Authenticator,
+  webhookSourceView: WebhookSourcesViewResource,
+  description?: string,
+  icon?: InternalAllowedIconType | CustomResourceIconType
+): Promise<Result<undefined, DustError<"unauthorized">>> {
+  const systemView =
+    await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
+      auth,
+      webhookSourceView.webhookSource.sId
+    );
+
+  if (!systemView) {
+    // This should never happen as we already validated that the view is a system view
+    return new Err(new DustError("unauthorized", "Only system views allowed"));
+  }
+
+  // Get all views with the same webhook source (excluding the system view already updated)
+  const allViews = await WebhookSourcesViewResource.listByWebhookSource(
+    auth,
+    webhookSourceView.webhookSourceId
+  );
+
+  // Check that the user can administrate all views
+  for (const view of allViews) {
+    if (view.sId !== webhookSourceView.sId && !view.canAdministrate(auth)) {
+      return new Err(
+        new DustError("unauthorized", "Not allowed to update all views.")
+      );
+    }
+  }
+
+  // Get IDs of views to update (excluding the system view)
+  const viewIdsToUpdate = allViews
+    .filter((view) => view.sId !== webhookSourceView.sId)
+    .map((view) => view.id);
+
+  if (viewIdsToUpdate.length === 0) {
+    return new Ok(undefined);
+  }
+
+  // Bulk update all views at once
+  await WebhookSourcesViewResource.bulkUpdateDescriptionAndIcon(
+    auth,
+    viewIdsToUpdate,
+    description,
+    icon
+  );
+
+  return new Ok(undefined);
 }
