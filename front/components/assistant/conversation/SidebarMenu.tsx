@@ -279,7 +279,7 @@ function SearchResults({
           action={
             <>
               <Button
-                size="icon-xs"
+                size="xs"
                 icon={PlusIcon}
                 label="New"
                 variant="ghost-secondary"
