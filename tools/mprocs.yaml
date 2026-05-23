@@ -76,7 +76,7 @@ procs:
       # exec replaces this shell with tsx so mprocs's signals reach node
       # directly (npm doesn't reliably forward signals to its child).
       export NODE_ENV=development
-      exec ../node_modules/.bin/tsx ./server.ts
+      exec ../node_modules/.bin/tsx watch --include './**/*.ts' ./server.ts
     autostart: false
 
   front-hono-strict:
@@ -97,7 +97,7 @@ procs:
       export NODE_ENV=development
       # Guard: throw if anything tries to load `next` at runtime.
       export NODE_OPTIONS="--require=./forbid-next.cjs"
-      exec ../node_modules/.bin/tsx ./server.ts
+      exec ../node_modules/.bin/tsx watch --include './**/*.ts' ./server.ts
     autostart: false
 
   front-strangler:
@@ -114,7 +114,7 @@ procs:
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting front-api (Hono strangler with Next fallback)."
       export NODE_ENV=development
-      exec ../node_modules/.bin/tsx ./server-strangler.ts
+      exec ../node_modules/.bin/tsx watch --include './**/*.ts' ./server-strangler.ts
     autostart: false
 
   front-workers:
