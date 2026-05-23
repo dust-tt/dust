@@ -65,7 +65,7 @@ const ScrollArea = React.forwardRef<
       <ScrollAreaPrimitive.Root
         ref={ref}
         className={cn(
-          "s-relative s-z-20 s-overflow-hidden s-transition-all s-duration-200",
+          "s-relative s-z-20 s-overflow-hidden",
           isScrolled ? scrollStyles?.active : scrollStyles?.inactive,
           className
         )}

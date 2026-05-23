@@ -43,24 +43,24 @@ const NavTabPillTrigger = React.forwardRef<
     className={cn(
       "s-group s-inline-flex s-h-8 s-items-center s-justify-center s-whitespace-nowrap s-rounded-lg s-pl-2 data-[state=active]:s-pl-2 [&:not([data-state=active])]:s-pr-2 s-text-sm",
       "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      "hover:s-bg-sidebar-100 hover:s-text-foreground dark:hover:s-bg-sidebar-100-night dark:hover:s-text-foreground-night",
+      "hover:s-bg-sidebar-100 dark:hover:s-bg-sidebar-100-night",
       "s-font-medium",
       "s-bg-transparent",
       "data-[state=active]:s-bg-sidebar-100 data-[state=active]:s-text-foreground",
       "dark:data-[state=active]:s-bg-sidebar-100-night dark:data-[state=active]:s-text-foreground-night",
       "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
       "disabled:s-pointer-events-none disabled:s-opacity-100",
-      "data-[state=active]:s-mx-1 data-[state=active]:s-overflow-hidden data-[state=active]:s-shrink",
-      "s-transition-[padding,margin]",
+      "data-[state=active]:s-overflow-hidden data-[state=active]:s-shrink",
+      "s-transition-[padding]",
       
       className
     )}
     {...props}
   >
-    <LinkWrapper href={href} target={target} rel={rel} replace={replace} shallow={shallow}>
+    <LinkWrapper href={href} target={target} rel={rel} replace={replace} shallow={shallow} className="s-inline-flex s-items-center s-justify-center s-gap-1">
       <Icon visual={icon} size="xs" />
       <div className={cn(
-        "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-300 group-data-[state=active]:s-grid-cols-[1fr] overflow-hidden",
+        "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-200 group-data-[state=active]:s-grid-cols-[1fr] overflow-hidden",
         "s-in-out-circ"
       )}>
         <span

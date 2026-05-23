@@ -25,7 +25,6 @@ const NavigationListItemStyles = cva(
     "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
     "s-items-center s-outline-none s-rounded-lg s-text-sm s-px-2 s-py-1.5 s-transition-colors",
     "data-[disabled]:s-pointer-events-none",
-    "hover:s-text-foreground dark:hover:s-text-foreground-night",
     "hover:s-bg-stone-100 dark:hover:s-bg-primary-200-night"
   ),
   {
@@ -59,7 +58,7 @@ const NavigationList = React.forwardRef<
     <ScrollArea
       ref={ref}
       viewportRef={viewportRef}
-      className={cn(className, "s-transition-all s-duration-300")}
+      className={className}
       {...props}
     >
       <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
@@ -171,7 +170,7 @@ const NavigationListItem = React.forwardRef<
             onMouseDown={handleMouseDown}
             onMouseUp={() => setIsPressed(false)}
           >
-            {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
+            {icon && <Icon visual={icon} size="xs" className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night" />}
             {avatar}
             {label && (
               <span
@@ -357,7 +356,6 @@ const collapseableStyles = cva(
       isCollapsible: {
         true: cn(
           "s-cursor-pointer s-mb-0.5",
-          "hover:s-text-foreground dark:hover:s-text-foreground-night",
           "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
         ),
         false: "",

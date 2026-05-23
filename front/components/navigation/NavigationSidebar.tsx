@@ -81,7 +81,7 @@ export const NavigationSidebar = React.forwardRef<
           <SidebarBanners />
         </div>
         {navs.length > 1 && (
-          <NavTabPill value={currentTab?.id ?? "conversations"}>
+          <NavTabPill value={currentTab?.id ?? "conversations"} className="mx-sidebar-side-spacing">
             <NavTabPillList>
               {navs.map((tab) => (
                 <div key={tab.id} ref={tab.ref ?? undefined}>
@@ -105,8 +105,7 @@ export const NavigationSidebar = React.forwardRef<
               )}
             </NavTabPillList>
             {navs.map((tab) => (
-              <NavTabPillContent key={tab.id} value={tab.id}>
-                <NavigationList className="px-3">
+                <NavigationList key={tab.id}>
                   {subNavigation &&
                     tab.isCurrent(activePath) &&
                     subNavigation.map((nav) => (
@@ -114,7 +113,6 @@ export const NavigationSidebar = React.forwardRef<
                         {nav.label && (
                           <NavigationListLabel
                             label={nav.label}
-                            variant={nav.variant}
                           />
                         )}
                         {nav.menus
@@ -137,12 +135,11 @@ export const NavigationSidebar = React.forwardRef<
                       </React.Fragment>
                     ))}
                 </NavigationList>
-              </NavTabPillContent>
             ))}
           </NavTabPill>
         )}
       </div>
-      <div className="flex grow flex-col">{children}</div>
+      <div className={cn("flex grow flex-col", currentTab?.id !== "conversations" && "mx-sidebar-side-spacing")}>{children}</div>
       {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
         <div className="mx-3 mb-3">
           <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />

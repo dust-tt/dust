@@ -711,7 +711,7 @@ module.exports = {
           },
           100: {
             DEFAULT: customColors.stone[100],
-            night: customColors.stone[900],
+            night: customColors.stone[800],
           },
         },
         info: {
