@@ -1,0 +1,66 @@
+import { validateVerification } from "@app/lib/api/workspace_verification";
+import type {
+  VerificationErrorResponse,
+  VerifyCodeResponse,
+} from "@app/types/workspace_verification";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { z } from "zod";
+
+import { E164PhoneNumber, getStatusCodeForError, OtpCode } from "./start";
+
+const PostValidateVerificationRequestBody = z.object({
+  phoneNumber: E164PhoneNumber,
+  code: OtpCode,
+});
+
+// Mounted at /api/w/:wId/verification/validate.
+const app = workspaceApp();
+
+app.post(
+  "/",
+  validate("json", PostValidateVerificationRequestBody),
+  async (
+    ctx
+  ): HandlerResult<VerifyCodeResponse | VerificationErrorResponse> => {
+    const auth = ctx.get("auth");
+
+    if (!auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "Only users that are `admins` for the current workspace can validate verification.",
+        },
+      });
+    }
+
+    const { phoneNumber, code } = ctx.req.valid("json");
+
+    const result = await validateVerification(auth, phoneNumber, code);
+
+    if (result.isErr()) {
+      const error = result.error;
+      return ctx.json(
+        {
+          error: {
+            type: error.type,
+            message: error.message,
+          },
+        },
+        getStatusCodeForError(error.type) as ContentfulStatusCode
+      );
+    }
+
+    return ctx.json({
+      success: true as const,
+      verified: true as const,
+    });
+  }
+);
+
+export default app;

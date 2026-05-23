@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { startVerification } from "@app/lib/api/workspace_verification";
 import { verifyTurnstileToken } from "@app/lib/api/workspace_verification/turnstile";
