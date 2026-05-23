@@ -160,6 +160,26 @@ export async function registerSlackWebhookRouterEntry({
 // If we have 10k documents of 100kB each (which is a lot) we are at 1GB here.
 const FILE_BATCH_SIZE = 10_000;
 
+/**
+ * Resolves the spaceId for legacy data source endpoints, which accept the spaceId either in the
+ * URL or implicitly from auth. When the URL omits it, system keys fall back to the data source's
+ * own space (to support connectors targeting non-global spaces), and user-scoped auth falls back
+ * to the workspace's global space.
+ */
+export async function resolveLegacyDataSourceSpaceId(
+  auth: Authenticator,
+  rawSpaceId: string | string[] | undefined,
+  dataSource: DataSourceResource | null
+): Promise<string | undefined> {
+  if (typeof rawSpaceId === "string") {
+    return rawSpaceId;
+  }
+  if (auth.isSystemKey()) {
+    return dataSource?.space.sId;
+  }
+  return (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
+}
+
 export async function getDataSources(
   auth: Authenticator,
   { includeEditedBy }: { includeEditedBy: boolean } = {

@@ -1,8 +1,8 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { resolveLegacyDataSourceSpaceId } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -52,20 +52,11 @@ async function handler(
     { origin: "v1_data_sources_tables_table_parents" }
   );
 
-  // Handling the case where `spaceId` is undefined to keep support for the legacy endpoint (not under
-  // space, global space assumed for the auth (the authenticator associated with the app, not the
-  // user)).
-  let { spaceId } = req.query;
-  if (typeof spaceId !== "string") {
-    if (auth.isSystemKey()) {
-      // We also handle the legacy usage of connectors that taps into connected data sources which
-      // are not in the global space. If this is a system key we trust it and set the `spaceId` to the
-      // dataSource.space.sId.
-      spaceId = dataSource?.space.sId;
-    } else {
-      spaceId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
-    }
-  }
+  const spaceId = await resolveLegacyDataSourceSpaceId(
+    auth,
+    req.query.spaceId,
+    dataSource
+  );
 
   if (!dataSource || dataSource.space.sId !== spaceId) {
     return apiError(req, res, {

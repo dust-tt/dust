@@ -1,9 +1,9 @@
-import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { extractUsageFromExecutions } from "@app/lib/api/run";
 import { initSSEResponse } from "@app/lib/api/sse";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -19,10 +19,6 @@ import {
   credentialsFromProviders,
   dustManagedServiceCredentials,
 } from "@app/types/api/credentials";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-} from "@app/types/assistant/models/types";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { CredentialsType } from "@app/types/provider";
@@ -45,60 +41,6 @@ export const config = {
 type RunFlavor = "blocking" | "streaming" | "non-blocking";
 
 type Trace = [[BlockType, string], TraceType[][]];
-
-function extractUsageFromExecutions(
-  block: { provider_id: ModelProviderIdType; model_id: ModelIdType },
-  traces: TraceType[][]
-): RunUsageType[] {
-  if (!block) {
-    return [];
-  }
-
-  const usages: RunUsageType[] = [];
-
-  traces.forEach((tracesInner) => {
-    tracesInner.forEach((trace) => {
-      if (trace?.meta) {
-        const { token_usage } = trace.meta as {
-          token_usage: {
-            prompt_tokens: number;
-            completion_tokens: number;
-            cached_tokens?: number;
-            cache_creation_input_tokens?: number;
-            reasoning_tokens?: number;
-          };
-        };
-        if (token_usage) {
-          const promptTokens = token_usage.prompt_tokens;
-          const completionTokens = token_usage.completion_tokens;
-          const cachedTokens = token_usage.cached_tokens;
-          const cacheCreationTokens = token_usage.cache_creation_input_tokens;
-
-          const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
-            modelId: block.model_id,
-            promptTokens,
-            completionTokens,
-            cachedTokens: cachedTokens ?? null,
-            cacheCreationTokens: cacheCreationTokens ?? null,
-          });
-
-          usages.push({
-            providerId: block.provider_id,
-            modelId: block.model_id,
-            promptTokens,
-            completionTokens,
-            cachedTokens: cachedTokens ?? null,
-            cacheCreationTokens: cacheCreationTokens ?? null,
-            costMicroUsd: usageCostMicroUsd,
-            isBatch: false,
-          });
-        }
-      }
-    });
-  });
-
-  return usages;
-}
 
 /**
  * @swagger

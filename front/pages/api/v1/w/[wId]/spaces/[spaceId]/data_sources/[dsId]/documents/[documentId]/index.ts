@@ -1,6 +1,9 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
-import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
+import {
+  computeWorkspaceOverallSizeCached,
+  resolveLegacyDataSourceSpaceId,
+} from "@app/lib/api/data_sources";
 import {
   getLlmCredentials,
   MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
@@ -10,7 +13,6 @@ import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
@@ -300,20 +302,11 @@ async function handler(
     { origin: "v1_data_sources_documents_document_get_or_upsert" }
   );
 
-  // Handling the case where `spaceId` is undefined to keep support for the legacy endpoint (not under
-  // space, global space assumed for the auth (the authenticator associated with the app, not the
-  // user)).
-  let { spaceId } = req.query;
-  if (typeof spaceId !== "string") {
-    if (auth.isSystemKey()) {
-      // We also handle the legacy usage of connectors that taps into connected data sources which
-      // are not in the global space. If this is a system key we trust it and set the `spaceId` to the
-      // dataSource.space.sId.
-      spaceId = dataSource?.space.sId;
-    } else {
-      spaceId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
-    }
-  }
+  const spaceId = await resolveLegacyDataSourceSpaceId(
+    auth,
+    req.query.spaceId,
+    dataSource
+  );
 
   if (
     !dataSource ||
