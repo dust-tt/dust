@@ -34,6 +34,7 @@ import featureFlags from "./feature-flags";
 import files from "./files";
 import groups from "./groups";
 import invitations from "./invitations";
+import keys from "./keys";
 import labs from "./labs";
 import mcp from "./mcp";
 import me from "./me";
@@ -53,8 +54,10 @@ import sso from "./sso";
 import subscriptions from "./subscriptions";
 import trial from "./trial";
 import trialMessageUsage from "./trial-message-usage";
+import verification from "./verification";
 import verifiedDomains from "./verified-domains";
 import verify from "./verify";
+import webhookSources from "./webhook_sources";
 import welcome from "./welcome";
 import workspaceAnalytics from "./workspace-analytics";
 import workspaceUsage from "./workspace-usage";
@@ -216,6 +219,14 @@ app.route("/trial", trial);
 // the `app.route()` must sit below the catch-all so non-override sub-paths
 // inherit the default.
 app.use("/credits", workspaceAuth({ doesNotRequireCanUseProduct: true }));
+app.use(
+  "/credits/purchase",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+app.use(
+  "/verification/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
 app.use("/seats/count", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 app.use("/subscriptions", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 app.use(
@@ -566,6 +577,7 @@ app.route("/extension", extension);
 app.route("/files", files);
 app.route("/groups", groups);
 app.route("/invitations", invitations);
+app.route("/keys", keys);
 app.route("/labs", labs);
 app.route("/mcp", mcp);
 app.route("/me", me);
@@ -583,7 +595,9 @@ app.route("/skills", skills);
 app.route("/sso", sso);
 app.route("/spaces", spaces);
 app.route("/subscriptions", subscriptions);
+app.route("/verification", verification);
 app.route("/verified-domains", verifiedDomains);
+app.route("/webhook_sources", webhookSources);
 app.route("/workspace-analytics", workspaceAnalytics);
 app.route("/workspace-usage", workspaceUsage);
 
