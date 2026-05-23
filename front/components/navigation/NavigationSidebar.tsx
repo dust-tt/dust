@@ -82,7 +82,6 @@ export const NavigationSidebar = React.forwardRef<
         </div>
         {navs.length > 1 && (
           <Tabs value={currentTab?.id ?? "conversations"}>
-            <div className="border-b border-separator px-2 dark:border-separator-night">
               <TabsList border={false}>
                 {navs.map((tab) => (
                   <div key={tab.id} ref={tab.ref ?? undefined}>
@@ -106,7 +105,6 @@ export const NavigationSidebar = React.forwardRef<
                   </div>
                 )}
               </TabsList>
-            </div>
             {navs.map((tab) => (
               <TabsContent key={tab.id} value={tab.id}>
                 <NavigationList className="px-3">

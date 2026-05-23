@@ -73,6 +73,7 @@ export function Navigation({
   return (
     <div
       className={cn(
+        "text-sidebar-primary dark:text-sidebar-primary-night",
         "flex shrink-0 overflow-x-hidden border-r",
         "border-border-dark dark:border-border-dark-night"
       )}
@@ -90,9 +91,9 @@ export function Navigation({
           </div>
           <SheetContent
             side="left"
-            className="flex w-full max-w-xs flex-1 bg-muted-background dark:bg-muted-background-night"
+            className="flex w-full max-w-xs flex-1 bg-app-background dark:bg-app-background-night"
           >
-            <SheetHeader className="bg-muted-background p-0" hideButton={true}>
+            <SheetHeader className="bg-app-background p-0" hideButton={true}>
               <VisuallyHidden>
                 <SheetTitle className="hidden" />
               </VisuallyHidden>
@@ -116,7 +117,7 @@ export function Navigation({
               isNavigationBarOpen ? "w-80" : "w-0"
             )}
           >
-            <div className="flex-1 bg-muted-background dark:bg-muted-background-night lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+            <div className="flex-1 bg-app-background dark:bg-app-background-night lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
               <NavigationSidebar
                 owner={owner}
                 subscription={subscription}

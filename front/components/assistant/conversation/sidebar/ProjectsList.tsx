@@ -164,7 +164,7 @@ const ProjectListItem = memo(
             space={space}
             owner={owner}
             isStarred={isStarred}
-            trigger={<NavigationListItemAction />}
+            trigger={<NavigationListItemAction forceVisible={isMenuOpen} />}
             isProjectDisplayed={activeConversationId === space.sId}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}

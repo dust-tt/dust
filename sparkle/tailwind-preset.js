@@ -26,6 +26,20 @@ const customColors = {
     100: "#EEEEEF",
     50: "#F7F7F7",
   },
+  stone: {
+    950: "#0C0A09",
+    900: "#1C1917",
+    800: "#292524",
+    700: "#44403B",
+    600: "#57534D",
+    500: "#79716B",
+    400: "#A6A09B",
+    300: "#D6D3D1",
+    200: "#E7E5E4",
+    100: "#F5F5F4",
+    50: "#FBFAF9",
+    25: "#FDFDFC",
+  },
   golden: {
     950: "#331606",
     900: "#70350C",
@@ -348,6 +362,10 @@ module.exports = {
     },
     fontSize,
     extend: {
+      spacing: {
+        "sidebar-side-spacing": "1rem",
+        "sidebar-side-spacing-half": "0.5rem",
+      },
       transitionTimingFunction: {
         "in-quad": "cubic-bezier(.55, .085, .68, .53)",
         "in-cubic": "cubic-bezier(.550, .055, .675, .19)",
@@ -586,6 +604,7 @@ module.exports = {
           },
         },
         background: { DEFAULT: colors.white, night: colors.gray[950] },
+        "app-background": { DEFAULT: "#FAFAF9", night: customColors.stone[900] },
         foreground: {
           DEFAULT: colors.gray[950],
           night: colors.gray[200],
@@ -684,6 +703,12 @@ module.exports = {
           900: { DEFAULT: colors.green[900], night: colors.green[100] },
           950: { DEFAULT: colors.green[950], night: colors.green[50] },
           50: { DEFAULT: colors.green[50], night: colors.green[950] },
+        },
+        sidebar: {
+          primary: {
+            DEFAULT: customColors.stone[800],
+            night: "#D6D3D1",
+          },
         },
         info: {
           DEFAULT: customColors.golden[500],
