@@ -312,11 +312,8 @@ export function getAwuAllocationForSeatType(
   seatType: MembershipSeatType,
   productSeatTypes: Map<string, MembershipSeatType>
 ): number {
-  return getAwuAllocationInfoForSeatType(
-    contract,
-    seatType,
-    productSeatTypes
-  ).credits;
+  return getAwuAllocationInfoForSeatType(contract, seatType, productSeatTypes)
+    .credits;
 }
 
 /**
