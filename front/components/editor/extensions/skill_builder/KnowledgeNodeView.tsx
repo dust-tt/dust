@@ -4,6 +4,14 @@ import {
   KnowledgeErrorChip,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeNodeAttributes } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type {
+  FullKnowledgeItem,
+  KnowledgeItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import {
+  computeHasChildren,
+  isFullKnowledgeItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNodeWithSpace,
@@ -13,14 +21,6 @@ import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
-import {
-  computeHasChildren,
-  isFullKnowledgeItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
-import type {
-  FullKnowledgeItem,
-  KnowledgeItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import {

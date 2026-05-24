@@ -1,17 +1,14 @@
-import {
-  computeHasChildren,
-  isFullKnowledgeItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import type {
   BaseKnowledgeItem,
   KnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import {
+  computeHasChildren,
+  isFullKnowledgeItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { Node } from "@tiptap/core";
 
-import {
-  KNOWLEDGE_TAG,
-  KNOWLEDGE_TAG_REGEX,
-} from "./KnowledgeNodeConstants";
+import { KNOWLEDGE_TAG, KNOWLEDGE_TAG_REGEX } from "./KnowledgeNodeConstants";
 
 export interface KnowledgeNodeAttributes {
   selectedItems: KnowledgeItem[];
