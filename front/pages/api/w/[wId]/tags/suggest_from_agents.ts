@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 /** @ignoreswagger */
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getWorkspaceTagSuggestions } from "@app/lib/api/assistant/tag_manager";

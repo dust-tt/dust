@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 /** @ignoreswagger */
 import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
