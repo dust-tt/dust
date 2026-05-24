@@ -14,6 +14,8 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<SeatPlanResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
+  // Seat plan behavior lives in the shared handler so this legacy route stays
+  // aligned with the Hono route while migration is in progress.
   return handleSeatPlanRequest(req, res, auth);
 }
 

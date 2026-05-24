@@ -4,11 +4,12 @@ import { getMetronomeClient } from "@app/lib/metronome/client";
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
-  getAwuAllocationForSeatType,
+  getAwuAllocationInfoForSeatType,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
   getSeatTypesByProductIdFromContract,
   isMauContract,
+  type SeatAwuCreditsPeriod,
 } from "@app/lib/metronome/seat_types";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -18,13 +19,18 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type SeatBillingFrequency = "monthly" | "annual";
+export type SeatBillingFrequency =
+  | "weekly"
+  | "monthly"
+  | "quarterly"
+  | "annual";
 
 export interface SeatTypeInfo {
   // Human-readable plan name surfaced by Metronome (e.g. "Pro Seat") — use
   // for display so the UI doesn't need to know about specific seat types.
   name: string;
   awuCredits: number;
+  awuCreditsPeriod: SeatAwuCreditsPeriod;
   priceCents: number;
   currency: SupportedCurrency;
   // `priceCents` is the amount billed per `billingFrequency` (per month for
@@ -38,6 +44,22 @@ export interface SeatTypeInfo {
 export type SeatPlanResponseBody = Partial<
   Record<MembershipSeatType, SeatTypeInfo>
 >;
+
+export function getSeatBillingFrequency(
+  billingFrequency: string
+): SeatBillingFrequency {
+  switch (billingFrequency) {
+    case "WEEKLY":
+      return "weekly";
+    case "QUARTERLY":
+      return "quarterly";
+    case "ANNUAL":
+      return "annual";
+    case "MONTHLY":
+    default:
+      return "monthly";
+  }
+}
 
 export async function handleSeatPlanRequest(
   req: NextApiRequest,
@@ -104,9 +126,8 @@ export async function handleSeatPlanRequest(
   }
 
   // Resolve each seat's billing frequency from the matching subscription on
-  // the contract. Default to "monthly" if the subscription declares anything
-  // other than ANNUAL — Metronome's enum has WEEKLY / QUARTERLY too, but we
-  // only ship monthly and annual seats.
+  // the contract. Keep the full Metronome cadence in the response so callers
+  // don't need to assume that all non-annual seats are monthly.
   const billingFrequencyBySeatType = new Map<
     MembershipSeatType,
     SeatBillingFrequency
@@ -118,9 +139,7 @@ export async function handleSeatPlanRequest(
   for (const [seatType, sub] of seatSubscriptions) {
     billingFrequencyBySeatType.set(
       seatType,
-      sub.subscription_rate.billing_frequency === "ANNUAL"
-        ? "annual"
-        : "monthly"
+      getSeatBillingFrequency(sub.subscription_rate.billing_frequency)
     );
   }
 
@@ -191,13 +210,15 @@ export async function handleSeatPlanRequest(
     if (priceCents === undefined || name === undefined) {
       continue;
     }
+    const awuAllocation = getAwuAllocationInfoForSeatType(
+      contract,
+      seatType,
+      productSeatTypes
+    );
     response[seatType] = {
       name,
-      awuCredits: getAwuAllocationForSeatType(
-        contract,
-        seatType,
-        productSeatTypes
-      ),
+      awuCredits: awuAllocation.credits,
+      awuCreditsPeriod: awuAllocation.period,
       priceCents,
       currency,
       billingFrequency: billingFrequencyBySeatType.get(seatType) ?? "monthly",
