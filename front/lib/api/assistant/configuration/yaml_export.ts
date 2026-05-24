@@ -46,7 +46,7 @@ function isExportableAgentConfiguration(
   );
 }
 
-export async function getAgentConfigurationForExport(
+export async function getExportableAgentConfiguration(
   auth: Authenticator,
   agentId: string
 ): Promise<Result<ExportableAgentConfiguration, APIErrorWithStatusCode>> {
@@ -83,7 +83,7 @@ export async function getAgentConfigurationYAMLContext(
   agentId: string,
   { requireEditorGroup = false }: { requireEditorGroup?: boolean } = {}
 ): Promise<Result<AgentConfigurationYAMLContext, APIErrorWithStatusCode>> {
-  const agentResult = await getAgentConfigurationForExport(auth, agentId);
+  const agentResult = await getExportableAgentConfiguration(auth, agentId);
   if (agentResult.isErr()) {
     return agentResult;
   }

@@ -1,5 +1,5 @@
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationForExport } from "@app/lib/api/assistant/configuration/yaml_export";
+import { getExportableAgentConfiguration } from "@app/lib/api/assistant/configuration/yaml_export";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import type { Authenticator } from "@app/lib/auth";
 import type { GroupResource as GroupResourceType } from "@app/lib/resources/group_resource";
@@ -85,7 +85,7 @@ async function createPatchableAgent({
     agentConfigurationId: agent.id,
   });
 
-  const agentForPatch = await getAgentConfigurationForExport(auth, agent.sId);
+  const agentForPatch = await getExportableAgentConfiguration(auth, agent.sId);
   expect(agentForPatch.isOk()).toBe(true);
   if (agentForPatch.isErr()) {
     throw new Error(agentForPatch.error.api_error.message);
