@@ -128,8 +128,8 @@ async function fetchPerUserSpendLimitsForMembersTable({
     return new Map();
   }
   const thresholds = new Map<string, number>();
-  for (const [userId, alert] of result.value) {
-    thresholds.set(userId, alert.threshold);
+  for (const [userId, entry] of result.value) {
+    thresholds.set(userId, entry.alert.threshold);
   }
   return thresholds;
 }

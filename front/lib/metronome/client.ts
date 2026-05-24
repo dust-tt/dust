@@ -11,9 +11,13 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import Metronome, { ConflictError } from "@metronome/sdk";
-import type { Commit, ContractV2, Credit } from "@metronome/sdk/resources";
+import type { Commit, ContractV2, Credit, V1 } from "@metronome/sdk/resources";
+import type { ContractRetrieveRateScheduleResponse } from "@metronome/sdk/resources/v1/contracts/contracts";
+import type { ProductListResponse } from "@metronome/sdk/resources/v1/contracts/products";
 import type { RateCardRetrieveResponse } from "@metronome/sdk/resources/v1/contracts/rate-cards";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
+import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
+import type { IncomingHttpHeaders } from "http";
 import type {
   MetronomeBalance,
   MetronomeEvent,
@@ -69,6 +73,22 @@ export function ceilToMidnightUTC(d: Date): Date {
   return floored.getTime() < d.getTime()
     ? new Date(floored.getTime() + DAY_MS)
     : floored;
+}
+
+// ---------------------------------------------------------------------------
+// Webhooks
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify a Metronome webhook signature and return the parsed payload as an
+ * unknown — callers schema-check it. Throws if the signature is invalid.
+ */
+export function unwrapMetronomeWebhook(
+  rawBody: string,
+  headers: IncomingHttpHeaders,
+  secret: string
+): unknown {
+  return getMetronomeClient().webhooks.unwrap(rawBody, headers, secret);
 }
 
 // ---------------------------------------------------------------------------
@@ -517,6 +537,26 @@ export async function setMetronomeContractCustomFields({
   }
 }
 
+/** Set custom field values on a Metronome contract credit. */
+export async function setMetronomeContractCreditCustomFields({
+  creditId,
+  customFields,
+}: {
+  creditId: string;
+  customFields: Record<string, string>;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.customFields.setValues({
+      entity: "contract_credit",
+      entity_id: creditId,
+      custom_fields: customFields,
+    });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Contract management
 // ---------------------------------------------------------------------------
@@ -834,6 +874,64 @@ export async function reactivateMetronomeContract({
     );
     return new Err(error);
   }
+}
+
+/**
+ * Generic wrapper around `v2.contracts.edit`. The Metronome edit endpoint is
+ * an omnibus mutation (add subscriptions, commits, credits, overrides, billing
+ * provider, etc.) — callers compose the body and we surface the resulting
+ * edit id (or error) without prescribing the payload shape.
+ */
+export async function editMetronomeContract(
+  params: ContractEditParams
+): Promise<Result<{ editId: string }, Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.edit(params);
+    return new Ok({ editId: response.data.id });
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      {
+        error,
+        metronomeCustomerId: params.customer_id,
+        contractId: params.contract_id,
+      },
+      "[Metronome] Failed to edit contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Lazily iterate the rate-schedule entries for a contract at a given
+ * timestamp. Yields one entry at a time, fetching pages on demand —
+ * callers can `break` early once they've found what they need without
+ * dragging extra pages over the wire. Errors thrown by the SDK surface
+ * through the iterator; wrap with try/catch + Result.
+ */
+export async function* listMetronomeContractRateSchedule({
+  metronomeCustomerId,
+  metronomeContractId,
+  at,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  at: string;
+}): AsyncGenerator<ContractRetrieveRateScheduleResponse.Data> {
+  const client = getMetronomeClient();
+  let nextPage: string | null | undefined = undefined;
+  do {
+    const response = await client.v1.contracts.retrieveRateSchedule({
+      contract_id: metronomeContractId,
+      customer_id: metronomeCustomerId,
+      at,
+      ...(nextPage ? { next_page: nextPage } : {}),
+    });
+    for (const entry of response.data ?? []) {
+      yield entry;
+    }
+    nextPage = response.next_page;
+  } while (nextPage);
 }
 
 /**
@@ -1391,22 +1489,18 @@ export async function findMetronomeCommitByUniquenessKey({
 // Products
 // ---------------------------------------------------------------------------
 
-interface MetronomeProduct {
-  id: string;
-  name: string;
-}
-
 /**
- * List all products from Metronome.
- * Used to resolve product IDs by name (e.g. "Pro Seat", "Max Seat").
+ * List all products from Metronome. Returns the raw SDK product objects so
+ * callers can read whatever fields they need (custom_fields, current state,
+ * etc.) without us maintaining a stripped wrapper type.
  */
 export async function listMetronomeProducts(): Promise<
-  Result<MetronomeProduct[], Error>
+  Result<ProductListResponse[], Error>
 > {
   try {
-    const products: MetronomeProduct[] = [];
+    const products: ProductListResponse[] = [];
     for await (const product of getMetronomeClient().v1.contracts.products.list()) {
-      products.push({ id: product.id, name: product.current.name });
+      products.push(product);
     }
     return new Ok(products);
   } catch (err) {
@@ -2021,5 +2115,40 @@ export async function listMetronomeSeatBalances({
       "[Metronome] Failed to list seat balances"
     );
     return new Err(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Alerts
+// ---------------------------------------------------------------------------
+
+export async function createMetronomeAlert(
+  params: V1.AlertCreateParams
+): Promise<V1.AlertCreateResponse> {
+  return getMetronomeClient().v1.alerts.create(params);
+}
+
+// Archives the alert and releases its uniqueness_key so it can be reused
+// by a subsequent create (the only way we ever archive alerts today).
+export async function archiveMetronomeAlert(
+  params: V1.AlertArchiveParams
+): Promise<V1.AlertArchiveResponse> {
+  return getMetronomeClient().v1.alerts.archive({
+    ...params,
+    release_uniqueness_key: true,
+  });
+}
+
+// Lazily iterates Metronome customer alerts, transparently auto-paginating via
+// the SDK's PagePromise. Callers can `break` to early-exit (no extra pages are
+// fetched) or iterate to the end to scan everything. Errors thrown by the SDK
+// surface through the iterator — callers wrap with try/catch + `Result`.
+export async function* listMetronomeAlerts(
+  params: V1.Customers.AlertListParams
+): AsyncGenerator<V1.Customers.CustomerAlert> {
+  for await (const entry of getMetronomeClient().v1.customers.alerts.list(
+    params
+  )) {
+    yield entry;
   }
 }

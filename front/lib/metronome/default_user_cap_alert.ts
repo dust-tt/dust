@@ -1,4 +1,3 @@
-import type { MetronomeAlert } from "@app/lib/metronome/alerts";
 import {
   findMetronomeAlert,
   upsertMetronomeAlert,
@@ -7,6 +6,7 @@ import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { V1 } from "@metronome/sdk/resources";
 
 const USER_ID_GROUP_KEY = "user_id";
 
@@ -29,7 +29,7 @@ export async function getMetronomeDefaultUserCapAlert({
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<Result<MetronomeAlert | null, Error>> {
+}): Promise<Result<V1.Customers.CustomerAlert | null, Error>> {
   return findMetronomeAlert({
     metronomeCustomerId,
     uniquenessKey: defaultUserCapAlertUniquenessKey(workspaceId),

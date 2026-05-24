@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { amountCents } from "@app/lib/metronome/amounts";
-import { getMetronomeClient } from "@app/lib/metronome/client";
+import { listMetronomeContractRateSchedule } from "@app/lib/metronome/client";
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
@@ -150,41 +150,31 @@ export async function handleSeatPlanRequest(
     // overrides on entitlement and price are applied. This endpoint only
     // returns entitled rates and exposes `override_rate` when a contract
     // override changes the price.
-    const at = new Date().toISOString();
-    let nextPage: string | null | undefined = undefined;
-    do {
-      const rateSchedule =
-        await getMetronomeClient().v1.contracts.retrieveRateSchedule({
-          contract_id: contract.id,
-          customer_id: contract.customer_id,
-          at,
-          ...(nextPage ? { next_page: nextPage } : {}),
-        });
-
-      for (const entry of rateSchedule.data ?? []) {
-        if (!entry.entitled) {
-          continue;
-        }
-        const price = entry.override_rate?.price ?? entry.list_rate.price;
-        if (price === undefined) {
-          continue;
-        }
-        const seatType = seatTypesByProductId.get(entry.product_id);
-        if (!seatType) {
-          continue;
-        }
-        // Metronome quotes prices in its per-currency native unit (USD in
-        // cents, others in whole units); normalize to actual cents here.
-        // TODO (https://github.com/dust-tt/tasks/issues/8072): Add annual pricing
-        monthlyPriceCentsBySeatType.set(seatType, amountCents(price, currency));
-        nameBySeatType.set(seatType, entry.product_name);
+    for await (const entry of listMetronomeContractRateSchedule({
+      metronomeCustomerId: contract.customer_id,
+      metronomeContractId: contract.id,
+      at: new Date().toISOString(),
+    })) {
+      if (!entry.entitled) {
+        continue;
       }
-
-      nextPage = rateSchedule.next_page;
-    } while (
-      nextPage &&
-      monthlyPriceCentsBySeatType.size < seatTypesByProductId.size
-    );
+      const price = entry.override_rate?.price ?? entry.list_rate.price;
+      if (price === undefined) {
+        continue;
+      }
+      const seatType = seatTypesByProductId.get(entry.product_id);
+      if (!seatType) {
+        continue;
+      }
+      // Metronome quotes prices in its per-currency native unit (USD in
+      // cents, others in whole units); normalize to actual cents here.
+      // TODO (https://github.com/dust-tt/tasks/issues/8072): Add annual pricing
+      monthlyPriceCentsBySeatType.set(seatType, amountCents(price, currency));
+      nameBySeatType.set(seatType, entry.product_name);
+      if (monthlyPriceCentsBySeatType.size >= seatTypesByProductId.size) {
+        break;
+      }
+    }
   } catch (err) {
     logger.warn(
       {
