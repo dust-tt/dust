@@ -6,20 +6,21 @@ import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
 import {
   ActionPieChartIcon,
+  Atom01V2,
   BarChartIcon,
   BoltIcon,
   BracesIcon,
   BrainIcon,
   CardIcon,
-  ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
+  Settings02V2,
   CommandLineIcon,
   CompanyIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   GlobeAltIcon,
   LockIcon,
-  PlanetIcon,
+  MessageChatCircleV2,
   ShapesIcon,
   SparklesIcon,
   UserIcon,
@@ -173,7 +174,7 @@ export const getTopNavigationTabs = (
     id: "conversations",
     label: "Work",
     href: getConversationRoute(owner.sId),
-    icon: ChatBubbleLeftRightIcon,
+    icon: MessageChatCircleV2,
     sizing: "hug",
     isCurrent: (currentRoute) =>
       matchesRoutePattern(currentRoute, [
@@ -186,7 +187,7 @@ export const getTopNavigationTabs = (
   nav.push({
     id: "data_sources",
     label: "Spaces",
-    icon: PlanetIcon,
+    icon: Atom01V2,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces") ||
@@ -199,7 +200,7 @@ export const getTopNavigationTabs = (
     nav.push({
       id: "settings",
       label: "Admin",
-      icon: Cog6ToothIcon,
+      icon: Settings02V2,
       href: `/w/${owner.sId}/members`,
       isCurrent: (currentRoute) =>
         matchesRoutePattern(currentRoute, [

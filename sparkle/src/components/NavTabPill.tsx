@@ -16,7 +16,7 @@ const NavTabPillList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "s-inline-flex s-items-center s-justify-center s-gap-1 s-rounded-lg",
+      "s-flex s-items-center s-gap-1",
       className
     )}
     {...props}
@@ -52,38 +52,30 @@ const NavTabPillTrigger = React.forwardRef<
       ...props
     },
     ref
-  ) => (
-    <TabsPrimitive.Trigger
-      ref={ref}
-      asChild
-      {...props}
-    >
-      <LinkWrapper
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        className={cn(
-        "s-group s-inline-flex s-h-8 s-items-center s-justify-center s-whitespace-nowrap s-rounded-lg s-pl-2 data-[state=active]:s-pl-2 [&:not([data-state=active])]:s-pr-2 s-text-sm",
-        "s-text-muted-foreground dark:s-text-muted-foreground-night",
-        "hover:s-bg-sidebar-100 dark:hover:s-bg-sidebar-100-night",
-        "s-font-medium",
-        "s-bg-transparent",
-        "data-[state=active]:s-bg-sidebar-100 data-[state=active]:s-text-foreground",
-        "dark:data-[state=active]:s-bg-sidebar-100-night dark:data-[state=active]:s-text-foreground-night",
-        "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
-        "disabled:s-pointer-events-none disabled:s-opacity-100",
-        "data-[state=active]:s-overflow-hidden data-[state=active]:s-shrink",
-        "s-transition-[padding]",
+  ) => {
+    const triggerClassName = cn(
+      "s-group s-flex s-h-8 s-items-center s-justify-center s-whitespace-nowrap s-rounded-lg s-pl-2 data-[state=active]:s-pl-2 [&:not([data-state=active])]:s-pr-2 s-text-sm",
+      "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      "hover:s-bg-gray-100 dark:hover:s-bg-gray-100-night",
+      "s-font-medium",
+      "s-bg-transparent",
+      "data-[state=active]:s-bg-gray-100 data-[state=active]:s-text-foreground",
+      "dark:data-[state=active]:s-bg-gray-100-night dark:data-[state=active]:s-text-foreground-night",
+      "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
+      "disabled:s-pointer-events-none disabled:s-opacity-100",
+      "data-[state=active]:s-overflow-hidden data-[state=active]:s-shrink",
+      "s-transition-[padding] s-duration-200",
+      easingClassName?.trigger ?? "s-ease-in-out-cubic",
+      className
+    );
 
-        className
-      )}
-      >
-        <Icon visual={icon} size="xs" />
+    const content = (
+      <>
+        <Icon visual={icon} size="sm" />
         <div
           className={cn(
-            "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-200 group-data-[state=active]:s-grid-cols-[1fr] overflow-hidden",
-            "s-in-out-circ"
+            "s-relative s-grid s-grid-cols-[0fr] s-transition-[grid-template-columns] s-duration-200 group-data-[state=active]:s-grid-cols-[1fr] s-overflow-hidden",
+            easingClassName?.grid ?? "s-ease-in-out-cubic"
           )}
         >
           <span
@@ -93,14 +85,40 @@ const NavTabPillTrigger = React.forwardRef<
                 "linear-gradient(to right, black calc(100% - 8px), transparent)",
             }}
           >
-            <span className="group-data-[state=active]:s-pl-1.5 group-data-[state=active]:s-pr-2 s-transition-[padding] s-duration-200 s-whitespace-nowrap">
+            <span className="group-data-[state=active]:s-pl-1.5 group-data-[state=active]:s-pr-2 s-whitespace-nowrap">
               {children}
             </span>
           </span>
         </div>
-      </LinkWrapper>
-    </TabsPrimitive.Trigger>
-  )
+      </>
+    );
+
+    if (href) {
+      return (
+        <TabsPrimitive.Trigger ref={ref} asChild {...props}>
+          <LinkWrapper
+            href={href}
+            target={target}
+            rel={rel}
+            replace={replace}
+            className={triggerClassName}
+          >
+            {content}
+          </LinkWrapper>
+        </TabsPrimitive.Trigger>
+      );
+    }
+
+    return (
+      <TabsPrimitive.Trigger
+        ref={ref}
+        className={triggerClassName}
+        {...props}
+      >
+        {content}
+      </TabsPrimitive.Trigger>
+    );
+  }
 );
 NavTabPillTrigger.displayName = TabsPrimitive.Trigger.displayName;
 

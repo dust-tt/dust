@@ -69,7 +69,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
         )}
       >
         <div
-          className="m-4 rounded-xl overflow-y-scroll"
+          className="m-2 rounded-xl overflow-y-scroll"
           style={{
             border: "0.5px solid var(--Border-border, #EEEEEF)",
             background: "var(--Stone-25, #FDFDFC)",

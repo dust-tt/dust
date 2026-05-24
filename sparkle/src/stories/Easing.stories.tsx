@@ -2,12 +2,12 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import {
-  Cog6ToothIcon,
-  CommandIcon,
-  LightbulbIcon,
+  Atom01V2,
+  MessageChatCircleV2,
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
+  Settings02V2,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -26,6 +26,16 @@ const EASINGS = [
     description:
       "The default choice for most UI animations. Starts fast, giving an immediate feeling of responsiveness, then decelerates naturally. Use for user-initiated interactions: opening dropdowns, modals, toasts, enter/exit animations.",
     items: [
+      {
+        label: "css ease",
+        class: "s-ease",
+        cp: [0.25, 0.1, 0.25, 1] as const,
+      },
+      {
+        label: "css ease-out",
+        class: "s-ease-out",
+        cp: [0, 0, 0.58, 1] as const,
+      },
       {
         label: "out-quad",
         class: "s-ease-out-quad",
@@ -384,33 +394,33 @@ function NavTabPillEasingsPlayground() {
               <NavTabPillList>
                 <NavTabPillTrigger
                   value="overview"
-                  icon={CommandIcon}
+                  icon={MessageChatCircleV2}
                   easingClassName={{
                     trigger: easing.class,
                     grid: easing.class,
                   }}
                 >
-                  Overview
+                  Work
                 </NavTabPillTrigger>
                 <NavTabPillTrigger
                   value="analytics"
-                  icon={LightbulbIcon}
+                  icon={Atom01V2}
                   easingClassName={{
                     trigger: easing.class,
                     grid: easing.class,
                   }}
                 >
-                  Analytics
+                  Spaces
                 </NavTabPillTrigger>
                 <NavTabPillTrigger
                   value="settings"
-                  icon={Cog6ToothIcon}
+                  icon={Settings02V2}
                   easingClassName={{
                     trigger: easing.class,
                     grid: easing.class,
                   }}
                 >
-                  Settings
+                  Admin
                 </NavTabPillTrigger>
               </NavTabPillList>
             </NavTabPill>
@@ -423,4 +433,162 @@ function NavTabPillEasingsPlayground() {
 
 export const NavTabPillEasings: Story = {
   render: () => <NavTabPillEasingsPlayground />,
+};
+
+function NavTabPillDualEasingPlayground() {
+  const easeOutItems = EASINGS[0].items;
+  const easeInOutItems = EASINGS[1].items;
+
+  const [easingA, setEasingA] = useState(easeOutItems[0]);
+  const [easingB, setEasingB] = useState(easeInOutItems[0]);
+  const [activeA, setActiveA] = useState("overview");
+  const [activeB, setActiveB] = useState("overview");
+
+  const playBoth = () => {
+    const next = activeA === "overview" ? "analytics" : "overview";
+    setActiveA(next);
+    setActiveB(next);
+  };
+
+  const allItems = [...easeOutItems, ...easeInOutItems];
+
+  return (
+    <div className="s-flex s-w-[700px] s-flex-col s-gap-6 s-p-8">
+      <div>
+        <h2 className="s-text-xl s-font-semibold">
+          NavTabPill — Dual Easing Comparison
+        </h2>
+        <p className="s-mt-1 s-text-sm s-text-muted-foreground">
+          Pick two easings (ease-out or ease-in-out) and play them side by side.
+        </p>
+      </div>
+
+      <div className="s-flex s-gap-4">
+        <div className="s-flex s-flex-col s-gap-1">
+          <label className="s-text-xs s-font-medium s-text-muted-foreground">
+            Easing A
+          </label>
+          <select
+            className="s-rounded s-border s-px-2 s-py-1 s-text-sm"
+            value={easingA.label}
+            onChange={(e) => {
+              const found = allItems.find((i) => i.label === e.target.value);
+              if (found) {
+                setEasingA(found);
+              }
+            }}
+          >
+            <optgroup label="Ease Out">
+              {easeOutItems.map((item) => (
+                <option key={item.label} value={item.label}>
+                  {item.label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Ease In-Out">
+              {easeInOutItems.map((item) => (
+                <option key={item.label} value={item.label}>
+                  {item.label}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+        </div>
+        <div className="s-flex s-flex-col s-gap-1">
+          <label className="s-text-xs s-font-medium s-text-muted-foreground">
+            Easing B
+          </label>
+          <select
+            className="s-rounded s-border s-px-2 s-py-1 s-text-sm"
+            value={easingB.label}
+            onChange={(e) => {
+              const found = allItems.find((i) => i.label === e.target.value);
+              if (found) {
+                setEasingB(found);
+              }
+            }}
+          >
+            <optgroup label="Ease Out">
+              {easeOutItems.map((item) => (
+                <option key={item.label} value={item.label}>
+                  {item.label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Ease In-Out">
+              {easeInOutItems.map((item) => (
+                <option key={item.label} value={item.label}>
+                  {item.label}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+        </div>
+      </div>
+
+      <button
+        onClick={playBoth}
+        className="s-self-start s-rounded s-bg-blue-500 s-px-3 s-py-1.5 s-text-sm s-font-medium s-text-white hover:s-bg-blue-600"
+      >
+        Play both
+      </button>
+
+      <div className="s-flex s-flex-col s-gap-4">
+        {[
+          { label: easingA.label, easing: easingA, active: activeA, setActive: setActiveA },
+          { label: easingB.label, easing: easingB, active: activeB, setActive: setActiveB },
+        ].map(({ label, easing, active, setActive }) => (
+          <div key={label} className="s-flex s-items-center s-gap-4">
+            <EasingGraph controlPoints={easing.cp} size={48} />
+            <div>
+              <div className="s-mb-1 s-font-mono s-text-xs s-text-muted-foreground">
+                {label}
+              </div>
+              <NavTabPill
+                value={active}
+                onValueChange={setActive}
+              >
+                <NavTabPillList>
+                  <NavTabPillTrigger
+                    value="overview"
+                    icon={MessageChatCircleV2}
+                    easingClassName={{
+                      trigger: easing.class,
+                      grid: easing.class,
+                    }}
+                  >
+                    Work
+                  </NavTabPillTrigger>
+                  <NavTabPillTrigger
+                    value="analytics"
+                    icon={Atom01V2}
+                    easingClassName={{
+                      trigger: easing.class,
+                      grid: easing.class,
+                    }}
+                  >
+                    Spaces
+                  </NavTabPillTrigger>
+                  <NavTabPillTrigger
+                    value="settings"
+                    icon={Settings02V2}
+                    easingClassName={{
+                      trigger: easing.class,
+                      grid: easing.class,
+                    }}
+                  >
+                    Admin
+                  </NavTabPillTrigger>
+                </NavTabPillList>
+              </NavTabPill>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export const NavTabPillDualEasings: Story = {
+  render: () => <NavTabPillDualEasingPlayground />,
 };
