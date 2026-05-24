@@ -328,21 +328,21 @@ export async function patchAgentConfigurationFromJSON(
   let skippedActions: SkippedAction[] = [];
 
   if (patch.agent) {
-    if (patch.agent.handle !== undefined) {
+    if (patch.agent.handle) {
       assistant.name = patch.agent.handle;
     }
-    if (patch.agent.description !== undefined) {
+    if (patch.agent.description) {
       assistant.description = patch.agent.description;
     }
-    if (patch.agent.avatar_url !== undefined) {
+    if (patch.agent.avatar_url) {
       assistant.pictureUrl = patch.agent.avatar_url;
     }
-    if (patch.agent.scope !== undefined) {
+    if (patch.agent.scope) {
       assistant.scope = patch.agent.scope;
     }
   }
 
-  if (patch.instructions !== undefined) {
+  if (patch.instructions) {
     assistant.instructions = patch.instructions;
     assistant.instructionsHtml = null;
   }
@@ -407,17 +407,13 @@ export async function patchAgentConfigurationFromJSON(
     );
   }
 
-  if (patch.skills !== undefined) {
+  if (patch.skills) {
     assistant.skills = patch.skills.map((skill) => ({
       sId: skill.sId,
     }));
   }
 
-  if (
-    patch.spaces !== undefined ||
-    patch.toolset !== undefined ||
-    patch.skills !== undefined
-  ) {
+  if (patch.spaces || patch.toolset || patch.skills) {
     assistant.additionalRequestedSpaceIds =
       patch.spaces?.map((space) => space.space_id) ?? [];
   }
