@@ -143,7 +143,7 @@ export async function handleSeatPlanRequest(
     );
   }
 
-  const monthlyPriceCentsBySeatType = new Map<MembershipSeatType, number>();
+  const priceCentsBySeatType = new Map<MembershipSeatType, number>();
   const nameBySeatType = new Map<MembershipSeatType, string>();
   try {
     // Use the contract-level rate schedule (not the rate card's) so contract
@@ -167,11 +167,13 @@ export async function handleSeatPlanRequest(
         continue;
       }
       // Metronome quotes prices in its per-currency native unit (USD in
-      // cents, others in whole units); normalize to actual cents here.
-      // TODO (https://github.com/dust-tt/tasks/issues/8072): Add annual pricing
-      monthlyPriceCentsBySeatType.set(seatType, amountCents(price, currency));
+      // cents, others in whole units); normalize to actual cents here. The
+      // rate is whatever the entry's billing_frequency dictates — monthly
+      // for monthly subscriptions, annual for annual subscriptions — and
+      // `billingFrequency` on the response tells the UI which is which.
+      priceCentsBySeatType.set(seatType, amountCents(price, currency));
       nameBySeatType.set(seatType, entry.product_name);
-      if (monthlyPriceCentsBySeatType.size >= seatTypesByProductId.size) {
+      if (priceCentsBySeatType.size >= seatTypesByProductId.size) {
         break;
       }
     }
@@ -195,7 +197,7 @@ export async function handleSeatPlanRequest(
 
   const response: SeatPlanResponseBody = {};
   for (const seatType of seatTypesByProductId.values()) {
-    const priceCents = monthlyPriceCentsBySeatType.get(seatType);
+    const priceCents = priceCentsBySeatType.get(seatType);
     const name = nameBySeatType.get(seatType);
     if (priceCents === undefined || name === undefined) {
       continue;

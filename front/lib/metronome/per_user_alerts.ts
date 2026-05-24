@@ -9,7 +9,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { V1 } from "@metronome/sdk/resources";
+import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
 
 const USER_ID_GROUP_KEY = "user_id";
 
@@ -37,7 +37,7 @@ export async function getMetronomePerUserCap({
   metronomeCustomerId: string;
   workspaceId: string;
   userId: string;
-}): Promise<Result<V1.Customers.CustomerAlert | null, Error>> {
+}): Promise<Result<CustomerAlert | null, Error>> {
   return findMetronomeAlert({
     metronomeCustomerId,
     uniquenessKey: perUserAlertUniquenessKey(workspaceId, userId),
@@ -55,9 +55,9 @@ export async function listMetronomePerUserCapsForWorkspace({
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<Result<Map<string, V1.Customers.CustomerAlert>, Error>> {
+}): Promise<Result<Map<string, CustomerAlert>, Error>> {
   const prefix = perUserAlertUniquenessKeyPrefix(workspaceId);
-  const caps = new Map<string, V1.Customers.CustomerAlert>();
+  const caps = new Map<string, CustomerAlert>();
   try {
     for await (const entry of listMetronomeAlerts({
       customer_id: metronomeCustomerId,

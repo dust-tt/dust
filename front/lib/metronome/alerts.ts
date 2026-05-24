@@ -7,6 +7,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { V1 } from "@metronome/sdk/resources";
+import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
 
 type UpsertMetronomeAlertParams = V1.AlertCreateParams & {
   customer_id: string;
@@ -19,7 +20,7 @@ export async function findMetronomeAlert({
 }: {
   metronomeCustomerId: string;
   uniquenessKey: string;
-}): Promise<Result<V1.Customers.CustomerAlert | null, Error>> {
+}): Promise<Result<CustomerAlert | null, Error>> {
   try {
     for await (const entry of listMetronomeAlerts({
       customer_id: metronomeCustomerId,

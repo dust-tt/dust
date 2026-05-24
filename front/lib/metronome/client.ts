@@ -15,7 +15,10 @@ import type { Commit, ContractV2, Credit, V1 } from "@metronome/sdk/resources";
 import type { ContractRetrieveRateScheduleResponse } from "@metronome/sdk/resources/v1/contracts/contracts";
 import type { ProductListResponse } from "@metronome/sdk/resources/v1/contracts/products";
 import type { RateCardRetrieveResponse } from "@metronome/sdk/resources/v1/contracts/rate-cards";
-import type { Invoice } from "@metronome/sdk/resources/v1/customers";
+import type {
+  CustomerAlert,
+  Invoice,
+} from "@metronome/sdk/resources/v1/customers";
 import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
 import type { IncomingHttpHeaders } from "http";
 import type {
@@ -2145,7 +2148,7 @@ export async function archiveMetronomeAlert(
 // surface through the iterator — callers wrap with try/catch + `Result`.
 export async function* listMetronomeAlerts(
   params: V1.Customers.AlertListParams
-): AsyncGenerator<V1.Customers.CustomerAlert> {
+): AsyncGenerator<CustomerAlert> {
   for await (const entry of getMetronomeClient().v1.customers.alerts.list(
     params
   )) {
