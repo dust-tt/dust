@@ -14,3 +14,9 @@ function isGCSApiError(error: unknown): error is GCSAPIError {
 export function isGCSNotFoundError(error: unknown): error is GCSAPIError {
   return isGCSApiError(error) && error.code === 404;
 }
+
+export function isGCSPreconditionFailedError(
+  error: unknown
+): error is GCSAPIError {
+  return isGCSApiError(error) && error.code === 412;
+}

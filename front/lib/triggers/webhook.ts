@@ -3,6 +3,7 @@ import { FathomClient } from "@app/lib/api/triggers/built-in-webhooks/fathom/fat
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
+import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -538,6 +539,24 @@ export async function storePayloadInGCS(
       },
     });
   } catch (error: unknown) {
+    if (isGCSPreconditionFailedError(error)) {
+      logger.info(
+        {
+          webhookRequestId: webhookRequest.id,
+          error,
+          gcsPath,
+        },
+        "Webhook request payload was already stored in GCS"
+      );
+
+      getStatsDClient().increment("webhook_gcs_precondition.count", 1, [
+        `provider:${provider}`,
+        `workspace_id:${auth.getNonNullableWorkspace().sId}`,
+      ]);
+
+      return;
+    }
+
     // Log the error, but do not throw, as we want to continue processing the webhook.
     // The webhook request will be marked as failed later in the processing if needed.
     logger.error(
