@@ -363,7 +363,7 @@ export async function patchAgentConfigurationFromJSON(
     responseFormat: response_format,
   };
 
-  if (patch.tags !== undefined) {
+  if (patch.tags) {
     const tagsResult = await resolveTags(auth, patch.tags);
     if (tagsResult.isErr()) {
       return tagsResult;
@@ -371,7 +371,7 @@ export async function patchAgentConfigurationFromJSON(
     assistant.tags = tagsResult.value;
   }
 
-  if (patch.editors !== undefined) {
+  if (patch.editors) {
     const patchEditorsResult = await resolveEditorUsersFromEmails(
       auth,
       patch.editors
@@ -383,7 +383,7 @@ export async function patchAgentConfigurationFromJSON(
     authorId = patchEditorsResult.value.authorId;
   }
 
-  if (patch.toolset !== undefined) {
+  if (patch.toolset) {
     const patchActionsResult =
       await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
         auth,
