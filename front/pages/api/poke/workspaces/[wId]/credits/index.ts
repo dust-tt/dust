@@ -1,4 +1,5 @@
 /** @ignoreswagger */
+// @migration-status: MIGRATED_TO_HONO
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { metronomeBalanceToDisplayData } from "@app/lib/api/credits/metronome_balances";
 import { Authenticator } from "@app/lib/auth";

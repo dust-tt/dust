@@ -1,7 +1,5 @@
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
-import * as t from "io-ts";
-import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
-import { NumberFromString } from "io-ts-types/lib/NumberFromString";
+import { z } from "zod";
 
 export const MAX_MESSAGE_TIMEFRAMES = ["day", "lifetime"] as const;
 export type MaxMessagesTimeframeType = (typeof MAX_MESSAGE_TIMEFRAMES)[number];
@@ -141,73 +139,36 @@ export type SubscriptionPerSeatPricing = {
   quantity: number;
 };
 
-export const CreatePlanFormSchema = t.type({
-  code: NonEmptyString,
-  name: NonEmptyString,
-  isSlackbotAllowed: t.boolean,
-  isSlackAllowed: t.boolean,
-  isNotionAllowed: t.boolean,
-  isGoogleDriveAllowed: t.boolean,
-  isGithubAllowed: t.boolean,
-  isIntercomAllowed: t.boolean,
-  isConfluenceAllowed: t.boolean,
-  isWebCrawlerAllowed: t.boolean,
-  isSalesforceAllowed: t.boolean,
-  maxMessages: t.union([t.number, NumberFromString]),
-  maxMessagesTimeframe: t.keyof({
-    day: null,
-    lifetime: null,
-  }),
-  isDeepDiveAllowed: t.boolean,
-  dataSourcesCount: t.union([t.number, NumberFromString]),
-  dataSourcesDocumentsCount: t.union([t.number, NumberFromString]),
-  dataSourcesDocumentsSizeMb: t.union([t.number, NumberFromString]),
-  maxUsers: t.union([t.number, NumberFromString]),
-  maxVaults: t.union([t.number, NumberFromString]),
+export const EnterpriseUpgradeFormSchema = z.object({
+  planCode: z.string().min(1),
+  freeCreditsOverrideEnabled: z.boolean(),
+  paygEnabled: z.boolean(),
+  stripeSubscriptionId: z.string().min(1).optional(),
+  // For the Metronome path: id of the Metronome package the customer will
+  // be placed on, plus a timestamp at least one hour in the future
+  // when the new contracts starts (and the existing contract sunsets),
+  // and the Stripe customer ID to link as the Metronome billing provider.
+  metronomePackageId: z.string().min(1).optional(),
+  startingAt: z.string().min(1).optional(),
+  stripeCustomerId: z.string().min(1).optional(),
+  freeCreditsDollars: z.number().optional(),
+  defaultDiscountPercent: z.number().optional(),
+  paygCapDollars: z.number().optional(),
 });
 
-export type CreatePlanFormType = t.TypeOf<typeof CreatePlanFormSchema>;
-
-export const EnterpriseUpgradeFormSchema = t.intersection([
-  t.type({
-    planCode: NonEmptyString,
-    freeCreditsOverrideEnabled: t.boolean,
-    paygEnabled: t.boolean,
-  }),
-  t.partial({
-    stripeSubscriptionId: NonEmptyString,
-    // For the Metronome path: id of the Metronome package the customer will
-    // be placed on, plus a timestamp at least one hour in the future
-    // when the new contracts starts (and the existing contract sunsets),
-    // and the Stripe customer ID to link as the Metronome billing provider.
-    metronomePackageId: NonEmptyString,
-    startingAt: NonEmptyString,
-    stripeCustomerId: NonEmptyString,
-    freeCreditsDollars: t.number,
-    defaultDiscountPercent: t.number,
-    paygCapDollars: t.number,
-  }),
-]);
-
-export type EnterpriseUpgradeFormType = t.TypeOf<
+export type EnterpriseUpgradeFormType = z.infer<
   typeof EnterpriseUpgradeFormSchema
 >;
 
-export const FreePlanUpgradeFormSchema = t.type({
-  planCode: NonEmptyString,
-  endDate: t.union([
-    t.refinement(
-      t.string,
-      (s) => /^\d{4}-\d{2}-\d{2}$/.test(s),
-      "YYYY-MM-DD date string"
-    ),
-    t.undefined,
-  ]),
+export const FreePlanUpgradeFormSchema = z.object({
+  planCode: z.string().min(1),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD date string")
+    .optional(),
 });
 
-export type FreePlanUpgradeFormType = t.TypeOf<
-  typeof FreePlanUpgradeFormSchema
->;
+export type FreePlanUpgradeFormType = z.infer<typeof FreePlanUpgradeFormSchema>;
 
 export type CheckoutUrlResult =
   | { mode: "hosted"; checkoutUrl: string; plan: PlanType }
