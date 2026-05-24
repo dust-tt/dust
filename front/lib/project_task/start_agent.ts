@@ -16,10 +16,11 @@ import type {
 } from "@app/types/project_task";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { toFileContentFragment } from "../api/assistant/conversation/content_fragment";
 
 type StartProjectTaskAgentError = {
-  statusCode: number;
+  statusCode: ContentfulStatusCode;
   type: APIErrorType;
   message: string;
 };

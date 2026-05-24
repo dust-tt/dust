@@ -13,7 +13,7 @@ import { getClientIp } from "@app/lib/utils/request";
 import type { NextApiRequestWithContext } from "@app/logger/withlogging";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type {
-  APIErrorWithStatusCode,
+  APIErrorWithContentfulStatusCode,
   WithAPIErrorResponse,
 } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
@@ -32,7 +32,7 @@ function setClientIpOnAuth(auth: Authenticator, req: NextApiRequest): void {
 
 function getMaintenanceError(
   maintenance: string | number | true | object
-): APIErrorWithStatusCode {
+): APIErrorWithContentfulStatusCode {
   // During relocation, we return 503, but once relocation is done, we return 404 since
   // at that point, the workspace should be treated as if it did not exist in this region anymore.
   // And that matches what will happen it gets purged later.
@@ -56,7 +56,7 @@ function getMaintenanceError(
   };
 }
 
-function getWorkspaceKillSwitchError(): APIErrorWithStatusCode {
+function getWorkspaceKillSwitchError(): APIErrorWithContentfulStatusCode {
   return {
     status_code: 503,
     api_error: {
@@ -67,7 +67,7 @@ function getWorkspaceKillSwitchError(): APIErrorWithStatusCode {
   };
 }
 
-function getConversationKillSwitchError(): APIErrorWithStatusCode {
+function getConversationKillSwitchError(): APIErrorWithContentfulStatusCode {
   return {
     status_code: 503,
     api_error: {
@@ -92,7 +92,7 @@ function getAssistantConversationIdFromRequest(
 function getConversationKillSwitchErrorForRequest(
   req: NextApiRequest,
   killSwitched: unknown
-): APIErrorWithStatusCode | null {
+): APIErrorWithContentfulStatusCode | null {
   const conversationId = getAssistantConversationIdFromRequest(req);
   if (!conversationId) {
     return null;
@@ -108,13 +108,13 @@ function getConversationKillSwitchErrorForRequest(
 
 /**
  * Checks workspace-level guards: owner/plan existence, canUseProduct, maintenance, and kill switches.
- * Returns an APIErrorWithStatusCode if any check fails, or null if all pass.
+ * Returns an APIErrorWithContentfulStatusCode if any check fails, or null if all pass.
  */
 function validateWorkspace(
   req: NextApiRequest,
   auth: Authenticator,
   opts: { doesNotRequireCanUseProduct?: boolean } = {}
-): APIErrorWithStatusCode | null {
+): APIErrorWithContentfulStatusCode | null {
   const owner = auth.workspace();
   const plan = auth.plan();
   if (!owner || !plan) {
@@ -552,7 +552,7 @@ export function withTokenAuthentication<T>(
 async function handleSandboxAuth(
   token: string,
   wId: string
-): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+): Promise<Result<Authenticator, APIErrorWithContentfulStatusCode>> {
   const payload = await verifySandboxExecToken(token);
   if (!payload) {
     return new Err({

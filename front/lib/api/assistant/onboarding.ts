@@ -13,7 +13,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { UserMessageContext } from "@app/types/assistant/conversation";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
@@ -461,7 +461,7 @@ export async function createOnboardingConversationIfNeeded(
     force: false,
     language: null,
   }
-): Promise<Result<string | null, APIErrorWithStatusCode>> {
+): Promise<Result<string | null, APIErrorWithContentfulStatusCode>> {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   const user = auth.user();

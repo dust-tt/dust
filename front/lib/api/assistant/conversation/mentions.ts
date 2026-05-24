@@ -44,7 +44,7 @@ import {
   toMentionType,
 } from "@app/types/assistant/mentions";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -226,7 +226,7 @@ export async function validateUserMention(
     messageId: string;
     approvalState: "approved" | "rejected";
   }
-): Promise<Result<void, APIErrorWithStatusCode>> {
+): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({
@@ -493,7 +493,7 @@ export async function dismissMention(
     type: "user" | "agent";
     id: string;
   }
-): Promise<Result<void, APIErrorWithStatusCode>> {
+): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({

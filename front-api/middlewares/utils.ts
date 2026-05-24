@@ -5,11 +5,10 @@ import tracer from "@app/logger/tracer";
 import { getSequelizeErrorDetails } from "@app/logger/withlogging";
 import type {
   APIErrorResponse,
-  APIErrorWithStatusCode,
+  APIErrorWithContentfulStatusCode,
 } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Context, ErrorHandler, TypedResponse } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 /**
  * Return type for a Hono JSON handler. Wraps the success body type with the
@@ -27,14 +26,10 @@ export type HandlerResult<T> = Promise<TypedResponse<T | APIErrorResponse>>;
  *
  * Pass `error` when forwarding an underlying exception so its message and
  * stack are captured in the log instead of the synthetic one.
- *
- * The `status_code` field is typed as `number` but Hono's `ctx.json` expects
- * the narrower `ContentfulStatusCode` — the cast is safe because all our
- * status codes are valid HTTP error codes.
  */
 export function apiError(
   ctx: Context,
-  err: APIErrorWithStatusCode,
+  err: APIErrorWithContentfulStatusCode,
   error?: Error
 ) {
   const callstack = new Error().stack;
@@ -67,10 +62,7 @@ export function apiError(
     `error_type:${err.api_error.type}`,
   ]);
 
-  return ctx.json(
-    { error: err.api_error },
-    err.status_code as ContentfulStatusCode
-  );
+  return ctx.json({ error: err.api_error }, err.status_code);
 }
 
 /**

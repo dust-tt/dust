@@ -27,7 +27,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
@@ -472,7 +472,7 @@ export class Authenticator {
   static async fromSandboxToken(
     claims: SandboxExecTokenPayload,
     wId: string
-  ): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+  ): Promise<Result<Authenticator, APIErrorWithContentfulStatusCode>> {
     if (claims.wId !== wId) {
       return new Err({
         status_code: 401,
@@ -1283,7 +1283,7 @@ export async function getSession(
  */
 export async function getBearerToken(
   authHeader: string | undefined
-): Promise<Result<string, APIErrorWithStatusCode>> {
+): Promise<Result<string, APIErrorWithContentfulStatusCode>> {
   if (!authHeader) {
     return new Err({
       status_code: 401,
@@ -1381,11 +1381,11 @@ export async function getSessionFromBearerToken(
 
 /**
  * Retrieves the API Key from the Authorization header value.
- * @returns Result<Key, APIErrorWithStatusCode>
+ * @returns Result<Key, APIErrorWithContentfulStatusCode>
  */
 export async function getAPIKey(
   authHeader: string | undefined
-): Promise<Result<KeyResource, APIErrorWithStatusCode>> {
+): Promise<Result<KeyResource, APIErrorWithContentfulStatusCode>> {
   const token = await getBearerToken(authHeader);
 
   if (token.isErr()) {

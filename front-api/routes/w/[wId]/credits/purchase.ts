@@ -8,7 +8,7 @@ import {
   createCreditPurchase,
   getCreditPurchaseInfo,
 } from "@app/lib/api/credits/purchase";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -26,7 +26,9 @@ type PostCreditPurchaseResponseBody = CreatedCreditPurchase & {
 
 export type GetCreditPurchaseInfoResponseBody = CreditPurchaseInfo;
 
-function infoErrorToApi(err: CreditPurchaseInfoError): APIErrorWithStatusCode {
+function infoErrorToApi(
+  err: CreditPurchaseInfoError
+): APIErrorWithContentfulStatusCode {
   switch (err.type) {
     case "subscription_not_found":
       return {
@@ -52,7 +54,7 @@ function infoErrorToApi(err: CreditPurchaseInfoError): APIErrorWithStatusCode {
 
 function purchaseErrorToApi(
   err: CreateCreditPurchaseError
-): APIErrorWithStatusCode {
+): APIErrorWithContentfulStatusCode {
   switch (err.type) {
     case "subscription_not_found":
       return {

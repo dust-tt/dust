@@ -7,7 +7,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
 
 import { E164PhoneNumber, getStatusCodeForError, OtpCode } from "./start";
@@ -52,7 +51,7 @@ app.post(
             message: error.message,
           },
         },
-        getStatusCodeForError(error.type) as ContentfulStatusCode
+        getStatusCodeForError(error.type)
       );
     }
 

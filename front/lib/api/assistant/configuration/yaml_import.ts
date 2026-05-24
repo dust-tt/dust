@@ -12,7 +12,7 @@ import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -26,7 +26,7 @@ type ImportResult = Result<
     agentConfiguration: AgentConfigurationType;
     skippedActions: SkippedAction[];
   },
-  APIErrorWithStatusCode
+  APIErrorWithContentfulStatusCode
 >;
 
 async function importAgentConfiguration(

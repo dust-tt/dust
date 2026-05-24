@@ -20,7 +20,9 @@ export const E164PhoneNumber = z
 
 export const OtpCode = z.string().regex(/^\d{6}$/, { message: "OtpCode" });
 
-export function getStatusCodeForError(type: VerificationErrorType): number {
+export function getStatusCodeForError(
+  type: VerificationErrorType
+): ContentfulStatusCode {
   switch (type) {
     case "rate_limit_error":
       return 429;
@@ -76,7 +78,7 @@ app.post(
             message: "Captcha verification failed. Please try again.",
           },
         },
-        getStatusCodeForError("invalid_captcha") as ContentfulStatusCode
+        getStatusCodeForError("invalid_captcha")
       );
     }
 
@@ -94,7 +96,7 @@ app.post(
             }),
           },
         },
-        getStatusCodeForError(error.type) as ContentfulStatusCode
+        getStatusCodeForError(error.type)
       );
     }
 

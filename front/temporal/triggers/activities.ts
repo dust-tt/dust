@@ -24,7 +24,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -44,7 +44,7 @@ async function createConversationForAgentConfiguration({
   trigger: TriggerType;
   lastRunAt: Date | null;
   webhookRequest: WebhookRequestResource | null;
-}): Promise<Result<ConversationType, APIErrorWithStatusCode>> {
+}): Promise<Result<ConversationType, APIErrorWithContentfulStatusCode>> {
   const newConversation = await createConversation(auth, {
     title: null,
     visibility: "unlisted",

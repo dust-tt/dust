@@ -21,6 +21,7 @@ import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { ParsedUrlQuery } from "querystring";
 import { z } from "zod";
 
@@ -37,7 +38,7 @@ export type SearchResult = {
 };
 
 type SearchError = {
-  status: number;
+  status: ContentfulStatusCode;
   error: APIError;
 };
 

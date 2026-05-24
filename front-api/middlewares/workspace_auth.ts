@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/workspace_validation";
 import { Authenticator } from "@app/lib/auth";
 import { getClientIp } from "@app/lib/utils/request";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { resolveSession } from "@front-api/middlewares/session_resolution";
@@ -14,7 +14,7 @@ import { createMiddleware } from "hono/factory";
 
 function workspaceAccessErrorToApiError(
   err: WorkspaceAccessError
-): APIErrorWithStatusCode {
+): APIErrorWithContentfulStatusCode {
   switch (err.type) {
     case "workspace_not_found":
       return {

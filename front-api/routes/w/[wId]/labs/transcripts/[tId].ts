@@ -6,6 +6,7 @@ import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -26,10 +27,10 @@ type GetResponseBody = {
   configuration: LabsTranscriptsConfigurationType | null;
 };
 
-const NOT_FOUND_ERROR = {
+const NOT_FOUND_ERROR: APIErrorWithContentfulStatusCode = {
   status_code: 404,
   api_error: {
-    type: "transcripts_configuration_not_found" as const,
+    type: "transcripts_configuration_not_found",
     message: "The transcript configuration was not found.",
   },
 };

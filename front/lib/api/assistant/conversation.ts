@@ -144,7 +144,7 @@ import type {
   ContentFragmentContextType,
   ContentFragmentType,
 } from "@app/types/content_fragment";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -530,7 +530,7 @@ export async function postUserMessage(
       userMessage: UserMessageType;
       agentMessages: AgentMessageType[];
     },
-    APIErrorWithStatusCode
+    APIErrorWithContentfulStatusCode
   >
 > {
   const user = auth.user();
@@ -1120,7 +1120,7 @@ export async function editUserMessage(
 ): Promise<
   Result<
     { userMessage: UserMessageType; agentMessages: AgentMessageType[] },
-    APIErrorWithStatusCode
+    APIErrorWithContentfulStatusCode
   >
 > {
   const user = auth.user();
@@ -1676,7 +1676,7 @@ export async function retryAgentMessage(
     conversation: ConversationType;
     message: AgentMessageType;
   }
-): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
+): Promise<Result<AgentMessageType, APIErrorWithContentfulStatusCode>> {
   // Find the parent user message to get the original context for rate limiting.
   // This ensures retries are counted with the same origin (web vs programmatic) as the original.
   const parentUserMessage = conversation.content
@@ -2380,7 +2380,7 @@ async function checkMessagesLimit(
     mentions: MentionType[];
     context: UserMessageContext;
   }
-): Promise<Result<void, APIErrorWithStatusCode>> {
+): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
   // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
   if (!auth.user() && !auth.key() && auth.authMethod() === "internal") {
     return new Ok(undefined);

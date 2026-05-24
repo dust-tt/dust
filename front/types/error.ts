@@ -5,6 +5,7 @@ import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";
 import type { CoreAPIError } from "@app/types/core/core_api";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import type { ConnectorsAPIError } from "@dust-tt/client";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 export type InternalErrorWithStatusCode = {
   status_code: number;
@@ -202,10 +203,19 @@ export function isAPIError(obj: unknown): obj is APIError {
  * Type to transport a HTTP error with its http status code (eg: 404)
  * and the error object returned by our public API endpoints (api/v1/*)
  */
-export type APIErrorWithStatusCode = {
+export type APIErrorWithStatusCode<T extends number = number> = {
   api_error: APIError;
-  status_code: number;
+  status_code: T;
 };
+
+/**
+ * Narrow alias of `APIErrorWithStatusCode` constrained to Hono's
+ * `ContentfulStatusCode`. Use this in code that ultimately dispatches the
+ * error through `c.json(..., status_code)` so the status code can be passed
+ * without an `as ContentfulStatusCode` cast.
+ */
+export type APIErrorWithContentfulStatusCode =
+  APIErrorWithStatusCode<ContentfulStatusCode>;
 
 export type APIErrorResponse = {
   error: APIError;

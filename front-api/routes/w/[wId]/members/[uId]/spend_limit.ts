@@ -8,7 +8,7 @@ import {
   setUserSpendLimit,
   type UserSpendLimitError,
 } from "@app/lib/api/users/spend_limit";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -33,7 +33,7 @@ export type PutUserSpendLimitResponseBody = SetUserSpendLimitResponse;
 
 function spendLimitErrorToApiError(
   error: UserSpendLimitError
-): APIErrorWithStatusCode {
+): APIErrorWithContentfulStatusCode {
   switch (error.type) {
     case "user_not_found":
       return {
