@@ -445,7 +445,7 @@ export function BuyCreditDialog({
               onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
-              label: "Go to Payment",
+              label: "Go to payment",
               variant: "primary",
               onClick: () => {
                 if (paymentUrl) {
@@ -464,7 +464,7 @@ export function BuyCreditDialog({
               onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
-              label: "Manage Invoices",
+              label: "Manage invoices",
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -481,7 +481,7 @@ export function BuyCreditDialog({
               onClick={resetModalStateAndClose}
             />
             <Button
-              label="Purchase Credits"
+              label="Purchase credits"
               variant="primary"
               onClick={handlePurchase}
               disabled={!canPurchase}
@@ -501,7 +501,7 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogTitle>Purchase programmatic credits</DialogTitle>
             <DialogDescription>
               Credit purchases are not available during your trial period.
             </DialogDescription>
@@ -547,7 +547,7 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogTitle>Purchase programmatic credits</DialogTitle>
             <DialogDescription>
               Credit purchases require an active subscription.
             </DialogDescription>
@@ -593,7 +593,7 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogTitle>Purchase programmatic credits</DialogTitle>
             <DialogDescription>
               You have pending credit purchases awaiting payment.
             </DialogDescription>
@@ -621,7 +621,7 @@ export function BuyCreditDialog({
               onClick: onClose,
             }}
             rightButtonProps={{
-              label: "Manage Invoices",
+              label: "Manage invoices",
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -643,7 +643,7 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogTitle>Purchase programmatic credits</DialogTitle>
             <DialogDescription>
               You've reached your credit limit for this billing cycle.
             </DialogDescription>
@@ -687,7 +687,7 @@ export function BuyCreditDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+          <DialogTitle>Purchase programmatic credits</DialogTitle>
           <DialogDescription>
             Purchase credits for programmatic API usage.
           </DialogDescription>

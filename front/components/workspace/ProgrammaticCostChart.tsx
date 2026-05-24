@@ -169,7 +169,7 @@ function GroupedTooltip(
   // Add credits row only in cumulative mode
   if (shouldShowTotalCredits) {
     rows.push({
-      label: "Total Credits",
+      label: "Total credits",
       value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
       colorClassName: COST_PALETTE.totalCredits,
     });
@@ -436,7 +436,7 @@ export function BaseProgrammaticCostChart({
   if (shouldShowTotalCredits) {
     legendItems.push({
       key: "totalCredits",
-      label: "Total Credits",
+      label: "Total credits",
       colorClassName: COST_PALETTE.totalCredits,
       isActive: true,
     });
@@ -830,7 +830,7 @@ export function BaseProgrammaticCostChart({
           <Line
             type="monotone"
             dataKey="totalCreditsMicroUsd"
-            name="Total Credits"
+            name="Total credits"
             stroke="currentColor"
             strokeWidth={2}
             className={COST_PALETTE.totalCredits}

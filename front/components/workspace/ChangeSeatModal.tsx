@@ -282,11 +282,11 @@ export function ChangeSeatModal({
             />
             <div>
               <DialogTitle>
-                Change Seat Type for {displayedMember?.name}
+                Change seat type for {displayedMember?.name}
               </DialogTitle>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                They will be able to consume this amount from the pool after
-                reaching their plan usage limit.
+                They will be able to consume this amount from the Workspace
+                Credits Pool after reaching their plan usage limit.
               </p>
             </div>
           </div>

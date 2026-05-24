@@ -265,7 +265,7 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   header: () => (
     <span className="flex items-center gap-1.5">
       <Icon visual={ActionCreditCoinsIcon} size="xs" />
-      AWU usage
+      Credits usage
     </span>
   ),
   accessorFn: (row) => row.consumedAwuCredits.toString(),
@@ -375,12 +375,12 @@ export function MembersUsageTable({
     menuItems: [
       {
         kind: "item" as const,
-        label: "Change Seat Type",
+        label: "Change seat type",
         onClick: () => onChangeSeat(m),
       },
       {
         kind: "item" as const,
-        label: "Update User Spend Limit",
+        label: "Edit spend limit",
         onClick: () => onEditSpendLimit(m),
       },
     ],
