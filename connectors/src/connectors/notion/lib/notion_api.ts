@@ -12,6 +12,7 @@ import { cacheWithRedis } from "@connectors/types";
 import { assertNever } from "@dust-tt/client";
 import type { LogLevel } from "@notionhq/client";
 import {
+  APIErrorCode,
   APIResponseError,
   Client,
   isFullBlock,
@@ -33,6 +34,8 @@ import { stringify } from "csv-stringify";
 import type { Logger } from "pino";
 
 const logger = mainLogger.child({ provider: "notion" });
+const NOTION_SEARCH_PAGE_SIZE = 90;
+const MIN_NOTION_SEARCH_PAGE_SIZE_ON_RENDERING_BUDGET_ERROR = 10;
 
 const notionClientLogger = (
   level: LogLevel,
@@ -62,6 +65,22 @@ function getRandomPageSize(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function getReducedNotionSearchPageSize(pageSize: number): number {
+  return Math.max(
+    MIN_NOTION_SEARCH_PAGE_SIZE_ON_RENDERING_BUDGET_ERROR,
+    Math.floor(pageSize / 2)
+  );
+}
+
+function isNotionSearchRenderingBudgetError(err: unknown): boolean {
+  return (
+    APIResponseError.isAPIResponseError(err) &&
+    err.code === APIErrorCode.ServiceUnavailable &&
+    err.status === 503 &&
+    err.message.toLowerCase().includes("response time budget")
+  );
+}
+
 async function refreshLastPageCursor(
   notionClient: Client,
   {
@@ -79,10 +98,9 @@ async function refreshLastPageCursor(
   // Using a lower page_size (between originalPageSize - 10 and originalPageSize - 1) is safe.
   // In the worst case, some pages/databases might be processed multiple times,
   // but this is properly handled downstream.
-  const pageSize = getRandomPageSize(
-    originalPageSize - 10,
-    originalPageSize - 1
-  );
+  const minPageSize = Math.max(1, originalPageSize - 10);
+  const maxPageSize = Math.max(minPageSize, originalPageSize - 1);
+  const pageSize = getRandomPageSize(minPageSize, maxPageSize);
 
   const localLogger = logger.child({ ...loggerArgs, pageSize });
 
@@ -180,13 +198,14 @@ export async function getPagesAndDatabasesEditedSince({
   let resultsPage: SearchResponse | null = null;
 
   let tries = 0;
-  const pageSize = 90;
+  let pageSize = NOTION_SEARCH_PAGE_SIZE;
 
   let lastCursor = cursors.last;
   while (tries < retry.retries) {
     const tryLogger = localLogger.child({
       tries,
       maxTries: retry.retries,
+      pageSize,
     });
 
     const now = Date.now();
@@ -212,6 +231,15 @@ export async function getPagesAndDatabasesEditedSince({
       tries += 1;
       if (tries >= retry.retries) {
         throw e;
+      }
+
+      if (isNotionSearchRenderingBudgetError(e)) {
+        const previousPageSize = pageSize;
+        pageSize = getReducedNotionSearchPageSize(pageSize);
+        tryLogger.info(
+          { previousPageSize, nextPageSize: pageSize },
+          "Reducing Notion search page_size after rendering budget error."
+        );
       }
 
       // Notion API sometimes returns 504 errors.
