@@ -21,6 +21,7 @@ import {
 import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getStripeClient } from "@app/lib/plans/stripe";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import {
@@ -31,6 +32,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
 import {
+  MAX_AWU_DISCOUNT_PERCENT,
   MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
   MIN_AWU_PURCHASE_CREDITS,
 } from "./awu_purchase_constants";
@@ -48,6 +50,7 @@ export type AwuPurchaseInfo =
       canPurchase: true;
       remainingCycleCredits: number;
       currency: SupportedCurrency;
+      discountPercent: number;
     };
 
 export type AwuPurchaseResult = {
@@ -111,6 +114,39 @@ async function resolveAwuPurchaseCurrency(
     return new Err(creditTypeResult.error);
   }
   return new Ok(creditTypeResult.value.currency);
+}
+
+/**
+ * Resolves the AWU purchase discount from the workspace's credit usage
+ * configuration. AWU has its own discount cap (`MAX_AWU_DISCOUNT_PERCENT`)
+ * — distinct from the programmatic `MAX_DISCOUNT_PERCENT` — because the
+ * per-credit economics differ. A misconfigured discount above the cap is
+ * dropped and logged rather than honoured.
+ */
+async function resolveAwuPurchaseDiscountPercent(
+  auth: Authenticator
+): Promise<number> {
+  const creditConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const discountPercent = creditConfig?.defaultDiscountPercent ?? 0;
+
+  if (discountPercent <= 0) {
+    return 0;
+  }
+
+  if (discountPercent > MAX_AWU_DISCOUNT_PERCENT) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        discountPercent,
+        maxAwuDiscountPercent: MAX_AWU_DISCOUNT_PERCENT,
+      },
+      "[AWU Purchase] Discount exceeds AWU maximum allowed — ignoring"
+    );
+    return 0;
+  }
+
+  return discountPercent;
 }
 
 async function checkAwuPurchaseEligibility(
@@ -177,12 +213,15 @@ export async function getAwuPurchaseInfo(
   }
   const currency = currencyResult.value;
 
+  const discountPercent = await resolveAwuPurchaseDiscountPercent(auth);
+
   const billingCycle = getBillingCycle(subscription.startDate);
   if (!billingCycle) {
     return {
       canPurchase: true,
       remainingCycleCredits: MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
       currency,
+      discountPercent,
     };
   }
 
@@ -206,6 +245,7 @@ export async function getAwuPurchaseInfo(
       MAX_AWU_PURCHASE_CREDITS_PER_CYCLE - alreadyPurchasedThisCycleCredits
     ),
     currency,
+    discountPercent,
   };
 }
 
@@ -273,13 +313,27 @@ export async function purchaseAwuCredits(
   }
   const currency = currencyResult.value;
 
-  // Per-credit price expressed in Metronome's unit for this currency:
-  // cents for USD (1 cent), whole units for EUR (0.0087 EUR — Metronome
-  // accepts decimal unit prices for non-USD).
-  const invoiceUnitPrice = metronomeAmount(
-    AWU_PRICE_PER_CREDIT[currency] * 100,
-    currency
+  const discountPercent = await resolveAwuPurchaseDiscountPercent(auth);
+  const discountMultiplier = 1 - discountPercent / 100;
+
+  // Bill the full top-up as a single invoice line (`quantity = 1`,
+  // `unit_price = totalDiscountedCents`) rather than per-credit. With a
+  // discount the per-credit price would be sub-cent (e.g. 0.77¢ at 23%
+  // USD) and `metronomeAmount` rounds USD to integer cents, which would
+  // silently swallow the discount on small purchases. Collapsing to a
+  // single line keeps `metronomeAmount` working as designed — sub-cent
+  // rounding only applies to the total, where it's negligible. The
+  // credit count is preserved in the line `name` and in
+  // `accessAmount` (the actual AWU grant).
+  //
+  // `Math.round` to whole cents BEFORE handing to `metronomeAmount`:
+  // `metronomeAmount` rounds USD but not EUR (it just divides by 100),
+  // so a fractional input like 999.891 cents would surface on the
+  // Stripe / Metronome invoice as €9.99891 instead of €10.00.
+  const totalInvoiceCents = Math.round(
+    amountCredits * AWU_PRICE_PER_CREDIT[currency] * 100 * discountMultiplier
   );
+  const invoiceUnitPrice = metronomeAmount(totalInvoiceCents, currency);
 
   const now = new Date();
   const oneYearFromNow = new Date(now);
@@ -306,11 +360,14 @@ export async function purchaseAwuCredits(
     accessStartingAt: now,
     accessEndingBefore: oneYearFromNow,
     invoiceUnitPrice,
-    invoiceQuantity: amountCredits,
+    invoiceQuantity: 1,
     invoiceCreditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[currency],
     invoiceTimestamp: now,
     priority: AWU_PRIORITY_PURCHASED_COMMIT,
-    name: `Credit top-up: ${amountCredits.toLocaleString()} credits`,
+    name:
+      discountPercent > 0
+        ? `Credit top-up: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
+        : `Credit top-up: ${amountCredits.toLocaleString()} credits`,
     uniquenessKey,
     // Stamped on the Stripe invoice Metronome pushes downstream so the
     // existing eligibility check (`isAwuPurchaseInvoice`) still recognises
@@ -319,6 +376,9 @@ export async function purchaseAwuCredits(
       awu_purchase: "true",
       awu_amount_credits: String(amountCredits),
       workspace_id: workspace.sId,
+      ...(discountPercent > 0
+        ? { awu_discount_percent: String(discountPercent) }
+        : {}),
     },
   });
 
@@ -348,6 +408,9 @@ export async function purchaseAwuCredits(
       workspaceId: workspace.sId,
       editId: editResult.value.editId,
       amountCredits,
+      discountPercent,
+      invoiceUnitPrice,
+      currency,
     },
     "[AWU Purchase] Payment-gated commit created — Metronome will invoice and unlock on payment"
   );

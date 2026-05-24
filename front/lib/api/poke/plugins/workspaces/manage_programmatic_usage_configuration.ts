@@ -14,10 +14,6 @@ import {
   startOrResumeEnterprisePAYG,
   stopEnterprisePAYG,
 } from "@app/lib/credits/payg";
-import {
-  clearMetronomePaygCapAlert,
-  upsertMetronomePaygCapAlert,
-} from "@app/lib/metronome/payg_alerts";
 import { PAYG_ELIGIBLE_TIERS } from "@app/lib/metronome/types";
 import {
   isEntreprisePlanPrefix,
@@ -396,16 +392,9 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
             return updateResult;
           }
         }
-        if (workspace.metronomeCustomerId) {
-          const alertResult = await upsertMetronomePaygCapAlert({
-            metronomeCustomerId: workspace.metronomeCustomerId,
-            paygCapDollars,
-            workspaceId: workspace.sId,
-          });
-          if (alertResult.isErr()) {
-            return alertResult;
-          }
-        }
+        // Note: the Metronome AWU PAYG cap alert is no longer driven from
+        // here. AWU concerns live on `credit_usage_configuration` and are
+        // managed via the "Manage Credit Usage Configuration" plugin.
         const workspaceResource = await WorkspaceResource.fetchById(
           workspace.sId
         );
@@ -432,15 +421,8 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
           if (clearResult.isErr()) {
             return clearResult;
           }
-          if (workspace.metronomeCustomerId) {
-            const alertResult = await clearMetronomePaygCapAlert({
-              metronomeCustomerId: workspace.metronomeCustomerId,
-              workspaceId: workspace.sId,
-            });
-            if (alertResult.isErr()) {
-              return alertResult;
-            }
-          }
+          // Note: clearing the Metronome AWU PAYG cap alert lives on the
+          // "Manage Credit Usage Configuration" plugin now.
           const workspaceResource = await WorkspaceResource.fetchById(
             workspace.sId
           );

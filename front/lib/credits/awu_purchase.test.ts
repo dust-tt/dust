@@ -142,6 +142,7 @@ describe("getAwuPurchaseInfo", () => {
       canPurchase: true,
       remainingCycleCredits: 0,
       currency: "eur",
+      discountPercent: 0,
     });
   });
 });

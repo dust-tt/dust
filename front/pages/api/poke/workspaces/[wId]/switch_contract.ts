@@ -20,10 +20,6 @@ import {
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
 import {
-  clearMetronomePaygCapAlert,
-  upsertMetronomePaygCapAlert,
-} from "@app/lib/metronome/payg_alerts";
-import {
   isPaygEligibleTier,
   type MetronomePackageTier,
   PAYG_ELIGIBLE_TIERS,
@@ -423,27 +419,10 @@ async function handler(
     }
   }
 
-  if (owner.metronomeCustomerId) {
-    const alertResult =
-      body.paygEnabled && body.paygCapDollars !== undefined
-        ? await upsertMetronomePaygCapAlert({
-            metronomeCustomerId: owner.metronomeCustomerId,
-            paygCapDollars: body.paygCapDollars,
-            workspaceId: owner.sId,
-          })
-        : await clearMetronomePaygCapAlert({
-            metronomeCustomerId: owner.metronomeCustomerId,
-            workspaceId: owner.sId,
-          });
-    if (alertResult.isErr()) {
-      const errorMessage = `Failed to sync Metronome PAYG cap alert: ${alertResult.error.message}`;
-      await pluginRun.recordError(errorMessage);
-      return apiError(req, res, {
-        status_code: 502,
-        api_error: { type: "internal_server_error", message: errorMessage },
-      });
-    }
-  }
+  // Note: the Metronome AWU PAYG cap alert is no longer synced from this
+  // endpoint. AWU concerns (discount, AWU PAYG cap) live on
+  // `credit_usage_configuration` and are managed via the
+  // "Manage Credit Usage Configuration" poke plugin.
 
   const workspaceResource = await WorkspaceResource.fetchById(owner.sId);
   if (workspaceResource) {

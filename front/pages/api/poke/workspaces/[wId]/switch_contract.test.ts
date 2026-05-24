@@ -4,10 +4,6 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
-import {
-  clearMetronomePaygCapAlert,
-  upsertMetronomePaygCapAlert,
-} from "@app/lib/metronome/payg_alerts";
 import { PlanModel } from "@app/lib/models/plan";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
@@ -46,17 +42,6 @@ vi.mock("@app/lib/metronome/contracts", async () => {
     ...actual,
     ensureMetronomeCustomerForWorkspace: vi.fn(),
     provisionMetronomeContract: vi.fn(),
-  };
-});
-
-vi.mock("@app/lib/metronome/payg_alerts", async () => {
-  const actual = await vi.importActual<
-    typeof import("@app/lib/metronome/payg_alerts")
-  >("@app/lib/metronome/payg_alerts");
-  return {
-    ...actual,
-    upsertMetronomePaygCapAlert: vi.fn(),
-    clearMetronomePaygCapAlert: vi.fn(),
   };
 });
 
@@ -221,10 +206,6 @@ beforeEach(() => {
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
     new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
-  vi.mocked(upsertMetronomePaygCapAlert).mockResolvedValue(
-    new Ok({ alertId: "alert_test" })
-  );
-  vi.mocked(clearMetronomePaygCapAlert).mockResolvedValue(new Ok(undefined));
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
@@ -576,14 +557,6 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
         adminAuth
       );
     expect(config?.paygCapMicroUsd).toBe(500 * 1_000_000);
-
-    expect(upsertMetronomePaygCapAlert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metronomeCustomerId: METRONOME_CUSTOMER_ID,
-        paygCapDollars: 500,
-        workspaceId: workspace.sId,
-      })
-    );
   });
 
   it("persists paygCapMicroUsd when switching to business with PAYG enabled", async () => {
@@ -646,7 +619,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     expect(res._getJSONData().error.message).toContain("PAYG cap");
   });
 
-  it("clears paygCapMicroUsd and archives the Metronome alert when paygEnabled is false", async () => {
+  it("clears paygCapMicroUsd when paygEnabled is false", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
@@ -675,12 +648,5 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
         adminAuth
       );
     expect(config?.paygCapMicroUsd).toBeNull();
-
-    expect(clearMetronomePaygCapAlert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metronomeCustomerId: METRONOME_CUSTOMER_ID,
-        workspaceId: workspace.sId,
-      })
-    );
   });
 });
