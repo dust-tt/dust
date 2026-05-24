@@ -1,7 +1,15 @@
 import tracer from "@app/logger/tracer";
 import { createMiddleware } from "hono/factory";
 
-export const streamingTag = createMiddleware(async (_c, next) => {
+type StreamingEnv = {
+  Variables: {
+    streaming?: boolean;
+  };
+};
+
+export const streamingTag = createMiddleware<StreamingEnv>(async (c, next) => {
+  c.set("streaming", true);
+
   const span = tracer.scope().active();
   if (span) {
     span.setTag("streaming", true);
