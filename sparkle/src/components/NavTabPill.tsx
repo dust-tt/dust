@@ -55,7 +55,15 @@ const NavTabPillTrigger = React.forwardRef<
   ) => (
     <TabsPrimitive.Trigger
       ref={ref}
-      className={cn(
+      asChild
+      {...props}
+    >
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        className={cn(
         "s-group s-inline-flex s-h-8 s-items-center s-justify-center s-whitespace-nowrap s-rounded-lg s-pl-2 data-[state=active]:s-pl-2 [&:not([data-state=active])]:s-pr-2 s-text-sm",
         "s-text-muted-foreground dark:s-text-muted-foreground-night",
         "hover:s-bg-sidebar-100 dark:hover:s-bg-sidebar-100-night",
@@ -70,15 +78,6 @@ const NavTabPillTrigger = React.forwardRef<
 
         className
       )}
-      {...props}
-    >
-      <LinkWrapper
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        shallow={shallow}
-        className="s-inline-flex s-items-center s-justify-center s-gap-1"
       >
         <Icon visual={icon} size="xs" />
         <div
@@ -112,7 +111,7 @@ const NavTabPillContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "s-mt-2 focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
+      "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
       className
     )}
     {...props}

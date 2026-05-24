@@ -703,7 +703,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
-          label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
+          label={showCount ? `Starred` : "Starred"}
           icon={StarIcon}
           type="collapse"
           visibleItems={VISIBLE_STARRED}
@@ -757,7 +757,7 @@ export function AgentSidebarMenu({
     return (
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
-          label={showCount ? `Pods (${projectCountInSummary})` : "Pods"}
+          label="Pods"
           type="collapse"
           visibleItems={VISIBLE_PROJECTS}
           overflowCount={hiddenOverflowCount}
@@ -771,7 +771,7 @@ export function AgentSidebarMenu({
                   size="xs"
                   icon={PlusIcon}
                   label="New"
-                  variant="ghost"
+                  variant="ghost-secondary"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();

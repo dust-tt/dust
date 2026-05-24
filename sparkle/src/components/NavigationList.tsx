@@ -288,7 +288,7 @@ const NavigationListLabel = React.forwardRef<
       "s-flex s-items-center s-justify-between s-gap-2 s-pt-4 s-pb-2 s-px-2 s-text-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
       "s-text-muted-foreground dark:s-text-muted-foreground-night",
       isSticky &&
-        "s-sticky s-top-0 s-z-10 s-border-border dark:s-border-border-night",
+        "s-sticky s-top-0 s-z-10 s-border-border dark:s-border-border-night s-bg-app-background dark:s-bg-app-background-night",
       className
     )}
     {...props}
@@ -338,7 +338,7 @@ interface NavigationListCollapsibleSectionProps
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  type?: "static" | "collapse" | "collapseAndScroll";
+  type?: "static" | "collapse";
   children: React.ReactNode;
   /** Number of children to show when partially collapsed. undefined = show all (current behavior). */
   visibleItems?: number;
@@ -362,7 +362,7 @@ const collapseableStyles = cva(
       isCollapsible: {
         true: cn(
           "s-cursor-pointer s-mb-0.5",
-          "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
+          // "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
         ),
         false: "",
       },
@@ -499,28 +499,10 @@ const NavigationListCollapsibleSection = React.forwardRef<
       ...props,
     };
 
-    if (type === "collapseAndScroll") {
-      return (
-        <Collapsible ref={ref} className={className} {...collapsibleProps}>
-          <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-justify-start s-gap-2 s-pl-2 s-py-1.5">
-            <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
-            {actionElement}
-          </div>
-          <CollapsibleContent>
-            <ScrollArea>
-              {renderedContent}
-              <ScrollBar />
-            </ScrollArea>
-          </CollapsibleContent>
-        </Collapsible>
-      );
-    }
-
-    // type === "collapse" (default collapsible behavior)
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-justify-start s-gap-2 s-pl-2 s-py-1.5">
-          <CollapsibleTrigger hideChevron>{labelElement}</CollapsibleTrigger>
+        <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-text-sm s-justify-start s-gap-2 s-pl-2 s-py-1.5">
+          <CollapsibleTrigger chevronPosition="right">{label}</CollapsibleTrigger>
           {actionElement}
         </div>
         <CollapsibleContent>{renderedContent}</CollapsibleContent>

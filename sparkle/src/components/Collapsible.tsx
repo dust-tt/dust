@@ -16,8 +16,7 @@ const labelVariants = cva(
       },
       disabled: {
         true: "s-text-muted dark:s-text-muted-night",
-        false:
-          "group-hover/col:s-text-highlight-500 dark:group-hover/col:s-text-highlight-500-night active:s-text-highlight-700 dark:active:s-text-highlight-700-night",
+        false: "",
       },
     },
     defaultVariants: {
@@ -35,8 +34,7 @@ const chevronVariants = cva("s-transition-transform s-duration-150", {
     },
     disabled: {
       true: "s-text-muted dark:s-text-muted-night",
-      false:
-        "group-hover/col:s-text-highlight-500 dark:group-hover/col:s-text-highlight-500-night active:s-text-highlight-700 dark:active:s-text-highlight-700-night",
+      false: "",
     },
   },
   defaultVariants: {
@@ -66,6 +64,7 @@ export interface CollapsibleTriggerProps
     Omit<VariantProps<typeof labelVariants>, "disabled"> {
   label?: string;
   hideChevron?: boolean;
+  chevronPosition?: "left" | "right";
 }
 
 const CollapsibleTrigger = React.forwardRef<
@@ -79,44 +78,50 @@ const CollapsibleTrigger = React.forwardRef<
       className,
       disabled = false,
       hideChevron = false,
+      chevronPosition = "left",
       variant = "primary",
       ...props
     },
     ref
   ) => {
+    const chevronElement = !hideChevron && (
+      <span
+        className={cn(
+          "s-transition-transform s-duration-200",
+          chevronVariants({ variant, disabled })
+        )}
+      >
+        <Icon
+          visual={ChevronRightIcon}
+          size="sm"
+          className="s-block group-data-[state=open]/col:s-hidden"
+        />
+        <Icon
+          visual={ChevronDownIcon}
+          size="sm"
+          className="s-hidden group-data-[state=open]/col:s-block"
+        />
+      </span>
+    );
+
+    const labelElement = children ?? (
+      <span className={labelVariants({ variant, disabled })}>{label}</span>
+    );
+
     return (
       <CollapsiblePrimitive.Trigger
         ref={ref}
         disabled={disabled}
         className={cn(
-          "s-group/col s-flex s-w-full s-items-center s-gap-1 s-font-semibold focus:s-outline-none focus:s-ring-0",
+          "s-group/col s-flex s-w-full s-items-center s-gap-1 focus:s-outline-none focus:s-ring-0",
           disabled ? "s-cursor-default" : "s-cursor-pointer",
           className
         )}
         {...props}
       >
-        {!hideChevron && (
-          <span
-            className={cn(
-              "s-transition-transform s-duration-200",
-              chevronVariants({ variant, disabled })
-            )}
-          >
-            <Icon
-              visual={ChevronRightIcon}
-              size="sm"
-              className="s-block group-data-[state=open]/col:s-hidden"
-            />
-            <Icon
-              visual={ChevronDownIcon}
-              size="sm"
-              className="s-hidden group-data-[state=open]/col:s-block"
-            />
-          </span>
-        )}
-        {children ?? (
-          <span className={labelVariants({ variant, disabled })}>{label}</span>
-        )}
+        {chevronPosition === "left" && chevronElement}
+        {labelElement}
+        {chevronPosition === "right" && chevronElement}
       </CollapsiblePrimitive.Trigger>
     );
   }
