@@ -172,7 +172,7 @@ async function importAgentConfiguration(
   }
 
   const actionsResult =
-    await AgentYAMLConverter.convertYAMLToolsetToAssistantActions(
+    await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
       auth,
       yamlConfig.toolset
     );
@@ -215,7 +215,7 @@ async function importAgentConfiguration(
         reasoningEffort: yamlConfig.generation_settings.reasoning_effort,
         responseFormat: yamlConfig.generation_settings.response_format,
       },
-      actions: actionsResult.value.actions,
+      actions: actionsResult.value.configurations,
       templateId: null,
       tags: tagsResult.value,
       editors: editorsResult.value.editors,
@@ -224,7 +224,10 @@ async function importAgentConfiguration(
       })),
       additionalRequestedSpaceIds: [],
     },
-    skippedActions: actionsResult.value.skippedActions,
+    skippedActions: actionsResult.value.skipped.map(({ action, reason }) => ({
+      name: action.name ?? "",
+      reason,
+    })),
     authorId: editorsResult.value.authorId,
     agentConfigurationId,
   });
@@ -382,7 +385,7 @@ export async function patchAgentConfigurationFromJSON(
 
   if (patch.toolset !== undefined) {
     const patchActionsResult =
-      await AgentYAMLConverter.convertYAMLToolsetToAssistantActions(
+      await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
         auth,
         patch.toolset
       );
@@ -395,8 +398,13 @@ export async function patchAgentConfigurationFromJSON(
         },
       });
     }
-    assistant.actions = patchActionsResult.value.actions;
-    skippedActions = patchActionsResult.value.skippedActions;
+    assistant.actions = patchActionsResult.value.configurations;
+    skippedActions = patchActionsResult.value.skipped.map(
+      ({ action, reason }) => ({
+        name: action.name ?? "",
+        reason,
+      })
+    );
   }
 
   if (patch.skills) {

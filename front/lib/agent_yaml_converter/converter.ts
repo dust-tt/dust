@@ -435,35 +435,6 @@ export class AgentYAMLConverter {
     }
   }
 
-  static async convertYAMLToolsetToAssistantActions(
-    auth: Authenticator,
-    toolset: AgentYAMLConfig["toolset"]
-  ): Promise<
-    Result<
-      {
-        actions: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"];
-        skippedActions: { name: string; reason: string }[];
-      },
-      Error
-    >
-  > {
-    const result = await this.convertYAMLActionsToMCPConfigurations(
-      auth,
-      toolset
-    );
-    if (result.isErr()) {
-      return result;
-    }
-
-    return new Ok({
-      actions: result.value.configurations,
-      skippedActions: result.value.skipped.map(({ action, reason }) => ({
-        name: action.name ?? "",
-        reason,
-      })),
-    });
-  }
-
   static fromYAMLString(yamlString: string): Result<AgentYAMLConfig, Error> {
     if (!yamlString?.trim()) {
       return new Err(new Error("YAML string is empty"));
