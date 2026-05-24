@@ -147,7 +147,7 @@ function UsageTooltip(
 
   if (shouldShowTotalCredits) {
     rows.push({
-      label: "Total Credits",
+      label: "Total credits",
       value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
       colorClassName: COST_PALETTE.totalCredits,
     });
@@ -391,7 +391,7 @@ export function BaseMetronomeUsageChart({
     if (shouldShowTotalCredits) {
       items.push({
         key: "totalCredits",
-        label: "Total Credits",
+        label: "Total credits",
         colorClassName: COST_PALETTE.totalCredits,
         isActive: true,
       });
@@ -679,7 +679,7 @@ export function BaseMetronomeUsageChart({
           <Line
             type="monotone"
             dataKey="totalCreditsMicroUsd"
-            name="Total Credits"
+            name="Total credits"
             stroke="currentColor"
             strokeWidth={2}
             className={COST_PALETTE.totalCredits}

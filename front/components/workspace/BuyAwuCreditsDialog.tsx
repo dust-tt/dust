@@ -291,7 +291,7 @@ export function BuyAwuCreditsDialog({
               onValueChange={(v) => setSelectedTab(v as TopUpTab)}
             >
               <TabsList>
-                <TabsTrigger value="one-time" label="One time top-up" />
+                <TabsTrigger value="one-time" label="One-time top-up" />
                 <TabsTrigger value="automatic" label="Automatic top-up" />
               </TabsList>
 
@@ -330,7 +330,7 @@ export function BuyAwuCreditsDialog({
                       </div>
                       {isValidAmount && (
                         <span className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                          {formatCredits(addedCredits)} credit
+                          {formatCredits(addedCredits)} credits
                           <Icon visual={ActionCreditCoinsIcon} size="xs" />
                         </span>
                       )}
@@ -355,7 +355,7 @@ export function BuyAwuCreditsDialog({
                       </p>
                       {currentBalanceCredits !== undefined && (
                         <SummaryRow
-                          label="Current Balance"
+                          label="Current balance"
                           value={
                             <CreditValue credits={currentBalanceCredits} />
                           }
@@ -448,7 +448,7 @@ export function BuyAwuCreditsDialog({
               onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
-              label: "Manage Invoices",
+              label: "Manage invoices",
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -480,7 +480,7 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Credit pool top-up</DialogTitle>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
           </DialogHeader>
           <DialogContainer>
             <div className="flex justify-center py-8">
@@ -509,16 +509,16 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Credit pool top-up</DialogTitle>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
             <DialogDescription>
-              AWU credit purchases are not available for your current plan.
+              Credit purchases are not available for your current plan.
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Please{" "}
               <a
-                href={`mailto:${supportEmail}?subject=AWU%20credit%20purchase`}
+                href={`mailto:${supportEmail}?subject=Credit%20purchase`}
                 className="text-action-500 hover:underline"
               >
                 contact support
@@ -549,7 +549,7 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Credit pool top-up</DialogTitle>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
             <DialogDescription>
               No billing configuration found for this workspace.
             </DialogDescription>
@@ -558,7 +558,7 @@ export function BuyAwuCreditsDialog({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Please{" "}
               <a
-                href={`mailto:${supportEmail}?subject=AWU%20credit%20purchase%20-%20billing%20setup`}
+                href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20billing%20setup`}
                 className="text-action-500 hover:underline"
               >
                 contact support
@@ -589,7 +589,7 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Credit pool top-up</DialogTitle>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
             <DialogDescription>
               You have pending credit purchases awaiting payment.
             </DialogDescription>
@@ -614,7 +614,7 @@ export function BuyAwuCreditsDialog({
               onClick: onClose,
             }}
             rightButtonProps={{
-              label: "Manage Invoices",
+              label: "Manage invoices",
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -636,7 +636,7 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Credit pool top-up</DialogTitle>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
             <DialogDescription>
               You've reached your credit limit for this billing cycle.
             </DialogDescription>
@@ -674,8 +674,10 @@ export function BuyAwuCreditsDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Credit pool top-up</DialogTitle>
-          <DialogDescription>Add credit to your credit pool.</DialogDescription>
+          <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
+          <DialogDescription>
+            Add credits to your Workspace Credits Pool.
+          </DialogDescription>
         </DialogHeader>
         <DialogContainer>{renderContent()}</DialogContainer>
         {renderFooter()}

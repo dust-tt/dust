@@ -200,8 +200,8 @@ export function EditSpendLimitModal({
                 Edit spend limit for {displayedMember?.name}
               </DialogTitle>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                They will be able to consume this amount from the pool after
-                reaching their plan usage limit.
+                They will be able to consume this amount from the Workspace
+                Credits Pool after reaching their plan usage limit.
               </p>
             </div>
           </div>
@@ -245,12 +245,6 @@ export function EditSpendLimitModal({
 
               {kind === "limited" && (
                 <div className="flex flex-col gap-1.5 pl-6">
-                  <label
-                    htmlFor="spend-credit-limit-input"
-                    className="text-sm font-medium text-foreground dark:text-foreground-night"
-                  >
-                    Spend credit limit
-                  </label>
                   <div className="relative">
                     <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
                       <Icon visual={ActionCreditCoinsIcon} size="xs" />

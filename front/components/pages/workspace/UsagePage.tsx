@@ -72,7 +72,7 @@ function getResetDateLabel(resetDate: string): string {
     month: "long",
     timeZone: "UTC",
   });
-  return `Monthly resets on the ${resetDay}${suffix}, ${resetMonth}`;
+  return `Resets on the ${resetDay}${suffix} of each month. Next reset: ${resetMonth} ${resetDay}${suffix}.`;
 }
 
 interface CreditPoolUsageBarProps {
@@ -104,7 +104,7 @@ function CreditPoolUsageBar({
       <div
         className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10"
         role="progressbar"
-        aria-label="Credit pool usage"
+        aria-label="Workspace Credits Pool usage"
         aria-valuenow={Math.round(totalConsumedPercentage)}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -125,7 +125,7 @@ function CreditPoolUsageBar({
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 bg-purple-500" />
-          Programmatic Usage
+          Programmatic usage
         </span>
       </div>
     </Page.Vertical>
@@ -249,7 +249,7 @@ export function UsagePage() {
         <Page.Vertical gap="sm" align="stretch">
           <div className="flex items-center justify-between">
             <span className="text-[16px] font-medium leading-[24px] tracking-[-0.32px] text-foreground dark:text-foreground-night">
-              Credit pool
+              Workspace Credits Pool
             </span>
             {!isAwuPoolSummaryLoading && (
               <div className="flex flex-col items-end gap-0.5">
@@ -275,12 +275,12 @@ export function UsagePage() {
 
           {isAwuPoolSummaryError && (
             <ContentMessage
-              title="Failed to load credit pool"
+              title="Failed to load Workspace Credits Pool"
               icon={ExclamationCircleIcon}
               variant="warning"
             >
-              An error occurred while loading your credit pool data. Please
-              refresh the page or contact support if the issue persists.
+              An error occurred while loading your Workspace Credits Pool data.
+              Please refresh the page or contact support if the issue persists.
             </ContentMessage>
           )}
 
