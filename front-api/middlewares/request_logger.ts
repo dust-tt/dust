@@ -9,11 +9,24 @@ type RequestLoggerEnv = {
   Variables: {
     auth?: Authenticator;
     session?: SessionWithUser;
+    streaming?: boolean;
   };
 };
 
+// We skip k8s probes path to avoid noisy logs and skewed distribution
+const SKIP_LOGGER_PATHS = new Set([
+  "/api/healthz",
+  "/api/healthz/ready",
+  "/api/healthz/startup",
+  "/api/kill",
+]);
+
 export const requestLogger = createMiddleware<RequestLoggerEnv>(
   async (c, next) => {
+    if (SKIP_LOGGER_PATHS.has(c.req.path)) {
+      return next();
+    }
+
     const startMs = performance.now();
     await next();
     const durationMs = Math.round(performance.now() - startMs);
@@ -29,8 +42,13 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
 
     const auth = c.get("auth");
     const session = c.get("session");
+    const streaming = c.get("streaming") ?? false;
 
-    const tags = [`method:${c.req.method}`, `status_code:${statusCode}`];
+    const tags = [
+      `method:${c.req.method}`,
+      `streaming:${streaming}`,
+      `status_code:${statusCode}`,
+    ];
     getStatsDClient().increment("requests.count", 1, tags);
     getStatsDClient().distribution(
       "requests.duration.distribution",
@@ -46,6 +64,7 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
         route,
         sessionId: session?.sessionId ?? "unknown",
         statusCode,
+        streaming,
         url: c.req.url,
         userId: auth?.user()?.sId,
         workspaceId: auth?.workspace()?.sId,
