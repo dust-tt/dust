@@ -876,14 +876,13 @@ fn looks_like_http_request_line(bytes: &[u8]) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use anyhow::Result;
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
-    use crate::egress_secrets::{DomainSet, Secret};
+    use crate::egress_secrets::DomainSet;
     use base64::{engine::general_purpose, Engine as _};
 
+    use super::super::test_support::{empty_table, secret_table_with_secret};
     use super::*;
 
     #[tokio::test]
@@ -1177,7 +1176,7 @@ mod tests {
     #[tokio::test]
     async fn substitutes_placeholder_in_header_value() -> Result<()> {
         let placeholder = "__DSEC_0123456789abcdef0123456789abcdef__";
-        let table = table_with_secret(
+        let table = secret_table_with_secret(
             "OPENAI_API_KEY",
             placeholder,
             "sk-real",
@@ -1205,7 +1204,7 @@ mod tests {
     #[tokio::test]
     async fn substitutes_placeholder_inside_basic_auth_base64() -> Result<()> {
         let placeholder = "__DSEC_aabbccddeeff00112233445566778899__";
-        let table = table_with_secret(
+        let table = secret_table_with_secret(
             "OPENAI_API_KEY",
             placeholder,
             "sk-real",
@@ -1238,7 +1237,7 @@ mod tests {
     #[tokio::test]
     async fn substitutes_multiple_placeholders_in_one_value() -> Result<()> {
         let placeholder = "__DSEC_11111111111111112222222222222222__";
-        let table = table_with_secret("X", placeholder, "AB", &["api.openai.com"])?;
+        let table = secret_table_with_secret("X", placeholder, "AB", &["api.openai.com"])?;
         let input = format!(
             "GET / HTTP/1.1\r\nHost: api.openai.com\r\nX-Header: {placeholder}-and-{placeholder}\r\n\r\n"
         );
@@ -1259,7 +1258,7 @@ mod tests {
 
     #[tokio::test]
     async fn denies_unknown_placeholder_in_header_value() -> Result<()> {
-        let table = table_with_secret(
+        let table = secret_table_with_secret(
             "OTHER",
             "__DSEC_ffffffffffffffffffffffffffffffff__",
             "sk-other",
@@ -1288,7 +1287,7 @@ mod tests {
         let placeholder = "__DSEC_33333333333333334444444444444444__";
         // Secret is allowed only on api.openai.com, but the request is sent
         // to a different host whose SNI happens to also be MITM-allowlisted.
-        let mut table = table_with_secret(
+        let mut table = secret_table_with_secret(
             "OPENAI_API_KEY",
             placeholder,
             "sk-real",
@@ -1318,7 +1317,7 @@ mod tests {
     #[tokio::test]
     async fn denies_placeholder_on_url_line_in_tls_mode() -> Result<()> {
         let placeholder = "__DSEC_55555555555555556666666666666666__";
-        let table = table_with_secret("X", placeholder, "sk-real", &["api.openai.com"])?;
+        let table = secret_table_with_secret("X", placeholder, "sk-real", &["api.openai.com"])?;
         let input = format!("GET /v1/{placeholder}/items HTTP/1.1\r\nHost: api.openai.com\r\n\r\n");
 
         let error = rewrite_once(
@@ -1337,7 +1336,7 @@ mod tests {
     #[tokio::test]
     async fn denies_placeholder_shaped_http_method_in_tls_mode() -> Result<()> {
         let placeholder = "__DSEC_55555555555555556666666666666666__";
-        let table = table_with_secret("X", placeholder, "sk-real", &["api.openai.com"])?;
+        let table = secret_table_with_secret("X", placeholder, "sk-real", &["api.openai.com"])?;
         let input = format!("{placeholder} /items HTTP/1.1\r\nHost: api.openai.com\r\n\r\n");
 
         let error = rewrite_once(
@@ -1374,7 +1373,7 @@ mod tests {
     #[tokio::test]
     async fn denies_placeholder_on_plain_http_in_header_value() -> Result<()> {
         let placeholder = "__DSEC_77777777777777778888888888888888__";
-        let table = table_with_secret("X", placeholder, "sk-real", &["example.com"])?;
+        let table = secret_table_with_secret("X", placeholder, "sk-real", &["example.com"])?;
         let input = format!(
             "GET / HTTP/1.1\r\nHost: example.com\r\nAuthorization: Bearer {placeholder}\r\n\r\n"
         );
@@ -1617,38 +1616,6 @@ mod tests {
             .await
             .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
         Ok(output)
-    }
-
-    fn empty_table() -> Result<SecretTable> {
-        Ok(SecretTable {
-            by_placeholder: HashMap::new(),
-            sni_match_set: DomainSet::from_patterns(&[])?,
-        })
-    }
-
-    fn table_with_secret(
-        name: &str,
-        placeholder: &str,
-        value: &str,
-        patterns: &[&str],
-    ) -> Result<SecretTable> {
-        let allowed_domains = patterns
-            .iter()
-            .map(|pattern| (*pattern).to_string())
-            .collect::<Vec<_>>();
-        let domain_set = DomainSet::from_patterns(&allowed_domains)?;
-        let secret = Secret {
-            name: name.to_string(),
-            placeholder: placeholder.to_string(),
-            value: value.to_string(),
-            allowed_domains: domain_set,
-        };
-        let mut by_placeholder = HashMap::new();
-        by_placeholder.insert(placeholder.to_string(), secret);
-        Ok(SecretTable {
-            by_placeholder,
-            sni_match_set: DomainSet::from_patterns(&allowed_domains)?,
-        })
     }
 
     fn assert_deny_reason(error: HttpRewriteError, expected: DenyReason) {

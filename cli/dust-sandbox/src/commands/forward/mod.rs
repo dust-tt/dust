@@ -11,6 +11,8 @@ mod proxy_tunnel;
 mod rewrite_policy;
 mod session;
 mod sni;
+#[cfg(test)]
+mod test_support;
 mod tls_mitm;
 
 use std::path::PathBuf;

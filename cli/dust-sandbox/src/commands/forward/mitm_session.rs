@@ -341,7 +341,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::path::PathBuf;
 
     use anyhow::{ensure, Context, Result};
@@ -352,8 +351,7 @@ mod tests {
     use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName};
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
-    use crate::egress_secrets::{DomainSet, Secret};
-
+    use super::super::test_support::{read_h2_body, secret_table, secret_table_with_secret};
     use super::super::*;
     use super::*;
 
@@ -1077,53 +1075,6 @@ mod tests {
                     .take()
                     .ok_or_else(|| anyhow::anyhow!("test proxy opener reused"))
             })
-        })
-    }
-
-    async fn read_h2_body(mut body: h2::RecvStream) -> Result<Vec<u8>> {
-        let mut output = Vec::new();
-        while let Some(chunk) = body.data().await {
-            let chunk = chunk?;
-            output.extend_from_slice(&chunk);
-            body.flow_control().release_capacity(chunk.len())?;
-        }
-        ensure!(body.trailers().await?.is_none(), "unexpected trailers");
-        Ok(output)
-    }
-
-    fn secret_table(patterns: &[&str]) -> Result<SecretTable> {
-        let allowed_domains = patterns
-            .iter()
-            .map(|pattern| (*pattern).to_string())
-            .collect::<Vec<_>>();
-        Ok(SecretTable {
-            by_placeholder: HashMap::new(),
-            sni_match_set: DomainSet::from_patterns(&allowed_domains)?,
-        })
-    }
-
-    fn secret_table_with_secret(
-        name: &str,
-        placeholder: &str,
-        value: &str,
-        patterns: &[&str],
-    ) -> Result<SecretTable> {
-        let allowed_domains = patterns
-            .iter()
-            .map(|pattern| (*pattern).to_string())
-            .collect::<Vec<_>>();
-        let domain_set = DomainSet::from_patterns(&allowed_domains)?;
-        let secret = Secret {
-            name: name.to_string(),
-            placeholder: placeholder.to_string(),
-            value: value.to_string(),
-            allowed_domains: domain_set,
-        };
-        let mut by_placeholder = HashMap::new();
-        by_placeholder.insert(placeholder.to_string(), secret);
-        Ok(SecretTable {
-            by_placeholder,
-            sni_match_set: DomainSet::from_patterns(&allowed_domains)?,
         })
     }
 
