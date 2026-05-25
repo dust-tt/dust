@@ -1,7 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { determineUserRoleFromGroups } from "@app/lib/api/user";
 import {
   ADMIN_GROUP_NAME,
+  BUILDER_GROUP_NAME,
   GroupResource,
 } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -44,30 +44,50 @@ export const applyGroupRoles = createPlugin({
       });
     }
 
-    if (provisioningGroups.length === 0) {
-      return new Ok({
-        display: "text",
-        value:
-          "dust-admins or dust-builders group both not found in workspace.",
-      });
-    }
+    const [builderGroup] = provisioningGroups.filter(
+      (g) => g.name === BUILDER_GROUP_NAME
+    );
 
     const { memberships } = await MembershipResource.getActiveMemberships({
       workspace,
     });
 
+    const users = await UserResource.fetchByModelIds(
+      [...new Set(memberships.map((m) => m.userId))]
+    );
+    const userByModelId = new Map(users.map((user) => [user.id, user]));
+
+    const membershipsByProvisioningGroup =
+      await GroupResource.getActiveMembershipsForGroups(
+        auth,
+        removeNulls([adminGroup, builderGroup])
+      );
+
+    const adminUserIds = new Set(
+      membershipsByProvisioningGroup[adminGroup.id] ?? []
+    );
+    const builderUserIds = new Set(
+      builderGroup
+        ? (membershipsByProvisioningGroup[builderGroup.id] ?? [])
+        : []
+    );
+
     let updatedCount = 0;
     const errors: string[] = [];
 
     for (const membership of memberships) {
-      const user = await UserResource.fetchByModelId(membership.userId);
+      const user = userByModelId.get(membership.userId);
       if (!user) {
         errors.push(`User not found: ${membership.userId}`);
         continue;
       }
 
       const currentRole = membership.role;
-      const expectedRole = await determineUserRoleFromGroups(workspace, user);
+      const expectedRole = adminUserIds.has(user.id)
+        ? "admin"
+        : builderUserIds.has(user.id)
+          ? "builder"
+          : "user";
 
       if (currentRole !== expectedRole) {
         const updateResult = await MembershipResource.updateMembershipRole({
