@@ -25,7 +25,10 @@ const MAX_HEADER_BLOCK_BYTES: usize = 64 * 1024;
 const MAX_HEADER_LINE_BYTES: usize = 16 * 1024;
 const MAX_TRAILER_BLOCK_BYTES: usize = 64 * 1024;
 // Safety cap for one declared h1 chunk. Forwarding still streams chunks in
-// READ_CHUNK_BYTES pieces so normal large responses do not need one allocation.
+// READ_CHUNK_BYTES pieces, so this only bounds the largest single chunk an
+// upstream is allowed to declare in its framing. 64 MiB is well above any
+// chunk an LB or origin we forward through is expected to emit while still
+// keeping a hard ceiling against pathological framing.
 const MAX_H1_RESPONSE_CHUNK_BYTES: usize = 64 * 1024 * 1024;
 
 pub(super) trait AsyncReadWrite: AsyncRead + AsyncWrite + Unpin + Send {}
@@ -130,12 +133,7 @@ async fn handle_h2_stream(
     let authority = match h2_request_authority(&parts.uri, &parts.headers) {
         Ok(authority) => authority,
         Err(error) => {
-            let entry = deny_entry(
-                RewriteMode::Tls { sni: &sni },
-                DenyReason::MalformedHeaders,
-                None,
-                None,
-            );
+            let entry = deny_entry(mode, DenyReason::MalformedHeaders, None, None);
             append_deny_log(&deny_log, entry)
                 .await
                 .context("failed to append h2 malformed-authority deny log entry")?;
@@ -317,8 +315,8 @@ fn has_expect_100_continue(headers: &[HeaderPart]) -> bool {
 }
 
 fn send_expectation_failed(respond: &mut SendResponse<Bytes>) -> Result<()> {
-    // TODO: Replace this synthetic response with concurrent request upload and
-    // upstream response forwarding in https://github.com/dust-tt/dust/issues/26109.
+    // TODO(2026-05-25 #26109): Replace this synthetic response with concurrent
+    // request upload and upstream response forwarding.
     let response = Response::builder()
         .status(StatusCode::EXPECTATION_FAILED)
         .body(())
@@ -330,14 +328,27 @@ fn send_expectation_failed(respond: &mut SendResponse<Bytes>) -> Result<()> {
 }
 
 fn discard_h2_request_body(mut body: RecvStream) {
+    // Spawned per Expect: 100-continue rejection, bounded by
+    // H2_MAX_CONCURRENT_STREAMS per session. The task drains DATA + trailers so
+    // the h2 layer can release flow-control credit after the synthetic 417 has
+    // closed the local stream for sending.
     tokio::spawn(async move {
         while let Some(chunk) = body.data().await {
-            let Ok(chunk) = chunk else {
-                return;
+            let chunk = match chunk {
+                Ok(chunk) => chunk,
+                Err(error) => {
+                    warn!(error = %error, "h2 request-body drain failed");
+                    return;
+                }
             };
-            let _ = body.flow_control().release_capacity(chunk.len());
+            if let Err(error) = body.flow_control().release_capacity(chunk.len()) {
+                warn!(error = %error, "h2 request-body flow-control release failed");
+                return;
+            }
         }
-        let _ = body.trailers().await;
+        if let Err(error) = body.trailers().await {
+            warn!(error = %error, "h2 request-body trailers drain failed");
+        }
     });
 }
 
@@ -962,7 +973,6 @@ fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use std::path::PathBuf;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     use anyhow::{ensure, Result};
@@ -1043,7 +1053,8 @@ mod tests {
         );
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),
@@ -1093,7 +1104,8 @@ mod tests {
         let opener = test_h1_opener(request_tx, b"HTTP/1.1 204 No Content\r\n\r\n");
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-basic-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),
@@ -1144,7 +1156,8 @@ mod tests {
         );
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-body-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),
@@ -1196,7 +1209,8 @@ mod tests {
         );
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-empty-data-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),
@@ -1248,7 +1262,8 @@ mod tests {
         );
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-empty-only-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),
@@ -1298,7 +1313,8 @@ mod tests {
         );
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-chunked-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),
@@ -1365,7 +1381,8 @@ mod tests {
         );
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-large-chunk-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),
@@ -1429,7 +1446,8 @@ mod tests {
         let opener = test_h1_opener(request_tx, response.as_bytes());
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-chunk-cap-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),
@@ -1479,7 +1497,8 @@ mod tests {
         );
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-ambiguous-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),
@@ -1522,7 +1541,8 @@ mod tests {
         );
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-connection-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),
@@ -1842,7 +1862,8 @@ mod tests {
         );
 
         let (client_io, server_io) = tokio::io::duplex(64 * 1024);
-        let deny_log = Arc::new(PathBuf::from("/tmp/dust-h2-empty-trailers-deny-test.log"));
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
         let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
             server_io,
             sni.to_string(),

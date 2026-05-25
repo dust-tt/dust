@@ -51,6 +51,10 @@ const MITM_CA_KEY_PATH: &str = "/run/dust/egress-ca.key";
 // Must match `front/lib/api/sandbox/egress_secrets.ts:EGRESS_SECRETS_PATH`.
 const EGRESS_SECRETS_PATH: &str = "/run/dust/egress-secrets.json";
 
+// Reusable opener for the per-h2-stream upstream proxy tunnel. Each h2 stream
+// opens its own TCP + proxy CONNECT + TLS handshake, so the opener must be
+// callable more than once (unlike the previous FnOnce closure used by the
+// pre-h2 path).
 type OpenProxyTunnel<S> =
     Arc<dyn Fn() -> Pin<Box<dyn Future<Output = Result<S>> + Send>> + Send + Sync>;
 
