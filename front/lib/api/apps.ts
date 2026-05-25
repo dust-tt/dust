@@ -8,10 +8,11 @@ import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
-import type {
-  AppsCheckRequestType,
-  AppsCheckResponseType,
-} from "@dust-tt/client";
+
+type AppDeploymentCheck = {
+  appId: string;
+  appHash: string;
+};
 
 export async function softDeleteApp(
   auth: Authenticator,
@@ -62,8 +63,8 @@ export async function hardDeleteApp(
 
 export async function checkAppsDeployment(
   auth: Authenticator,
-  apps: AppsCheckRequestType["apps"]
-): Promise<AppsCheckResponseType["apps"]> {
+  apps: AppDeploymentCheck[]
+): Promise<(AppDeploymentCheck & { deployed: boolean })[]> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   return concurrentExecutor(
     apps,

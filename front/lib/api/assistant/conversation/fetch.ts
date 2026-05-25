@@ -39,7 +39,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isArrayOf } from "@app/types/shared/typescipt_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { GetSpaceConversationsForDataSourceResponseType } from "@dust-tt/client";
 import { Op, type WhereOptions } from "sequelize";
 
 // Helper type to map viewType to the correct message type
@@ -449,18 +448,16 @@ export async function listSpaceConversationsForSync(
     workspaceId: string;
     updatedSinceMs: number | null;
   }
-): Promise<GetSpaceConversationsForDataSourceResponseType["conversations"]> {
-  const spaceConversations = await ConversationResource.listConversationsInSpace(
-    auth,
-    {
+) {
+  const spaceConversations =
+    await ConversationResource.listConversationsInSpace(auth, {
       spaceId,
       options: {
         dangerouslySkipPermissionFiltering: true, // System key has access
         includeDeleted: true,
         updatedSince: updatedSinceMs ?? undefined,
       },
-    }
-  );
+    });
 
   const conversationsFull = await concurrentExecutor(
     spaceConversations,
@@ -475,7 +472,12 @@ export async function listSpaceConversationsForSync(
   return conversations
     .map((c) => ({
       ...c,
-      url: getConversationRoute(workspaceId, c.sId, undefined, config.getAppUrl()),
+      url: getConversationRoute(
+        workspaceId,
+        c.sId,
+        undefined,
+        config.getAppUrl()
+      ),
     }))
     .map(addBackwardCompatibleConversationFields);
 }
