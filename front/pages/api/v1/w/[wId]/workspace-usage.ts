@@ -2,19 +2,16 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getConversationsDataRetention } from "@app/lib/data_retention";
-import { fetchUsageData } from "@app/lib/workspace_usage";
+import {
+  fetchUsageData,
+  resolveWorkspaceUsageDates,
+} from "@app/lib/workspace_usage";
 import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage_retention";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type {
-  GetWorkspaceUsageRequestType,
-  GetWorkspaceUsageResponseType,
-} from "@dust-tt/client";
+import type { GetWorkspaceUsageResponseType } from "@dust-tt/client";
 import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
 import { parse as parseCSV } from "csv-parse/sync";
-import { endOfDay } from "date-fns/endOfDay";
-import { endOfMonth } from "date-fns/endOfMonth";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
@@ -156,7 +153,7 @@ async function handler(
         });
       }
 
-      const { endDate, startDate } = resolveDates(query);
+      const { endDate, startDate } = resolveWorkspaceUsageDates(query);
       const conversationsRetentionDays =
         await getConversationsDataRetention(auth);
       const retentionErrorMessage = getWorkspaceUsageRetentionErrorMessage({
@@ -243,30 +240,6 @@ async function handler(
           message: "The method passed is not supported, GET is expected.",
         },
       });
-  }
-}
-
-function resolveDates(query: GetWorkspaceUsageRequestType) {
-  const parseDate = (dateString: string) => {
-    const parts = dateString.split("-");
-    return new Date(
-      parseInt(parts[0]),
-      parseInt(parts[1]) - 1,
-      parts[2] ? parseInt(parts[2]) : 1
-    );
-  };
-
-  switch (query.mode) {
-    case "month":
-      const date = parseDate(query.start);
-      return { startDate: date, endDate: endOfMonth(date) };
-    case "range":
-      return {
-        startDate: parseDate(query.start),
-        endDate: endOfDay(parseDate(query.end)),
-      };
-    default:
-      assertNever(query);
   }
 }
 

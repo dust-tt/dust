@@ -17,7 +17,10 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
+import type { GetWorkspaceUsageRequestType } from "@dust-tt/client";
 import { stringify } from "csv-stringify/sync";
+import { endOfDay } from "date-fns/endOfDay";
+import { endOfMonth } from "date-fns/endOfMonth";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
@@ -844,4 +847,30 @@ function generateCsvFromQueryResult(
       date: (value) => value.toISOString(),
     },
   });
+}
+
+export function resolveWorkspaceUsageDates(
+  query: GetWorkspaceUsageRequestType
+): { startDate: Date; endDate: Date } {
+  const parseDate = (dateString: string) => {
+    const parts = dateString.split("-");
+    return new Date(
+      parseInt(parts[0]),
+      parseInt(parts[1]) - 1,
+      parts[2] ? parseInt(parts[2]) : 1
+    );
+  };
+
+  switch (query.mode) {
+    case "month":
+      const date = parseDate(query.start);
+      return { startDate: date, endDate: endOfMonth(date) };
+    case "range":
+      return {
+        startDate: parseDate(query.start),
+        endDate: endOfDay(parseDate(query.end)),
+      };
+    default:
+      assertNever(query);
+  }
 }
