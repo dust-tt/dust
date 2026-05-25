@@ -1,16 +1,10 @@
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { listSpaceConversationsForSync } from "@app/lib/api/assistant/conversation/fetch";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import config from "@app/lib/api/config";
-import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { getConversationRoute } from "@app/lib/utils/router";
 import { apiError } from "@app/logger/withlogging";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { isString } from "@app/types/shared/utils/general";
 import type { GetSpaceConversationsForDataSourceResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -76,44 +70,13 @@ async function handler(
         });
       }
 
-      // Get all conversations for the space (including deleted ones)
-      // Filter by updatedSince at the database level if provided
-      const spaceConversations =
-        await ConversationResource.listConversationsInSpace(auth, {
-          spaceId,
-          options: {
-            dangerouslySkipPermissionFiltering: true, // System key has access
-            includeDeleted: true, // Include deleted conversations so sync can detect and remove them
-            updatedSince: updatedSinceMs ?? undefined,
-          },
-        });
-
-      // Fetch full conversations (returns raw ConversationType)
-      // Include deleted conversations so sync can detect and remove them
-      const conversationsFull = await concurrentExecutor(
-        spaceConversations,
-        async (c) => getConversation(auth, c.sId, true), // includeDeleted = true
-        { concurrency: 4 }
-      );
-
-      const conversations = removeNulls(
-        conversationsFull.map((c) => (c.isOk() ? c.value : null))
-      );
-
-      // Return raw conversations directly (ConversationSchema) - formatting happens in sync_conversation.ts
-      const responseConversations = conversations.map((c: ConversationType) => {
-        // Return the full conversation object as-is (matches ConversationSchema)
-        return {
-          ...c,
-          url: getConversationRoute(wId, c.sId, undefined, config.getAppUrl()),
-        };
+      const conversations = await listSpaceConversationsForSync(auth, {
+        spaceId,
+        workspaceId: wId,
+        updatedSinceMs,
       });
 
-      return res.status(200).json({
-        conversations: responseConversations.map(
-          addBackwardCompatibleConversationFields
-        ),
-      });
+      return res.status(200).json({ conversations });
     }
 
     default:

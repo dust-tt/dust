@@ -1,5 +1,7 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import config from "@app/lib/api/config";
+import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -10,6 +12,8 @@ import {
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   AgentMessageType,
   CompactionMessageType,
@@ -35,6 +39,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isArrayOf } from "@app/types/shared/typescipt_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { GetSpaceConversationsForDataSourceResponseType } from "@dust-tt/client";
 import { Op, type WhereOptions } from "sequelize";
 
 // Helper type to map viewType to the correct message type
@@ -427,4 +432,50 @@ async function _getConversation<V extends "light" | "full">(
       ConversationError
     >;
   }
+}
+
+// Lists conversations in a space along with their full content, formatted for
+// the connectors-driven sync flow (each conversation is enriched with a public
+// URL and backward-compatible fields). Includes deleted conversations so sync
+// can detect and remove them.
+export async function listSpaceConversationsForSync(
+  auth: Authenticator,
+  {
+    spaceId,
+    workspaceId,
+    updatedSinceMs,
+  }: {
+    spaceId: string;
+    workspaceId: string;
+    updatedSinceMs: number | null;
+  }
+): Promise<GetSpaceConversationsForDataSourceResponseType["conversations"]> {
+  const spaceConversations = await ConversationResource.listConversationsInSpace(
+    auth,
+    {
+      spaceId,
+      options: {
+        dangerouslySkipPermissionFiltering: true, // System key has access
+        includeDeleted: true,
+        updatedSince: updatedSinceMs ?? undefined,
+      },
+    }
+  );
+
+  const conversationsFull = await concurrentExecutor(
+    spaceConversations,
+    async (c) => getConversation(auth, c.sId, true),
+    { concurrency: 4 }
+  );
+
+  const conversations = removeNulls(
+    conversationsFull.map((c) => (c.isOk() ? c.value : null))
+  );
+
+  return conversations
+    .map((c) => ({
+      ...c,
+      url: getConversationRoute(workspaceId, c.sId, undefined, config.getAppUrl()),
+    }))
+    .map(addBackwardCompatibleConversationFields);
 }
