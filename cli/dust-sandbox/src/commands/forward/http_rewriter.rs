@@ -628,22 +628,40 @@ where
 
         if chunk_size == 0 {
             let mut trailer_bytes = 0_usize;
+            let mut has_trailers = false;
             loop {
                 let trailer_line = reader.read_line(mode).await?;
-                trailer_bytes = trailer_bytes
+                let Some(next_trailer_bytes) = trailer_bytes
                     .checked_add(trailer_line.len())
                     .filter(|total| *total <= MAX_TRAILER_BLOCK_BYTES)
-                    .ok_or_else(|| {
-                        HttpRewriteError::denied(mode, DenyReason::MalformedHeaders, None, None)
-                    })?;
+                else {
+                    shutdown_upstream(upstream).await?;
+                    return Err(HttpRewriteError::denied(
+                        mode,
+                        DenyReason::MalformedHeaders,
+                        None,
+                        None,
+                    ));
+                };
+                trailer_bytes = next_trailer_bytes;
                 let done = trailer_line == b"\r\n";
-                upstream
-                    .write_all(&trailer_line)
-                    .await
-                    .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
                 if done {
+                    if has_trailers {
+                        shutdown_upstream(upstream).await?;
+                        return Err(HttpRewriteError::denied(
+                            mode,
+                            DenyReason::RequestTrailersUnsupported,
+                            None,
+                            None,
+                        ));
+                    }
+                    upstream
+                        .write_all(&trailer_line)
+                        .await
+                        .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
                     return Ok(());
                 }
+                has_trailers = true;
             }
         }
 
@@ -940,6 +958,44 @@ mod tests {
 
         assert!(text.contains("Transfer-Encoding: chunked\r\n"));
         assert!(text.contains("5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn forwards_empty_chunked_trailer_block() -> Result<()> {
+        let (result, output) = forward_chunked_once(b"5\r\nhello\r\n0\r\n\r\n").await?;
+
+        result?;
+        assert_eq!(output, b"5\r\nhello\r\n0\r\n\r\n");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn denies_non_empty_chunked_request_trailers() -> Result<()> {
+        let (result, output) =
+            forward_chunked_once(b"5\r\nhello\r\n0\r\nTrailer-Foo: bar\r\n\r\n").await?;
+        let error = result.expect_err("non-empty request trailers should deny");
+
+        assert_deny_reason(error, DenyReason::RequestTrailersUnsupported);
+        assert_eq!(output, b"5\r\nhello\r\n0\r\n");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn oversized_chunked_request_trailer_block_stays_malformed() -> Result<()> {
+        let trailer_value = "x".repeat(MAX_CHUNK_LINE_BYTES - b"X: \r\n".len());
+        let trailer_line = format!("X: {trailer_value}\r\n");
+        let mut input = String::from("0\r\n");
+        for _ in 0..9 {
+            input.push_str(&trailer_line);
+        }
+        input.push_str("\r\n");
+
+        let (result, output) = forward_chunked_once(input.as_bytes()).await?;
+        let error = result.expect_err("oversized request trailers should deny");
+
+        assert_deny_reason(error, DenyReason::MalformedHeaders);
+        assert_eq!(output, b"0\r\n");
         Ok(())
     }
 
@@ -1617,6 +1673,41 @@ mod tests {
             .await
             .map_err(|error| HttpRewriteError::io(anyhow!(error)))?;
         Ok(output)
+    }
+
+    async fn forward_chunked_once(input: &[u8]) -> Result<(RewriteResult<()>, Vec<u8>)> {
+        let (mut client_write, mut client_read) = tokio::io::duplex(16 * 1024);
+        let (mut upstream_write, mut upstream_read) = tokio::io::duplex(16 * 1024);
+        let input = input.to_vec();
+        let writer_task = tokio::spawn(async move {
+            client_write.write_all(&input).await?;
+            client_write.shutdown().await?;
+            Ok::<(), std::io::Error>(())
+        });
+
+        let result = forward_chunked(
+            &mut BufferedReader::new(&mut client_read),
+            &mut upstream_write,
+            HttpRewriteMode::Tls {
+                sni: "api.openai.com",
+            },
+        )
+        .await;
+        drop(upstream_write);
+        drop(client_read);
+
+        if let Err(error) = writer_task.await? {
+            if !matches!(
+                error.kind(),
+                ErrorKind::BrokenPipe | ErrorKind::ConnectionReset | ErrorKind::UnexpectedEof
+            ) {
+                return Err(error.into());
+            }
+        }
+
+        let mut output = Vec::new();
+        upstream_read.read_to_end(&mut output).await?;
+        Ok((result, output))
     }
 
     fn empty_table() -> Result<SecretTable> {

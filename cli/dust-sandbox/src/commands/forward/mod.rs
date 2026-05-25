@@ -869,6 +869,7 @@ mod tests {
         KeyUsagePurpose, SanType,
     };
     use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, ServerName};
+    use tempfile::tempdir;
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
     use crate::egress_secrets::{DomainSet, Secret};
@@ -1077,6 +1078,87 @@ mod tests {
         upstream_task
             .await
             .context("test upstream task panicked")??;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn mitm_session_denies_h1_chunked_request_trailers() -> Result<()> {
+        let sni = "api.openai.com";
+        let mitm_ca = Arc::new(MitmCa::generate()?);
+        let (upstream_server_config, upstream_ca_der) = test_upstream_server_config(sni)?;
+        let mut runtime = test_runtime(Arc::clone(&mitm_ca), upstream_ca_der)?;
+        runtime.secret_table = Arc::new(secret_table(&[sni])?);
+        let tempdir = tempdir()?;
+        let deny_log = tempdir.path().join("deny.log");
+        runtime.deny_log = Arc::new(deny_log.clone());
+
+        let (agent_client_io, agent_dsbx_io) = tokio::io::duplex(16 * 1024);
+        let (dsbx_proxy_io, upstream_server_io) = tokio::io::duplex(16 * 1024);
+
+        let upstream_task = tokio::spawn(async move {
+            let acceptor = TlsAcceptor::from(upstream_server_config);
+            let mut tls = acceptor
+                .accept(upstream_server_io)
+                .await
+                .context("test upstream failed to accept TLS")?;
+
+            let mut request = Vec::new();
+            tls.read_to_end(&mut request)
+                .await
+                .context("test upstream failed to read request")?;
+            let request_text = String::from_utf8(request).context("request should be utf8")?;
+            assert!(request_text.contains("Transfer-Encoding: chunked\r\n"));
+            assert!(request_text.contains("5\r\nhello\r\n0\r\n"));
+            assert!(!request_text.contains("Trailer-Foo: bar"));
+            assert!(
+                request_text.ends_with("0\r\n"),
+                "upstream should receive only the body through the zero chunk, got {request_text:?}"
+            );
+            Ok::<(), anyhow::Error>(())
+        });
+
+        let agent_connector =
+            test_tls_connector(mitm_ca.ca_cert_der(), vec![HTTP_1_1_ALPN.to_vec()])?;
+        let agent_task = tokio::spawn(async move {
+            let server_name =
+                ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
+            let mut tls = agent_connector
+                .connect(server_name, agent_client_io)
+                .await
+                .context("test agent failed to connect to dsbx MITM")?;
+            tls.write_all(
+                format!(
+                    "POST /upload HTTP/1.1\r\nHost: {sni}\r\n\
+                     Transfer-Encoding: chunked\r\n\r\n\
+                     5\r\nhello\r\n0\r\nTrailer-Foo: bar\r\n\r\n"
+                )
+                .as_bytes(),
+            )
+            .await
+            .context("test agent failed to write request")?;
+
+            let mut buffer = [0_u8; 1];
+            let _ = tls.read(&mut buffer).await;
+            Ok::<(), anyhow::Error>(())
+        });
+
+        run_mitm_session_with_proxy_opener(
+            &runtime,
+            sni,
+            agent_dsbx_io,
+            single_proxy_opener(dsbx_proxy_io),
+        )
+        .await?;
+        agent_task.await.context("test agent task panicked")??;
+        upstream_task
+            .await
+            .context("test upstream task panicked")??;
+
+        let deny_log_content = tokio::fs::read_to_string(&deny_log)
+            .await
+            .context("deny log should be written")?;
+        assert!(deny_log_content.contains("request_trailers_unsupported"));
 
         Ok(())
     }
