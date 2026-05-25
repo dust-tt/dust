@@ -20,15 +20,15 @@ use tracing::warn;
 use crate::egress_secrets::SecretTable;
 
 use super::deny_log::{append_deny_log, DenyReason};
+use super::http_framing::{
+    find_subslice, is_common_bridge_stripped_header, parse_chunk_size, MAX_HEADER_BLOCK_BYTES,
+    MAX_HEADER_LINE_BYTES, MAX_TRAILER_BLOCK_BYTES, READ_CHUNK_BYTES,
+};
 use super::rewrite_policy::{
     deny_entry, process_request_policy, Authority, HeaderPart, RequestParts, RewriteMode,
 };
 
 const H2_MAX_CONCURRENT_STREAMS: u32 = 256;
-const READ_CHUNK_BYTES: usize = 8 * 1024;
-const MAX_HEADER_BLOCK_BYTES: usize = 64 * 1024;
-const MAX_HEADER_LINE_BYTES: usize = 16 * 1024;
-const MAX_TRAILER_BLOCK_BYTES: usize = 64 * 1024;
 // 1 MiB initial window for h2 streams on both sides. The h2 spec default
 // (64 KiB - 1) throttles single uploads to one round-trip per window; 1 MiB
 // keeps large request/response bodies flowing without explicit WINDOW_UPDATEs
@@ -1083,15 +1083,7 @@ fn build_h2_upstream_request(
 }
 
 fn should_strip_h2_upstream_header(name: &str) -> bool {
-    const STRIPPED: &[&str] = &[
-        "connection",
-        "host",
-        "keep-alive",
-        "proxy-connection",
-        "transfer-encoding",
-        "upgrade",
-    ];
-    STRIPPED.iter().any(|s| name.eq_ignore_ascii_case(s))
+    is_common_bridge_stripped_header(name)
 }
 
 async fn forward_h2_request_body(
@@ -1542,16 +1534,7 @@ where
 }
 
 fn should_strip_h1_bridge_header(name: &str) -> bool {
-    matches!(
-        name.to_ascii_lowercase().as_str(),
-        "connection"
-            | "host"
-            | "keep-alive"
-            | "proxy-connection"
-            | "te"
-            | "transfer-encoding"
-            | "upgrade"
-    )
+    is_common_bridge_stripped_header(name) || name.eq_ignore_ascii_case("te")
 }
 
 fn connection_nominated_headers(headers: &[HeaderPart]) -> Result<HashSet<String>> {
@@ -1959,15 +1942,6 @@ fn response_body_kind(headers: &[HeaderPart]) -> Result<H1BodyKind> {
     Ok(content_length.map_or(H1BodyKind::EofDelimited, H1BodyKind::ContentLength))
 }
 
-fn parse_chunk_size(line: &[u8]) -> Result<usize> {
-    let text = std::str::from_utf8(line).context("chunk size line is not utf8")?;
-    let line = text
-        .strip_suffix("\r\n")
-        .ok_or_else(|| anyhow!("chunk size line missing CRLF"))?;
-    let size = line.split_once(';').map_or(line, |(size, _)| size).trim();
-    usize::from_str_radix(size, 16).context("invalid chunk size")
-}
-
 async fn send_data(send: &mut SendStream<Bytes>, data: Bytes, end_stream: bool) -> Result<()> {
     if data.is_empty() {
         send.send_data(data, end_stream)
@@ -1997,12 +1971,6 @@ async fn send_data(send: &mut SendStream<Bytes>, data: Bytes, end_stream: bool) 
     }
 
     Ok(())
-}
-
-fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack
-        .windows(needle.len())
-        .position(|window| window == needle)
 }
 
 #[cfg(test)]
