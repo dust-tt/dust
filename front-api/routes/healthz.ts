@@ -1,8 +1,8 @@
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { Hono } from "hono";
 
-import ready from "./ready";
-import startup from "./startup";
+import ready from "./healthz/ready";
+import startup from "./healthz/startup";
 
 // Mounted at /api/healthz.
 export const healthzApp = new Hono();

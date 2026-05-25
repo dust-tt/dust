@@ -8,7 +8,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
 import download from "./download";
-import rel from "./rel";
+import rel from "./[...rel]";
 import thumbnail from "./thumbnail";
 
 export type GetConversationFilesResponseBody = {
