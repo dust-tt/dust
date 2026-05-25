@@ -191,21 +191,20 @@ mod tests {
             opener,
         ));
 
-        let (send_request, connection) = h2::client::handshake(client_io).await?;
-        // The server's SETTINGS frame is consumed during handshake; the client
-        // exposes the negotiated value via `max_concurrent_send_streams`.
-        // Driving the connection forward at least once is required for the
-        // SETTINGS frame to be parsed.
-        let connection_task = tokio::spawn(connection);
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let mut client_io = client_io;
+        client_io
+            .write_all(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+            .await?;
+        client_io.write_all(&[0, 0, 0, 4, 0, 0, 0, 0, 0]).await?;
+        let settings = read_h2_settings(&mut client_io).await?;
         assert_eq!(
-            send_request.current_max_send_streams(),
-            H2_MAX_CONCURRENT_STREAMS as usize,
+            settings
+                .iter()
+                .find_map(|(id, value)| (*id == 0x03).then_some(*value)),
+            Some(H2_MAX_CONCURRENT_STREAMS),
             "server should advertise MAX_CONCURRENT_STREAMS={H2_MAX_CONCURRENT_STREAMS}"
         );
 
-        drop(send_request);
-        connection_task.abort();
         bridge_task.abort();
         Ok(())
     }
@@ -257,7 +256,6 @@ mod tests {
             }
             Err(_error) => {}
         }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         assert_eq!(open_count.load(Ordering::SeqCst), 0);
 
         drop(send_request);
