@@ -17,7 +17,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
-import type { GetWorkspaceUsageRequestType } from "@dust-tt/client";
 import { stringify } from "csv-stringify/sync";
 import { endOfDay } from "date-fns/endOfDay";
 import { endOfMonth } from "date-fns/endOfMonth";
@@ -849,9 +848,14 @@ function generateCsvFromQueryResult(
   });
 }
 
-export function resolveWorkspaceUsageDates(
-  query: GetWorkspaceUsageRequestType
-): { startDate: Date; endDate: Date } {
+type WorkspaceUsageDateRange =
+  | { mode: "month"; start: string }
+  | { mode: "range"; start: string; end: string };
+
+export function resolveWorkspaceUsageDates(query: WorkspaceUsageDateRange): {
+  startDate: Date;
+  endDate: Date;
+} {
   const parseDate = (dateString: string) => {
     const parts = dateString.split("-");
     return new Date(
