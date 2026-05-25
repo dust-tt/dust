@@ -95,7 +95,10 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
     const groupModelsByModelId = new Map(
       groupModels.map((groupModel) => [groupModel.id, groupModel])
     );
-    assert(groupModelsByModelId.size === groupSpaces.length, "All editor group spaces must have exactly one associated group");
+    assert(
+      groupModelsByModelId.size === groupSpaces.length,
+      "All editor group spaces must have exactly one associated group"
+    );
 
     const groupSpacesResources = groupSpaces.map((groupSpace) => {
       const groupModel = groupModelsByModelId.get(groupSpace.groupId);
@@ -124,12 +127,7 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
         "Only space editors or provisioned groups can be an editor group"
       );
 
-      return new this(
-        GroupSpaceModel,
-        groupSpace.get(),
-        space,
-        group
-      );
+      return new this(GroupSpaceModel, groupSpace.get(), space, group);
     });
     return removeNulls(groupSpacesResources);
   }

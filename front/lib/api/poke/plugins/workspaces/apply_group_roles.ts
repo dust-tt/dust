@@ -53,9 +53,9 @@ export const applyGroupRoles = createPlugin({
       workspace,
     });
 
-    const users = await UserResource.fetchByModelIds(
-      [...new Set(memberships.map((m) => m.userId))]
-    );
+    const users = await UserResource.fetchByModelIds([
+      ...new Set(memberships.map((m) => m.userId)),
+    ]);
     const userByModelId = new Map(users.map((user) => [user.id, user]));
 
     const membershipsByProvisioningGroup =
