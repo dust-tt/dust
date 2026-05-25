@@ -141,6 +141,32 @@ export function interleaveMentionsPreservingAgentOrder(
   return result.slice(0, SUGGESTION_DISPLAY_LIMIT);
 }
 
+/**
+ * Normalizes the `select` query parameter of the mention suggestions endpoint
+ * into the `{ agents, users }` shape consumed by `suggestionsOfMentions`. The
+ * parameter can come in as a single string ("agents"|"users"), an array of
+ * those, or be absent (default: both).
+ */
+export function parseMentionSelectParam(
+  selectParam: string | string[] | undefined
+): { agents: boolean; users: boolean } {
+  if (!selectParam) {
+    return { agents: true, users: true };
+  }
+
+  if (typeof selectParam === "string") {
+    return {
+      agents: selectParam === "agents",
+      users: selectParam === "users",
+    };
+  }
+
+  return {
+    agents: selectParam.includes("agents"),
+    users: selectParam.includes("users"),
+  };
+}
+
 export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
