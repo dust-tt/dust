@@ -3,6 +3,7 @@ use std::future::{poll_fn, Future};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::Mutex as StdMutex;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
@@ -14,6 +15,7 @@ use h2::{RecvStream, SendStream};
 use http::header::{CONTENT_LENGTH, COOKIE, HOST, TE, TRANSFER_ENCODING};
 use http::{HeaderMap, HeaderName, HeaderValue, Request, Response, StatusCode};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::sync::futures::OwnedNotified;
 use tokio::sync::Mutex;
 use tracing::warn;
 
@@ -120,6 +122,7 @@ pub(super) struct H2UpstreamPool {
 struct H2UpstreamPoolInner {
     open_upstream: OpenUpstream,
     entries: tokio::sync::Mutex<HashMap<H2UpstreamKey, Vec<Arc<PooledH2Connection>>>>,
+    openings: StdMutex<HashMap<H2UpstreamKey, Arc<tokio::sync::Notify>>>,
     sweeper_shutdown: Arc<tokio::sync::Notify>,
 }
 
@@ -211,6 +214,7 @@ impl H2UpstreamPool {
         let inner = Arc::new(H2UpstreamPoolInner {
             open_upstream,
             entries: tokio::sync::Mutex::new(HashMap::new()),
+            openings: StdMutex::new(HashMap::new()),
             sweeper_shutdown: Arc::new(tokio::sync::Notify::new()),
         });
         spawn_h2_pool_sweeper(&inner);
@@ -251,32 +255,83 @@ impl H2UpstreamPool {
         reserve_h2_connection(entries.get_mut(key)?)
     }
 
-    // Holds the entries mutex across the upstream open so concurrent
-    // first-leases for the same key share one handshake. Side effect: opens
-    // for distinct keys also serialize through this mutex. Acceptable because
-    // per-sandbox upstream fan-out is small; revisit if dsbx ever serves
-    // many independent destinations concurrently.
     async fn open_or_reserve_new(&self, key: &H2UpstreamKey) -> Result<LeaseCandidate> {
-        let mut entries = self.inner.entries.lock().await;
-        prune_idle_pool_entries(&mut entries);
-        if let Some(connections) = entries.get_mut(key) {
-            if let Some(lease) = reserve_h2_connection(connections) {
-                return Ok(LeaseCandidate::H2 {
-                    lease,
-                    is_new: false,
-                });
+        loop {
+            {
+                let mut entries = self.inner.entries.lock().await;
+                prune_idle_pool_entries(&mut entries);
+                if let Some(connections) = entries.get_mut(key) {
+                    if let Some(lease) = reserve_h2_connection(connections) {
+                        return Ok(LeaseCandidate::H2 {
+                            lease,
+                            is_new: false,
+                        });
+                    }
+                }
+            }
+
+            match self.reserve_or_wait_opening(key)? {
+                OpeningDecision::Open(opening) => {
+                    return self.open_reserved_connection(key, opening).await;
+                }
+                OpeningDecision::Wait(notified) => {
+                    notified.await;
+                }
             }
         }
+    }
 
-        let opened = (self.inner.open_upstream)(key.clone())
-            .await
-            .context("failed to open pooled upstream")?;
+    fn reserve_or_wait_opening(&self, key: &H2UpstreamKey) -> Result<OpeningDecision> {
+        let mut openings = self
+            .inner
+            .openings
+            .lock()
+            .map_err(|_| anyhow!("h2 upstream opening map poisoned"))?;
+        if let Some(notify) = openings.get(key) {
+            return Ok(OpeningDecision::Wait(Arc::clone(notify).notified_owned()));
+        }
+
+        let notify = Arc::new(tokio::sync::Notify::new());
+        openings.insert(key.clone(), Arc::clone(&notify));
+        Ok(OpeningDecision::Open(H2OpeningGuard {
+            inner: Arc::clone(&self.inner),
+            key: key.clone(),
+            notify,
+            completed: false,
+        }))
+    }
+
+    async fn open_reserved_connection(
+        &self,
+        key: &H2UpstreamKey,
+        opening: H2OpeningGuard,
+    ) -> Result<LeaseCandidate> {
+        let opened = match (self.inner.open_upstream)(key.clone()).await {
+            Ok(opened) => opened,
+            Err(error) => {
+                opening.complete()?;
+                return Err(error).context("failed to open pooled upstream");
+            }
+        };
+
         match opened.protocol {
-            UpstreamProtocol::Http1 => Ok(LeaseCandidate::Http1(opened.io)),
+            UpstreamProtocol::Http1 => {
+                opening.complete()?;
+                Ok(LeaseCandidate::Http1(opened.io))
+            }
             UpstreamProtocol::H2 => {
-                let lease = insert_h2_connection_locked(&mut entries, key, opened.io)
+                let (pooled, lease) = open_h2_connection(opened.io)
                     .await
-                    .context("failed to insert pooled h2 upstream")?;
+                    .context("failed to establish pooled h2 upstream")?;
+                {
+                    let mut entries = self.inner.entries.lock().await;
+                    prune_idle_pool_entries(&mut entries);
+                    entries
+                        .entry(key.clone())
+                        .or_default()
+                        .push(Arc::clone(&pooled));
+                }
+                opening.complete()?;
                 Ok(LeaseCandidate::H2 {
                     lease,
                     is_new: true,
@@ -284,6 +339,57 @@ impl H2UpstreamPool {
             }
         }
     }
+}
+
+enum OpeningDecision {
+    Open(H2OpeningGuard),
+    Wait(OwnedNotified),
+}
+
+struct H2OpeningGuard {
+    inner: Arc<H2UpstreamPoolInner>,
+    key: H2UpstreamKey,
+    notify: Arc<tokio::sync::Notify>,
+    completed: bool,
+}
+
+impl H2OpeningGuard {
+    fn complete(mut self) -> Result<()> {
+        remove_opening(&self.inner, &self.key, &self.notify)?;
+        self.completed = true;
+        self.notify.notify_waiters();
+        Ok(())
+    }
+}
+
+impl Drop for H2OpeningGuard {
+    fn drop(&mut self) {
+        if self.completed {
+            return;
+        }
+        if let Err(error) = remove_opening(&self.inner, &self.key, &self.notify) {
+            warn!(error = %error, "failed to clear cancelled h2 upstream opening");
+        }
+        self.notify.notify_waiters();
+    }
+}
+
+fn remove_opening(
+    inner: &H2UpstreamPoolInner,
+    key: &H2UpstreamKey,
+    notify: &Arc<tokio::sync::Notify>,
+) -> Result<()> {
+    let mut openings = inner
+        .openings
+        .lock()
+        .map_err(|_| anyhow!("h2 upstream opening map poisoned"))?;
+    if openings
+        .get(key)
+        .is_some_and(|current| Arc::ptr_eq(current, notify))
+    {
+        openings.remove(key);
+    }
+    Ok(())
 }
 
 impl Drop for H2UpstreamPoolInner {
@@ -319,11 +425,9 @@ enum LeaseCandidate {
     Http1(BoxedAsyncReadWrite),
 }
 
-async fn insert_h2_connection_locked(
-    entries: &mut HashMap<H2UpstreamKey, Vec<Arc<PooledH2Connection>>>,
-    key: &H2UpstreamKey,
+async fn open_h2_connection(
     io: BoxedAsyncReadWrite,
-) -> Result<H2ConnectionLease> {
+) -> Result<(Arc<PooledH2Connection>, H2ConnectionLease)> {
     let mut builder = h2::client::Builder::new();
     builder
         .max_header_list_size(MAX_HEADER_BLOCK_BYTES as u32)
@@ -351,16 +455,15 @@ async fn insert_h2_connection_locked(
         mark_h2_connection_closed_if_live(&connection_for_task);
     });
 
-    entries
-        .entry(key.clone())
-        .or_default()
-        .push(Arc::clone(&pooled));
     let send_request = pooled.send_request.clone();
 
-    Ok(H2ConnectionLease {
-        reservation: H2ConnectionReservation { connection: pooled },
-        send_request,
-    })
+    Ok((
+        Arc::clone(&pooled),
+        H2ConnectionLease {
+            reservation: H2ConnectionReservation { connection: pooled },
+            send_request,
+        },
+    ))
 }
 
 fn mark_h2_connection_closed(connection: &PooledH2Connection) {
@@ -3434,6 +3537,137 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn h2_upstream_first_opens_for_different_keys_run_in_parallel() -> Result<()> {
+        let (started_tx, mut started_rx) = mpsc::unbounded_channel();
+        let release_openers = Arc::new(tokio::sync::Notify::new());
+        let release_openers_for_opener = Arc::clone(&release_openers);
+        let opener: OpenUpstream = Arc::new(move |key| {
+            let started_tx = started_tx.clone();
+            let release_openers = Arc::clone(&release_openers_for_opener);
+            Box::pin(async move {
+                started_tx
+                    .send(key.authority().to_string())
+                    .map_err(|_| anyhow!("failed to send opener start"))?;
+                release_openers.notified().await;
+                let (io, _peer) = tokio::io::duplex(64);
+                Ok(OpenedUpstream::new(
+                    UpstreamProtocol::Http1,
+                    Box::new(io) as BoxedAsyncReadWrite,
+                ))
+            })
+        });
+        let pool = H2UpstreamPool::new(opener);
+        let first_key = test_h2_upstream_key("api.openai.com");
+        let second_key = H2UpstreamKey::new(
+            "api.anthropic.com".to_string(),
+            std::net::SocketAddr::from(([127, 0, 0, 1], 443)),
+        );
+
+        let first_pool = pool.clone();
+        let first_key_for_task = first_key.clone();
+        let first_task = tokio::spawn(async move { first_pool.lease(&first_key_for_task).await });
+        assert_eq!(
+            started_rx
+                .recv()
+                .await
+                .ok_or_else(|| anyhow!("missing first opener start"))?,
+            "api.openai.com"
+        );
+
+        let second_pool = pool.clone();
+        let second_key_for_task = second_key.clone();
+        let second_task =
+            tokio::spawn(async move { second_pool.lease(&second_key_for_task).await });
+        let mut second_started = None;
+        for _ in 0..16 {
+            if let Ok(authority) = started_rx.try_recv() {
+                second_started = Some(authority);
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+        assert_eq!(second_started.as_deref(), Some("api.anthropic.com"));
+
+        release_openers.notify_waiters();
+        assert!(matches!(first_task.await??, UpstreamLease::Http1(_)));
+        assert!(matches!(second_task.await??, UpstreamLease::Http1(_)));
+        drop(pool);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_failed_first_open_clears_opening_for_retry() -> Result<()> {
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let opener: OpenUpstream = Arc::new(move |_key| {
+            let attempts = Arc::clone(&attempts);
+            Box::pin(async move {
+                if attempts.fetch_add(1, Ordering::SeqCst) == 0 {
+                    return Err(anyhow!("test opener failure"));
+                }
+                let (io, _peer) = tokio::io::duplex(64);
+                Ok(OpenedUpstream::new(
+                    UpstreamProtocol::Http1,
+                    Box::new(io) as BoxedAsyncReadWrite,
+                ))
+            })
+        });
+        let pool = H2UpstreamPool::new(opener);
+        let key = test_h2_upstream_key("api.openai.com");
+
+        assert!(pool.lease(&key).await.is_err());
+        let retry = tokio::time::timeout(std::time::Duration::from_secs(1), pool.lease(&key))
+            .await
+            .context("retry lease timed out")??;
+        assert!(matches!(retry, UpstreamLease::Http1(_)));
+        drop(pool);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_cancelled_first_open_clears_opening_for_retry() -> Result<()> {
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let (started_tx, mut started_rx) = mpsc::unbounded_channel();
+        let release_first = Arc::new(tokio::sync::Notify::new());
+        let opener: OpenUpstream = Arc::new(move |_key| {
+            let attempts = Arc::clone(&attempts);
+            let started_tx = started_tx.clone();
+            let release_first = Arc::clone(&release_first);
+            Box::pin(async move {
+                if attempts.fetch_add(1, Ordering::SeqCst) == 0 {
+                    started_tx
+                        .send(())
+                        .map_err(|_| anyhow!("failed to send opener start"))?;
+                    release_first.notified().await;
+                }
+                let (io, _peer) = tokio::io::duplex(64);
+                Ok(OpenedUpstream::new(
+                    UpstreamProtocol::Http1,
+                    Box::new(io) as BoxedAsyncReadWrite,
+                ))
+            })
+        });
+        let pool = H2UpstreamPool::new(opener);
+        let key = test_h2_upstream_key("api.openai.com");
+
+        let first_pool = pool.clone();
+        let first_key = key.clone();
+        let first_task = tokio::spawn(async move { first_pool.lease(&first_key).await });
+        started_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("missing opener start"))?;
+        first_task.abort();
+        let _ = first_task.await;
+
+        let retry = tokio::time::timeout(std::time::Duration::from_secs(1), pool.lease(&key))
+            .await
+            .context("retry lease timed out")??;
+        assert!(matches!(retry, UpstreamLease::Http1(_)));
+        drop(pool);
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn h2_upstream_substitutes_headers_without_folding_cookies() -> Result<()> {
         let sni = "api.openai.com";
         let placeholder = "__DSEC_59595959595959597b7b7b7b7b7b7b7b__";
@@ -4631,13 +4865,9 @@ mod tests {
             "api.openai.com".to_string(),
             std::net::SocketAddr::from(([127, 0, 0, 1], 443)),
         );
+        let (pooled, lease) = open_h2_connection(Box::new(dsbx_io) as BoxedAsyncReadWrite).await?;
         let mut entries = HashMap::new();
-        let lease = insert_h2_connection_locked(
-            &mut entries,
-            &key,
-            Box::new(dsbx_io) as BoxedAsyncReadWrite,
-        )
-        .await?;
+        entries.entry(key).or_insert_with(Vec::new).push(pooled);
         let settings = settings_task
             .await
             .context("settings reader task panicked")??;
