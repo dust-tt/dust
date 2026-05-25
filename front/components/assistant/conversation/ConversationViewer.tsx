@@ -1341,6 +1341,7 @@ export const ConversationViewer = ({
           // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
           increaseViewportBy={8192}
           enforceStickyFooterAtBottom
+          autoscrollToBottomBehavior="smooth"
         />
       </VirtuosoMessageListLicense>
     </>
