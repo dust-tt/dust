@@ -22,6 +22,8 @@ pub enum DenyReason {
     Port80Placeholder,
     HeaderSizeExceeded,
     H2WebsocketUnsupported,
+    ExpectContinueUnsupported,
+    RequestTrailersUnsupported,
 }
 
 impl DenyReason {
@@ -41,6 +43,8 @@ impl DenyReason {
             Self::Port80Placeholder => "port_80_placeholder",
             Self::HeaderSizeExceeded => "header_size_exceeded",
             Self::H2WebsocketUnsupported => "h2_websocket_unsupported",
+            Self::ExpectContinueUnsupported => "expect_continue_unsupported",
+            Self::RequestTrailersUnsupported => "request_trailers_unsupported",
         }
     }
 }
