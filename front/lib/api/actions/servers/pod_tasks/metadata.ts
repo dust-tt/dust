@@ -83,6 +83,24 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
               .describe(
                 "The rationale for marking the task as done. Leave empty if the task should not be marked as done."
               ),
+            sources: z
+              .array(
+                z.object({
+                  url: z
+                    .string()
+                    .url()
+                    .describe(
+                      "URL of a related source (e.g. Slack thread, GitHub issue, Notion page)"
+                    ),
+                  title: z
+                    .string()
+                    .describe("Human-readable title for the source"),
+                })
+              )
+              .optional()
+              .describe(
+                "Optional context sources to attach to this task when the agent can provide them"
+              ),
           })
         )
         .min(1)

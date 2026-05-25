@@ -38,8 +38,10 @@ import {
   removeContentNodesFromProject,
 } from "@app/lib/api/projects/context";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
+import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
+import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -216,9 +218,9 @@ export function createProjectManagerTools(
       }, "Failed to remove linked content from Pod");
     },
 
-    edit_description: async (params) => {
+    edit_information: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(auth, {
+        const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
           dustPod: params.dustPod,
         });
@@ -227,32 +229,173 @@ export function createProjectManagerTools(
         }
 
         const { space } = contextRes.value;
-        const { description } = params;
 
-        // Fetch or create project metadata.
-        const metadata = await ProjectMetadataResource.fetchBySpace(
-          auth,
-          space
-        );
+        if (!space.canAdministrate(auth)) {
+          return new Err(
+            new MCPError(
+              "You do not have permission to edit this Pod's information",
+              { tracked: false }
+            )
+          );
+        }
 
-        if (!metadata) {
-          // Create metadata if it doesn't exist.
-          await ProjectMetadataResource.makeNew(auth, space, {
-            description,
-          });
-        } else {
-          // Update existing metadata.
-          await metadata.updateDescription(description);
+        const { title, description, pinnedFramePath } = params;
+        if (
+          title === undefined &&
+          description === undefined &&
+          pinnedFramePath === undefined
+        ) {
+          return new Err(
+            new MCPError(
+              "At least one of title, description, or pinnedFramePath must be provided",
+              { tracked: false }
+            )
+          );
+        }
+
+        const updates: Record<string, unknown> = {};
+
+        if (title !== undefined) {
+          const updateNameRes = await space.updateName(auth, title);
+          if (updateNameRes.isErr()) {
+            return new Err(
+              new MCPError(updateNameRes.error.message, { tracked: false })
+            );
+          }
+          updates.title = title.trim();
+        }
+
+        if (description !== undefined || pinnedFramePath !== undefined) {
+          if (pinnedFramePath !== undefined) {
+            const validation = await validatePinnedFramePath(
+              auth,
+              space,
+              pinnedFramePath
+            );
+            if (validation.isErr()) {
+              return new Err(
+                new MCPError(validation.error.message, { tracked: false })
+              );
+            }
+          }
+
+          let metadata = await ProjectMetadataResource.fetchBySpace(
+            auth,
+            space
+          );
+
+          if (!metadata) {
+            metadata = await ProjectMetadataResource.makeNew(auth, space, {
+              description: description ?? null,
+              pinnedFramePath: pinnedFramePath ?? null,
+            });
+          } else {
+            if (description !== undefined) {
+              await metadata.updateDescription(description);
+            }
+            if (pinnedFramePath !== undefined) {
+              await metadata.updatePinnedFramePath(pinnedFramePath);
+            }
+          }
+
+          if (description !== undefined) {
+            updates.description = description;
+          }
+          if (pinnedFramePath !== undefined) {
+            updates.pinnedFramePath = pinnedFramePath;
+          }
         }
 
         return new Ok(
           makeSuccessResponse({
             success: true,
-            description,
-            message: "Pod description updated successfully.",
+            ...updates,
+            message: "Pod information updated successfully.",
           })
         );
-      }, "Failed to edit Pod description");
+      }, "Failed to edit Pod information");
+    },
+
+    update_members: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getProjectSpace(auth, {
+          agentLoopContext,
+          dustPod: params.dustPod,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+
+        if (!space.canAdministrate(auth)) {
+          return new Err(
+            new MCPError("You do not have permission to update Pod members", {
+              tracked: false,
+            })
+          );
+        }
+
+        const addMemberIds = params.addMemberIds ?? [];
+        const removeMemberIds = params.removeMemberIds ?? [];
+
+        if (addMemberIds.length === 0 && removeMemberIds.length === 0) {
+          return new Err(
+            new MCPError(
+              "At least one of addMemberIds or removeMemberIds must be provided",
+              { tracked: false }
+            )
+          );
+        }
+
+        const added: string[] = [];
+        const removed: string[] = [];
+
+        if (addMemberIds.length > 0) {
+          const uniqueAddIds = [...new Set(addMemberIds)];
+          const addMembersRes = await space.addMembers(auth, {
+            userIds: uniqueAddIds,
+          });
+          if (addMembersRes.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to add members: ${addMembersRes.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+          added.push(...addMembersRes.value.map((user) => user.sId));
+          notifyProjectMembersAdded(auth, {
+            project: space.toJSON(),
+            addedUserIds: uniqueAddIds,
+          });
+        }
+
+        if (removeMemberIds.length > 0) {
+          const uniqueRemoveIds = [...new Set(removeMemberIds)];
+          const removeMembersRes = await space.removeMembers(auth, {
+            userIds: uniqueRemoveIds,
+          });
+          if (removeMembersRes.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to remove members: ${removeMembersRes.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+          removed.push(...removeMembersRes.value.map((user) => user.sId));
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            added,
+            removed,
+            message: `Pod members updated successfully.${added.length > 0 ? ` Added: ${added.join(", ")}.` : ""}${removed.length > 0 ? ` Removed: ${removed.join(", ")}.` : ""}`,
+          })
+        );
+      }, "Failed to update Pod members");
     },
 
     get_information: async (params) => {
@@ -306,6 +449,7 @@ export function createProjectManagerTools(
               name: space.name,
               url: projectUrl,
               description: metadata?.description ?? null,
+              pinnedFramePath: metadata?.pinnedFramePath ?? null,
               contentNodes,
               files: {
                 count: projectFileCount,

@@ -10,6 +10,7 @@ import {
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import { POD_TASKS_TOOLS_METADATA } from "@app/lib/api/actions/servers/pod_tasks/metadata";
+import { inferProjectTaskSourceFromUrl } from "@app/lib/api/actions/servers/pod_tasks/source_utils";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -190,6 +191,19 @@ export function createProjectTasksTools(
                 sourceUrl: `${config.getAppUrl()}${getConversationRoute(owner.sId, sourceConversation.sId)}`,
               },
             });
+          }
+
+          if (item.sources) {
+            for (const sourceInput of item.sources) {
+              const source = inferProjectTaskSourceFromUrl({
+                url: sourceInput.url,
+                title: sourceInput.title,
+              });
+              await row.upsertSource(auth, {
+                itemId: sourceInput.url,
+                source,
+              });
+            }
           }
 
           created.push(formatTaskListingLine(row));
