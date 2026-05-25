@@ -22,6 +22,7 @@ import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
@@ -167,6 +168,7 @@ export function ConversationMenu({
   const confirm = useContext(ConfirmContext);
 
   const clientType = useClientType();
+  const isMobile = useIsMobile();
 
   const router = useAppRouter();
 
@@ -177,6 +179,7 @@ export function ConversationMenu({
     !!conversation &&
     !!user &&
     !isRestrictedFromAgentCreation &&
+    !isMobile &&
     clientType !== "extension";
   const sendNotification = useSendNotification();
 
