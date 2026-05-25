@@ -18,6 +18,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mockUseEventSource = vi.fn();
 const mockMutateContextUsage = vi.fn();
 const mockUseVirtuosoMethods = vi.fn();
+const mockIsAutoScrollEnabledRef = { current: true };
+
+function makeVirtuosoMethodsMock<T>(map: (updater: (message: T) => T) => T[]) {
+  return {
+    data: {
+      map,
+      batch: (callback: () => void) => {
+        callback();
+      },
+    },
+  };
+}
 
 vi.mock("@app/hooks/useEventSource", () => ({
   useEventSource: (...args: unknown[]) => mockUseEventSource(...args),
@@ -272,9 +284,9 @@ describe("useAgentMessageStream", () => {
     }> = [];
     let onEventCallback: ((event: string) => void) | null = null;
 
-    mockUseVirtuosoMethods.mockReturnValue({
-      data: {
-        map: (
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
           updater: (message: typeof currentMessage) => typeof currentMessage
         ) => {
           currentMessage = updater(currentMessage);
@@ -284,9 +296,9 @@ describe("useAgentMessageStream", () => {
             agentState: currentMessage.streaming.agentState,
           });
           return [currentMessage];
-        },
-      },
-    });
+        }
+      )
+    );
 
     mockUseEventSource.mockImplementation(
       (
@@ -302,6 +314,7 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -343,16 +356,16 @@ describe("useAgentMessageStream", () => {
     );
     let onEventCallback: ((event: string) => void) | null = null;
 
-    mockUseVirtuosoMethods.mockReturnValue({
-      data: {
-        map: (
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
           updater: (message: typeof currentMessage) => typeof currentMessage
         ) => {
           currentMessage = updater(currentMessage);
           return [currentMessage];
-        },
-      },
-    });
+        }
+      )
+    );
 
     mockUseEventSource.mockImplementation(
       (
@@ -368,6 +381,7 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -461,16 +475,16 @@ describe("useAgentMessageStream", () => {
     );
     let onEventCallback: ((event: string) => void) | null = null;
 
-    mockUseVirtuosoMethods.mockReturnValue({
-      data: {
-        map: (
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
           updater: (message: typeof currentMessage) => typeof currentMessage
         ) => {
           currentMessage = updater(currentMessage);
           return [currentMessage];
-        },
-      },
-    });
+        }
+      )
+    );
 
     mockUseEventSource.mockImplementation(
       (
@@ -486,6 +500,7 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -557,16 +572,16 @@ describe("useAgentMessageStream", () => {
     );
     let onEventCallback: ((event: string) => void) | null = null;
 
-    mockUseVirtuosoMethods.mockReturnValue({
-      data: {
-        map: (
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
           updater: (message: typeof currentMessage) => typeof currentMessage
         ) => {
           currentMessage = updater(currentMessage);
           return [currentMessage];
-        },
-      },
-    });
+        }
+      )
+    );
 
     mockUseEventSource.mockImplementation(
       (
@@ -582,6 +597,7 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -711,9 +727,9 @@ describe("useAgentMessageStream", () => {
     const chainOfThoughtSnapshots: string[] = [];
     let onEventCallback: ((event: string) => void) | null = null;
 
-    mockUseVirtuosoMethods.mockReturnValue({
-      data: {
-        map: (
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
           updater: (message: typeof currentMessage) => typeof currentMessage
         ) => {
           currentMessage = updater(currentMessage);
@@ -721,9 +737,9 @@ describe("useAgentMessageStream", () => {
             chainOfThoughtSnapshots.push(currentMessage.chainOfThought);
           }
           return [currentMessage];
-        },
-      },
-    });
+        }
+      )
+    );
 
     mockUseEventSource.mockImplementation(
       (
@@ -739,6 +755,7 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
