@@ -73,3 +73,8 @@ jobs:
       - name: Test
         working-directory: cli/dust-sandbox
         run: cargo test --all
+
+      - name: E2E (local)
+        working-directory: cli/dust-sandbox
+        # The e2e harness spawns subprocess listeners and shared local proxy/upstream fixtures.
+        run: cargo test --test e2e_local -- --test-threads=1 --nocapture
