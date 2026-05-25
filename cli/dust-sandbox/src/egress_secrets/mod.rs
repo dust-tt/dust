@@ -67,12 +67,6 @@ impl SecretTable {
         self.by_placeholder.len()
     }
 
-    // Consumed by Slice 5 to short-circuit MITM when no secrets are loaded.
-    #[allow(dead_code)]
-    pub fn is_empty(&self) -> bool {
-        self.by_placeholder.is_empty()
-    }
-
     fn parse(contents: &str) -> Result<Self> {
         let raw_secrets: Vec<RawSecret> =
             serde_json::from_str(contents).context("invalid egress secrets JSON")?;
@@ -111,8 +105,6 @@ impl DomainSet {
         Ok(set)
     }
 
-    // Consumed by Slice 5 to gate MITM on SNI; tested directly in this slice.
-    #[allow(dead_code)]
     pub fn matches(&self, domain: &str) -> bool {
         let domain = match normalize_dns_name(domain) {
             Ok(domain) => domain,

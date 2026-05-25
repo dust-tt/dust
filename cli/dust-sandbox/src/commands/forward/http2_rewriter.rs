@@ -3,7 +3,7 @@ use std::future::{poll_fn, Future};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
@@ -14,6 +14,7 @@ use h2::{RecvStream, SendStream};
 use http::header::{CONTENT_LENGTH, COOKIE, HOST, TE, TRANSFER_ENCODING};
 use http::{HeaderMap, HeaderName, HeaderValue, Request, Response, StatusCode};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::sync::Mutex;
 use tracing::warn;
 
 use crate::egress_secrets::SecretTable;
@@ -137,11 +138,15 @@ pub(super) enum UpstreamLease {
 }
 
 pub(super) struct H2ConnectionLease {
-    connection: Arc<PooledH2Connection>,
-    send_request: Option<SendRequest<Bytes>>,
+    reservation: H2ConnectionReservation,
+    send_request: SendRequest<Bytes>,
 }
 
-impl Drop for H2ConnectionLease {
+struct H2ConnectionReservation {
+    connection: Arc<PooledH2Connection>,
+}
+
+impl Drop for H2ConnectionReservation {
     fn drop(&mut self) {
         self.connection
             .active_streams
@@ -153,42 +158,36 @@ impl Drop for H2ConnectionLease {
 }
 
 impl H2ConnectionLease {
-    async fn ready(mut self) -> std::result::Result<Self, h2::Error> {
-        let send_request = self
-            .send_request
-            .take()
-            .expect("pooled h2 lease missing send request")
-            .ready()
-            .await;
+    async fn ready(self) -> std::result::Result<Self, h2::Error> {
+        let Self {
+            reservation,
+            send_request,
+        } = self;
+        let send_request = send_request.ready().await;
         match send_request {
-            Ok(send_request) => {
-                self.send_request = Some(send_request);
-                Ok(self)
-            }
+            Ok(send_request) => Ok(Self {
+                reservation,
+                send_request,
+            }),
             Err(error) => {
-                self.mark_draining();
+                reservation
+                    .connection
+                    .draining
+                    .store(true, Ordering::SeqCst);
                 Err(error)
             }
         }
     }
 
     fn send_request(&self) -> SendRequest<Bytes> {
-        self.send_request
-            .as_ref()
-            .expect("pooled h2 lease missing send request")
-            .clone()
+        self.send_request.clone()
     }
 
-    // Draining means "do not hand this connection out for new leases", but
-    // already-leased streams may still complete. Closed is stronger: the
-    // underlying h2 session has gone away and the connection driver task has
-    // resolved; the pool entry is eligible for eviction on the next prune.
-    fn mark_draining(&self) {
-        self.connection.draining.store(true, Ordering::SeqCst);
-    }
-
+    // Closed means the underlying h2 session has gone away and the connection
+    // driver task has resolved; the pool entry is eligible for eviction on the
+    // next prune.
     fn mark_closed(&self) {
-        mark_h2_connection_closed(&self.connection);
+        mark_h2_connection_closed(&self.reservation.connection);
     }
 }
 
@@ -359,8 +358,8 @@ async fn insert_h2_connection_locked(
     let send_request = pooled.send_request.clone();
 
     Ok(H2ConnectionLease {
-        connection: pooled,
-        send_request: Some(send_request),
+        reservation: H2ConnectionReservation { connection: pooled },
+        send_request,
     })
 }
 
@@ -389,8 +388,8 @@ fn reserve_h2_connection(
     connection.active_streams.fetch_add(1, Ordering::SeqCst);
     let send_request = connection.send_request.clone();
     Some(H2ConnectionLease {
-        connection,
-        send_request: Some(send_request),
+        reservation: H2ConnectionReservation { connection },
+        send_request,
     })
 }
 
@@ -585,13 +584,13 @@ struct H2H1ForwardRequest {
 
 type H2RequestDenySlot = Arc<Mutex<Option<H2RequestDeny>>>;
 
-fn store_h2_request_body_deny(slot: &H2RequestDenySlot, deny: H2RequestDeny) {
-    let mut slot = slot.lock().expect("h2 request deny slot poisoned");
+async fn store_h2_request_body_deny(slot: &H2RequestDenySlot, deny: H2RequestDeny) {
+    let mut slot = slot.lock().await;
     *slot = Some(deny);
 }
 
-fn take_h2_request_body_deny(slot: &H2RequestDenySlot) -> Option<H2RequestDeny> {
-    let mut slot = slot.lock().expect("h2 request deny slot poisoned");
+async fn take_h2_request_body_deny(slot: &H2RequestDenySlot) -> Option<H2RequestDeny> {
+    let mut slot = slot.lock().await;
     slot.take()
 }
 
@@ -974,7 +973,7 @@ async fn handle_h2_to_h2_stream(
         response_result = &mut response_task => {
             drop(response_task);
             if let Err(error) = response_result {
-                if let Some(deny) = take_h2_request_body_deny(&request_body_deny) {
+                if let Some(deny) = take_h2_request_body_deny(&request_body_deny).await {
                     request_task.abort();
                     handle_h2_request_body_deny(
                         &policy,
@@ -1016,7 +1015,7 @@ async fn handle_h2_to_h2_stream(
                         }
                     }
                     Err(_) => {
-                        if let Some(deny) = take_h2_request_body_deny(&request_body_deny) {
+                        if let Some(deny) = take_h2_request_body_deny(&request_body_deny).await {
                             request_task.abort();
                             handle_h2_request_body_deny(
                                 &policy,
@@ -1131,7 +1130,7 @@ async fn forward_h2_request_body(
     if let Some(trailers) = trailers {
         if !trailers.is_empty() {
             let deny = H2RequestDeny::internal(DenyReason::RequestTrailersUnsupported);
-            store_h2_request_body_deny(&denied, deny);
+            store_h2_request_body_deny(&denied, deny).await;
             outbound.send_reset(h2::Reason::INTERNAL_ERROR);
             return Err(ForwardH2RequestBodyError::Denied(deny));
         }
