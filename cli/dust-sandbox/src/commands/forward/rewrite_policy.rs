@@ -123,7 +123,7 @@ pub(super) fn rewrite_request_headers(
         .headers
         .iter()
         .map(|header| {
-            rewrite_header_value(header, &host, secret_table, mode).map(|value| HeaderPart {
+            rewrite_header_value(header, host, secret_table, mode).map(|value| HeaderPart {
                 name: header.name.clone(),
                 value,
             })
