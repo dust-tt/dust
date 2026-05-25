@@ -1,4 +1,7 @@
-import { suggestionsOfMentions } from "@app/lib/api/assistant/conversation/mention_suggestions";
+import {
+  parseMentionSelectParam,
+  suggestionsOfMentions,
+} from "@app/lib/api/assistant/conversation/mention_suggestions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -123,28 +126,9 @@ async function handler(
   const parsedQuery = GetMentionSuggestionsRequestQuerySchema.parse(req.query);
   const { query, select: selectParam, current } = parsedQuery;
 
-  // Parse select parameter: can be "agents", "users", ["agents", "users"], or undefined.
-  const select = (() => {
-    if (!selectParam) {
-      return { agents: true, users: true };
-    }
-
-    if (typeof selectParam === "string") {
-      return {
-        agents: selectParam === "agents",
-        users: selectParam === "users",
-      };
-    }
-
-    const agents = selectParam.includes("agents");
-    const users = selectParam.includes("users");
-
-    return { agents, users };
-  })();
-
   const suggestions = await suggestionsOfMentions(auth, {
     query,
-    select,
+    select: parseMentionSelectParam(selectParam),
     current,
   });
 

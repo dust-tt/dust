@@ -1,21 +1,18 @@
 // This endpoint is redirected (307) to /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events
 // via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
-import { isRunAgentQueryProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ActionGeneratedDBFileType } from "@app/lib/actions/types";
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import config from "@app/lib/api/config";
 import { initSSEResponse } from "@app/lib/api/sse";
+import { toPublicAgentMessageEvent } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { AgentMessageEventType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
@@ -175,69 +172,7 @@ async function handler(
       let backpressureCount = 0;
 
       for await (const event of eventStream) {
-        let publicEvent: AgentMessageEventType | undefined;
-
-        if (event.data.type === "tool_notification") {
-          let output;
-          const { label, output: originalOutput } =
-            event.data.notification._meta.data;
-
-          if (isRunAgentQueryProgressOutput(originalOutput)) {
-            const wId = auth.getNonNullableWorkspace().sId;
-            const { conversationId, agentMessageId } = originalOutput;
-            const childConversationUrl = `${config.getApiBaseUrl()}/api/v1/w/${wId}/assistant/conversations/${conversationId}`;
-            output = {
-              ...originalOutput,
-              childConversationUrl,
-              childConversationEventsUrl: agentMessageId
-                ? `${childConversationUrl}/messages/${agentMessageId}/events`
-                : null,
-            };
-          } else {
-            output = originalOutput;
-          }
-          publicEvent = {
-            eventId: event.eventId,
-            data: {
-              ...event.data,
-              action: {
-                ...event.data.action,
-                generatedFiles: event.data.action.generatedFiles.filter(
-                  (f): f is ActionGeneratedDBFileType => f.fileId !== null
-                ),
-              },
-              notification: {
-                ...event.data.notification,
-                // For backward compatibility, we need to move the _meta.data to the root level.
-                data: {
-                  label,
-                  output,
-                },
-              },
-            },
-          };
-        } else if (
-          event.data.type === "agent_action_success" ||
-          event.data.type === "tool_params"
-        ) {
-          publicEvent = {
-            eventId: event.eventId,
-            data: {
-              ...event.data,
-              action: {
-                ...event.data.action,
-                generatedFiles: event.data.action.generatedFiles.filter(
-                  (f): f is ActionGeneratedDBFileType => f.fileId !== null
-                ),
-              },
-            },
-          };
-        } else {
-          publicEvent = {
-            eventId: event.eventId,
-            data: event.data,
-          };
-        }
+        const publicEvent = toPublicAgentMessageEvent(auth, event);
 
         const writeSuccessful = res.write(
           `data: ${JSON.stringify(publicEvent)}\n\n`

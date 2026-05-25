@@ -1,4 +1,6 @@
+import { isRunAgentQueryProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ActionGeneratedDBFileType } from "@app/lib/actions/types";
+import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -22,6 +24,7 @@ import { isInteractiveContentType } from "@app/types/files";
 import { isArrayOf } from "@app/types/shared/typescipt_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
+  AgentMessageEventType,
   AgentMessagePublicType,
   ContentFragmentType as ContentFragmentPublicType,
   ConversationPublicType,
@@ -180,6 +183,82 @@ export function addBackwardCompatibleAgentMessageFields(
           ? "cancelled"
           : agentMessage.status,
     rawContents: getRawContents(agentMessage),
+  };
+}
+
+/**
+ * Transforms an internal agent message stream event into the public
+ * `AgentMessageEventType` exposed by the v1 SSE endpoint. Filters out
+ * file-path generated files (no public file resource) and enriches
+ * `run_agent` tool notifications with child conversation URLs.
+ */
+export function toPublicAgentMessageEvent(
+  auth: Authenticator,
+  event: MessageStreamEvent
+): AgentMessageEventType {
+  if (event.data.type === "tool_notification") {
+    const { label, output: originalOutput } =
+      event.data.notification._meta.data;
+
+    let output;
+    if (isRunAgentQueryProgressOutput(originalOutput)) {
+      const wId = auth.getNonNullableWorkspace().sId;
+      const { conversationId, agentMessageId } = originalOutput;
+      const childConversationUrl = `${config.getApiBaseUrl()}/api/v1/w/${wId}/assistant/conversations/${conversationId}`;
+      output = {
+        ...originalOutput,
+        childConversationUrl,
+        childConversationEventsUrl: agentMessageId
+          ? `${childConversationUrl}/messages/${agentMessageId}/events`
+          : null,
+      };
+    } else {
+      output = originalOutput;
+    }
+
+    return {
+      eventId: event.eventId,
+      data: {
+        ...event.data,
+        action: {
+          ...event.data.action,
+          generatedFiles: event.data.action.generatedFiles.filter(
+            (f): f is ActionGeneratedDBFileType => f.fileId !== null
+          ),
+        },
+        notification: {
+          ...event.data.notification,
+          // For backward compatibility, we need to move the _meta.data to the root level.
+          data: {
+            label,
+            output,
+          },
+        },
+      },
+    };
+  }
+
+  if (
+    event.data.type === "agent_action_success" ||
+    event.data.type === "tool_params"
+  ) {
+    return {
+      eventId: event.eventId,
+      data: {
+        ...event.data,
+        action: {
+          ...event.data.action,
+          generatedFiles: event.data.action.generatedFiles.filter(
+            (f): f is ActionGeneratedDBFileType => f.fileId !== null
+          ),
+        },
+      },
+    };
+  }
+
+  return {
+    eventId: event.eventId,
+    data: event.data,
   };
 }
 

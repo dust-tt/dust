@@ -1,14 +1,13 @@
-import {
-  buildSelectedEmojiType,
-  makeUrlForEmojiAndBackground,
-} from "@app/components/agent_builder/settings/avatar_picker/utils";
 import { createGenericAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  assistantHandleIsValid,
+  getAgentPictureUrl,
+} from "@app/lib/api/assistant/configuration/generic_agent_helpers";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { CreateGenericAgentConfigurationResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -25,32 +24,6 @@ export const CreateGenericAgentRequestSchema = z.object({
   subAgentInstructions: z.string().optional(),
   subAgentEmoji: z.string().optional(),
 });
-
-function assistantHandleIsValid(handle: string) {
-  return /^[a-zA-Z0-9_-]{1,30}$/.test(handle);
-}
-
-function getAgentPictureUrl(
-  emoji: string | undefined,
-  backgroundColor: `bg-${string}`
-): string {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const selectedEmoji = emoji || "🤖";
-  const emojiData = buildSelectedEmojiType(selectedEmoji);
-
-  if (emojiData) {
-    return makeUrlForEmojiAndBackground(
-      {
-        id: emojiData.id,
-        unified: emojiData.unified,
-        native: emojiData.native,
-      },
-      backgroundColor
-    );
-  } else {
-    return DUST_AVATAR_URL;
-  }
-}
 
 /**
  * @ignoreswagger

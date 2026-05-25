@@ -1,12 +1,18 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import type { AppResource } from "@app/lib/resources/app_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+
+type AppDeploymentCheck = {
+  appId: string;
+  appHash: string;
+};
 
 export async function softDeleteApp(
   auth: Authenticator,
@@ -53,6 +59,32 @@ export async function hardDeleteApp(
   }
 
   return new Ok(undefined);
+}
+
+export async function checkAppsDeployment(
+  auth: Authenticator,
+  apps: AppDeploymentCheck[]
+): Promise<(AppDeploymentCheck & { deployed: boolean })[]> {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  return concurrentExecutor(
+    apps,
+    async (appRequest) => {
+      const app = await AppResource.fetchById(auth, appRequest.appId);
+      if (!app) {
+        return { ...appRequest, deployed: false };
+      }
+      const coreSpec = await coreAPI.getSpecification({
+        projectId: app.dustAPIProjectId,
+        specificationHash: appRequest.appHash,
+      });
+      if (coreSpec.isErr()) {
+        return { ...appRequest, deployed: false };
+      }
+
+      return { ...appRequest, deployed: true };
+    },
+    { concurrency: 5 }
+  );
 }
 
 export async function cloneAppToWorkspace(
