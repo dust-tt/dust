@@ -5730,9 +5730,12 @@ mod tests {
             if frame_type != 4 || flags & 0x1 != 0 {
                 continue;
             }
-            ensure!(len % 6 == 0, "invalid SETTINGS payload length");
-            return payload
-                .chunks_exact(6)
+            let settings = payload.chunks_exact(6);
+            ensure!(
+                settings.remainder().is_empty(),
+                "invalid SETTINGS payload length"
+            );
+            return settings
                 .map(|setting| {
                     let id = u16::from_be_bytes([setting[0], setting[1]]);
                     let value =
