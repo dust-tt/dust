@@ -135,7 +135,9 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
     expect(response.status).toBe(400);
     const responseData = await response.json();
     expect(responseData.error.type).toBe("invalid_request_error");
-    expect(responseData.error.message).toBe("Invalid request body");
+    expect(responseData.error.message).toBe(
+      'Invalid request body: Validation error: Required at "name"'
+    );
   });
 
   it("should return 400 when name is empty string", async () => {
@@ -154,7 +156,9 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
     expect(response.status).toBe(400);
     const responseData = await response.json();
     expect(responseData.error.type).toBe("invalid_request_error");
-    expect(responseData.error.message).toBe("Invalid request body");
+    expect(responseData.error.message).toBe(
+      'Invalid request body: Validation error: String must contain at least 1 character(s) at "name"'
+    );
   });
 
   it("should return 404 when trying to update non-existent webhook source view", async () => {

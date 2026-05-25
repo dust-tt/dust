@@ -14,6 +14,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
 
@@ -176,6 +177,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
 
 app.post(
   "/",
+  validate("json", PostOrPatchAgentConfigurationRequestBodySchema),
   async (ctx): HandlerResult<PostAgentConfigurationResponseBody> => {
     const auth = ctx.get("auth");
 
@@ -192,22 +194,11 @@ app.post(
       });
     }
 
-    const body = await ctx.req.json();
-    const bodyValidation =
-      PostOrPatchAgentConfigurationRequestBodySchema.safeParse(body);
-    if (!bodyValidation.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Invalid request body: ${bodyValidation.error.message}`,
-        },
-      });
-    }
+    const { assistant } = ctx.req.valid("json");
 
     const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
       auth,
-      assistant: bodyValidation.data.assistant,
+      assistant,
     });
 
     if (agentConfigurationRes.isErr()) {
