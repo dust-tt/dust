@@ -9,6 +9,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const PatchWebhookSourceViewBodySchema = z.object({
@@ -65,6 +66,7 @@ app.get("/", async (ctx): HandlerResult<GetWebhookSourceViewResponseBody> => {
 
 app.patch(
   "/",
+  validate("json", PatchWebhookSourceViewBodySchema),
   async (ctx): HandlerResult<PatchWebhookSourceViewResponseBody> => {
     const auth = ctx.get("auth");
     const viewId = ctx.req.param("viewId") ?? "";
@@ -96,18 +98,6 @@ app.patch(
       });
     }
 
-    const rawBody = await ctx.req.json().catch(() => undefined);
-    const bodyValidation = PatchWebhookSourceViewBodySchema.safeParse(rawBody);
-    if (!bodyValidation.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid request body",
-        },
-      });
-    }
-
     // Validate that this is a system view
     if (webhookSourceView.space.kind !== "system") {
       return apiError(ctx, {
@@ -119,7 +109,7 @@ app.patch(
       });
     }
 
-    const { name, description, icon } = bodyValidation.data;
+    const { name, description, icon } = ctx.req.valid("json");
 
     const nameResult = await webhookSourceView.updateName(auth, name);
     if (nameResult.isErr()) {
