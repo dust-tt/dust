@@ -1,14 +1,5 @@
-import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
-import { floorToHourISO } from "@app/lib/metronome/client";
 import {
-  ensureMetronomeCustomerForWorkspace,
-  provisionMetronomeContract,
-} from "@app/lib/metronome/contracts";
-import { FREE_PACKAGE_ALIAS } from "@app/lib/metronome/types";
-import { PlanModel } from "@app/lib/models/plan";
-import {
-  CREDIT_PRICED_FREE_PLAN_CODE,
   FREE_TRIAL_PHONE_PLAN_CODE,
   isOldFreePlan,
 } from "@app/lib/plans/plan_codes";
@@ -17,7 +8,6 @@ import {
   TRIAL_DURATION_DAYS,
 } from "@app/lib/plans/trial/constants";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 /**
  * Checks if a workspace is eligible for the trial page.
@@ -54,71 +44,6 @@ export async function isWorkspaceEligibleForTrial(
   }
 
   return true;
-}
-
-/**
- * Activates the new credit-priced Free Plan (CP_FREE_PLAN) for a workspace.
- *
- * Do NOT call this directly. Use the isMetronomeBillingEnabled gate in trial/start.ts.
- */
-export async function activateCreditPricedFreePlan(
-  auth: Authenticator
-): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-  const lightWorkspace = renderLightWorkspaceType({ workspace: owner });
-  const now = new Date(floorToHourISO(new Date()));
-
-  const customerResult = await ensureMetronomeCustomerForWorkspace({
-    workspace: lightWorkspace,
-  });
-  if (customerResult.isErr()) {
-    throw new Error(
-      `Failed to ensure Metronome customer: ${customerResult.error.message}`
-    );
-  }
-  const { metronomeCustomerId } = customerResult.value;
-
-  const contractResult = await provisionMetronomeContract({
-    metronomeCustomerId,
-    workspace: lightWorkspace,
-    packageAlias: FREE_PACKAGE_ALIAS,
-    uniquenessKey: `cp-free-plan-${owner.sId}`,
-    startingAt: now,
-    swapAt: "current-hour",
-    enableStripeBilling: false,
-    planCode: CREDIT_PRICED_FREE_PLAN_CODE,
-  });
-  if (contractResult.isErr()) {
-    throw new Error(
-      `Failed to provision Metronome contract: ${contractResult.error.message}`
-    );
-  }
-  const { metronomeContractId } = contractResult.value;
-
-  const plan = await PlanModel.findOne({
-    where: { code: CREDIT_PRICED_FREE_PLAN_CODE },
-  });
-  if (!plan) {
-    throw new Error(
-      `Plan row for ${CREDIT_PRICED_FREE_PLAN_CODE} not found in DB. ` +
-        `Seed it in production before enabling Metronome billing.`
-    );
-  }
-
-  const subscriptionResult =
-    await SubscriptionResource.createSubscriptionFromCheckout({
-      workspaceModelId: owner.id,
-      plan,
-      metronomeContractId,
-      now,
-    });
-  if (subscriptionResult.isErr()) {
-    throw new Error(
-      `Failed to create subscription: ${subscriptionResult.error.message}`
-    );
-  }
-
-  await restoreWorkspaceAfterSubscription(auth);
 }
 
 /**

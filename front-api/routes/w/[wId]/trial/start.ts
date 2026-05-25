@@ -1,6 +1,8 @@
-import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import {
   activateCreditPricedFreePlan,
+  isMetronomeBillingEnabled,
+} from "@app/lib/api/subscription";
+import {
   activatePhoneTrial,
   isWorkspaceEligibleForTrial,
 } from "@app/lib/plans/trial";

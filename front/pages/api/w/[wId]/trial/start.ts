@@ -2,10 +2,12 @@
 
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
-import type { Authenticator } from "@app/lib/auth";
 import {
   activateCreditPricedFreePlan,
+  isMetronomeBillingEnabled,
+} from "@app/lib/api/subscription";
+import type { Authenticator } from "@app/lib/auth";
+import {
   activatePhoneTrial,
   isWorkspaceEligibleForTrial,
 } from "@app/lib/plans/trial";
