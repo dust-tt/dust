@@ -13,7 +13,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const PatchWebhookSourceViewBodySchema = z.object({
-  name: z.string().min(1, "Name is required."),
+  name: z.string().min(1),
   description: z
     .string()
     .max(4000, "Description must be at most 4000 characters.")
