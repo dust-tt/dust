@@ -1,5 +1,6 @@
 mod deny_log;
 mod handshake;
+mod http2_rewriter;
 mod http_host;
 mod http_rewriter;
 mod original_dst;
@@ -9,6 +10,7 @@ mod tls_mitm;
 
 use std::future::Future;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -29,6 +31,7 @@ use crate::egress_secrets::SecretTable;
 
 use self::deny_log::{append_deny_log, DenyLogEntry, DenyReason};
 use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
+use self::http2_rewriter::{run_h2_to_h1_bridge, BoxedAsyncReadWrite, OpenH1Upstream};
 use self::http_host::parse_http_host;
 use self::http_rewriter::{
     copy_responses_with_websocket_watch, forward_http1_requests, HttpRewriteError,
@@ -36,7 +39,7 @@ use self::http_rewriter::{
 use self::original_dst::resolve_original_dst;
 use self::rewrite_policy::RewriteMode as HttpRewriteMode;
 use self::sni::parse_client_hello_sni;
-use self::tls_mitm::{MitmCa, HTTP_1_1_ALPN};
+use self::tls_mitm::{MitmCa, H2_ALPN, HTTP_1_1_ALPN};
 
 const DOMAIN_PEEK_TIMEOUT: Duration = Duration::from_secs(2);
 const DOMAIN_PEEK_RETRY_DELAY: Duration = Duration::from_millis(25);
@@ -47,6 +50,13 @@ const MITM_CA_CERT_PATH: &str = "/run/dust/egress-ca.pem";
 const MITM_CA_KEY_PATH: &str = "/run/dust/egress-ca.key";
 // Must match `front/lib/api/sandbox/egress_secrets.ts:EGRESS_SECRETS_PATH`.
 const EGRESS_SECRETS_PATH: &str = "/run/dust/egress-secrets.json";
+
+// Reusable opener for the per-h2-stream upstream proxy tunnel. Each h2 stream
+// opens its own TCP + proxy CONNECT + TLS handshake, so the opener must be
+// callable more than once (unlike the previous FnOnce closure used by the
+// pre-h2 path).
+type OpenProxyTunnel<S> =
+    Arc<dyn Fn() -> Pin<Box<dyn Future<Output = Result<S>> + Send>> + Send + Sync>;
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct ForwardArgs {
@@ -355,23 +365,27 @@ async fn run_mitm_session<C>(runtime: &ForwardRuntime, sni: &str, client_stream:
 where
     C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    run_mitm_session_with_proxy_opener(runtime, sni, client_stream, || {
-        open_allowed_proxy_tunnel(runtime, sni, 443)
-    })
-    .await
+    let runtime = runtime.clone();
+    let sni = sni.to_string();
+    let runtime_for_opener = runtime.clone();
+    let opener_sni = sni.clone();
+    let opener: OpenProxyTunnel<tokio_rustls::client::TlsStream<TcpStream>> = Arc::new(move || {
+        let runtime = runtime_for_opener.clone();
+        let sni = opener_sni.clone();
+        Box::pin(async move { open_allowed_proxy_tunnel(&runtime, &sni, 443).await })
+    });
+    run_mitm_session_with_proxy_opener(&runtime, &sni, client_stream, opener).await
 }
 
-async fn run_mitm_session_with_proxy_opener<C, S, F, Fut>(
+async fn run_mitm_session_with_proxy_opener<C, S>(
     runtime: &ForwardRuntime,
     sni: &str,
     client_stream: C,
-    open_proxy_tunnel: F,
+    open_proxy_tunnel: OpenProxyTunnel<S>,
 ) -> Result<()>
 where
     C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = Result<S>>,
 {
     let server_config = runtime
         .mitm_ca
@@ -384,15 +398,44 @@ where
         .await
         .context("failed to accept agent TLS for MITM")?;
 
-    let inbound_alpn = agent_tls.get_ref().1.alpn_protocol();
-    let inbound_alpn = if inbound_alpn == Some(HTTP_1_1_ALPN) {
-        "http/1.1"
-    } else {
-        "<none>"
-    };
+    let inbound_alpn = agent_tls
+        .get_ref()
+        .1
+        .alpn_protocol()
+        .map(|value| value.to_vec());
+    if inbound_alpn.as_deref() == Some(H2_ALPN) {
+        info!(
+            domain = sni,
+            inbound_alpn = "h2",
+            outbound_alpn = "http/1.1",
+            "starting h2 MITM bridge session"
+        );
+        let runtime = runtime.clone();
+        let sni = sni.to_string();
+        let secret_table = Arc::clone(&runtime.secret_table);
+        let deny_log = Arc::clone(&runtime.deny_log);
+        let opener_sni = sni.clone();
+        let open_proxy_tunnel = Arc::clone(&open_proxy_tunnel);
+        let opener: OpenH1Upstream = Arc::new(move || {
+            let runtime = runtime.clone();
+            let sni = opener_sni.clone();
+            let open_proxy_tunnel = Arc::clone(&open_proxy_tunnel);
+            Box::pin(async move {
+                let proxy_stream = open_proxy_tunnel()
+                    .await
+                    .context("failed to open per-stream proxy tunnel")?;
+                let upstream_tls = connect_mitm_upstream_tls(&runtime, &sni, proxy_stream)
+                    .await
+                    .context("failed to establish per-stream upstream TLS")?;
+                Ok(Box::new(upstream_tls) as BoxedAsyncReadWrite)
+            })
+        });
+        return run_h2_to_h1_bridge(agent_tls, sni, secret_table, deny_log, opener).await;
+    }
+
     info!(
         domain = sni,
-        inbound_alpn,
+        inbound_alpn = "http/1.1",
         outbound_alpn = "http/1.1",
         "starting h1 MITM session"
     );
@@ -729,10 +772,8 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        let agent_connector = test_tls_connector(
-            mitm_ca.ca_cert_der(),
-            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
-        )?;
+        let agent_connector =
+            test_tls_connector(mitm_ca.ca_cert_der(), vec![HTTP_1_1_ALPN.to_vec()])?;
         let agent_task = tokio::spawn(async move {
             let server_name =
                 ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
@@ -759,9 +800,12 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        run_mitm_session_with_proxy_opener(&runtime, sni, agent_dsbx_io, || async {
-            Ok(dsbx_proxy_io)
-        })
+        run_mitm_session_with_proxy_opener(
+            &runtime,
+            sni,
+            agent_dsbx_io,
+            single_proxy_opener(dsbx_proxy_io),
+        )
         .await?;
         agent_task.await.context("test agent task panicked")??;
         upstream_task
@@ -820,10 +864,8 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        let agent_connector = test_tls_connector(
-            mitm_ca.ca_cert_der(),
-            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
-        )?;
+        let agent_connector =
+            test_tls_connector(mitm_ca.ca_cert_der(), vec![HTTP_1_1_ALPN.to_vec()])?;
         let request =
             format!("GET / HTTP/1.1\r\nHost: {sni}\r\nAuthorization: Bearer {placeholder}\r\n\r\n");
         let agent_task = tokio::spawn(async move {
@@ -856,9 +898,104 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        run_mitm_session_with_proxy_opener(&runtime, sni, agent_dsbx_io, || async {
-            Ok(dsbx_proxy_io)
-        })
+        run_mitm_session_with_proxy_opener(
+            &runtime,
+            sni,
+            agent_dsbx_io,
+            single_proxy_opener(dsbx_proxy_io),
+        )
+        .await?;
+        agent_task.await.context("test agent task panicked")??;
+        upstream_task
+            .await
+            .context("test upstream task panicked")??;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn mitm_session_routes_h2_alpn_through_h2_bridge() -> Result<()> {
+        let sni = "api.openai.com";
+        let mitm_ca = Arc::new(MitmCa::generate()?);
+        let (upstream_server_config, upstream_ca_der) = test_upstream_server_config(sni)?;
+        let mut runtime = test_runtime(Arc::clone(&mitm_ca), upstream_ca_der)?;
+        runtime.secret_table = Arc::new(secret_table(&[sni])?);
+
+        let (agent_client_io, agent_dsbx_io) = tokio::io::duplex(16 * 1024);
+        let (dsbx_proxy_io, upstream_server_io) = tokio::io::duplex(16 * 1024);
+
+        let upstream_task = tokio::spawn(async move {
+            let acceptor = TlsAcceptor::from(upstream_server_config);
+            let mut tls = acceptor
+                .accept(upstream_server_io)
+                .await
+                .context("test upstream failed to accept TLS")?;
+            ensure!(
+                tls.get_ref().1.alpn_protocol() == Some(HTTP_1_1_ALPN),
+                "test upstream did not negotiate http/1.1"
+            );
+
+            let mut request = Vec::new();
+            loop {
+                let mut byte = [0_u8; 1];
+                tls.read_exact(&mut byte)
+                    .await
+                    .context("test upstream failed to read request byte")?;
+                request.push(byte[0]);
+                if request.ends_with(b"\r\n\r\n") {
+                    break;
+                }
+            }
+            let request_text = String::from_utf8(request).context("request should be utf8")?;
+            assert!(request_text.contains("GET /h2-mitm HTTP/1.1\r\n"));
+            assert!(request_text.contains("Host: api.openai.com\r\n"));
+
+            tls.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+                .await
+                .context("test upstream failed to write response")?;
+            tls.shutdown()
+                .await
+                .context("test upstream failed to shut down TLS")?;
+            Ok::<(), anyhow::Error>(())
+        });
+
+        let agent_connector = test_tls_connector(
+            mitm_ca.ca_cert_der(),
+            vec![H2_ALPN.to_vec(), HTTP_1_1_ALPN.to_vec()],
+        )?;
+        let agent_task = tokio::spawn(async move {
+            let server_name =
+                ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
+            let tls = agent_connector
+                .connect(server_name, agent_client_io)
+                .await
+                .context("test agent failed to connect to dsbx MITM")?;
+            ensure!(
+                tls.get_ref().1.alpn_protocol() == Some(H2_ALPN),
+                "test agent did not negotiate h2"
+            );
+
+            let (mut send_request, connection) = h2::client::handshake(tls).await?;
+            let connection_task = tokio::spawn(connection);
+            let request = http::Request::builder()
+                .method("GET")
+                .uri(format!("https://{sni}/h2-mitm"))
+                .body(())?;
+            let (response, _stream) = send_request.send_request(request, true)?;
+            let response = response.await?;
+            assert_eq!(response.status(), http::StatusCode::OK);
+            assert_eq!(read_h2_body(response.into_body()).await?, b"ok");
+            drop(send_request);
+            connection_task.abort();
+            Ok::<(), anyhow::Error>(())
+        });
+
+        run_mitm_session_with_proxy_opener(
+            &runtime,
+            sni,
+            agent_dsbx_io,
+            single_proxy_opener(dsbx_proxy_io),
+        )
         .await?;
         agent_task.await.context("test agent task panicked")??;
         upstream_task
@@ -922,10 +1059,8 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        let agent_connector = test_tls_connector(
-            mitm_ca.ca_cert_der(),
-            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
-        )?;
+        let agent_connector =
+            test_tls_connector(mitm_ca.ca_cert_der(), vec![HTTP_1_1_ALPN.to_vec()])?;
         let agent_task = tokio::spawn(async move {
             let server_name =
                 ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
@@ -973,9 +1108,12 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        run_mitm_session_with_proxy_opener(&runtime, sni, agent_dsbx_io, || async {
-            Ok(dsbx_proxy_io)
-        })
+        run_mitm_session_with_proxy_opener(
+            &runtime,
+            sni,
+            agent_dsbx_io,
+            single_proxy_opener(dsbx_proxy_io),
+        )
         .await?;
         agent_task.await.context("test agent task panicked")??;
         upstream_task
@@ -1041,10 +1179,8 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        let agent_connector = test_tls_connector(
-            mitm_ca.ca_cert_der(),
-            vec![b"h2".to_vec(), HTTP_1_1_ALPN.to_vec()],
-        )?;
+        let agent_connector =
+            test_tls_connector(mitm_ca.ca_cert_der(), vec![HTTP_1_1_ALPN.to_vec()])?;
         let agent_task = tokio::spawn(async move {
             let server_name =
                 ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
@@ -1088,9 +1224,12 @@ mod tests {
             Ok::<(), anyhow::Error>(())
         });
 
-        run_mitm_session_with_proxy_opener(&runtime, sni, agent_dsbx_io, || async {
-            Ok(dsbx_proxy_io)
-        })
+        run_mitm_session_with_proxy_opener(
+            &runtime,
+            sni,
+            agent_dsbx_io,
+            single_proxy_opener(dsbx_proxy_io),
+        )
         .await?;
         agent_task.await.context("test agent task panicked")??;
         upstream_task
@@ -1186,6 +1325,34 @@ mod tests {
         // Silence the dead variable warning when MitmCa stays unused on this path.
         let _ = mitm_ca;
         Ok(())
+    }
+
+    fn single_proxy_opener<S>(stream: S) -> OpenProxyTunnel<S>
+    where
+        S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    {
+        let stream = Arc::new(tokio::sync::Mutex::new(Some(stream)));
+        Arc::new(move || {
+            let stream = Arc::clone(&stream);
+            Box::pin(async move {
+                stream
+                    .lock()
+                    .await
+                    .take()
+                    .ok_or_else(|| anyhow::anyhow!("test proxy opener reused"))
+            })
+        })
+    }
+
+    async fn read_h2_body(mut body: h2::RecvStream) -> Result<Vec<u8>> {
+        let mut output = Vec::new();
+        while let Some(chunk) = body.data().await {
+            let chunk = chunk?;
+            output.extend_from_slice(&chunk);
+            body.flow_control().release_capacity(chunk.len())?;
+        }
+        ensure!(body.trailers().await?.is_none(), "unexpected trailers");
+        Ok(output)
     }
 
     fn secret_table(patterns: &[&str]) -> Result<SecretTable> {

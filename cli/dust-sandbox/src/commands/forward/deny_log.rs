@@ -21,6 +21,8 @@ pub enum DenyReason {
     AbsoluteUriAuthorityMismatch,
     Port80Placeholder,
     HeaderSizeExceeded,
+    ExpectContinueUnsupported,
+    RequestTrailersUnsupported,
 }
 
 impl DenyReason {
@@ -39,6 +41,8 @@ impl DenyReason {
             Self::AbsoluteUriAuthorityMismatch => "absolute_uri_authority_mismatch",
             Self::Port80Placeholder => "port_80_placeholder",
             Self::HeaderSizeExceeded => "header_size_exceeded",
+            Self::ExpectContinueUnsupported => "expect_continue_unsupported",
+            Self::RequestTrailersUnsupported => "request_trailers_unsupported",
         }
     }
 }

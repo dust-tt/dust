@@ -56,10 +56,7 @@ pub(super) struct RequestParts {
 
 pub(super) enum Authority<'a> {
     HostHeader,
-    #[allow(dead_code)]
-    Explicit {
-        value: &'a str,
-    },
+    Explicit { value: &'a str },
 }
 
 #[allow(dead_code)]
@@ -126,7 +123,7 @@ pub(super) fn rewrite_request_headers(
         .headers
         .iter()
         .map(|header| {
-            rewrite_header_value(header, &host, secret_table, mode).map(|value| HeaderPart {
+            rewrite_header_value(header, host, secret_table, mode).map(|value| HeaderPart {
                 name: header.name.clone(),
                 value,
             })
