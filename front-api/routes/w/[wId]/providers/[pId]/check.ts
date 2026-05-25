@@ -8,7 +8,10 @@ export type GetProvidersCheckResponseBody =
   | { ok: false; error: string };
 
 const PostCheckBodySchema = z.object({
-  config: z.record(z.unknown()),
+  config: z.object({
+    api_key: z.string(),
+    endpoint: z.string().optional(),
+  }),
 });
 
 // Mounted at /api/w/:wId/providers/:pId/check.
@@ -52,8 +55,17 @@ app.post(
       }
 
       case "azure_openai": {
+        if (!config.endpoint) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "The endpoint is required for Azure OpenAI.",
+            },
+          });
+        }
         try {
-          const parsed = new URL(config.endpoint as string);
+          const parsed = new URL(config.endpoint);
           if (
             !parsed.hostname.endsWith(".openai.azure.com") &&
             !parsed.hostname.endsWith(".cognitive.microsoft.com")
@@ -74,7 +86,7 @@ app.post(
             {
               method: "GET",
               headers: {
-                "api-key": config.api_key as string,
+                "api-key": config.api_key,
               },
             }
           );
@@ -100,7 +112,7 @@ app.post(
           {
             method: "POST",
             headers: {
-              "x-api-key": config.api_key as string,
+              "x-api-key": config.api_key,
               "anthropic-version": "2023-06-01",
               "anthropic-beta": "token-counting-2024-11-01",
               "Content-Type": "application/json",
@@ -181,7 +193,7 @@ app.post(
           {
             method: "POST",
             headers: {
-              "X-API-KEY": config.api_key as string,
+              "X-API-KEY": config.api_key,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
