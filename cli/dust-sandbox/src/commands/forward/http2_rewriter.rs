@@ -58,13 +58,6 @@ impl H2RequestDeny {
             reset: h2::Reason::INTERNAL_ERROR,
         }
     }
-
-    fn refused(reason: DenyReason) -> Self {
-        Self {
-            reason,
-            reset: h2::Reason::REFUSED_STREAM,
-        }
-    }
 }
 
 enum WriteH1RequestError {
@@ -155,23 +148,6 @@ async fn handle_h2_stream(
         target: target.clone(),
         headers,
     };
-
-    if method.eq_ignore_ascii_case("CONNECT") && is_h2_websocket_connect(&parts.extensions) {
-        let entry = deny_entry(
-            mode,
-            DenyReason::H2WebsocketUnsupported,
-            None,
-            Some(&authority),
-        );
-        append_deny_log(&deny_log, entry)
-            .await
-            .context("failed to append h2 websocket deny log entry")?;
-        // REFUSED_STREAM (vs INTERNAL_ERROR for policy denies below) signals
-        // per RFC 7540 that the request was never processed, which is honest
-        // for an unconditional protocol-level refusal.
-        respond.send_reset(h2::Reason::REFUSED_STREAM);
-        return Ok(());
-    }
 
     let policy = match process_request_policy(
         &policy_request,
@@ -352,17 +328,6 @@ fn discard_h2_request_body(mut body: RecvStream) {
     });
 }
 
-fn is_h2_websocket_connect(extensions: &http::Extensions) -> bool {
-    // RFC 8441 extended CONNECT: the `:protocol` pseudo-header is carried by
-    // the h2 crate as `h2::ext::Protocol` in the request extensions, NOT as a
-    // header. Looking it up in the header map (as an earlier version did)
-    // would always miss real h2 WebSocket bootstraps.
-    extensions
-        .get::<h2::ext::Protocol>()
-        .map(|protocol| protocol.as_str().eq_ignore_ascii_case("websocket"))
-        .unwrap_or(false)
-}
-
 fn build_h1_request_head(
     method: &str,
     target: &str,
@@ -370,10 +335,9 @@ fn build_h1_request_head(
     headers: &[HeaderPart],
     body_is_end_stream: bool,
 ) -> std::result::Result<(Vec<u8>, bool), H2RequestDeny> {
-    let has_content_length = headers
-        .iter()
-        .any(|header| header.name.eq_ignore_ascii_case(CONTENT_LENGTH.as_str()));
-    let use_chunked = !has_content_length && !body_is_end_stream;
+    // Force chunked framing whenever there is a request body stream. If h2
+    // trailers arrive after DATA, we can withhold the h1 chunked terminator.
+    let use_chunked = !body_is_end_stream;
     let mut header_bytes = Vec::new();
     append_h1_head_bytes(
         &mut header_bytes,
@@ -387,6 +351,9 @@ fn build_h1_request_head(
 
     for header in headers {
         if should_strip_h1_bridge_header(&header.name) {
+            continue;
+        }
+        if use_chunked && header.name.eq_ignore_ascii_case(CONTENT_LENGTH.as_str()) {
             continue;
         }
         append_h1_header_line(&mut header_bytes, header.name.as_bytes(), &header.value)?;
@@ -445,11 +412,11 @@ where
         let chunk = chunk
             .context("failed to read h2 request body chunk")
             .map_err(WriteH1RequestError::Bridge)?;
-        body.flow_control()
-            .release_capacity(chunk.len())
-            .context("failed to release h2 request flow-control capacity")
-            .map_err(WriteH1RequestError::Bridge)?;
         if chunk.is_empty() {
+            body.flow_control()
+                .release_capacity(chunk.len())
+                .context("failed to release h2 request flow-control capacity")
+                .map_err(WriteH1RequestError::Bridge)?;
             continue;
         }
         if use_chunked {
@@ -475,6 +442,10 @@ where
                 .context("failed to write h1 request body chunk")
                 .map_err(WriteH1RequestError::Bridge)?;
         }
+        body.flow_control()
+            .release_capacity(chunk.len())
+            .context("failed to release h2 request flow-control capacity")
+            .map_err(WriteH1RequestError::Bridge)?;
     }
 
     if let Some(trailers) = body
@@ -484,7 +455,7 @@ where
         .map_err(WriteH1RequestError::Bridge)?
     {
         if !trailers.is_empty() {
-            return Err(WriteH1RequestError::Denied(H2RequestDeny::refused(
+            return Err(WriteH1RequestError::Denied(H2RequestDeny::internal(
                 DenyReason::RequestTrailersUnsupported,
             )));
         }
@@ -1141,7 +1112,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn h2_bridge_forwards_request_body_with_content_length() -> Result<()> {
+    async fn h2_bridge_forces_chunked_when_content_length_present_and_body_not_end_stream(
+    ) -> Result<()> {
         let sni = "api.openai.com";
         let secret_table = Arc::new(secret_table_with_secret(
             "OPENAI_API_KEY",
@@ -1150,7 +1122,7 @@ mod tests {
             &[sni],
         )?);
         let (request_tx, mut request_rx) = mpsc::unbounded_channel();
-        let opener = test_h1_opener_with_content_length_body(
+        let opener = test_h1_opener_with_chunked_body(
             request_tx,
             b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
         );
@@ -1184,8 +1156,63 @@ mod tests {
             .await
             .ok_or_else(|| anyhow!("test upstream did not receive request"))?;
         assert!(request_text.contains("POST /upload HTTP/1.1\r\n"));
-        assert!(request_text.contains("content-length: 5\r\n"));
-        assert!(request_text.ends_with("\r\n\r\nhello"));
+        assert!(request_text.contains("Transfer-Encoding: chunked\r\n"));
+        assert!(!request_text
+            .to_ascii_lowercase()
+            .contains("content-length:"));
+        assert!(request_text.ends_with("\r\n\r\n5\r\nhello\r\n0\r\n\r\n"));
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_end_stream_with_content_length_keeps_content_length() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_32323232323232325454545454545454__",
+            "sk-real",
+            &[sni],
+        )?);
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener(
+            request_tx,
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+        );
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            deny_log,
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/empty-upload"))
+            .header("content-length", "0")
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(response.into_body()).await?, b"ok");
+
+        let request_text = request_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("test upstream did not receive request"))?;
+        assert!(request_text.contains("POST /empty-upload HTTP/1.1\r\n"));
+        assert!(request_text.contains("content-length: 0\r\n"));
+        assert!(!request_text.contains("Transfer-Encoding: chunked\r\n"));
 
         drop(send_request);
         connection_task.abort();
@@ -1829,16 +1856,90 @@ mod tests {
         let mut trailers = HeaderMap::new();
         trailers.insert("x-trailer", HeaderValue::from_static("value"));
         stream.send_trailers(trailers)?;
-        assert!(
-            response.await.is_err(),
-            "non-empty h2 request trailers should reset the stream"
-        );
+        let error = match response.await {
+            Ok(_) => {
+                return Err(anyhow!(
+                    "non-empty h2 request trailers should reset the stream"
+                ))
+            }
+            Err(error) => error,
+        };
+        assert_h2_reset_reason(error, h2::Reason::INTERNAL_ERROR);
 
         let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"request_trailers_unsupported\""),
             "deny log should record request_trailers_unsupported, got: {deny_log_text}"
         );
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_denies_trailers_with_content_length() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_34343434343434345656565656565656__",
+            "sk-real",
+            &[sni],
+        )?);
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener_capture_until_eof(request_tx);
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            Arc::clone(&deny_log),
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/trailers-with-length"))
+            .header("content-length", "5")
+            .body(())?;
+        let (response, mut stream) = send_request.send_request(request, false)?;
+        stream.send_data(Bytes::from_static(b"hello"), false)?;
+        let mut trailers = HeaderMap::new();
+        trailers.insert("x-trailer", HeaderValue::from_static("value"));
+        stream.send_trailers(trailers)?;
+        let error = match response.await {
+            Ok(_) => {
+                return Err(anyhow!(
+                    "content-length plus non-empty h2 trailers should reset the stream"
+                ))
+            }
+            Err(error) => error,
+        };
+        assert_h2_reset_reason(error, h2::Reason::INTERNAL_ERROR);
+
+        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        assert!(
+            deny_log_text.contains("\"reason\":\"request_trailers_unsupported\""),
+            "deny log should record request_trailers_unsupported, got: {deny_log_text}"
+        );
+        let request_text =
+            tokio::time::timeout(std::time::Duration::from_secs(1), request_rx.recv())
+                .await
+                .context("test upstream did not observe the partial request before shutdown")?
+                .ok_or_else(|| anyhow!("test upstream capture channel closed"))?;
+        assert!(request_text.contains("POST /trailers-with-length HTTP/1.1\r\n"));
+        assert!(request_text.contains("Transfer-Encoding: chunked\r\n"));
+        assert!(!request_text
+            .to_ascii_lowercase()
+            .contains("content-length:"));
+        assert!(request_text.ends_with("\r\n\r\n5\r\nhello\r\n"));
+        assert!(!request_text.ends_with("\r\n\r\n5\r\nhello\r\n0\r\n\r\n"));
 
         drop(send_request);
         connection_task.abort();
@@ -2229,37 +2330,20 @@ mod tests {
         })
     }
 
-    fn test_h1_opener_with_content_length_body(
+    fn test_h1_opener_capture_until_eof(
         request_tx: mpsc::UnboundedSender<String>,
-        response: impl Into<Vec<u8>>,
     ) -> OpenH1Upstream {
-        let response = Arc::new(response.into());
         Arc::new(move || {
             let request_tx = request_tx.clone();
-            let response = Arc::clone(&response);
             Box::pin(async move {
                 let (dsbx_io, mut upstream_io) = tokio::io::duplex(64 * 1024);
                 tokio::spawn(async move {
                     let mut request = Vec::new();
-                    loop {
-                        let mut byte = [0_u8; 1];
-                        upstream_io.read_exact(&mut byte).await?;
-                        request.push(byte[0]);
-                        if request.ends_with(b"\r\n\r\n") {
-                            break;
-                        }
-                    }
-                    let header_text = String::from_utf8(request.clone())?;
-                    let content_length = parse_test_content_length(&header_text)?;
-                    let mut body = vec![0_u8; content_length];
-                    upstream_io.read_exact(&mut body).await?;
-                    request.extend_from_slice(&body);
+                    upstream_io.read_to_end(&mut request).await?;
                     let request_text = String::from_utf8(request)?;
                     request_tx
                         .send(request_text)
                         .map_err(|_| anyhow!("failed to send captured request"))?;
-                    upstream_io.write_all(response.as_slice()).await?;
-                    upstream_io.shutdown().await?;
                     Ok::<(), anyhow::Error>(())
                 });
                 Ok(Box::new(dsbx_io) as BoxedAsyncReadWrite)
@@ -2437,19 +2521,6 @@ mod tests {
         }
     }
 
-    fn parse_test_content_length(headers: &str) -> Result<usize> {
-        headers
-            .lines()
-            .find_map(|line| {
-                line.split_once(':').and_then(|(name, value)| {
-                    name.eq_ignore_ascii_case("content-length")
-                        .then(|| value.trim().parse::<usize>())
-                })
-            })
-            .ok_or_else(|| anyhow!("missing content-length"))?
-            .context("invalid content-length")
-    }
-
     async fn read_h2_body(mut body: RecvStream) -> Result<Vec<u8>> {
         let mut output = Vec::new();
         while let Some(chunk) = body.data().await {
@@ -2459,6 +2530,14 @@ mod tests {
         }
         ensure!(body.trailers().await?.is_none(), "unexpected trailers");
         Ok(output)
+    }
+
+    fn assert_h2_reset_reason(error: h2::Error, reason: h2::Reason) {
+        assert_eq!(
+            error.reason(),
+            Some(reason),
+            "unexpected h2 reset reason: {error}"
+        );
     }
 
     fn secret_table_with_secret(
