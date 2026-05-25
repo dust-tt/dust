@@ -5,7 +5,6 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
@@ -82,51 +81,56 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
       },
     });
 
-    const groupSpacesResources = await concurrentExecutor(
-      groupSpaces,
-      async (groupSpace) => {
-        const groupModels = await GroupModel.findAll({
-          where: {
-            id: groupSpace.groupId,
-            workspaceId: space.workspaceId,
-          },
-          transaction,
-        });
-        assert(
-          groupModels.length === 1,
-          "One and only one group must exist for editor group space"
-        );
-        const groupModel = groupModels[0];
-        assert(
-          groupModel.kind === "space_editors" ||
-            groupModel.kind === "provisioned",
-          "Only space_editors or provisioned groups can be editor groups"
-        );
+    if (groupSpaces.length === 0) {
+      return [];
+    }
 
-        if (filterOnManagementMode) {
-          // Keep only space_editors groups in manual mode, provisioned groups in provisioned mode
-          const filterOnKind =
-            space.managementMode === "manual" ? "space_editors" : "provisioned";
-          if (groupModel.kind !== filterOnKind) {
-            return null;
-          }
-        }
-
-        const group = new GroupResource(GroupModel, groupModel.get());
-        assert(
-          group.isSpaceEditor() || group.isProvisioned(),
-          "Only space editors or provisioned groups can be an editor group"
-        );
-
-        return new GroupSpaceEditorResource(
-          GroupSpaceModel,
-          groupSpace.get(),
-          space,
-          group
-        );
+    const groupModels = await GroupModel.findAll({
+      where: {
+        id: groupSpaces.map((groupSpace) => groupSpace.groupId),
+        workspaceId: space.workspaceId,
       },
-      { concurrency: 1 }
+      transaction,
+    });
+    const groupModelsByModelId = new Map(
+      groupModels.map((groupModel) => [groupModel.id, groupModel])
     );
+    assert(groupModelsByModelId.size === groupSpaces.length, "All editor group spaces must have exactly one associated group");
+
+    const groupSpacesResources = groupSpaces.map((groupSpace) => {
+      const groupModel = groupModelsByModelId.get(groupSpace.groupId);
+      assert(
+        groupModel,
+        "One and only one group must exist for editor group space"
+      );
+      assert(
+        groupModel.kind === "space_editors" ||
+          groupModel.kind === "provisioned",
+        "Only space_editors or provisioned groups can be editor groups"
+      );
+
+      if (filterOnManagementMode) {
+        // Keep only space_editors groups in manual mode, provisioned groups in provisioned mode
+        const filterOnKind =
+          space.managementMode === "manual" ? "space_editors" : "provisioned";
+        if (groupModel.kind !== filterOnKind) {
+          return null;
+        }
+      }
+
+      const group = new GroupResource(GroupModel, groupModel.get());
+      assert(
+        group.isSpaceEditor() || group.isProvisioned(),
+        "Only space editors or provisioned groups can be an editor group"
+      );
+
+      return new this(
+        GroupSpaceModel,
+        groupSpace.get(),
+        space,
+        group
+      );
+    });
     return removeNulls(groupSpacesResources);
   }
 
