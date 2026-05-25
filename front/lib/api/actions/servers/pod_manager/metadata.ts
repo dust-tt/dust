@@ -65,32 +65,69 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Remove content node from Pod",
     },
   },
-  edit_description: {
+  edit_information: {
     description:
-      "Edit the Pod description. Only plain text is accepted (no markdown, HTML, or formatting). Descriptions should be brief and concise.",
+      "Edit Pod information: title, description, and/or pinned frame. " +
+      "Provide at least one field to update. Descriptions must be plain text only (no markdown, HTML, or formatting). " +
+      "The pinned frame must be an existing Pod file path under `project/` (use null to unpin).",
     schema: {
+      title: z.string().optional().describe("New Pod title"),
       description: z
         .string()
+        .optional()
         .describe(
           "New Pod description. Must be plain text only (no markdown, HTML, or other formatting). Keep it brief and concise: 1-2 short sentences max."
+        ),
+      pinnedFramePath: z
+        .string()
+        .nullable()
+        .optional()
+        .describe(
+          "Path to a Pod file to pin as the Pod banner frame (e.g. project/banner.html). Pass null to unpin."
         ),
       dustPod: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
         .optional()
         .describe(
-          "Optional Pod to edit the description of, will fallback to the conversation's Pod."
+          "Optional Pod to edit, will fallback to the conversation's Pod."
         ),
     },
     stake: "low",
     displayLabels: {
-      running: "Editing Pod description",
-      done: "Edit Pod description",
+      running: "Editing Pod information",
+      done: "Edit Pod information",
+    },
+  },
+  update_members: {
+    description:
+      "Add or remove Pod members by user sId. Requires Pod editor permissions.",
+    schema: {
+      addMemberIds: z
+        .array(z.string())
+        .optional()
+        .describe("User sIds to add as Pod members"),
+      removeMemberIds: z
+        .array(z.string())
+        .optional()
+        .describe("User sIds to remove from the Pod"),
+      dustPod: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional Pod to update members for, will fallback to the conversation's Pod."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Updating Pod members",
+      done: "Update Pod members",
     },
   },
   get_information: {
     description:
-      "Get information about the Pod: URL, description, and linked content nodes " +
+      "Get information about the Pod: URL, title, description, pinned frame, and linked content nodes " +
       "attached to the Pod context. Does NOT list Pod files. Pod files live under " +
       `\`project/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {
@@ -326,6 +363,8 @@ const POD_MANAGER_INSTRUCTIONS =
   "(create, cat, grep, list, delete), not through this server. " +
   "Use `add_content_node` to reference a Company Data node in the Pod context, and " +
   "`remove_content_node` to remove such a reference. " +
+  "Use `edit_information` to update the Pod title, description, or pinned frame. " +
+  "Use `update_members` to add or remove Pod members. " +
   "Use `list_pods` to discover Pods you can access and obtain the dustPod uri for other tools. " +
   "Use `retrieve_recent_documents` to load recent content from the Pod data source and from " +
   "knowledge nodes in the Pod context. " +
