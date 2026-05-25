@@ -32,3 +32,4 @@ x509-parser = "0.16"
 
 [dev-dependencies]
 tempfile = "=3.20.0"
+tokio = { version = "1", features = ["test-util"] }
