@@ -68,7 +68,7 @@ describe("sandbox image registry", () => {
   test("bumps the base image for the dsbx h2 rollout", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.21",
+      tag: "0.8.22",
     });
   });
 

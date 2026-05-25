@@ -31,7 +31,10 @@ use crate::egress_secrets::SecretTable;
 
 use self::deny_log::{append_deny_log, DenyLogEntry, DenyReason};
 use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
-use self::http2_rewriter::{run_h2_to_h1_bridge, BoxedAsyncReadWrite, OpenH1Upstream};
+use self::http2_rewriter::{
+    run_h2_to_upstream_bridge, BoxedAsyncReadWrite, H2UpstreamKey, H2UpstreamPool, OpenUpstream,
+    OpenedUpstream, UpstreamProtocol,
+};
 use self::http_host::parse_http_host;
 use self::http_rewriter::{
     copy_responses_with_websocket_watch, forward_http1_requests, HttpRewriteError,
@@ -90,8 +93,26 @@ struct ForwardRuntime {
     // request rewriter in Slice 6.
     secret_table: Arc<SecretTable>,
     tls_connector: TlsConnector,
-    mitm_tls_connector: TlsConnector,
+    mitm_http1_tls_connector: TlsConnector,
+    #[cfg(test)]
+    mitm_h2_tls_connector: TlsConnector,
+    h2_upstream_pool: H2UpstreamPool,
     mitm_ca: Arc<MitmCa>,
+}
+
+#[derive(Clone)]
+struct ProxyTunnelOpenContext {
+    token: Arc<str>,
+    proxy_addr: std::net::SocketAddr,
+    proxy_tls_name: Arc<str>,
+    deny_log: Arc<PathBuf>,
+    tls_connector: TlsConnector,
+}
+
+#[derive(Clone)]
+struct PooledUpstreamOpenContext {
+    proxy_tunnel: ProxyTunnelOpenContext,
+    mitm_h2_tls_connector: TlsConnector,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -110,7 +131,8 @@ struct DomainExtraction {
 pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
     let token = load_token(&args.token_file).await?;
     let tls_connector = build_tls_connector()?;
-    let mitm_tls_connector = build_http1_tls_connector()?;
+    let mitm_http1_tls_connector = build_http1_tls_connector()?;
+    let mitm_h2_tls_connector = build_h2_tls_connector()?;
 
     // The CA must be loaded/generated BEFORE we bind the listener. Front uses
     // "port 9990 is LISTEN" as the readiness signal and, the moment that's
@@ -148,14 +170,33 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
         "starting dsbx forwarder"
     );
 
-    let runtime = ForwardRuntime {
-        token: Arc::<str>::from(token),
+    let token = Arc::<str>::from(token);
+    let deny_log = Arc::new(args.deny_log);
+    let proxy_tls_name = Arc::<str>::from(args.proxy_tls_name);
+    let proxy_tunnel_context = ProxyTunnelOpenContext {
+        token: Arc::clone(&token),
         proxy_addr: args.proxy_addr,
-        proxy_tls_name: Arc::<str>::from(args.proxy_tls_name),
-        deny_log: Arc::new(args.deny_log),
+        proxy_tls_name: Arc::clone(&proxy_tls_name),
+        deny_log: Arc::clone(&deny_log),
+        tls_connector: tls_connector.clone(),
+    };
+    let h2_open_context = PooledUpstreamOpenContext {
+        proxy_tunnel: proxy_tunnel_context,
+        mitm_h2_tls_connector: mitm_h2_tls_connector.clone(),
+    };
+    let h2_upstream_pool = H2UpstreamPool::new(pooled_upstream_opener(h2_open_context));
+
+    let runtime = ForwardRuntime {
+        token,
+        proxy_addr: args.proxy_addr,
+        proxy_tls_name,
+        deny_log,
         secret_table: Arc::new(secret_table),
         tls_connector,
-        mitm_tls_connector,
+        mitm_http1_tls_connector,
+        #[cfg(test)]
+        mitm_h2_tls_connector,
+        h2_upstream_pool,
         mitm_ca,
     };
 
@@ -195,6 +236,10 @@ fn build_tls_connector() -> Result<TlsConnector> {
 
 fn build_http1_tls_connector() -> Result<TlsConnector> {
     build_tls_connector_with_alpn(vec![HTTP_1_1_ALPN.to_vec()])
+}
+
+fn build_h2_tls_connector() -> Result<TlsConnector> {
+    build_tls_connector_with_alpn(vec![H2_ALPN.to_vec(), HTTP_1_1_ALPN.to_vec()])
 }
 
 fn build_tls_connector_with_alpn(alpn_protocols: Vec<Vec<u8>>) -> Result<TlsConnector> {
@@ -240,6 +285,33 @@ fn build_tls_connector_with_alpn(alpn_protocols: Vec<Vec<u8>>) -> Result<TlsConn
     Ok(TlsConnector::from(Arc::new(config)))
 }
 
+fn pooled_upstream_opener(context: PooledUpstreamOpenContext) -> OpenUpstream {
+    Arc::new(move |key| {
+        let context = context.clone();
+        Box::pin(async move {
+            let proxy_stream =
+                open_allowed_proxy_tunnel_from_context(&context.proxy_tunnel, key.authority(), 443)
+                    .await
+                    .context("failed to open pooled proxy tunnel")?;
+            let upstream_tls = connect_mitm_upstream_tls_with_connector(
+                &context.mitm_h2_tls_connector,
+                key.authority(),
+                proxy_stream,
+            )
+            .await
+            .context("failed to establish pooled upstream TLS")?;
+            let protocol = match upstream_tls.get_ref().1.alpn_protocol() {
+                Some(protocol) if protocol == H2_ALPN => UpstreamProtocol::H2,
+                _ => UpstreamProtocol::Http1,
+            };
+            Ok(OpenedUpstream::new(
+                protocol,
+                Box::new(upstream_tls) as BoxedAsyncReadWrite,
+            ))
+        })
+    })
+}
+
 async fn handle_connection(
     runtime: ForwardRuntime,
     mut client_stream: TcpStream,
@@ -256,7 +328,7 @@ async fn handle_connection(
     );
 
     if let Some(sni) = mitm_target {
-        run_mitm_session(&runtime, sni, client_stream)
+        run_mitm_session(&runtime, sni, original_dst, client_stream)
             .await
             .context("MITM session failed")?;
         return Ok(());
@@ -361,7 +433,12 @@ fn mitm_target_for<'a>(
     Some(domain)
 }
 
-async fn run_mitm_session<C>(runtime: &ForwardRuntime, sni: &str, client_stream: C) -> Result<()>
+async fn run_mitm_session<C>(
+    runtime: &ForwardRuntime,
+    sni: &str,
+    upstream_socket_addr: std::net::SocketAddr,
+    client_stream: C,
+) -> Result<()>
 where
     C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
@@ -374,14 +451,48 @@ where
         let sni = opener_sni.clone();
         Box::pin(async move { open_allowed_proxy_tunnel(&runtime, &sni, 443).await })
     });
-    run_mitm_session_with_proxy_opener(&runtime, &sni, client_stream, opener).await
+    run_mitm_session_with_proxy_opener_and_h2_pool(
+        &runtime,
+        &sni,
+        upstream_socket_addr,
+        client_stream,
+        opener,
+        runtime.h2_upstream_pool.clone(),
+    )
+    .await
 }
 
+#[cfg(test)]
 async fn run_mitm_session_with_proxy_opener<C, S>(
     runtime: &ForwardRuntime,
     sni: &str,
     client_stream: C,
     open_proxy_tunnel: OpenProxyTunnel<S>,
+) -> Result<()>
+where
+    C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let h2_pool = h2_pool_for_proxy_opener(runtime, sni, Arc::clone(&open_proxy_tunnel));
+    let upstream_socket_addr = std::net::SocketAddr::from(([127, 0, 0, 1], 443));
+    run_mitm_session_with_proxy_opener_and_h2_pool(
+        runtime,
+        sni,
+        upstream_socket_addr,
+        client_stream,
+        open_proxy_tunnel,
+        h2_pool,
+    )
+    .await
+}
+
+async fn run_mitm_session_with_proxy_opener_and_h2_pool<C, S>(
+    runtime: &ForwardRuntime,
+    sni: &str,
+    upstream_socket_addr: std::net::SocketAddr,
+    client_stream: C,
+    open_proxy_tunnel: OpenProxyTunnel<S>,
+    h2_upstream_pool: H2UpstreamPool,
 ) -> Result<()>
 where
     C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -407,30 +518,21 @@ where
         info!(
             domain = sni,
             inbound_alpn = "h2",
-            outbound_alpn = "http/1.1",
+            outbound_alpn = "h2,http/1.1",
             "starting h2 MITM bridge session"
         );
-        let runtime = runtime.clone();
-        let sni = sni.to_string();
         let secret_table = Arc::clone(&runtime.secret_table);
         let deny_log = Arc::clone(&runtime.deny_log);
-        let opener_sni = sni.clone();
-        let open_proxy_tunnel = Arc::clone(&open_proxy_tunnel);
-        let opener: OpenH1Upstream = Arc::new(move || {
-            let runtime = runtime.clone();
-            let sni = opener_sni.clone();
-            let open_proxy_tunnel = Arc::clone(&open_proxy_tunnel);
-            Box::pin(async move {
-                let proxy_stream = open_proxy_tunnel()
-                    .await
-                    .context("failed to open per-stream proxy tunnel")?;
-                let upstream_tls = connect_mitm_upstream_tls(&runtime, &sni, proxy_stream)
-                    .await
-                    .context("failed to establish per-stream upstream TLS")?;
-                Ok(Box::new(upstream_tls) as BoxedAsyncReadWrite)
-            })
-        });
-        return run_h2_to_h1_bridge(agent_tls, sni, secret_table, deny_log, opener).await;
+        let key = H2UpstreamKey::new(sni.to_string(), upstream_socket_addr);
+        return run_h2_to_upstream_bridge(
+            agent_tls,
+            sni.to_string(),
+            secret_table,
+            deny_log,
+            h2_upstream_pool,
+            key,
+        )
+        .await;
     }
 
     info!(
@@ -455,6 +557,45 @@ where
     .await
 }
 
+#[cfg(test)]
+fn h2_pool_for_proxy_opener<S>(
+    runtime: &ForwardRuntime,
+    sni: &str,
+    open_proxy_tunnel: OpenProxyTunnel<S>,
+) -> H2UpstreamPool
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let runtime = runtime.clone();
+    let sni = sni.to_string();
+    let opener: OpenUpstream = Arc::new(move |_key| {
+        let runtime = runtime.clone();
+        let sni = sni.clone();
+        let open_proxy_tunnel = Arc::clone(&open_proxy_tunnel);
+        Box::pin(async move {
+            let proxy_stream = open_proxy_tunnel()
+                .await
+                .context("failed to open test proxy tunnel")?;
+            let upstream_tls = connect_mitm_upstream_tls_with_connector(
+                &runtime.mitm_h2_tls_connector,
+                &sni,
+                proxy_stream,
+            )
+            .await
+            .context("failed to establish test upstream TLS")?;
+            let protocol = match upstream_tls.get_ref().1.alpn_protocol() {
+                Some(protocol) if protocol == H2_ALPN => UpstreamProtocol::H2,
+                _ => UpstreamProtocol::Http1,
+            };
+            Ok(OpenedUpstream::new(
+                protocol,
+                Box::new(upstream_tls) as BoxedAsyncReadWrite,
+            ))
+        })
+    });
+    H2UpstreamPool::new(opener)
+}
+
 async fn connect_mitm_upstream_tls<S>(
     runtime: &ForwardRuntime,
     sni: &str,
@@ -463,10 +604,21 @@ async fn connect_mitm_upstream_tls<S>(
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
+    connect_mitm_upstream_tls_with_connector(&runtime.mitm_http1_tls_connector, sni, proxy_stream)
+        .await
+}
+
+async fn connect_mitm_upstream_tls_with_connector<S>(
+    connector: &TlsConnector,
+    sni: &str,
+    proxy_stream: S,
+) -> Result<tokio_rustls::client::TlsStream<S>>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
     let upstream_server_name =
         ServerName::try_from(sni.to_string()).context("invalid upstream SNI for MITM TLS")?;
-    runtime
-        .mitm_tls_connector
+    connector
         .connect(upstream_server_name, proxy_stream)
         .await
         .context("failed to establish MITM TLS to upstream via proxy tunnel")
@@ -477,18 +629,33 @@ async fn open_allowed_proxy_tunnel(
     domain: &str,
     port: u16,
 ) -> Result<tokio_rustls::client::TlsStream<TcpStream>> {
-    let server_name = ServerName::try_from(runtime.proxy_tls_name.to_string())
+    let context = ProxyTunnelOpenContext {
+        token: Arc::clone(&runtime.token),
+        proxy_addr: runtime.proxy_addr,
+        proxy_tls_name: Arc::clone(&runtime.proxy_tls_name),
+        deny_log: Arc::clone(&runtime.deny_log),
+        tls_connector: runtime.tls_connector.clone(),
+    };
+    open_allowed_proxy_tunnel_from_context(&context, domain, port).await
+}
+
+async fn open_allowed_proxy_tunnel_from_context(
+    context: &ProxyTunnelOpenContext,
+    domain: &str,
+    port: u16,
+) -> Result<tokio_rustls::client::TlsStream<TcpStream>> {
+    let server_name = ServerName::try_from(context.proxy_tls_name.to_string())
         .context("invalid proxy TLS server name")?;
-    let proxy_stream = TcpStream::connect(runtime.proxy_addr)
+    let proxy_stream = TcpStream::connect(context.proxy_addr)
         .await
-        .with_context(|| format!("failed to connect to proxy {}", runtime.proxy_addr))?;
-    let mut proxy_stream = runtime
+        .with_context(|| format!("failed to connect to proxy {}", context.proxy_addr))?;
+    let mut proxy_stream = context
         .tls_connector
         .connect(server_name, proxy_stream)
         .await
         .context("failed to establish TLS connection to proxy")?;
 
-    let frame = build_handshake_frame(&runtime.token, domain, port)
+    let frame = build_handshake_frame(&context.token, domain, port)
         .context("failed to build proxy handshake frame")?;
     proxy_stream
         .write_all(&frame)
@@ -499,7 +666,7 @@ async fn open_allowed_proxy_tunnel(
         ProxyDecision::Allow => Ok(proxy_stream),
         ProxyDecision::Deny => {
             append_deny_log(
-                &runtime.deny_log,
+                &context.deny_log,
                 DenyLogEntry::proxy(domain, port, DenyReason::ProxyDenied),
             )
             .await
@@ -508,7 +675,7 @@ async fn open_allowed_proxy_tunnel(
         }
         ProxyDecision::ProtocolError => {
             append_deny_log(
-                &runtime.deny_log,
+                &context.deny_log,
                 DenyLogEntry::proxy(domain, port, DenyReason::ProxyProtocolError),
             )
             .await
@@ -1006,6 +1173,92 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn mitm_session_routes_h2_client_to_h2_upstream_end_to_end() -> Result<()> {
+        let sni = "api.openai.com";
+        let mitm_ca = Arc::new(MitmCa::generate()?);
+        let (upstream_server_config, upstream_ca_der) =
+            test_upstream_server_config_with_alpn(sni, vec![H2_ALPN.to_vec()])?;
+        let mut runtime = test_runtime(Arc::clone(&mitm_ca), upstream_ca_der)?;
+        runtime.secret_table = Arc::new(secret_table(&[sni])?);
+
+        let (agent_client_io, agent_dsbx_io) = tokio::io::duplex(16 * 1024);
+        let (dsbx_proxy_io, upstream_server_io) = tokio::io::duplex(16 * 1024);
+
+        let upstream_task = tokio::spawn(async move {
+            let acceptor = TlsAcceptor::from(upstream_server_config);
+            let tls = acceptor
+                .accept(upstream_server_io)
+                .await
+                .context("test upstream failed to accept TLS")?;
+            ensure!(
+                tls.get_ref().1.alpn_protocol() == Some(H2_ALPN),
+                "test upstream did not negotiate h2"
+            );
+            let mut connection = h2::server::handshake(tls).await?;
+            let (request, mut respond) = connection
+                .accept()
+                .await
+                .ok_or_else(|| anyhow::anyhow!("missing upstream h2 request"))??;
+            assert_eq!(request.uri().path(), "/h2-upstream");
+            let response = http::Response::builder()
+                .status(http::StatusCode::OK)
+                .body(())?;
+            let mut send = respond.send_response(response, false)?;
+            send.send_data(bytes::Bytes::from_static(b"ok"), true)?;
+            connection.graceful_shutdown();
+            let _ =
+                tokio::time::timeout(std::time::Duration::from_millis(100), connection.accept())
+                    .await;
+            Ok::<(), anyhow::Error>(())
+        });
+
+        let agent_connector = test_tls_connector(
+            mitm_ca.ca_cert_der(),
+            vec![H2_ALPN.to_vec(), HTTP_1_1_ALPN.to_vec()],
+        )?;
+        let agent_task = tokio::spawn(async move {
+            let server_name =
+                ServerName::try_from(sni.to_string()).context("invalid test agent SNI")?;
+            let tls = agent_connector
+                .connect(server_name, agent_client_io)
+                .await
+                .context("test agent failed to connect to dsbx MITM")?;
+            ensure!(
+                tls.get_ref().1.alpn_protocol() == Some(H2_ALPN),
+                "test agent did not negotiate h2"
+            );
+
+            let (mut send_request, connection) = h2::client::handshake(tls).await?;
+            let connection_task = tokio::spawn(connection);
+            let request = http::Request::builder()
+                .method("GET")
+                .uri(format!("https://{sni}/h2-upstream"))
+                .body(())?;
+            let (response, _stream) = send_request.send_request(request, true)?;
+            let response = response.await?;
+            assert_eq!(response.status(), http::StatusCode::OK);
+            assert_eq!(read_h2_body(response.into_body()).await?, b"ok");
+            drop(send_request);
+            connection_task.abort();
+            Ok::<(), anyhow::Error>(())
+        });
+
+        run_mitm_session_with_proxy_opener(
+            &runtime,
+            sni,
+            agent_dsbx_io,
+            single_proxy_opener(dsbx_proxy_io),
+        )
+        .await?;
+        agent_task.await.context("test agent task panicked")??;
+        upstream_task
+            .await
+            .context("test upstream task panicked")??;
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn mitm_session_completes_websocket_upgrade_when_upstream_returns_101() -> Result<()> {
         let sni = "api.openai.com";
         let mitm_ca = Arc::new(MitmCa::generate()?);
@@ -1396,7 +1649,19 @@ mod tests {
         upstream_ca_der: CertificateDer<'static>,
     ) -> Result<ForwardRuntime> {
         let tls_connector = test_tls_connector(upstream_ca_der.clone(), Vec::new())?;
-        let mitm_tls_connector = test_tls_connector(upstream_ca_der, vec![HTTP_1_1_ALPN.to_vec()])?;
+        let mitm_http1_tls_connector =
+            test_tls_connector(upstream_ca_der.clone(), vec![HTTP_1_1_ALPN.to_vec()])?;
+        let mitm_h2_tls_connector = test_tls_connector(
+            upstream_ca_der,
+            vec![H2_ALPN.to_vec(), HTTP_1_1_ALPN.to_vec()],
+        )?;
+        let dummy_opener: OpenUpstream = Arc::new(|_key| {
+            Box::pin(async {
+                Err(anyhow::anyhow!(
+                    "unexpected pooled upstream open in test runtime"
+                ))
+            })
+        });
 
         Ok(ForwardRuntime {
             token: Arc::<str>::from("token"),
@@ -1405,7 +1670,9 @@ mod tests {
             deny_log: Arc::new(PathBuf::from("/tmp/dust-egress-denied-test.log")),
             secret_table: Arc::new(SecretTable::default()),
             tls_connector,
-            mitm_tls_connector,
+            mitm_http1_tls_connector,
+            mitm_h2_tls_connector,
+            h2_upstream_pool: H2UpstreamPool::new(dummy_opener),
             mitm_ca,
         })
     }
@@ -1427,6 +1694,13 @@ mod tests {
 
     fn test_upstream_server_config(
         sni: &str,
+    ) -> Result<(Arc<rustls::ServerConfig>, CertificateDer<'static>)> {
+        test_upstream_server_config_with_alpn(sni, vec![HTTP_1_1_ALPN.to_vec()])
+    }
+
+    fn test_upstream_server_config_with_alpn(
+        sni: &str,
+        alpn_protocols: Vec<Vec<u8>>,
     ) -> Result<(Arc<rustls::ServerConfig>, CertificateDer<'static>)> {
         let _ = rustls::crypto::ring::default_provider().install_default();
 
@@ -1465,7 +1739,7 @@ mod tests {
             .with_no_client_auth()
             .with_single_cert(vec![leaf_der], key_der)
             .context("failed to build test upstream server config")?;
-        server_config.alpn_protocols = vec![HTTP_1_1_ALPN.to_vec()];
+        server_config.alpn_protocols = alpn_protocols;
 
         Ok((
             Arc::new(server_config),
