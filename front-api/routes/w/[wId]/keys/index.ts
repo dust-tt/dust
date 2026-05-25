@@ -12,6 +12,8 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { z } from "zod";
 
+import keyId from "./[id]";
+
 const MAX_API_KEY_CREATION_PER_DAY = 30;
 
 export type GetKeysResponseBody = {
@@ -218,5 +220,7 @@ app.post("/", async (ctx): HandlerResult<PostKeysResponseBody> => {
     201
   );
 });
+
+app.route("/:id", keyId);
 
 export default app;
