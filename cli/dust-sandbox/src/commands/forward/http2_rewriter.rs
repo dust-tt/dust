@@ -7,7 +7,7 @@ use anyhow::{anyhow, Context, Result};
 use bytes::Bytes;
 use h2::server::SendResponse;
 use h2::{RecvStream, SendStream};
-use http::header::{CONTENT_LENGTH, EXPECT, HOST, TRANSFER_ENCODING};
+use http::header::{CONTENT_LENGTH, COOKIE, EXPECT, HOST, TRANSFER_ENCODING};
 use http::{HeaderMap, HeaderName, HeaderValue, Request, Response, StatusCode};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tracing::warn;
@@ -134,7 +134,15 @@ async fn handle_h2_stream(
             return Err(error);
         }
     };
-    if let Err(error) = validate_h2_request_headers(&parts.headers) {
+    if !method.eq_ignore_ascii_case("CONNECT") && parts.uri.scheme_str() != Some("https") {
+        let entry = deny_entry(mode, DenyReason::MalformedHeaders, None, Some(&authority));
+        append_deny_log(&deny_log, entry)
+            .await
+            .context("failed to append h2 scheme deny log entry")?;
+        respond.send_reset(h2::Reason::PROTOCOL_ERROR);
+        return Ok(());
+    }
+    if let Err(error) = validate_h2_request_headers(&parts.headers, body.is_end_stream()) {
         let entry = deny_entry(mode, DenyReason::MalformedHeaders, None, Some(&authority));
         append_deny_log(&deny_log, entry)
             .await
@@ -164,8 +172,9 @@ async fn handle_h2_stream(
             return Ok(());
         }
     };
+    let headers = fold_request_cookies(policy.headers);
 
-    if has_expect_100_continue(&policy.headers) {
+    if has_expect_100_continue(&headers) {
         let entry = deny_entry(
             mode,
             DenyReason::ExpectContinueUnsupported,
@@ -180,23 +189,18 @@ async fn handle_h2_stream(
         return Ok(());
     }
 
-    let (header_bytes, use_chunked) = match build_h1_request_head(
-        &method,
-        &target,
-        &authority,
-        &policy.headers,
-        body.is_end_stream(),
-    ) {
-        Ok(result) => result,
-        Err(deny) => {
-            let entry = deny_entry(mode, deny.reason, None, Some(&authority));
-            append_deny_log(&deny_log, entry)
-                .await
-                .context("failed to append h2 request-header deny log entry")?;
-            respond.send_reset(deny.reset);
-            return Ok(());
-        }
-    };
+    let (header_bytes, use_chunked) =
+        match build_h1_request_head(&method, &target, &authority, &headers, body.is_end_stream()) {
+            Ok(result) => result,
+            Err(deny) => {
+                let entry = deny_entry(mode, deny.reason, None, Some(&authority));
+                append_deny_log(&deny_log, entry)
+                    .await
+                    .context("failed to append h2 request-header deny log entry")?;
+                respond.send_reset(deny.reset);
+                return Ok(());
+            }
+        };
 
     let mut upstream = match open_upstream().await {
         Ok(upstream) => upstream,
@@ -252,8 +256,9 @@ fn h2_request_authority(uri: &http::Uri, headers: &HeaderMap) -> Result<String> 
     Ok(host.to_string())
 }
 
-fn validate_h2_request_headers(headers: &HeaderMap) -> Result<()> {
+fn validate_h2_request_headers(headers: &HeaderMap, body_is_end_stream: bool) -> Result<()> {
     let mut content_length_count = 0;
+    let mut content_length = None;
     for value in headers.get_all(CONTENT_LENGTH).iter() {
         content_length_count += 1;
         if content_length_count > 1 {
@@ -262,10 +267,14 @@ fn validate_h2_request_headers(headers: &HeaderMap) -> Result<()> {
         let value = value
             .to_str()
             .context("content-length request header is not visible ASCII")?;
-        value
+        let parsed = value
             .trim()
             .parse::<u64>()
             .context("invalid content-length request header")?;
+        content_length = Some(parsed);
+    }
+    if body_is_end_stream && content_length.is_some_and(|value| value != 0) {
+        return Err(anyhow!("nonzero content-length with end-stream h2 request"));
     }
 
     Ok(())
@@ -279,6 +288,31 @@ fn header_map_to_parts(headers: &HeaderMap) -> Vec<HeaderPart> {
             value: value.as_bytes().to_vec(),
         })
         .collect()
+}
+
+fn fold_request_cookies(headers: Vec<HeaderPart>) -> Vec<HeaderPart> {
+    let mut folded: Vec<HeaderPart> = Vec::with_capacity(headers.len());
+    let mut cookie_index = None;
+
+    for header in headers {
+        if header.name.eq_ignore_ascii_case(COOKIE.as_str()) {
+            match cookie_index {
+                Some(index) => {
+                    let existing: &mut HeaderPart = &mut folded[index];
+                    existing.value.extend_from_slice(b"; ");
+                    existing.value.extend_from_slice(&header.value);
+                }
+                None => {
+                    cookie_index = Some(folded.len());
+                    folded.push(header);
+                }
+            }
+        } else {
+            folded.push(header);
+        }
+    }
+
+    folded
 }
 
 fn has_expect_100_continue(headers: &[HeaderPart]) -> bool {
@@ -963,7 +997,7 @@ mod tests {
         headers.append(CONTENT_LENGTH, HeaderValue::from_static("5"));
         headers.append(CONTENT_LENGTH, HeaderValue::from_static("5"));
 
-        let error = validate_h2_request_headers(&headers)
+        let error = validate_h2_request_headers(&headers, false)
             .expect_err("duplicate h2 content-length should be rejected");
         assert!(error.to_string().contains("duplicate content-length"));
     }
@@ -973,9 +1007,19 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert(CONTENT_LENGTH, HeaderValue::from_static("5, 5"));
 
-        let error = validate_h2_request_headers(&headers)
+        let error = validate_h2_request_headers(&headers, false)
             .expect_err("invalid h2 content-length should be rejected");
         assert!(error.to_string().contains("invalid content-length"));
+    }
+
+    #[test]
+    fn rejects_nonzero_h2_content_length_with_end_stream_headers() {
+        let mut headers = HeaderMap::new();
+        headers.insert(CONTENT_LENGTH, HeaderValue::from_static("5"));
+
+        let error = validate_h2_request_headers(&headers, true)
+            .expect_err("nonzero end-stream h2 content-length should be rejected");
+        assert!(error.to_string().contains("nonzero content-length"));
     }
 
     #[test]
@@ -1107,6 +1151,160 @@ mod tests {
         let expected = general_purpose::STANDARD.encode("user:sk-real");
         assert!(request_text.contains(&format!("authorization: Basic {expected}\r\n")));
         assert!(!request_text.contains(placeholder));
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_folds_split_cookie_headers_into_single_h1_cookie() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_41414141414141416161616161616161__",
+            "sk-real",
+            &[sni],
+        )?);
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener(
+            request_tx,
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+        );
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            deny_log,
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/cookies"))
+            .header("cookie", "a=1")
+            .header("cookie", "b=2")
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let request_text = request_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("test upstream did not receive request"))?;
+        assert_eq!(h1_header_values(&request_text, "cookie"), vec!["a=1; b=2"]);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_folds_split_cookie_headers_after_dsec_substitution() -> Result<()> {
+        let sni = "api.openai.com";
+        let placeholder = "__DSEC_42424242424242426262626262626262__";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "cookie-secret",
+            &[sni],
+        )?);
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener(
+            request_tx,
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+        );
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            deny_log,
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/cookies"))
+            .header("cookie", "a=1")
+            .header("cookie", format!("session={placeholder}"))
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let request_text = request_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("test upstream did not receive request"))?;
+        assert_eq!(
+            h1_header_values(&request_text, "cookie"),
+            vec!["a=1; session=cookie-secret"]
+        );
+        assert!(!request_text.contains(placeholder));
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_passes_through_single_cookie_header() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_43434343434343436363636363636363__",
+            "sk-real",
+            &[sni],
+        )?);
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener(
+            request_tx,
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+        );
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            deny_log,
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/cookies"))
+            .header("cookie", "a=1")
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let request_text = request_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("test upstream did not receive request"))?;
+        assert_eq!(h1_header_values(&request_text, "cookie"), vec!["a=1"]);
 
         drop(send_request);
         connection_task.abort();
@@ -1949,6 +2147,151 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn h2_bridge_does_not_open_upstream_on_nonzero_cl_with_end_stream_headers() -> Result<()>
+    {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_44444444444444446464646464646464__",
+            "sk-real",
+            &[sni],
+        )?);
+        let open_count = Arc::new(AtomicUsize::new(0));
+        let (request_tx, _request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_counting_opener(
+            Arc::clone(&open_count),
+            request_tx,
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+        );
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            Arc::clone(&deny_log),
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/bad-length"))
+            .header("content-length", "5")
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let error = match response.await {
+            Ok(_) => {
+                return Err(anyhow!(
+                    "nonzero end-stream h2 content-length should reset the stream"
+                ))
+            }
+            Err(error) => error,
+        };
+        assert_h2_reset_reason(error, h2::Reason::PROTOCOL_ERROR);
+
+        assert_eq!(open_count.load(Ordering::SeqCst), 0);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_does_not_complete_request_on_cl_overflow() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_45454545454545456565656565656565__",
+            "sk-real",
+            &[sni],
+        )?);
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener_capture_until_eof(request_tx);
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            deny_log,
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/length-overflow"))
+            .header("content-length", "5")
+            .body(())?;
+        let (response, mut stream) = send_request.send_request(request, false)?;
+        stream.send_data(Bytes::from_static(b"hello!"), true)?;
+        let error = match response.await {
+            Ok(_) => return Err(anyhow!("content-length overflow should reset the stream")),
+            Err(error) => error,
+        };
+        assert_h2_reset(error);
+        assert_no_complete_chunked_request(&mut request_rx).await?;
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_does_not_complete_request_on_cl_underflow() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_46464646464646466666666666666666__",
+            "sk-real",
+            &[sni],
+        )?);
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener_capture_until_eof(request_tx);
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            deny_log,
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/length-underflow"))
+            .header("content-length", "5")
+            .body(())?;
+        let (response, mut stream) = send_request.send_request(request, false)?;
+        stream.send_data(Bytes::from_static(b"hey"), true)?;
+        let error = match response.await {
+            Ok(_) => return Err(anyhow!("content-length underflow should reset the stream")),
+            Err(error) => error,
+        };
+        assert_h2_reset(error);
+        assert_no_complete_chunked_request(&mut request_rx).await?;
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn h2_bridge_accepts_empty_request_trailers() -> Result<()> {
         let sni = "api.openai.com";
         let secret_table = Arc::new(secret_table_with_secret(
@@ -2143,6 +2486,114 @@ mod tests {
             deny_log_text.contains("\"reason\":\"host_sni_mismatch\""),
             "deny log should record host_sni_mismatch, got: {deny_log_text}"
         );
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_rejects_http_scheme_on_tls_session() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_47474747474747476767676767676767__",
+            "sk-real",
+            &[sni],
+        )?);
+        let open_count = Arc::new(AtomicUsize::new(0));
+        let (request_tx, _request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_counting_opener(
+            Arc::clone(&open_count),
+            request_tx,
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+        );
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            Arc::clone(&deny_log),
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("http://{sni}/plain"))
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let error = match response.await {
+            Ok(_) => return Err(anyhow!("http :scheme should reset the stream")),
+            Err(error) => error,
+        };
+        assert_h2_reset_reason(error, h2::Reason::PROTOCOL_ERROR);
+
+        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        assert!(
+            deny_log_text.contains("\"reason\":\"malformed_headers\""),
+            "deny log should record malformed_headers, got: {deny_log_text}"
+        );
+        assert_eq!(open_count.load(Ordering::SeqCst), 0);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_rejects_unknown_scheme_on_tls_session() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_48484848484848486868686868686868__",
+            "sk-real",
+            &[sni],
+        )?);
+        let open_count = Arc::new(AtomicUsize::new(0));
+        let (request_tx, _request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_counting_opener(
+            Arc::clone(&open_count),
+            request_tx,
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+        );
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            Arc::clone(&deny_log),
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("ftp://{sni}/plain"))
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let error = match response.await {
+            Ok(_) => return Err(anyhow!("unknown :scheme should reset the stream")),
+            Err(error) => error,
+        };
+        assert_h2_reset_reason(error, h2::Reason::PROTOCOL_ERROR);
+
+        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        assert!(
+            deny_log_text.contains("\"reason\":\"malformed_headers\""),
+            "deny log should record malformed_headers, got: {deny_log_text}"
+        );
+        assert_eq!(open_count.load(Ordering::SeqCst), 0);
 
         drop(send_request);
         connection_task.abort();
@@ -2531,6 +2982,47 @@ mod tests {
         }
         ensure!(body.trailers().await?.is_none(), "unexpected trailers");
         Ok(output)
+    }
+
+    fn h1_header_values<'a>(request_text: &'a str, name: &str) -> Vec<&'a str> {
+        request_text
+            .lines()
+            .filter_map(|line| {
+                let (header_name, value) = line.split_once(": ")?;
+                if header_name.eq_ignore_ascii_case(name) {
+                    Some(value.trim_end_matches('\r'))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    async fn assert_no_complete_chunked_request(
+        request_rx: &mut mpsc::UnboundedReceiver<String>,
+    ) -> Result<()> {
+        let request_text = match tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            request_rx.recv(),
+        )
+        .await
+        {
+            Ok(Some(request_text)) => request_text,
+            Ok(None) | Err(_) => return Ok(()),
+        };
+        assert!(request_text.contains("Transfer-Encoding: chunked\r\n"));
+        assert!(
+            !request_text.contains("\r\n0\r\n\r\n"),
+            "upstream received a complete chunked request: {request_text}"
+        );
+        Ok(())
+    }
+
+    fn assert_h2_reset(error: h2::Error) {
+        assert!(
+            error.reason().is_some(),
+            "expected h2 reset reason, got: {error}"
+        );
     }
 
     fn assert_h2_reset_reason(error: h2::Error, reason: h2::Reason) {
