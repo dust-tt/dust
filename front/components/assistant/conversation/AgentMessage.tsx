@@ -112,6 +112,7 @@ import {
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
 import {
+  type MutableRefObject,
   type ReactElement,
   useCallback,
   useContext,
@@ -214,6 +215,7 @@ interface AgentMessageProps {
   ) => Promise<Result<undefined, DustError>>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
+  isAutoScrollEnabledRef: MutableRefObject<boolean>;
   isProjectArchived?: boolean;
 }
 
@@ -232,6 +234,7 @@ export function AgentMessage({
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
+  isAutoScrollEnabledRef,
   isProjectArchived = false,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
@@ -291,6 +294,7 @@ export function AgentMessage({
   const { shouldStream, streamError } = useAgentMessageStream({
     agentMessage: agentMessage,
     conversationId,
+    isAutoScrollEnabledRef,
     owner,
     onEventCallback: useCallback(
       (eventPayload: {

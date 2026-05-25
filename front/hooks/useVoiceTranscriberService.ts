@@ -16,9 +16,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 // We are using webm with Opus codec
 // In general browsers are using a 48 kbps bitrate
-// A 1-minute recording will be around 400kB
-// 60 seconds * 48000bps / 8 => 360 000 bit, round up to 400kB
-const MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES = 400 * 1024;
+// A 3-minute recording will be around 1200kB
+// 180 seconds * 48000bps / 8 => 1 080 000 bit, round up to 1200kB
+const MAXIMUM_FILE_SIZE_FOR_INPUT_BAR_IN_BYTES = 1200 * 1024;
 
 const MICROPHONE_POPUP_TIMEOUT_MS = 60_000; // 1 minute
 
