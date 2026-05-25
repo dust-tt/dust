@@ -5,7 +5,7 @@ import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversati
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 
-import fId from "./[fId]";
+import fId from "./feedbacks/[fId]";
 
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/feedbacks.
 const app = workspaceApp();

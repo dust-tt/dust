@@ -6,9 +6,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
+import rel from "./[...rel]";
 import download from "./download";
-import rel from "./rel";
 import thumbnail from "./thumbnail";
 
 export type GetConversationFilesResponseBody = {
