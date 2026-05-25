@@ -28,7 +28,11 @@ const READ_CHUNK_BYTES: usize = 8 * 1024;
 const MAX_HEADER_BLOCK_BYTES: usize = 64 * 1024;
 const MAX_HEADER_LINE_BYTES: usize = 16 * 1024;
 const MAX_TRAILER_BLOCK_BYTES: usize = 64 * 1024;
-const H2_INITIAL_WINDOW_SIZE: u32 = 1024 * 1024;
+// 1 MiB initial window for h2 streams on both sides. The h2 spec default
+// (64 KiB - 1) throttles single uploads to one round-trip per window; 1 MiB
+// keeps large request/response bodies flowing without explicit WINDOW_UPDATEs
+// dominating wall-clock latency.
+const H2_INITIAL_WINDOW_SIZE: u32 = 1_048_576;
 // Safety cap for one declared h1 chunk. Forwarding still streams chunks in
 // READ_CHUNK_BYTES pieces, so this only bounds the largest single chunk an
 // upstream is allowed to declare in its framing. 64 MiB is well above any
@@ -93,7 +97,14 @@ impl H2UpstreamKey {
     }
 }
 
+// Evict an idle pooled h2 connection after 5 minutes. Long enough that a
+// single agent making sporadic requests reuses the same upstream; short enough
+// that an inactive sandbox does not hold sockets indefinitely.
 const H2_UPSTREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(5 * 60);
+// Cap pooled h2 connections per upstream at 8. Saturation (upstream advertising
+// a low SETTINGS_MAX_CONCURRENT_STREAMS) opens additional connections up to
+// this cap; bumping it should be paired with a look at `reserve_h2_connection`,
+// which is O(n) in the per-key vector length.
 const H2_UPSTREAM_MAX_CONNECTIONS_PER_KEY: usize = 8;
 
 #[derive(Clone)]
@@ -162,6 +173,10 @@ impl H2ConnectionLease {
             .clone()
     }
 
+    // Draining means "do not hand this connection out for new leases", but
+    // already-leased streams may still complete. Closed is stronger: the
+    // underlying h2 session has gone away and the connection driver task has
+    // resolved; the pool entry is eligible for eviction on the next prune.
     fn mark_draining(&self) {
         self.connection.draining.store(true, Ordering::SeqCst);
     }
@@ -230,6 +245,11 @@ impl H2UpstreamPool {
         reserve_h2_connection(entries.get_mut(key)?)
     }
 
+    // Holds the entries mutex across the upstream open so concurrent
+    // first-leases for the same key share one handshake. Side effect: opens
+    // for distinct keys also serialize through this mutex. Acceptable because
+    // per-sandbox upstream fan-out is small; revisit if dsbx ever serves
+    // many independent destinations concurrently.
     async fn open_or_reserve_new(&self, key: &H2UpstreamKey) -> Result<LeaseCandidate> {
         let mut entries = self.inner.entries.lock().await;
         prune_idle_pool_entries(&mut entries);
@@ -283,6 +303,8 @@ async fn insert_h2_connection_locked(
         .context("failed to establish outbound h2 session")?;
     let pooled = Arc::new(PooledH2Connection {
         send_request,
+        // Starts at 1: the caller of `lease()` that triggered this open already
+        // holds the implicit reservation that the returned lease represents.
         active_streams: AtomicUsize::new(1),
         draining: AtomicBool::new(false),
         closed: AtomicBool::new(false),
@@ -336,16 +358,15 @@ fn is_h2_connection_live(connection: &PooledH2Connection) -> bool {
     !connection.closed.load(Ordering::SeqCst) && !connection.draining.load(Ordering::SeqCst)
 }
 
+// Pool uptime in milliseconds. u64::MAX ms is ~584 million years, so the cast
+// from u128 cannot overflow for any realistic dsbx lifetime.
 fn pool_now_millis() -> u64 {
     static POOL_START: OnceLock<Instant> = OnceLock::new();
-    let millis = POOL_START.get_or_init(Instant::now).elapsed().as_millis();
-    millis.min(u128::from(u64::MAX)) as u64
+    POOL_START.get_or_init(Instant::now).elapsed().as_millis() as u64
 }
 
 fn idle_timeout_millis() -> u64 {
-    H2_UPSTREAM_IDLE_TIMEOUT
-        .as_millis()
-        .min(u128::from(u64::MAX)) as u64
+    H2_UPSTREAM_IDLE_TIMEOUT.as_millis() as u64
 }
 
 fn connection_is_idle_expired(connection: &PooledH2Connection, now_ms: u64) -> bool {
@@ -881,7 +902,6 @@ async fn handle_h2_to_h2_stream(
         }
     }
 
-    drop(lease);
     Ok(())
 }
 
@@ -929,10 +949,15 @@ fn build_h2_upstream_request(
 }
 
 fn should_strip_h2_upstream_header(name: &str) -> bool {
-    matches!(
-        name.to_ascii_lowercase().as_str(),
-        "connection" | "host" | "keep-alive" | "proxy-connection" | "transfer-encoding" | "upgrade"
-    )
+    const STRIPPED: &[&str] = &[
+        "connection",
+        "host",
+        "keep-alive",
+        "proxy-connection",
+        "transfer-encoding",
+        "upgrade",
+    ];
+    STRIPPED.iter().any(|s| name.eq_ignore_ascii_case(s))
 }
 
 async fn forward_h2_request_body(
