@@ -10,11 +10,12 @@ pub(super) use h2::server::SendResponse;
 pub(super) use h2::RecvStream;
 pub(super) use http::{HeaderMap, HeaderValue, Request, Response, StatusCode};
 pub(super) use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
-pub(super) use tokio::sync::mpsc;
+pub(super) use tokio::sync::{mpsc, watch};
 pub(super) use tracing::warn;
 
 pub(super) use crate::egress_secrets::SecretTable;
 
+pub(super) use super::super::deny_log::{observe_deny_log_writes, DenyLogWriteObserver};
 pub(super) use super::super::test_support::{read_h2_body, secret_table_with_secret};
 pub(super) use super::pool::{H2UpstreamPool, UpstreamLease};
 pub(super) use super::{
@@ -116,7 +117,7 @@ where
         + Sync
         + 'static,
 {
-    test_h2_upstream_pool_with_settings_and_open_delay(
+    test_h2_upstream_pool_with_settings_and_optional_open_gate(
         handshake_count,
         handler,
         max_concurrent_streams,
@@ -124,11 +125,58 @@ where
     )
 }
 
-pub(super) fn test_h2_upstream_pool_with_settings_and_open_delay<F>(
+#[derive(Clone)]
+pub(super) struct TestOpenGate {
+    started_tx: mpsc::UnboundedSender<()>,
+    release_tx: watch::Sender<bool>,
+}
+
+impl TestOpenGate {
+    pub(super) fn release(&self) {
+        self.release_tx.send_replace(true);
+    }
+}
+
+pub(super) fn test_open_gate() -> (TestOpenGate, mpsc::UnboundedReceiver<()>) {
+    let (started_tx, started_rx) = mpsc::unbounded_channel();
+    let (release_tx, _release_rx) = watch::channel(false);
+    (
+        TestOpenGate {
+            started_tx,
+            release_tx,
+        },
+        started_rx,
+    )
+}
+
+pub(super) fn test_h2_upstream_pool_with_settings_and_open_gate<F>(
     handshake_count: Arc<AtomicUsize>,
     handler: F,
     max_concurrent_streams: Option<u32>,
-    open_delay: Option<std::time::Duration>,
+    open_gate: TestOpenGate,
+) -> H2UpstreamPool
+where
+    F: Fn(
+            Request<RecvStream>,
+            SendResponse<Bytes>,
+        ) -> Pin<Box<dyn Future<Output = Result<()>> + Send>>
+        + Send
+        + Sync
+        + 'static,
+{
+    test_h2_upstream_pool_with_settings_and_optional_open_gate(
+        handshake_count,
+        handler,
+        max_concurrent_streams,
+        Some(open_gate),
+    )
+}
+
+pub(super) fn test_h2_upstream_pool_with_settings_and_optional_open_gate<F>(
+    handshake_count: Arc<AtomicUsize>,
+    handler: F,
+    max_concurrent_streams: Option<u32>,
+    open_gate: Option<TestOpenGate>,
 ) -> H2UpstreamPool
 where
     F: Fn(
@@ -143,9 +191,20 @@ where
     let opener: OpenUpstream = Arc::new(move |_key| {
         let handler = Arc::clone(&handler);
         let handshake_count = Arc::clone(&handshake_count);
+        let open_gate = open_gate.clone();
         Box::pin(async move {
-            if let Some(open_delay) = open_delay {
-                tokio::time::sleep(open_delay).await;
+            if let Some(open_gate) = open_gate {
+                let mut release_rx = open_gate.release_tx.subscribe();
+                open_gate
+                    .started_tx
+                    .send(())
+                    .map_err(|_| anyhow!("failed to send upstream open gate signal"))?;
+                if !*release_rx.borrow() {
+                    release_rx
+                        .changed()
+                        .await
+                        .context("upstream open gate release channel closed")?;
+                }
             }
             handshake_count.fetch_add(1, Ordering::SeqCst);
             let (dsbx_io, upstream_io) = tokio::io::duplex(64 * 1024);
@@ -253,13 +312,11 @@ pub(super) async fn send_direct_pooled_h2_get(
 pub(super) async fn assert_upstream_connection_closed(
     closed_rx: &mut mpsc::UnboundedReceiver<()>,
 ) -> Result<()> {
-    for _ in 0..16 {
-        if closed_rx.try_recv().is_ok() {
-            return Ok(());
-        }
-        tokio::task::yield_now().await;
-    }
-    Err(anyhow!("upstream h2 connection did not close"))
+    closed_rx
+        .recv()
+        .await
+        .ok_or_else(|| anyhow!("upstream h2 close observer channel closed"))?;
+    Ok(())
 }
 
 pub(super) fn assert_upstream_connection_still_open(
@@ -312,20 +369,11 @@ pub(super) async fn observe_h2_request_body_close(
     })
 }
 
-pub(super) async fn read_test_file_eventually(path: &std::path::Path) -> Result<String> {
-    for _ in 0..50 {
-        match tokio::fs::read_to_string(path).await {
-            Ok(text) if !text.is_empty() => return Ok(text),
-            Ok(_) => {
-                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-            }
-            Err(error) => return Err(error.into()),
-        }
-    }
-
+pub(super) async fn read_test_file_after_write(
+    write_observer: &mut DenyLogWriteObserver,
+    path: &std::path::Path,
+) -> Result<String> {
+    write_observer.wait().await?;
     tokio::fs::read_to_string(path)
         .await
         .with_context(|| format!("failed to read {}", path.display()))
@@ -406,32 +454,34 @@ pub(super) async fn wait_for_pool_active_streams(
     key: &H2UpstreamKey,
     expected: usize,
 ) -> Result<()> {
-    for _ in 0..16 {
-        let active_streams = pool_active_streams(pool, key).await;
+    loop {
+        let mut active_streams_rx = {
+            let entries = pool.inner.entries.lock().await;
+            let Some(connections) = entries.get(key) else {
+                ensure!(
+                    expected == 0,
+                    "expected {expected} active h2 streams for {}, got no connection",
+                    key.authority()
+                );
+                return Ok(());
+            };
+            ensure!(
+                connections.len() == 1,
+                "test helper expected one h2 connection for {}, got {}",
+                key.authority(),
+                connections.len()
+            );
+            connections[0].active_streams_changed.subscribe()
+        };
+        let active_streams = *active_streams_rx.borrow();
         if active_streams == expected {
             return Ok(());
         }
-        tokio::task::yield_now().await;
+        active_streams_rx
+            .changed()
+            .await
+            .context("active-stream observer closed before expected value")?;
     }
-
-    let active_streams = pool_active_streams(pool, key).await;
-    Err(anyhow!(
-        "expected {expected} active h2 streams for {}, got {active_streams}",
-        key.authority()
-    ))
-}
-
-pub(super) async fn pool_active_streams(pool: &H2UpstreamPool, key: &H2UpstreamKey) -> usize {
-    let entries = pool.inner.entries.lock().await;
-    entries
-        .get(key)
-        .map(|connections| {
-            connections
-                .iter()
-                .map(|connection| connection.active_streams.load(Ordering::SeqCst))
-                .sum()
-        })
-        .unwrap_or(0)
 }
 
 pub(super) async fn start_test_h2_upstream_bridge(
@@ -858,11 +908,10 @@ pub(super) fn h1_header_values<'a>(request_text: &'a str, name: &str) -> Vec<&'a
 pub(super) async fn assert_no_complete_chunked_request(
     request_rx: &mut mpsc::UnboundedReceiver<String>,
 ) -> Result<()> {
-    let request_text =
-        match tokio::time::timeout(std::time::Duration::from_secs(1), request_rx.recv()).await {
-            Ok(Some(request_text)) => request_text,
-            Ok(None) | Err(_) => return Ok(()),
-        };
+    let request_text = request_rx
+        .recv()
+        .await
+        .ok_or_else(|| anyhow!("test upstream capture channel closed"))?;
     assert!(request_text.contains("Transfer-Encoding: chunked\r\n"));
     assert!(
         !request_text.contains("\r\n0\r\n\r\n"),

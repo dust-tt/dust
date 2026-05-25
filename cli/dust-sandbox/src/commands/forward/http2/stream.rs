@@ -378,6 +378,7 @@ mod tests {
         ));
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
 
         let mut builder = Request::builder()
             .method("GET")
@@ -392,7 +393,8 @@ mod tests {
             "rewritten header block over 64 KiB should reset before upstream lease"
         );
 
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"header_size_exceeded\""),
             "deny log should record header_size_exceeded, got: {deny_log_text}"

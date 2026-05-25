@@ -61,6 +61,8 @@ pub(super) struct H2UpstreamPoolInner {
 pub(super) struct PooledH2Connection {
     send_request: SendRequest<Bytes>,
     pub(super) active_streams: AtomicUsize,
+    #[cfg(test)]
+    pub(super) active_streams_changed: tokio::sync::watch::Sender<usize>,
     draining: AtomicBool,
     pub(super) closed: AtomicBool,
     started_at: tokio::time::Instant,
@@ -83,9 +85,15 @@ struct H2ConnectionReservation {
 
 impl Drop for H2ConnectionReservation {
     fn drop(&mut self) {
-        self.connection
+        let _active_streams = self
+            .connection
             .active_streams
-            .fetch_sub(1, Ordering::SeqCst);
+            .fetch_sub(1, Ordering::SeqCst)
+            - 1;
+        #[cfg(test)]
+        self.connection
+            .active_streams_changed
+            .send_replace(_active_streams);
         self.connection
             .last_used_ms
             .store(connection_now_millis(&self.connection), Ordering::SeqCst);
@@ -258,6 +266,8 @@ pub(super) async fn insert_h2_connection_locked(
         // Starts at 1: the caller of `lease()` that triggered this open already
         // holds the implicit reservation that the returned lease represents.
         active_streams: AtomicUsize::new(1),
+        #[cfg(test)]
+        active_streams_changed: tokio::sync::watch::channel(1).0,
         draining: AtomicBool::new(false),
         closed: AtomicBool::new(false),
         started_at: tokio::time::Instant::now(),
@@ -305,7 +315,11 @@ fn reserve_h2_connection(
     } else {
         select_least_busy_h2_connection(connections)?
     };
-    connection.active_streams.fetch_add(1, Ordering::SeqCst);
+    let _active_streams = connection.active_streams.fetch_add(1, Ordering::SeqCst) + 1;
+    #[cfg(test)]
+    connection
+        .active_streams_changed
+        .send_replace(_active_streams);
     let send_request = connection.send_request.clone();
     Some(H2ConnectionLease {
         reservation: H2ConnectionReservation { connection },
@@ -532,7 +546,8 @@ mod tests {
         )?);
         let handshake_count = Arc::new(AtomicUsize::new(0));
         let (path_tx, mut path_rx) = mpsc::unbounded_channel();
-        let pool = test_h2_upstream_pool_with_settings_and_open_delay(
+        let (open_gate, mut open_started_rx) = test_open_gate();
+        let pool = test_h2_upstream_pool_with_settings_and_open_gate(
             Arc::clone(&handshake_count),
             move |request, respond| {
                 let path_tx = path_tx.clone();
@@ -544,7 +559,7 @@ mod tests {
                 })
             },
             None,
-            Some(std::time::Duration::from_millis(50)),
+            open_gate.clone(),
         );
         let (mut send_request, connection_task, bridge_task) =
             start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
@@ -558,7 +573,12 @@ mod tests {
             .uri(format!("https://{sni}/two"))
             .body(())?;
         let (first_response, _first_stream) = send_request.send_request(first, true)?;
+        open_started_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("upstream open did not reach test gate"))?;
         let (second_response, _second_stream) = send_request.send_request(second, true)?;
+        open_gate.release();
         let (first_response, second_response) = tokio::join!(first_response, second_response);
         let first_response = first_response?;
         let second_response = second_response?;

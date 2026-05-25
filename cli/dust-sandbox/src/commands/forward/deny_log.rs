@@ -1,10 +1,18 @@
 use std::path::Path;
+#[cfg(test)]
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Mutex, OnceLock},
+};
 
 use anyhow::{Context, Result};
 use serde::Serialize;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
+#[cfg(test)]
+use tokio::sync::broadcast;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum DenyReason {
@@ -97,7 +105,58 @@ pub(super) async fn append_deny_log(path: &Path, entry: DenyLogEntry) -> Result<
     file.write_all(line.as_bytes())
         .await
         .with_context(|| format!("failed to write deny log {}", path.display()))?;
+    #[cfg(test)]
+    notify_deny_log_write(path);
     Ok(())
+}
+
+#[cfg(test)]
+static DENY_LOG_WRITE_SIGNALS: OnceLock<Mutex<HashMap<PathBuf, broadcast::Sender<()>>>> =
+    OnceLock::new();
+
+#[cfg(test)]
+pub(super) struct DenyLogWriteObserver {
+    path: PathBuf,
+    rx: broadcast::Receiver<()>,
+}
+
+#[cfg(test)]
+impl DenyLogWriteObserver {
+    pub(super) async fn wait(&mut self) -> Result<()> {
+        self.rx
+            .recv()
+            .await
+            .with_context(|| format!("deny log write signal closed for {}", self.path.display()))?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+pub(super) fn observe_deny_log_writes(path: &Path) -> DenyLogWriteObserver {
+    DenyLogWriteObserver {
+        path: path.to_path_buf(),
+        rx: deny_log_write_signal(path).subscribe(),
+    }
+}
+
+#[cfg(test)]
+fn notify_deny_log_write(path: &Path) {
+    let _ = deny_log_write_signal(path).send(());
+}
+
+#[cfg(test)]
+fn deny_log_write_signal(path: &Path) -> broadcast::Sender<()> {
+    let mut signals = DENY_LOG_WRITE_SIGNALS
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .expect("deny log write signal lock poisoned");
+    signals
+        .entry(path.to_path_buf())
+        .or_insert_with(|| {
+            let (tx, _rx) = broadcast::channel(16);
+            tx
+        })
+        .clone()
 }
 
 #[derive(Serialize)]
