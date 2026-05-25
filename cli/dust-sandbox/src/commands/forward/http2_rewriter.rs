@@ -335,8 +335,12 @@ fn build_h1_request_head(
     headers: &[HeaderPart],
     body_is_end_stream: bool,
 ) -> std::result::Result<(Vec<u8>, bool), H2RequestDeny> {
-    // Force chunked framing whenever there is a request body stream. If h2
-    // trailers arrive after DATA, we can withhold the h1 chunked terminator.
+    // Force chunked framing whenever there is a request body stream. We do
+    // not know up front whether the h2 client will follow DATA with
+    // unsupported trailers, and content-length framing would force us to
+    // either pre-buffer the whole upload (memory blowup) or commit the body
+    // to the upstream before we can observe trailers. Chunked lets us
+    // withhold the h1 terminator if a late deny fires.
     let use_chunked = !body_is_end_stream;
     let mut header_bytes = Vec::new();
     append_h1_head_bytes(
@@ -350,10 +354,9 @@ fn build_h1_request_head(
     }
 
     for header in headers {
-        if should_strip_h1_bridge_header(&header.name) {
-            continue;
-        }
-        if use_chunked && header.name.eq_ignore_ascii_case(CONTENT_LENGTH.as_str()) {
+        if should_strip_h1_bridge_header(&header.name)
+            || (use_chunked && header.name.eq_ignore_ascii_case(CONTENT_LENGTH.as_str()))
+        {
             continue;
         }
         append_h1_header_line(&mut header_bytes, header.name.as_bytes(), &header.value)?;
@@ -1112,8 +1115,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn h2_bridge_forces_chunked_when_content_length_present_and_body_not_end_stream(
-    ) -> Result<()> {
+    async fn h2_bridge_forces_chunked_on_streaming_request_with_content_length() -> Result<()> {
         let sni = "api.openai.com";
         let secret_table = Arc::new(secret_table_with_secret(
             "OPENAI_API_KEY",
@@ -1939,7 +1941,6 @@ mod tests {
             .to_ascii_lowercase()
             .contains("content-length:"));
         assert!(request_text.ends_with("\r\n\r\n5\r\nhello\r\n"));
-        assert!(!request_text.ends_with("\r\n\r\n5\r\nhello\r\n0\r\n\r\n"));
 
         drop(send_request);
         connection_task.abort();
