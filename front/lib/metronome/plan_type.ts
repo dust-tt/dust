@@ -9,9 +9,13 @@ import type { ContractV2 } from "@metronome/sdk/resources";
 // every billing cycle and are never read here.
 export type CachedContract = Omit<ContractV2, "commits" | "credits">;
 
-// No TTL — contracts only change when a contract starts/ends.
-// Invalidated explicitly via invalidateContractCache on contract.start/end webhooks.
-// Null values are NOT cached: when no contract is found we want a fresh fetch next time.
+// Non-null contracts have no TTL — they only change when a contract
+// starts/ends, and those webhooks call invalidateContractCache.
+// Null values (no contract OR upstream Metronome error) get a short TTL so
+// that during a Metronome outage we don't stampede the API on every request.
+// The window has to be short enough that recovery is observed quickly but
+// long enough to actually break the burst — 60s is a fine middle ground.
+const ACTIVE_CONTRACT_NULL_TTL_MS = 60 * 1000;
 
 /**
  * Fetch the active Metronome contract for a workspace.
@@ -69,7 +73,7 @@ async function fetchActiveContract(
 const getCachedActiveContract = cacheWithRedis(
   fetchActiveContract,
   (workspaceId) => workspaceId,
-  { cacheNullValues: false }
+  { cacheNullValues: true, nullTtlMs: ACTIVE_CONTRACT_NULL_TTL_MS }
 );
 
 /**

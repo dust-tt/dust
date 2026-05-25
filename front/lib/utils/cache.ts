@@ -52,6 +52,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   resolver: KeyResolver<Args>,
   options: {
     ttlMs?: number;
+    nullTtlMs?: number;
     redisUri?: string;
     useDistributedLock?: boolean;
     skipIfLocked?: false;
@@ -64,6 +65,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   resolver: KeyResolver<Args>,
   options: {
     ttlMs?: number;
+    nullTtlMs?: number;
     redisUri?: string;
     useDistributedLock: true;
     // When true and the distributed lock is taken, return null immediately.
@@ -77,6 +79,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   resolver: KeyResolver<Args>,
   {
     ttlMs,
+    nullTtlMs,
     // Kept for backwards compatibility, no longer used.
     redisUri: _redisUri,
     useDistributedLock = false,
@@ -84,6 +87,12 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     cacheNullValues = true,
   }: {
     ttlMs?: number;
+    // When set, null/undefined results are cached with this TTL instead of
+    // `ttlMs`. Lets callers keep success values uncapped (or long-lived) while
+    // capping null caches at a short window — useful to break Metronome-style
+    // stampedes during an upstream outage without delaying recovery once it
+    // resolves. Requires `cacheNullValues: true` to have any effect.
+    nullTtlMs?: number;
     // Kept for backwards compatibility, no longer used.
     redisUri?: string;
     useDistributedLock?: boolean;
@@ -95,6 +104,9 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 ): (...args: Args) => Promise<JsonSerializable<T> | null> {
   if (ttlMs !== undefined && ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
+  }
+  if (nullTtlMs !== undefined && nullTtlMs > 60 * 60 * 24 * 1000) {
+    throw new Error("nullTtlMs should be less than 24 hours");
   }
 
   return async function (...args: Args): Promise<JsonSerializable<T> | null> {
@@ -142,9 +154,11 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 
       const result = await fn(...args);
       if (cacheNullValues || result != null) {
-        if (ttlMs !== undefined) {
+        const effectiveTtlMs =
+          result == null && nullTtlMs !== undefined ? nullTtlMs : ttlMs;
+        if (effectiveTtlMs !== undefined) {
           await redisCli.set(key, JSON.stringify(result), {
-            PX: ttlMs,
+            PX: effectiveTtlMs,
           });
         } else {
           await redisCli.set(key, JSON.stringify(result));
