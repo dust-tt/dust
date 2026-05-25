@@ -13,6 +13,7 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const POD_MANAGER_SERVER_NAME = "pod_manager" as const;
+export const UPDATE_MEMBERS_TOOL_NAME = "update_members" as const;
 
 export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   add_content_node: {

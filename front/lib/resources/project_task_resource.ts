@@ -118,7 +118,22 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
         { transaction: t }
       );
 
-      return new this(ProjectTaskModel, todo.get());
+      const todoBlob = todo.get();
+      let assignee: ProjectTaskAssigneeType | null = null;
+      if (todoBlob.userId !== null) {
+        const [user] = await UserResource.fetchByModelIds([todoBlob.userId], {
+          transaction: t,
+        });
+        if (user) {
+          assignee = {
+            sId: user.sId,
+            fullName: user.fullName(),
+            image: user.imageUrl,
+          };
+        }
+      }
+
+      return new this(ProjectTaskModel, todoBlob, { assignee });
     }, transaction);
   }
 
@@ -155,6 +170,15 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     return withTransaction(async (t) => {
       await this.saveVersion(t);
       await this.update(updates, t);
+
+      if (updates.userId !== undefined) {
+        const [refreshed] = await ProjectTaskResource.baseFetch(
+          auth,
+          { where: { id: this.id }, limit: 1 },
+          t
+        );
+        return refreshed ?? this;
+      }
 
       return this;
     }, transaction);

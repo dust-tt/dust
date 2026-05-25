@@ -4,6 +4,20 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import {
+  POD_MANAGER_SERVER_NAME,
+  UPDATE_MEMBERS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_manager/metadata";
+import { isPodManagerUpdateMembersInput } from "@app/lib/api/actions/servers/pod_manager/types";
+import {
+  CREATE_TASKS_TOOL_NAME,
+  POD_TASKS_SERVER_NAME,
+  UPDATE_TASKS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_tasks/metadata";
+import {
+  isPodTasksCreateTasksInput,
+  isPodTasksUpdateTasksInput,
+} from "@app/lib/api/actions/servers/pod_tasks/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
@@ -51,18 +65,74 @@ const MCP_TOOL_OVERRIDES: Partial<
       detailsExpanded: true,
     },
   },
+  [POD_TASKS_SERVER_NAME]: {
+    [CREATE_TASKS_TOOL_NAME]: {
+      title: (agentName, inputs) => {
+        if (!isPodTasksCreateTasksInput(inputs)) {
+          return `Allow ${asDisplayName(agentName)} to create tasks?`;
+        }
+        const count = inputs.tasks.length;
+        return `Allow ${asDisplayName(agentName)} to create ${count} task${count === 1 ? "" : "s"}?`;
+      },
+      alwaysAllowLabel: (agentName) =>
+        `Always allow ${asDisplayName(agentName)} to create tasks`,
+    },
+    [UPDATE_TASKS_TOOL_NAME]: {
+      title: (agentName, inputs) => {
+        if (!isPodTasksUpdateTasksInput(inputs)) {
+          return `Allow ${asDisplayName(agentName)} to update tasks?`;
+        }
+        const count = inputs.tasks.length;
+        const doneCount = inputs.tasks.filter(
+          (task) => task.doneRationale
+        ).length;
+        if (doneCount > 0 && doneCount === count) {
+          return `Allow ${asDisplayName(agentName)} to mark ${count} task${count === 1 ? "" : "s"} as done?`;
+        }
+        if (doneCount > 0) {
+          return `Allow ${asDisplayName(agentName)} to update ${count} task${count === 1 ? "" : "s"} (${doneCount} marked as done)?`;
+        }
+        return `Allow ${asDisplayName(agentName)} to update ${count} task${count === 1 ? "" : "s"}?`;
+      },
+      alwaysAllowLabel: (agentName) =>
+        `Always allow ${asDisplayName(agentName)} to update tasks`,
+    },
+  },
+  [POD_MANAGER_SERVER_NAME]: {
+    [UPDATE_MEMBERS_TOOL_NAME]: {
+      title: (agentName, inputs) => {
+        if (!isPodManagerUpdateMembersInput(inputs)) {
+          return `Allow ${asDisplayName(agentName)} to update Pod members?`;
+        }
+        const addCount = inputs.addMemberIds?.length ?? 0;
+        const removeCount = inputs.removeMemberIds?.length ?? 0;
+        const parts: string[] = [];
+        if (addCount > 0) {
+          parts.push(`add ${addCount}`);
+        }
+        if (removeCount > 0) {
+          parts.push(`remove ${removeCount}`);
+        }
+        return `Allow ${asDisplayName(agentName)} to ${parts.join(" and ")} Pod member${addCount + removeCount === 1 ? "" : "s"}?`;
+      },
+      alwaysAllowLabel: (agentName) =>
+        `Always allow ${asDisplayName(agentName)} to update Pod members`,
+    },
+  },
 };
 
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   blockedAction: BlockedToolExecution;
+  conversationId?: string | null;
 }
 
 export function MCPToolValidationRequired({
   triggeringUser,
   owner,
   blockedAction,
+  conversationId,
 }: MCPToolValidationRequiredProps) {
   const { user } = useAuth();
   const [neverAskAgain, setNeverAskAgain] = useState(false);
@@ -204,6 +274,8 @@ export function MCPToolValidationRequired({
           <ToolValidationDetails
             blockedAction={blockedAction}
             user={user}
+            owner={owner}
+            conversationId={conversationId}
             defaultExpanded={toolOverride?.detailsExpanded}
           />
           {errorMessage && (

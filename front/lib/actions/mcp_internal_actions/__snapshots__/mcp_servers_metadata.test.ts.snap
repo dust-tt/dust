@@ -491,7 +491,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_tasks": "never_ask",
     "mark_task_done": "low",
     "start_task_agent": "low",
-    "update_task": "low",
+    "update_tasks": "low",
   },
   "poke": {
     "check_notion_page": "high",

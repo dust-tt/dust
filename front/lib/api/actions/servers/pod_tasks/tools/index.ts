@@ -16,12 +16,59 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { ProjectTaskStatus } from "@app/types/project_task";
 import { PROJECT_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok } from "@app/types/shared/result";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+type PodTaskUpdateItem = {
+  taskId: string;
+  text?: string;
+  userId?: string | null;
+  doneRationale?: string;
+  status?: ProjectTaskStatus;
+};
+
+async function buildTaskUpdatePayload(
+  space: SpaceResource,
+  workspaceSId: string,
+  row: ProjectTaskResource,
+  item: PodTaskUpdateItem
+): Promise<
+  | { updates: Parameters<ProjectTaskResource["updateWithVersion"]>[1] }
+  | { error: string }
+> {
+  const updates: Parameters<ProjectTaskResource["updateWithVersion"]>[1] = {
+    status: item.doneRationale ? "done" : (item.status ?? row.status),
+    doneAt: item.doneRationale ? new Date() : null,
+    actorRationale: item.doneRationale ?? row.actorRationale,
+  };
+
+  if (item.text !== undefined) {
+    updates.text = item.text;
+  }
+
+  if (item.userId === null) {
+    updates.userId = null;
+  } else if (typeof item.userId === "string") {
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      item.userId,
+      workspaceSId
+    );
+    if (!space.isMember(userAuth)) {
+      return {
+        error: `User ${item.userId} is not a member of the Pod for task ${item.taskId}.`,
+      };
+    }
+    updates.userId = userAuth.getNonNullableUser().id;
+  }
+
+  return { updates };
+}
 
 function formatTaskListingLine(row: ProjectTaskResource): string {
   const json = row.toJSON();
@@ -289,14 +336,7 @@ export function createProjectTasksTools(
       }, "Failed to mark task as done");
     },
 
-    update_task: async ({
-      taskId,
-      text,
-      userId,
-      doneRationale,
-      status,
-      dustPod,
-    }) => {
+    update_tasks: async ({ tasks, dustPod }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -305,46 +345,48 @@ export function createProjectTasksTools(
         if (contextRes.isErr()) {
           return contextRes;
         }
+        const { space } = contextRes.value;
 
-        const row = await ProjectTaskResource.fetchBySId(auth, taskId);
+        const updated: string[] = [];
+        const errors: string[] = [];
 
-        if (!row) {
-          return new Err(
-            new MCPError(`Task not found: ${taskId}`, { tracked: false })
-          );
-        }
+        for (const item of tasks) {
+          const row = await ProjectTaskResource.fetchBySId(auth, item.taskId);
 
-        let newUserModelId: ModelId | undefined;
-        if (userId) {
-          const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-            userId,
-            owner.sId
-          );
-          if (!contextRes.value.space.isMember(userAuth)) {
-            return new Err(
-              new MCPError(`User is not a member of the Pod.`, {
-                tracked: false,
-              })
-            );
+          if (!row) {
+            errors.push(`Task not found: ${item.taskId}`);
+            continue;
           }
-          newUserModelId = userAuth.getNonNullableUser().id;
-        }
 
-        await row.updateWithVersion(auth, {
-          text: text,
-          userId: newUserModelId ?? row.userId,
-          status: doneRationale ? "done" : (status ?? row.status),
-          doneAt: doneRationale ? new Date() : null,
-          actorRationale: doneRationale ?? row.actorRationale,
-        });
+          const payloadRes = await buildTaskUpdatePayload(
+            space,
+            owner.sId,
+            row,
+            item
+          );
+          if ("error" in payloadRes) {
+            errors.push(payloadRes.error);
+            continue;
+          }
+
+          const updatedRow = await row.updateWithVersion(
+            auth,
+            payloadRes.updates
+          );
+          updated.push(formatTaskListingLine(updatedRow));
+        }
 
         return new Ok([
           {
             type: "text" as const,
-            text: `Task updated: "${row.text}"`,
+            text: [
+              `Updated ${updated.length} task(s):`,
+              ...updated.map((line) => line),
+              ...errors.map((error) => `- ${error}`),
+            ].join("\n"),
           },
         ]);
-      }, "Failed to update task");
+      }, "Failed to update tasks");
     },
 
     start_task_agent: async ({ taskId, agentName, customMessage, dustPod }) => {

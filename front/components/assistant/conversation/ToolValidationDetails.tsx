@@ -1,3 +1,10 @@
+import {
+  AshbyJobPostingUpdateDetails,
+  AshbyReferralDetails,
+} from "@app/components/assistant/conversation/tool_validation/AshbyValidationDetails";
+import { PodMembersUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails";
+import { PodTasksCreateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails";
+import { PodTasksUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { ASHBY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -8,14 +15,26 @@ import {
   isAshbyCreateReferralInput,
   isAshbyUpdateJobPostingInput,
 } from "@app/lib/api/actions/servers/ashby/types";
-import { isString } from "@app/types/shared/utils/general";
-import type { UserType } from "@app/types/user";
 import {
-  Button,
+  POD_MANAGER_SERVER_NAME,
+  UPDATE_MEMBERS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_manager/metadata";
+import { isPodManagerUpdateMembersInput } from "@app/lib/api/actions/servers/pod_manager/types";
+import {
+  CREATE_TASKS_TOOL_NAME,
+  POD_TASKS_SERVER_NAME,
+  UPDATE_TASKS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_tasks/metadata";
+import {
+  isPodTasksCreateTasksInput,
+  isPodTasksUpdateTasksInput,
+} from "@app/lib/api/actions/servers/pod_tasks/types";
+import { isString } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  ExternalLinkIcon,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -55,12 +74,16 @@ interface DisplayableInput {
 interface ToolValidationDetailsProps {
   blockedAction: BlockedToolExecution;
   user: UserType;
+  owner: LightWorkspaceType;
+  conversationId?: string | null;
   defaultExpanded?: boolean;
 }
 
 export function ToolValidationDetails({
   blockedAction,
   user,
+  owner,
+  conversationId,
   defaultExpanded = false,
 }: ToolValidationDetailsProps) {
   const displayableInputs: DisplayableInput[] = useMemo(() => {
@@ -75,7 +98,6 @@ export function ToolValidationDetails({
       .filter((entry): entry is DisplayableInput => entry.value !== null);
   }, [blockedAction.inputs]);
 
-  // Custom component for Ashby referral creation.
   if (
     blockedAction.metadata.mcpServerName === ASHBY_SERVER_NAME &&
     blockedAction.metadata.toolName === CREATE_REFERRAL_TOOL_NAME &&
@@ -89,13 +111,57 @@ export function ToolValidationDetails({
     );
   }
 
-  // Custom component for Ashby job posting update.
   if (
     blockedAction.metadata.mcpServerName === ASHBY_SERVER_NAME &&
     blockedAction.metadata.toolName === UPDATE_JOB_POSTING_TOOL_NAME &&
     isAshbyUpdateJobPostingInput(blockedAction.inputs)
   ) {
     return <AshbyJobPostingUpdateDetails {...blockedAction.inputs} />;
+  }
+
+  if (
+    blockedAction.metadata.mcpServerName === POD_TASKS_SERVER_NAME &&
+    blockedAction.metadata.toolName === CREATE_TASKS_TOOL_NAME &&
+    isPodTasksCreateTasksInput(blockedAction.inputs)
+  ) {
+    return (
+      <PodTasksCreateValidationDetails
+        input={blockedAction.inputs}
+        owner={owner}
+        user={user}
+        conversationId={conversationId}
+      />
+    );
+  }
+
+  if (
+    blockedAction.metadata.mcpServerName === POD_TASKS_SERVER_NAME &&
+    blockedAction.metadata.toolName === UPDATE_TASKS_TOOL_NAME &&
+    isPodTasksUpdateTasksInput(blockedAction.inputs)
+  ) {
+    return (
+      <PodTasksUpdateValidationDetails
+        input={blockedAction.inputs}
+        owner={owner}
+        user={user}
+        conversationId={conversationId}
+      />
+    );
+  }
+
+  if (
+    blockedAction.metadata.mcpServerName === POD_MANAGER_SERVER_NAME &&
+    blockedAction.metadata.toolName === UPDATE_MEMBERS_TOOL_NAME &&
+    isPodManagerUpdateMembersInput(blockedAction.inputs)
+  ) {
+    return (
+      <PodMembersUpdateValidationDetails
+        input={blockedAction.inputs}
+        owner={owner}
+        user={user}
+        conversationId={conversationId}
+      />
+    );
   }
 
   if (displayableInputs.length === 0) {
@@ -120,131 +186,5 @@ export function ToolValidationDetails({
         </div>
       </CollapsibleContent>
     </Collapsible>
-  );
-}
-
-function formatFieldValue(value: string | number | boolean): string {
-  if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
-  }
-  return String(value);
-}
-
-interface AshbyReferralDetailsProps {
-  fieldSubmissions: ReadonlyArray<{
-    title: string;
-    value: string | number | boolean;
-  }>;
-  userEmail: string;
-}
-
-interface AshbyJobPostingUpdateDetailsProps {
-  jobPostingId: string;
-  jobId: string;
-  title?: string;
-  descriptionHtml?: string;
-  workplaceType?: string | null;
-}
-
-function AshbyJobPostingUpdateDetails({
-  jobPostingId,
-  jobId,
-  title,
-  descriptionHtml,
-  workplaceType,
-}: AshbyJobPostingUpdateDetailsProps) {
-  const jobPostingUrl = `https://app.ashbyhq.com/jobs/${jobId}/job-postings/${jobPostingId}/description`;
-
-  const fields: DisplayableInput[] = [];
-
-  if (title) {
-    fields.push({ label: "New title", value: title });
-  }
-  if (workplaceType) {
-    fields.push({ label: "Workplace type", value: workplaceType });
-  }
-
-  return (
-    <div className="flex flex-col gap-3 pt-2">
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        This will update the job posting on Ashby. Changes are applied
-        immediately and visible to candidates.
-      </p>
-
-      <Button
-        variant="outline"
-        size="xs"
-        label="View on Ashby"
-        icon={ExternalLinkIcon}
-        href={jobPostingUrl}
-        target="_blank"
-      />
-
-      {fields.map(({ label, value }) => (
-        <div key={label}>
-          <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-            {label}
-          </div>
-          <div className="mt-0.5 text-sm text-foreground dark:text-foreground-night">
-            {value}
-          </div>
-        </div>
-      ))}
-
-      {descriptionHtml && (
-        <Collapsible>
-          <CollapsibleTrigger>
-            <span className="text-sm font-medium">New description</span>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted px-3 text-sm dark:bg-muted-night">
-              {descriptionHtml.replace(/<(?!\/)/g, "\n<")}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-    </div>
-  );
-}
-
-function AshbyReferralDetails({
-  fieldSubmissions,
-  userEmail,
-}: AshbyReferralDetailsProps) {
-  return (
-    <div className="flex flex-col gap-3 pt-2">
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        {/* Safe to show: this component only renders for users authorized to
-            respond (canCurrentUserRespond guard in parent). */}
-        <>
-          The referral will be credited to&nbsp;
-          <span className="font-medium text-foreground dark:text-foreground-night">
-            {userEmail}
-          </span>
-          .
-        </>
-      </p>
-
-      <div className="divide-y divide-separator overflow-hidden rounded-xl bg-background dark:divide-separator-night dark:bg-background-night">
-        {fieldSubmissions.map(({ title, value }) => {
-          const displayValue = formatFieldValue(value);
-
-          if (!displayValue) {
-            return null;
-          }
-
-          return (
-            <div key={title} className="px-3 py-2">
-              <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-                {title}
-              </div>
-              <div className="mt-0.5 text-sm text-foreground dark:text-foreground-night">
-                {displayValue}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }

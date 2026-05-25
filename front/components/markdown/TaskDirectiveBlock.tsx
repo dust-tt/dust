@@ -2,8 +2,10 @@ import { ConversationSidebarStatusDot } from "@app/components/assistant/conversa
 import { ProjectTaskStartWorkingDropdown } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskStartWorkingDropdown";
 import { useAppRouter } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import { useStartProjectTaskConversation } from "@app/lib/swr/projects";
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  useStartProjectTaskConversation,
+  useWorkspaceProjectTask,
+} from "@app/lib/swr/projects";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
@@ -29,7 +31,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-import type { Fetcher } from "swr";
 import { visit } from "unist-util-visit";
 
 function formatTaskStatusLabel(status: ProjectTaskStatus): string {
@@ -306,12 +307,16 @@ function TaskDirectivePopoverContent({
   owner: LightWorkspaceType;
   taskSId: string;
 }) {
-  const { fetcher } = useFetcher();
-  const url = `/api/w/${owner.sId}/project_tasks/${encodeURIComponent(taskSId)}`;
-  const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    url,
-    fetcher as Fetcher<GetWorkspaceProjectTaskResponseBody, string>
-  );
+  const {
+    task,
+    space,
+    isWorkspaceProjectTaskLoading,
+    isWorkspaceProjectTaskError,
+    mutateWorkspaceProjectTask,
+  } = useWorkspaceProjectTask({
+    workspaceId: owner.sId,
+    taskSId,
+  });
 
   const { agentConfigurations, isLoading: agentsLoading } =
     useUnifiedAgentConfigurations({
@@ -325,7 +330,7 @@ function TaskDirectivePopoverContent({
     return agents;
   }, [agentConfigurations]);
 
-  if (isLoading) {
+  if (isWorkspaceProjectTaskLoading) {
     return (
       <div className="flex min-h-[7rem] items-center justify-center p-3">
         <Spinner size="sm" />
@@ -333,7 +338,7 @@ function TaskDirectivePopoverContent({
     );
   }
 
-  if (error || !data) {
+  if (isWorkspaceProjectTaskError || !task || !space) {
     return (
       <div className="p-3 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
         Could not load this task.
@@ -345,10 +350,10 @@ function TaskDirectivePopoverContent({
     <TaskDirectivePopoverBodyLoaded
       owner={owner}
       taskSId={taskSId}
-      data={data}
+      data={{ task, space }}
       activeAgents={activeAgents}
       agentsLoading={agentsLoading}
-      onTaskUpdated={() => void mutate()}
+      onTaskUpdated={() => void mutateWorkspaceProjectTask()}
     />
   );
 }

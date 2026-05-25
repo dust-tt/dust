@@ -202,7 +202,7 @@ export function MembersTable({
           return (
             <DataTable.CellContent>
               {info.row.original.isEditor && (
-                <Chip color="green" size="xs" label="editor" />
+                <Chip color="green" size="xs" label="Editor" />
               )}
             </DataTable.CellContent>
           );
