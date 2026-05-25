@@ -317,7 +317,7 @@ async function handler(
       }
 
       // it's a public endpoint, so we need to check we are auth with a user, to set a favorite
-      if (r.data.userFavorite !== undefined && auth.isUser()) {
+      if (r.data.userFavorite !== undefined && auth.user()) {
         const updateRes = await setAgentUserFavorite({
           auth,
           agentId: sId,
