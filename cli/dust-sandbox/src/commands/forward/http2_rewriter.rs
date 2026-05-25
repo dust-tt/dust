@@ -3,7 +3,7 @@ use std::future::{poll_fn, Future};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, Mutex, Weak};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
@@ -109,6 +109,7 @@ const H2_UPSTREAM_POOL_SWEEP_INTERVAL: Duration = Duration::from_secs(60);
 // this cap; bumping it should be paired with a look at `reserve_h2_connection`,
 // which is O(n) in the per-key vector length.
 const H2_UPSTREAM_MAX_CONNECTIONS_PER_KEY: usize = 8;
+const H2_REQUEST_DENY_POLL_TIMEOUT_MS: u64 = 50;
 
 #[derive(Clone)]
 pub(super) struct H2UpstreamPool {
@@ -582,6 +583,32 @@ struct H2H1ForwardRequest {
     use_chunked: bool,
 }
 
+type H2RequestDenySlot = Arc<Mutex<Option<H2RequestDeny>>>;
+
+fn store_h2_request_body_deny(slot: &H2RequestDenySlot, deny: H2RequestDeny) {
+    let mut slot = slot.lock().expect("h2 request deny slot poisoned");
+    *slot = Some(deny);
+}
+
+fn take_h2_request_body_deny(slot: &H2RequestDenySlot) -> Option<H2RequestDeny> {
+    let mut slot = slot.lock().expect("h2 request deny slot poisoned");
+    slot.take()
+}
+
+async fn handle_h2_request_body_deny(
+    policy: &H2PolicyContext<'_>,
+    respond: &mut SendResponse<Bytes>,
+    authority: &str,
+    deny: H2RequestDeny,
+) -> Result<()> {
+    let entry = deny_entry(policy.mode, deny.reason, None, Some(authority));
+    append_deny_log(&policy.deny_log, entry)
+        .await
+        .context("failed to append h2 request-body deny log entry")?;
+    respond.send_reset(deny.reset);
+    Ok(())
+}
+
 async fn handle_h2_stream(
     request: Request<RecvStream>,
     mut respond: SendResponse<Bytes>,
@@ -656,37 +683,48 @@ async fn handle_h2_stream(
             };
             handle_h2_to_h1_stream(request, H2PolicyContext { deny_log, mode }, open_upstream).await
         }
-        UpstreamBridge::Pooled { pool, key } => match pool.lease(&key).await {
-            Ok(UpstreamLease::Http1(upstream)) => {
-                let request = H2BridgeRequest {
-                    method,
-                    target,
-                    authority,
-                    headers: fold_request_cookies(policy.headers),
-                    body,
-                    respond,
-                };
-                handle_h2_to_h1_upstream(request, H2PolicyContext { deny_log, mode }, upstream)
+        UpstreamBridge::Pooled { pool, key } => {
+            if let Err(deny) = validate_header_part_size(&policy.headers) {
+                let entry = deny_entry(mode, deny.reason, None, Some(&authority));
+                append_deny_log(&deny_log, entry)
                     .await
+                    .context("failed to append h2 request-header deny log entry")?;
+                respond.send_reset(deny.reset);
+                return Ok(());
             }
-            Ok(UpstreamLease::H2(lease)) => {
-                // Keep h2 cookie fields split; only the h1 fallback folds them
-                // before serializing onto an HTTP/1.1 request.
-                let request = H2BridgeRequest {
-                    method,
-                    target,
-                    authority,
-                    headers: policy.headers,
-                    body,
-                    respond,
-                };
-                handle_h2_to_h2_stream(request, H2PolicyContext { deny_log, mode }, lease).await
+
+            match pool.lease(&key).await {
+                Ok(UpstreamLease::Http1(upstream)) => {
+                    let request = H2BridgeRequest {
+                        method,
+                        target,
+                        authority,
+                        headers: fold_request_cookies(policy.headers),
+                        body,
+                        respond,
+                    };
+                    handle_h2_to_h1_upstream(request, H2PolicyContext { deny_log, mode }, upstream)
+                        .await
+                }
+                Ok(UpstreamLease::H2(lease)) => {
+                    // Keep h2 cookie fields split; only the h1 fallback folds them
+                    // before serializing onto an HTTP/1.1 request.
+                    let request = H2BridgeRequest {
+                        method,
+                        target,
+                        authority,
+                        headers: policy.headers,
+                        body,
+                        respond,
+                    };
+                    handle_h2_to_h2_stream(request, H2PolicyContext { deny_log, mode }, lease).await
+                }
+                Err(error) => {
+                    respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                    Err(error).with_context(|| format!("failed to open upstream for {authority}"))
+                }
             }
-            Err(error) => {
-                respond.send_reset(h2::Reason::INTERNAL_ERROR);
-                Err(error).with_context(|| format!("failed to open upstream for {authority}"))
-            }
-        },
+        }
     }
 }
 
@@ -845,15 +883,6 @@ async fn handle_h2_to_h2_stream(
     policy: H2PolicyContext<'_>,
     lease: H2ConnectionLease,
 ) -> Result<()> {
-    if let Err(deny) = validate_header_part_size(&request.headers) {
-        let entry = deny_entry(policy.mode, deny.reason, None, Some(&request.authority));
-        append_deny_log(&policy.deny_log, entry)
-            .await
-            .context("failed to append h2 upstream request-header deny log entry")?;
-        request.respond.send_reset(deny.reset);
-        return Ok(());
-    }
-
     let body_is_end_stream = request.body.is_end_stream();
     let outbound_request = match build_h2_upstream_request(
         &request.method,
@@ -895,7 +924,12 @@ async fn handle_h2_to_h2_stream(
         return Ok(());
     }
 
-    let mut request_task = tokio::spawn(forward_h2_request_body(request.body, send_stream));
+    let request_body_deny = Arc::new(Mutex::new(None));
+    let mut request_task = tokio::spawn(forward_h2_request_body(
+        request.body,
+        send_stream,
+        Arc::clone(&request_body_deny),
+    ));
     let mut response_task = Box::pin(forward_h2_response_to_h2(
         response,
         &mut request.respond,
@@ -916,11 +950,13 @@ async fn handle_h2_to_h2_stream(
                 }
                 Err(ForwardH2RequestBodyError::Denied(deny)) => {
                     drop(response_task);
-                    let entry = deny_entry(policy.mode, deny.reason, None, Some(&request.authority));
-                    append_deny_log(&policy.deny_log, entry)
-                        .await
-                        .context("failed to append h2 request-body deny log entry")?;
-                    request.respond.send_reset(deny.reset);
+                    handle_h2_request_body_deny(
+                        &policy,
+                        &mut request.respond,
+                        &request.authority,
+                        deny,
+                    )
+                    .await?;
                     return Ok(());
                 }
                 Err(ForwardH2RequestBodyError::Bridge(error)) => {
@@ -938,23 +974,66 @@ async fn handle_h2_to_h2_stream(
         response_result = &mut response_task => {
             drop(response_task);
             if let Err(error) = response_result {
+                if let Some(deny) = take_h2_request_body_deny(&request_body_deny) {
+                    request_task.abort();
+                    handle_h2_request_body_deny(
+                        &policy,
+                        &mut request.respond,
+                        &request.authority,
+                        deny,
+                    )
+                    .await?;
+                    return Ok(());
+                }
+                match tokio::time::timeout(
+                    Duration::from_millis(H2_REQUEST_DENY_POLL_TIMEOUT_MS),
+                    &mut request_task,
+                )
+                .await
+                {
+                    Ok(request_result) => {
+                        match request_result.context("h2 request forward task panicked")? {
+                            Ok(ForwardH2RequestBodyResult::Complete) => {
+                                request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                                return Err(error);
+                            }
+                            Ok(ForwardH2RequestBodyResult::InboundReset)
+                            | Err(ForwardH2RequestBodyError::InboundReset) => return Ok(()),
+                            Err(ForwardH2RequestBodyError::Denied(deny)) => {
+                                handle_h2_request_body_deny(
+                                    &policy,
+                                    &mut request.respond,
+                                    &request.authority,
+                                    deny,
+                                )
+                                .await?;
+                                return Ok(());
+                            }
+                            Err(ForwardH2RequestBodyError::Bridge(request_error)) => {
+                                request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                                return Err(request_error);
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        if let Some(deny) = take_h2_request_body_deny(&request_body_deny) {
+                            request_task.abort();
+                            handle_h2_request_body_deny(
+                                &policy,
+                                &mut request.respond,
+                                &request.authority,
+                                deny,
+                            )
+                            .await?;
+                            return Ok(());
+                        }
+                    }
+                }
                 request_task.abort();
                 request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
                 return Err(error);
             }
-            match request_task.await.context("h2 request forward task panicked")? {
-                Ok(ForwardH2RequestBodyResult::Complete | ForwardH2RequestBodyResult::InboundReset) => {}
-                Err(ForwardH2RequestBodyError::InboundReset) => {}
-                Err(ForwardH2RequestBodyError::Denied(deny)) => {
-                    let entry = deny_entry(policy.mode, deny.reason, None, Some(&request.authority));
-                    append_deny_log(&policy.deny_log, entry)
-                        .await
-                        .context("failed to append h2 request-body deny log entry")?;
-                    request.respond.send_reset(deny.reset);
-                    return Ok(());
-                }
-                Err(ForwardH2RequestBodyError::Bridge(error)) => return Err(error),
-            }
+            request_task.abort();
         }
     }
 
@@ -1019,6 +1098,7 @@ fn should_strip_h2_upstream_header(name: &str) -> bool {
 async fn forward_h2_request_body(
     mut inbound: RecvStream,
     mut outbound: SendStream<Bytes>,
+    denied: H2RequestDenySlot,
 ) -> std::result::Result<ForwardH2RequestBodyResult, ForwardH2RequestBodyError> {
     while let Some(chunk) = inbound.data().await {
         let chunk = match chunk {
@@ -1050,10 +1130,10 @@ async fn forward_h2_request_body(
     })?;
     if let Some(trailers) = trailers {
         if !trailers.is_empty() {
+            let deny = H2RequestDeny::internal(DenyReason::RequestTrailersUnsupported);
+            store_h2_request_body_deny(&denied, deny);
             outbound.send_reset(h2::Reason::INTERNAL_ERROR);
-            return Err(ForwardH2RequestBodyError::Denied(H2RequestDeny::internal(
-                DenyReason::RequestTrailersUnsupported,
-            )));
+            return Err(ForwardH2RequestBodyError::Denied(deny));
         }
         send_data(&mut outbound, Bytes::new(), true)
             .await
@@ -1114,9 +1194,10 @@ async fn forward_h2_response_to_h2(
     let status = final_response.status();
     let no_body = response_has_no_body(request_method, status);
     let (parts, mut upstream_body) = final_response.into_parts();
+    let response_is_end_stream = upstream_body.is_end_stream();
     let response = sanitize_h2_response_head(Response::from_parts(parts, ()))?;
 
-    if no_body {
+    if no_body || response_is_end_stream {
         respond
             .send_response(response, true)
             .context("failed to send downstream h2 response head")?;
@@ -2873,7 +2954,7 @@ mod tests {
             "rewritten header line over 16 KiB should reset"
         );
 
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"header_size_exceeded\""),
             "deny log should record header_size_exceeded, got: {deny_log_text}"
@@ -3449,6 +3530,68 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn h2_upstream_denies_rewritten_header_block_over_limit_before_lease() -> Result<()> {
+        let sni = "api.openai.com";
+        let placeholder = "__DSEC_71717171717171719a9a9a9a9a9a9a9a__";
+        let secret_value = "x".repeat(8 * 1024);
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            &secret_value,
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let pool = test_h2_upstream_pool(
+            Arc::clone(&handshake_count),
+            move |_request, mut respond| {
+                Box::pin(async move {
+                    let response = Response::builder().status(StatusCode::OK).body(())?;
+                    respond.send_response(response, true)?;
+                    Ok(())
+                })
+            },
+        );
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let bridge_task = tokio::spawn(run_h2_to_upstream_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            Arc::clone(&deny_log),
+            pool,
+            test_h2_upstream_key(sni),
+        ));
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+
+        let mut builder = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/headers"));
+        for index in 0..9 {
+            builder = builder.header(format!("x-secret-{index}"), placeholder);
+        }
+        let request = builder.body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        assert!(
+            response.await.is_err(),
+            "rewritten header block over 64 KiB should reset before upstream lease"
+        );
+
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        assert!(
+            deny_log_text.contains("\"reason\":\"header_size_exceeded\""),
+            "deny log should record header_size_exceeded, got: {deny_log_text}"
+        );
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 0);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn h2_upstream_saturation_opens_second_connection() -> Result<()> {
         let sni = "api.openai.com";
         let secret_table = Arc::new(secret_table_with_secret(
@@ -3636,6 +3779,98 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn h2_upstream_early_response_releases_lease_without_upload_end() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_c1c1c1c1c1c1c1c1d2d2d2d2d2d2d2d2__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let handler = test_h2_early_response_handler();
+        let pool = test_h2_upstream_pool(Arc::clone(&handshake_count), move |request, respond| {
+            handler(request, respond)
+        });
+        let key = test_h2_upstream_key(sni);
+        let pool_for_assertions = pool.clone();
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/early"))
+            .body(())?;
+        let (response, upload_stream) = send_request.send_request(request, false)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        drop(response);
+
+        wait_for_pool_active_streams(&pool_for_assertions, &key, 0).await?;
+
+        let second = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/after-early"))
+            .body(())?;
+        let (second_response, _stream) = send_request.send_request(second, true)?;
+        let second_response = second_response.await?;
+        assert_eq!(second_response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(second_response.into_body()).await?, b"");
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+
+        drop(upload_stream);
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_early_response_reuses_max_one_connection() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_e3e3e3e3e3e3e3e3f4f4f4f4f4f4f4f4__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let handler = test_h2_early_response_handler();
+        let pool = test_h2_upstream_pool_with_settings(
+            Arc::clone(&handshake_count),
+            move |request, respond| handler(request, respond),
+            Some(1),
+        );
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+
+        let first = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/first-early"))
+            .body(())?;
+        let (first_response, first_upload_stream) = send_request.send_request(first, false)?;
+        let first_response = first_response.await?;
+        assert_eq!(first_response.status(), StatusCode::OK);
+        drop(first_response);
+
+        let second = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/second"))
+            .body(())?;
+        let (second_response, _stream) = send_request.send_request(second, true)?;
+        let second_response = second_response.await?;
+        assert_eq!(second_response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(second_response.into_body()).await?, b"");
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+
+        drop(first_upload_stream);
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn h2_upstream_goaway_evicts_connection_after_inflight_completes() -> Result<()> {
         let sni = "api.openai.com";
         let secret_table = Arc::new(secret_table_with_secret(
@@ -3802,6 +4037,18 @@ mod tests {
 
     #[tokio::test]
     async fn h2_to_h2_request_trailers_reset_inbound_stream() -> Result<()> {
+        run_h2_to_h2_request_trailers_reset_inbound_stream().await
+    }
+
+    #[tokio::test]
+    async fn h2_to_h2_request_trailers_reset_inbound_stream_is_stable() -> Result<()> {
+        for _ in 0..50 {
+            run_h2_to_h2_request_trailers_reset_inbound_stream().await?;
+        }
+        Ok(())
+    }
+
+    async fn run_h2_to_h2_request_trailers_reset_inbound_stream() -> Result<()> {
         let sni = "api.openai.com";
         let secret_table = Arc::new(secret_table_with_secret(
             "OPENAI_API_KEY",
@@ -3870,7 +4117,7 @@ mod tests {
             Some(h2::Reason::INTERNAL_ERROR),
             "upstream stream should be reset after denied request trailers"
         );
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"request_trailers_unsupported\""),
             "deny log should record request_trailers_unsupported, got: {deny_log_text}"
@@ -4752,6 +4999,28 @@ mod tests {
             + Sync,
     >;
 
+    fn test_h2_early_response_handler() -> TestH2Handler {
+        Arc::new(move |mut request, mut respond| {
+            Box::pin(async move {
+                let response = Response::builder().status(StatusCode::OK).body(())?;
+                respond.send_response(response, true)?;
+                if let Some(result) = request.body_mut().data().await {
+                    match result {
+                        Ok(chunk) => {
+                            request
+                                .body_mut()
+                                .flow_control()
+                                .release_capacity(chunk.len())?;
+                        }
+                        Err(error) if error.is_reset() => {}
+                        Err(error) => return Err(error.into()),
+                    }
+                }
+                Ok(())
+            })
+        })
+    }
+
     fn test_h2_upstream_pool<F>(handshake_count: Arc<AtomicUsize>, handler: F) -> H2UpstreamPool
     where
         F: Fn(
@@ -4976,9 +5245,12 @@ mod tests {
     }
 
     async fn read_test_file_eventually(path: &std::path::Path) -> Result<String> {
-        for _ in 0..20 {
+        for _ in 0..50 {
             match tokio::fs::read_to_string(path).await {
-                Ok(text) => return Ok(text),
+                Ok(text) if !text.is_empty() => return Ok(text),
+                Ok(_) => {
+                    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                }
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
                 }
@@ -5052,6 +5324,46 @@ mod tests {
             })
         });
         H2UpstreamPool::new(opener)
+    }
+
+    fn test_h2_upstream_key(sni: &str) -> H2UpstreamKey {
+        H2UpstreamKey::new(
+            sni.to_string(),
+            std::net::SocketAddr::from(([127, 0, 0, 1], 443)),
+        )
+    }
+
+    async fn wait_for_pool_active_streams(
+        pool: &H2UpstreamPool,
+        key: &H2UpstreamKey,
+        expected: usize,
+    ) -> Result<()> {
+        for _ in 0..16 {
+            let active_streams = pool_active_streams(pool, key).await;
+            if active_streams == expected {
+                return Ok(());
+            }
+            tokio::task::yield_now().await;
+        }
+
+        let active_streams = pool_active_streams(pool, key).await;
+        Err(anyhow!(
+            "expected {expected} active h2 streams for {}, got {active_streams}",
+            key.authority()
+        ))
+    }
+
+    async fn pool_active_streams(pool: &H2UpstreamPool, key: &H2UpstreamKey) -> usize {
+        let entries = pool.inner.entries.lock().await;
+        entries
+            .get(key)
+            .map(|connections| {
+                connections
+                    .iter()
+                    .map(|connection| connection.active_streams.load(Ordering::SeqCst))
+                    .sum()
+            })
+            .unwrap_or(0)
     }
 
     async fn start_test_h2_upstream_bridge(
