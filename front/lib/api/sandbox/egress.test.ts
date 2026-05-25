@@ -312,6 +312,26 @@ describe("sandbox egress helpers", () => {
     );
   });
 
+  it("resets the deny log offset when the log shrinks", async () => {
+    const sandbox = {
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await readNewDenyLogEntries(auth, sandbox as never);
+
+    expect(result.isOk()).toBe(true);
+    const command = sandbox.exec.mock.calls[0][1];
+    expect(command).toContain("set -- $_state;");
+    expect(command).toContain(
+      `if [ "$_total" -lt "$_off" ] || [ "$_size" -lt "$_size_off" ]; then _off=0; fi;`
+    );
+    expect(command).toContain(
+      `echo "$_total $_size" > '/tmp/.dust-egress-deny-offset'`
+    );
+  });
+
   it("returns empty array when there are no new deny log entries", async () => {
     const sandbox = {
       exec: vi
