@@ -1,13 +1,17 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::future::{poll_fn, Future};
+use std::net::SocketAddr;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex, Weak};
+use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use bytes::Bytes;
+use h2::client::{ResponseFuture, SendRequest};
 use h2::server::SendResponse;
 use h2::{RecvStream, SendStream};
-use http::header::{CONTENT_LENGTH, COOKIE, EXPECT, HOST, TRANSFER_ENCODING};
+use http::header::{CONTENT_LENGTH, COOKIE, HOST, TE, TRANSFER_ENCODING};
 use http::{HeaderMap, HeaderName, HeaderValue, Request, Response, StatusCode};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tracing::warn;
@@ -24,6 +28,11 @@ const READ_CHUNK_BYTES: usize = 8 * 1024;
 const MAX_HEADER_BLOCK_BYTES: usize = 64 * 1024;
 const MAX_HEADER_LINE_BYTES: usize = 16 * 1024;
 const MAX_TRAILER_BLOCK_BYTES: usize = 64 * 1024;
+// 1 MiB initial window for h2 streams on both sides. The h2 spec default
+// (64 KiB - 1) throttles single uploads to one round-trip per window; 1 MiB
+// keeps large request/response bodies flowing without explicit WINDOW_UPDATEs
+// dominating wall-clock latency.
+const H2_INITIAL_WINDOW_SIZE: u32 = 1_048_576;
 // Safety cap for one declared h1 chunk. Forwarding still streams chunks in
 // READ_CHUNK_BYTES pieces, so this only bounds the largest single chunk an
 // upstream is allowed to declare in its framing. 64 MiB is well above any
@@ -41,9 +50,147 @@ pub(super) type BoxedAsyncReadWrite = Box<dyn AsyncReadWrite>;
 // so opening upstream means opening the SNI's upstream. The opener captures
 // the SNI itself; passing it back in would be redundant and would invite a
 // future relaxation of the policy gate to silently bypass the SNI binding.
+#[cfg(test)]
 pub(super) type OpenH1Upstream = Arc<
     dyn Fn() -> Pin<Box<dyn Future<Output = Result<BoxedAsyncReadWrite>> + Send>> + Send + Sync,
 >;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum UpstreamProtocol {
+    H2,
+    Http1,
+}
+
+pub(super) struct OpenedUpstream {
+    protocol: UpstreamProtocol,
+    io: BoxedAsyncReadWrite,
+}
+
+impl OpenedUpstream {
+    pub(super) fn new(protocol: UpstreamProtocol, io: BoxedAsyncReadWrite) -> Self {
+        Self { protocol, io }
+    }
+}
+
+pub(super) type OpenUpstream = Arc<
+    dyn Fn(H2UpstreamKey) -> Pin<Box<dyn Future<Output = Result<OpenedUpstream>> + Send>>
+        + Send
+        + Sync,
+>;
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(super) struct H2UpstreamKey {
+    authority: String,
+    upstream_socket_addr: SocketAddr,
+}
+
+impl H2UpstreamKey {
+    pub(super) fn new(authority: String, upstream_socket_addr: SocketAddr) -> Self {
+        Self {
+            authority,
+            upstream_socket_addr,
+        }
+    }
+
+    pub(super) fn authority(&self) -> &str {
+        &self.authority
+    }
+}
+
+// Evict an idle pooled h2 connection after 5 minutes. Long enough that a
+// single agent making sporadic requests reuses the same upstream; short enough
+// that an inactive sandbox does not hold sockets indefinitely.
+const H2_UPSTREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(5 * 60);
+// Sweep less often than per-request pruning to keep the idle invariant true
+// without waking an inactive sandbox too frequently.
+const H2_UPSTREAM_POOL_SWEEP_INTERVAL: Duration = Duration::from_secs(60);
+// Cap pooled h2 connections per upstream at 8. Saturation (upstream advertising
+// a low SETTINGS_MAX_CONCURRENT_STREAMS) opens additional connections up to
+// this cap; bumping it should be paired with a look at `reserve_h2_connection`,
+// which is O(n) in the per-key vector length.
+const H2_UPSTREAM_MAX_CONNECTIONS_PER_KEY: usize = 8;
+const H2_REQUEST_DENY_POLL_TIMEOUT_MS: u64 = 50;
+
+#[derive(Clone)]
+pub(super) struct H2UpstreamPool {
+    inner: Arc<H2UpstreamPoolInner>,
+}
+
+struct H2UpstreamPoolInner {
+    open_upstream: OpenUpstream,
+    entries: tokio::sync::Mutex<HashMap<H2UpstreamKey, Vec<Arc<PooledH2Connection>>>>,
+    sweeper_shutdown: Arc<tokio::sync::Notify>,
+}
+
+struct PooledH2Connection {
+    send_request: SendRequest<Bytes>,
+    active_streams: AtomicUsize,
+    draining: AtomicBool,
+    closed: AtomicBool,
+    started_at: tokio::time::Instant,
+    last_used_ms: AtomicU64,
+}
+
+pub(super) enum UpstreamLease {
+    H2(H2ConnectionLease),
+    Http1(BoxedAsyncReadWrite),
+}
+
+pub(super) struct H2ConnectionLease {
+    connection: Arc<PooledH2Connection>,
+    send_request: Option<SendRequest<Bytes>>,
+}
+
+impl Drop for H2ConnectionLease {
+    fn drop(&mut self) {
+        self.connection
+            .active_streams
+            .fetch_sub(1, Ordering::SeqCst);
+        self.connection
+            .last_used_ms
+            .store(connection_now_millis(&self.connection), Ordering::SeqCst);
+    }
+}
+
+impl H2ConnectionLease {
+    async fn ready(mut self) -> std::result::Result<Self, h2::Error> {
+        let send_request = self
+            .send_request
+            .take()
+            .expect("pooled h2 lease missing send request")
+            .ready()
+            .await;
+        match send_request {
+            Ok(send_request) => {
+                self.send_request = Some(send_request);
+                Ok(self)
+            }
+            Err(error) => {
+                self.mark_draining();
+                Err(error)
+            }
+        }
+    }
+
+    fn send_request(&self) -> SendRequest<Bytes> {
+        self.send_request
+            .as_ref()
+            .expect("pooled h2 lease missing send request")
+            .clone()
+    }
+
+    // Draining means "do not hand this connection out for new leases", but
+    // already-leased streams may still complete. Closed is stronger: the
+    // underlying h2 session has gone away and the connection driver task has
+    // resolved; the pool entry is eligible for eviction on the next prune.
+    fn mark_draining(&self) {
+        self.connection.draining.store(true, Ordering::SeqCst);
+    }
+
+    fn mark_closed(&self) {
+        mark_h2_connection_closed(&self.connection);
+    }
+}
 
 #[derive(Clone, Copy)]
 struct H2RequestDeny {
@@ -60,6 +207,248 @@ impl H2RequestDeny {
     }
 }
 
+impl H2UpstreamPool {
+    pub(super) fn new(open_upstream: OpenUpstream) -> Self {
+        let inner = Arc::new(H2UpstreamPoolInner {
+            open_upstream,
+            entries: tokio::sync::Mutex::new(HashMap::new()),
+            sweeper_shutdown: Arc::new(tokio::sync::Notify::new()),
+        });
+        spawn_h2_pool_sweeper(&inner);
+        Self { inner }
+    }
+
+    pub(super) async fn lease(&self, key: &H2UpstreamKey) -> Result<UpstreamLease> {
+        loop {
+            if let Some(lease) = self.try_reserve_existing_h2(key).await {
+                match lease.ready().await {
+                    Ok(lease) => return Ok(UpstreamLease::H2(lease)),
+                    Err(error) => {
+                        warn!(error = %error, "pooled h2 upstream connection drained before request");
+                        continue;
+                    }
+                }
+            }
+
+            match self.open_or_reserve_new(key).await? {
+                LeaseCandidate::Http1(io) => return Ok(UpstreamLease::Http1(io)),
+                LeaseCandidate::H2 { lease, is_new } => match lease.ready().await {
+                    Ok(lease) => return Ok(UpstreamLease::H2(lease)),
+                    Err(error) if !is_new => {
+                        warn!(error = %error, "pooled h2 upstream connection drained before request");
+                        continue;
+                    }
+                    Err(error) => {
+                        return Err(error).context("new outbound h2 connection is not ready");
+                    }
+                },
+            }
+        }
+    }
+
+    async fn try_reserve_existing_h2(&self, key: &H2UpstreamKey) -> Option<H2ConnectionLease> {
+        let mut entries = self.inner.entries.lock().await;
+        prune_idle_pool_entries(&mut entries);
+        reserve_h2_connection(entries.get_mut(key)?)
+    }
+
+    // Holds the entries mutex across the upstream open so concurrent
+    // first-leases for the same key share one handshake. Side effect: opens
+    // for distinct keys also serialize through this mutex. Acceptable because
+    // per-sandbox upstream fan-out is small; revisit if dsbx ever serves
+    // many independent destinations concurrently.
+    async fn open_or_reserve_new(&self, key: &H2UpstreamKey) -> Result<LeaseCandidate> {
+        let mut entries = self.inner.entries.lock().await;
+        prune_idle_pool_entries(&mut entries);
+        if let Some(connections) = entries.get_mut(key) {
+            if let Some(lease) = reserve_h2_connection(connections) {
+                return Ok(LeaseCandidate::H2 {
+                    lease,
+                    is_new: false,
+                });
+            }
+        }
+
+        let opened = (self.inner.open_upstream)(key.clone())
+            .await
+            .context("failed to open pooled upstream")?;
+        match opened.protocol {
+            UpstreamProtocol::Http1 => Ok(LeaseCandidate::Http1(opened.io)),
+            UpstreamProtocol::H2 => {
+                let lease = insert_h2_connection_locked(&mut entries, key, opened.io)
+                    .await
+                    .context("failed to insert pooled h2 upstream")?;
+                Ok(LeaseCandidate::H2 {
+                    lease,
+                    is_new: true,
+                })
+            }
+        }
+    }
+}
+
+impl Drop for H2UpstreamPoolInner {
+    fn drop(&mut self) {
+        self.sweeper_shutdown.notify_one();
+    }
+}
+
+fn spawn_h2_pool_sweeper(inner: &Arc<H2UpstreamPoolInner>) {
+    let shutdown = Arc::clone(&inner.sweeper_shutdown);
+    let inner = Arc::downgrade(inner);
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                () = tokio::time::sleep(H2_UPSTREAM_POOL_SWEEP_INTERVAL) => {}
+                () = shutdown.notified() => return,
+            }
+
+            let Some(inner) = inner.upgrade() else {
+                return;
+            };
+            let mut entries = inner.entries.lock().await;
+            prune_idle_pool_entries(&mut entries);
+        }
+    });
+}
+
+enum LeaseCandidate {
+    H2 {
+        lease: H2ConnectionLease,
+        is_new: bool,
+    },
+    Http1(BoxedAsyncReadWrite),
+}
+
+async fn insert_h2_connection_locked(
+    entries: &mut HashMap<H2UpstreamKey, Vec<Arc<PooledH2Connection>>>,
+    key: &H2UpstreamKey,
+    io: BoxedAsyncReadWrite,
+) -> Result<H2ConnectionLease> {
+    let mut builder = h2::client::Builder::new();
+    builder
+        .max_header_list_size(MAX_HEADER_BLOCK_BYTES as u32)
+        .initial_window_size(H2_INITIAL_WINDOW_SIZE)
+        .enable_push(false);
+    let (send_request, connection) = builder
+        .handshake::<_, Bytes>(io)
+        .await
+        .context("failed to establish outbound h2 session")?;
+    let pooled = Arc::new(PooledH2Connection {
+        send_request,
+        // Starts at 1: the caller of `lease()` that triggered this open already
+        // holds the implicit reservation that the returned lease represents.
+        active_streams: AtomicUsize::new(1),
+        draining: AtomicBool::new(false),
+        closed: AtomicBool::new(false),
+        started_at: tokio::time::Instant::now(),
+        last_used_ms: AtomicU64::new(0),
+    });
+    let connection_for_task = Arc::downgrade(&pooled);
+    tokio::spawn(async move {
+        if let Err(error) = connection.await {
+            warn!(error = %error, "outbound h2 upstream connection closed with error");
+        }
+        mark_h2_connection_closed_if_live(&connection_for_task);
+    });
+
+    entries
+        .entry(key.clone())
+        .or_default()
+        .push(Arc::clone(&pooled));
+    let send_request = pooled.send_request.clone();
+
+    Ok(H2ConnectionLease {
+        connection: pooled,
+        send_request: Some(send_request),
+    })
+}
+
+fn mark_h2_connection_closed(connection: &PooledH2Connection) {
+    connection.draining.store(true, Ordering::SeqCst);
+    connection.closed.store(true, Ordering::SeqCst);
+}
+
+fn mark_h2_connection_closed_if_live(connection: &Weak<PooledH2Connection>) {
+    if let Some(connection) = connection.upgrade() {
+        mark_h2_connection_closed(&connection);
+    }
+}
+
+fn reserve_h2_connection(
+    connections: &mut Vec<Arc<PooledH2Connection>>,
+) -> Option<H2ConnectionLease> {
+    connections.retain(|connection| is_h2_connection_live(connection));
+    let connection = if let Some(connection) = select_available_h2_connection(connections) {
+        connection
+    } else if connections.len() < H2_UPSTREAM_MAX_CONNECTIONS_PER_KEY {
+        return None;
+    } else {
+        select_least_busy_h2_connection(connections)?
+    };
+    connection.active_streams.fetch_add(1, Ordering::SeqCst);
+    let send_request = connection.send_request.clone();
+    Some(H2ConnectionLease {
+        connection,
+        send_request: Some(send_request),
+    })
+}
+
+fn is_h2_connection_live(connection: &PooledH2Connection) -> bool {
+    !connection.closed.load(Ordering::SeqCst) && !connection.draining.load(Ordering::SeqCst)
+}
+
+fn idle_timeout_millis() -> u64 {
+    H2_UPSTREAM_IDLE_TIMEOUT.as_millis() as u64
+}
+
+// Connection uptime in milliseconds. u64::MAX ms is ~584 million years, so the
+// cast from u128 cannot overflow for any realistic dsbx lifetime.
+fn connection_now_millis(connection: &PooledH2Connection) -> u64 {
+    connection.started_at.elapsed().as_millis() as u64
+}
+
+fn connection_is_idle_expired(connection: &PooledH2Connection) -> bool {
+    if connection.active_streams.load(Ordering::SeqCst) != 0 {
+        return false;
+    }
+
+    let now_ms = connection_now_millis(connection);
+    now_ms.saturating_sub(connection.last_used_ms.load(Ordering::SeqCst)) >= idle_timeout_millis()
+}
+
+fn prune_idle_pool_entries(entries: &mut HashMap<H2UpstreamKey, Vec<Arc<PooledH2Connection>>>) {
+    entries.retain(|_, connections| {
+        connections.retain(|connection| {
+            is_h2_connection_live(connection) && !connection_is_idle_expired(connection)
+        });
+        !connections.is_empty()
+    });
+}
+
+fn select_available_h2_connection(
+    connections: &[Arc<PooledH2Connection>],
+) -> Option<Arc<PooledH2Connection>> {
+    connections
+        .iter()
+        .filter(|connection| is_h2_connection_live(connection))
+        .find(|connection| {
+            let active = connection.active_streams.load(Ordering::SeqCst);
+            active < connection.send_request.current_max_send_streams()
+        })
+        .cloned()
+}
+
+fn select_least_busy_h2_connection(
+    connections: &[Arc<PooledH2Connection>],
+) -> Option<Arc<PooledH2Connection>> {
+    connections
+        .iter()
+        .filter(|connection| is_h2_connection_live(connection))
+        .min_by_key(|connection| connection.active_streams.load(Ordering::SeqCst))
+        .cloned()
+}
+
 enum WriteH1RequestError {
     Denied(H2RequestDeny),
     Bridge(anyhow::Error),
@@ -67,6 +456,17 @@ enum WriteH1RequestError {
 
 type WriteH1RequestResult<T> = std::result::Result<T, WriteH1RequestError>;
 
+#[derive(Clone)]
+enum UpstreamBridge {
+    #[cfg(test)]
+    H1 { open_upstream: OpenH1Upstream },
+    Pooled {
+        pool: H2UpstreamPool,
+        key: H2UpstreamKey,
+    },
+}
+
+#[cfg(test)]
 pub(super) async fn run_h2_to_h1_bridge<C>(
     agent_tls: C,
     sni: String,
@@ -77,9 +477,51 @@ pub(super) async fn run_h2_to_h1_bridge<C>(
 where
     C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
+    run_h2_bridge(
+        agent_tls,
+        sni,
+        secret_table,
+        deny_log,
+        UpstreamBridge::H1 { open_upstream },
+    )
+    .await
+}
+
+pub(super) async fn run_h2_to_upstream_bridge<C>(
+    agent_tls: C,
+    sni: String,
+    secret_table: Arc<SecretTable>,
+    deny_log: Arc<std::path::PathBuf>,
+    pool: H2UpstreamPool,
+    key: H2UpstreamKey,
+) -> Result<()>
+where
+    C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    run_h2_bridge(
+        agent_tls,
+        sni,
+        secret_table,
+        deny_log,
+        UpstreamBridge::Pooled { pool, key },
+    )
+    .await
+}
+
+async fn run_h2_bridge<C>(
+    agent_tls: C,
+    sni: String,
+    secret_table: Arc<SecretTable>,
+    deny_log: Arc<std::path::PathBuf>,
+    upstream_bridge: UpstreamBridge,
+) -> Result<()>
+where
+    C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
     let mut builder = h2::server::Builder::new();
     builder
         .max_concurrent_streams(H2_MAX_CONCURRENT_STREAMS)
+        .initial_window_size(H2_INITIAL_WINDOW_SIZE)
         // Keep inbound h2 request headers under the same bound as the h1
         // rewriter before HPACK decoding can buffer a much larger block.
         .max_header_list_size(MAX_HEADER_BLOCK_BYTES as u32);
@@ -98,10 +540,17 @@ where
         let sni = sni.clone();
         let secret_table = Arc::clone(&secret_table);
         let deny_log = Arc::clone(&deny_log);
-        let open_upstream = Arc::clone(&open_upstream);
+        let upstream_bridge = upstream_bridge.clone();
         tokio::spawn(async move {
-            if let Err(error) =
-                handle_h2_stream(request, respond, sni, secret_table, deny_log, open_upstream).await
+            if let Err(error) = handle_h2_stream(
+                request,
+                respond,
+                sni,
+                secret_table,
+                deny_log,
+                upstream_bridge,
+            )
+            .await
             {
                 warn!(error = %error, "h2 stream bridge failed");
             }
@@ -111,13 +560,62 @@ where
     Ok(())
 }
 
+struct H2BridgeRequest {
+    method: String,
+    target: String,
+    authority: String,
+    headers: Vec<HeaderPart>,
+    body: RecvStream,
+    respond: SendResponse<Bytes>,
+}
+
+struct H2PolicyContext<'a> {
+    deny_log: Arc<std::path::PathBuf>,
+    mode: RewriteMode<'a>,
+}
+
+struct H2H1ForwardRequest {
+    method: String,
+    authority: String,
+    body: RecvStream,
+    respond: SendResponse<Bytes>,
+    header_bytes: Vec<u8>,
+    use_chunked: bool,
+}
+
+type H2RequestDenySlot = Arc<Mutex<Option<H2RequestDeny>>>;
+
+fn store_h2_request_body_deny(slot: &H2RequestDenySlot, deny: H2RequestDeny) {
+    let mut slot = slot.lock().expect("h2 request deny slot poisoned");
+    *slot = Some(deny);
+}
+
+fn take_h2_request_body_deny(slot: &H2RequestDenySlot) -> Option<H2RequestDeny> {
+    let mut slot = slot.lock().expect("h2 request deny slot poisoned");
+    slot.take()
+}
+
+async fn handle_h2_request_body_deny(
+    policy: &H2PolicyContext<'_>,
+    respond: &mut SendResponse<Bytes>,
+    authority: &str,
+    deny: H2RequestDeny,
+) -> Result<()> {
+    let entry = deny_entry(policy.mode, deny.reason, None, Some(authority));
+    append_deny_log(&policy.deny_log, entry)
+        .await
+        .context("failed to append h2 request-body deny log entry")?;
+    respond.send_reset(deny.reset);
+    Ok(())
+}
+
 async fn handle_h2_stream(
     request: Request<RecvStream>,
     mut respond: SendResponse<Bytes>,
     sni: String,
     secret_table: Arc<SecretTable>,
     deny_log: Arc<std::path::PathBuf>,
-    open_upstream: OpenH1Upstream,
+    upstream_bridge: UpstreamBridge,
 ) -> Result<()> {
     let (parts, body) = request.into_parts();
     let method = parts.method.to_string();
@@ -172,27 +670,21 @@ async fn handle_h2_stream(
             return Ok(());
         }
     };
-    let headers = fold_request_cookies(policy.headers);
-
-    if has_expect_100_continue(&headers) {
-        let entry = deny_entry(
-            mode,
-            DenyReason::ExpectContinueUnsupported,
-            None,
-            Some(&authority),
-        );
-        append_deny_log(&deny_log, entry)
-            .await
-            .context("failed to append h2 expect-continue deny log entry")?;
-        send_expectation_failed(&mut respond).context("failed to send h2 417 response")?;
-        discard_h2_request_body(body);
-        return Ok(());
-    }
-
-    let (header_bytes, use_chunked) =
-        match build_h1_request_head(&method, &target, &authority, &headers, body.is_end_stream()) {
-            Ok(result) => result,
-            Err(deny) => {
+    match upstream_bridge {
+        #[cfg(test)]
+        UpstreamBridge::H1 { open_upstream } => {
+            let request = H2BridgeRequest {
+                method,
+                target,
+                authority,
+                headers: fold_request_cookies(policy.headers),
+                body,
+                respond,
+            };
+            handle_h2_to_h1_stream(request, H2PolicyContext { deny_log, mode }, open_upstream).await
+        }
+        UpstreamBridge::Pooled { pool, key } => {
+            if let Err(deny) = validate_header_part_size(&policy.headers) {
                 let entry = deny_entry(mode, deny.reason, None, Some(&authority));
                 append_deny_log(&deny_log, entry)
                     .await
@@ -200,40 +692,580 @@ async fn handle_h2_stream(
                 respond.send_reset(deny.reset);
                 return Ok(());
             }
-        };
 
-    let mut upstream = match open_upstream().await {
-        Ok(upstream) => upstream,
-        Err(error) => {
-            respond.send_reset(h2::Reason::INTERNAL_ERROR);
-            return Err(error)
-                .with_context(|| format!("failed to open h1 upstream for {authority}"));
+            match pool.lease(&key).await {
+                Ok(UpstreamLease::Http1(upstream)) => {
+                    let request = H2BridgeRequest {
+                        method,
+                        target,
+                        authority,
+                        headers: fold_request_cookies(policy.headers),
+                        body,
+                        respond,
+                    };
+                    handle_h2_to_h1_upstream(request, H2PolicyContext { deny_log, mode }, upstream)
+                        .await
+                }
+                Ok(UpstreamLease::H2(lease)) => {
+                    // Keep h2 cookie fields split; only the h1 fallback folds them
+                    // before serializing onto an HTTP/1.1 request.
+                    let request = H2BridgeRequest {
+                        method,
+                        target,
+                        authority,
+                        headers: policy.headers,
+                        body,
+                        respond,
+                    };
+                    handle_h2_to_h2_stream(request, H2PolicyContext { deny_log, mode }, lease).await
+                }
+                Err(error) => {
+                    respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                    Err(error).with_context(|| format!("failed to open upstream for {authority}"))
+                }
+            }
         }
-    };
-    match write_h1_request(&mut upstream, header_bytes, use_chunked, body).await {
-        Ok(()) => {}
-        Err(WriteH1RequestError::Denied(deny)) => {
-            let entry = deny_entry(mode, deny.reason, None, Some(&authority));
-            append_deny_log(&deny_log, entry)
+    }
+}
+
+#[cfg(test)]
+async fn handle_h2_to_h1_stream(
+    mut request: H2BridgeRequest,
+    policy: H2PolicyContext<'_>,
+    open_upstream: OpenH1Upstream,
+) -> Result<()> {
+    let (header_bytes, use_chunked) = match build_h1_request_head(
+        &request.method,
+        &request.target,
+        &request.authority,
+        &request.headers,
+        request.body.is_end_stream(),
+    ) {
+        Ok(result) => result,
+        Err(deny) => {
+            let entry = deny_entry(policy.mode, deny.reason, None, Some(&request.authority));
+            append_deny_log(&policy.deny_log, entry)
                 .await
-                .context("failed to append h2 request-body deny log entry")?;
-            respond.send_reset(deny.reset);
-            let _ = upstream.shutdown().await;
+                .context("failed to append h2 request-header deny log entry")?;
+            request.respond.send_reset(deny.reset);
             return Ok(());
         }
-        Err(WriteH1RequestError::Bridge(error)) => {
-            respond.send_reset(h2::Reason::INTERNAL_ERROR);
-            let _ = upstream.shutdown().await;
-            return Err(error);
+    };
+    let upstream = match open_upstream().await {
+        Ok(upstream) => upstream,
+        Err(error) => {
+            request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+            return Err(error)
+                .with_context(|| format!("failed to open h1 upstream for {}", request.authority));
+        }
+    };
+    forward_h2_to_h1_upstream(
+        H2H1ForwardRequest {
+            method: request.method,
+            authority: request.authority,
+            body: request.body,
+            respond: request.respond,
+            header_bytes,
+            use_chunked,
+        },
+        policy,
+        upstream,
+    )
+    .await
+}
+
+async fn handle_h2_to_h1_upstream(
+    mut request: H2BridgeRequest,
+    policy: H2PolicyContext<'_>,
+    upstream: BoxedAsyncReadWrite,
+) -> Result<()> {
+    let (header_bytes, use_chunked) = match build_h1_request_head(
+        &request.method,
+        &request.target,
+        &request.authority,
+        &request.headers,
+        request.body.is_end_stream(),
+    ) {
+        Ok(result) => result,
+        Err(deny) => {
+            let entry = deny_entry(policy.mode, deny.reason, None, Some(&request.authority));
+            append_deny_log(&policy.deny_log, entry)
+                .await
+                .context("failed to append h2 request-header deny log entry")?;
+            request.respond.send_reset(deny.reset);
+            return Ok(());
+        }
+    };
+    forward_h2_to_h1_upstream(
+        H2H1ForwardRequest {
+            method: request.method,
+            authority: request.authority,
+            body: request.body,
+            respond: request.respond,
+            header_bytes,
+            use_chunked,
+        },
+        policy,
+        upstream,
+    )
+    .await
+}
+
+async fn forward_h2_to_h1_upstream(
+    mut request: H2H1ForwardRequest,
+    policy: H2PolicyContext<'_>,
+    upstream: BoxedAsyncReadWrite,
+) -> Result<()> {
+    let (mut upstream_read, upstream_write) = tokio::io::split(upstream);
+    let mut request_task = tokio::spawn(write_h1_request(
+        upstream_write,
+        request.header_bytes,
+        request.use_chunked,
+        request.body,
+    ));
+    let mut response_task = Box::pin(forward_h1_response_to_h2(
+        &mut upstream_read,
+        &mut request.respond,
+        &request.method,
+    ));
+
+    tokio::select! {
+        request_result = &mut request_task => {
+            match request_result.context("h1 request writer task panicked")? {
+                Ok(()) => {}
+                Err(WriteH1RequestError::Denied(deny)) => {
+                    drop(response_task);
+                    let entry = deny_entry(policy.mode, deny.reason, None, Some(&request.authority));
+                    append_deny_log(&policy.deny_log, entry)
+                        .await
+                        .context("failed to append h2 request-body deny log entry")?;
+                    request.respond.send_reset(deny.reset);
+                    return Ok(());
+                }
+                Err(WriteH1RequestError::Bridge(error)) => {
+                    drop(response_task);
+                    request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                    return Err(error);
+                }
+            }
+
+            if let Err(error) = response_task.await {
+                request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                return Err(error);
+            }
+        }
+        response_result = &mut response_task => {
+            drop(response_task);
+            if let Err(error) = response_result {
+                request_task.abort();
+                request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                return Err(error);
+            }
         }
     }
-    if let Err(error) = forward_h1_response_to_h2(&mut upstream, &mut respond, &method).await {
-        respond.send_reset(h2::Reason::INTERNAL_ERROR);
-        return Err(error);
-    }
-    let _ = upstream.shutdown().await;
 
     Ok(())
+}
+
+enum ForwardH2RequestBodyResult {
+    Complete,
+    InboundReset,
+}
+
+enum ForwardH2RequestBodyError {
+    InboundReset,
+    Denied(H2RequestDeny),
+    Bridge(anyhow::Error),
+}
+
+async fn handle_h2_to_h2_stream(
+    mut request: H2BridgeRequest,
+    policy: H2PolicyContext<'_>,
+    lease: H2ConnectionLease,
+) -> Result<()> {
+    let body_is_end_stream = request.body.is_end_stream();
+    let outbound_request = match build_h2_upstream_request(
+        &request.method,
+        &request.target,
+        &request.authority,
+        &request.headers,
+    ) {
+        Ok(request) => request,
+        Err(deny) => {
+            let entry = deny_entry(policy.mode, deny.reason, None, Some(&request.authority));
+            append_deny_log(&policy.deny_log, entry)
+                .await
+                .context("failed to append h2 upstream request deny log entry")?;
+            request.respond.send_reset(deny.reset);
+            return Ok(());
+        }
+    };
+
+    let mut send_request = lease.send_request();
+    let (response, send_stream) =
+        match send_request.send_request(outbound_request, body_is_end_stream) {
+            Ok(result) => result,
+            Err(error) => {
+                lease.mark_closed();
+                request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                return Err(error).context("failed to send outbound h2 request head");
+            }
+        };
+
+    if body_is_end_stream {
+        if let Err(error) =
+            forward_h2_response_to_h2(response, &mut request.respond, &request.method).await
+        {
+            request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+            return Err(error);
+        }
+        drop(send_stream);
+        drop(lease);
+        return Ok(());
+    }
+
+    let request_body_deny = Arc::new(Mutex::new(None));
+    let mut request_task = tokio::spawn(forward_h2_request_body(
+        request.body,
+        send_stream,
+        Arc::clone(&request_body_deny),
+    ));
+    let mut response_task = Box::pin(forward_h2_response_to_h2(
+        response,
+        &mut request.respond,
+        &request.method,
+    ));
+
+    tokio::select! {
+        request_result = &mut request_task => {
+            match request_result.context("h2 request forward task panicked")? {
+                Ok(ForwardH2RequestBodyResult::Complete) => {}
+                Ok(ForwardH2RequestBodyResult::InboundReset) => {
+                    drop(response_task);
+                    return Ok(());
+                }
+                Err(ForwardH2RequestBodyError::InboundReset) => {
+                    drop(response_task);
+                    return Ok(());
+                }
+                Err(ForwardH2RequestBodyError::Denied(deny)) => {
+                    drop(response_task);
+                    handle_h2_request_body_deny(
+                        &policy,
+                        &mut request.respond,
+                        &request.authority,
+                        deny,
+                    )
+                    .await?;
+                    return Ok(());
+                }
+                Err(ForwardH2RequestBodyError::Bridge(error)) => {
+                    drop(response_task);
+                    request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                    return Err(error);
+                }
+            }
+
+            if let Err(error) = response_task.await {
+                request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                return Err(error);
+            }
+        }
+        response_result = &mut response_task => {
+            drop(response_task);
+            if let Err(error) = response_result {
+                if let Some(deny) = take_h2_request_body_deny(&request_body_deny) {
+                    request_task.abort();
+                    handle_h2_request_body_deny(
+                        &policy,
+                        &mut request.respond,
+                        &request.authority,
+                        deny,
+                    )
+                    .await?;
+                    return Ok(());
+                }
+                match tokio::time::timeout(
+                    Duration::from_millis(H2_REQUEST_DENY_POLL_TIMEOUT_MS),
+                    &mut request_task,
+                )
+                .await
+                {
+                    Ok(request_result) => {
+                        match request_result.context("h2 request forward task panicked")? {
+                            Ok(ForwardH2RequestBodyResult::Complete) => {
+                                request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                                return Err(error);
+                            }
+                            Ok(ForwardH2RequestBodyResult::InboundReset)
+                            | Err(ForwardH2RequestBodyError::InboundReset) => return Ok(()),
+                            Err(ForwardH2RequestBodyError::Denied(deny)) => {
+                                handle_h2_request_body_deny(
+                                    &policy,
+                                    &mut request.respond,
+                                    &request.authority,
+                                    deny,
+                                )
+                                .await?;
+                                return Ok(());
+                            }
+                            Err(ForwardH2RequestBodyError::Bridge(request_error)) => {
+                                request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                                return Err(request_error);
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        if let Some(deny) = take_h2_request_body_deny(&request_body_deny) {
+                            request_task.abort();
+                            handle_h2_request_body_deny(
+                                &policy,
+                                &mut request.respond,
+                                &request.authority,
+                                deny,
+                            )
+                            .await?;
+                            return Ok(());
+                        }
+                    }
+                }
+                request_task.abort();
+                request.respond.send_reset(h2::Reason::INTERNAL_ERROR);
+                return Err(error);
+            }
+            request_task.abort();
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_header_part_size(headers: &[HeaderPart]) -> std::result::Result<(), H2RequestDeny> {
+    let mut total = 0;
+    for header in headers {
+        let line_len = header.name.len() + b": ".len() + header.value.len() + b"\r\n".len();
+        if line_len > MAX_HEADER_LINE_BYTES {
+            return Err(H2RequestDeny::internal(DenyReason::HeaderSizeExceeded));
+        }
+        total += line_len;
+        if total > MAX_HEADER_BLOCK_BYTES {
+            return Err(H2RequestDeny::internal(DenyReason::HeaderSizeExceeded));
+        }
+    }
+
+    Ok(())
+}
+
+fn build_h2_upstream_request(
+    method: &str,
+    target: &str,
+    authority: &str,
+    headers: &[HeaderPart],
+) -> std::result::Result<Request<()>, H2RequestDeny> {
+    let uri = format!("https://{authority}{target}");
+    let mut request = Request::builder()
+        .version(http::Version::HTTP_2)
+        .method(method)
+        .uri(uri);
+    for header in headers {
+        if should_strip_h2_upstream_header(&header.name) {
+            continue;
+        }
+        let name = HeaderName::from_bytes(header.name.as_bytes())
+            .map_err(|_| H2RequestDeny::internal(DenyReason::MalformedHeaders))?;
+        let value = HeaderValue::from_bytes(&header.value)
+            .map_err(|_| H2RequestDeny::internal(DenyReason::MalformedHeaders))?;
+        request = request.header(name, value);
+    }
+
+    request
+        .body(())
+        .map_err(|_| H2RequestDeny::internal(DenyReason::MalformedHeaders))
+}
+
+fn should_strip_h2_upstream_header(name: &str) -> bool {
+    const STRIPPED: &[&str] = &[
+        "connection",
+        "host",
+        "keep-alive",
+        "proxy-connection",
+        "transfer-encoding",
+        "upgrade",
+    ];
+    STRIPPED.iter().any(|s| name.eq_ignore_ascii_case(s))
+}
+
+async fn forward_h2_request_body(
+    mut inbound: RecvStream,
+    mut outbound: SendStream<Bytes>,
+    denied: H2RequestDenySlot,
+) -> std::result::Result<ForwardH2RequestBodyResult, ForwardH2RequestBodyError> {
+    while let Some(chunk) = inbound.data().await {
+        let chunk = match chunk {
+            Ok(chunk) => chunk,
+            Err(error) if error.is_reset() => {
+                outbound.send_reset(error.reason().unwrap_or(h2::Reason::CANCEL));
+                return Ok(ForwardH2RequestBodyResult::InboundReset);
+            }
+            Err(error) => return Err(ForwardH2RequestBodyError::Bridge(error.into())),
+        };
+        let len = chunk.len();
+        if len != 0 {
+            send_data(&mut outbound, chunk, false)
+                .await
+                .map_err(ForwardH2RequestBodyError::Bridge)?;
+        }
+        inbound
+            .flow_control()
+            .release_capacity(len)
+            .map_err(|error| ForwardH2RequestBodyError::Bridge(error.into()))?;
+    }
+
+    let trailers = inbound.trailers().await.map_err(|error| {
+        if error.is_reset() {
+            ForwardH2RequestBodyError::InboundReset
+        } else {
+            ForwardH2RequestBodyError::Bridge(error.into())
+        }
+    })?;
+    if let Some(trailers) = trailers {
+        if !trailers.is_empty() {
+            let deny = H2RequestDeny::internal(DenyReason::RequestTrailersUnsupported);
+            store_h2_request_body_deny(&denied, deny);
+            outbound.send_reset(h2::Reason::INTERNAL_ERROR);
+            return Err(ForwardH2RequestBodyError::Denied(deny));
+        }
+        send_data(&mut outbound, Bytes::new(), true)
+            .await
+            .map_err(ForwardH2RequestBodyError::Bridge)?;
+    } else {
+        send_data(&mut outbound, Bytes::new(), true)
+            .await
+            .map_err(ForwardH2RequestBodyError::Bridge)?;
+    }
+
+    Ok(ForwardH2RequestBodyResult::Complete)
+}
+
+enum UpstreamResponseEvent {
+    Informational(Response<()>),
+    Final(Response<RecvStream>),
+}
+
+async fn next_upstream_response_event(
+    response: &mut ResponseFuture,
+) -> Result<UpstreamResponseEvent> {
+    poll_fn(|cx| {
+        if let std::task::Poll::Ready(Some(result)) = response.poll_informational(cx) {
+            return std::task::Poll::Ready(
+                result
+                    .map(UpstreamResponseEvent::Informational)
+                    .map_err(anyhow::Error::from),
+            );
+        }
+        match Pin::new(&mut *response).poll(cx) {
+            std::task::Poll::Ready(result) => std::task::Poll::Ready(
+                result
+                    .map(UpstreamResponseEvent::Final)
+                    .map_err(anyhow::Error::from),
+            ),
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
+    })
+    .await
+}
+
+async fn forward_h2_response_to_h2(
+    mut response: ResponseFuture,
+    respond: &mut SendResponse<Bytes>,
+    request_method: &str,
+) -> Result<()> {
+    let final_response = loop {
+        match next_upstream_response_event(&mut response).await? {
+            UpstreamResponseEvent::Informational(response) => {
+                let response = sanitize_h2_response_head(response)?;
+                respond
+                    .send_informational(response)
+                    .context("failed to send downstream h2 informational response")?;
+            }
+            UpstreamResponseEvent::Final(response) => break response,
+        }
+    };
+    let status = final_response.status();
+    let no_body = response_has_no_body(request_method, status);
+    let (parts, mut upstream_body) = final_response.into_parts();
+    let response_is_end_stream = upstream_body.is_end_stream();
+    let response = sanitize_h2_response_head(Response::from_parts(parts, ()))?;
+
+    if no_body || response_is_end_stream {
+        respond
+            .send_response(response, true)
+            .context("failed to send downstream h2 response head")?;
+        return Ok(());
+    }
+
+    let mut downstream = respond
+        .send_response(response, false)
+        .context("failed to send downstream h2 response head")?;
+    while let Some(chunk) = upstream_body.data().await {
+        let chunk = chunk.context("failed to read upstream h2 response data")?;
+        let len = chunk.len();
+        if len != 0 {
+            send_data(&mut downstream, chunk, false).await?;
+        }
+        upstream_body
+            .flow_control()
+            .release_capacity(len)
+            .context("failed to release upstream h2 response capacity")?;
+    }
+
+    if let Some(trailers) = upstream_body
+        .trailers()
+        .await
+        .context("failed to read upstream h2 response trailers")?
+    {
+        downstream
+            .send_trailers(filter_h2_header_map(trailers))
+            .context("failed to send downstream h2 response trailers")?;
+    } else {
+        send_data(&mut downstream, Bytes::new(), true).await?;
+    }
+
+    Ok(())
+}
+
+fn sanitize_h2_response_head<B>(response: Response<B>) -> Result<Response<()>> {
+    let (parts, _) = response.into_parts();
+    let mut builder = Response::builder().status(parts.status);
+    for (name, value) in &parts.headers {
+        if should_strip_h2_upstream_header(name.as_str()) {
+            continue;
+        }
+        builder = builder.header(name, value);
+    }
+    builder
+        .body(())
+        .context("failed to build sanitized h2 response head")
+}
+
+fn filter_h2_header_map(headers: HeaderMap) -> HeaderMap {
+    let mut filtered = HeaderMap::new();
+    let mut last_name = None;
+    for (name, value) in headers {
+        if let Some(name) = name {
+            last_name = Some(name.clone());
+            if should_strip_h2_upstream_header(name.as_str()) {
+                continue;
+            }
+            filtered.append(name, value);
+        } else if let Some(name) = &last_name {
+            if should_strip_h2_upstream_header(name.as_str()) {
+                continue;
+            }
+            filtered.append(name.clone(), value);
+        }
+    }
+    filtered
 }
 
 fn h2_request_target(uri: &http::Uri) -> String {
@@ -277,6 +1309,22 @@ fn validate_h2_request_headers(headers: &HeaderMap, body_is_end_stream: bool) ->
         return Err(anyhow!("nonzero content-length with end-stream h2 request"));
     }
 
+    validate_h2_te_headers(headers)?;
+
+    Ok(())
+}
+
+fn validate_h2_te_headers(headers: &HeaderMap) -> Result<()> {
+    for value in headers.get_all(TE).iter() {
+        let value = value.to_str().context("te request header is not utf8")?;
+        for token in value.split(',') {
+            let token = token.trim();
+            if token.is_empty() || !token.eq_ignore_ascii_case("trailers") {
+                return Err(anyhow!("unsupported h2 te request header"));
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -315,53 +1363,6 @@ fn fold_request_cookies(headers: Vec<HeaderPart>) -> Vec<HeaderPart> {
     folded
 }
 
-fn has_expect_100_continue(headers: &[HeaderPart]) -> bool {
-    headers.iter().any(|header| {
-        header.name.eq_ignore_ascii_case(EXPECT.as_str())
-            && std::str::from_utf8(&header.value)
-                .map(|value| value.trim().eq_ignore_ascii_case("100-continue"))
-                .unwrap_or(false)
-    })
-}
-
-fn send_expectation_failed(respond: &mut SendResponse<Bytes>) -> Result<()> {
-    // TODO(2026-05-25 #26109): Replace this synthetic response with concurrent
-    // request upload and upstream response forwarding.
-    let response = Response::builder()
-        .status(StatusCode::EXPECTATION_FAILED)
-        .body(())
-        .context("failed to build h2 417 response")?;
-    respond
-        .send_response(response, true)
-        .context("failed to send h2 417 response")?;
-    Ok(())
-}
-
-fn discard_h2_request_body(mut body: RecvStream) {
-    // Spawned per Expect: 100-continue rejection, bounded by
-    // H2_MAX_CONCURRENT_STREAMS per session. The task drains DATA + trailers so
-    // the h2 layer can release flow-control credit after the synthetic 417 has
-    // closed the local stream for sending.
-    tokio::spawn(async move {
-        while let Some(chunk) = body.data().await {
-            let chunk = match chunk {
-                Ok(chunk) => chunk,
-                Err(error) => {
-                    warn!(error = %error, "h2 request-body drain failed");
-                    return;
-                }
-            };
-            if let Err(error) = body.flow_control().release_capacity(chunk.len()) {
-                warn!(error = %error, "h2 request-body flow-control release failed");
-                return;
-            }
-        }
-        if let Err(error) = body.trailers().await {
-            warn!(error = %error, "h2 request-body trailers drain failed");
-        }
-    });
-}
-
 fn build_h1_request_head(
     method: &str,
     target: &str,
@@ -382,12 +1383,24 @@ fn build_h1_request_head(
         format!("{method} {target} HTTP/1.1\r\n").as_bytes(),
     )?;
     append_h1_header_line(&mut header_bytes, b"Host", authority.as_bytes())?;
-    append_h1_header_line(&mut header_bytes, b"Connection", b"close")?;
+    let has_te_trailers = headers
+        .iter()
+        .any(|header| header.name.eq_ignore_ascii_case(TE.as_str()));
+    let connection = if has_te_trailers {
+        b"close, te".as_slice()
+    } else {
+        b"close".as_slice()
+    };
+    append_h1_header_line(&mut header_bytes, b"Connection", connection)?;
     if use_chunked {
         append_h1_header_line(&mut header_bytes, b"Transfer-Encoding", b"chunked")?;
     }
 
     for header in headers {
+        if header.name.eq_ignore_ascii_case(TE.as_str()) {
+            append_h1_header_line(&mut header_bytes, header.name.as_bytes(), &header.value)?;
+            continue;
+        }
         if should_strip_h1_bridge_header(&header.name)
             || (use_chunked && header.name.eq_ignore_ascii_case(CONTENT_LENGTH.as_str()))
         {
@@ -431,7 +1444,7 @@ fn append_h1_header_line(
 }
 
 async fn write_h1_request<W>(
-    upstream: &mut W,
+    mut upstream: W,
     header_bytes: Vec<u8>,
     use_chunked: bool,
     mut body: RecvStream,
@@ -443,6 +1456,11 @@ where
         .write_all(&header_bytes)
         .await
         .context("failed to write h1 request headers")
+        .map_err(WriteH1RequestError::Bridge)?;
+    upstream
+        .flush()
+        .await
+        .context("failed to flush h1 request headers")
         .map_err(WriteH1RequestError::Bridge)?;
 
     while let Some(chunk) = body.data().await {
@@ -479,6 +1497,11 @@ where
                 .context("failed to write h1 request body chunk")
                 .map_err(WriteH1RequestError::Bridge)?;
         }
+        upstream
+            .flush()
+            .await
+            .context("failed to flush h1 request body chunk")
+            .map_err(WriteH1RequestError::Bridge)?;
         body.flow_control()
             .release_capacity(chunk.len())
             .context("failed to release h2 request flow-control capacity")
@@ -559,29 +1582,21 @@ where
     R: AsyncRead + Unpin,
 {
     let mut reader = H1ResponseReader::new(upstream);
-    let response_head = reader
-        .read_final_response_head()
-        .await
-        .context("failed to read h1 response head")?;
+    let response_head = loop {
+        let response_head = reader
+            .read_response_head()
+            .await
+            .context("failed to read h1 response head")?;
+        if !response_head.status.is_informational() {
+            break response_head;
+        }
+        let response = build_h2_response_head(&response_head)?;
+        respond
+            .send_informational(response)
+            .context("failed to send h2 informational response head")?;
+    };
     let no_body = response_has_no_body(request_method, response_head.status);
-    let mut response = Response::builder().status(response_head.status);
-    let nominated_hop_headers = connection_nominated_headers(&response_head.headers)?;
-    for header in &response_head.headers {
-        if should_strip_h1_bridge_header(header.name.as_str()) {
-            continue;
-        }
-        if nominated_hop_headers.contains(&header.name.to_ascii_lowercase()) {
-            continue;
-        }
-        let name = HeaderName::from_bytes(header.name.as_bytes())
-            .context("invalid h1 response header name")?;
-        let value =
-            HeaderValue::from_bytes(&header.value).context("invalid h1 response header value")?;
-        response = response.header(name, value);
-    }
-    let response = response
-        .body(())
-        .context("failed to build h2 response head")?;
+    let response = build_h2_response_head(&response_head)?;
 
     if no_body || response_head.body_kind == H1BodyKind::None {
         respond
@@ -618,6 +1633,28 @@ where
     Ok(())
 }
 
+fn build_h2_response_head(response_head: &H1ResponseHead) -> Result<Response<()>> {
+    let mut response = Response::builder().status(response_head.status);
+    let nominated_hop_headers = connection_nominated_headers(&response_head.headers)?;
+    for header in &response_head.headers {
+        if should_strip_h1_bridge_header(header.name.as_str()) {
+            continue;
+        }
+        if nominated_hop_headers.contains(&header.name.to_ascii_lowercase()) {
+            continue;
+        }
+        let name = HeaderName::from_bytes(header.name.as_bytes())
+            .context("invalid h1 response header name")?;
+        let value =
+            HeaderValue::from_bytes(&header.value).context("invalid h1 response header value")?;
+        response = response.header(name, value);
+    }
+    let response = response
+        .body(())
+        .context("failed to build h2 response head")?;
+    Ok(response)
+}
+
 fn response_has_no_body(request_method: &str, status: StatusCode) -> bool {
     request_method.eq_ignore_ascii_case("HEAD")
         || status.is_informational()
@@ -652,15 +1689,6 @@ where
         Self {
             inner,
             buffer: Vec::new(),
-        }
-    }
-
-    async fn read_final_response_head(&mut self) -> Result<H1ResponseHead> {
-        loop {
-            let head = self.read_response_head().await?;
-            if !head.status.is_informational() {
-                return Ok(head);
-            }
         }
     }
 
@@ -1020,6 +2048,32 @@ mod tests {
         let error = validate_h2_request_headers(&headers, true)
             .expect_err("nonzero end-stream h2 content-length should be rejected");
         assert!(error.to_string().contains("nonzero content-length"));
+    }
+
+    #[test]
+    fn rejects_non_trailers_h2_te_request_header() {
+        let mut headers = HeaderMap::new();
+        headers.insert(TE, HeaderValue::from_static("gzip"));
+
+        let error = validate_h2_request_headers(&headers, false)
+            .expect_err("non-trailers h2 te header should be rejected");
+        assert!(error.to_string().contains("unsupported h2 te"));
+    }
+
+    #[test]
+    fn filter_h2_header_map_preserves_repeated_values() {
+        let mut headers = HeaderMap::new();
+        headers.append("x-foo", HeaderValue::from_static("a"));
+        headers.append("x-foo", HeaderValue::from_static("b"));
+
+        let filtered = filter_h2_header_map(headers);
+        let values = filtered
+            .get_all("x-foo")
+            .iter()
+            .map(|value| value.as_bytes().to_vec())
+            .collect::<Vec<_>>();
+
+        assert_eq!(values, vec![b"a".to_vec(), b"b".to_vec()]);
     }
 
     #[test]
@@ -1844,7 +2898,7 @@ mod tests {
             "rewritten header block over 64 KiB should reset"
         );
 
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"header_size_exceeded\""),
             "deny log should record header_size_exceeded, got: {deny_log_text}"
@@ -1900,7 +2954,7 @@ mod tests {
             "rewritten header line over 16 KiB should reset"
         );
 
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"header_size_exceeded\""),
             "deny log should record header_size_exceeded, got: {deny_log_text}"
@@ -1914,7 +2968,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn h2_bridge_rejects_expect_continue_with_417() -> Result<()> {
+    async fn h2_bridge_forwards_expect_continue_and_100_response() -> Result<()> {
         let sni = "api.openai.com";
         let secret_table = Arc::new(secret_table_with_secret(
             "OPENAI_API_KEY",
@@ -1922,13 +2976,8 @@ mod tests {
             "sk-real",
             &[sni],
         )?);
-        let open_count = Arc::new(AtomicUsize::new(0));
-        let (request_tx, _request_rx) = mpsc::unbounded_channel();
-        let opener = test_h1_counting_opener(
-            Arc::clone(&open_count),
-            request_tx,
-            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
-        );
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener_expect_continue(request_tx);
         let tempdir = tempfile::tempdir()?;
         let deny_log = Arc::new(tempdir.path().join("deny.log"));
 
@@ -1948,17 +2997,24 @@ mod tests {
             .uri(format!("https://{sni}/expect"))
             .header("expect", "100-continue")
             .body(())?;
-        let (response, _stream) = send_request.send_request(request, false)?;
-        let response = response.await?;
-        assert_eq!(response.status(), StatusCode::EXPECTATION_FAILED);
-        assert_eq!(read_h2_body(response.into_body()).await?, b"");
-
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
-        assert!(
-            deny_log_text.contains("\"reason\":\"expect_continue_unsupported\""),
-            "deny log should record expect_continue_unsupported, got: {deny_log_text}"
+        let (mut response, mut stream) = send_request.send_request(request, false)?;
+        let informational = next_informational(&mut response).await?;
+        assert_eq!(informational.status(), StatusCode::CONTINUE);
+        assert_eq!(
+            informational.headers().get("x-info"),
+            Some(&HeaderValue::from_static("yes"))
         );
-        assert_eq!(open_count.load(Ordering::SeqCst), 0);
+        stream.send_data(Bytes::from_static(b"hello"), true)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(response.into_body()).await?, b"ok");
+
+        let request_text = request_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("test upstream did not receive request"))?;
+        assert!(request_text.contains("expect: 100-continue\r\n"));
+        assert!(request_text.ends_with("\r\n\r\n5\r\nhello\r\n0\r\n\r\n"));
 
         drop(send_request);
         connection_task.abort();
@@ -1967,7 +3023,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn h2_bridge_rejects_expect_continue_without_body_data_with_417() -> Result<()> {
+    async fn h2_bridge_returns_early_final_response_while_client_uploads() -> Result<()> {
         let sni = "api.openai.com";
         let secret_table = Arc::new(secret_table_with_secret(
             "OPENAI_API_KEY",
@@ -1975,13 +3031,8 @@ mod tests {
             "sk-real",
             &[sni],
         )?);
-        let open_count = Arc::new(AtomicUsize::new(0));
-        let (request_tx, _request_rx) = mpsc::unbounded_channel();
-        let opener = test_h1_counting_opener(
-            Arc::clone(&open_count),
-            request_tx,
-            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
-        );
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener_early_final_response(request_tx);
         let tempdir = tempfile::tempdir()?;
         let deny_log = Arc::new(tempdir.path().join("deny.log"));
 
@@ -1998,20 +3049,1131 @@ mod tests {
         let connection_task = tokio::spawn(connection);
         let request = Request::builder()
             .method("POST")
-            .uri(format!("https://{sni}/expect-empty"))
-            .header("expect", "100-continue")
+            .uri(format!("https://{sni}/early"))
             .body(())?;
         let (response, mut stream) = send_request.send_request(request, false)?;
-        stream.send_data(Bytes::new(), true)?;
-        let response = response.await?;
-        assert_eq!(response.status(), StatusCode::EXPECTATION_FAILED);
+        stream.send_data(Bytes::from_static(b"hello"), false)?;
+        let response = tokio::time::timeout(std::time::Duration::from_secs(1), response)
+            .await
+            .context("bridge did not forward early final h1 response")??;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(response.into_body()).await?, b"early");
 
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
-        assert!(
-            deny_log_text.contains("\"reason\":\"expect_continue_unsupported\""),
-            "deny log should record expect_continue_unsupported, got: {deny_log_text}"
+        let request_text = request_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("test upstream did not receive request"))?;
+        assert!(request_text.contains("POST /early HTTP/1.1\r\n"));
+        assert!(request_text.ends_with("\r\n\r\n5\r\nhello\r\n"));
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_preserves_te_trailers_and_maps_h1_trailers() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_56565656565656567878787878787878__",
+            "sk-real",
+            &[sni],
+        )?);
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener_with_chunked_body(
+            request_tx,
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nok\r\n0\r\nx-done: yes\r\n\r\n",
         );
-        assert_eq!(open_count.load(Ordering::SeqCst), 0);
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            deny_log,
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/trailers"))
+            .header("te", "trailers")
+            .body(())?;
+        let (response, mut stream) = send_request.send_request(request, false)?;
+        stream.send_data(Bytes::from_static(b"hello"), true)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let mut body = response.into_body();
+        let mut output = Vec::new();
+        while let Some(chunk) = body.data().await {
+            let chunk = chunk?;
+            output.extend_from_slice(&chunk);
+            body.flow_control().release_capacity(chunk.len())?;
+        }
+        assert_eq!(output, b"ok");
+        let trailers = body
+            .trailers()
+            .await?
+            .ok_or_else(|| anyhow!("missing h2 trailers"))?;
+        assert_eq!(
+            trailers.get("x-done"),
+            Some(&HeaderValue::from_static("yes"))
+        );
+
+        let request_text = request_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("test upstream did not receive request"))?;
+        assert_eq!(h1_header_values(&request_text, "te"), vec!["trailers"]);
+        assert_eq!(
+            h1_header_values(&request_text, "connection"),
+            vec!["close, te"]
+        );
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_bridge_streams_request_and_response_data_bidirectionally() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_57575757575757577979797979797979__",
+            "sk-real",
+            &[sni],
+        )?);
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let opener = test_h1_opener_bidirectional_stream(request_tx);
+
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+        let bridge_task = tokio::spawn(run_h2_to_h1_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            deny_log,
+            opener,
+        ));
+
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/duplex"))
+            .body(())?;
+        let (response, mut stream) = send_request.send_request(request, false)?;
+        stream.send_data(Bytes::from_static(b"one"), false)?;
+        let response = tokio::time::timeout(std::time::Duration::from_secs(1), response)
+            .await
+            .context("bridge did not forward response head after first upload chunk")??;
+        assert_eq!(response.status(), StatusCode::OK);
+        let mut body = response.into_body();
+        let first = tokio::time::timeout(std::time::Duration::from_secs(1), body.data())
+            .await
+            .context("bridge did not forward response data before upload ended")?
+            .ok_or_else(|| anyhow!("h2 response ended before first data"))??;
+        assert_eq!(first, Bytes::from_static(b"ack-one"));
+        body.flow_control().release_capacity(first.len())?;
+
+        stream.send_data(Bytes::from_static(b"two"), true)?;
+        let second = tokio::time::timeout(std::time::Duration::from_secs(1), body.data())
+            .await
+            .context("bridge did not forward second response data after second upload chunk")?
+            .ok_or_else(|| anyhow!("h2 response ended before second data"))??;
+        assert_eq!(second, Bytes::from_static(b"ack-two"));
+        body.flow_control().release_capacity(second.len())?;
+        loop {
+            let end = tokio::time::timeout(std::time::Duration::from_secs(1), body.data())
+                .await
+                .context("h2 response did not end after second response data")?;
+            match end {
+                Some(Ok(chunk)) if chunk.is_empty() => {}
+                Some(Ok(chunk)) => {
+                    return Err(anyhow!("unexpected extra response data: {chunk:?}"))
+                }
+                Some(Err(error)) => return Err(error.into()),
+                None => break,
+            }
+        }
+        ensure!(body.trailers().await?.is_none(), "unexpected trailers");
+
+        let request_text = request_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("test upstream did not receive request"))?;
+        assert!(request_text.ends_with("\r\n\r\n3\r\none\r\n3\r\ntwo\r\n0\r\n\r\n"));
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_reuses_one_connection_for_two_inbound_streams() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_58585858585858587a7a7a7a7a7a7a7a__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let (path_tx, mut path_rx) = mpsc::unbounded_channel();
+        let pool = test_h2_upstream_pool(Arc::clone(&handshake_count), move |request, respond| {
+            let path_tx = path_tx.clone();
+            Box::pin(async move {
+                path_tx
+                    .send(request.uri().path().to_string())
+                    .map_err(|_| anyhow!("failed to send upstream path"))?;
+                send_h2_response(respond, StatusCode::OK, Bytes::from_static(b"ok")).await
+            })
+        });
+
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+        for path in ["/one", "/two"] {
+            let request = Request::builder()
+                .method("GET")
+                .uri(format!("https://{sni}{path}"))
+                .body(())?;
+            let (response, _stream) = send_request.send_request(request, true)?;
+            let response = response.await?;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(read_h2_body(response.into_body()).await?, b"ok");
+        }
+
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+        assert_eq!(
+            path_rx
+                .recv()
+                .await
+                .ok_or_else(|| anyhow!("missing path"))?,
+            "/one"
+        );
+        assert_eq!(
+            path_rx
+                .recv()
+                .await
+                .ok_or_else(|| anyhow!("missing path"))?,
+            "/two"
+        );
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn evicts_idle_pool_entry_and_closes_upstream_session() -> Result<()> {
+        tokio::time::pause();
+        let (pool, key, mut closed_rx) = test_h2_pool_with_close_observer(|_request, respond| {
+            Box::pin(async move {
+                send_h2_response(respond, StatusCode::OK, Bytes::from_static(b"ok")).await
+            })
+        });
+        tokio::task::yield_now().await;
+
+        send_direct_pooled_h2_get(&pool, &key, "/first").await?;
+        tokio::time::advance(H2_UPSTREAM_IDLE_TIMEOUT + std::time::Duration::from_millis(1)).await;
+
+        let replacement_lease = match pool.lease(&key).await? {
+            UpstreamLease::H2(lease) => lease,
+            UpstreamLease::Http1(_) => return Err(anyhow!("expected h2 replacement lease")),
+        };
+        assert_upstream_connection_closed(&mut closed_rx).await?;
+
+        drop(replacement_lease);
+        drop(pool);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn background_sweeper_evicts_without_new_leases() -> Result<()> {
+        tokio::time::pause();
+        let (pool, key, mut closed_rx) = test_h2_pool_with_close_observer(|_request, respond| {
+            Box::pin(async move {
+                send_h2_response(respond, StatusCode::OK, Bytes::from_static(b"ok")).await
+            })
+        });
+        tokio::task::yield_now().await;
+
+        send_direct_pooled_h2_get(&pool, &key, "/first").await?;
+        tokio::time::advance(
+            H2_UPSTREAM_IDLE_TIMEOUT
+                + H2_UPSTREAM_POOL_SWEEP_INTERVAL
+                + std::time::Duration::from_millis(1),
+        )
+        .await;
+        assert_upstream_connection_closed(&mut closed_rx).await?;
+
+        drop(pool);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn active_streams_block_eviction() -> Result<()> {
+        tokio::time::pause();
+        let (pool, key, mut closed_rx) =
+            test_h2_pool_with_close_observer(|mut request, _respond| {
+                Box::pin(async move {
+                    while let Some(chunk) = request.body_mut().data().await {
+                        let chunk = chunk?;
+                        request
+                            .body_mut()
+                            .flow_control()
+                            .release_capacity(chunk.len())?;
+                    }
+                    Ok(())
+                })
+            });
+        tokio::task::yield_now().await;
+
+        let lease = match pool.lease(&key).await? {
+            UpstreamLease::H2(lease) => lease,
+            UpstreamLease::Http1(_) => return Err(anyhow!("expected h2 lease")),
+        };
+        let mut send_request = lease.send_request();
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{}/active", key.authority()))
+            .body(())?;
+        let (_response, send_stream) = send_request.send_request(request, false)?;
+
+        tokio::time::advance(
+            H2_UPSTREAM_IDLE_TIMEOUT
+                + H2_UPSTREAM_POOL_SWEEP_INTERVAL
+                + std::time::Duration::from_millis(1),
+        )
+        .await;
+        tokio::task::yield_now().await;
+        assert_upstream_connection_still_open(&mut closed_rx)?;
+
+        drop(send_stream);
+        drop(send_request);
+        drop(lease);
+        drop(pool);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_concurrent_first_streams_share_one_open() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_57575757575757577979797979797979__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let (path_tx, mut path_rx) = mpsc::unbounded_channel();
+        let pool = test_h2_upstream_pool_with_settings_and_open_delay(
+            Arc::clone(&handshake_count),
+            move |request, respond| {
+                let path_tx = path_tx.clone();
+                Box::pin(async move {
+                    path_tx
+                        .send(request.uri().path().to_string())
+                        .map_err(|_| anyhow!("failed to send upstream path"))?;
+                    send_h2_response(respond, StatusCode::OK, Bytes::from_static(b"ok")).await
+                })
+            },
+            None,
+            Some(std::time::Duration::from_millis(50)),
+        );
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+
+        let first = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/one"))
+            .body(())?;
+        let second = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/two"))
+            .body(())?;
+        let (first_response, _first_stream) = send_request.send_request(first, true)?;
+        let (second_response, _second_stream) = send_request.send_request(second, true)?;
+        let (first_response, second_response) = tokio::join!(first_response, second_response);
+        let first_response = first_response?;
+        let second_response = second_response?;
+        assert_eq!(first_response.status(), StatusCode::OK);
+        assert_eq!(second_response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(first_response.into_body()).await?, b"ok");
+        assert_eq!(read_h2_body(second_response.into_body()).await?, b"ok");
+
+        let mut paths = vec![
+            path_rx
+                .recv()
+                .await
+                .ok_or_else(|| anyhow!("missing first path"))?,
+            path_rx
+                .recv()
+                .await
+                .ok_or_else(|| anyhow!("missing second path"))?,
+        ];
+        paths.sort();
+        assert_eq!(paths, vec!["/one".to_string(), "/two".to_string()]);
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_substitutes_headers_without_folding_cookies() -> Result<()> {
+        let sni = "api.openai.com";
+        let placeholder = "__DSEC_59595959595959597b7b7b7b7b7b7b7b__";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let (headers_tx, mut headers_rx) = mpsc::unbounded_channel();
+        let pool = test_h2_upstream_pool(Arc::clone(&handshake_count), move |request, respond| {
+            let headers_tx = headers_tx.clone();
+            Box::pin(async move {
+                let auth = request
+                    .headers()
+                    .get("authorization")
+                    .ok_or_else(|| anyhow!("missing authorization header"))?
+                    .as_bytes()
+                    .to_vec();
+                let cookies = request
+                    .headers()
+                    .get_all("cookie")
+                    .iter()
+                    .map(|value| value.as_bytes().to_vec())
+                    .collect::<Vec<_>>();
+                headers_tx
+                    .send((auth, cookies))
+                    .map_err(|_| anyhow!("failed to send upstream headers"))?;
+                send_h2_response(respond, StatusCode::OK, Bytes::from_static(b"ok")).await
+            })
+        });
+
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/headers"))
+            .header("authorization", format!("Bearer {placeholder}"))
+            .header("cookie", "a=1")
+            .header("cookie", format!("session={placeholder}"))
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let (auth, cookies) = headers_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("missing upstream headers"))?;
+        assert_eq!(auth, b"Bearer sk-real");
+        assert_eq!(cookies, vec![b"a=1".to_vec(), b"session=sk-real".to_vec()]);
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_policy_deny_resets_inbound_stream() -> Result<()> {
+        let sni = "api.openai.com";
+        let placeholder = "__DSEC_60606060606060608a8a8a8a8a8a8a8a__";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "ANTHROPIC_API_KEY",
+            placeholder,
+            "sk-real",
+            &["api.anthropic.com"],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let pool = test_h2_upstream_pool(Arc::clone(&handshake_count), move |_request, respond| {
+            Box::pin(async move {
+                send_h2_response(respond, StatusCode::OK, Bytes::from_static(b"ok")).await
+            })
+        });
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/denied"))
+            .header("authorization", format!("Bearer {placeholder}"))
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        assert!(response.await.is_err(), "policy deny should reset stream");
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 0);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_denies_rewritten_header_block_over_limit_before_lease() -> Result<()> {
+        let sni = "api.openai.com";
+        let placeholder = "__DSEC_71717171717171719a9a9a9a9a9a9a9a__";
+        let secret_value = "x".repeat(8 * 1024);
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            placeholder,
+            &secret_value,
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let pool = test_h2_upstream_pool(
+            Arc::clone(&handshake_count),
+            move |_request, mut respond| {
+                Box::pin(async move {
+                    let response = Response::builder().status(StatusCode::OK).body(())?;
+                    respond.send_response(response, true)?;
+                    Ok(())
+                })
+            },
+        );
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let bridge_task = tokio::spawn(run_h2_to_upstream_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            Arc::clone(&deny_log),
+            pool,
+            test_h2_upstream_key(sni),
+        ));
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+
+        let mut builder = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/headers"));
+        for index in 0..9 {
+            builder = builder.header(format!("x-secret-{index}"), placeholder);
+        }
+        let request = builder.body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        assert!(
+            response.await.is_err(),
+            "rewritten header block over 64 KiB should reset before upstream lease"
+        );
+
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        assert!(
+            deny_log_text.contains("\"reason\":\"header_size_exceeded\""),
+            "deny log should record header_size_exceeded, got: {deny_log_text}"
+        );
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 0);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_saturation_opens_second_connection() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_61616161616161618b8b8b8b8b8b8b8b__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let release_first = Arc::new(tokio::sync::Notify::new());
+        let (path_tx, mut path_rx) = mpsc::unbounded_channel();
+        let pool = test_h2_upstream_pool_with_settings(
+            Arc::clone(&handshake_count),
+            {
+                let release_first = Arc::clone(&release_first);
+                move |request, respond| {
+                    let release_first = Arc::clone(&release_first);
+                    let path_tx = path_tx.clone();
+                    Box::pin(async move {
+                        let path = request.uri().path().to_string();
+                        path_tx
+                            .send(path.clone())
+                            .map_err(|_| anyhow!("failed to send upstream path"))?;
+                        if path == "/hold" {
+                            release_first.notified().await;
+                        }
+                        send_h2_response(respond, StatusCode::OK, Bytes::from_static(b"ok")).await
+                    })
+                }
+            },
+            Some(1),
+        );
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+
+        let first = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/hold"))
+            .body(())?;
+        let (first_response, _stream) = send_request.send_request(first, true)?;
+        assert_eq!(
+            path_rx
+                .recv()
+                .await
+                .ok_or_else(|| anyhow!("missing path"))?,
+            "/hold"
+        );
+
+        let second = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/fast"))
+            .body(())?;
+        let (second_response, _stream) = send_request.send_request(second, true)?;
+        let second_response = second_response.await?;
+        assert_eq!(second_response.status(), StatusCode::OK);
+        assert_eq!(
+            path_rx
+                .recv()
+                .await
+                .ok_or_else(|| anyhow!("missing path"))?,
+            "/fast"
+        );
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 2);
+
+        release_first.notify_waiters();
+        let first_response = first_response.await?;
+        assert_eq!(first_response.status(), StatusCode::OK);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_h1_alpn_fallback_uses_full_duplex_h1_path() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_62626262626262628c8c8c8c8c8c8c8c__",
+            "sk-real",
+            &[sni],
+        )?);
+        let (request_tx, mut request_rx) = mpsc::unbounded_channel();
+        let pool = test_h1_fallback_pool(
+            request_tx,
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+        );
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/fallback"))
+            .header("cookie", "a=1")
+            .header("cookie", "b=2")
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(response.into_body()).await?, b"ok");
+
+        let request_text = request_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("test upstream did not receive h1 request"))?;
+        assert!(request_text.contains("GET /fallback HTTP/1.1\r\n"));
+        assert_eq!(h1_header_values(&request_text, "cookie"), vec!["a=1; b=2"]);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_inbound_reset_propagates_without_closing_sibling() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_63636363636363638d8d8d8d8d8d8d8d__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let (reset_tx, mut reset_rx) = mpsc::unbounded_channel();
+        let pool = test_h2_upstream_pool(Arc::clone(&handshake_count), move |request, respond| {
+            let reset_tx = reset_tx.clone();
+            Box::pin(async move {
+                if request.uri().path() == "/reset" {
+                    let mut body = request.into_body();
+                    let error = loop {
+                        let Some(result) = body.data().await else {
+                            return Err(anyhow!("missing upstream reset"));
+                        };
+                        match result {
+                            Ok(chunk) => {
+                                body.flow_control().release_capacity(chunk.len())?;
+                            }
+                            Err(error) => break error,
+                        }
+                    };
+                    reset_tx
+                        .send(error.reason())
+                        .map_err(|_| anyhow!("failed to send reset reason"))?;
+                    return Ok(());
+                }
+
+                send_h2_response(respond, StatusCode::OK, Bytes::from_static(b"ok")).await
+            })
+        });
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+
+        let reset_request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/reset"))
+            .body(())?;
+        let (_reset_response, mut reset_stream) =
+            send_request.send_request(reset_request, false)?;
+        reset_stream.send_data(Bytes::from_static(b"hello"), false)?;
+        reset_stream.send_reset(h2::Reason::CANCEL);
+
+        let sibling = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/sibling"))
+            .body(())?;
+        let (sibling_response, _stream) = send_request.send_request(sibling, true)?;
+        let sibling_response = sibling_response.await?;
+        assert_eq!(sibling_response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(sibling_response.into_body()).await?, b"ok");
+
+        assert_eq!(
+            reset_rx
+                .recv()
+                .await
+                .ok_or_else(|| anyhow!("missing reset reason"))?,
+            Some(h2::Reason::CANCEL)
+        );
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_early_response_releases_lease_without_upload_end() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_c1c1c1c1c1c1c1c1d2d2d2d2d2d2d2d2__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let handler = test_h2_early_response_handler();
+        let pool = test_h2_upstream_pool(Arc::clone(&handshake_count), move |request, respond| {
+            handler(request, respond)
+        });
+        let key = test_h2_upstream_key(sni);
+        let pool_for_assertions = pool.clone();
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/early"))
+            .body(())?;
+        let (response, upload_stream) = send_request.send_request(request, false)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        drop(response);
+
+        wait_for_pool_active_streams(&pool_for_assertions, &key, 0).await?;
+
+        let second = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/after-early"))
+            .body(())?;
+        let (second_response, _stream) = send_request.send_request(second, true)?;
+        let second_response = second_response.await?;
+        assert_eq!(second_response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(second_response.into_body()).await?, b"");
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+
+        drop(upload_stream);
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_early_response_reuses_max_one_connection() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_e3e3e3e3e3e3e3e3f4f4f4f4f4f4f4f4__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let handler = test_h2_early_response_handler();
+        let pool = test_h2_upstream_pool_with_settings(
+            Arc::clone(&handshake_count),
+            move |request, respond| handler(request, respond),
+            Some(1),
+        );
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+
+        let first = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/first-early"))
+            .body(())?;
+        let (first_response, first_upload_stream) = send_request.send_request(first, false)?;
+        let first_response = first_response.await?;
+        assert_eq!(first_response.status(), StatusCode::OK);
+        drop(first_response);
+
+        let second = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/second"))
+            .body(())?;
+        let (second_response, _stream) = send_request.send_request(second, true)?;
+        let second_response = second_response.await?;
+        assert_eq!(second_response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(second_response.into_body()).await?, b"");
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+
+        drop(first_upload_stream);
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_goaway_evicts_connection_after_inflight_completes() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_64646464646464648e8e8e8e8e8e8e8e__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let pool = test_h2_goaway_pool(Arc::clone(&handshake_count));
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+
+        let first = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/first"))
+            .body(())?;
+        let (first_response, _stream) = send_request.send_request(first, true)?;
+        let first_response = first_response.await?;
+        assert_eq!(first_response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(first_response.into_body()).await?, b"ok");
+
+        let second = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/second"))
+            .body(())?;
+        let (second_response, _stream) = send_request.send_request(second, true)?;
+        let second_response = second_response.await?;
+        assert_eq!(second_response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(second_response.into_body()).await?, b"ok");
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 2);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_upstream_forwards_informational_headers_and_trailers() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_65656565656565658f8f8f8f8f8f8f8f__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let pool = test_h2_upstream_pool(
+            Arc::clone(&handshake_count),
+            move |_request, mut respond| {
+                Box::pin(async move {
+                    let informational = Response::builder()
+                        .status(StatusCode::CONTINUE)
+                        .header("x-info", "yes")
+                        .body(())?;
+                    respond.send_informational(informational)?;
+                    let response = Response::builder().status(StatusCode::OK).body(())?;
+                    let mut send = respond.send_response(response, false)?;
+                    send_data(&mut send, Bytes::from_static(b"ok"), false).await?;
+                    let mut trailers = HeaderMap::new();
+                    trailers.insert("x-done", HeaderValue::from_static("yes"));
+                    send.send_trailers(trailers)?;
+                    Ok(())
+                })
+            },
+        );
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/info"))
+            .body(())?;
+        let (mut response, _stream) = send_request.send_request(request, true)?;
+        let informational = next_informational(&mut response).await?;
+        assert_eq!(informational.status(), StatusCode::CONTINUE);
+        assert_eq!(
+            informational.headers().get("x-info"),
+            Some(&HeaderValue::from_static("yes"))
+        );
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        let mut body = response.into_body();
+        let data = body
+            .data()
+            .await
+            .ok_or_else(|| anyhow!("missing response data"))??;
+        assert_eq!(data, Bytes::from_static(b"ok"));
+        body.flow_control().release_capacity(data.len())?;
+        let trailers = body
+            .trailers()
+            .await?
+            .ok_or_else(|| anyhow!("missing response trailers"))?;
+        assert_eq!(
+            trailers.get("x-done"),
+            Some(&HeaderValue::from_static("yes"))
+        );
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_to_h2_response_trailers_with_repeated_values_round_trip() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_67676767676767679090909090909090__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let pool = test_h2_upstream_pool(
+            Arc::clone(&handshake_count),
+            move |_request, mut respond| {
+                Box::pin(async move {
+                    let response = Response::builder().status(StatusCode::OK).body(())?;
+                    let mut send = respond.send_response(response, false)?;
+                    send_data(&mut send, Bytes::from_static(b"ok"), false).await?;
+                    let mut trailers = HeaderMap::new();
+                    trailers.append("x-foo", HeaderValue::from_static("a"));
+                    trailers.append("x-foo", HeaderValue::from_static("b"));
+                    send.send_trailers(trailers)?;
+                    Ok(())
+                })
+            },
+        );
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("https://{sni}/trailers"))
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        let mut body = response.into_body();
+        let data = body
+            .data()
+            .await
+            .ok_or_else(|| anyhow!("missing response data"))??;
+        assert_eq!(data, Bytes::from_static(b"ok"));
+        body.flow_control().release_capacity(data.len())?;
+        let trailers = body
+            .trailers()
+            .await?
+            .ok_or_else(|| anyhow!("missing response trailers"))?;
+        let values = trailers
+            .get_all("x-foo")
+            .iter()
+            .map(|value| value.as_bytes().to_vec())
+            .collect::<Vec<_>>();
+        assert_eq!(values, vec![b"a".to_vec(), b"b".to_vec()]);
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_to_h2_request_trailers_reset_inbound_stream() -> Result<()> {
+        run_h2_to_h2_request_trailers_reset_inbound_stream().await
+    }
+
+    #[tokio::test]
+    async fn h2_to_h2_request_trailers_reset_inbound_stream_is_stable() -> Result<()> {
+        for _ in 0..50 {
+            run_h2_to_h2_request_trailers_reset_inbound_stream().await?;
+        }
+        Ok(())
+    }
+
+    async fn run_h2_to_h2_request_trailers_reset_inbound_stream() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_68686868686868689191919191919191__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let (observed_tx, mut observed_rx) = mpsc::unbounded_channel();
+        let pool = test_h2_upstream_pool(Arc::clone(&handshake_count), move |request, _respond| {
+            let observed_tx = observed_tx.clone();
+            Box::pin(async move {
+                let observed = observe_h2_request_body_close(request.into_body()).await?;
+                observed_tx
+                    .send(observed)
+                    .map_err(|_| anyhow!("failed to send upstream trailer observation"))?;
+                Ok(())
+            })
+        });
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+        let key = H2UpstreamKey::new(
+            sni.to_string(),
+            std::net::SocketAddr::from(([127, 0, 0, 1], 443)),
+        );
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let bridge_task = tokio::spawn(run_h2_to_upstream_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            Arc::clone(&deny_log),
+            pool,
+            key,
+        ));
+        let (mut send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/request-trailers"))
+            .body(())?;
+        let (response, mut stream) = send_request.send_request(request, false)?;
+        stream.send_data(Bytes::from_static(b"hello"), false)?;
+        let mut trailers = HeaderMap::new();
+        trailers.insert("x-trailer", HeaderValue::from_static("value"));
+        stream.send_trailers(trailers)?;
+        let error = match response.await {
+            Ok(_) => {
+                return Err(anyhow!(
+                    "non-empty h2 to h2 request trailers should reset the inbound stream"
+                ))
+            }
+            Err(error) => error,
+        };
+        assert_h2_reset_reason(error, h2::Reason::INTERNAL_ERROR);
+
+        let observed = tokio::time::timeout(std::time::Duration::from_secs(1), observed_rx.recv())
+            .await
+            .context("timed out waiting for upstream stream closure")?
+            .ok_or_else(|| anyhow!("upstream trailer observation channel closed"))?;
+        assert!(
+            !observed.trailers_seen,
+            "upstream should not receive trailers"
+        );
+        assert_eq!(
+            observed.reset_reason,
+            Some(h2::Reason::INTERNAL_ERROR),
+            "upstream stream should be reset after denied request trailers"
+        );
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        assert!(
+            deny_log_text.contains("\"reason\":\"request_trailers_unsupported\""),
+            "deny log should record request_trailers_unsupported, got: {deny_log_text}"
+        );
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
+
+        drop(send_request);
+        connection_task.abort();
+        bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn h2_to_h2_empty_request_trailers_ignored() -> Result<()> {
+        let sni = "api.openai.com";
+        let secret_table = Arc::new(secret_table_with_secret(
+            "OPENAI_API_KEY",
+            "__DSEC_69696969696969699292929292929292__",
+            "sk-real",
+            &[sni],
+        )?);
+        let handshake_count = Arc::new(AtomicUsize::new(0));
+        let (observed_tx, mut observed_rx) = mpsc::unbounded_channel();
+        let pool = test_h2_upstream_pool(Arc::clone(&handshake_count), move |request, respond| {
+            let observed_tx = observed_tx.clone();
+            Box::pin(async move {
+                let observed = observe_h2_request_body_close(request.into_body()).await?;
+                observed_tx
+                    .send(observed)
+                    .map_err(|_| anyhow!("failed to send upstream trailer observation"))?;
+                send_h2_response(respond, StatusCode::OK, Bytes::from_static(b"ok")).await
+            })
+        });
+        let (mut send_request, connection_task, bridge_task) =
+            start_test_h2_upstream_bridge(sni, secret_table, pool).await?;
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("https://{sni}/empty-request-trailers"))
+            .body(())?;
+        let (response, mut stream) = send_request.send_request(request, false)?;
+        stream.send_data(Bytes::from_static(b"hello"), false)?;
+        stream.send_trailers(HeaderMap::new())?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(response.into_body()).await?, b"ok");
+
+        let observed = observed_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("missing upstream trailer observation"))?;
+        assert!(
+            !observed.trailers_seen,
+            "empty trailers should not be forwarded"
+        );
+        assert_eq!(observed.reset_reason, None);
+        assert_eq!(handshake_count.load(Ordering::SeqCst), 1);
 
         drop(send_request);
         connection_task.abort();
@@ -2438,11 +4600,57 @@ mod tests {
             "server SETTINGS should bound MAX_HEADER_LIST_SIZE"
         );
         assert!(
+            settings
+                .iter()
+                .any(|(id, value)| *id == 0x04 && *value == H2_INITIAL_WINDOW_SIZE),
+            "server SETTINGS should advertise a generous INITIAL_WINDOW_SIZE"
+        );
+        assert!(
             settings.iter().all(|(id, _)| *id != 0x08),
             "server SETTINGS should not advertise ENABLE_CONNECT_PROTOCOL"
         );
 
         bridge_task.abort();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn outbound_h2_settings_disable_push() -> Result<()> {
+        let (dsbx_io, mut upstream_io) = tokio::io::duplex(64 * 1024);
+        let settings_task = tokio::spawn(async move {
+            let mut preface = [0_u8; 24];
+            upstream_io.read_exact(&mut preface).await?;
+            ensure!(
+                preface.as_slice() == b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n",
+                "missing outbound h2 client preface"
+            );
+            upstream_io.write_all(&[0, 0, 0, 4, 0, 0, 0, 0, 0]).await?;
+            read_h2_settings(&mut upstream_io).await
+        });
+
+        let key = H2UpstreamKey::new(
+            "api.openai.com".to_string(),
+            std::net::SocketAddr::from(([127, 0, 0, 1], 443)),
+        );
+        let mut entries = HashMap::new();
+        let lease = insert_h2_connection_locked(
+            &mut entries,
+            &key,
+            Box::new(dsbx_io) as BoxedAsyncReadWrite,
+        )
+        .await?;
+        let settings = settings_task
+            .await
+            .context("settings reader task panicked")??;
+        assert!(
+            settings
+                .iter()
+                .any(|(id, value)| *id == 0x02 && *value == 0),
+            "client SETTINGS should advertise ENABLE_PUSH=0, got {settings:?}"
+        );
+
+        drop(lease);
+        drop(entries);
         Ok(())
     }
 
@@ -2782,6 +4990,421 @@ mod tests {
         })
     }
 
+    type TestH2Handler = Arc<
+        dyn Fn(
+                Request<RecvStream>,
+                SendResponse<Bytes>,
+            ) -> Pin<Box<dyn Future<Output = Result<()>> + Send>>
+            + Send
+            + Sync,
+    >;
+
+    fn test_h2_early_response_handler() -> TestH2Handler {
+        Arc::new(move |mut request, mut respond| {
+            Box::pin(async move {
+                let response = Response::builder().status(StatusCode::OK).body(())?;
+                respond.send_response(response, true)?;
+                if let Some(result) = request.body_mut().data().await {
+                    match result {
+                        Ok(chunk) => {
+                            request
+                                .body_mut()
+                                .flow_control()
+                                .release_capacity(chunk.len())?;
+                        }
+                        Err(error) if error.is_reset() => {}
+                        Err(error) => return Err(error.into()),
+                    }
+                }
+                Ok(())
+            })
+        })
+    }
+
+    fn test_h2_upstream_pool<F>(handshake_count: Arc<AtomicUsize>, handler: F) -> H2UpstreamPool
+    where
+        F: Fn(
+                Request<RecvStream>,
+                SendResponse<Bytes>,
+            ) -> Pin<Box<dyn Future<Output = Result<()>> + Send>>
+            + Send
+            + Sync
+            + 'static,
+    {
+        test_h2_upstream_pool_with_settings(handshake_count, handler, None)
+    }
+
+    fn test_h2_upstream_pool_with_settings<F>(
+        handshake_count: Arc<AtomicUsize>,
+        handler: F,
+        max_concurrent_streams: Option<u32>,
+    ) -> H2UpstreamPool
+    where
+        F: Fn(
+                Request<RecvStream>,
+                SendResponse<Bytes>,
+            ) -> Pin<Box<dyn Future<Output = Result<()>> + Send>>
+            + Send
+            + Sync
+            + 'static,
+    {
+        test_h2_upstream_pool_with_settings_and_open_delay(
+            handshake_count,
+            handler,
+            max_concurrent_streams,
+            None,
+        )
+    }
+
+    fn test_h2_upstream_pool_with_settings_and_open_delay<F>(
+        handshake_count: Arc<AtomicUsize>,
+        handler: F,
+        max_concurrent_streams: Option<u32>,
+        open_delay: Option<std::time::Duration>,
+    ) -> H2UpstreamPool
+    where
+        F: Fn(
+                Request<RecvStream>,
+                SendResponse<Bytes>,
+            ) -> Pin<Box<dyn Future<Output = Result<()>> + Send>>
+            + Send
+            + Sync
+            + 'static,
+    {
+        let handler: TestH2Handler = Arc::new(handler);
+        let opener: OpenUpstream = Arc::new(move |_key| {
+            let handler = Arc::clone(&handler);
+            let handshake_count = Arc::clone(&handshake_count);
+            Box::pin(async move {
+                if let Some(open_delay) = open_delay {
+                    tokio::time::sleep(open_delay).await;
+                }
+                handshake_count.fetch_add(1, Ordering::SeqCst);
+                let (dsbx_io, upstream_io) = tokio::io::duplex(64 * 1024);
+                tokio::spawn(async move {
+                    let mut builder = h2::server::Builder::new();
+                    if let Some(max) = max_concurrent_streams {
+                        builder.max_concurrent_streams(max);
+                    }
+                    let mut connection = builder.handshake::<_, Bytes>(upstream_io).await?;
+                    while let Some(accepted) = connection.accept().await {
+                        let (request, respond) = accepted?;
+                        let handler = Arc::clone(&handler);
+                        tokio::spawn(async move {
+                            if let Err(error) = handler(request, respond).await {
+                                warn!(error = %error, "test h2 upstream handler failed");
+                            }
+                        });
+                    }
+                    Ok::<(), anyhow::Error>(())
+                });
+                Ok(OpenedUpstream::new(
+                    UpstreamProtocol::H2,
+                    Box::new(dsbx_io) as BoxedAsyncReadWrite,
+                ))
+            })
+        });
+        H2UpstreamPool::new(opener)
+    }
+
+    fn test_h2_pool_with_close_observer<F>(
+        handler: F,
+    ) -> (H2UpstreamPool, H2UpstreamKey, mpsc::UnboundedReceiver<()>)
+    where
+        F: Fn(
+                Request<RecvStream>,
+                SendResponse<Bytes>,
+            ) -> Pin<Box<dyn Future<Output = Result<()>> + Send>>
+            + Send
+            + Sync
+            + 'static,
+    {
+        let handler: TestH2Handler = Arc::new(handler);
+        let (closed_tx, closed_rx) = mpsc::unbounded_channel();
+        let opener: OpenUpstream = Arc::new(move |_key| {
+            let handler = Arc::clone(&handler);
+            let closed_tx = closed_tx.clone();
+            Box::pin(async move {
+                let (dsbx_io, upstream_io) = tokio::io::duplex(64 * 1024);
+                tokio::spawn(async move {
+                    let result = async {
+                        let mut connection = h2::server::handshake(upstream_io).await?;
+                        while let Some(accepted) = connection.accept().await {
+                            let (request, respond) = accepted?;
+                            let handler = Arc::clone(&handler);
+                            tokio::spawn(async move {
+                                if let Err(error) = handler(request, respond).await {
+                                    warn!(error = %error, "test h2 close observer handler failed");
+                                }
+                            });
+                        }
+                        Ok::<(), anyhow::Error>(())
+                    }
+                    .await;
+                    let _ = closed_tx.send(());
+                    if let Err(error) = result {
+                        warn!(error = %error, "test h2 close observer connection failed");
+                    }
+                });
+                Ok(OpenedUpstream::new(
+                    UpstreamProtocol::H2,
+                    Box::new(dsbx_io) as BoxedAsyncReadWrite,
+                ))
+            })
+        });
+        let key = H2UpstreamKey::new(
+            "api.openai.com".to_string(),
+            std::net::SocketAddr::from(([127, 0, 0, 1], 443)),
+        );
+        (H2UpstreamPool::new(opener), key, closed_rx)
+    }
+
+    async fn send_direct_pooled_h2_get(
+        pool: &H2UpstreamPool,
+        key: &H2UpstreamKey,
+        path: &str,
+    ) -> Result<()> {
+        let lease = match pool.lease(key).await? {
+            UpstreamLease::H2(lease) => lease,
+            UpstreamLease::Http1(_) => return Err(anyhow!("expected h2 lease")),
+        };
+        let mut send_request = lease.send_request();
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("https://{}{}", key.authority(), path))
+            .body(())?;
+        let (response, _stream) = send_request.send_request(request, true)?;
+        let response = response.await?;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(read_h2_body(response.into_body()).await?, b"ok");
+        drop(send_request);
+        drop(lease);
+        Ok(())
+    }
+
+    async fn assert_upstream_connection_closed(
+        closed_rx: &mut mpsc::UnboundedReceiver<()>,
+    ) -> Result<()> {
+        for _ in 0..16 {
+            if closed_rx.try_recv().is_ok() {
+                return Ok(());
+            }
+            tokio::task::yield_now().await;
+        }
+        Err(anyhow!("upstream h2 connection did not close"))
+    }
+
+    fn assert_upstream_connection_still_open(
+        closed_rx: &mut mpsc::UnboundedReceiver<()>,
+    ) -> Result<()> {
+        match closed_rx.try_recv() {
+            Ok(()) => Err(anyhow!("upstream h2 connection closed unexpectedly")),
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => Ok(()),
+            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
+                Err(anyhow!("upstream h2 close observer channel disconnected"))
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    struct H2RequestBodyObservation {
+        trailers_seen: bool,
+        reset_reason: Option<h2::Reason>,
+    }
+
+    async fn observe_h2_request_body_close(
+        mut body: RecvStream,
+    ) -> Result<H2RequestBodyObservation> {
+        while let Some(chunk) = body.data().await {
+            match chunk {
+                Ok(chunk) => {
+                    body.flow_control().release_capacity(chunk.len())?;
+                }
+                Err(error) => {
+                    return Ok(H2RequestBodyObservation {
+                        trailers_seen: false,
+                        reset_reason: error.reason(),
+                    });
+                }
+            }
+        }
+
+        let trailers = match body.trailers().await {
+            Ok(trailers) => trailers,
+            Err(error) => {
+                return Ok(H2RequestBodyObservation {
+                    trailers_seen: false,
+                    reset_reason: error.reason(),
+                });
+            }
+        };
+        Ok(H2RequestBodyObservation {
+            trailers_seen: trailers.is_some_and(|trailers| !trailers.is_empty()),
+            reset_reason: None,
+        })
+    }
+
+    async fn read_test_file_eventually(path: &std::path::Path) -> Result<String> {
+        for _ in 0..50 {
+            match tokio::fs::read_to_string(path).await {
+                Ok(text) if !text.is_empty() => return Ok(text),
+                Ok(_) => {
+                    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                }
+                Err(error) => return Err(error.into()),
+            }
+        }
+
+        tokio::fs::read_to_string(path)
+            .await
+            .with_context(|| format!("failed to read {}", path.display()))
+    }
+
+    fn test_h1_fallback_pool(
+        request_tx: mpsc::UnboundedSender<String>,
+        response: impl Into<Vec<u8>>,
+    ) -> H2UpstreamPool {
+        let response = Arc::new(response.into());
+        let opener: OpenUpstream = Arc::new(move |_key| {
+            let request_tx = request_tx.clone();
+            let response = Arc::clone(&response);
+            Box::pin(async move {
+                let (dsbx_io, mut upstream_io) = tokio::io::duplex(64 * 1024);
+                tokio::spawn(async move {
+                    let mut request = Vec::new();
+                    read_test_h1_header_block(&mut upstream_io, &mut request).await?;
+                    let request_text = String::from_utf8(request)?;
+                    request_tx
+                        .send(request_text)
+                        .map_err(|_| anyhow!("failed to send captured h1 request"))?;
+                    upstream_io.write_all(response.as_slice()).await?;
+                    upstream_io.shutdown().await?;
+                    Ok::<(), anyhow::Error>(())
+                });
+                Ok(OpenedUpstream::new(
+                    UpstreamProtocol::Http1,
+                    Box::new(dsbx_io) as BoxedAsyncReadWrite,
+                ))
+            })
+        });
+        H2UpstreamPool::new(opener)
+    }
+
+    fn test_h2_goaway_pool(handshake_count: Arc<AtomicUsize>) -> H2UpstreamPool {
+        let opener: OpenUpstream = Arc::new(move |_key| {
+            let handshake_count = Arc::clone(&handshake_count);
+            Box::pin(async move {
+                let connection_index = handshake_count.fetch_add(1, Ordering::SeqCst) + 1;
+                let (dsbx_io, upstream_io) = tokio::io::duplex(64 * 1024);
+                tokio::spawn(async move {
+                    let mut connection = h2::server::handshake(upstream_io).await?;
+                    while let Some(accepted) = connection.accept().await {
+                        let (_request, respond) = accepted?;
+                        if connection_index == 1 {
+                            connection.graceful_shutdown();
+                        }
+                        tokio::spawn(async move {
+                            if let Err(error) =
+                                send_h2_response(respond, StatusCode::OK, Bytes::from_static(b"ok"))
+                                    .await
+                            {
+                                warn!(error = %error, "test h2 goaway handler failed");
+                            }
+                        });
+                    }
+                    Ok::<(), anyhow::Error>(())
+                });
+                Ok(OpenedUpstream::new(
+                    UpstreamProtocol::H2,
+                    Box::new(dsbx_io) as BoxedAsyncReadWrite,
+                ))
+            })
+        });
+        H2UpstreamPool::new(opener)
+    }
+
+    fn test_h2_upstream_key(sni: &str) -> H2UpstreamKey {
+        H2UpstreamKey::new(
+            sni.to_string(),
+            std::net::SocketAddr::from(([127, 0, 0, 1], 443)),
+        )
+    }
+
+    async fn wait_for_pool_active_streams(
+        pool: &H2UpstreamPool,
+        key: &H2UpstreamKey,
+        expected: usize,
+    ) -> Result<()> {
+        for _ in 0..16 {
+            let active_streams = pool_active_streams(pool, key).await;
+            if active_streams == expected {
+                return Ok(());
+            }
+            tokio::task::yield_now().await;
+        }
+
+        let active_streams = pool_active_streams(pool, key).await;
+        Err(anyhow!(
+            "expected {expected} active h2 streams for {}, got {active_streams}",
+            key.authority()
+        ))
+    }
+
+    async fn pool_active_streams(pool: &H2UpstreamPool, key: &H2UpstreamKey) -> usize {
+        let entries = pool.inner.entries.lock().await;
+        entries
+            .get(key)
+            .map(|connections| {
+                connections
+                    .iter()
+                    .map(|connection| connection.active_streams.load(Ordering::SeqCst))
+                    .sum()
+            })
+            .unwrap_or(0)
+    }
+
+    async fn start_test_h2_upstream_bridge(
+        sni: &str,
+        secret_table: Arc<SecretTable>,
+        pool: H2UpstreamPool,
+    ) -> Result<(
+        h2::client::SendRequest<Bytes>,
+        tokio::task::JoinHandle<std::result::Result<(), h2::Error>>,
+        tokio::task::JoinHandle<Result<()>>,
+    )> {
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let tempdir = tempfile::tempdir()?.keep();
+        let deny_log = Arc::new(tempdir.join("deny.log"));
+        let key = H2UpstreamKey::new(
+            sni.to_string(),
+            std::net::SocketAddr::from(([127, 0, 0, 1], 443)),
+        );
+        let bridge_task = tokio::spawn(run_h2_to_upstream_bridge(
+            server_io,
+            sni.to_string(),
+            secret_table,
+            deny_log,
+            pool,
+            key,
+        ));
+        let (send_request, connection) = h2::client::handshake(client_io).await?;
+        let connection_task = tokio::spawn(connection);
+        Ok((send_request, connection_task, bridge_task))
+    }
+
+    async fn send_h2_response(
+        mut respond: SendResponse<Bytes>,
+        status: StatusCode,
+        body: Bytes,
+    ) -> Result<()> {
+        let response = Response::builder().status(status).body(())?;
+        let mut send = respond.send_response(response, false)?;
+        send_data(&mut send, body, true).await
+    }
+
     fn test_h1_opener_capture_until_eof(
         request_tx: mpsc::UnboundedSender<String>,
     ) -> OpenH1Upstream {
@@ -2813,6 +5436,95 @@ mod tests {
         Arc::new(move || {
             open_count.fetch_add(1, Ordering::SeqCst);
             opener()
+        })
+    }
+
+    fn test_h1_opener_expect_continue(request_tx: mpsc::UnboundedSender<String>) -> OpenH1Upstream {
+        Arc::new(move || {
+            let request_tx = request_tx.clone();
+            Box::pin(async move {
+                let (dsbx_io, mut upstream_io) = tokio::io::duplex(64 * 1024);
+                tokio::spawn(async move {
+                    let mut request = Vec::new();
+                    read_test_h1_header_block(&mut upstream_io, &mut request).await?;
+                    upstream_io
+                        .write_all(b"HTTP/1.1 100 Continue\r\nx-info: yes\r\n\r\n")
+                        .await?;
+                    read_test_h1_chunked_body(&mut upstream_io, &mut request).await?;
+                    let request_text = String::from_utf8(request)?;
+                    request_tx
+                        .send(request_text)
+                        .map_err(|_| anyhow!("failed to send captured request"))?;
+                    upstream_io
+                        .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+                        .await?;
+                    upstream_io.shutdown().await?;
+                    Ok::<(), anyhow::Error>(())
+                });
+                Ok(Box::new(dsbx_io) as BoxedAsyncReadWrite)
+            })
+        })
+    }
+
+    fn test_h1_opener_early_final_response(
+        request_tx: mpsc::UnboundedSender<String>,
+    ) -> OpenH1Upstream {
+        Arc::new(move || {
+            let request_tx = request_tx.clone();
+            Box::pin(async move {
+                let (dsbx_io, mut upstream_io) = tokio::io::duplex(64 * 1024);
+                tokio::spawn(async move {
+                    let mut request = Vec::new();
+                    read_test_h1_header_block(&mut upstream_io, &mut request).await?;
+                    let _first_chunk = read_test_h1_chunk(&mut upstream_io, &mut request).await?;
+                    let request_text = String::from_utf8(request)?;
+                    request_tx
+                        .send(request_text)
+                        .map_err(|_| anyhow!("failed to send captured request"))?;
+                    upstream_io
+                        .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nearly")
+                        .await?;
+                    upstream_io.shutdown().await?;
+                    Ok::<(), anyhow::Error>(())
+                });
+                Ok(Box::new(dsbx_io) as BoxedAsyncReadWrite)
+            })
+        })
+    }
+
+    fn test_h1_opener_bidirectional_stream(
+        request_tx: mpsc::UnboundedSender<String>,
+    ) -> OpenH1Upstream {
+        Arc::new(move || {
+            let request_tx = request_tx.clone();
+            Box::pin(async move {
+                let (dsbx_io, mut upstream_io) = tokio::io::duplex(64 * 1024);
+                tokio::spawn(async move {
+                    let mut request = Vec::new();
+                    read_test_h1_header_block(&mut upstream_io, &mut request).await?;
+                    let first_chunk = read_test_h1_chunk(&mut upstream_io, &mut request).await?;
+                    ensure!(first_chunk.as_slice() == b"one", "unexpected first chunk");
+                    upstream_io
+                        .write_all(
+                            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n7\r\nack-one\r\n",
+                        )
+                        .await?;
+                    upstream_io.flush().await?;
+
+                    let second_chunk = read_test_h1_chunk(&mut upstream_io, &mut request).await?;
+                    ensure!(second_chunk.as_slice() == b"two", "unexpected second chunk");
+                    read_test_h1_chunked_body_after_chunks(&mut upstream_io, &mut request).await?;
+                    upstream_io.write_all(b"7\r\nack-two\r\n0\r\n\r\n").await?;
+                    upstream_io.flush().await?;
+                    let request_text = String::from_utf8(request)?;
+                    request_tx
+                        .send(request_text)
+                        .map_err(|_| anyhow!("failed to send captured request"))?;
+                    upstream_io.shutdown().await?;
+                    Ok::<(), anyhow::Error>(())
+                });
+                Ok(Box::new(dsbx_io) as BoxedAsyncReadWrite)
+            })
         })
     }
 
@@ -2864,6 +5576,65 @@ mod tests {
                 Ok(Box::new(dsbx_io) as BoxedAsyncReadWrite)
             })
         })
+    }
+
+    async fn read_test_h1_header_block<R>(reader: &mut R, request: &mut Vec<u8>) -> Result<()>
+    where
+        R: AsyncRead + Unpin,
+    {
+        loop {
+            let mut byte = [0_u8; 1];
+            reader.read_exact(&mut byte).await?;
+            request.push(byte[0]);
+            if request.ends_with(b"\r\n\r\n") {
+                return Ok(());
+            }
+        }
+    }
+
+    async fn read_test_h1_chunk<R>(reader: &mut R, request: &mut Vec<u8>) -> Result<Vec<u8>>
+    where
+        R: AsyncRead + Unpin,
+    {
+        let line = read_test_crlf_line(reader).await?;
+        request.extend_from_slice(&line);
+        let chunk_size = parse_test_chunk_size(&line)?;
+        let mut body = vec![0_u8; chunk_size];
+        if chunk_size != 0 {
+            reader.read_exact(&mut body).await?;
+            request.extend_from_slice(&body);
+        }
+        let crlf = read_test_crlf_line(reader).await?;
+        request.extend_from_slice(&crlf);
+        Ok(body)
+    }
+
+    async fn read_test_h1_chunked_body<R>(reader: &mut R, request: &mut Vec<u8>) -> Result<()>
+    where
+        R: AsyncRead + Unpin,
+    {
+        loop {
+            let chunk = read_test_h1_chunk(reader, request).await?;
+            if chunk.is_empty() {
+                return Ok(());
+            }
+        }
+    }
+
+    async fn read_test_h1_chunked_body_after_chunks<R>(
+        reader: &mut R,
+        request: &mut Vec<u8>,
+    ) -> Result<()>
+    where
+        R: AsyncRead + Unpin,
+    {
+        let line = read_test_crlf_line(reader).await?;
+        request.extend_from_slice(&line);
+        let chunk_size = parse_test_chunk_size(&line)?;
+        ensure!(chunk_size == 0, "expected chunk terminator");
+        let terminator = read_test_crlf_line(reader).await?;
+        request.extend_from_slice(&terminator);
+        Ok(())
     }
 
     fn test_h1_opener_with_split_chunked_response(
@@ -2982,6 +5753,23 @@ mod tests {
         }
         ensure!(body.trailers().await?.is_none(), "unexpected trailers");
         Ok(output)
+    }
+
+    async fn next_informational(response: &mut h2::client::ResponseFuture) -> Result<Response<()>> {
+        tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            poll_fn(|cx| match response.poll_informational(cx) {
+                std::task::Poll::Ready(Some(result)) => std::task::Poll::Ready(
+                    result.context("failed to read h2 informational response"),
+                ),
+                std::task::Poll::Ready(None) => {
+                    std::task::Poll::Ready(Err(anyhow!("no informational response available")))
+                }
+                std::task::Poll::Pending => std::task::Poll::Pending,
+            }),
+        )
+        .await
+        .context("timed out waiting for informational response")?
     }
 
     fn h1_header_values<'a>(request_text: &'a str, name: &str) -> Vec<&'a str> {
