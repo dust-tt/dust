@@ -1,6 +1,6 @@
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
-import { useCheckProjectName } from "@app/lib/swr/pods";
+import { useCheckPodName } from "@app/lib/swr/pods";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { getPodRoute } from "@app/lib/utils/router";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
@@ -56,7 +56,7 @@ export function CreateProjectModal({
     isNameAvailable,
     isChecking,
     setValue: setNameToCheck,
-  } = useCheckProjectName({
+  } = useCheckPodName({
     owner,
   });
 

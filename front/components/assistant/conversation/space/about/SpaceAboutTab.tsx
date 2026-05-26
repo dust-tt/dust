@@ -5,7 +5,7 @@ import { SuggestedTasksGenerationTile } from "@app/components/assistant/conversa
 import { ConfirmContext } from "@app/components/Confirm";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchiveProject } from "@app/hooks/useArchiveProject";
-import { useCheckProjectName } from "@app/lib/swr/pods";
+import { useCheckPodName } from "@app/lib/swr/pods";
 import {
   useProjectMetadata,
   useSpaceInfo,
@@ -80,7 +80,7 @@ export function SpaceAboutTab({
     isNameAvailable,
     isChecking: isCheckingName,
     setValue: setNameToCheck,
-  } = useCheckProjectName({
+  } = useCheckPodName({
     owner,
     whitelistedName: space.name,
   });

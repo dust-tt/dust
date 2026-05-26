@@ -8,12 +8,12 @@ import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectListItemType } from "@app/types/space";
+import type { PodListItemType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetBySpacesSummaryResponseBody = {
   summary: Array<{
-    space: ProjectListItemType;
+    space: PodListItemType;
     unreadConversations: ConversationWithoutContentType[];
     nonParticipantUnreadConversations: ConversationWithoutContentType[];
   }>;
@@ -127,6 +127,7 @@ async function handler(
             // We excluded archived projects and we only list projects where the user is a member.
             archivedAt: null,
             isMember: true,
+            isEditor: space.canAdministrate(auth),
             isStarred: starredSpaceModelIds.has(space.id),
           },
           unreadConversations:

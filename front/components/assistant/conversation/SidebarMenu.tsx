@@ -55,7 +55,7 @@ import {
   type ConversationListItemType,
   getConversationDisplayTitle,
 } from "@app/types/assistant/conversation";
-import type { ProjectType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
@@ -128,7 +128,7 @@ type GroupLabel =
   | "Older";
 
 interface SearchProjectItemProps {
-  space: ProjectType;
+  space: PodType;
   owner: WorkspaceType;
   isMember: boolean;
   activeSpaceId: string | null;
@@ -166,7 +166,7 @@ function SearchProjectItem({
 
 interface SearchResultsProps {
   owner: WorkspaceType;
-  allProjects: Array<ProjectType & { isMember: boolean }>;
+  allProjects: Array<PodType & { isMember: boolean }>;
   isSearchingProjects: boolean;
   hasMoreProjects: boolean;
   loadMoreProjects: () => void;

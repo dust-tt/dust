@@ -114,6 +114,7 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
         // We excluded archived projects and we only list projects where the user is a member.
         archivedAt: null,
         isMember: true,
+        isEditor: space.canAdministrate(auth),
         isStarred: starredSpaceModelIds.has(space.id),
       },
       unreadConversations:

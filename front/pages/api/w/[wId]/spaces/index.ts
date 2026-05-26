@@ -118,7 +118,7 @@ import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { ProjectType, SpaceType } from "@app/types/space";
+import type { PodType, SpaceType } from "@app/types/space";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -146,7 +146,7 @@ export type PostSpaceRequestBodyType = z.infer<
 >;
 
 export type GetSpacesResponseBody = {
-  spaces: (SpaceType | ProjectType)[];
+  spaces: (SpaceType | PodType)[];
 };
 
 export type PostSpacesResponseBody = {
@@ -204,7 +204,7 @@ async function handler(
       );
 
       // Projects: use enrichProjectsWithMetadata to get descriptions
-      const projectsJson: ProjectType[] = await enrichProjectsWithMetadata(
+      const projectsJson: PodType[] = await enrichProjectsWithMetadata(
         auth,
         projectSpaces
       );
