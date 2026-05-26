@@ -5,6 +5,7 @@ import { CenteredState } from "@app/components/assistant/conversation/interactiv
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
+import { PinPodBannerButton } from "@app/components/assistant/conversation/space/PinPodBannerButton";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useVisualizationRevert } from "@app/hooks/conversations";
@@ -14,6 +15,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import { useProjectFiles } from "@app/lib/swr/projects";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -74,6 +76,10 @@ export function FrameRenderer({
     spaceId: conversation?.spaceId ?? projectId ?? null,
   });
 
+  const isFrameInPod = Boolean(
+    projectId && projectInfo?.kind === "project" && !projectInfo.archivedAt
+  );
+
   const projectSaveState = useMemo(() => {
     if (!projectInfo && isSpaceInfoLoading) {
       return "unknown";
@@ -91,6 +97,19 @@ export function FrameRenderer({
 
     return "saved";
   }, [conversation?.spaceId, projectId, projectInfo, isSpaceInfoLoading]);
+
+  const { files: projectFiles } = useProjectFiles({
+    owner,
+    spaceId: projectId ?? "",
+    disabled: !isFrameInPod,
+  });
+
+  const framePath = useMemo(() => {
+    const entry = projectFiles.find(
+      (file) => !file.isDirectory && file.fileId === fileId
+    );
+    return entry?.path ?? null;
+  }, [fileId, projectFiles]);
 
   const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -354,6 +373,15 @@ export function FrameRenderer({
               fileName={fileMetadata?.fileName}
             />
             <ShareFrameSheet fileId={fileId} owner={owner} />
+            <PinPodBannerButton
+              owner={owner}
+              spaceId={projectId ?? ""}
+              pinnedFramePath={projectInfo?.pinnedFramePath ?? null}
+              isEditor={projectInfo?.isEditor ?? false}
+              framePath={framePath}
+              fileName={fileMetadata?.fileName}
+              hidden={!isFrameInPod}
+            />
             {projectSaveState === "saved" && (
               <Button
                 icon={CheckCircleIcon}

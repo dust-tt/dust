@@ -1,6 +1,7 @@
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
+import { PinPodBannerButton } from "@app/components/assistant/conversation/space/PinPodBannerButton";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import type { WorkspaceType } from "@app/types/user";
@@ -18,6 +19,12 @@ import { useRef } from "react";
 
 interface ProjectFrameSheetProps {
   fileId: string | null;
+  framePath: string | null;
+  fileName?: string;
+  spaceId: string;
+  pinnedFramePath: string | null;
+  isEditor: boolean;
+  isArchived: boolean;
   isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
@@ -25,6 +32,12 @@ interface ProjectFrameSheetProps {
 
 export function ProjectFrameSheet({
   fileId,
+  framePath,
+  fileName,
+  spaceId,
+  pinnedFramePath,
+  isEditor,
+  isArchived,
   isOpen,
   onClose,
   owner,
@@ -61,6 +74,15 @@ export function ProjectFrameSheet({
                   fileName={fileMetadata?.fileName}
                 />
                 <ShareFrameSheet fileId={fileId} owner={owner} />
+                <PinPodBannerButton
+                  owner={owner}
+                  spaceId={spaceId}
+                  pinnedFramePath={pinnedFramePath}
+                  isEditor={isEditor}
+                  framePath={framePath}
+                  fileName={fileName}
+                  hidden={isArchived}
+                />
               </div>
             )}
             <SheetClose asChild>
