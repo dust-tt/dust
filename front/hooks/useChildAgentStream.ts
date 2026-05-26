@@ -15,7 +15,6 @@ type ChildAgentStreamStatus = "created" | "streaming" | "done" | "error";
 
 interface ChildAgentStreamReducerState {
   response: string;
-  chainOfThought: string;
   cotBuffer: string;
   status: ChildAgentStreamStatus;
   inlineActivitySteps: InlineActivityStep[];
@@ -24,7 +23,6 @@ interface ChildAgentStreamReducerState {
 
 interface ChildAgentStreamResult {
   response: string;
-  chainOfThought: string;
   isStreamingResponse: boolean;
   inlineActivitySteps: InlineActivityStep[];
   pendingToolCalls: PendingToolCall[];
@@ -37,7 +35,6 @@ type ChildAgentStreamEvent = AgentMessageEvents | { type: "end-of-stream" };
 
 const initialState: ChildAgentStreamReducerState = {
   response: "",
-  chainOfThought: "",
   cotBuffer: "",
   status: "created",
   inlineActivitySteps: [],
@@ -60,7 +57,6 @@ function childAgentStreamReducer(
       if (event.classification === "chain_of_thought") {
         return {
           ...state,
-          chainOfThought: state.chainOfThought + event.text,
           cotBuffer: state.cotBuffer + event.text,
           status: "streaming",
         };
@@ -138,7 +134,6 @@ function childAgentStreamReducer(
         : state.inlineActivitySteps;
       return {
         response: event.message.content ?? state.response,
-        chainOfThought: event.message.chainOfThought ?? state.chainOfThought,
         cotBuffer: "",
         inlineActivitySteps: finalSteps,
         pendingToolCalls: [],
@@ -228,7 +223,6 @@ export function useChildAgentStream({
 
   return {
     response: state.response,
-    chainOfThought: state.chainOfThought,
     isStreamingResponse: isStreaming && state.response.length > 0,
     inlineActivitySteps: state.inlineActivitySteps,
     pendingToolCalls: state.pendingToolCalls,
