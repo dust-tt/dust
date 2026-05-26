@@ -1,21 +1,12 @@
-import {
-  makeProcessedMountFileName,
-  toPodMountFilePath,
-} from "@app/lib/api/files/mount_path";
-import { getProcessedContentType } from "@app/lib/api/files/processing";
+import { toPodMountFilePath } from "@app/lib/api/files/mount_path";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { FileResource } from "@app/lib/resources/file_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
+import assert from "@app/lib/utils/assert";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { ModelId } from "@app/types/shared/model_id";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import assert from "assert";
-import { Op } from "sequelize";
 
-const BATCH_SIZE_DEFAULT = 200;
 const CONCURRENCY_DEFAULT = 4;
 
 async function copyIfNeeded({
@@ -57,25 +48,19 @@ makeScript(
       type: "number",
       describe: "Skip workspaces with model id below this value, for resuming.",
     },
-    batchSize: {
-      type: "number",
-      default: BATCH_SIZE_DEFAULT,
-      describe: "Number of files to fetch per DB query.",
-    },
     concurrency: {
       type: "number",
       default: CONCURRENCY_DEFAULT,
-      describe: "Concurrent file copies per batch.",
+      describe: "Concurrent file copies.",
     },
   },
-  async (
-    { execute, wId, fromWorkspaceModelId, batchSize, concurrency },
-    logger
-  ) => {
+  async ({ execute, wId, fromWorkspaceModelId, concurrency }, logger) => {
     logger.info(
-      { execute, wId, fromWorkspaceModelId, batchSize, concurrency },
+      { execute, wId, fromWorkspaceModelId, concurrency },
       "[backfill_project_gcs_mount_paths_to_pods] Starting"
     );
+
+    const bucket = getPrivateUploadBucket();
 
     await runOnAllWorkspaces(
       async (workspace) => {
@@ -92,22 +77,18 @@ makeScript(
           return;
         }
 
-        let lastId: ModelId = 0;
         let totalProcessed = 0;
         let totalCopied = 0;
         let totalWouldCopy = 0;
         let totalSkippedExisting = 0;
         let totalSkippedMissing = 0;
+        let totalSkippedNoTransform = 0;
         let totalErrors = 0;
 
         const runCopy = async ({
-          fileId,
-          kind,
           sourcePath,
           destPath,
         }: {
-          fileId: string;
-          kind: "original" | "processed";
           sourcePath: string;
           destPath: string;
         }) => {
@@ -127,8 +108,6 @@ makeScript(
                 logger.info(
                   {
                     workspaceId: workspace.sId,
-                    fileId,
-                    kind,
                     from: sourcePath,
                     to: destPath,
                   },
@@ -141,12 +120,7 @@ makeScript(
               case "skipped_missing":
                 totalSkippedMissing++;
                 logger.info(
-                  {
-                    workspaceId: workspace.sId,
-                    fileId,
-                    kind,
-                    sourcePath,
-                  },
+                  { workspaceId: workspace.sId, sourcePath },
                   "[backfill_project_gcs_mount_paths_to_pods] Source object missing, skipping"
                 );
                 break;
@@ -156,8 +130,6 @@ makeScript(
             logger.error(
               {
                 workspaceId: workspace.sId,
-                fileId,
-                kind,
                 from: sourcePath,
                 to: destPath,
                 err: normalizeError(err),
@@ -172,92 +144,37 @@ makeScript(
           "[backfill_project_gcs_mount_paths_to_pods] Starting workspace"
         );
 
-        while (true) {
-          const rows = await FileModel.findAll({
-            attributes: ["id"],
-            where: {
-              workspaceId: workspace.id,
-              useCase: "project_context",
-              mountFilePath: {
-                [Op.like]: `w/${workspace.sId}/projects/%/files/%`,
-              },
-              id: { [Op.gt]: lastId },
-            },
-            order: [["id", "ASC"]],
-            limit: batchSize,
-          });
+        // GCS is the source of truth: enumerate all objects under the workspace's
+        // projects/ prefix. toPodMountFilePath transforms both original and processed
+        // file paths uniformly (w/.../projects/... → w/.../pods/...).
+        const prefix = `w/${workspace.sId}/projects/`;
 
-          if (rows.length === 0) {
-            break;
-          }
+        const { files, pageFetchCount } = await bucket.getAllFilesByPrefix({
+          prefix,
+        });
 
-          lastId = rows[rows.length - 1].id;
+        logger.info(
+          {
+            workspaceId: workspace.sId,
+            fileCount: files.length,
+            pageFetchCount,
+          },
+          "[backfill_project_gcs_mount_paths_to_pods] Listed GCS objects"
+        );
 
-          const files = await FileResource.fetchByModelIdsWithAuth(
-            auth,
-            rows.map((r) => r.id)
-          );
+        await concurrentExecutor(
+          files,
+          async (gcsFile) => {
+            totalProcessed++;
 
-          await concurrentExecutor(
-            files,
-            async (file) => {
-              totalProcessed++;
+            const sourcePath = gcsFile.name;
+            const destPath = toPodMountFilePath(sourcePath);
+            assert(destPath, `expected project mount path, got ${sourcePath}`);
 
-              assert(
-                file.mountFilePath,
-                "file.mountFilePath is set by SQL filter"
-              );
-              const destMountFilePath = toPodMountFilePath(file.mountFilePath);
-              assert(
-                destMountFilePath,
-                `expected project mount path, got ${file.mountFilePath}`
-              );
-
-              await runCopy({
-                fileId: file.sId,
-                kind: "original",
-                sourcePath: file.mountFilePath,
-                destPath: destMountFilePath,
-              });
-
-              const processedContentType =
-                file.useCaseMetadata?.skipFileProcessing === true
-                  ? undefined
-                  : getProcessedContentType(file.contentType);
-              if (processedContentType) {
-                await runCopy({
-                  fileId: file.sId,
-                  kind: "processed",
-                  sourcePath: makeProcessedMountFileName({
-                    mountFilePath: file.mountFilePath,
-                    processedContentType,
-                  }),
-                  destPath: makeProcessedMountFileName({
-                    mountFilePath: destMountFilePath,
-                    processedContentType,
-                  }),
-                });
-              }
-            },
-            { concurrency }
-          );
-          logger.info(
-            {
-              workspaceId: workspace.sId,
-              lastId,
-              totalProcessed,
-              totalCopied,
-              totalWouldCopy,
-              totalSkippedExisting,
-              totalSkippedMissing,
-              totalErrors,
-              execute,
-            },
-            execute
-              ? "[backfill_project_gcs_mount_paths_to_pods] Batch processed"
-              : "[backfill_project_gcs_mount_paths_to_pods] Dry-run batch processed"
-          );
-        }
+            await runCopy({ sourcePath, destPath });
+          },
+          { concurrency }
+        );
 
         logger.info(
           {
@@ -267,6 +184,7 @@ makeScript(
             totalWouldCopy,
             totalSkippedExisting,
             totalSkippedMissing,
+            totalSkippedNoTransform,
             totalErrors,
             execute,
           },
