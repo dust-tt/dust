@@ -29,6 +29,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
@@ -43,9 +44,9 @@ import { Op } from "sequelize";
  */
 export function getProjectConversationFolderInternalId(
   dustProjectConnectorId: string,
-  spaceSId: string
+  spaceId: string
 ): string {
-  return `dust-project-${dustProjectConnectorId}-project-${spaceSId}`;
+  return `dust-project-${dustProjectConnectorId}-project-${spaceId}`;
 }
 
 export async function listProjectContentFragments(
@@ -78,17 +79,17 @@ export async function listProjectContextFiles(
   }
 
   const files: FileResource[] = [];
-  const seenSIds = new Set<string>();
+  const seenIds = new Set<string>();
 
   for (const fragment of fragments) {
     if (fragment.fileId == null) {
       continue;
     }
     const file = filesByModelId.get(fragment.fileId);
-    if (!file || seenSIds.has(file.sId)) {
+    if (!file || seenIds.has(file.sId)) {
       continue;
     }
-    seenSIds.add(file.sId);
+    seenIds.add(file.sId);
     files.push(file);
   }
 
@@ -155,10 +156,18 @@ export async function listProjectContextAttachments(
     string,
     Map<string, number | null>
   >();
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    Array.from(byView.keys())
+  );
+  const dataSourceViewById = new Map(
+    dataSourceViews.map((dsView) => [dsView.sId, dsView])
+  );
 
-  await Promise.all(
-    Array.from(byView.entries()).map(async ([dsViewSId, nodeIds]) => {
-      const dsView = await DataSourceViewResource.fetchById(auth, dsViewSId);
+  await concurrentExecutor(
+    Array.from(byView.entries()),
+    async ([dsViewId, nodeIds]) => {
+      const dsView = dataSourceViewById.get(dsViewId);
       if (!dsView) {
         return;
       }
@@ -175,8 +184,11 @@ export async function listProjectContextAttachments(
       for (const n of res.value.nodes) {
         m.set(n.internalId, n.lastUpdatedAt);
       }
-      lastUpdatedByViewAndNode.set(dsViewSId, m);
-    })
+      lastUpdatedByViewAndNode.set(dsViewId, m);
+    },
+    {
+      concurrency: 4
+    }
   );
 
   return attachments.map((a) => {
@@ -200,7 +212,7 @@ export type ProjectKnowledgeFromConnectorItem = {
   sourceUrl: string | null;
   lastUpdatedAt: number | null;
   creator: string | null;
-  sourceDataSourceViewSpaceSId: string | null;
+  sourceDataSourceViewSpaceId: string | null;
   sourceDataSourceName: string | null;
   sourceConnectorProvider: ConnectorProvider | null;
 };
@@ -217,24 +229,22 @@ export async function listProjectKnowledgeFromConnectors(
   const attachments = await listProjectContextAttachments(auth, space);
   const contentNodes = attachments.filter(isContentNodeAttachmentType);
 
-  const dsvSIds = Array.from(
-    new Set(contentNodes.map((a) => a.nodeDataSourceViewId))
-  );
+  const dsvIds = [...new Set(contentNodes.map((a) => a.nodeDataSourceViewId))];
 
-  const dsvBySId = new Map<
+  const dsvById = new Map<
     string,
     {
-      spaceSId: string;
+      spaceId: string;
       dataSourceName: string;
       connectorProvider: ConnectorProvider | null;
     }
   >();
-  if (dsvSIds.length > 0) {
-    const dsvs = await DataSourceViewResource.fetchByIds(auth, dsvSIds);
+  if (dsvIds.length > 0) {
+    const dsvs = await DataSourceViewResource.fetchByIds(auth, dsvIds);
     for (const dsv of dsvs) {
       const json = dsv.toJSON();
-      dsvBySId.set(dsv.sId, {
-        spaceSId: json.spaceId,
+      dsvById.set(dsv.sId, {
+        spaceId: json.spaceId,
         dataSourceName: getDisplayNameForDataSource(json.dataSource),
         connectorProvider: json.dataSource.connectorProvider,
       });
@@ -245,7 +255,7 @@ export async function listProjectKnowledgeFromConnectors(
     const creator = a.creator
       ? `${a.creator.type === "agent" ? "agent: " : ""}${a.creator.name}`
       : null;
-    const dsv = dsvBySId.get(a.nodeDataSourceViewId);
+    const dsv = dsvById.get(a.nodeDataSourceViewId);
     return {
       contentFragmentId: a.contentFragmentId,
       nodeId: a.nodeId,
@@ -256,7 +266,7 @@ export async function listProjectKnowledgeFromConnectors(
       sourceUrl: a.sourceUrl,
       lastUpdatedAt: a.lastUpdatedAt ?? null,
       creator,
-      sourceDataSourceViewSpaceSId: dsv?.spaceSId ?? null,
+      sourceDataSourceViewSpaceId: dsv?.spaceId ?? null,
       sourceDataSourceName: dsv?.dataSourceName ?? null,
       sourceConnectorProvider: dsv?.connectorProvider ?? null,
     };
