@@ -77,7 +77,7 @@ export const GEMINI_3_1_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   },
 };
 
-// Deprecated: superseded by gemini-3.1-flash-lite. Kept for historical agent records.
+// Deprecated: superseded by gemini-3.1-flash-lite. Kept until existing agents are migrated.
 export const GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "google_ai_studio",

@@ -141,7 +141,7 @@ export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
     },
     thinkingConfig: POST_GEMINI_3_THINKING_CONFIG_MAPPING,
   },
-  // Deprecated: superseded by gemini-3.1-flash-lite. Same config kept for continuity.
+  // Deprecated: superseded by gemini-3.1-flash-lite. Kept until existing agents are migrated.
   [GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID]: {
     overwrites: {
       temperature: 1,
