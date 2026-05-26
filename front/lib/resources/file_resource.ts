@@ -1502,6 +1502,28 @@ export class FileResource extends BaseResource<FileModel> {
     return grants.map((grant) => renderSharingGrant(grant, usersById));
   }
 
+  async listAllSharingGrants(): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "listAllSharingGrants requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
+      },
+      order: [["grantedAt", "DESC"]],
+    });
+
+    const userIds = removeNulls(grants.map((g) => g.grantedBy));
+    const users = await UserResource.fetchByModelIds(userIds);
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    return grants.map((grant) => renderSharingGrant(grant, usersById));
+  }
+
   // Serialization logic.
 
   toJSON(auth?: Authenticator): FileType {
@@ -1864,6 +1886,7 @@ function renderSharingGrant(
     grantedAt: grant.grantedAt,
     grantedBy: user?.toJSON() ?? null,
     expiresAt: grant.expiresAt,
+    revokedAt: grant.revokedAt,
     lastViewedAt: grant.lastViewedAt,
   };
 }

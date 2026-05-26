@@ -87,6 +87,7 @@ export interface SharingGrantType {
   grantedAt: Date;
   grantedBy: UserType | null;
   expiresAt: Date | null;
+  revokedAt: Date | null;
   lastViewedAt: Date | null;
   // True when the workspace policy prevents this grant from granting access.
   blockedByPolicy?: boolean;

@@ -6,7 +6,11 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { FileTypeWithMetadata } from "@app/types/files";
+import type {
+  FileShareScope,
+  FileTypeWithMetadata,
+  SharingGrantType,
+} from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -14,6 +18,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 export interface GetPokeFileResponseBody {
   content: string;
   file: FileTypeWithMetadata;
+  shareInfo: {
+    scope: FileShareScope;
+    sharedAt: Date;
+    shareUrl: string;
+  } | null;
+  sharingGrants: SharingGrantType[];
 }
 
 async function handler(
