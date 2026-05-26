@@ -43,7 +43,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe(
-          "The CC email addresses (optional if replyToMessageId is set, acts as override)"
+          "The CC email addresses (optional if replyToMessageId is set, acts as override)."
         ),
       bcc: z
         .array(z.string())
@@ -51,7 +51,12 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .describe(
           "The BCC email addresses (optional if replyToMessageId is set, acts as override)."
         ),
-      subject: z.string().describe("The subject line of the email"),
+      subject: z
+        .string()
+        .optional()
+        .describe(
+          "The subject line of the email (required if replyToMessageId is not set, should be omitted if replyToMessageId is set)."
+        ),
       contentType: z
         .enum(["text/plain", "text/html"])
         .describe("The content type of the email (text/plain or text/html)."),
@@ -210,7 +215,12 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional. The email address to send from. Must be configured as a send-as alias in the user's Gmail settings (e.g. a shared Google Group address like team@company.com). If omitted, Gmail will use the authenticated user's primary address."
         ),
-      subject: z.string().describe("The subject line of the email"),
+      subject: z
+        .string()
+        .optional()
+        .describe(
+          "The subject line of the email (required if replyToMessageId is not set, should be omitted if replyToMessageId is set)."
+        ),
       contentType: z
         .enum(["text/plain", "text/html"])
         .describe("The content type of the email (text/plain or text/html)."),
