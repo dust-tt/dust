@@ -5,8 +5,8 @@ import config from "@app/lib/api/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types/shared/utils/general";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import type { Context } from "hono";
 import { Hono } from "hono";
 
@@ -137,7 +137,10 @@ async function handleAuthenticate(ctx: Context) {
       response.status as 200 | 400 | 401 | 403 | 404 | 500
     );
   } catch (error) {
-    logger.error({ error: normalizeError(error) }, "Error in authenticate proxy");
+    logger.error(
+      { error: normalizeError(error) },
+      "Error in authenticate proxy"
+    );
     return ctx.json({ error: "Internal server error" }, 500);
   }
 }

@@ -1,9 +1,9 @@
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getSessionFromBearerToken } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { MeResponseType } from "@dust-tt/client";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-import type { MeResponseType } from "@dust-tt/client";
 import { Hono } from "hono";
 
 /**
@@ -26,8 +26,7 @@ app.get("/", async (ctx): HandlerResult<MeResponseType> => {
       status_code: 401,
       api_error: {
         type: bearerRes.error,
-        message:
-          "The request does not have valid authentication credentials.",
+        message: "The request does not have valid authentication credentials.",
       },
     });
   }
@@ -38,8 +37,7 @@ app.get("/", async (ctx): HandlerResult<MeResponseType> => {
       status_code: 401,
       api_error: {
         type: "not_authenticated",
-        message:
-          "The request does not have valid authentication credentials.",
+        message: "The request does not have valid authentication credentials.",
       },
     });
   }
