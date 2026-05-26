@@ -3,8 +3,8 @@ import {
   BLOCK_ID_UNIQUE_ID_NODE_TYPES,
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
-import { KNOWLEDGE_TAG_REGEX } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
+import { KNOWLEDGE_TAG_REGEX } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeConstants";
+import { buildSkillInstructionsExtensionsForServer } from "@app/lib/editor/build_skill_instructions_extensions_server";
 import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
@@ -13,7 +13,7 @@ import { MarkdownManager } from "@tiptap/markdown";
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 import * as cheerio from "cheerio";
 
-const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true, []);
+const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensionsForServer();
 const MARKDOWN_MANAGER = new MarkdownManager({
   extensions: SKILL_EDITOR_EXTENSIONS,
 });

@@ -1,7 +1,5 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import config from "@app/lib/api/config";
 import { Html } from "@react-email/html";
-import Head from "next/head";
 import type React from "react";
 
 export const EmailLayout = ({
@@ -13,9 +11,9 @@ export const EmailLayout = ({
 }) => {
   return (
     <Html>
-      <Head>
+      <head>
         <title>An email from Dust about {workspace.name}</title>
-      </Head>
+      </head>
       <body
         style={{
           fontFamily: "Open Sans, Helvetica Neue, Helvetica, Arial, sans-serif",

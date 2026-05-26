@@ -76,25 +76,6 @@ procs:
       # exec replaces this shell with tsx so mprocs's signals reach node
       # directly (npm doesn't reliably forward signals to its child).
       export NODE_ENV=development
-      exec ../node_modules/.bin/tsx ./server.ts
-    autostart: false
-
-  front-hono-strict:
-    cwd: "<CONFIG_DIR>/../front-api"
-    shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
-      READY_FILE="../sdks/js/dist/client.esm.js.map"
-      echo "Waiting for sdks-js to compile..."
-      echo "Expecting file: $READY_FILE"
-      while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting front-api (Hono only, no Next)."
-      # exec replaces this shell with tsx so mprocs's signals reach node
-      # directly (npm doesn't reliably forward signals to its child).
-      export NODE_ENV=development
       # Guard: throw if anything tries to load `next` at runtime.
       export NODE_OPTIONS="--require=./forbid-next.cjs"
       exec ../node_modules/.bin/tsx ./server.ts
