@@ -9,6 +9,7 @@ import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversati
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import actions from "./actions";
 import cancel from "./cancel";
@@ -22,6 +23,10 @@ import tools from "./tools";
 export type PatchConversationResponseBody = {
   success: boolean;
 };
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId.
 const app = publicApiApp();
@@ -128,63 +133,68 @@ const app = publicApiApp();
  *       500:
  *         description: Internal Server Error.
  */
-app.get("/", async (ctx): HandlerResult<GetConversationResponseType> => {
-  const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetConversationResponseType> => {
+    const auth = ctx.get("auth");
+    const { cId } = ctx.req.valid("param");
 
-  // Build optional message pagination from query params.
-  // When omitted, all messages are returned (backward compatible).
-  const limit = ctx.req.query("limit");
-  const lastValue = ctx.req.query("lastValue");
-  const messagePagination =
-    typeof limit === "string"
-      ? {
-          limit: parseInt(limit, 10),
-          lastRank:
-            typeof lastValue === "string" ? parseInt(lastValue, 10) : null,
-        }
-      : undefined;
+    // Build optional message pagination from query params.
+    // When omitted, all messages are returned (backward compatible).
+    const limit = ctx.req.query("limit");
+    const lastValue = ctx.req.query("lastValue");
+    const messagePagination =
+      typeof limit === "string"
+        ? {
+            limit: parseInt(limit, 10),
+            lastRank:
+              typeof lastValue === "string" ? parseInt(lastValue, 10) : null,
+          }
+        : undefined;
 
-  const conversationRes = await getConversation(
-    auth,
-    cId,
-    false,
-    null,
-    null,
-    messagePagination
-  );
+    const conversationRes = await getConversation(
+      auth,
+      cId,
+      false,
+      null,
+      null,
+      messagePagination
+    );
 
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
+    if (conversationRes.isErr()) {
+      return apiErrorForConversation(ctx, conversationRes.error);
+    }
+
+    const {
+      hasMore,
+      lastValue: paginationLastValue,
+      ...conversation
+    } = conversationRes.value;
+
+    const response: GetConversationResponseType = {
+      conversation: addBackwardCompatibleConversationFields(conversation),
+    };
+
+    if (hasMore !== undefined) {
+      response.hasMore = hasMore;
+      response.lastValue =
+        paginationLastValue !== undefined && paginationLastValue !== null
+          ? String(paginationLastValue)
+          : null;
+    }
+
+    return ctx.json(response);
   }
-
-  const {
-    hasMore,
-    lastValue: paginationLastValue,
-    ...conversation
-  } = conversationRes.value;
-
-  const response: GetConversationResponseType = {
-    conversation: addBackwardCompatibleConversationFields(conversation),
-  };
-
-  if (hasMore !== undefined) {
-    response.hasMore = hasMore;
-    response.lastValue =
-      paginationLastValue !== undefined && paginationLastValue !== null
-        ? String(paginationLastValue)
-        : null;
-  }
-
-  return ctx.json(response);
-});
+);
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchConversationRequestSchema),
   async (ctx): HandlerResult<PatchConversationResponseBody> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
+    const { cId } = ctx.req.valid("param");
 
     const conversationRes = await getConversation(auth, cId);
     if (conversationRes.isErr()) {

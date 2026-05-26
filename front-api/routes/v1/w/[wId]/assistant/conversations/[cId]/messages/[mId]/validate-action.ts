@@ -9,6 +9,12 @@ import { streamingTag } from "@front-api/middlewares/streaming";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
 
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/messages/:mId/validate-action.
 const app = publicApiApp();
@@ -81,11 +87,11 @@ app.use("*", streamingTag);
  */
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", ValidateActionRequestBodySchema),
   async (ctx): HandlerResult<ValidateActionResponseType> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
-    const mId = ctx.req.param("mId") ?? "";
+    const { cId, mId } = ctx.req.valid("param");
 
     const conversation = await ConversationResource.fetchById(auth, cId);
 

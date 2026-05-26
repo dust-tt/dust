@@ -19,6 +19,11 @@ export const PostRetryRequestBodySchema = z.union([
   z.object({}),
 ]);
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
+
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/messages/:mId/retry.
 const app = publicApiApp();
 
@@ -31,11 +36,11 @@ app.use("*", streamingTag);
  */
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostRetryRequestBodySchema),
   async (ctx): HandlerResult<RetryMessageResponseType> => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
-    const messageId = ctx.req.param("mId") ?? "";
+    const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
     const conversationResource = await ConversationResource.fetchById(
       auth,

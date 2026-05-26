@@ -5,10 +5,16 @@ import {
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types/shared/utils/general";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import path from "path";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string().min(1),
+  rel: z.string().min(1),
+});
 
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/files.
 const app = publicApiApp();
@@ -65,20 +71,9 @@ const app = publicApiApp();
  *       405:
  *         description: Method not supported.
  */
-app.get("/:rel{.+}", async (ctx) => {
+app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const cId = ctx.req.param("cId") ?? "";
-  const rel = ctx.req.param("rel");
-
-  if (!isString(rel) || rel.length === 0) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing conversation id or file path.",
-      },
-    });
-  }
+  const { cId, rel } = ctx.req.valid("param");
 
   const conversation = await ConversationResource.fetchById(auth, cId);
   if (!conversation) {

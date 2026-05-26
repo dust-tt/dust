@@ -23,6 +23,10 @@ export type ConversationToolActionRequest = z.infer<
   typeof ConversationToolActionRequestSchema
 >;
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
+
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/tools.
 const app = publicApiApp();
 
@@ -31,6 +35,7 @@ const app = publicApiApp();
  */
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", ConversationToolActionRequestSchema),
   async (
     ctx
@@ -38,7 +43,7 @@ app.post(
     FetchConversationToolsResponse | PatchConversationResponseType
   > => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(

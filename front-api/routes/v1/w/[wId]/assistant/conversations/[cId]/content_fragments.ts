@@ -15,6 +15,11 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/content_fragments.
 const app = publicApiApp();
@@ -64,10 +69,11 @@ const app = publicApiApp();
  */
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PublicPostContentFragmentRequestBodySchema),
   async (ctx): HandlerResult<PostContentFragmentResponseType> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
+    const { cId } = ctx.req.valid("param");
 
     const conversationRes = await getConversation(auth, cId);
     if (conversationRes.isErr()) {

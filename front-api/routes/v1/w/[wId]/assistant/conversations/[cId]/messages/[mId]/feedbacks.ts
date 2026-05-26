@@ -20,6 +20,11 @@ export const MessageFeedbackRequestBodySchema = z.object({
   isConversationShared: z.boolean().optional(),
 });
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
+
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/messages/:mId/feedbacks.
 const app = publicApiApp();
 
@@ -146,11 +151,11 @@ function readHeaders(ctx: {
  */
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", MessageFeedbackRequestBodySchema),
   async (ctx): HandlerResult<PostMessageFeedbackResponseType> => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
-    const messageId = ctx.req.param("mId") ?? "";
+    const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
     const user = await getActiveUserFromAuthOrEmail(
       auth,
@@ -239,80 +244,87 @@ app.post(
   }
 );
 
-app.delete("/", async (ctx): HandlerResult<PostMessageFeedbackResponseType> => {
-  const auth = ctx.get("auth");
-  const conversationId = ctx.req.param("cId") ?? "";
-  const messageId = ctx.req.param("mId") ?? "";
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<PostMessageFeedbackResponseType> => {
+    const auth = ctx.get("auth");
+    const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
-  const user = await getActiveUserFromAuthOrEmail(
-    auth,
-    getUserEmailFromHeaders(readHeaders(ctx))
-  );
+    const user = await getActiveUserFromAuthOrEmail(
+      auth,
+      getUserEmailFromHeaders(readHeaders(ctx))
+    );
 
-  if (!user) {
+    if (!user) {
+      return apiError(ctx, {
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message:
+            "The user does not have an active session or is not authenticated.",
+        },
+      });
+    }
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+
+    if (!conversationResource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found.",
+        },
+      });
+    }
+
+    const messageRes = await conversationResource.getMessageById(
+      auth,
+      messageId
+    );
+
+    if (messageRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "message_not_found",
+          message:
+            "The message you're trying to give feedback to does not exist or is not accessible.",
+        },
+      });
+    }
+
+    const conversation = conversationResource.toJSON();
+
+    const deleted = await deleteMessageFeedback(auth, {
+      messageId,
+      conversation,
+      user,
+    });
+
+    await launchAgentMessageFeedbackWorkflow(auth, {
+      message: {
+        conversationId: conversation.sId,
+        agentMessageId: messageId,
+      },
+    });
+
+    if (deleted) {
+      return ctx.json({ success: true });
+    }
     return apiError(ctx, {
-      status_code: 401,
+      status_code: 400,
       api_error: {
-        type: "not_authenticated",
+        type: "invalid_request_error",
         message:
-          "The user does not have an active session or is not authenticated.",
+          "The message you're trying to give feedback to does not exist.",
       },
     });
   }
-
-  const conversationResource = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversationResource) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
-  }
-
-  const messageRes = await conversationResource.getMessageById(auth, messageId);
-
-  if (messageRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "message_not_found",
-        message:
-          "The message you're trying to give feedback to does not exist or is not accessible.",
-      },
-    });
-  }
-
-  const conversation = conversationResource.toJSON();
-
-  const deleted = await deleteMessageFeedback(auth, {
-    messageId,
-    conversation,
-    user,
-  });
-
-  await launchAgentMessageFeedbackWorkflow(auth, {
-    message: {
-      conversationId: conversation.sId,
-      agentMessageId: messageId,
-    },
-  });
-
-  if (deleted) {
-    return ctx.json({ success: true });
-  }
-  return apiError(ctx, {
-    status_code: 400,
-    api_error: {
-      type: "invalid_request_error",
-      message: "The message you're trying to give feedback to does not exist.",
-    },
-  });
-});
+);
 
 export default app;

@@ -5,6 +5,12 @@ import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversati
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/feedbacks.
 const app = publicApiApp();
@@ -87,54 +93,58 @@ const app = publicApiApp();
  *       500:
  *         description: Internal server error
  */
-app.get("/", async (ctx): HandlerResult<GetFeedbacksResponseType> => {
-  const auth = ctx.get("auth");
-  const conversationId = ctx.req.param("cId") ?? "";
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetFeedbacksResponseType> => {
+    const auth = ctx.get("auth");
+    const { cId: conversationId } = ctx.req.valid("param");
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
+    const conversationRes =
+      await ConversationResource.fetchConversationWithoutContent(
+        auth,
+        conversationId
+      );
+
+    if (conversationRes.isErr()) {
+      return apiErrorForConversation(ctx, conversationRes.error);
+    }
+
+    const conversation = conversationRes.value;
+
+    if (!auth.user()) {
+      return apiError(ctx, {
+        status_code: 401,
+        api_error: {
+          type: "user_authentication_required",
+          message: "You must be logged in as a user to access this resource.",
+        },
+      });
+    }
+
+    const feedbacksRes = await getConversationFeedbacksForUser(
       auth,
-      conversationId
+      conversation
     );
 
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(ctx, conversationRes.error);
+    if (feedbacksRes.isErr()) {
+      return apiErrorForConversation(ctx, feedbacksRes.error);
+    }
+
+    const feedbacks = feedbacksRes.value.map((feedback) => ({
+      messageId: feedback.messageId,
+      agentMessageId: feedback.agentMessageId,
+      userId: feedback.userId,
+      thumbDirection: feedback.thumbDirection,
+      content: feedback.content,
+      createdAt: feedback.createdAt.getTime(),
+      agentConfigurationId: feedback.agentConfigurationId,
+      agentConfigurationVersion: feedback.agentConfigurationVersion,
+      isConversationShared: feedback.isConversationShared,
+    }));
+
+    return ctx.json({ feedbacks });
   }
-
-  const conversation = conversationRes.value;
-
-  if (!auth.user()) {
-    return apiError(ctx, {
-      status_code: 401,
-      api_error: {
-        type: "user_authentication_required",
-        message: "You must be logged in as a user to access this resource.",
-      },
-    });
-  }
-
-  const feedbacksRes = await getConversationFeedbacksForUser(
-    auth,
-    conversation
-  );
-
-  if (feedbacksRes.isErr()) {
-    return apiErrorForConversation(ctx, feedbacksRes.error);
-  }
-
-  const feedbacks = feedbacksRes.value.map((feedback) => ({
-    messageId: feedback.messageId,
-    agentMessageId: feedback.agentMessageId,
-    userId: feedback.userId,
-    thumbDirection: feedback.thumbDirection,
-    content: feedback.content,
-    createdAt: feedback.createdAt.getTime(),
-    agentConfigurationId: feedback.agentConfigurationId,
-    agentConfigurationVersion: feedback.agentConfigurationVersion,
-    isConversationShared: feedback.isConversationShared,
-  }));
-
-  return ctx.json({ feedbacks });
-});
+);
 
 export default app;

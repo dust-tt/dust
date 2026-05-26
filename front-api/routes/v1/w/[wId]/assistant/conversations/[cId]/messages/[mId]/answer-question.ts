@@ -12,6 +12,11 @@ const AnswerQuestionRequestSchema = z.object({
   answer: UserQuestionAnswerSchema,
 });
 
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
+
 interface AnswerQuestionResponse {
   success: boolean;
 }
@@ -97,11 +102,11 @@ const app = publicApiApp();
  */
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", AnswerQuestionRequestSchema),
   async (ctx): HandlerResult<AnswerQuestionResponse> => {
     const auth = ctx.get("auth");
-    const cId = ctx.req.param("cId") ?? "";
-    const mId = ctx.req.param("mId") ?? "";
+    const { cId, mId } = ctx.req.valid("param");
 
     const conversation = await ConversationResource.fetchById(auth, cId);
     if (!conversation) {

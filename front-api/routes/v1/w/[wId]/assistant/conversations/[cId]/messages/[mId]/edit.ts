@@ -12,6 +12,12 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+  mId: z.string(),
+});
 
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/messages/:mId/edit.
 const app = publicApiApp();
@@ -89,11 +95,11 @@ const app = publicApiApp();
  */
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PublicPostEditMessagesRequestBodySchema),
   async (ctx): HandlerResult<PostMessagesResponseBody> => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
-    const messageId = ctx.req.param("mId") ?? "";
+    const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
     const conversationResource = await ConversationResource.fetchById(
       auth,

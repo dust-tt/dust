@@ -9,6 +9,11 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import { streamingTag } from "@front-api/middlewares/streaming";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/cancel.
 const app = publicApiApp();
@@ -69,10 +74,11 @@ app.use("*", streamingTag);
  */
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", CancelMessageGenerationRequestSchema),
   async (ctx): HandlerResult<CancelMessageGenerationResponseType> => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(

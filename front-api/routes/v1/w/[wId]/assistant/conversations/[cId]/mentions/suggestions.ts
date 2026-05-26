@@ -11,6 +11,11 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/mentions/suggestions.
 const app = publicApiApp();
@@ -86,10 +91,11 @@ const app = publicApiApp();
  */
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", GetMentionSuggestionsRequestQuerySchema),
   async (ctx): HandlerResult<GetMentionSuggestionsResponseBodyType> => {
     const auth = ctx.get("auth");
-    const conversationId = ctx.req.param("cId") ?? "";
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const conversationRes = await ConversationResource.fetchById(
       auth,
