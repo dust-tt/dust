@@ -20,6 +20,7 @@ import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversati
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
+import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -223,6 +224,7 @@ export async function createSandboxChildAction(
     });
 
     await ConversationResource.markAsActionRequired(auth, { conversation });
+    await pauseSandboxBashForBlockedChild(auth, action, conversation);
   } else {
     const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
       messageId: agentMessage.sId,

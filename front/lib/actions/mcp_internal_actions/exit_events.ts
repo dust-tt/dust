@@ -5,6 +5,7 @@ import type {
   ToolPausedEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
+import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -115,6 +116,7 @@ export async function getExitOrPauseEvents(
 
         // Update the action to mark it as blocked because of a personal authentication error.
         await action.updateStatus("blocked_authentication_required");
+        await pauseSandboxBashForBlockedChild(auth, action, conversation);
 
         return [
           {
@@ -154,6 +156,7 @@ export async function getExitOrPauseEvents(
           `for ${fileName}, please authorize the file to continue.`;
 
         await action.updateStatus("blocked_file_authorization_required");
+        await pauseSandboxBashForBlockedChild(auth, action, conversation);
 
         // Persisted here so the blocked action can be reconstructed on page reload.
         await action.updateStepContext({
@@ -198,6 +201,7 @@ export async function getExitOrPauseEvents(
         const { question } = exitOutputItem;
 
         await action.updateStatus("blocked_user_answer_required");
+        await pauseSandboxBashForBlockedChild(auth, action, conversation);
 
         await action.updateStepContext({
           ...action.stepContext,
