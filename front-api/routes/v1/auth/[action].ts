@@ -128,7 +128,7 @@ async function handleAuthenticate(ctx: Context) {
       },
       credentials: "include",
       body: new URLSearchParams({
-        ...(body as Record<string, string>),
+        ...body,
         client_id: workosConfig.clientId,
       }).toString(),
     });
