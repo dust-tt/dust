@@ -1,13 +1,10 @@
-// @migration-status: MIGRATED_TO_HONO
 import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/client_side_registry";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { HeartbeatMCPResponseType } from "@dust-tt/client";
 import { PublicHeartbeatMCPRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 
 /**
  * @swagger
@@ -63,42 +60,35 @@ import { fromError } from "zod-validation-error";
  *       404:
  *         description: Not Found. MCP server not registered or expired.
  */
-async function handler(
-  req: NextApiRequest,
 
-  res: NextApiResponse<WithAPIErrorResponse<HeartbeatMCPResponseType>>,
-  auth: Authenticator
-): Promise<void> {
-  const r = PublicHeartbeatMCPRequestBodySchema.safeParse(req.body);
-  if (r.error) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: fromError(r.error).toString(),
-      },
+// Mounted at /api/v1/w/:wId/mcp/heartbeat.
+const app = publicApiApp();
+
+app.post(
+  "/",
+  validate("json", PublicHeartbeatMCPRequestBodySchema),
+  async (ctx): HandlerResult<HeartbeatMCPResponseType> => {
+    const auth = ctx.get("auth");
+    const { serverId } = ctx.req.valid("json");
+
+    // Update the heartbeat for the server.
+    const result = await updateMCPServerHeartbeat(auth, {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      serverId,
     });
+
+    if (!result) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "mcp_server_connection_not_found",
+          message: "MCP server not registered or expired",
+        },
+      });
+    }
+
+    return ctx.json(result);
   }
+);
 
-  const { serverId } = r.data;
-
-  // Update the heartbeat for the server.
-  const result = await updateMCPServerHeartbeat(auth, {
-    workspaceId: auth.getNonNullableWorkspace().sId,
-    serverId,
-  });
-
-  if (!result) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "mcp_server_connection_not_found",
-        message: "MCP server not registered or expired",
-      },
-    });
-  }
-
-  res.status(200).json(result);
-}
-
-export default withPublicAPIAuthentication(handler);
+export default app;

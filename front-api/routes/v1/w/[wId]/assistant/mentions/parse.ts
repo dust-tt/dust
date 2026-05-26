@@ -1,12 +1,9 @@
-// @migration-status: MIGRATED_TO_HONO
 import { parseMentionsInMarkdown } from "@app/lib/api/assistant/parse_mentions";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ParseMentionsResponseBodyType } from "@dust-tt/client";
 import { ParseMentionsRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 
 /**
  * @swagger
@@ -60,26 +57,21 @@ import type { NextApiRequest, NextApiResponse } from "next";
  *       500:
  *         description: Internal Server Error.
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<ParseMentionsResponseBodyType>>,
-  auth: Authenticator
-): Promise<void> {
-  if (req.method !== "POST") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, POST is expected.",
-      },
-    });
+
+// Mounted at /api/v1/w/:wId/assistant/mentions/parse.
+const app = publicApiApp();
+
+app.post(
+  "/",
+  validate("json", ParseMentionsRequestBodySchema),
+  async (ctx): HandlerResult<ParseMentionsResponseBodyType> => {
+    const auth = ctx.get("auth");
+    const { markdown } = ctx.req.valid("json");
+
+    const processedMarkdown = await parseMentionsInMarkdown({ auth, markdown });
+
+    return ctx.json({ markdown: processedMarkdown });
   }
+);
 
-  const { markdown } = ParseMentionsRequestBodySchema.parse(req.body);
-
-  const processedMarkdown = await parseMentionsInMarkdown({ auth, markdown });
-
-  return res.status(200).json({ markdown: processedMarkdown });
-}
-
-export default withPublicAPIAuthentication(handler);
+export default app;
