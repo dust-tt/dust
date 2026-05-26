@@ -27,10 +27,7 @@ import stripeApp from "./routes/stripe";
 import tApp from "./routes/t";
 import templatesApp from "./routes/templates";
 import userApp from "./routes/user";
-import publicAuthActionApp from "./routes/v1/auth/[action]";
-import publicMeApp from "./routes/v1/me";
-import publicFramesTokenApp from "./routes/v1/public/frames/[token]";
-import publicWorkspaceApp from "./routes/v1/w/[wId]";
+import publicApp from "./routes/v1";
 import workspaceApp from "./routes/w/[wId]";
 import workspaceJoinApp from "./routes/w/[wId]/join";
 import workosApp from "./routes/workos";
@@ -66,10 +63,7 @@ apiApp.route("/workspace-lookup", workspaceLookupApp);
 // (it is a public, unauthenticated endpoint).
 apiApp.route("/w/:wId/join", workspaceJoinApp);
 apiApp.route("/w/:wId", workspaceApp);
-apiApp.route("/v1/auth/:action", publicAuthActionApp);
-apiApp.route("/v1/me", publicMeApp);
-apiApp.route("/v1/public/frames/:token", publicFramesTokenApp);
-apiApp.route("/v1/w/:wId", publicWorkspaceApp);
+apiApp.route("/v1", publicApp);
 // Pre-stop uses a dynamic first segment (the secret) — register last so its
 // `/:preStopSecret/prestop` shape doesn't shadow any literal-prefixed routes
 // above.
