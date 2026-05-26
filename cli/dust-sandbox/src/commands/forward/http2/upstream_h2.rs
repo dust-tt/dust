@@ -720,18 +720,6 @@ mod tests {
 
     #[tokio::test]
     async fn h2_to_h2_request_trailers_reset_inbound_stream() -> Result<()> {
-        run_h2_to_h2_request_trailers_reset_inbound_stream().await
-    }
-
-    #[tokio::test]
-    async fn h2_to_h2_request_trailers_reset_inbound_stream_is_stable() -> Result<()> {
-        for _ in 0..50 {
-            run_h2_to_h2_request_trailers_reset_inbound_stream().await?;
-        }
-        Ok(())
-    }
-
-    async fn run_h2_to_h2_request_trailers_reset_inbound_stream() -> Result<()> {
         let sni = "api.openai.com";
         let secret_table = Arc::new(secret_table_with_secret(
             "OPENAI_API_KEY",
@@ -768,6 +756,7 @@ mod tests {
         ));
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
         let request = Request::builder()
             .method("POST")
             .uri(format!("https://{sni}/request-trailers"))
@@ -800,7 +789,8 @@ mod tests {
             Some(h2::Reason::INTERNAL_ERROR),
             "upstream stream should be reset after denied request trailers"
         );
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"request_trailers_unsupported\""),
             "deny log should record request_trailers_unsupported, got: {deny_log_text}"

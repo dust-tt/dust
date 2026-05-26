@@ -378,6 +378,7 @@ mod tests {
         ));
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
 
         let mut builder = Request::builder()
             .method("GET")
@@ -392,7 +393,8 @@ mod tests {
             "rewritten header block over 64 KiB should reset before upstream lease"
         );
 
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"header_size_exceeded\""),
             "deny log should record header_size_exceeded, got: {deny_log_text}"
@@ -489,6 +491,7 @@ mod tests {
 
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
 
         let denied = Request::builder()
             .method("GET")
@@ -512,7 +515,8 @@ mod tests {
             .await
             .ok_or_else(|| anyhow!("allowed sibling did not reach upstream"))?;
         assert!(request_text.contains("GET /allowed HTTP/1.1\r\n"));
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(deny_log_text.contains("\"reason\":\"placeholder_on_non_allowed\""));
 
         drop(send_request);
@@ -546,6 +550,7 @@ mod tests {
 
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
         let request = Request::builder()
             .method("GET")
             .uri("https://api.anthropic.com/v1/messages")
@@ -556,7 +561,8 @@ mod tests {
             ":authority/SNI mismatch should reset"
         );
 
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"host_sni_mismatch\""),
             "deny log should record host_sni_mismatch, got: {deny_log_text}"
@@ -598,6 +604,7 @@ mod tests {
 
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
         let request = Request::builder()
             .method("GET")
             .uri(format!("http://{sni}/plain"))
@@ -609,7 +616,8 @@ mod tests {
         };
         assert_h2_reset_reason(error, h2::Reason::PROTOCOL_ERROR);
 
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"malformed_headers\""),
             "deny log should record malformed_headers, got: {deny_log_text}"
@@ -652,6 +660,7 @@ mod tests {
 
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
         let request = Request::builder()
             .method("GET")
             .uri(format!("ftp://{sni}/plain"))
@@ -663,7 +672,8 @@ mod tests {
         };
         assert_h2_reset_reason(error, h2::Reason::PROTOCOL_ERROR);
 
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"malformed_headers\""),
             "deny log should record malformed_headers, got: {deny_log_text}"
@@ -702,6 +712,7 @@ mod tests {
 
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
         let request = Request::builder()
             .method("GET")
             .uri(format!("https://{sni}/v1/{placeholder}/list"))
@@ -709,7 +720,8 @@ mod tests {
         let (response, _stream) = send_request.send_request(request, true)?;
         assert!(response.await.is_err(), "placeholder in :path should reset");
 
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"url_line_placeholder\""),
             "deny log should record url_line_placeholder, got: {deny_log_text}"

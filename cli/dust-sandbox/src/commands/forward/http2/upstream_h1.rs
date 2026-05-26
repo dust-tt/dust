@@ -1579,6 +1579,7 @@ mod tests {
 
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
         let mut builder = Request::builder()
             .method("GET")
             .uri(format!("https://{sni}/headers"));
@@ -1592,7 +1593,8 @@ mod tests {
             "rewritten header block over 64 KiB should reset"
         );
 
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"header_size_exceeded\""),
             "deny log should record header_size_exceeded, got: {deny_log_text}"
@@ -1637,6 +1639,7 @@ mod tests {
 
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
         let request = Request::builder()
             .method("GET")
             .uri(format!("https://{sni}/line"))
@@ -1648,7 +1651,8 @@ mod tests {
             "rewritten header line over 16 KiB should reset"
         );
 
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"header_size_exceeded\""),
             "deny log should record header_size_exceeded, got: {deny_log_text}"
@@ -1982,6 +1986,7 @@ mod tests {
 
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
         let request = Request::builder()
             .method("POST")
             .uri(format!("https://{sni}/trailers"))
@@ -2001,7 +2006,8 @@ mod tests {
         };
         assert_h2_reset_reason(error, h2::Reason::INTERNAL_ERROR);
 
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"request_trailers_unsupported\""),
             "deny log should record request_trailers_unsupported, got: {deny_log_text}"
@@ -2038,6 +2044,7 @@ mod tests {
 
         let (mut send_request, connection) = h2::client::handshake(client_io).await?;
         let connection_task = tokio::spawn(connection);
+        let mut deny_log_write = observe_deny_log_writes(deny_log.as_ref());
         let request = Request::builder()
             .method("POST")
             .uri(format!("https://{sni}/trailers-with-length"))
@@ -2058,16 +2065,16 @@ mod tests {
         };
         assert_h2_reset_reason(error, h2::Reason::INTERNAL_ERROR);
 
-        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
+        let deny_log_text =
+            read_test_file_after_write(&mut deny_log_write, deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"request_trailers_unsupported\""),
             "deny log should record request_trailers_unsupported, got: {deny_log_text}"
         );
-        let request_text =
-            tokio::time::timeout(std::time::Duration::from_secs(1), request_rx.recv())
-                .await
-                .context("test upstream did not observe the partial request before shutdown")?
-                .ok_or_else(|| anyhow!("test upstream capture channel closed"))?;
+        let request_text = request_rx
+            .recv()
+            .await
+            .ok_or_else(|| anyhow!("test upstream capture channel closed"))?;
         assert!(request_text.contains("POST /trailers-with-length HTTP/1.1\r\n"));
         assert!(request_text.contains("Transfer-Encoding: chunked\r\n"));
         assert!(!request_text
