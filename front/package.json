@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
-    "@anthropic-ai/vertex-sdk": "^0.14.4",
+    "@anthropic-ai/vertex-sdk": "^0.16.1",
     "@contentful/rich-text-react-renderer": "^16.1.6",
     "@contentful/rich-text-types": "^17.2.5",
     "@datadog/browser-logs": "^6.13.0",
