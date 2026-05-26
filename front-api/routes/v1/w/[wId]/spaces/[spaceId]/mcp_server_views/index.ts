@@ -52,6 +52,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
  *       500:
  *         description: Internal Server Error.
  */
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/mcp_server_views.
 const app = publicApiApp();
 
 app.get(

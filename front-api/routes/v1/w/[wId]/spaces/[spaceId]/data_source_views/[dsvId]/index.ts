@@ -145,6 +145,7 @@ import search from "./search";
  *       '405':
  *         description: Method not allowed
  */
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/data_source_views/:dsvId.
 const app = publicApiApp();
 
 app.get(
@@ -152,18 +153,7 @@ app.get(
   withSpace({ requireCanReadOrAdministrate: true }),
   withDataSourceView({ requireCanReadOrAdministrate: true }),
   async (ctx): HandlerResult<DataSourceViewResponseType> => {
-    const auth = ctx.get("auth");
     const dataSourceView = ctx.get("dataSourceView");
-
-    if (!dataSourceView.canReadOrAdministrate(auth)) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
-      });
-    }
 
     return ctx.json({
       dataSourceView: dataSourceView.toJSON(),
@@ -179,16 +169,6 @@ app.patch(
   async (ctx): HandlerResult<DataSourceViewResponseType> => {
     const auth = ctx.get("auth");
     const dataSourceView = ctx.get("dataSourceView");
-
-    if (!dataSourceView.canReadOrAdministrate(auth)) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
-      });
-    }
 
     const r = await handlePatchDataSourceView(
       auth,

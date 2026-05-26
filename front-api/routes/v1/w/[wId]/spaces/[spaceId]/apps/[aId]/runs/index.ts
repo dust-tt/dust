@@ -30,6 +30,10 @@ const ParamsSchema = z.object({
   aId: z.string(),
 });
 
+const QuerySchema = z.object({
+  use_workspace_credentials: z.string().optional(),
+});
+
 const PostRunRequestBodySchema = z.object({
   specification_hash: z.string(),
   config: z.record(z.string(), z.any()),
@@ -140,17 +144,21 @@ const PostRunRequestBodySchema = z.object({
  *       500:
  *         description: Internal Server Error.
  */
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/apps/:aId/runs.
 const app = publicApiApp();
 
 app.post(
   "/",
   withSpace({ requireCanRead: true }),
   validate("param", ParamsSchema),
+  validate("query", QuerySchema),
   validate("json", PostRunRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
     const { aId } = ctx.req.valid("param");
+    const { use_workspace_credentials: useWorkspaceCredentials } =
+      ctx.req.valid("query");
     const body = ctx.req.valid("json");
 
     const owner = auth.getNonNullableWorkspace();
@@ -189,8 +197,7 @@ app.post(
     // The `use_workspace_credentials` query parameter is used in the context of the DustAppRun action, to
     // use the workspace credentials even though we use a system API key.
     const useDustCredentials =
-      auth.isSystemKey() &&
-      ctx.req.query("use_workspace_credentials") !== "true";
+      auth.isSystemKey() && useWorkspaceCredentials !== "true";
 
     const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
     const runFlavor: RunFlavor = body.stream

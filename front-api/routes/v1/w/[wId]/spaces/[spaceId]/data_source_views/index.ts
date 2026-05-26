@@ -2,7 +2,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { DataSourceViewsListResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
 
 import dsvId from "./[dsvId]";
@@ -53,6 +52,7 @@ import dsvId from "./[dsvId]";
  *       500:
  *         description: Internal Server Error.
  */
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/data_source_views.
 const app = publicApiApp();
 
 app.get(
@@ -61,16 +61,6 @@ app.get(
   async (ctx): HandlerResult<DataSourceViewsListResponseType> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-
-    if (!space.canReadOrAdministrate(auth)) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "space_not_found",
-          message: "The space you requested was not found.",
-        },
-      });
-    }
 
     const dataSourceViews = await DataSourceViewResource.listBySpace(
       auth,

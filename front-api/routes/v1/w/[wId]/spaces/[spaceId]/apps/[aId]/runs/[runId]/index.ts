@@ -66,6 +66,7 @@ const ParamsSchema = z.object({
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
  */
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId.
 const app = publicApiApp();
 
 app.get(

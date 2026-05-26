@@ -2,7 +2,6 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import type { GetAppsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
 
 import aId from "./[aId]";
@@ -81,6 +80,7 @@ import importRoute from "./import";
  *       500:
  *         description: Internal Server Error.
  */
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/apps.
 const app = publicApiApp();
 
 app.get(
@@ -89,16 +89,6 @@ app.get(
   async (ctx): HandlerResult<GetAppsResponseType> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-
-    if (!space.canReadOrAdministrate(auth)) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "space_not_found",
-          message: "The space you requested was not found.",
-        },
-      });
-    }
 
     const apps = await AppResource.listBySpace(auth, space);
 

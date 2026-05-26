@@ -12,20 +12,25 @@ const ParamsSchema = z.object({
   spaceId: z.string(),
 });
 
+const QuerySchema = z.object({
+  updatedSince: z.string().optional(),
+});
+
 /**
  * @ignoreswagger
  * System API key only endpoint. Undocumented.
  */
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/conversations.
 const app = publicApiApp();
 
 app.get(
   "/",
   validate("param", ParamsSchema),
+  validate("query", QuerySchema),
   async (
     ctx
   ): HandlerResult<GetSpaceConversationsForDataSourceResponseType> => {
     const auth = ctx.get("auth");
-    const { wId, spaceId } = ctx.req.valid("param");
 
     // Only allow system keys (connectors) to access this endpoint
     if (!auth.isSystemKey()) {
@@ -38,9 +43,10 @@ app.get(
       });
     }
 
-    const updatedSince = ctx.req.query("updatedSince");
+    const { wId, spaceId } = ctx.req.valid("param");
+    const { updatedSince } = ctx.req.valid("query");
     const updatedSinceMs =
-      typeof updatedSince === "string" ? parseInt(updatedSince, 10) : null;
+      updatedSince !== undefined ? parseInt(updatedSince, 10) : null;
 
     // Fetch and verify space exists
     const space = await SpaceResource.fetchById(auth, spaceId);

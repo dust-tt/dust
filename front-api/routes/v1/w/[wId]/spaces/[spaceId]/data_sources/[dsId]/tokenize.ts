@@ -29,6 +29,7 @@ const ParamsSchema = z.object({
 // At 5mn, likeliness of connection close increases significantly. The timeout is set at 4mn30.
 const CORE_TOKENIZE_TIMEOUT_MS = 270000;
 
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/data_sources/:dsId/tokenize.
 const app = publicApiApp();
 
 app.post(

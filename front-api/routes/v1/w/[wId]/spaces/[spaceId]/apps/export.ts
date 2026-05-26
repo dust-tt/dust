@@ -9,6 +9,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
  * @ignoreswagger
  * System API key only endpoint. Undocumented.
  */
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/apps/export.
 const app = publicApiApp();
 
 app.get(
@@ -24,16 +25,6 @@ app.get(
         api_error: {
           type: "invalid_oauth_token_error",
           message: "Only system keys are allowed to use this endpoint.",
-        },
-      });
-    }
-
-    if (!space.canRead(auth)) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "space_not_found",
-          message: "The space you requested was not found.",
         },
       });
     }

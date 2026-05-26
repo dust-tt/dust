@@ -144,6 +144,7 @@ import { fromError } from "zod-validation-error";
  *       405:
  *         description: Method not supported error
  */
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/data_source_views/:dsvId/search.
 const app = publicApiApp();
 
 app.get(
@@ -153,16 +154,6 @@ app.get(
   async (ctx): HandlerResult<DataSourceSearchResponseType> => {
     const auth = ctx.get("auth");
     const dataSourceView = ctx.get("dataSourceView");
-
-    if (!dataSourceView.canRead(auth)) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "data_source_not_found",
-          message: "The data source you requested was not found.",
-        },
-      });
-    }
 
     // Allow tags_in / tags_not / parents_in / parents_not as either a single
     // string or an array of strings.

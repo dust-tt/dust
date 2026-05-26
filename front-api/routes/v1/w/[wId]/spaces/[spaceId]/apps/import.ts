@@ -11,6 +11,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
  * @ignoreswagger
  * System API key only endpoint. Undocumented.
  */
+// Mounted at /api/v1/w/:wId/spaces/:spaceId/apps/import.
 const app = publicApiApp();
 
 app.post(
