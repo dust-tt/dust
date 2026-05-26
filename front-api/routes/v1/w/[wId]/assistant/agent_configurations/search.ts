@@ -1,12 +1,14 @@
-// @migration-status: MIGRATED_TO_HONO
 import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { addBackwardCompatibleAgentConfigurationFields } from "@app/lib/api/v1/backward_compatibility";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const SearchQuerySchema = z.object({
+  q: z.string(),
+});
 
 /**
  * @swagger
@@ -54,45 +56,24 @@ import type { NextApiRequest, NextApiResponse } from "next";
  *       500:
  *         description: Internal Server Error.
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetAgentConfigurationsResponseType>
-  >,
-  auth: Authenticator
-): Promise<void> {
-  switch (req.method) {
-    case "GET": {
-      const { q } = req.query;
-      if (typeof q !== "string") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Search query parameter q is missing",
-          },
-        });
-      }
 
-      const agentConfigurations = await searchAgentConfigurationsByName(
-        auth,
-        q
-      );
-      return res.status(200).json({
-        agentConfigurations: agentConfigurations.map((agentConfiguration) =>
-          addBackwardCompatibleAgentConfigurationFields(agentConfiguration)
-        ),
-      });
-    }
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, only GET is expected.",
-        },
-      });
+// Mounted at /api/v1/w/:wId/assistant/agent_configurations/search.
+const app = publicApiApp();
+
+app.get(
+  "/",
+  validate("query", SearchQuerySchema),
+  async (ctx): HandlerResult<GetAgentConfigurationsResponseType> => {
+    const auth = ctx.get("auth");
+    const { q } = ctx.req.valid("query");
+
+    const agentConfigurations = await searchAgentConfigurationsByName(auth, q);
+    return ctx.json({
+      agentConfigurations: agentConfigurations.map((agentConfiguration) =>
+        addBackwardCompatibleAgentConfigurationFields(agentConfiguration)
+      ),
+    });
   }
-}
+);
 
-export default withPublicAPIAuthentication(handler);
+export default app;
