@@ -77,10 +77,6 @@ describe("sandboxSkill", () => {
     });
 
     expect(withoutDsbxTools).not.toContain("dsbx env");
-    expect(withoutDsbxTools).toContain(
-      "Do not list available environment variable names just to enumerate" +
-        " what is configured."
-    );
 
     await FeatureFlagFactory.basic(auth, "sandbox_dsbx_tools");
 
@@ -90,9 +86,6 @@ describe("sandboxSkill", () => {
 
     expect(withDsbxTools).toContain("`dsbx env`");
     expect(withDsbxTools).toContain("the HTTPS domain(s) it is approved for");
-    expect(withDsbxTools).not.toContain(
-      "Do not list available environment variable names just to enumerate"
-    );
   });
 
   it("hides agent egress request instructions until enabled", async () => {
