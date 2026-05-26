@@ -1,8 +1,8 @@
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
-import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import { usePokeFileDetails } from "@app/poke/swr/frame_details";
+import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   Chip,
@@ -20,11 +20,17 @@ export function FramePage() {
   useDocumentTitle(`Poke - ${owner.name} - File`);
 
   const sId = useRequiredPathParam("sId");
-  const { file, content, shareInfo, sharingGrants, isFileLoading, isFileError } =
-    usePokeFileDetails({
-      owner,
-      sId,
-    });
+  const {
+    file,
+    content,
+    shareInfo,
+    sharingGrants,
+    isFileLoading,
+    isFileError,
+  } = usePokeFileDetails({
+    owner,
+    sId,
+  });
 
   const [isCopiedContent, copyContent] = useCopyToClipboard();
   const [isCopiedMetadata, copyMetadata] = useCopyToClipboard();

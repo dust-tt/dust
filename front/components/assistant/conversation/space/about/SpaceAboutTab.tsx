@@ -420,8 +420,8 @@ export function SpaceAboutTab({
             <h4 className="heading-base">Delete</h4>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               This permanently removes all content—conversations, folders,
-              websites, and data sources. Agents using this Pod's tools will
-              be impacted. This cannot be undone.
+              websites, and data sources. Agents using this Pod's tools will be
+              impacted. This cannot be undone.
             </p>
             <DeleteSpaceDialog owner={owner} space={space} />
           </div>
