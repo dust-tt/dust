@@ -87,10 +87,12 @@ describe("sandbox environment manifest", () => {
       httpsSecrets: [
         {
           name: "DSEC_API_TOKEN",
+          placeholder: `__DSEC_${apiSecretResult.value.toJSON().placeholderNonce}__`,
           allowedDomains: ["api.example.com"],
         },
         {
           name: "DSEC_SLACK_TOKEN",
+          placeholder: `__DSEC_${slackSecretResult.value.toJSON().placeholderNonce}__`,
           allowedDomains: ["*.slack-edge.com", "slack.com"],
         },
       ],
@@ -101,7 +103,47 @@ describe("sandbox environment manifest", () => {
     expect(json).not.toContain("config-z");
     expect(json).not.toContain("api-secret");
     expect(json).not.toContain("slack-secret");
-    expect(json).not.toContain("placeholder");
+  });
+
+  it("rejects an HTTPS secret missing a placeholder nonce", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const secretResult = await WorkspaceSandboxEnvVarResource.makeNew(
+      authenticator,
+      {
+        name: "API_TOKEN",
+        kind: "https_secret",
+        value: "api-secret",
+        allowedDomains: ["api.example.com"],
+      }
+    );
+    expect(secretResult.isOk()).toBe(true);
+    if (secretResult.isErr()) {
+      throw secretResult.error;
+    }
+
+    // Resource invariants prevent creating an https_secret row with a null
+    // placeholderNonce, but the builder still defends against that DB
+    // corruption case. Simulate it by overriding the instance attribute and
+    // stubbing the resource list lookup, rather than reaching into the
+    // Sequelize model from the test ([TEST5]).
+    Object.defineProperty(secretResult.value, "placeholderNonce", {
+      value: null,
+      configurable: true,
+    });
+    vi.spyOn(
+      WorkspaceSandboxEnvVarResource,
+      "listForWorkspace"
+    ).mockResolvedValueOnce([secretResult.value]);
+
+    const manifestResult = await buildSandboxEnvManifest(authenticator);
+
+    expect(manifestResult.isErr()).toBe(true);
+    if (manifestResult.isErr()) {
+      expect(manifestResult.error.message).toContain(
+        "DSEC_API_TOKEN is missing its placeholder nonce"
+      );
+    }
   });
 
   it("writes the manifest with mode 644 owned by root", async () => {
