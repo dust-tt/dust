@@ -41,7 +41,7 @@ export const GEMINI_2_5_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   regionalAvailability: {
     "us-central1": true,
-    "europe-west1": true,
+    "europe-west1": false,
   },
 };
 export const GEMINI_3_1_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
@@ -101,7 +101,7 @@ export const GEMINI_2_5_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   regionalAvailability: {
     "us-central1": true,
-    "europe-west1": true,
+    "europe-west1": false,
   },
 };
 export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
@@ -131,7 +131,7 @@ export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   regionalAvailability: {
     "us-central1": true,
-    "europe-west1": true,
+    "europe-west1": false,
   },
 };
 export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {

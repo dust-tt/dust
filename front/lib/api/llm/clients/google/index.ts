@@ -67,7 +67,6 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
       this.client = new GoogleGenAI({
         vertexai: true,
         project: config.getGoogleCloudProjectId(),
-        location: "europe-west1",
       });
     } else {
       const { GOOGLE_AI_STUDIO_API_KEY } = llmParameters.credentials;
