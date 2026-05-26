@@ -36,6 +36,7 @@ export const RESOURCES_PREFIX = {
   agent_message_feedback: "amf",
   onboarding_task: "obt",
   programmatic_usage_configuration: "puc",
+  credit_usage_configuration: "cuc",
   credit: "crd",
   coupon: "cpn",
   coupon_redemption: "cpr",

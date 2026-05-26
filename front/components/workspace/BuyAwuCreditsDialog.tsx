@@ -167,15 +167,21 @@ export function BuyAwuCreditsDialog({
     ? awuPurchaseInfo.currency
     : "usd";
   const currencySymbol = CURRENCY_SYMBOLS[currency];
+  const discountPercent = awuPurchaseInfo?.canPurchase
+    ? awuPurchaseInfo.discountPercent
+    : 0;
 
+  // The cycle cap is denominated in credits, so the matching cap in
+  // currency at the discounted rate is `credits × price_per_credit × (1 - d/100)`.
   const maxAmountInCurrency = useMemo(() => {
     if (!awuPurchaseInfo?.canPurchase) {
       return null;
     }
     return Math.floor(
-      awuCreditsToCurrency(awuPurchaseInfo.remainingCycleCredits, currency)
+      awuCreditsToCurrency(awuPurchaseInfo.remainingCycleCredits, currency) *
+        (1 - discountPercent / 100)
     );
-  }, [awuPurchaseInfo, currency]);
+  }, [awuPurchaseInfo, currency, discountPercent]);
 
   const maxAmountFormatted = useMemo(() => {
     if (maxAmountInCurrency === null) {
@@ -200,7 +206,10 @@ export function BuyAwuCreditsDialog({
   const parsedAmount = parseFloat(amountInput) || 0;
   const isValidAmount = parsedAmount > 0;
   const amountExceedsMax = parsedAmount > effectiveMaxAmount;
-  const addedCredits = currencyToAwuCredits(parsedAmount, currency);
+  // The user types what they want to spend; the discount means they get
+  // more credits at the same spend (credits_per_full_price / (1 - d/100)).
+  const addedCredits =
+    currencyToAwuCredits(parsedAmount, currency) / (1 - discountPercent / 100);
 
   const canPurchase = isValidAmount && !amountExceedsMax;
 

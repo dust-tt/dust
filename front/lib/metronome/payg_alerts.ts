@@ -2,7 +2,6 @@ import {
   clearMetronomeAlert,
   upsertMetronomeAlert,
 } from "@app/lib/metronome/alerts";
-import { currencyToAwuCredits } from "@app/lib/metronome/amounts";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -14,25 +13,24 @@ function paygAlertUniquenessKey(workspaceId: string): string {
 
 /**
  * Idempotently ensure a Metronome `spend_threshold_reached` alert exists on
- * the customer matching the workspace's PAYG cap. If an alert with a
+ * the customer matching the workspace's AWU PAYG cap. If an alert with a
  * different threshold already exists, it's archived (with key release) and
- * recreated.
+ * recreated. The cap is expressed in AWU credits (the same unit Metronome
+ * tracks AWU consumption in).
  */
 export async function upsertMetronomePaygCapAlert({
   metronomeCustomerId,
-  paygCapDollars,
+  paygCapCredits,
   workspaceId,
 }: {
   metronomeCustomerId: string;
-  paygCapDollars: number;
+  paygCapCredits: number;
   workspaceId: string;
 }): Promise<Result<{ alertId: string }, Error>> {
-  const paygCapAwu = Math.round(currencyToAwuCredits(paygCapDollars, "usd"));
-
   const upsertResult = await upsertMetronomeAlert({
     alert_type: "spend_threshold_reached",
-    name: `PAYG cap workspace ${workspaceId} (${paygCapAwu} AWU)`,
-    threshold: paygCapAwu,
+    name: `PAYG cap workspace ${workspaceId} (${paygCapCredits} AWU)`,
+    threshold: paygCapCredits,
     credit_type_id: getCreditTypeAwuId(),
     customer_id: metronomeCustomerId,
     uniqueness_key: paygAlertUniquenessKey(workspaceId),
@@ -46,8 +44,7 @@ export async function upsertMetronomePaygCapAlert({
       workspaceId,
       metronomeCustomerId,
       alertId: upsertResult.value.alertId,
-      paygCapDollars,
-      paygCapAwu,
+      paygCapCredits,
     },
     "[Metronome PAYG] Synced PAYG cap alert"
   );
