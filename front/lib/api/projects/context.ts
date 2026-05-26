@@ -29,6 +29,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
@@ -163,8 +164,9 @@ export async function listProjectContextAttachments(
     dataSourceViews.map((dsView) => [dsView.sId, dsView])
   );
 
-  await Promise.all(
-    Array.from(byView.entries()).map(async ([dsViewId, nodeIds]) => {
+  await concurrentExecutor(
+    Array.from(byView.entries()),
+    async ([dsViewId, nodeIds]) => {
       const dsView = dataSourceViewById.get(dsViewId);
       if (!dsView) {
         return;
@@ -183,7 +185,10 @@ export async function listProjectContextAttachments(
         m.set(n.internalId, n.lastUpdatedAt);
       }
       lastUpdatedByViewAndNode.set(dsViewId, m);
-    })
+    },
+    {
+      concurrency: 4
+    }
   );
 
   return attachments.map((a) => {
