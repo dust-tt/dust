@@ -104,8 +104,7 @@ describe("ensureSandboxReady", () => {
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledTimes(1);
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
-      sandbox,
-      conversation
+      sandbox
     );
     expect(mockMountConversationFiles).toHaveBeenCalledWith(
       auth,
@@ -114,14 +113,9 @@ describe("ensureSandboxReady", () => {
       image
     );
     expect(mockRefreshGcsToken).not.toHaveBeenCalled();
-    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(
-      auth,
-      sandbox,
-      conversation,
-      {
-        wokeFromSleep: false,
-      }
-    );
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
+      wokeFromSleep: false,
+    });
 
     expect(
       mockPrepareSandboxEgressBeforeMount.mock.invocationCallOrder[0]
@@ -156,14 +150,9 @@ describe("ensureSandboxReady", () => {
       conversation,
       image
     );
-    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(
-      auth,
-      sandbox,
-      conversation,
-      {
-        wokeFromSleep: true,
-      }
-    );
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
+      wokeFromSleep: true,
+    });
   });
 
   it("refreshes the GCS token for already-running sandboxes", async () => {

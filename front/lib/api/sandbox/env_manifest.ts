@@ -5,13 +5,16 @@ import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
 export const SANDBOX_ENV_MANIFEST_PATH = "/run/dust/sandbox-env-manifest.json";
 
 const SANDBOX_ENV_MANIFEST_DIR = "/run/dust";
 
+// /!\ This manifest is written mode 644 and is readable by the non-root
+// agent-proxied user inside the sandbox. NEVER add a value, encryptedValue,
+// or any field derived from a decrypted secret to these shapes. Names,
+// placeholders, and allowed-domain patterns ONLY.
 export type SandboxEnvManifest = {
   version: 1;
   system: { name: string; description: string }[];
@@ -24,26 +27,19 @@ export type SandboxEnvManifest = {
 };
 
 function sortByName<T extends { name: string }>(entries: T[]): T[] {
-  return [...entries].sort((a, b) =>
-    a.name < b.name ? -1 : a.name > b.name ? 1 : 0
-  );
+  return entries.slice().sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function buildSandboxEnvManifest(
-  auth: Authenticator,
-  conversation: ConversationType
+  auth: Authenticator
 ): Promise<Result<SandboxEnvManifest, Error>> {
-  // Values are intentionally omitted; the conversation argument keeps this
-  // builder aligned with the system vars set by SandboxResource.
-  void conversation;
-
-  const workspaceEnvVars =
-    await WorkspaceSandboxEnvVarResource.listForWorkspace(auth);
-  const httpsSecretResources =
-    await WorkspaceSandboxEnvVarResource.listHttpsSecretsForEgress(auth);
+  const allVars = await WorkspaceSandboxEnvVarResource.listForWorkspace(auth);
 
   const httpsSecrets: SandboxEnvManifest["httpsSecrets"] = [];
-  for (const resource of httpsSecretResources) {
+  for (const resource of allVars) {
+    if (resource.kind !== "https_secret") {
+      continue;
+    }
     if (!resource.placeholderNonce) {
       return new Err(
         new Error(
@@ -79,7 +75,7 @@ export async function buildSandboxEnvManifest(
       },
     ]),
     config: sortByName(
-      workspaceEnvVars
+      allVars
         .filter((resource) => resource.kind === "config")
         .map((resource) => ({ name: resource.envName }))
     ),
@@ -89,10 +85,9 @@ export async function buildSandboxEnvManifest(
 
 export async function writeSandboxEnvManifestFile(
   auth: Authenticator,
-  sandbox: SandboxResource,
-  conversation: ConversationType
+  sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
-  const manifestResult = await buildSandboxEnvManifest(auth, conversation);
+  const manifestResult = await buildSandboxEnvManifest(auth);
   if (manifestResult.isErr()) {
     return manifestResult;
   }

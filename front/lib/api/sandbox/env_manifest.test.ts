@@ -13,7 +13,6 @@ import {
 describe("sandbox environment manifest", () => {
   it("builds a deterministic manifest without decrypted or encrypted values", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
-    const conversation = { sId: "conversation-id" } as never;
 
     const zConfigResult = await WorkspaceSandboxEnvVarResource.makeNew(
       authenticator,
@@ -64,6 +63,9 @@ describe("sandbox environment manifest", () => {
       throw apiSecretResult.error;
     }
 
+    // [TEST5] exception: we poke the model layer to install a known ciphertext
+    // so the negative JSON.stringify assertions below can prove that neither
+    // the cleartext nor the encrypted blob ever surfaces in the manifest.
     const workspace = authenticator.getNonNullableWorkspace();
     await WorkspaceSandboxEnvVarModel.update(
       { encryptedValue: "encrypted-config-blob" },
@@ -74,10 +76,7 @@ describe("sandbox environment manifest", () => {
       { where: { id: apiSecretResult.value.id, workspaceId: workspace.id } }
     );
 
-    const manifestResult = await buildSandboxEnvManifest(
-      authenticator,
-      conversation
-    );
+    const manifestResult = await buildSandboxEnvManifest(authenticator);
 
     expect(manifestResult.isOk()).toBe(true);
     if (manifestResult.isErr()) {
@@ -122,7 +121,6 @@ describe("sandbox environment manifest", () => {
 
   it("rejects an HTTPS secret missing a placeholder nonce", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
-    const conversation = { sId: "conversation-id" } as never;
 
     const secretResult = await WorkspaceSandboxEnvVarResource.makeNew(
       authenticator,
@@ -148,10 +146,7 @@ describe("sandbox environment manifest", () => {
       }
     );
 
-    const manifestResult = await buildSandboxEnvManifest(
-      authenticator,
-      conversation
-    );
+    const manifestResult = await buildSandboxEnvManifest(authenticator);
 
     expect(manifestResult.isErr()).toBe(true);
     if (manifestResult.isErr()) {
@@ -161,9 +156,8 @@ describe("sandbox environment manifest", () => {
     }
   });
 
-  it("writes the manifest as root-readable metadata", async () => {
+  it("writes the manifest with mode 644 owned by root", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
-    const conversation = { sId: "conversation-id" } as never;
     const secretResult = await WorkspaceSandboxEnvVarResource.makeNew(
       authenticator,
       {
@@ -174,6 +168,9 @@ describe("sandbox environment manifest", () => {
       }
     );
     expect(secretResult.isOk()).toBe(true);
+    if (secretResult.isErr()) {
+      throw secretResult.error;
+    }
 
     const sandbox = {
       exec: vi
@@ -183,8 +180,7 @@ describe("sandbox environment manifest", () => {
 
     const result = await writeSandboxEnvManifestFile(
       authenticator,
-      sandbox as never,
-      conversation
+      sandbox as never
     );
 
     expect(result).toEqual(new Ok(undefined));
@@ -194,7 +190,9 @@ describe("sandbox environment manifest", () => {
       stdin: string;
       user: string;
     };
-    expect(command).toContain("install -o root -g root -m 644 /dev/stdin");
+    // Pin the exact install flags so a future drift to a tighter mode (or a
+    // different owner) does not silently pass.
+    expect(command).toMatch(/install -o root -g root -m 644 \/dev\/stdin/);
     expect(command).toContain(SANDBOX_ENV_MANIFEST_PATH);
     expect(command).not.toContain("api-secret");
     expect(opts.user).toBe("root");

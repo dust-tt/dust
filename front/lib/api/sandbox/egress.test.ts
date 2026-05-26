@@ -115,7 +115,6 @@ describe("sandbox egress helpers", () => {
   const auth = {
     getNonNullableWorkspace: () => ({ sId: "workspace-id" }),
   } as never;
-  const conversation = { sId: "conversation-id" } as never;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -132,16 +131,11 @@ describe("sandbox egress helpers", () => {
   });
 
   function setup(sandbox: unknown) {
-    return setupEgressForwarder(auth, sandbox as never, conversation);
+    return setupEgressForwarder(auth, sandbox as never);
   }
 
   function ensure(sandbox: unknown, opts: { wokeFromSleep: boolean }) {
-    return ensureSandboxEgressOnExec(
-      auth,
-      sandbox as never,
-      conversation,
-      opts
-    );
+    return ensureSandboxEgressOnExec(auth, sandbox as never, opts);
   }
 
   it("mints a proxy JWT bound to the provider sandbox id", () => {
@@ -204,11 +198,7 @@ describe("sandbox egress helpers", () => {
       { user: "root" }
     );
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
-    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
-      auth,
-      sandbox,
-      conversation
-    );
+    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(auth, sandbox);
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,
@@ -492,11 +482,7 @@ describe("sandbox egress helpers", () => {
 
     expect(result).toEqual(new Ok(undefined));
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
-    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
-      auth,
-      sandbox,
-      conversation
-    );
+    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(auth, sandbox);
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,

@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
+const SUPPORTED_MANIFEST_VERSION: u32 = 1;
+
 #[derive(clap::Args, Debug, Clone)]
 pub struct EnvArgs {
     /// Path to the manifest file written by front.
@@ -22,30 +24,32 @@ enum OutputFormat {
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct SandboxEnvManifest {
     version: u32,
     system: Vec<SystemVar>,
     config: Vec<ConfigVar>,
-    #[serde(rename = "httpsSecrets")]
     https_secrets: Vec<HttpsSecret>,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct SystemVar {
     name: String,
     description: String,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct ConfigVar {
     name: String,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct HttpsSecret {
     name: String,
     placeholder: String,
-    #[serde(rename = "allowedDomains")]
     allowed_domains: Vec<String>,
 }
 
@@ -54,6 +58,18 @@ pub fn cmd_env(args: EnvArgs) -> Result<()> {
         .with_context(|| format!("failed to read {}", args.manifest_file.display()))?;
     let manifest: SandboxEnvManifest = serde_json::from_str(&contents)
         .with_context(|| format!("failed to parse {}", args.manifest_file.display()))?;
+
+    if manifest.version != SUPPORTED_MANIFEST_VERSION {
+        // Surface the drift on stderr rather than failing closed: front
+        // controls both producer and consumer, so a version mismatch most
+        // likely means the base image is older than the front that wrote the
+        // file. Keep parsing/rendering the known fields and let the operator
+        // see the warning in the binary's stderr stream.
+        eprintln!(
+            "warning: manifest version {} not supported by this dsbx (expected {}); known fields will be rendered",
+            manifest.version, SUPPORTED_MANIFEST_VERSION,
+        );
+    }
 
     match args.format {
         OutputFormat::Json => {
@@ -74,7 +90,10 @@ fn render_text<W: Write>(writer: &mut W, manifest: &SandboxEnvManifest) -> Resul
     render_system_section(writer, &manifest.system)?;
     writeln!(writer)?;
 
-    writeln!(writer, "CONFIG  (DST_*)")?;
+    writeln!(
+        writer,
+        "CONFIG  (DST_*; values visible via printenv)"
+    )?;
     render_config_section(writer, &manifest.config)?;
     writeln!(writer)?;
 
@@ -116,17 +135,8 @@ fn render_config_section<W: Write>(writer: &mut W, vars: &[ConfigVar]) -> Result
         return Ok(());
     }
 
-    let mut name_width = 0;
     for var in vars {
-        name_width = name_width.max(var.name.len());
-    }
-    for var in vars {
-        writeln!(
-            writer,
-            "  {:width$}  (workspace config; value visible via printenv)",
-            var.name,
-            width = name_width
-        )?;
+        writeln!(writer, "  {}", var.name)?;
     }
 
     Ok(())
@@ -248,9 +258,8 @@ mod tests {
 
         assert!(output.contains("SYSTEM\n"));
         assert!(output.contains("  CONVERSATION_ID  current conversation sId\n"));
-        assert!(output.contains("CONFIG  (DST_*)\n"));
-        assert!(output
-            .contains("  DST_DEFAULT_BRANCH  (workspace config; value visible via printenv)\n"));
+        assert!(output.contains("CONFIG  (DST_*; values visible via printenv)\n"));
+        assert!(output.contains("  DST_DEFAULT_BRANCH\n"));
         assert!(output.contains("HTTPS SECRETS  (DSEC_*;"));
         assert!(output.contains(
             "  DSEC_OPENAI_API_KEY  placeholder=__DSEC_0123456789abcdef0123456789abcdef__  domains=api.openai.com, *.openai.azure.com\n"
@@ -271,14 +280,17 @@ mod tests {
 
         assert_eq!(
             output,
-            "SYSTEM\n  (none)\n\nCONFIG  (DST_*)\n  (none)\n\nHTTPS SECRETS  (DSEC_*; placeholder is rewritten to the real secret only on the listed domains; on any other host the placeholder leaves the sandbox verbatim)\n  (none)\n"
+            "SYSTEM\n  (none)\n\nCONFIG  (DST_*; values visible via printenv)\n  (none)\n\nHTTPS SECRETS  (DSEC_*; placeholder is rewritten to the real secret only on the listed domains; on any other host the placeholder leaves the sandbox verbatim)\n  (none)\n"
         );
 
         Ok(())
     }
 
     #[test]
-    fn parse_unknown_version_passes() -> Result<()> {
+    fn parse_accepts_unknown_version() -> Result<()> {
+        // Forward-compat: a manifest emitted by a newer front must still
+        // deserialize via the known fields so a stale dsbx in a not-yet-rebuilt
+        // image keeps rendering instead of failing closed.
         let manifest: SandboxEnvManifest = serde_json::from_str(
             r#"{
   "version": 2,
@@ -294,7 +306,11 @@ mod tests {
     }
 
     #[test]
-    fn parse_rejects_invalid_placeholder_format() -> Result<()> {
+    fn renders_unrecognized_placeholder_verbatim() -> Result<()> {
+        // Placeholder format validation lives in the forwarder
+        // (`egress_secrets::validate_placeholder`), not in this presentation
+        // tool. If front ever emits a malformed placeholder, surface it
+        // unchanged so the operator can spot it.
         let manifest: SandboxEnvManifest = serde_json::from_str(
             r#"{
   "version": 1,
