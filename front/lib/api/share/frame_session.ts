@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import { ExternalViewerSessionModel } from "@app/lib/resources/storage/models/files";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDevelopment, isTest } from "@app/types/shared/env";
+import { LightWorkspaceType } from "@dust-tt/client";
 import crypto from "crypto";
 import { Op } from "sequelize";
 
@@ -15,7 +16,7 @@ const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60; // 7 days.
  * on the response (Next `res.setHeader` or Hono `ctx.header`).
  */
 export async function createFrameSession(
-  workspace: { id: number },
+  workspace: LightWorkspaceType,
   { email }: { email: string }
 ): Promise<string> {
   const sessionToken = crypto.randomUUID();
