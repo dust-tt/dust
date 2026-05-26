@@ -7,7 +7,7 @@ import {
   type MemberDisplayInfo,
   useMemberDetails,
 } from "@app/lib/swr/assistants";
-import { useWorkspaceProjectTask } from "@app/lib/swr/projects";
+import { useWorkspaceProjectTask } from "@app/lib/swr/pods";
 import {
   PROJECT_TASK_NO_ASSIGNEE_LABEL,
   type ProjectTaskStatus,
