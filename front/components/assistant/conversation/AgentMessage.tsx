@@ -52,7 +52,6 @@ import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { showDebugTools } from "@app/lib/development";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -239,7 +238,7 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
-  const { hasFeature, featureFlags } = useFeatureFlags();
+  const { hasFeature } = useFeatureFlags();
   const isCollapsibleEnabled = hasFeature("collapsible_messages");
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
@@ -704,7 +703,7 @@ export function AgentMessage({
     methods.data,
   ]);
 
-  const shouldShowCopy =
+  const shouldShowMessageActions =
     !isDeleted &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed";
@@ -716,8 +715,6 @@ export function AgentMessage({
     !shouldStream &&
     !isAgentMessageHandingOver &&
     !isProjectArchived;
-
-  const canBranchConversation = showDebugTools(featureFlags) && shouldShowCopy;
 
   const shouldShowFeedback =
     !isDeleted &&
@@ -816,10 +813,7 @@ export function AgentMessage({
   }
 
   // Add copy button or split button with dropdown (hover only)
-  if (
-    shouldShowCopy &&
-    (canBranchConversation || shouldShowRetry || canDeleteAgentMessage)
-  ) {
+  if (shouldShowMessageActions) {
     const dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
@@ -828,16 +822,14 @@ export function AgentMessage({
       },
     ];
 
-    if (canBranchConversation) {
-      dropdownItems.push({
-        label: "Branch from here",
-        icon: ActionGitBranchIcon,
-        onSelect: () => {
-          void branchConversation(agentMessage.sId);
-        },
-        disabled: isBranching,
-      });
-    }
+    dropdownItems.push({
+      label: "Branch from here",
+      icon: ActionGitBranchIcon,
+      onSelect: () => {
+        void branchConversation(agentMessage.sId);
+      },
+      disabled: isBranching,
+    });
 
     if (shouldShowRetry) {
       dropdownItems.push({
@@ -888,52 +880,6 @@ export function AgentMessage({
         />
       </ButtonGroup>
     );
-  } else {
-    if (shouldShowCopy) {
-      hoverButtons.push(
-        <Button
-          key="copy-msg-button"
-          tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="ghost-secondary"
-          size="xs"
-          onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-          className="text-muted-foreground"
-        />
-      );
-
-      hoverButtons.push(
-        <Button
-          key="copy-msg-link-button"
-          tooltip="Copy message link"
-          variant="ghost-secondary"
-          size="xs"
-          onClick={handleCopyMessageLink}
-          icon={LinkIcon}
-          className="text-muted-foreground"
-        />
-      );
-    }
-
-    if (shouldShowRetry) {
-      hoverButtons.push(
-        <Button
-          key="retry-msg-button"
-          tooltip="Retry"
-          variant="ghost-secondary"
-          size="xs"
-          onClick={() => {
-            void retryHandler({
-              conversationId,
-              messageId: agentMessage.sId,
-            });
-          }}
-          icon={ArrowPathIcon}
-          className="text-muted-foreground"
-          disabled={isRetryHandlerProcessing || shouldStream}
-        />
-      );
-    }
   }
 
   const { configuration: agentConfiguration } = agentMessage;
