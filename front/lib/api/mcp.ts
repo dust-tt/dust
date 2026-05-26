@@ -49,6 +49,7 @@ export function getRetryPolicyFromToolConfiguration(
 export type ToolDisplayLabels = {
   running: string; // e.g. "Searching data"
   done: string; // e.g. "Search data"
+  icon?: InternalAllowedIconType; // optional per-tool icon override
 };
 
 export type MCPToolType = {
