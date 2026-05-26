@@ -21,8 +21,9 @@ use crate::egress_secrets::SecretTable;
 
 use super::deny_log::{append_deny_log, DenyReason};
 use super::http_framing::{
-    find_subslice, is_common_bridge_stripped_header, parse_chunk_size, MAX_HEADER_BLOCK_BYTES,
-    MAX_HEADER_LINE_BYTES, MAX_TRAILER_BLOCK_BYTES, READ_CHUNK_BYTES,
+    find_subslice, is_common_bridge_stripped_header, is_h1_bridge_stripped_header,
+    parse_chunk_size, MAX_HEADER_BLOCK_BYTES, MAX_HEADER_LINE_BYTES, MAX_TRAILER_BLOCK_BYTES,
+    READ_CHUNK_BYTES,
 };
 use super::rewrite_policy::{
     deny_entry, process_request_policy, Authority, HeaderPart, RequestParts, RewriteMode,
@@ -1388,8 +1389,7 @@ fn build_h1_request_head(
             append_h1_header_line(&mut header_bytes, header.name.as_bytes(), &header.value)?;
             continue;
         }
-        if is_common_bridge_stripped_header(&header.name)
-            || header.name.eq_ignore_ascii_case(TE.as_str())
+        if is_h1_bridge_stripped_header(&header.name)
             || (use_chunked && header.name.eq_ignore_ascii_case(CONTENT_LENGTH.as_str()))
         {
             continue;
@@ -1612,9 +1612,7 @@ fn build_h2_response_head(response_head: &H1ResponseHead) -> Result<Response<()>
     let mut response = Response::builder().status(response_head.status);
     let nominated_hop_headers = connection_nominated_headers(&response_head.headers)?;
     for header in &response_head.headers {
-        if is_common_bridge_stripped_header(header.name.as_str())
-            || header.name.eq_ignore_ascii_case(TE.as_str())
-        {
+        if is_h1_bridge_stripped_header(header.name.as_str()) {
             continue;
         }
         if nominated_hop_headers.contains(&header.name.to_ascii_lowercase()) {
@@ -1849,9 +1847,7 @@ where
             .parse(&synthetic)
             .context("failed to parse h1 trailers")?;
         for header in request.headers.iter() {
-            if is_common_bridge_stripped_header(header.name)
-                || header.name.eq_ignore_ascii_case(TE.as_str())
-            {
+            if is_h1_bridge_stripped_header(header.name) {
                 continue;
             }
             let name = HeaderName::from_bytes(header.name.as_bytes())

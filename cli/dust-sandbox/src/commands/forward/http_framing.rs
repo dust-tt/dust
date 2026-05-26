@@ -74,6 +74,12 @@ pub(super) fn is_common_bridge_stripped_header(name: &str) -> bool {
         .any(|stripped| name.eq_ignore_ascii_case(stripped))
 }
 
+// h2-to-h1 fallback strips TE in addition to the common set. TE is an
+// h1-specific hop-by-hop header and should not be forwarded raw.
+pub(super) fn is_h1_bridge_stripped_header(name: &str) -> bool {
+    is_common_bridge_stripped_header(name) || name.eq_ignore_ascii_case("te")
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
