@@ -49,7 +49,6 @@ struct ConfigVar {
 #[serde(rename_all = "camelCase")]
 struct HttpsSecret {
     name: String,
-    placeholder: String,
     allowed_domains: Vec<String>,
 }
 
@@ -90,16 +89,13 @@ fn render_text<W: Write>(writer: &mut W, manifest: &SandboxEnvManifest) -> Resul
     render_system_section(writer, &manifest.system)?;
     writeln!(writer)?;
 
-    writeln!(
-        writer,
-        "CONFIG  (DST_*; values visible via printenv)"
-    )?;
+    writeln!(writer, "CONFIG  (DST_*; values visible via printenv)")?;
     render_config_section(writer, &manifest.config)?;
     writeln!(writer)?;
 
     writeln!(
         writer,
-        "HTTPS SECRETS  (DSEC_*; placeholder is rewritten to the real secret only on the listed domains; on any other host the placeholder leaves the sandbox verbatim)"
+        "HTTPS SECRETS  (DSEC_*; value is injected only on the listed domains)"
     )?;
     render_https_secrets_section(writer, &manifest.https_secrets)?;
 
@@ -155,9 +151,8 @@ fn render_https_secrets_section<W: Write>(writer: &mut W, secrets: &[HttpsSecret
     for secret in secrets {
         writeln!(
             writer,
-            "  {:width$}  placeholder={}  domains={}",
+            "  {:width$}  domains={}",
             secret.name,
-            secret.placeholder,
             secret.allowed_domains.join(", "),
             width = name_width
         )?;
@@ -194,7 +189,6 @@ mod tests {
             https_secrets: vec![
                 HttpsSecret {
                     name: "DSEC_OPENAI_API_KEY".to_string(),
-                    placeholder: "__DSEC_0123456789abcdef0123456789abcdef__".to_string(),
                     allowed_domains: vec![
                         "api.openai.com".to_string(),
                         "*.openai.azure.com".to_string(),
@@ -202,7 +196,6 @@ mod tests {
                 },
                 HttpsSecret {
                     name: "DSEC_SLACK_TOKEN".to_string(),
-                    placeholder: "__DSEC_fedcba9876543210fedcba9876543210__".to_string(),
                     allowed_domains: vec!["slack.com".to_string(), "*.slack-edge.com".to_string()],
                 },
             ],
@@ -217,6 +210,9 @@ mod tests {
 
     #[test]
     fn parse_minimal_manifest() -> Result<()> {
+        // Manifests may still carry a legacy `placeholder` field on each
+        // secret; serde drops it as an unknown field rather than failing the
+        // parse.
         let manifest: SandboxEnvManifest = serde_json::from_str(
             r#"{
   "version": 1,
@@ -248,6 +244,7 @@ mod tests {
         let serialized = serde_json::to_string(&manifest)?;
         assert!(serialized.contains("\"httpsSecrets\""));
         assert!(serialized.contains("\"allowedDomains\""));
+        assert!(!serialized.contains("placeholder"));
 
         Ok(())
     }
@@ -261,9 +258,10 @@ mod tests {
         assert!(output.contains("CONFIG  (DST_*; values visible via printenv)\n"));
         assert!(output.contains("  DST_DEFAULT_BRANCH\n"));
         assert!(output.contains("HTTPS SECRETS  (DSEC_*;"));
-        assert!(output.contains(
-            "  DSEC_OPENAI_API_KEY  placeholder=__DSEC_0123456789abcdef0123456789abcdef__  domains=api.openai.com, *.openai.azure.com\n"
-        ));
+        assert!(
+            output.contains("  DSEC_OPENAI_API_KEY  domains=api.openai.com, *.openai.azure.com\n")
+        );
+        assert!(!output.contains("placeholder"));
 
         Ok(())
     }
@@ -280,7 +278,7 @@ mod tests {
 
         assert_eq!(
             output,
-            "SYSTEM\n  (none)\n\nCONFIG  (DST_*; values visible via printenv)\n  (none)\n\nHTTPS SECRETS  (DSEC_*; placeholder is rewritten to the real secret only on the listed domains; on any other host the placeholder leaves the sandbox verbatim)\n  (none)\n"
+            "SYSTEM\n  (none)\n\nCONFIG  (DST_*; values visible via printenv)\n  (none)\n\nHTTPS SECRETS  (DSEC_*; value is injected only on the listed domains)\n  (none)\n"
         );
 
         Ok(())
@@ -301,33 +299,6 @@ mod tests {
         )?;
 
         assert_eq!(manifest.version, 2);
-
-        Ok(())
-    }
-
-    #[test]
-    fn renders_unrecognized_placeholder_verbatim() -> Result<()> {
-        // Placeholder format validation lives in the forwarder
-        // (`egress_secrets::validate_placeholder`), not in this presentation
-        // tool. If front ever emits a malformed placeholder, surface it
-        // unchanged so the operator can spot it.
-        let manifest: SandboxEnvManifest = serde_json::from_str(
-            r#"{
-  "version": 1,
-  "system": [],
-  "config": [],
-  "httpsSecrets": [
-    {
-      "name": "DSEC_OPENAI_API_KEY",
-      "placeholder": "not-a-placeholder",
-      "allowedDomains": ["api.openai.com"]
-    }
-  ]
-}"#,
-        )?;
-        let output = render_text_to_string(&manifest)?;
-
-        assert!(output.contains("placeholder=not-a-placeholder"));
 
         Ok(())
     }

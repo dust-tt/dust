@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 
-import { renderEgressSecretPlaceholder } from "@app/lib/api/sandbox/env_vars";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -13,15 +12,14 @@ const SANDBOX_ENV_MANIFEST_DIR = "/run/dust";
 
 // /!\ This manifest is written mode 644 and is readable by the non-root
 // agent-proxied user inside the sandbox. NEVER add a value, encryptedValue,
-// or any field derived from a decrypted secret to these shapes. Names,
-// placeholders, and allowed-domain patterns ONLY.
+// or any field derived from a decrypted secret to these shapes. Names and
+// allowed-domain patterns ONLY.
 export type SandboxEnvManifest = {
   version: 1;
   system: { name: string; description: string }[];
   config: { name: string }[];
   httpsSecrets: {
     name: string;
-    placeholder: string;
     allowedDomains: string[];
   }[];
 };
@@ -40,13 +38,6 @@ export async function buildSandboxEnvManifest(
     if (resource.kind !== "https_secret") {
       continue;
     }
-    if (!resource.placeholderNonce) {
-      return new Err(
-        new Error(
-          `HTTPS secret sandbox environment variable ${resource.envName} is missing its placeholder nonce.`
-        )
-      );
-    }
     if (!resource.allowedDomains) {
       return new Err(
         new Error(
@@ -57,7 +48,6 @@ export async function buildSandboxEnvManifest(
 
     httpsSecrets.push({
       name: resource.envName,
-      placeholder: renderEgressSecretPlaceholder(resource.placeholderNonce),
       allowedDomains: [...resource.allowedDomains].sort(),
     });
   }
