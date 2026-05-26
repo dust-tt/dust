@@ -1,73 +1,108 @@
 import { Hono } from "hono";
 
+import { lazyMount } from "./lib/lazy_mount";
 import { cors } from "./middlewares/cors";
 import { requestLogger } from "./middlewares/request_logger";
 import { unhandledErrorHandler } from "./middlewares/utils";
-import preStopApp from "./routes/[preStopSecret]";
-import { appStatusApp } from "./routes/app-status";
-import { loginApp } from "./routes/auth/login";
-import { authContextApp } from "./routes/auth-context";
-import { createNewWorkspaceApp } from "./routes/create-new-workspace";
-import debugApp from "./routes/debug";
-import docApp from "./routes/doc";
-import emailApp from "./routes/email";
-import enrichmentApp from "./routes/enrichment";
-import geo from "./routes/geo";
-import { healthzApp } from "./routes/healthz";
-import { invitationsApp } from "./routes/invitations";
-import { killApp } from "./routes/kill";
-import privateLoginApp from "./routes/login";
-import lookupApp from "./routes/lookup";
-import metronomeApp from "./routes/metronome";
-import novuApp from "./routes/novu";
-import oauthApp from "./routes/oauth";
-import pokeApp from "./routes/poke";
-import shareApp from "./routes/share";
-import stripeApp from "./routes/stripe";
-import tApp from "./routes/t";
-import templatesApp from "./routes/templates";
-import userApp from "./routes/user";
-import publicWorkspaceApp from "./routes/v1/w/[wId]";
-import workspaceApp from "./routes/w/[wId]";
-import workspaceJoinApp from "./routes/w/[wId]/join";
-import workosApp from "./routes/workos";
-import { workspaceLookupApp } from "./routes/workspace-lookup";
+
+const API_MOUNT = "/api";
 
 const apiApp = new Hono();
-apiApp.route("/healthz", healthzApp);
-apiApp.route("/app-status", appStatusApp);
-apiApp.route("/auth/login", loginApp);
-apiApp.route("/auth-context", authContextApp);
-apiApp.route("/create-new-workspace", createNewWorkspaceApp);
-apiApp.route("/debug", debugApp);
-apiApp.route("/doc", docApp);
-apiApp.route("/email", emailApp);
-apiApp.route("/enrichment", enrichmentApp);
-apiApp.route("/geo", geo);
-apiApp.route("/invitations", invitationsApp);
-apiApp.route("/kill", killApp);
-apiApp.route("/login", privateLoginApp);
-apiApp.route("/lookup", lookupApp);
-apiApp.route("/metronome", metronomeApp);
-apiApp.route("/novu", novuApp);
-apiApp.route("/oauth", oauthApp);
-apiApp.route("/poke", pokeApp);
-apiApp.route("/share", shareApp);
-apiApp.route("/stripe", stripeApp);
-apiApp.route("/templates", templatesApp);
-apiApp.route("/t", tApp);
-apiApp.route("/user", userApp);
-apiApp.route("/workos", workosApp);
-apiApp.route("/workspace-lookup", workspaceLookupApp);
-// join is mounted before the workspace app so it does not inherit workspaceAuth
-// (it is a public, unauthenticated endpoint).
-apiApp.route("/w/:wId/join", workspaceJoinApp);
-apiApp.route("/w/:wId", workspaceApp);
-apiApp.route("/v1/w/:wId", publicWorkspaceApp);
+
+// Static-prefix sub-apps. Each is imported on the first matching request.
+lazyMount(apiApp, API_MOUNT, "/healthz", () =>
+  import("./routes/healthz").then((m) => m.healthzApp)
+);
+lazyMount(apiApp, API_MOUNT, "/app-status", () =>
+  import("./routes/app-status").then((m) => m.appStatusApp)
+);
+lazyMount(apiApp, API_MOUNT, "/auth/login", () =>
+  import("./routes/auth/login").then((m) => m.loginApp)
+);
+lazyMount(apiApp, API_MOUNT, "/auth-context", () =>
+  import("./routes/auth-context").then((m) => m.authContextApp)
+);
+lazyMount(apiApp, API_MOUNT, "/create-new-workspace", () =>
+  import("./routes/create-new-workspace").then((m) => m.createNewWorkspaceApp)
+);
+lazyMount(apiApp, API_MOUNT, "/debug", () =>
+  import("./routes/debug").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/doc", () =>
+  import("./routes/doc").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/email", () =>
+  import("./routes/email").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/enrichment", () =>
+  import("./routes/enrichment").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/geo", () =>
+  import("./routes/geo").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/invitations", () =>
+  import("./routes/invitations").then((m) => m.invitationsApp)
+);
+lazyMount(apiApp, API_MOUNT, "/kill", () =>
+  import("./routes/kill").then((m) => m.killApp)
+);
+lazyMount(apiApp, API_MOUNT, "/login", () =>
+  import("./routes/login").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/lookup", () =>
+  import("./routes/lookup").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/metronome", () =>
+  import("./routes/metronome").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/novu", () =>
+  import("./routes/novu").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/oauth", () =>
+  import("./routes/oauth").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/poke", () =>
+  import("./routes/poke").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/share", () =>
+  import("./routes/share").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/stripe", () =>
+  import("./routes/stripe").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/templates", () =>
+  import("./routes/templates").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/t", () =>
+  import("./routes/t").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/user", () =>
+  import("./routes/user").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/workos", () =>
+  import("./routes/workos").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/workspace-lookup", () =>
+  import("./routes/workspace-lookup").then((m) => m.workspaceLookupApp)
+);
+
+// Dynamic-prefix sub-apps. `join` is registered before `/w/:wId` so it does
+// not inherit workspaceAuth (it is a public, unauthenticated endpoint).
+lazyMount(apiApp, API_MOUNT, "/w/:wId/join", () =>
+  import("./routes/w/[wId]/join").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/w/:wId", () =>
+  import("./routes/w/[wId]").then((m) => m.default)
+);
+lazyMount(apiApp, API_MOUNT, "/v1/w/:wId", () =>
+  import("./routes/v1/w/[wId]").then((m) => m.default)
+);
 // Pre-stop uses a dynamic first segment (the secret) — register last so its
 // `/:preStopSecret/prestop` shape doesn't shadow any literal-prefixed routes
 // above.
-apiApp.route("/:preStopSecret", preStopApp);
+lazyMount(apiApp, API_MOUNT, "/:preStopSecret", () =>
+  import("./routes/[preStopSecret]").then((m) => m.default)
+);
 
 export const honoApp = new Hono();
 honoApp.use("*", requestLogger);

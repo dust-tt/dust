@@ -25,7 +25,11 @@ function main() {
   });
 
   server.listen(port, hostname, () => {
-    logger.info({ port, hostname, dev }, "Hono-only server listening");
+    const uptimeMs = Math.round(process.uptime() * 1000);
+    logger.info(
+      { port, hostname, dev, uptimeMs },
+      "Hono-only server listening"
+    );
   });
 }
 
