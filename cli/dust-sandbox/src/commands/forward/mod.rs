@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{ensure, Context, Result};
-use rustls::pki_types::ServerName;
+use rustls::pki_types::{CertificateDer, ServerName};
 use rustls::ClientConfig;
 use rustls::RootCertStore;
 use tokio::io::AsyncRead;
@@ -82,6 +82,18 @@ pub struct ForwardArgs {
     /// Path to the one-shot egress secrets file loaded at startup
     #[arg(long, default_value = EGRESS_SECRETS_PATH)]
     secrets_file: PathBuf,
+    /// Test-only original destination port override for direct local e2e connections.
+    #[arg(long, hide = true)]
+    test_original_dst_port: Option<u16>,
+    /// Test-only DER root certificate added to outbound TLS validation.
+    #[arg(long, hide = true)]
+    extra_root_cert_der: Option<PathBuf>,
+    /// Test-only override for the persistent MITM CA certificate path.
+    #[arg(long, hide = true, default_value = MITM_CA_CERT_PATH)]
+    mitm_ca_cert: PathBuf,
+    /// Test-only override for the persistent MITM CA private key path.
+    #[arg(long, hide = true, default_value = MITM_CA_KEY_PATH)]
+    mitm_ca_key: PathBuf,
 }
 
 #[derive(Clone)]
@@ -99,6 +111,7 @@ struct ForwardRuntime {
     mitm_h2_tls_connector: TlsConnector,
     h2_upstream_pool: H2UpstreamPool,
     mitm_ca: Arc<MitmCa>,
+    test_original_dst_port: Option<u16>,
 }
 
 #[derive(Clone)]
@@ -131,9 +144,10 @@ struct DomainExtraction {
 
 pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
     let token = load_token(&args.token_file).await?;
-    let tls_connector = build_tls_connector()?;
-    let mitm_http1_tls_connector = build_http1_tls_connector()?;
-    let mitm_h2_tls_connector = build_h2_tls_connector()?;
+    let extra_root_cert_der = args.extra_root_cert_der.as_deref();
+    let tls_connector = build_tls_connector(extra_root_cert_der)?;
+    let mitm_http1_tls_connector = build_http1_tls_connector(extra_root_cert_der)?;
+    let mitm_h2_tls_connector = build_h2_tls_connector(extra_root_cert_der)?;
 
     // The CA must be loaded/generated BEFORE we bind the listener. Front uses
     // "port 9990 is LISTEN" as the readiness signal and, the moment that's
@@ -143,11 +157,8 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
     // the SNI-scoped TLS termination path; the on-disk cert is what front
     // installs into the sandbox trust bundle.
     let mitm_ca = Arc::new(
-        MitmCa::load_or_generate(
-            std::path::Path::new(MITM_CA_CERT_PATH),
-            std::path::Path::new(MITM_CA_KEY_PATH),
-        )
-        .context("failed to load or generate persistent MITM CA")?,
+        MitmCa::load_or_generate(&args.mitm_ca_cert, &args.mitm_ca_key)
+            .context("failed to load or generate persistent MITM CA")?,
     );
 
     // The secrets file is intentionally loaded once at dsbx startup. Front
@@ -199,6 +210,7 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
         mitm_h2_tls_connector,
         h2_upstream_pool,
         mitm_ca,
+        test_original_dst_port: args.test_original_dst_port,
     };
 
     loop {
@@ -231,19 +243,27 @@ async fn load_token(token_file: &PathBuf) -> Result<String> {
     Ok(trimmed)
 }
 
-fn build_tls_connector() -> Result<TlsConnector> {
-    build_tls_connector_with_alpn(Vec::new())
+fn build_tls_connector(extra_root_cert_der: Option<&std::path::Path>) -> Result<TlsConnector> {
+    build_tls_connector_with_alpn(Vec::new(), extra_root_cert_der)
 }
 
-fn build_http1_tls_connector() -> Result<TlsConnector> {
-    build_tls_connector_with_alpn(vec![HTTP_1_1_ALPN.to_vec()])
+fn build_http1_tls_connector(
+    extra_root_cert_der: Option<&std::path::Path>,
+) -> Result<TlsConnector> {
+    build_tls_connector_with_alpn(vec![HTTP_1_1_ALPN.to_vec()], extra_root_cert_der)
 }
 
-fn build_h2_tls_connector() -> Result<TlsConnector> {
-    build_tls_connector_with_alpn(vec![H2_ALPN.to_vec(), HTTP_1_1_ALPN.to_vec()])
+fn build_h2_tls_connector(extra_root_cert_der: Option<&std::path::Path>) -> Result<TlsConnector> {
+    build_tls_connector_with_alpn(
+        vec![H2_ALPN.to_vec(), HTTP_1_1_ALPN.to_vec()],
+        extra_root_cert_der,
+    )
 }
 
-fn build_tls_connector_with_alpn(alpn_protocols: Vec<Vec<u8>>) -> Result<TlsConnector> {
+fn build_tls_connector_with_alpn(
+    alpn_protocols: Vec<Vec<u8>>,
+    extra_root_cert_der: Option<&std::path::Path>,
+) -> Result<TlsConnector> {
     // rustls 0.23 requires an explicit process-level CryptoProvider.
     // install_default returns Err if one is already installed; we just want to
     // guarantee some provider is present before ClientConfig::builder().
@@ -267,14 +287,30 @@ fn build_tls_connector_with_alpn(alpn_protocols: Vec<Vec<u8>>) -> Result<TlsConn
     }
 
     let (loaded, ignored) = roots.add_parsable_certificates(certs.certs);
+    let mut loaded_roots = loaded;
     if ignored != 0 {
         warn!(
             ignored_cert_count = ignored,
             "ignored native root certificates"
         );
     }
+    if let Some(extra_root_cert_der) = extra_root_cert_der {
+        let der = std::fs::read(extra_root_cert_der).with_context(|| {
+            format!(
+                "failed to read extra root certificate {}",
+                extra_root_cert_der.display()
+            )
+        })?;
+        roots.add(CertificateDer::from(der)).with_context(|| {
+            format!(
+                "failed to add extra root certificate {}",
+                extra_root_cert_der.display()
+            )
+        })?;
+        loaded_roots += 1;
+    }
     ensure!(
-        loaded != 0,
+        loaded_roots != 0,
         "failed to load any native root certificates for TLS validation"
     );
 
@@ -318,8 +354,14 @@ async fn handle_connection(
     mut client_stream: TcpStream,
     peer_addr: std::net::SocketAddr,
 ) -> Result<()> {
-    let original_dst =
-        resolve_original_dst(&client_stream).context("failed to resolve original destination")?;
+    let original_dst = if let Some(port) = runtime.test_original_dst_port {
+        let local_addr = client_stream
+            .local_addr()
+            .context("failed to read local listener address")?;
+        std::net::SocketAddr::new(local_addr.ip(), port)
+    } else {
+        resolve_original_dst(&client_stream).context("failed to resolve original destination")?
+    };
     let original_port = original_dst.port();
     let domain_extraction = extract_domain(&client_stream, original_port).await;
     let mitm_target = mitm_target_for(
@@ -1757,6 +1799,7 @@ mod tests {
             mitm_h2_tls_connector,
             h2_upstream_pool: H2UpstreamPool::new(dummy_opener),
             mitm_ca,
+            test_original_dst_port: None,
         })
     }
 
