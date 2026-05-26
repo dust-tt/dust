@@ -92,6 +92,7 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Requesting Computer network access",
       done: "Allow domain in the Computer",
+      icon: "ActionGlobeAltIcon",
     },
   },
 });

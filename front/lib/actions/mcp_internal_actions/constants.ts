@@ -1345,6 +1345,14 @@ export function getInternalMCPServerIconByName(
   return server.metadata.serverInfo.icon;
 }
 
+export function getInternalMCPServerToolIcon(
+  serverName: InternalMCPServerNameType,
+  toolName: string
+): InternalAllowedIconType | null {
+  const labels = getInternalMCPServerToolDisplayLabels(serverName);
+  return labels?.[toolName]?.icon ?? null;
+}
+
 export function getInternalMCPServerDisplayedAs(
   toolServerId: string
 ): "agent" | "server" | undefined {
