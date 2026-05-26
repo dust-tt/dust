@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";

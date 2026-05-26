@@ -1,0 +1,240 @@
+import { internalFetch } from "@app/lib/api/internal_fetch";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { honoApp } from "@front-api/app";
+import { Readable } from "stream";
+import { describe, expect, it, vi } from "vitest";
+
+const CORE_TABLES_FAKE_RESPONSE = {
+  response: {
+    table: {
+      project: { project_id: 47 },
+      data_source_id:
+        "21ab3a9994350d8bbd3f76e4c5d233696d6793b271f19407d60d7db825a16381",
+      data_source_internal_id:
+        "7f93516e45f485f18f889040ed13764a418acf422c34f4f0d3e9474ccccb5386",
+      created: 1738254966701,
+      table_id: "fooTable-1",
+      name: "footable",
+      description: "desc",
+      timestamp: 1738254966701,
+      tags: [],
+      title: "Wonderful table",
+      mime_type: "text/csv",
+      provider_visibility: null,
+      parent_id: null,
+      parents: ["fooTable-1"],
+      source_url: null,
+      schema: null,
+      schema_stale_at: null,
+      remote_database_table_id: null,
+      remote_database_secret_id: null,
+    },
+  },
+};
+
+const CORE_VALIDATE_CSV_FAKE_RESPONSE = {
+  response: {
+    schema: [
+      {
+        name: "foo",
+        value_type: "int",
+        possible_values: ["1", "4"],
+      },
+      {
+        name: "bar",
+        value_type: "int",
+        possible_values: ["2", "5"],
+      },
+      {
+        name: "baz",
+        value_type: "int",
+        possible_values: ["3", "6"],
+      },
+    ],
+  },
+};
+
+vi.mock(import("@app/lib/api/config"), (() => ({
+  default: {
+    getCoreAPIConfig: vi.fn().mockReturnValue({
+      url: "http://localhost:9999",
+      apiKey: "foo",
+    }),
+  },
+})) as any);
+
+const mockFileContent = {
+  content: "default content",
+  setContent: (newContent: string) => {
+    mockFileContent.content = newContent;
+  },
+};
+
+vi.mock("@app/lib/file_storage", async () => {
+  const { fileStorageMock } = await import(
+    "@app/tests/utils/mocks/file_storage"
+  );
+  const mockFile = () => ({
+    copy: vi.fn().mockResolvedValue(undefined),
+    createReadStream: () => Readable.from([mockFileContent.content]),
+  });
+  return {
+    ...fileStorageMock.mock(),
+    getUpsertQueueBucket: vi.fn(() => ({ file: mockFile })),
+    getPrivateUploadBucket: vi.fn(() => ({ file: mockFile })),
+  };
+});
+
+function postCsv(
+  workspace: { sId: string },
+  key: { secret: string },
+  spaceSId: string,
+  dsId: string,
+  body: unknown
+) {
+  return honoApp.request(
+    `/api/v1/w/${workspace.sId}/spaces/${spaceSId}/data_sources/${dsId}/tables/csv`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${key.secret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+describe("POST /api/v1/w/:wId/spaces/:spaceId/data_sources/:dsId/tables/csv", () => {
+  it("successfully upserts a CSV received as file", async () => {
+    const { auth, workspace, globalGroup, key } =
+      await createPublicApiMockRequest({
+        systemKey: true,
+        method: "POST",
+      });
+
+    const space = await SpaceFactory.global(workspace);
+    await GroupSpaceFactory.associate(space, globalGroup);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    const file = await FileFactory.csv(auth, null, {
+      useCase: "upsert_table",
+    });
+
+    mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
+
+    vi.mocked(internalFetch).mockImplementation(async (url, init) => {
+      const req = JSON.parse((init as RequestInit).body as string);
+
+      if ((url as string).endsWith("/tables")) {
+        expect(req.table_id).toBe("fooTable-1");
+        expect(req.name).toBe("footable");
+        expect(req.parents[0]).toBe("fooTable-1");
+        expect(req.source_url).toBeNull();
+        return new Response(JSON.stringify(CORE_TABLES_FAKE_RESPONSE), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if ((url as string).endsWith("/csv")) {
+        expect(req.bucket_csv_path).toBe(
+          `files/w/${workspace.sId}/${file.sId}/original`
+        );
+        expect(req.truncate).toBe(true);
+        return new Response(JSON.stringify({ response: { success: true } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if ((url as string).endsWith("/validate_csv_content")) {
+        expect(req.bucket_csv_path).toBe(
+          `files/w/${workspace.sId}/${file.sId}/original`
+        );
+        return new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      throw new Error(`Unexpected fetch call to ${url}`);
+    });
+
+    const response = await postCsv(
+      workspace,
+      key,
+      space.sId,
+      dataSourceView.dataSource.sId,
+      {
+        name: "footable",
+        truncate: true,
+        title: "Wonderful table",
+        mimeType: "text/csv",
+        description: "desc",
+        fileId: file.sId,
+        tableId: "fooTable-1",
+        allowEmptySchema: true,
+      }
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("errors if the file provided has the wrong use-case", async () => {
+    const { auth, workspace, globalGroup, key } =
+      await createPublicApiMockRequest({
+        systemKey: true,
+        method: "POST",
+      });
+
+    const space = await SpaceFactory.global(workspace);
+    await GroupSpaceFactory.associate(space, globalGroup);
+    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    const file = await FileFactory.csv(auth, null, {
+      useCase: "avatar",
+    });
+
+    mockFileContent.setContent("foo,bar,baz\n1,2,3\n4,5,6");
+
+    vi.mocked(internalFetch).mockImplementation(async (url) => {
+      if ((url as string).endsWith("/validate_csv_content")) {
+        return new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      throw new Error(`Unexpected fetch call to ${url}`);
+    });
+
+    const response = await postCsv(
+      workspace,
+      key,
+      space.sId,
+      dataSourceView.dataSource.sId,
+      {
+        name: "footable",
+        truncate: true,
+        title: "Wonderful table",
+        mimeType: "text/csv",
+        description: "desc",
+        fileId: file.sId,
+        tableId: "fooTable-1",
+        allowEmptySchema: true,
+      }
+    );
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.message).toContain(
+      "The file provided has not the expected use-case"
+    );
+    expect(data.error.type).toBe("invalid_request_error");
+  });
+});
