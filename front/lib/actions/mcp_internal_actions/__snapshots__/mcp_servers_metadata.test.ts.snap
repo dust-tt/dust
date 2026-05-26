@@ -66,6 +66,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "generate_random_number": "never_ask",
     "get_current_time": "never_ask",
     "math_operation": "never_ask",
+    "set_conversation_title": "never_ask",
     "wait": "never_ask",
   },
   "confluence": {
