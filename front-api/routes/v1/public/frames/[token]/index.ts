@@ -1,5 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
-import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import {
   FRAME_SESSION_COOKIE_NAME,
@@ -12,34 +10,30 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isInteractiveContentType } from "@app/types/files";
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { unauthedApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { resolveOptionalAuth } from "@front-api/routes/v1/public/frames/shared_auth";
+import { getCookie } from "hono/cookie";
+
+import verifyCode from "./verify-code";
+import verifyEmail from "./verify-email";
 
 /**
  * @ignoreswagger
  *
  * Undocumented API endpoint to get a frame by its public share token.
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PublicFrameResponseBodyType>>
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "Only GET method is supported.",
-      },
-    });
-  }
 
-  const { token } = req.query;
-  if (typeof token !== "string") {
-    return apiError(req, res, {
+// Mounted at /api/v1/public/frames/:token.
+const app = unauthedApp();
+
+app.get("/", async (ctx): HandlerResult<PublicFrameResponseBodyType> => {
+  const token = ctx.req.param("token");
+  if (!token) {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -59,7 +53,7 @@ async function handler(
       "Public frame fetch failed"
     );
 
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -72,7 +66,7 @@ async function handler(
   // TODO: Refactor FileResource.fetchByShareToken to return the WorkspaceResource directly to avoid this extra query.
   const workspace = await WorkspaceResource.fetchByModelId(file.workspaceId);
   if (!workspace) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -86,7 +80,7 @@ async function handler(
     !file.isInteractiveContent ||
     !isInteractiveContentType(file.contentType)
   ) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -97,7 +91,7 @@ async function handler(
 
   // Check if file is safe to display.
   if (!file.isSafeToDisplay()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -111,7 +105,7 @@ async function handler(
     shareScope === "public" &&
     !workspace.canShareInteractiveContentPublicly
   ) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -120,15 +114,11 @@ async function handler(
     });
   }
 
-  const auth = await getAuthForSharedEndpointWorkspaceMembersOnly(
-    req,
-    res,
-    workspace.sId
-  );
+  const auth = await resolveOptionalAuth(ctx, workspace.sId);
 
   // If workspace policy restricts to members only, block all non-member access.
   if (workspace.sharingPolicy === "workspace_only" && !auth) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -159,7 +149,7 @@ async function handler(
       // Resolve the verified email: prefer Dust session, fall back to external viewer cookie.
       let verifiedEmail: string | null = auth?.user()?.email ?? null;
       if (!verifiedEmail) {
-        const sessionToken = req.cookies[FRAME_SESSION_COOKIE_NAME];
+        const sessionToken = getCookie(ctx, FRAME_SESSION_COOKIE_NAME);
         if (sessionToken) {
           verifiedEmail = await getFrameSessionEmail(workspace, {
             token: sessionToken,
@@ -176,7 +166,7 @@ async function handler(
         }));
 
       if (!hasGrant) {
-        return apiError(req, res, {
+        return apiError(ctx, {
           status_code: 404,
           api_error: {
             type: "file_not_found",
@@ -221,7 +211,7 @@ async function handler(
     workspaceId: workspace.sId,
   });
 
-  res.status(200).json({
+  return ctx.json({
     accessToken,
     file: file.toJSON(),
     // Only return the conversation URL if the user is a participant of the conversation.
@@ -236,6 +226,9 @@ async function handler(
     // Only return the project URL if the user can read the project.
     projectUrl: canRead && spaceId ? getPodRoute(workspace.sId, spaceId) : null,
   });
-}
+});
 
-export default withLogging(handler);
+app.route("/verify-code", verifyCode);
+app.route("/verify-email", verifyEmail);
+
+export default app;

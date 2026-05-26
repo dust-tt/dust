@@ -1,3 +1,4 @@
+// @migration-status: MIGRATED_TO_HONO
 /** @ignoreswagger */
 import { createFrameSession } from "@app/lib/api/share/frame_session";
 import { validateFrameOtpChallenge } from "@app/lib/api/share/frame_sharing";
