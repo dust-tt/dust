@@ -1,3 +1,4 @@
+import { FileExplorerBreadcrumb } from "@app/components/file_explorer/FileExplorerBreadcrumb";
 import { FileExplorerContent } from "@app/components/file_explorer/FileExplorerContent";
 import { canMoveFileToParentFolder } from "@app/components/file_explorer/fileExplorerDragDrop";
 import { FileExplorerFilters } from "@app/components/file_explorer/FileExplorerFilters";
@@ -23,45 +24,21 @@ import {
   getParentFolderRelativePath,
   getScopedRelativePath,
   isFileExplorerMovableFile,
-  ROOT_FOLDER_LABEL,
 } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
 import {
-  Breadcrumbs,
   Button,
   cn,
   FolderOpenIcon,
   PencilSquareIcon,
   TrashIcon,
   XMarkIcon,
-  type BreadcrumbsItem,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-interface FileExplorerBreadcrumbProps {
-  currentFolderPath: string;
-  onNavigate: (index: number) => void;
-}
-
-function FileExplorerBreadcrumb({
-  currentFolderPath,
-  onNavigate,
-}: FileExplorerBreadcrumbProps) {
-  const segments = getFolderBreadcrumbSegments(currentFolderPath);
-  const items: BreadcrumbsItem[] = [
-    { label: ROOT_FOLDER_LABEL, onClick: () => onNavigate(-1) },
-    ...segments.map((segment, i) => ({
-      label: segment.label,
-      onClick: () => onNavigate(i),
-    })),
-  ];
-
-  return <Breadcrumbs items={items} size="sm" buttonVariant="outline" />;
-}
 
 interface FileExplorerProps {
   contentClassName?: string;
@@ -243,11 +220,6 @@ export function FileExplorer({
     setCurrentFolderPath(getParentFolderRelativePath(currentFolderPath));
   };
 
-  const parentFolderPath = getParentFolderRelativePath(currentFolderPath);
-  const parentFolderLabel = parentFolderPath
-    ? (parentFolderPath.split("/").at(-1) ?? ROOT_FOLDER_LABEL)
-    : ROOT_FOLDER_LABEL;
-
   const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);
 
   const handleMoveFileDrop = useCallback(
@@ -316,10 +288,16 @@ export function FileExplorer({
           >
             <div
               className={cn(
-                "flex h-full items-center justify-end gap-2 px-4",
+                "flex h-full items-center justify-between gap-2 px-4",
                 contentClassName
               )}
             >
+              <FileExplorerBreadcrumb
+                currentFolderPath={currentFolderPath}
+                onGoUp={handleGoUp}
+                onNavigate={handleBreadcrumbNavigate}
+                onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
+              />
               <Button
                 variant="ghost"
                 size="sm"
@@ -336,6 +314,14 @@ export function FileExplorer({
             inPanel ? "pt-5" : undefined
           )}
         >
+          {!inPanel && (
+            <FileExplorerBreadcrumb
+              currentFolderPath={currentFolderPath}
+              onGoUp={handleGoUp}
+              onNavigate={handleBreadcrumbNavigate}
+              onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
+            />
+          )}
           <div className={inPanel ? "px-4" : undefined}>
             <FileExplorerToolbar
               searchQuery={searchQuery}
@@ -356,14 +342,6 @@ export function FileExplorer({
               />
             </div>
           )}
-          {currentFolderPath !== "" && (
-            <div className={inPanel ? "px-4" : undefined}>
-              <FileExplorerBreadcrumb
-                currentFolderPath={currentFolderPath}
-                onNavigate={handleBreadcrumbNavigate}
-              />
-            </div>
-          )}
           <FileExplorerContent
             isLoading={isLoading}
             sortedNodes={sortedNodes}
@@ -372,11 +350,6 @@ export function FileExplorer({
             isEmpty={fileCount === 0 && folderCount === 0}
             emptyState={emptyState}
             fileDragEnabled={fileDragEnabled}
-            parentFolderDropPath={parentFolderPath}
-            parentFolderLabel={
-              currentFolderPath ? parentFolderLabel : undefined
-            }
-            onGoUp={currentFolderPath ? handleGoUp : undefined}
             onFolderNavigate={handleFolderNavigate}
             onFileOpen={handleFileOpen}
             onFileDownload={onFileDownload}

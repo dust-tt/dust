@@ -3,7 +3,6 @@ import {
   FileExplorerEmptyState,
   FileExplorerFileCard,
   FileExplorerFolderCard,
-  FileExplorerGoUpCard,
   type ViewMode,
 } from "@app/components/file_explorer/FileExplorerItem";
 import type {
@@ -29,9 +28,6 @@ interface FileExplorerContentProps {
   isEmpty: boolean;
   emptyState?: React.ReactNode;
   fileDragEnabled?: boolean;
-  parentFolderDropPath?: string;
-  parentFolderLabel?: string;
-  onGoUp?: () => void;
   onFolderNavigate: (node: FileSystemTreeNode) => void;
   onFileOpen: (entry: FileEntry) => void;
   onFileDownload: (entry: FileEntry) => Promise<void>;
@@ -48,9 +44,6 @@ export function FileExplorerContent({
   isEmpty,
   emptyState,
   fileDragEnabled,
-  parentFolderDropPath,
-  parentFolderLabel,
-  onGoUp,
   onFolderNavigate,
   onFileOpen,
   onFileDownload,
@@ -58,20 +51,6 @@ export function FileExplorerContent({
   onNodeOpen,
   getFileMenuItems,
 }: FileExplorerContentProps) {
-  const canGoUp = Boolean(onGoUp && parentFolderLabel);
-
-  const goUpItem =
-    canGoUp && parentFolderLabel && onGoUp ? (
-      <FileExplorerGoUpCard
-        key="go-up"
-        parentLabel={parentFolderLabel}
-        parentRelativePath={parentFolderDropPath ?? ""}
-        viewMode={viewMode}
-        onGoUp={onGoUp}
-        onMoveFileDrop={onMoveFileDrop}
-      />
-    ) : null;
-
   const items = sortedNodes.map((node) => {
     if (node.isDirectory) {
       return (
@@ -129,7 +108,7 @@ export function FileExplorerContent({
     );
   }
 
-  if (isEmpty && !canGoUp) {
+  if (isEmpty) {
     return (
       <div className="flex flex-1 items-center justify-center px-4">
         {emptyState ?? <FileExplorerEmptyState />}
@@ -137,36 +116,13 @@ export function FileExplorerContent({
     );
   }
 
-  if (isEmpty && canGoUp) {
-    return (
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="flex flex-col gap-5 px-4">
-          {viewMode === "list" ? (
-            <div className="flex flex-col gap-0.5">{goUpItem}</div>
-          ) : (
-            <CardGrid gridClassName={cardGridClasses}>{goUpItem}</CardGrid>
-          )}
-          <div className="flex flex-1 items-center justify-center py-8">
-            {emptyState ?? <FileExplorerEmptyState />}
-          </div>
-        </div>
-      </ScrollArea>
-    );
-  }
-
   return (
     <ScrollArea className="min-h-0 flex-1">
       <div className="flex flex-col gap-5 px-4">
         {viewMode === "list" ? (
-          <div className="flex flex-col gap-0.5">
-            {goUpItem}
-            {items}
-          </div>
+          <div className="flex flex-col gap-0.5">{items}</div>
         ) : (
-          <CardGrid gridClassName={cardGridClasses}>
-            {goUpItem}
-            {items}
-          </CardGrid>
+          <CardGrid gridClassName={cardGridClasses}>{items}</CardGrid>
         )}
       </div>
     </ScrollArea>
