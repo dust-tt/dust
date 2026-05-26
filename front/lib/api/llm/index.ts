@@ -113,7 +113,7 @@ export async function getLLM(
   const featureFlags = await getFeatureFlags(auth);
 
   const useVertexPrerequisite =
-    featureFlags.includes("use_vertex_for_anthropic_models") &&
+    featureFlags.includes("use_vertex_for_supported_models") &&
     !auth.getNonNullablePlan().isByok;
 
   if (isGoogleAIStudioWhitelistedModelId(modelId)) {
