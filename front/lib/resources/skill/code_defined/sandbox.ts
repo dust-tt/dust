@@ -196,22 +196,7 @@ hangs or fails with TLS/DNS errors, check the \`<network_proxy_logs>\`
 block first; a denied egress is a possible cause.`;
 }
 
-function buildEnvironmentVariablesSection({
-  hasDsbxTools,
-}: {
-  hasDsbxTools: boolean;
-}): string {
-  const discoveryParagraph = hasDsbxTools
-    ? `
-To see which \`DST_*\` and \`DSEC_*\` variables are configured for this
-workspace, run \`dsbx env\`. It lists each variable by name and, for every
-\`DSEC_*\` placeholder, the HTTPS domain(s) it is approved for. It never
-prints values, so it is safe to run before deciding which variable to use.
-Prefer \`dsbx env\` over guessing names or dumping the environment with
-\`env\` / \`printenv\` (those would just produce redacted output).
-`
-    : "";
-
+function buildEnvironmentVariablesSection(): string {
   return `#### Sandbox Environment Variables
 
 The sandbox may have workspace-configured environment variables available
@@ -225,7 +210,14 @@ There are two prefixes:
   intentionally not the real secret. Send it as an HTTPS request header to
   the domain approved for that secret; the egress proxy substitutes the real
   value on the wire.
-${discoveryParagraph}
+
+To see which \`DST_*\` and \`DSEC_*\` variables are configured for this
+workspace, run \`dsbx env\`. It lists each variable by name and, for every
+\`DSEC_*\` placeholder, the HTTPS domain(s) it is approved for. It never
+prints values, so it is safe to run before deciding which variable to use.
+Prefer \`dsbx env\` over guessing names or dumping the environment with
+\`env\` / \`printenv\` (those would just produce redacted output).
+
 Hard rules for environment variables:
 
 - Never print, echo, \`cat\`, log, summarize, or otherwise disclose a
@@ -284,9 +276,7 @@ async function buildSandboxInstructions(
   { hasDsbxTools, isProject }: { hasDsbxTools: boolean; isProject: boolean }
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
-  const environmentVariablesSection = buildEnvironmentVariablesSection({
-    hasDsbxTools,
-  });
+  const environmentVariablesSection = buildEnvironmentVariablesSection();
   const conversationFilesSection = buildConversationFilesSection();
   const projectFilesSection = isProject ? buildProjectFilesSection() : null;
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
