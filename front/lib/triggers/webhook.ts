@@ -697,6 +697,16 @@ export async function processWebhookRequest(
     return new Ok(undefined);
   }
 
+  if (filteredTriggers.some((t) => t.configuration.includePayload)) {
+    await storePayloadInGCS(auth, {
+      webhookSource,
+      webhookRequest,
+      headers,
+      body,
+      provider: webhookSource.provider ?? "custom",
+    });
+  }
+
   const launchResult = await launchTriggersWorkflows(auth, {
     filteredTriggers,
     webhookSource,
