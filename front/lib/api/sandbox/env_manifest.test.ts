@@ -1,4 +1,3 @@
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
@@ -11,7 +10,7 @@ import {
 } from "./env_manifest";
 
 describe("sandbox environment manifest", () => {
-  it("builds a deterministic manifest without decrypted or encrypted values", async () => {
+  it("builds a deterministic manifest without any value field", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
     const zConfigResult = await WorkspaceSandboxEnvVarResource.makeNew(
@@ -31,9 +30,6 @@ describe("sandbox environment manifest", () => {
       }
     );
     expect(aConfigResult.isOk()).toBe(true);
-    if (aConfigResult.isErr()) {
-      throw aConfigResult.error;
-    }
 
     const slackSecretResult = await WorkspaceSandboxEnvVarResource.makeNew(
       authenticator,
@@ -63,19 +59,6 @@ describe("sandbox environment manifest", () => {
       throw apiSecretResult.error;
     }
 
-    // [TEST5] exception: we poke the model layer to install a known ciphertext
-    // so the negative JSON.stringify assertions below can prove that neither
-    // the cleartext nor the encrypted blob ever surfaces in the manifest.
-    const workspace = authenticator.getNonNullableWorkspace();
-    await WorkspaceSandboxEnvVarModel.update(
-      { encryptedValue: "encrypted-config-blob" },
-      { where: { id: aConfigResult.value.id, workspaceId: workspace.id } }
-    );
-    await WorkspaceSandboxEnvVarModel.update(
-      { encryptedValue: "encrypted-secret-blob" },
-      { where: { id: apiSecretResult.value.id, workspaceId: workspace.id } }
-    );
-
     const manifestResult = await buildSandboxEnvManifest(authenticator);
 
     expect(manifestResult.isOk()).toBe(true);
@@ -83,6 +66,11 @@ describe("sandbox environment manifest", () => {
       throw manifestResult.error;
     }
 
+    // `toEqual` pins the manifest shape exhaustively: any extra field
+    // (encryptedValue, value, etc.) would fail this assertion. The follow-up
+    // `not.toContain` lines belt-and-suspenders the cleartext values that
+    // were stored via makeNew so a future widening of the manifest shape
+    // cannot silently start surfacing them.
     expect(manifestResult.value).toEqual({
       version: 1,
       system: [
@@ -115,8 +103,6 @@ describe("sandbox environment manifest", () => {
     expect(json).not.toContain("config-z");
     expect(json).not.toContain("api-secret");
     expect(json).not.toContain("slack-secret");
-    expect(json).not.toContain("encrypted-config-blob");
-    expect(json).not.toContain("encrypted-secret-blob");
   });
 
   it("rejects an HTTPS secret missing a placeholder nonce", async () => {
@@ -136,15 +122,19 @@ describe("sandbox environment manifest", () => {
       throw secretResult.error;
     }
 
-    await WorkspaceSandboxEnvVarModel.update(
-      { placeholderNonce: null },
-      {
-        where: {
-          id: secretResult.value.id,
-          workspaceId: authenticator.getNonNullableWorkspace().id,
-        },
-      }
-    );
+    // Resource invariants prevent creating an https_secret row with a null
+    // placeholderNonce, but the builder still defends against that DB
+    // corruption case. Simulate it by overriding the instance attribute and
+    // stubbing the resource list lookup, rather than reaching into the
+    // Sequelize model from the test ([TEST5]).
+    Object.defineProperty(secretResult.value, "placeholderNonce", {
+      value: null,
+      configurable: true,
+    });
+    vi.spyOn(
+      WorkspaceSandboxEnvVarResource,
+      "listForWorkspace"
+    ).mockResolvedValueOnce([secretResult.value]);
 
     const manifestResult = await buildSandboxEnvManifest(authenticator);
 
