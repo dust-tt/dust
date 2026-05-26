@@ -93,6 +93,7 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       running: "Requesting Computer network access",
       done: "Allow domain in the Computer",
     },
+    icon: "ActionGlobeAltIcon",
   },
 });
 
@@ -114,6 +115,7 @@ export const SANDBOX_SERVER = {
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
+    icon: "icon" in t ? t.icon : undefined,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SANDBOX_TOOLS_METADATA).map((t) => [t.name, t.stake])

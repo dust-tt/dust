@@ -1345,6 +1345,21 @@ export function getInternalMCPServerIconByName(
   return server.metadata.serverInfo.icon;
 }
 
+// Per-tool icon overrides defined in tool metadata. Falls back to the
+// server-level icon (via `getInternalMCPServerIconByName`) when null.
+export function getInternalMCPServerToolIcon(
+  name: InternalMCPServerNameType,
+  toolName: string
+): InternalAllowedIconType | null {
+  const server: InternalMCPServerEntry | undefined = INTERNAL_MCP_SERVERS[name];
+  if (!server) {
+    return null;
+  }
+  return (
+    server.metadata.tools.find((t) => t.name === toolName)?.icon ?? null
+  );
+}
+
 export function getInternalMCPServerDisplayedAs(
   toolServerId: string
 ): "agent" | "server" | undefined {

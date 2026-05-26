@@ -1,3 +1,4 @@
+import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -51,6 +52,7 @@ export interface ToolDefinition<
   schema: TSchema;
   stake: MCPToolStakeLevelType;
   displayLabels: ToolDisplayLabels;
+  icon?: InternalAllowedIconType;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
     extra: ToolHandlerExtra
@@ -67,6 +69,7 @@ interface ClientToolDefinition<
   schema: TSchema;
   stake: MCPToolStakeLevelType;
   displayLabels: ToolDisplayLabels;
+  icon?: InternalAllowedIconType;
   argumentsRequiringApproval?: Array<
     Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
   >;
@@ -141,6 +144,7 @@ type InternalMCPToolType<TName extends string = string> = Omit<
 > & {
   name: TName;
   displayLabels: ToolDisplayLabels;
+  icon?: InternalAllowedIconType;
 };
 
 export type ServerMetadata<
