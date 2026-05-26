@@ -143,8 +143,8 @@ async function getDefaultPaymentMethod(
 export async function getWorkspaceBillingInfo(
   auth: Authenticator
 ): Promise<Result<BillingInfo | null, Error>> {
-  const owner = auth.workspace() as WorkspaceType | null;
-  const subscription = auth.subscription() as SubscriptionType | null;
+  const owner = auth.workspace() ?? null;
+  const subscription = auth.subscription() ?? null;
 
   if (!owner || !subscription || !isCreditPricedPlan(subscription.plan)) {
     return new Ok(null);
