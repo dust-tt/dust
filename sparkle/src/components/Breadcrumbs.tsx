@@ -355,11 +355,14 @@ export function BreadcrumbPage({ children, className }: BreadcrumbPageProps) {
 
 export function BreadcrumbSeparator({ className }: { className?: string }) {
   return (
-    <Icon
+    <span
       aria-hidden="true"
-      visual={ChevronRightIcon}
-      className={cn("s-text-faint dark:s-text-faint-night", className)}
-      size="sm"
-    />
+      className={cn(
+        "s-select-none s-px-0.5 s-text-sm s-text-faint dark:s-text-faint-night",
+        className
+      )}
+    >
+      /
+    </span>
   );
 }
