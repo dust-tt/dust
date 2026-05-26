@@ -7,13 +7,11 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { getNotionWorkflowId } from "@app/types/connectors/workflows";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import type { ModelId } from "@app/types/shared/model_id";
-import { withRetries } from "@app/types/shared/retries";
 import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 import type { Logger } from "pino";
 import { QueryTypes } from "sequelize";
 
-const TEMPORAL_WORKFLOW_CHECK_RETRIES = 10;
 const TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS = 12 * 60 * 60 * 1000; // 12 hours.
 
 interface NotionConnector {
@@ -124,9 +122,7 @@ async function areTemporalWorkflowsRunning(
   isRunning: boolean;
   isNotStalled: boolean;
 }> {
-  const descriptions = await withRetries(logger, getWorkflowDescriptions, {
-    retries: TEMPORAL_WORKFLOW_CHECK_RETRIES,
-  })({
+  const descriptions = await getWorkflowDescriptions({
     client,
     notionConnector,
     logger,
@@ -152,28 +148,12 @@ async function areTemporalWorkflowsRunning(
     };
   }
 
-  const latestEventTimes = await withRetries(
-    logger,
-    async ({
-      client,
-      descriptions,
-      logger,
-    }: {
-      client: Client;
-      descriptions: WorkflowExecutionDescription[];
-      logger: Logger;
-    }): Promise<(Date | null)[]> => {
-      // Bounded (only three elements), Temporal-only Promise.all.
-      return Promise.all(
-        descriptions.map((description) =>
-          getLatestWorkflowEventDate({ client, description, logger })
-        )
-      );
-    },
-    {
-      retries: TEMPORAL_WORKFLOW_CHECK_RETRIES,
-    }
-  )({ client, descriptions, logger });
+  // Bounded (only three elements), Temporal-only Promise.all.
+  const latestEventTimes = await Promise.all(
+    descriptions.map((description) =>
+      getLatestWorkflowEventDate({ client, description, logger })
+    )
+  );
 
   logger.info("Workflow latest events retrieved");
 
