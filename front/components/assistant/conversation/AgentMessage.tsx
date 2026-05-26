@@ -703,7 +703,7 @@ export function AgentMessage({
     methods.data,
   ]);
 
-  const shouldShowCopy =
+  const shouldShowMessageActions =
     !isDeleted &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed";
@@ -813,7 +813,7 @@ export function AgentMessage({
   }
 
   // Add copy button or split button with dropdown (hover only)
-  if (shouldShowCopy) {
+  if (shouldShowMessageActions) {
     const dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
