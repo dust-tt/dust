@@ -2,7 +2,7 @@ import {
   CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
-import { GEMINI_3_1_PRO_PREVIEW_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_MEDIUM_3_5_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
@@ -16,7 +16,7 @@ export const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
   MISTRAL_MEDIUM_3_5_MODEL_ID,
-  GEMINI_3_1_PRO_PREVIEW_MODEL_ID,
+  GEMINI_3_1_PRO_MODEL_ID,
 ] as const;
 
 export function isBestPerformingModel(modelId: ModelIdType): boolean {

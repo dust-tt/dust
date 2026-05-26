@@ -10,6 +10,7 @@ export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 export const GEMINI_3_PRO_MODEL_ID = "gemini-3-pro-preview" as const;
 export const GEMINI_3_1_PRO_PREVIEW_MODEL_ID =
   "gemini-3.1-pro-preview" as const;
+export const GEMINI_3_1_PRO_MODEL_ID = "gemini-3.1-pro" as const;
 export const GEMINI_3_1_FLASH_LITE_MODEL_ID =
   "gemini-3.1-flash-lite-preview" as const;
 export const GEMINI_3_FLASH_MODEL_ID = "gemini-3-flash-preview" as const;
@@ -166,6 +167,37 @@ export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": false,
   },
 };
+export const GEMINI_3_1_PRO_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_3_1_PRO_MODEL_ID,
+  displayName: "Gemini 3.1 Pro",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Google's latest powerful model with enhanced reasoning (1m context).",
+  shortDescription: "Google's most advanced model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "light",
+  tokenizer: { type: "tiktoken", base: "cl100k_base" },
+  useNativeLightReasoning: true,
+  supportsBatchProcessing: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
 export const GEMINI_3_1_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_3_1_PRO_PREVIEW_MODEL_ID,
@@ -178,7 +210,7 @@ export const GEMINI_3_1_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
     "Google's latest powerful model with enhanced reasoning (1m context).",
   shortDescription: "Google's most advanced model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: true,
