@@ -90,3 +90,26 @@ export type ToolEarlyExitEvent = {
   isError: boolean;
   reason?: "deploy_interruption" | "user_cancellation" | "none";
 };
+
+/**
+ * Internal signal emitted by `getExitOrPauseEvents` whenever it processes a
+ * `tool_blocked_awaiting_input` resource. Carries no UI payload — the
+ * user-facing blocking events (if any) are forwarded separately in the same
+ * batch. Its sole purpose is to keep the agent-loop pause-decision on the
+ * event channel instead of a side-channel `action.status` check: any tool
+ * that pauses without yielding a user-facing event (e.g. sandbox bash, where
+ * the child's blocking event was published upstream by `createSandboxChildAction`
+ * and never flows through bash's return) still triggers a clean pause.
+ *
+ * Not published to the message channel; consumed only by `runToolWithStreaming`
+ * (to skip `markAsSucceeded`) and `executeToolStreaming` (to set
+ * `shouldPauseAgentLoop`).
+ */
+export type ToolPausedEvent = {
+  type: "tool_paused";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  conversationId: string;
+  actionId: string;
+};
