@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import { ExternalViewerSessionModel } from "@app/lib/resources/storage/models/files";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDevelopment, isTest } from "@app/types/shared/env";
-import { LightWorkspaceType } from "@dust-tt/client";
+import type { LightWorkspaceType } from "@app/types/user";
 import crypto from "crypto";
 import { Op } from "sequelize";
 
