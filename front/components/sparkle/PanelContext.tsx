@@ -1,7 +1,6 @@
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useReducer } from "react";
-
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // --- Types ---
 

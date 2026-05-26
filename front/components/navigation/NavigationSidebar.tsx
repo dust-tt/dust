@@ -142,7 +142,7 @@ export const NavigationSidebar = React.forwardRef<
       </div>
       <div
         className={cn(
-          "flex grow flex-col",
+          "flex grow flex-col"
           // currentTab?.id !== "conversations" && "mx-sidebar-side-spacing"
         )}
       >

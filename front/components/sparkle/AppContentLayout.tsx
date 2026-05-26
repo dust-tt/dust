@@ -77,49 +77,21 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
               "0 0 0 0.4px rgba(0, 0, 0, 0.02), 0 0 1px 1px rgba(0, 0, 0, 0.02)",
           }}
         >
-                  <SubscriptionEndBanner
-          isAdmin={isAdmin(owner)}
-          owner={owner}
-          subscription={subscription}
-        />
-        {/* Temporary measure to preserve title existence on smaller screens.
-         * Page has no title, prepend empty AppLayoutTitle. */}
-        {loaded && !hasTitleBar && (
-          <div className="flex min-h-0 flex-1 flex-col">
-            <AppLayoutTitle />
-            {contentWidth ? (
-              <div
-                className={cn(
-                  "flex h-full w-full flex-col items-center overflow-y-auto",
-                  contentWidth === "centered" ? "pt-4" : "pt-8",
-                  contentClassName
-                )}
-              >
+          <SubscriptionEndBanner
+            isAdmin={isAdmin(owner)}
+            owner={owner}
+            subscription={subscription}
+          />
+          {/* Temporary measure to preserve title existence on smaller screens.
+           * Page has no title, prepend empty AppLayoutTitle. */}
+          {loaded && !hasTitleBar && (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <AppLayoutTitle />
+              {contentWidth ? (
                 <div
                   className={cn(
-                    "flex w-full grow flex-col px-4 sm:px-8",
-                    contentWidth === "centered" && "max-w-4xl"
-                  )}
-                >
-                  {children}
-                </div>
-              </div>
-            ) : (
-              children
-            )}
-          </div>
-        )}
-        {loaded && hasTitleBar && (
-          <div className="flex min-h-0 flex-1 flex-col">
-            {contentWidth ? (
-              <>
-                {title}
-                <div
-                  className={cn(
-                    "flex w-full flex-col items-center overflow-y-auto",
-                    contentWidth === "centered"
-                      ? cn(title ? "h-[calc(100vh-3.5rem)]" : "h-full", "pt-4")
-                      : "h-full pt-8",
+                    "flex h-full w-full flex-col items-center overflow-y-auto",
+                    contentWidth === "centered" ? "pt-4" : "pt-8",
                     contentClassName
                   )}
                 >
@@ -132,12 +104,43 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                     {children}
                   </div>
                 </div>
-              </>
-            ) : (
-              children
-            )}
-          </div>
-        )}
+              ) : (
+                children
+              )}
+            </div>
+          )}
+          {loaded && hasTitleBar && (
+            <div className="flex min-h-0 flex-1 flex-col">
+              {contentWidth ? (
+                <>
+                  {title}
+                  <div
+                    className={cn(
+                      "flex w-full flex-col items-center overflow-y-auto",
+                      contentWidth === "centered"
+                        ? cn(
+                            title ? "h-[calc(100vh-3.5rem)]" : "h-full",
+                            "pt-4"
+                          )
+                        : "h-full pt-8",
+                      contentClassName
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex w-full grow flex-col px-4 sm:px-8",
+                        contentWidth === "centered" && "max-w-4xl"
+                      )}
+                    >
+                      {children}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                children
+              )}
+            </div>
+          )}
         </div>
       </div>
       <SidePanel />

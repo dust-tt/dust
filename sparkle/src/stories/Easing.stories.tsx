@@ -535,8 +535,18 @@ function NavTabPillDualEasingPlayground() {
 
       <div className="s-flex s-flex-col s-gap-4">
         {[
-          { label: easingA.label, easing: easingA, active: activeA, setActive: setActiveA },
-          { label: easingB.label, easing: easingB, active: activeB, setActive: setActiveB },
+          {
+            label: easingA.label,
+            easing: easingA,
+            active: activeA,
+            setActive: setActiveA,
+          },
+          {
+            label: easingB.label,
+            easing: easingB,
+            active: activeB,
+            setActive: setActiveB,
+          },
         ].map(({ label, easing, active, setActive }) => (
           <div key={label} className="s-flex s-items-center s-gap-4">
             <EasingGraph controlPoints={easing.cp} size={48} />
@@ -544,10 +554,7 @@ function NavTabPillDualEasingPlayground() {
               <div className="s-mb-1 s-font-mono s-text-xs s-text-muted-foreground">
                 {label}
               </div>
-              <NavTabPill
-                value={active}
-                onValueChange={setActive}
-              >
+              <NavTabPill value={active} onValueChange={setActive}>
                 <NavTabPillList>
                   <NavTabPillTrigger
                     value="overview"

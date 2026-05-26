@@ -74,7 +74,7 @@ export function Navigation({
     <div
       className={cn(
         "text-sidebar-primary dark:text-sidebar-primary-night",
-        "flex shrink-0 overflow-x-hidden",
+        "flex shrink-0 overflow-x-hidden"
       )}
     >
       {showMobileSidebar ? (

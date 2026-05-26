@@ -739,8 +739,6 @@ export function AgentSidebarMenu({
     const nonStarredSummary = summary.filter(
       (project) => !project.space.isStarred
     );
-    const projectCountInSummary = nonStarredSummary.length;
-    const showCount = isProjectsSectionCollapsed && projectCountInSummary > 0;
 
     const VISIBLE_PROJECTS = 4;
     const hiddenSummary = nonStarredSummary.slice(VISIBLE_PROJECTS);

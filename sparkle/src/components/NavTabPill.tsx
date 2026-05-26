@@ -15,10 +15,7 @@ const NavTabPillList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
-    className={cn(
-      "s-flex s-items-center s-gap-1",
-      className
-    )}
+    className={cn("s-flex s-items-center s-gap-1", className)}
     {...props}
   />
 ));
@@ -110,11 +107,7 @@ const NavTabPillTrigger = React.forwardRef<
     }
 
     return (
-      <TabsPrimitive.Trigger
-        ref={ref}
-        className={triggerClassName}
-        {...props}
-      >
+      <TabsPrimitive.Trigger ref={ref} className={triggerClassName} {...props}>
         {content}
       </TabsPrimitive.Trigger>
     );
