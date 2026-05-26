@@ -166,7 +166,7 @@ export const GEMINI_3_PRO_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": false,
   },
 };
-export const GEMINI_3_1_PRO_MODEL_CONFIG: ModelConfigurationType = {
+export const GEMINI_3_1_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_3_1_PRO_PREVIEW_MODEL_ID,
   displayName: "Gemini 3.1 Pro (Preview)",
