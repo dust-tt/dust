@@ -288,7 +288,7 @@ export function FileExplorer({
           >
             <div
               className={cn(
-                "flex h-full items-center justify-between gap-2 px-4",
+                "flex h-full items-center justify-between gap-2",
                 contentClassName
               )}
             >
@@ -296,7 +296,9 @@ export function FileExplorer({
                 currentFolderPath={currentFolderPath}
                 onGoUp={handleGoUp}
                 onNavigate={handleBreadcrumbNavigate}
-                onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
+                onMoveFileDrop={
+                  fileDragEnabled ? handleMoveFileDrop : undefined
+                }
               />
               <Button
                 variant="ghost"
