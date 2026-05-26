@@ -3,7 +3,6 @@ import type { TaskOwnerFilter } from "@app/components/assistant/conversation/spa
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
-import { SpaceAlphaTab } from "@app/components/assistant/conversation/space/SpaceAlphaTab";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
 import { SpaceTasksTab } from "@app/components/assistant/conversation/space/SpaceTasksTab";
 
@@ -47,7 +46,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  TestTubeIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
@@ -321,15 +319,9 @@ export function SpaceConversationsPage() {
             />
             <TabsTrigger
               value="settings"
+              label={compactProjectTabs ? undefined : "Settings"}
+              tooltip={compactProjectTabs ? "Settings" : undefined}
               icon={Cog6ToothIcon}
-              tooltip="Settings"
-            />
-            <TabsTrigger
-              value="alpha"
-              label={compactProjectTabs ? undefined : "Alpha"}
-              tooltip={compactProjectTabs ? "Alpha" : undefined}
-              icon={TestTubeIcon}
-              variant="warning-secondary"
             />
           </TabsList>
 
@@ -385,10 +377,6 @@ export function SpaceConversationsPage() {
             space={spaceInfo}
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
-        </TabsContent>
-
-        <TabsContent value="alpha">
-          <SpaceAlphaTab key={spaceId} />
         </TabsContent>
       </Tabs>
       <ManageUsersPanel
