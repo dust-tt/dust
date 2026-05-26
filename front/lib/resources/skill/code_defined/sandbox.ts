@@ -211,6 +211,13 @@ There are two prefixes:
   the domain approved for that secret; the egress proxy substitutes the real
   value on the wire.
 
+To see which \`DST_*\` and \`DSEC_*\` variables are configured for this
+workspace, run \`dsbx env\`. It lists each variable by name and, for every
+\`DSEC_*\` placeholder, the HTTPS domain(s) it is approved for. It never
+prints values, so it is safe to run before deciding which variable to use.
+Prefer \`dsbx env\` over guessing names or dumping the environment with
+\`env\` / \`printenv\` (those would just produce redacted output).
+
 Hard rules for environment variables:
 
 - Never print, echo, \`cat\`, log, summarize, or otherwise disclose a
@@ -255,11 +262,6 @@ For Rust HTTP clients, prefer \`reqwest\` default features or
 use the JDK that came with the sandbox image; do not install another JDK or
 override the trust store mid-session. If you ignore this, the usual symptom
 is a TLS error such as \`PKIX path building failed\`.
-
-If you need to confirm a variable is set, check whether it is non-empty
-without printing its content (e.g. \`[ -n "\$DST_FOO" ]\` or
-\`[ -n "\$DSEC_FOO" ]\` in bash). Do not list available environment variable
-names just to enumerate what is configured.
 
 Bash tool output that contains a configured environment variable value is
 post-processed and replaced with a marker like \`«redacted: $FOO»\`. If you

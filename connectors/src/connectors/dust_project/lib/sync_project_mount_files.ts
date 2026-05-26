@@ -1,4 +1,11 @@
-import { PROJECT_CONTEXT_FOLDER_ID } from "@connectors/connectors/dust_project/lib/constants";
+import {
+  buildMountDirectoryParents,
+  getMountDirectoryParentPrefixes,
+  getMountDirectoryPrefixes,
+  getMountDirInternalId,
+  inferMountFileParents,
+  parseProjectScopedPath,
+} from "@connectors/connectors/dust_project/lib/mount_path_utils";
 import {
   handleTextExtraction,
   handleTextFile,
@@ -9,12 +16,19 @@ import {
   MAX_SMALL_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { DustProjectMountFileResource } from "@connectors/resources/dust_project_mount_file_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { isTextExtractionSupportedContentType } from "@connectors/types";
-import type { ProjectMountFileEntryType } from "@dust-tt/client";
+import {
+  INTERNAL_MIME_TYPES,
+  isTextExtractionSupportedContentType,
+} from "@connectors/types";
+import type {
+  ProjectMountDirectoryEntryType,
+  ProjectMountFileEntryType,
+} from "@dust-tt/client";
 import axios, { isAxiosError } from "axios";
 import { createHash } from "crypto";
 
@@ -102,9 +116,93 @@ export async function deleteProjectMountFile({
   }
 }
 
+async function upsertProjectMountFolder({
+  dataSourceConfig,
+  projectId,
+  relativeDirPath,
+  title,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  projectId: string;
+  relativeDirPath: string;
+  title: string;
+}): Promise<void> {
+  const folderId = getMountDirInternalId(projectId, relativeDirPath);
+  const { parentInternalId, parents } = buildMountDirectoryParents(
+    projectId,
+    relativeDirPath
+  );
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId,
+    parents: [folderId, ...parents],
+    parentId: parentInternalId,
+    title,
+    mimeType: INTERNAL_MIME_TYPES.DUST_PROJECT.MOUNT_FOLDER,
+  });
+}
+
+async function ensureMountFolderHierarchy({
+  dataSourceConfig,
+  projectId,
+  pathWithinMount,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  projectId: string;
+  pathWithinMount: string;
+}): Promise<void> {
+  for (const relativeDirPath of getMountDirectoryPrefixes(pathWithinMount)) {
+    const dirName = relativeDirPath.split("/").pop() ?? relativeDirPath;
+    await upsertProjectMountFolder({
+      dataSourceConfig,
+      projectId,
+      relativeDirPath,
+      title: dirName,
+    });
+  }
+}
+
+/**
+ * Upserts a project mount directory node under the Context folder hierarchy.
+ */
+export async function syncProjectMountDirectory({
+  dataSourceConfig,
+  projectId,
+  entry,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  projectId: string;
+  entry: ProjectMountDirectoryEntryType;
+}): Promise<void> {
+  const pathWithinMount = parseProjectScopedPath(entry.path);
+  if (!pathWithinMount) {
+    return;
+  }
+
+  for (const relativeDirPath of getMountDirectoryParentPrefixes(
+    pathWithinMount
+  )) {
+    const dirName = relativeDirPath.split("/").pop() ?? relativeDirPath;
+    await upsertProjectMountFolder({
+      dataSourceConfig,
+      projectId,
+      relativeDirPath,
+      title: dirName,
+    });
+  }
+
+  await upsertProjectMountFolder({
+    dataSourceConfig,
+    projectId,
+    relativeDirPath: pathWithinMount,
+    title: entry.fileName,
+  });
+}
+
 /**
  * Downloads a project GCS mount file via signed URL, extracts content, and upserts to the
- * project data source under {@link PROJECT_CONTEXT_FOLDER_ID}.
+ * project data source under the Context folder hierarchy.
  */
 export async function syncProjectMountFile({
   connectorId,
@@ -145,6 +243,24 @@ export async function syncProjectMountFile({
     workspaceId,
     scopedPath: entry.path,
     fileId: entry.fileId,
+  });
+
+  const pathWithinMount = parseProjectScopedPath(entry.path);
+  if (!pathWithinMount) {
+    localLogger.warn("Skipping mount file: invalid project scoped path");
+    return;
+  }
+
+  await ensureMountFolderHierarchy({
+    dataSourceConfig,
+    projectId,
+    pathWithinMount,
+  });
+
+  const { parentInternalId, parents } = inferMountFileParents({
+    projectId,
+    pathWithinMount,
+    documentId,
   });
 
   const sourceUpdatedAt = new Date(entry.lastModifiedMs);
@@ -189,8 +305,8 @@ export async function syncProjectMountFile({
       documentUrl: undefined,
       timestampMs: entry.lastModifiedMs,
       tags,
-      parents: [documentId, PROJECT_CONTEXT_FOLDER_ID],
-      parentId: PROJECT_CONTEXT_FOLDER_ID,
+      parents,
+      parentId: parentInternalId,
       upsertContext: { sync_type: syncType },
       title: entry.fileName,
       mimeType,
@@ -223,8 +339,8 @@ export async function syncProjectMountFile({
       documentUrl: undefined,
       timestampMs: entry.lastModifiedMs,
       tags,
-      parents: [documentId, PROJECT_CONTEXT_FOLDER_ID],
-      parentId: PROJECT_CONTEXT_FOLDER_ID,
+      parents,
+      parentId: parentInternalId,
       upsertContext: { sync_type: syncType },
       title: entry.fileName,
       mimeType,

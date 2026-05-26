@@ -1,0 +1,143 @@
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { checkRunningUpsertWorkflows } from "@app/lib/temporal";
+import logger from "@app/logger/logger";
+import type { CheckUpsertQueueResponseType } from "@dust-tt/client";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
+/**
+ * @swagger
+ * /api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/check_upsert_queue:
+ *   get:
+ *     summary: Check the upsert queue status for a data source
+ *     description: Returns the number of running document upsert workflows for this data source. This endpoint is only accessible with system API keys (e.g., from connectors).
+ *     tags:
+ *       - Datasources
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: dsId
+ *         required: true
+ *         description: ID of the data source
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Status of the upsert queue
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 running_count:
+ *                   type: number
+ *                   description: Number of currently running upsert workflows
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       403:
+ *         description: Forbidden. Only system keys can access this endpoint.
+ *       404:
+ *         description: Data source not found.
+ *       405:
+ *         description: Method not supported.
+ *       500:
+ *         description: Internal Server Error.
+ */
+const app = publicApiApp();
+
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<CheckUpsertQueueResponseType> => {
+    const auth = ctx.get("auth");
+    const { dsId } = ctx.req.valid("param");
+
+    // Only allow system keys (connectors) to access this endpoint
+    if (!auth.isSystemKey()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "Only system keys can check the upsert queue.",
+        },
+      });
+    }
+
+    const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
+      origin: "v1_data_sources_check_upsert_queue",
+    });
+
+    if (!dataSource || !dataSource.canRead(auth)) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    try {
+      const start = Date.now();
+      const runningCount = await checkRunningUpsertWorkflows({
+        workspaceId: owner.sId,
+        dataSourceId: dataSource.sId,
+      });
+
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          dataSourceId: dataSource.sId,
+          runningCount,
+          duration: Date.now() - start,
+        },
+        "[CheckUpsertQueue] Checked upsert queue status"
+      );
+
+      return ctx.json({ running_count: runningCount });
+    } catch (error) {
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          dataSourceId: dataSource.sId,
+          error,
+        },
+        "[CheckUpsertQueue] Failed to check upsert queue"
+      );
+
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to check upsert queue.",
+        },
+      });
+    }
+  }
+);
+
+export default app;

@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import { ExternalViewerSessionModel } from "@app/lib/resources/storage/models/files";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDevelopment, isTest } from "@app/types/shared/env";
+import { LightWorkspaceType } from "@app/types/user";
 import crypto from "crypto";
 import { Op } from "sequelize";
 
@@ -11,11 +12,10 @@ const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60; // 7 days.
 
 /**
  * Create an external viewer session for a verified email and return the
- * Set-Cookie header value. The caller is responsible for setting the header
- * on the response (Next `res.setHeader` or Hono `ctx.header`).
+ * Set-Cookie header value.
  */
 export async function createFrameSession(
-  workspace: { id: number },
+  workspace: LightWorkspaceType,
   { email }: { email: string }
 ): Promise<string> {
   const sessionToken = crypto.randomUUID();

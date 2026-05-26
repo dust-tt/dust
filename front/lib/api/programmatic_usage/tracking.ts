@@ -19,6 +19,7 @@ import logger from "@app/logger/logger";
 
 import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -296,6 +297,14 @@ export async function trackProgrammaticCost(
   const localLogger = parentLogger ?? logger;
 
   if (!isProgrammaticUsage(auth, { userMessageOrigin })) {
+    return;
+  }
+
+  // Credit-priced (Metronome) plans don't use the legacy credit ledger. Bypass
+  // the whole tracking path to avoid decrementing nonexistent credits or
+  // creating excess rows.
+  const plan = auth.subscription()?.plan;
+  if (plan && isCreditPricedPlan(plan)) {
     return;
   }
 

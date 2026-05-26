@@ -1,4 +1,5 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { ChildAgentActivityTimeline } from "@app/components/actions/mcp/details/ChildAgentActivityTimeline";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type {
   ActionDetailsDisplayContext,
@@ -6,6 +7,7 @@ import type {
 } from "@app/components/actions/mcp/details/types";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import type { PendingToolCall } from "@app/components/assistant/conversation/types";
 import {
   CitationsContext,
   CiteBlock,
@@ -38,6 +40,7 @@ import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import type { AllSupportedWithDustSpecificFileContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -45,15 +48,12 @@ import {
   Avatar,
   Button,
   CitationGrid,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   ContentMessage,
   ExternalLinkIcon,
   Markdown,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -129,9 +129,12 @@ export function MCPRunAgentActionDetails({
   // Subscribe to the child agent's event stream.
   const {
     response: streamingResponse,
-    chainOfThought: streamingChainOfThought,
     isStreamingResponse,
-    isStreamingChainOfThought,
+    inlineActivitySteps,
+    pendingToolCalls,
+    activeCotContent,
+    isDone: isStreamDone,
+    isError: isStreamError,
   } = useChildAgentStream({
     childStreamIds,
     owner,
@@ -145,8 +148,6 @@ export function MCPRunAgentActionDetails({
   });
 
   const response = resultResource?.resource.text ?? streamingResponse;
-  const chainOfThought =
-    resultResource?.resource.chainOfThought ?? streamingChainOfThought;
 
   const conversationUrl = useMemo(() => {
     if (resultResource) {
@@ -190,11 +191,7 @@ export function MCPRunAgentActionDetails({
       query={query}
       childAgent={childAgent}
       isBusy={resultResource === null}
-      isStreamingChainOfThought={
-        resultResource === null && isStreamingChainOfThought
-      }
       isStreamingResponse={resultResource === null && isStreamingResponse}
-      chainOfThought={chainOfThought}
       response={response}
       conversationUrl={conversationUrl}
       references={references}
@@ -202,6 +199,11 @@ export function MCPRunAgentActionDetails({
       mcpServerViews={mcpServerViews}
       handoverResource={handoverResource}
       generatedFiles={generatedFiles}
+      inlineActivitySteps={inlineActivitySteps}
+      pendingToolCalls={pendingToolCalls}
+      activeCotContent={activeCotContent}
+      isStreamDone={isStreamDone || resultResource !== null}
+      isStreamError={isStreamError}
     />
   );
 }
@@ -212,9 +214,7 @@ interface MCPRunAgentActionDetailsDisplayProps {
   query: string | null;
   childAgent: AgentConfigurationType;
   isBusy: boolean;
-  isStreamingChainOfThought: boolean;
   isStreamingResponse: boolean;
-  chainOfThought: string | null;
   response: string | null;
   conversationUrl: string | null;
   references: Record<string, MCPReferenceCitation>;
@@ -222,6 +222,11 @@ interface MCPRunAgentActionDetailsDisplayProps {
   mcpServerViews: MCPServerViewType[];
   handoverResource: { resource: { text: string } } | null;
   generatedFiles: ToolGeneratedFileType[];
+  inlineActivitySteps: InlineActivityStep[];
+  pendingToolCalls: PendingToolCall[];
+  activeCotContent: string;
+  isStreamDone: boolean;
+  isStreamError: boolean;
 }
 
 function MCPRunAgentActionDetailsDisplay({
@@ -230,9 +235,7 @@ function MCPRunAgentActionDetailsDisplay({
   query,
   childAgent,
   isBusy,
-  isStreamingChainOfThought,
   isStreamingResponse,
-  chainOfThought,
   response,
   conversationUrl,
   references,
@@ -240,17 +243,32 @@ function MCPRunAgentActionDetailsDisplay({
   mcpServerViews,
   handoverResource,
   generatedFiles,
+  inlineActivitySteps,
+  pendingToolCalls,
+  activeCotContent,
+  isStreamDone,
+  isStreamError,
 }: MCPRunAgentActionDetailsDisplayProps) {
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MCPReferenceCitation }[]
   >([]);
 
-  const updateActiveReferences = (doc: MCPReferenceCitation, index: number) => {
-    const existingIndex = activeReferences.find((r) => r.index === index);
-    if (!existingIndex) {
-      setActiveReferences([...activeReferences, { index, document: doc }]);
-    }
-  };
+  const updateActiveReferences = useCallback(
+    (doc: MCPReferenceCitation, index: number) => {
+      setActiveReferences((prev) => {
+        if (prev.find((r) => r.index === index)) {
+          return prev;
+        }
+        return [...prev, { index, document: doc }];
+      });
+    },
+    []
+  );
+
+  const citationsContextValue = useMemo(
+    () => ({ references, updateActiveReferences }),
+    [references, updateActiveReferences]
+  );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
     () => [getCiteDirective(), agentMentionDirective, taskDirective],
@@ -343,10 +361,11 @@ function MCPRunAgentActionDetailsDisplay({
                 </ContentMessage>
               </div>
             )}
-            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {childAgent &&
-              (chainOfThought || response) &&
-              (displayContext === "sidebar-single-action" ? (
+              (inlineActivitySteps.length > 0 ||
+                pendingToolCalls.length > 0 ||
+                activeCotContent.length > 0 ||
+                response) && (
                 <>
                   <div className="flex items-center justify-between py-2">
                     <span className="font-medium text-foreground dark:text-foreground-night">
@@ -362,177 +381,49 @@ function MCPRunAgentActionDetailsDisplay({
                       />
                     )}
                   </div>
-                  <div className="flex flex-col gap-4">
-                    {chainOfThought && (
-                      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                        <ContentMessage
-                          title="Agent thoughts"
-                          variant="primary"
-                          size="lg"
-                        >
-                          <Markdown
-                            content={chainOfThought}
-                            isStreaming={isStreamingChainOfThought}
-                            forcedTextSize="text-sm"
-                            textColor="text-muted-foreground"
-                            isLastMessage={false}
-                            additionalMarkdownPlugins={
-                              additionalMarkdownPlugins
-                            }
-                            additionalMarkdownComponents={
-                              additionalMarkdownComponents
-                            }
-                          />
-                        </ContentMessage>
-                      </div>
-                    )}
-                    {response && (
-                      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                        <ContentMessage
-                          title="Response"
-                          variant="primary"
-                          size="lg"
-                        >
-                          <CitationsContext.Provider
-                            value={{
-                              references,
-                              updateActiveReferences,
-                            }}
-                          >
-                            <Markdown
-                              content={response}
-                              isStreaming={isStreamingResponse}
-                              forcedTextSize="text-sm"
-                              textColor="text-muted-foreground"
-                              isLastMessage={false}
-                              additionalMarkdownPlugins={
-                                additionalMarkdownPlugins
-                              }
-                              additionalMarkdownComponents={
-                                additionalMarkdownComponents
-                              }
-                            />
-                          </CitationsContext.Provider>
+                  <ChildAgentActivityTimeline
+                    inlineActivitySteps={inlineActivitySteps}
+                    pendingToolCalls={pendingToolCalls}
+                    activeCotContent={activeCotContent}
+                    isDone={isStreamDone}
+                    isError={isStreamError}
+                  />
+                  {response && (
+                    <>
+                      <CitationsContext.Provider value={citationsContextValue}>
+                        <Markdown
+                          content={response}
+                          isStreaming={isStreamingResponse}
+                          isLastMessage={false}
+                          additionalMarkdownPlugins={additionalMarkdownPlugins}
+                          additionalMarkdownComponents={
+                            additionalMarkdownComponents
+                          }
+                        />
+                      </CitationsContext.Provider>
 
-                          {activeReferences.length > 0 && (
-                            <div className="mt-4">
-                              <CitationGrid variant="grid">
-                                {activeReferences
-                                  .sort((a, b) => a.index - b.index)
-                                  .map(({ document, index }) => (
-                                    <AttachmentCitation
-                                      key={index}
-                                      attachmentCitation={markdownCitationToAttachmentCitation(
-                                        document
-                                      )}
-                                      owner={owner}
-                                      conversationId={null}
-                                    />
-                                  ))}
-                              </CitationGrid>
-                            </div>
-                          )}
-                        </ContentMessage>
-                      </div>
-                    )}
-                  </div>
+                      {activeReferences.length > 0 && (
+                        <div className="mt-4">
+                          <CitationGrid variant="grid">
+                            {activeReferences
+                              .sort((a, b) => a.index - b.index)
+                              .map(({ document, index }) => (
+                                <AttachmentCitation
+                                  key={index}
+                                  attachmentCitation={markdownCitationToAttachmentCitation(
+                                    document
+                                  )}
+                                  owner={owner}
+                                  conversationId={null}
+                                />
+                              ))}
+                          </CitationGrid>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </>
-              ) : (
-                <Collapsible defaultOpen={true}>
-                  <div className="flex items-center justify-between py-2">
-                    <CollapsibleTrigger>
-                      <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                        @{childAgent.name}'s Answer
-                      </span>
-                    </CollapsibleTrigger>
-                    {conversationUrl && (
-                      <Button
-                        icon={ExternalLinkIcon}
-                        label="View full conversation"
-                        variant="outline"
-                        onClick={() => window.open(conversationUrl, "_blank")}
-                        size="xs"
-                      />
-                    )}
-                  </div>
-                  <CollapsibleContent>
-                    <div className="flex flex-col gap-4">
-                      {chainOfThought && (
-                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                          <ContentMessage
-                            title="Agent thoughts"
-                            variant="primary"
-                            size="lg"
-                          >
-                            <Markdown
-                              content={chainOfThought}
-                              isStreaming={isStreamingChainOfThought}
-                              forcedTextSize="text-sm"
-                              textColor="text-muted-foreground"
-                              isLastMessage={false}
-                              additionalMarkdownPlugins={
-                                additionalMarkdownPlugins
-                              }
-                              additionalMarkdownComponents={
-                                additionalMarkdownComponents
-                              }
-                            />
-                          </ContentMessage>
-                        </div>
-                      )}
-                      {response && (
-                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                          <ContentMessage
-                            title="Response"
-                            variant="primary"
-                            size="lg"
-                          >
-                            <CitationsContext.Provider
-                              value={{
-                                references,
-                                updateActiveReferences,
-                              }}
-                            >
-                              <Markdown
-                                content={response}
-                                isStreaming={isStreamingResponse}
-                                forcedTextSize="text-sm"
-                                textColor="text-muted-foreground"
-                                isLastMessage={false}
-                                additionalMarkdownPlugins={
-                                  additionalMarkdownPlugins
-                                }
-                                additionalMarkdownComponents={
-                                  additionalMarkdownComponents
-                                }
-                              />
-                            </CitationsContext.Provider>
-
-                            {activeReferences.length > 0 && (
-                              <div className="mt-4">
-                                <CitationGrid variant="grid">
-                                  {activeReferences
-                                    .sort((a, b) => a.index - b.index)
-                                    .map(({ document, index }) => (
-                                      <AttachmentCitation
-                                        key={index}
-                                        attachmentCitation={markdownCitationToAttachmentCitation(
-                                          document
-                                        )}
-                                        owner={owner}
-                                        conversationId={null}
-                                      />
-                                    ))}
-                                </CitationGrid>
-                              </div>
-                            )}
-                          </ContentMessage>
-                        </div>
-                      )}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              ))}
+              )}
             {generatedFiles.length > 0 && (
               <div className="flex flex-col gap-2">
                 {generatedFiles.map((file) => (

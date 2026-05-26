@@ -5,14 +5,23 @@ import {
   launchTrackProgrammaticUsageWorkflow,
 } from "@app/temporal/usage_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { isCreditPricedPlan } from "@app/types/plan";
 
 /**
  * Launch agent message analytics workflow in fire-and-forget mode.
+ * Credit-priced (Metronome) plans bypass this entirely: consumption is tracked
+ * through `launchEmitMetronomeUsageEvents`, and there are no legacy credit rows
+ * to decrement or excess rows to create.
  */
 export async function launchTrackProgrammaticUsage(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
+  const plan = auth.subscription()?.plan;
+  if (plan && isCreditPricedPlan(plan)) {
+    return;
+  }
+
   const result = await launchTrackProgrammaticUsageWorkflow({
     authType: auth.toJSON(),
     agentLoopArgs,

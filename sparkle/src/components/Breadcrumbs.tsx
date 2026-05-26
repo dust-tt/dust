@@ -2,6 +2,7 @@ import {
   Button,
   type ButtonVariantType,
   ICON_SIZE_MAP,
+  type RegularButtonSize,
 } from "@sparkle/components/Button";
 import {
   DropdownMenu,
@@ -69,25 +70,25 @@ type LabelBreadcrumbItem = BaseBreadcrumbItem & {
   onClick?: never;
 };
 
-export type BreadcrumbItem =
+export type BreadcrumbsItem =
   | LinkBreadcrumbItem
   | ButtonBreadcrumbItem
   | LabelBreadcrumbItem;
 
 const isLinkItem = (
-  item: BreadcrumbItem | { label: string }
+  item: BreadcrumbsItem | { label: string }
 ): item is LinkBreadcrumbItem =>
   "href" in item && typeof item.href === "string";
 
 const isButtonItem = (
-  item: BreadcrumbItem | { label: string }
+  item: BreadcrumbsItem | { label: string }
 ): item is ButtonBreadcrumbItem =>
   "onClick" in item && typeof item.onClick === "function";
 
-interface BreadcrumbItemProps {
-  item: BreadcrumbItem;
+interface BreadcrumbItemRendererProps {
+  item: BreadcrumbsItem;
   isLast: boolean;
-  itemsHidden?: BreadcrumbItem[];
+  itemsHidden?: BreadcrumbsItem[];
   size?: "xs" | "sm";
   buttonVariant?: ButtonVariantType;
   hasLighterFont?: boolean;
@@ -95,7 +96,7 @@ interface BreadcrumbItemProps {
   truncateLengthEnd?: number;
 }
 
-function BreadcrumbItem({
+function BreadcrumbItemRenderer({
   item,
   isLast,
   itemsHidden,
@@ -104,7 +105,7 @@ function BreadcrumbItem({
   hasLighterFont = true,
   truncateLengthMiddle = DEFAULT_LABEL_TRUNCATE_LENGTH_MIDDLE,
   truncateLengthEnd = DEFAULT_LABEL_TRUNCATE_LENGTH_END,
-}: BreadcrumbItemProps) {
+}: BreadcrumbItemRendererProps) {
   if (item.label === ELLIPSIS_STRING) {
     return (
       <DropdownMenu>
@@ -194,7 +195,7 @@ function BreadcrumbItem({
 }
 
 interface BreadcrumbProps {
-  items: BreadcrumbItem[];
+  items: BreadcrumbsItem[];
   className?: string;
   size?: "xs" | "sm";
   buttonVariant?: ButtonVariantType;
@@ -204,8 +205,8 @@ interface BreadcrumbProps {
 }
 
 interface BreadcrumbsAccumulator {
-  itemsShown: BreadcrumbItem[];
-  itemsHidden: BreadcrumbItem[];
+  itemsShown: BreadcrumbsItem[];
+  itemsHidden: BreadcrumbsItem[];
 }
 
 export function Breadcrumbs({
@@ -240,7 +241,7 @@ export function Breadcrumbs({
             key={`breadcrumbs-${index}`}
             className="s-flex s-flex-row s-items-center s-gap-0"
           >
-            <BreadcrumbItem
+            <BreadcrumbItemRenderer
               item={item}
               isLast={index === itemsShown.length - 1}
               itemsHidden={itemsHidden}
@@ -268,4 +269,97 @@ function truncateTextToLength(text: string, length: number) {
   return text.length > length
     ? `${text.substring(0, length - 1)}${ELLIPSIS_STRING}`
     : text;
+}
+
+// Composable breadcrumb primitives.
+
+interface BreadcrumbRootProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function Breadcrumb({ children, className }: BreadcrumbRootProps) {
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className={cn("s-flex s-flex-row s-items-center s-gap-0", className)}
+    >
+      {children}
+    </nav>
+  );
+}
+
+interface BreadcrumbItemProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function BreadcrumbItem({ children, className }: BreadcrumbItemProps) {
+  return (
+    <div className={cn("s-flex s-flex-row s-items-center", className)}>
+      {children}
+    </div>
+  );
+}
+
+interface BreadcrumbButtonProps {
+  label: string;
+  onClick?: () => void;
+  variant?: ButtonVariantType;
+  size?: RegularButtonSize;
+  icon?: ComponentType<{ className?: string }>;
+}
+
+export function BreadcrumbButton({
+  label,
+  onClick,
+  variant = "ghost",
+  size = "sm",
+  icon,
+}: BreadcrumbButtonProps) {
+  return (
+    <Button
+      label={label}
+      onClick={onClick}
+      variant={variant}
+      size={size}
+      icon={icon}
+      hasLighterFont
+    />
+  );
+}
+
+interface BreadcrumbPageProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function BreadcrumbPage({ children, className }: BreadcrumbPageProps) {
+  return (
+    <span
+      aria-current="page"
+      className={cn(
+        "s-inline-flex s-h-9 s-items-center s-px-3",
+        breadcrumbTextVariants({
+          isLast: true,
+          size: "sm",
+          hasLighterFont: true,
+        }),
+        className
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+export function BreadcrumbSeparator({ className }: { className?: string }) {
+  return (
+    <Icon
+      aria-hidden="true"
+      visual={ChevronRightIcon}
+      className={cn("s-text-faint dark:s-text-faint-night", className)}
+      size="sm"
+    />
+  );
 }

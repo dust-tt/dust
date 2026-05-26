@@ -14,8 +14,15 @@ export {
 export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
 export { Bar, BarFooter, BarHeader } from "./Bar";
-export type { BreadcrumbItem } from "./Breadcrumbs";
-export { Breadcrumbs } from "./Breadcrumbs";
+export type { BreadcrumbsItem } from "./Breadcrumbs";
+export {
+  Breadcrumb,
+  BreadcrumbButton,
+  BreadcrumbItem,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  Breadcrumbs,
+} from "./Breadcrumbs";
 export type {
   ButtonIconType,
   ButtonProps,

@@ -266,6 +266,10 @@ async function executeToolStreaming(
           { asType: "tool" }
         );
 
+        if (event.reason === "user_cancellation") {
+          return { deferredEvents, shouldPauseAgentLoop: true };
+        }
+
         let updatedAgentMessage = agentMessage;
         if (
           !event.isError &&
