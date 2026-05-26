@@ -136,9 +136,7 @@ export function usePodUnreadConversationIds({
     fetcher;
 
   const { data, isLoading, mutate } = useSWRWithDefaults(
-    podId
-      ? `/api/w/${workspaceId}/assistant/conversations/spaces/${podId}/unread`
-      : null,
+    `/api/w/${workspaceId}/assistant/conversations/spaces/${podId}/unread`,
     conversationsFetcher,
     {
       disabled: options?.disabled ?? !podId,

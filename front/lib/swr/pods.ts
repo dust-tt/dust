@@ -89,13 +89,13 @@ export function useProjectContextAttachments({
   };
 }
 
-export function useProjectFiles({
+export function usePodFiles({
   owner,
-  spaceId,
+  podId,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -103,24 +103,22 @@ export function useProjectFiles({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      disabled || !spaceId
-        ? null
-        : `/api/w/${owner.sId}/spaces/${spaceId}/files`,
+      disabled || !podId ? null : `/api/w/${owner.sId}/spaces/${podId}/files`,
       projectFilesFetcher,
       { keepPreviousData: true }
     );
 
-  const refreshProjectFiles = useCallback(async () => {
+  const refreshPodFiles = useCallback(async () => {
     // Do not pass `undefined` as data — it clears the cache and causes UI flicker.
     await mutateRegardlessOfQueryParams();
   }, [mutateRegardlessOfQueryParams]);
 
   return {
     files: data?.files ?? emptyArray<GCSMountEntry>(),
-    isProjectFilesLoading: !disabled && !error && !data,
-    isProjectFilesError: !!error,
-    mutateProjectFiles: mutate,
-    refreshProjectFiles,
+    isPodFilesLoading: !disabled && !error && !data,
+    isPodFilesError: !!error,
+    mutatePodFiles: mutate,
+    refreshPodFiles,
   };
 }
 
@@ -609,10 +607,10 @@ export function useMarkProjectTasksRead({
 
 export function useSeedInitialPodTasks({
   owner,
-  spaceId,
+  podId,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
 }) {
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
@@ -624,14 +622,12 @@ export function useSeedInitialPodTasks({
     setIsSeeding(true);
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/pods/${spaceId}/tasks/seed`,
+        `/api/w/${owner.sId}/pods/${podId}/tasks/seed`,
         { method: "POST" }
       );
 
       if (res.status === 409) {
-        await mutate((key) =>
-          isProjectTasksListSwrKey(key, owner.sId, spaceId)
-        );
+        await mutate((key) => isProjectTasksListSwrKey(key, owner.sId, podId));
         return new Ok([]);
       }
 
@@ -647,7 +643,7 @@ export function useSeedInitialPodTasks({
 
       const responseData: PostSeedInitialPodTasksResponseBody =
         await res.json();
-      await mutate((key) => isProjectTasksListSwrKey(key, owner.sId, spaceId));
+      await mutate((key) => isProjectTasksListSwrKey(key, owner.sId, podId));
       return new Ok(responseData.tasks);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
@@ -660,7 +656,7 @@ export function useSeedInitialPodTasks({
     } finally {
       setIsSeeding(false);
     }
-  }, [mutate, owner.sId, sendNotification, spaceId]);
+  }, [mutate, owner.sId, sendNotification, podId]);
 
   return { seedInitialPodTasks, isSeeding };
 }
@@ -934,6 +930,56 @@ export function useWorkspaceProjectTask({
     isWorkspaceProjectTaskError: !!error,
     mutateWorkspaceProjectTask: mutate,
   };
+}
+
+export function useJoinPod({
+  owner,
+  podId: podId,
+  podName,
+  userName,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+  podName: string;
+  userName: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: podId,
+    disabled: true,
+  });
+  const { mutate: mutatePodSummary } = usePodConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
+
+  const doJoin = async (): Promise<boolean> => {
+    const res = await clientFetch(`/api/w/${owner.sId}/spaces/${podId}/join`, {
+      method: "POST",
+    });
+
+    if (res.ok) {
+      void mutateSpaceInfoRegardlessOfQueryParams();
+      void mutatePodSummary();
+      sendNotification({
+        type: "success",
+        title: `${userName} joined Pod ${podName}`,
+        description: "You can now participate in conversations.",
+      });
+      return true;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Could not join Pod",
+        description: `Error: ${errorData.message}`,
+      });
+      return false;
+    }
+  };
+
+  return doJoin;
 }
 
 export function useLeavePod({

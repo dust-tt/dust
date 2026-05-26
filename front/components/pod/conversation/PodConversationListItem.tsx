@@ -1,3 +1,5 @@
+import { isHiddenMessage } from "@app/components/assistant/conversation/types";
+import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import {
@@ -16,18 +18,16 @@ import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
 import moment from "moment";
 import { useMemo } from "react";
-import { isHiddenMessage } from "../../types";
-import { isMessageUnread } from "../../utils";
 
-interface SpaceConversationListItemProps {
+interface PodConversationListItemProps {
   conversation: LightConversationType;
   owner: WorkspaceType;
 }
 
-export function SpaceConversationListItem({
+export function PodConversationListItem({
   conversation,
   owner,
-}: SpaceConversationListItemProps) {
+}: PodConversationListItemProps) {
   const router = useAppRouter();
 
   const validMessages = conversation.content.filter((message) => {

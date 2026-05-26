@@ -15,7 +15,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
-import { useProjectFiles } from "@app/lib/swr/pods";
+import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -98,9 +98,9 @@ export function FrameRenderer({
     return "saved";
   }, [conversation?.spaceId, projectId, projectInfo, isSpaceInfoLoading]);
 
-  const { files: projectFiles } = useProjectFiles({
+  const { files: projectFiles } = usePodFiles({
     owner,
-    spaceId: projectId ?? "",
+    podId: projectId ?? "",
     disabled: !isFrameInPod,
   });
 

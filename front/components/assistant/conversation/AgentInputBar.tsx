@@ -17,7 +17,7 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { WakeUpBanner } from "@app/components/assistant/conversation/WakeUpBanner";
-import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
+import { PodJoinCTA } from "@app/components/pod/conversation/PodJoinCTA";
 import {
   useCancelMessage,
   useConversation,
@@ -395,10 +395,10 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   ) {
     return (
       <div className="relative z-20 mx-auto flex max-h-dvh w-full flex-col py-4 sm:w-full sm:max-w-conversation">
-        <ProjectJoinCTA
+        <PodJoinCTA
           owner={context.owner}
-          spaceId={context.projectId}
-          spaceName={context.projectSpaceName}
+          podId={context.projectId}
+          podName={context.projectSpaceName}
           isRestricted={context.isProjectRestricted ?? false}
           userName={context.user.fullName}
         />
