@@ -15,7 +15,7 @@ import {
 export function CardBrandIcon({
   brand,
   ...props
-}: { brand: string | null } & SVGComponentProps) {
+}: { brand: string } & SVGComponentProps) {
   switch (brand.toLowerCase()) {
     case "visa":
       return <VisaFlatIcon {...props} />;
