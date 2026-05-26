@@ -9,6 +9,7 @@ import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import type { ModelId } from "@app/types/shared/model_id";
 import { withRetries } from "@app/types/shared/retries";
 import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 import type { Logger } from "pino";
 import { QueryTypes } from "sequelize";
 
@@ -36,37 +37,57 @@ async function listAllNotionConnectors() {
 
 async function getWorkflowDescriptions({
   client,
+  logger,
   notionConnector,
 }: {
   client: Client;
+  logger: Logger;
   notionConnector: NotionConnector;
-}): Promise<WorkflowExecutionDescription[]> {
-  const incrementalSyncHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, "sync")
-  );
-  const garbageCollectorHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, "garbage-collector")
-  );
-  const processDatabaseUpsertQueueHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, "process-database-upsert-queue")
-  );
+}): Promise<WorkflowExecutionDescription[] | null> {
+  try {
+    const incrementalSyncHandle = client.workflow.getHandle(
+      getNotionWorkflowId(notionConnector.id, "sync")
+    );
+    const garbageCollectorHandle = client.workflow.getHandle(
+      getNotionWorkflowId(notionConnector.id, "garbage-collector")
+    );
+    const processDatabaseUpsertQueueHandle = client.workflow.getHandle(
+      getNotionWorkflowId(notionConnector.id, "process-database-upsert-queue")
+    );
 
-  return Promise.all([
-    incrementalSyncHandle.describe(),
-    garbageCollectorHandle.describe(),
-    processDatabaseUpsertQueueHandle.describe(),
-  ]);
+    return await Promise.all([
+      incrementalSyncHandle.describe(),
+      garbageCollectorHandle.describe(),
+      processDatabaseUpsertQueueHandle.describe(),
+    ]);
+  } catch (error) {
+    if (!(error instanceof WorkflowNotFoundError)) {
+      logger.error(
+        {
+          error,
+        },
+        "Failed to retrieve Notion Temporal workflow descriptions."
+      );
+    }
+
+    return null;
+  }
 }
 
 async function getLatestWorkflowEventDate({
   client,
   description,
+  logger,
 }: {
   client: Client;
   description: WorkflowExecutionDescription;
+  logger: Logger;
 }): Promise<Date | null> {
-  const response =
-    await client.workflowService.getWorkflowExecutionHistoryReverse({
+  let response: Awaited<
+    ReturnType<Client["workflowService"]["getWorkflowExecutionHistoryReverse"]>
+  >;
+  try {
+    response = await client.workflowService.getWorkflowExecutionHistoryReverse({
       namespace: client.options.namespace,
       execution: {
         workflowId: description.workflowId,
@@ -74,6 +95,18 @@ async function getLatestWorkflowEventDate({
       },
       maximumPageSize: 1,
     });
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        runId: description.runId,
+        workflowId: description.workflowId,
+      },
+      "Failed to retrieve latest Notion Temporal history event."
+    );
+
+    return null;
+  }
 
   const latestEvent = response.history?.events?.[0];
   const latestEventSeconds = latestEvent?.eventTime?.seconds;
@@ -96,9 +129,17 @@ async function areTemporalWorkflowsRunning(
   })({
     client,
     notionConnector,
+    logger,
   });
 
   logger.info("Workflow descriptions retrieved");
+
+  if (!descriptions) {
+    return {
+      isRunning: false,
+      isNotStalled: false,
+    };
+  }
 
   const isRunning = descriptions.every(
     ({ status: { name } }) => name === "RUNNING"
@@ -116,21 +157,23 @@ async function areTemporalWorkflowsRunning(
     async ({
       client,
       descriptions,
+      logger,
     }: {
       client: Client;
       descriptions: WorkflowExecutionDescription[];
+      logger: Logger;
     }): Promise<(Date | null)[]> => {
       // Bounded (only three elements), Temporal-only Promise.all.
       return Promise.all(
         descriptions.map((description) =>
-          getLatestWorkflowEventDate({ client, description })
+          getLatestWorkflowEventDate({ client, description, logger })
         )
       );
     },
     {
       retries: TEMPORAL_WORKFLOW_CHECK_RETRIES,
     }
-  )({ client, descriptions });
+  )({ client, descriptions, logger });
 
   logger.info("Workflow latest events retrieved");
 
@@ -208,7 +251,7 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
     }
   }
 
-  if (missingActiveWorkflows.length > 0) {
+  if (missingActiveWorkflows.length > 0 || stalledWorkflows.length > 0) {
     const actionLinks: ActionLink[] = [
       ...missingActiveWorkflows.map(({ connectorId }) => ({
         label: `Missing: connector ${connectorId}`,
