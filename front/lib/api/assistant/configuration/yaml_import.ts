@@ -34,15 +34,16 @@ type ImportResult = Result<
 
 type PatchRequestBody = PostOrPatchAgentConfigurationRequestBody["assistant"];
 
+type ResolvedEditors = {
+  editors: PatchRequestBody["editors"];
+  authorModelId: ModelId;
+};
+
 const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
   agent: agentYAMLBasicInfoSchema.partial().optional(),
   generation_settings: agentYAMLGenerationSettingsSchema.partial().optional(),
 });
 
-type ResolvedEditors = {
-  editors: PatchRequestBody["editors"];
-  authorModelId: ModelId;
-};
 
 function resolveEditorUsers(
   auth: Authenticator,
