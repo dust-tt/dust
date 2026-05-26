@@ -16,15 +16,11 @@ function parsePodTabFromLocationHash(fallbackTab: PodTab): PodTab {
     return fallbackTab;
   }
   const hash = window.location.hash.slice(1);
-  if (hash === "context" || hash === "knowledge") {
-    return "files";
-  }
   if (
     hash === "files" ||
     hash === "settings" ||
     hash === "conversations" ||
-    hash === "tasks" ||
-    hash === "alpha"
+    hash === "tasks"
   ) {
     return hash;
   }

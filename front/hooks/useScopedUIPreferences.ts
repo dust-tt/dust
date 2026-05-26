@@ -6,7 +6,7 @@ const SCOPED_UI_PREFERENCES_KEY_PREFIX = "scopedUIPreferences";
 
 const scopedUIPreferencesSchemaByScope = {
   podUi: z.object({
-    tab: z.enum(["conversations", "tasks", "files", "settings", "alpha"]),
+    tab: z.enum(["conversations", "tasks", "files", "settings"]),
     conversationsFilter: z.enum(["all", "group", "with_me"]),
     tasksOwnerFilter: z
       .unknown()
