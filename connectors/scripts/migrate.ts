@@ -1,7 +1,8 @@
 import logger from "@connectors/logger/logger";
 import { connectorsSequelize } from "@connectors/resources/storage";
+import { dbConfig } from "@connectors/resources/storage/config";
 import { assertNever } from "@dust-tt/client";
-import fs from "fs";
+import { execFileSync } from "child_process";
 import { makeScript } from "scripts/helpers";
 import { QueryTypes } from "sequelize";
 import type { MigrationParams } from "umzug";
@@ -71,8 +72,23 @@ function createUmzug(phase: Phase) {
           if (!filePath) {
             throw new Error(`Missing path for migration ${name}.`);
           }
-          const sql = fs.readFileSync(filePath, "utf8");
-          await connectorsSequelize.query(sql);
+          // Use psql -f so the file runs in a single direct PostgreSQL session,
+          // bypassing pgbouncer. This is required because pg-schema-diff emits
+          // files that mix SET SESSION, regular DDL, and CREATE/DROP INDEX
+          // CONCURRENTLY — the latter two require autocommit, which pgbouncer's
+          // transaction-pooling mode would break if we used a library client.
+          try {
+            execFileSync("psql", ["--version"], { stdio: "pipe" });
+          } catch {
+            throw new Error(
+              "psql is not available — install the PostgreSQL client tools."
+            );
+          }
+          execFileSync(
+            "psql",
+            [dbConfig.getRequiredDatabaseURI(), "-f", filePath],
+            { stdio: "inherit" }
+          );
         },
         // Down migrations are intentionally not supported. The expand/contract
         // pattern means rolling back a schema change is a new forward migration.
