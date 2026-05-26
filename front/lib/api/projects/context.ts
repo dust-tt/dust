@@ -187,7 +187,7 @@ export async function listProjectContextAttachments(
       lastUpdatedByViewAndNode.set(dsViewId, m);
     },
     {
-      concurrency: 4
+      concurrency: 4,
     }
   );
 
