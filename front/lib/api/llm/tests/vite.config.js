@@ -33,6 +33,12 @@ export default defineConfig(() => {
         FILTER_CONVERSATION_IDS: process.env.FILTER_CONVERSATION_IDS ?? "",
         // When set to "true", run all model tests regardless of their `runTest` flag
         RUN_ALL_MODEL_TESTS: process.env.RUN_ALL_MODEL_TESTS ?? "false",
+        // When set to "true", route Anthropic models through Vertex AI
+        VERTEX: process.env.VERTEX ?? "false",
+        VERTEX_AI_PROJECT_ID: process.env.VERTEX_AI_PROJECT_ID ?? "",
+        // forward the google application credentials required for Vertex AI.
+        GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+
       },
     },
   });
@@ -41,7 +47,11 @@ export default defineConfig(() => {
   const merged = mergeConfig(baseConfig, testConfig);
   // By default, skip DB setup (globalSetup/setupFiles). Set RUN_LLM_TEST_WITH_DB=true
   // to keep them (needed for tests that store LLM results in the database).
-  if (process.env.RUN_LLM_TEST_WITH_DB !== "true") {
+  // VERTEX=true implies DB setup (feature flags are stored in the database).
+  if (
+    process.env.RUN_LLM_TEST_WITH_DB !== "true" &&
+    process.env.VERTEX !== "true"
+  ) {
     merged.test.globalSetup = [];
   }
   merged.test.environment = "node"; // LLM tests need Node.js env for stream uploads

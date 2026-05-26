@@ -103,7 +103,7 @@ export const MODELS: Record<
     providerId: "anthropic",
   },
   [CLAUDE_OPUS_4_6_MODEL_ID]: {
-    runTest: false,
+    runTest: true,
     providerId: "anthropic",
   },
   [CLAUDE_OPUS_4_7_MODEL_ID]: {

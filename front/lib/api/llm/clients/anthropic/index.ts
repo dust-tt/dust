@@ -134,7 +134,6 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       apiKey: ANTHROPIC_API_KEY,
     });
 
-    // Vertex does not support batches.
     this.inferenceClient = getInferenceClient(this.useVertex, {
       anthropicClient: this.client,
     });
@@ -267,24 +266,28 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       { concurrency: BATCH_PAYLOAD_BUILD_CONCURRENCY }
     );
 
-    const batch = await this.client.messages.batches.create({ requests });
+    // @ts-expect-error AnthropicVertex SDK omits batches but Vertex supports it.
+    const batch = await this.inferenceClient.messages.batches.create({ requests });
     return batch.id;
   }
 
   override async deleteBatch(batchId: string): Promise<boolean> {
-    await this.client.messages.batches.delete(batchId);
+    // @ts-expect-error AnthropicVertex SDK omits batches but Vertex supports it.
+    await this.inferenceClient.messages.batches.delete(batchId);
     return true;
   }
 
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {
-    const batch = await this.client.messages.batches.retrieve(batchId);
+    // @ts-expect-error AnthropicVertex SDK omits batches but Vertex supports it.
+    const batch = await this.inferenceClient.messages.batches.retrieve(batchId);
     return batch.processing_status === "ended" ? "ready" : "computing";
   }
 
   protected override async internalGetBatchResult(
     batchId: string
   ): Promise<BatchResult> {
-    const results = await this.client.messages.batches.results(batchId);
+    // @ts-expect-error AnthropicVertex SDK omits batches but Vertex supports it.
+    const results = await this.inferenceClient.messages.batches.results(batchId);
     const batchResult: BatchResult = new Map();
 
     for await (const item of results) {

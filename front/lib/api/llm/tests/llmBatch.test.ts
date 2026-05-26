@@ -8,6 +8,7 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ModelIdType } from "@app/types/assistant/models/types";
@@ -47,6 +48,30 @@ vi.mock("openai", async (importOriginal) => {
   };
 });
 
+// Mock the @anthropic-ai/vertex-sdk module to inject dangerouslyAllowBrowser: true
+vi.mock("@anthropic-ai/vertex-sdk", async (importOriginal) => {
+  const actual = await importOriginal();
+  // @ts-expect-error actual is unknown
+  const OriginalAnthropicVertex = actual.default;
+
+  class AnthropicVertexWithBrowserSupport extends OriginalAnthropicVertex {
+    constructor(
+      config: ConstructorParameters<typeof OriginalAnthropicVertex>[0]
+    ) {
+      super({
+        ...config,
+        dangerouslyAllowBrowser: true,
+      });
+    }
+  }
+
+  return {
+    // @ts-expect-error actual is unknown
+    ...actual,
+    default: AnthropicVertexWithBrowserSupport,
+  };
+});
+
 // Mock the @anthropic-ai/sdk module to inject dangerouslyAllowBrowser: true
 vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   const actual = await importOriginal();
@@ -71,6 +96,7 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
 
 const RUN_LLM_BATCH_TEST = process.env.RUN_LLM_BATCH_TEST === "true";
 const RUN_ALL_MODEL_TESTS = process.env.RUN_ALL_MODEL_TESTS === "true";
+const VERTEX = process.env.VERTEX === "true";
 
 const modelsWithBatchSupport = Object.entries(MODELS)
   .filter(([modelId, { providerId }]) => {
@@ -274,6 +300,12 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
           const { authenticator } = await createResourceTest({
             role: "admin",
           });
+          if (VERTEX) {
+            await FeatureFlagFactory.basic(
+              authenticator,
+              "use_vertex_for_anthropic_models"
+            );
+          }
           const credentials = await getLlmCredentials(authenticator, {
             skipEmbeddingApiKeyRequirement: true,
           });
