@@ -1,7 +1,4 @@
-import type {
-  ServerMetadata,
-  ToolMeta,
-} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -113,14 +110,14 @@ export const SANDBOX_SERVER = {
   },
   // Note: The `as JSONSchema` cast is standard pattern across all metadata files.
   // zodToJsonSchema returns a compatible type but TypeScript can't verify it statically.
-  // Widen to `ToolMeta[]` so the optional `icon` is accessible uniformly; the
-  // inferred per-entry union otherwise drops `icon` on entries that omit it.
-  tools: (Object.values(SANDBOX_TOOLS_METADATA) as ToolMeta[]).map((t) => ({
+  // `"icon" in t` narrows the per-entry union: entries that omit `icon` aren't
+  // intersected with the field at the inferred type level.
+  tools: Object.values(SANDBOX_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
-    icon: t.icon,
+    icon: "icon" in t ? t.icon : undefined,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SANDBOX_TOOLS_METADATA).map((t) => [t.name, t.stake])
