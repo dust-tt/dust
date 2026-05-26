@@ -6,6 +6,7 @@ import type {
 import { isGenerateImageInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import { stripFileExtension } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ActionImageIcon, Chip, cn, Separator } from "@dust-tt/sparkle";
 import React from "react";
@@ -15,12 +16,6 @@ const QUALITY_LABELS: Record<string, string> = {
   medium: "2K",
   high: "4K",
 };
-
-function formatOutputFileName(outputName: string): string {
-  return outputName.toLowerCase().endsWith(".png")
-    ? outputName
-    : `${outputName}.png`;
-}
 
 interface ReferenceImageChipProps {
   fileId: string;
@@ -88,7 +83,7 @@ export function MCPImageGenerationActionDetails({
             <Chip
               size="xs"
               color="success"
-              label={formatOutputFileName(outputName)}
+              label={stripFileExtension(outputName)}
             />
           )}
           {aspectRatio && <Chip size="xs" label={aspectRatio} />}
@@ -157,7 +152,7 @@ export function MCPImageGenerationGroupedDetails({
                     <Chip
                       size="xs"
                       color="success"
-                      label={formatOutputFileName(outputName)}
+                      label={stripFileExtension(outputName)}
                     />
                   )}
                   {aspectRatio && <Chip size="xs" label={aspectRatio} />}

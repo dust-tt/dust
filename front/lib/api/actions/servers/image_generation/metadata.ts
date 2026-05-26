@@ -15,7 +15,9 @@ export const imageGenerationToolInputSchema = z.object({
     .string()
     .max(64)
     .describe(
-      "The filename that will be used to save the generated image. Must be 64 characters or less."
+      "The base name (without file extension) used to save the generated image. " +
+        "The extension is appended automatically based on the image format returned " +
+        "by the model. Must be 64 characters or less."
     ),
   referenceImages: z
     .array(z.string())
