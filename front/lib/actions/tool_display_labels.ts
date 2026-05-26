@@ -13,6 +13,7 @@ import {
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
+import { stripFileExtension } from "@app/types/files";
 import { isNumber, isString } from "@app/types/shared/utils/general";
 import { asDisplayName, slugify } from "@app/types/shared/utils/string_utils";
 
@@ -183,7 +184,7 @@ function getDynamicToolDisplayLabels({
 
     case "image_generation":
       if (toolName === "generate_image" && isGenerateImageInputType(inputs)) {
-        const name = truncateQuery(inputs.outputName);
+        const name = truncateQuery(stripFileExtension(inputs.outputName));
         return {
           running: `Generating “${name}”`,
           done: `Generate “${name}”`,

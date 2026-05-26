@@ -685,6 +685,10 @@ export function stripMimeParameters(contentType: string): string {
   return contentType.split(";")[0];
 }
 
+export function stripFileExtension(fileName: string): string {
+  return fileName.replace(/\.[^.]+$/, "");
+}
+
 // This function overrides the browser-reported content type with a more accurate one based on the file extension, if applicable.
 export function resolveFileContentType(
   browserContentType: string,
