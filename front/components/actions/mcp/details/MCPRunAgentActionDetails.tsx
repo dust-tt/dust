@@ -390,9 +390,7 @@ function MCPRunAgentActionDetailsDisplay({
                   />
                   {response && (
                     <>
-                      <CitationsContext.Provider
-                        value={citationsContextValue}
-                      >
+                      <CitationsContext.Provider value={citationsContextValue}>
                         <Markdown
                           content={response}
                           isStreaming={isStreamingResponse}
