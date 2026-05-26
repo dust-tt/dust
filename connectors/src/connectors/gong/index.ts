@@ -1,3 +1,4 @@
+import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
 import { fetchPermissionProfileViews } from "@connectors/connectors/gong/lib/permission_profiles";
@@ -353,8 +354,16 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       case PERMISSION_PROFILE_ID_CONFIG_KEY:
         return new Ok(configuration.permissionProfileId ?? null);
       case PERMISSION_PROFILES_CONFIG_KEY: {
-        const views = await fetchPermissionProfileViews(connector);
-        return new Ok(JSON.stringify(views));
+        try {
+          const views = await fetchPermissionProfileViews(connector);
+          return new Ok(JSON.stringify(views));
+        } catch (err) {
+          if (err instanceof GongAPIError && (err.status === 401 || err.status === 403 || err.status === 404)) {
+            return new Ok(JSON.stringify([]))
+          }
+
+          throw err;
+        }
       }
       case EXCLUDE_TITLE_KEYWORDS_CONFIG_KEY: {
         const keywords = configuration.excludeTitleKeywords;
