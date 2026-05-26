@@ -97,10 +97,6 @@ export const adminRoutes: RouteObject[] = [
       { path: "usage", element: <UsagePage /> },
       { path: "subscription", element: <SubscriptionPage /> },
       { path: "billing", element: <BillingPage /> },
-      {
-        path: "subscription/manage",
-        element: <ManageSubscriptionPage />,
-      },
       { path: "developers/api-keys", element: <APIKeysPage /> },
       {
         path: "developers/credits-usage",
@@ -123,5 +119,12 @@ export const adminRoutes: RouteObject[] = [
         element: <SelfImprovingSkillsPage />,
       },
     ],
+  },
+];
+
+export const adminFullPageRoutes: RouteObject[] = [
+  {
+    path: "subscription/manage",
+    element: <ManageSubscriptionPage />,
   },
 ];
