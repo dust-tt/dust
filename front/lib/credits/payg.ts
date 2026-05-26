@@ -10,6 +10,7 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -122,6 +123,13 @@ export async function allocatePAYGCreditsOnCycleRenewal({
 }): Promise<void> {
   const workspace = auth.getNonNullableWorkspace();
 
+  // Credit-priced (Metronome) plans don't use the legacy PAYG credit table:
+  // overages and invoicing happen in Metronome.
+  const plan = auth.subscription()?.plan;
+  if (plan && isCreditPricedPlan(plan)) {
+    return;
+  }
+
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   if (!config || config.paygCapMicroUsd === null) {
@@ -178,6 +186,16 @@ export async function startOrResumeEnterprisePAYG({
   paygCapMicroUsd: number;
 }): Promise<Result<undefined, Error>> {
   const workspace = auth.getNonNullableWorkspace();
+
+  // Credit-priced (Metronome) plans don't use the legacy PAYG credit table.
+  const plan = auth.subscription()?.plan;
+  if (plan && isCreditPricedPlan(plan)) {
+    return new Err(
+      new Error(
+        "PAYG cannot be enabled on a credit-priced plan (handled by Metronome)."
+      )
+    );
+  }
 
   assert(
     isEnterpriseSubscription(stripeSubscription),
