@@ -104,6 +104,16 @@ export const FREE_ANNUAL_CREDIT_NAME = "Free Annual Credits";
 // FIXED product so it surfaces as a distinct invoice line item.
 export const EXCESS_CREDIT_NAME = "Excess Credits";
 
+// Per-period amount granted by the recurring "Excess Credits" credit in
+// every package. The amount depends on the credit type: AWU packages use a
+// larger buffer than the legacy programmatic USD packages because AWU
+// pricing is per unit while programmatic USD is in dollars. Mirrors the
+// values passed to getFreeExcessRecurringCredits(...) in
+// scripts/metronome_setup.ts. Only AWU recurring excess credits are ever
+// toggled at runtime (see lib/metronome/payg_excess_credits.ts).
+export const DEFAULT_AWU_EXCESS_RECURRING_AMOUNT = 5_000;
+export const DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT = 50;
+
 // Excess credits are an internal accounting mechanism — they should not be
 // surfaced to end users or in the Poke UI. Discriminated by product ID since
 // the excess recurring credit has its own dedicated FIXED product.
