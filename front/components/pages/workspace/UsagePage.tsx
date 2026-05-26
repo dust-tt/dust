@@ -70,7 +70,7 @@ function getResetDateLabel(resetDate: string): string {
   const date = new Date(resetDate);
   const resetDay = date.getUTCDate();
   const suffix = getOrdinalSuffix(resetDay);
-  const resetMonth = date.toLocaleDateString(undefined, {
+  const resetMonth = date.toLocaleDateString("en-US", {
     month: "long",
     timeZone: "UTC",
   });
@@ -157,7 +157,7 @@ export function UsagePage() {
   }, [isCreditPriced, router, owner.sId]);
 
   const {
-    totalCredits,
+    totalRemainingCredits,
     consumedByUsersCredits,
     consumedByProgrammaticCredits,
     resetDate,
@@ -217,7 +217,9 @@ export function UsagePage() {
 
   const totalConsumedCredits =
     consumedByUsersCredits + consumedByProgrammaticCredits;
-  const currentBalanceCredits = Math.round(totalCredits - totalConsumedCredits);
+  const initialTotalCredits = Math.round(
+    totalRemainingCredits + totalConsumedCredits
+  );
 
   const resetDateLabel = getResetDateLabel(resetDate);
 
@@ -234,7 +236,7 @@ export function UsagePage() {
         awuPurchaseInfo={awuPurchaseInfo}
         isAwuPurchaseInfoLoading={isAwuPurchaseInfoLoading}
         isAwuPurchaseInfoError={!!isAwuPurchaseInfoError}
-        currentBalanceCredits={currentBalanceCredits}
+        currentBalanceCredits={totalRemainingCredits}
       />
 
       <div className="flex flex-col items-stretch gap-10 pb-20">
@@ -264,7 +266,7 @@ export function UsagePage() {
                     className="text-muted-foreground dark:text-muted-foreground-night"
                   />
                   {formatCredits(totalConsumedCredits)} /{" "}
-                  {formatCredits(totalCredits)}
+                  {formatCredits(initialTotalCredits)}
                 </span>
                 <button
                   className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
@@ -296,7 +298,7 @@ export function UsagePage() {
 
           {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
             <CreditPoolUsageBar
-              totalCredits={totalCredits}
+              totalCredits={initialTotalCredits}
               consumedByUsersCredits={consumedByUsersCredits}
               consumedByProgrammaticCredits={consumedByProgrammaticCredits}
             />

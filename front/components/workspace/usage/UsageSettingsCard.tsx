@@ -29,19 +29,7 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
     setDefaultLimitInput(String(usageSettings.defaultUsageLimitCredits));
   }, [usageSettings.defaultUsageLimitCredits]);
 
-  const [isSavingAllowUpgrade, setIsSavingAllowUpgrade] = useState(false);
   const [isSavingAutoUpgrade, setIsSavingAutoUpgrade] = useState(false);
-
-  const handleToggleAllowUpgradeRequest = async () => {
-    setIsSavingAllowUpgrade(true);
-    try {
-      await doUpdateUsageSettings({
-        allowUpgradeRequest: !usageSettings.allowUpgradeRequest,
-      });
-    } finally {
-      setIsSavingAllowUpgrade(false);
-    }
-  };
 
   const handleToggleAutoUpgradeFreeToPro = async () => {
     setIsSavingAutoUpgrade(true);
@@ -78,17 +66,6 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
         Settings
       </span>
       <SettingsList>
-        <SettingsList.Row
-          title="Upgrade request"
-          description="Allow users to request plan upgrades and limit increase"
-          action={
-            <SliderToggle
-              selected={usageSettings.allowUpgradeRequest}
-              disabled={isSavingAllowUpgrade}
-              onClick={() => void handleToggleAllowUpgradeRequest()}
-            />
-          }
-        />
         <SettingsList.Row
           title="Auto upgrade Free to Pro"
           description="Automatically upgrade free users to pro plan when they reach their limit"

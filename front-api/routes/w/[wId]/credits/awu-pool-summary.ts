@@ -20,7 +20,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
 export type AwuPoolSummaryResponseBody = {
-  totalCredits: number;
+  totalRemainingCredits: number;
   consumedByUsersCredits: number;
   consumedByProgrammaticCredits: number;
   resetDate: string;
@@ -97,7 +97,7 @@ app.get("/", async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
 
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
     return ctx.json({
-      totalCredits: 0,
+      totalRemainingCredits: 0,
       consumedByUsersCredits: 0,
       consumedByProgrammaticCredits: 0,
       resetDate: "",
@@ -128,7 +128,7 @@ app.get("/", async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
       !seatProductIds.has(entry.product.id)
   );
 
-  let totalCredits = 0;
+  let totalRemainingCredits = 0;
   for (const entry of awuBalances) {
     const isActive = (entry.access_schedule?.schedule_items ?? []).some(
       (item) => {
@@ -138,7 +138,7 @@ app.get("/", async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
       }
     );
     if (isActive) {
-      totalCredits += entry.balance ?? 0;
+      totalRemainingCredits += entry.balance ?? 0;
     }
   }
 
@@ -197,7 +197,7 @@ app.get("/", async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
   }
 
   return ctx.json({
-    totalCredits,
+    totalRemainingCredits,
     consumedByUsersCredits,
     consumedByProgrammaticCredits,
     resetDate,
