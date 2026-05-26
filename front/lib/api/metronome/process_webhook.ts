@@ -7,6 +7,7 @@ import {
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
 import {
   markAwuPurchaseAttemptFailed,
@@ -37,9 +38,11 @@ import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { getCustomerIdFromEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import type { Result } from "@app/types/shared/result";
@@ -149,6 +152,40 @@ async function stampContractCreditType({
     `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE`
   );
   return new Ok(undefined);
+}
+
+// Ensure the workspace has a WorkOS organization once it lands on a paid plan
+// via `contract.start`. Idempotent — `switch_contract` already runs this on
+// the synchronous path, but the webhook covers contracts created outside that
+// flow (manual provisioning, legacy migrations). Failures are logged but do
+// not fail the webhook: the contract is already active and the org can be
+// created later by the `/w/[wId]/domains` endpoint or a re-trigger.
+async function ensureWorkOSOrganizationForPaidPlan({
+  workspace,
+  planCode,
+  contractId,
+}: {
+  workspace: WorkspaceResource;
+  planCode: string;
+  contractId: string;
+}): Promise<void> {
+  if (isFreePlan(planCode)) {
+    return;
+  }
+  const workosResult = await getOrCreateWorkOSOrganization(
+    renderLightWorkspaceType({ workspace })
+  );
+  if (workosResult.isErr()) {
+    logger.error(
+      {
+        contractId,
+        planCode,
+        workspaceId: workspace.sId,
+        err: workosResult.error,
+      },
+      "[Metronome Webhook] contract.start: failed to provision WorkOS organization"
+    );
+  }
 }
 
 export async function processMetronomeWebhook({
@@ -818,6 +855,11 @@ export async function processMetronomeWebhook({
           workspace.sId
         );
         await restoreWorkspaceAfterSubscription(auth);
+        await ensureWorkOSOrganizationForPaidPlan({
+          workspace,
+          planCode: targetPlan.code,
+          contractId,
+        });
         logger.info(
           {
             contractId,
@@ -861,6 +903,12 @@ export async function processMetronomeWebhook({
       // triggers. Idempotent — safe to call regardless of prior state.
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       await restoreWorkspaceAfterSubscription(auth);
+
+      await ensureWorkOSOrganizationForPaidPlan({
+        workspace,
+        planCode: targetPlan.code,
+        contractId,
+      });
 
       logger.info(
         {
