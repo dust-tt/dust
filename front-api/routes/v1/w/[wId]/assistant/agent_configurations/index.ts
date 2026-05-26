@@ -1,17 +1,17 @@
-// @migration-status: MIGRATED_TO_HONO
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { normalizeAgentView } from "@app/lib/api/v1/backward_compatibility";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
-export const GetAgentConfigurationsQuerySchema = z.object({
+import sId from "./[sId]";
+import importRoute from "./import";
+import search from "./search";
+
+const GetAgentConfigurationsQuerySchema = z.object({
   view: z
     .enum(["all", "list", "workspace", "published", "global", "favorites"])
     .optional(),
@@ -83,77 +83,60 @@ const viewRequiresUser = (view?: string): boolean =>
  *         description: Internal Server Error.
  */
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetAgentConfigurationsResponseType>
-  >,
-  auth: Authenticator
-): Promise<void> {
-  switch (req.method) {
-    case "GET": {
-      const queryValidation = GetAgentConfigurationsQuerySchema.safeParse(
-        req.query
-      );
+// Mounted at /api/v1/w/:wId/assistant/agent_configurations.
+const app = publicApiApp();
 
-      if (!queryValidation.success) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid query parameters: ${fromError(queryValidation.error).toString()}`,
-          },
-        });
-      }
+// Literal routes before param routes.
+app.route("/import", importRoute);
+app.route("/search", search);
+app.route("/:sId", sId);
 
-      if (viewRequiresUser(queryValidation.data.view) && !auth.user()) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: `The user must be authenticated with oAuth to retrieve ${queryValidation.data.view} agents.`,
-          },
-        });
-      }
+app.get(
+  "/",
+  validate("query", GetAgentConfigurationsQuerySchema),
+  async (ctx): HandlerResult<GetAgentConfigurationsResponseType> => {
+    const auth = ctx.get("auth");
+    const { view, withAuthors: withAuthorsParam } = ctx.req.valid("query");
 
-      const defaultAgentGetView = auth.user() ? "list" : "all";
-      const agentsGetView = queryValidation.data.view ?? defaultAgentGetView;
-      const withAuthors = queryValidation.data.withAuthors === "true";
-
-      let agentConfigurations = await getAgentConfigurationsForView({
-        auth,
-        agentsGetView: normalizeAgentView(agentsGetView),
-        variant: "light",
-      });
-
-      if (withAuthors) {
-        const recentAuthors = await getAgentsRecentAuthors({
-          auth,
-          agents: agentConfigurations,
-        });
-        agentConfigurations = agentConfigurations.map(
-          (agentConfiguration, index) => {
-            return {
-              ...agentConfiguration,
-              lastAuthors: recentAuthors[index],
-            };
-          }
-        );
-      }
-
-      return res.status(200).json({
-        agentConfigurations,
-      });
-    }
-    default:
-      return apiError(req, res, {
-        status_code: 405,
+    if (viewRequiresUser(view) && !auth.user()) {
+      return apiError(ctx, {
+        status_code: 401,
         api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, only GET is expected.",
+          type: "invalid_request_error",
+          message: `The user must be authenticated with oAuth to retrieve ${view} agents.`,
         },
       });
-  }
-}
+    }
 
-export default withPublicAPIAuthentication(handler);
+    const defaultAgentGetView = auth.user() ? "list" : "all";
+    const agentsGetView = view ?? defaultAgentGetView;
+    const withAuthors = withAuthorsParam === "true";
+
+    let agentConfigurations = await getAgentConfigurationsForView({
+      auth,
+      agentsGetView: normalizeAgentView(agentsGetView),
+      variant: "light",
+    });
+
+    if (withAuthors) {
+      const recentAuthors = await getAgentsRecentAuthors({
+        auth,
+        agents: agentConfigurations,
+      });
+      agentConfigurations = agentConfigurations.map(
+        (agentConfiguration, index) => {
+          return {
+            ...agentConfiguration,
+            lastAuthors: recentAuthors[index],
+          };
+        }
+      );
+    }
+
+    return ctx.json({
+      agentConfigurations,
+    });
+  }
+);
+
+export default app;

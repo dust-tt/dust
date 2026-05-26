@@ -1,21 +1,29 @@
-// @migration-status: MIGRATED_TO_HONO
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
+import logger from "@app/logger/logger";
 import type {
   DeleteAgentConfigurationResponseType,
   GetOrPatchAgentConfigurationResponseType,
 } from "@dust-tt/client";
 import { PatchAgentConfigurationRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+import exportRoutes from "./export";
+
+const AgentConfigurationParamSchema = z.object({
+  sId: z.string(),
+});
+
+const VariantQuerySchema = z.object({
+  variant: z.enum(["light", "full"]).optional(),
+});
 
 /**
  * @swagger
@@ -246,161 +254,182 @@ import { fromError } from "zod-validation-error";
  *       500:
  *         description: Internal Server Error.
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<
-      | GetOrPatchAgentConfigurationResponseType
-      | DeleteAgentConfigurationResponseType
-    >
-  >,
-  auth: Authenticator
-): Promise<void> {
-  const { sId, variant } = req.query;
 
-  if (typeof sId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
+// Mounted at /api/v1/w/:wId/assistant/agent_configurations/:sId.
+const app = publicApiApp();
+
+app.route("/export", exportRoutes);
+
+app.get(
+  "/",
+  validate("param", AgentConfigurationParamSchema),
+  validate("query", VariantQuerySchema),
+  async (ctx): HandlerResult<GetOrPatchAgentConfigurationResponseType> => {
+    const auth = ctx.get("auth");
+    const { sId } = ctx.req.valid("param");
+    const { variant } = ctx.req.valid("query");
+
+    logger.info(
+      { sId, url: ctx.req.url, path: ctx.req.path },
+      "[v1] agent_configurations/:sId GET handler hit"
+    );
+
+    const configVariant = variant ?? "light";
+
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: sId,
+      variant: configVariant,
     });
-  }
 
-  // Validate variant parameter if provided
-  const configVariant =
-    typeof variant === "string" && (variant === "light" || variant === "full")
-      ? variant
-      : "light";
-
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: sId,
-    variant: configVariant,
-  });
-
-  if (!agentConfiguration) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "agent_configuration_not_found",
-        message: "The agent configuration you requested was not found.",
-      },
-    });
-  }
-
-  switch (req.method) {
-    case "GET": {
-      return res.status(200).json({
-        agentConfiguration,
-      });
-    }
-    case "PATCH": {
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "insufficient_key_scope",
-            message:
-              "Updating an agent configuration requires an API key with write scope.",
-          },
-        });
-      }
-      const r = PatchAgentConfigurationRequestSchema.safeParse(req.body);
-      if (r.error) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: fromError(r.error).toString(),
-          },
-        });
-      }
-
-      // it's a public endpoint, so we need to check we are auth with a user, to set a favorite
-      if (r.data.userFavorite !== undefined && auth.user()) {
-        const updateRes = await setAgentUserFavorite({
-          auth,
-          agentId: sId,
-          userFavorite: r.data.userFavorite,
-        });
-
-        if (updateRes.isOk()) {
-          agentConfiguration.userFavorite = r.data.userFavorite;
-        } else {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: updateRes.error.message,
-            },
-          });
-        }
-      }
-
-      const { userFavorite: _userFavorite, ...configPatch } = req.body;
-      const hasConfigPatch = Object.keys(configPatch).length > 0;
-
-      if (hasConfigPatch) {
-        const patchResult = await patchAgentConfigurationFromJSON(
-          auth,
-          sId,
-          configPatch
-        );
-
-        if (patchResult.isErr()) {
-          return apiError(req, res, patchResult.error);
-        }
-
-        return res.status(200).json({
-          agentConfiguration: patchResult.value.agentConfiguration,
-          skippedActions: patchResult.value.skippedActions,
-        });
-      }
-
-      return res.status(200).json({
-        agentConfiguration,
-      });
-    }
-    case "DELETE": {
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "insufficient_key_scope",
-            message:
-              "Archiving an agent configuration requires an API key with write scope.",
-          },
-        });
-      }
-      // Space-scoping is enforced upstream: `getAgentConfiguration` (called above) returns null
-      // when the auth's groups don't cover every `requestedSpaceId` of the agent, in which case
-      // the handler 404s before reaching here. This matches the PATCH security model on this
-      // route and means an API key scoped to a subset of spaces cannot archive agents tied to
-      // spaces it can't see.
-      const archived = await archiveAgentConfiguration(auth, sId);
-      if (!archived) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "agent_configuration_not_found",
-            message: "The agent configuration you requested was not found.",
-          },
-        });
-      }
-
-      return res.status(200).json({ success: true });
-    }
-    default:
-      return apiError(req, res, {
-        status_code: 405,
+    if (!agentConfiguration) {
+      return apiError(ctx, {
+        status_code: 404,
         api_error: {
-          type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, only GET, PATCH or DELETE is expected.",
+          type: "agent_configuration_not_found",
+          message: "The agent configuration you requested was not found.",
         },
       });
-  }
-}
+    }
 
-export default withPublicAPIAuthentication(handler);
+    return ctx.json({
+      agentConfiguration,
+    });
+  }
+);
+
+app.patch(
+  "/",
+  validate("param", AgentConfigurationParamSchema),
+  validate("json", PatchAgentConfigurationRequestSchema),
+  async (ctx): HandlerResult<GetOrPatchAgentConfigurationResponseType> => {
+    const auth = ctx.get("auth");
+    const { sId } = ctx.req.valid("param");
+    const body = ctx.req.valid("json");
+
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: sId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The agent configuration you requested was not found.",
+        },
+      });
+    }
+
+    if (!auth.isBuilder()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "insufficient_key_scope",
+          message:
+            "Updating an agent configuration requires an API key with write scope.",
+        },
+      });
+    }
+
+    // it's a public endpoint, so we need to check we are auth with a user, to set a favorite
+    if (body.userFavorite !== undefined && auth.user()) {
+      const updateRes = await setAgentUserFavorite({
+        auth,
+        agentId: sId,
+        userFavorite: body.userFavorite,
+      });
+
+      if (updateRes.isOk()) {
+        agentConfiguration.userFavorite = body.userFavorite;
+      } else {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: updateRes.error.message,
+          },
+        });
+      }
+    }
+
+    const { userFavorite: _userFavorite, ...configPatch } = body;
+    const hasConfigPatch = Object.keys(configPatch).length > 0;
+
+    if (hasConfigPatch) {
+      const patchResult = await patchAgentConfigurationFromJSON(
+        auth,
+        sId,
+        configPatch
+      );
+
+      if (patchResult.isErr()) {
+        return apiError(ctx, patchResult.error);
+      }
+
+      return ctx.json({
+        agentConfiguration: patchResult.value.agentConfiguration,
+        skippedActions: patchResult.value.skippedActions,
+      });
+    }
+
+    return ctx.json({
+      agentConfiguration,
+    });
+  }
+);
+
+app.delete(
+  "/",
+  validate("param", AgentConfigurationParamSchema),
+  async (ctx): HandlerResult<DeleteAgentConfigurationResponseType> => {
+    const auth = ctx.get("auth");
+    const { sId } = ctx.req.valid("param");
+
+    if (!auth.isBuilder()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "insufficient_key_scope",
+          message:
+            "Archiving an agent configuration requires an API key with write scope.",
+        },
+      });
+    }
+
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: sId,
+      variant: "light",
+    });
+
+    if (!agentConfiguration) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The agent configuration you requested was not found.",
+        },
+      });
+    }
+
+    // Space-scoping is enforced upstream: `getAgentConfiguration` (called above) returns null
+    // when the auth's groups don't cover every `requestedSpaceId` of the agent, in which case
+    // the handler 404s before reaching here. This matches the PATCH security model on this
+    // route and means an API key scoped to a subset of spaces cannot archive agents tied to
+    // spaces it can't see.
+    const archived = await archiveAgentConfiguration(auth, sId);
+    if (!archived) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The agent configuration you requested was not found.",
+        },
+      });
+    }
+
+    return ctx.json({ success: true });
+  }
+);
+
+export default app;
