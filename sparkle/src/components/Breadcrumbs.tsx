@@ -273,12 +273,12 @@ function truncateTextToLength(text: string, length: number) {
 
 // Composable breadcrumb primitives.
 
-interface BreadcrumbProps {
+interface BreadcrumbRootProps {
   children: React.ReactNode;
   className?: string;
 }
 
-export function Breadcrumb({ children, className }: BreadcrumbProps) {
+export function Breadcrumb({ children, className }: BreadcrumbRootProps) {
   return (
     <nav
       aria-label="Breadcrumb"
