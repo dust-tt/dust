@@ -19,6 +19,7 @@ import { z } from "zod";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
 import authContext from "./auth-context";
+import billing from "./billing";
 import builder from "./builder";
 import coupon from "./coupon";
 import credentials from "./credentials";
@@ -564,6 +565,7 @@ app.post(
 // targets declared above.
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
+app.route("/billing", billing);
 app.route("/builder", builder);
 app.route("/credentials", credentials);
 app.route("/credits", credits);
