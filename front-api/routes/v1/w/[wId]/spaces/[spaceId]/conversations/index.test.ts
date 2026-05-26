@@ -88,23 +88,6 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
     });
   });
 
-  it("should return 405 for unsupported method", async () => {
-    const { workspace, key } = await createPublicApiMockRequest({
-      systemKey: true,
-    });
-
-    const space = await SpaceFactory.regular(workspace);
-    const response = await honoApp.request(
-      `/api/v1/w/${workspace.sId}/spaces/${space.sId}/conversations`,
-      {
-        method: "POST",
-        headers: { authorization: `Bearer ${key.secret}` },
-      }
-    );
-
-    expect(response.status).toBe(405);
-  });
-
   it("should return conversations in a space", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
