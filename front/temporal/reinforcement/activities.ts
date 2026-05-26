@@ -76,6 +76,7 @@ import {
 } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { ensureReinforcementWorkspaceSchedules } from "@app/temporal/reinforcement/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { ApplicationFailure } from "@temporalio/common";
 import { Op } from "sequelize";
 
@@ -580,9 +581,13 @@ export async function getReinforcementSettingsActivity({
     );
   const globalCapMicroUsd = getReinforcementMonthlyCapMicroUsd(workspace);
 
-  const programmaticUsageLimitReached = (
-    await checkProgrammaticUsageLimits(auth)
-  ).isErr();
+  // Credit-priced plans no longer rely on legacy programmatic credits; gate the
+  // legacy check so we don't falsely report the limit as reached.
+  const plan = auth.subscription()?.plan;
+  const programmaticUsageLimitReached =
+    plan && isCreditPricedPlan(plan)
+      ? false
+      : (await checkProgrammaticUsageLimits(auth)).isErr();
 
   // Compute remaining programmatic budget: total remaining credits capped by
   // the daily usage allowance.

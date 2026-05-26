@@ -25,6 +25,7 @@ import type {
   WebhookTriggerType,
 } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -273,9 +274,15 @@ async function checkWorkspaceRateLimit({
       errorMessage = message;
     }
   } else {
-    const limitsResult = await checkProgrammaticUsageLimits(auth);
-    if (limitsResult.isErr()) {
-      errorMessage = limitsResult.error.message;
+    // Programmatic execution mode: legacy programmatic-credit gate applies to
+    // legacy plans only. Credit-priced plans are gated by the workspace pool
+    // upstream (in `checkMessagesLimit`).
+    const plan = auth.subscription()?.plan;
+    if (!plan || !isCreditPricedPlan(plan)) {
+      const limitsResult = await checkProgrammaticUsageLimits(auth);
+      if (limitsResult.isErr()) {
+        errorMessage = limitsResult.error.message;
+      }
     }
   }
 

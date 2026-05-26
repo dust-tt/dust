@@ -62,7 +62,7 @@ import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
-import { isUserBlocked } from "@app/lib/metronome/user_block";
+import { isApiBlocked, isUserBlocked } from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
@@ -2387,13 +2387,21 @@ async function checkMessagesLimit(
     return new Ok(undefined);
   }
 
-  // Block users flagged by the Metronome `alerts.spend_threshold_reached` webhook. The flag is set
-  // per (workspace, user) in Redis and is only checked for non-legacy Metronome plans.
+  // Credit-state + programmatic rate-limit gate. Two systems coexist:
+  // - Credit-priced (Metronome) plans: workspace pool + per-user cap, cached in Redis.
+  //   For API calls (no user), only the workspace pool applies via `isApiBlocked`.
+  //   TODO(metronome): port `checkProgrammaticUsageRateLimit` to a pool-balance
+  //   variant so concurrent programmatic requests can't overshoot the pool while
+  //   debits settle.
+  // - Legacy plans: programmatic credits checked via `checkProgrammaticUsageLimits`,
+  //   plus a credit-balance-scaled pre-emptive rate limit (`checkProgrammaticUsageRateLimit`).
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.subscription()?.plan;
   const user = auth.user();
-  if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan) && user) {
-    const blocked = await isUserBlocked(owner.sId, user.sId);
+  if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
+    const blocked = user
+      ? await isUserBlocked(owner.sId, user.sId)
+      : await isApiBlocked(owner.sId);
     if (blocked) {
       return new Err({
         status_code: 403,
@@ -2401,6 +2409,39 @@ async function checkMessagesLimit(
           type: "credits_exhausted",
           message:
             "Your workspace has run out of credits. Please purchase more credits to continue.",
+        },
+      });
+    }
+  } else if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+    const limitsResult = await checkProgrammaticUsageLimits(auth);
+    if (limitsResult.isErr()) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: limitsResult.error.type,
+          message: getMessageLimitErrorMessage({
+            limitType: limitsResult.error.type,
+            message: limitsResult.error.message,
+          }),
+        },
+      });
+    }
+
+    // Pre-emptive, credit-balance-scaled rate limit. Defends against the race
+    // between in-flight programmatic requests and credit-debit settlement.
+    // Reads legacy CreditResource balances, so it must only run on legacy plans
+    // — on credit-priced plans the equivalent guard must come from the Metronome
+    // pool (see TODO above).
+    const rateLimit = await checkProgrammaticUsageRateLimit(auth);
+    if (rateLimit.isLimitReached && rateLimit.limitType) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: rateLimit.limitType,
+          message: getMessageLimitErrorMessage({
+            limitType: rateLimit.limitType,
+            message: rateLimit.message,
+          }),
         },
       });
     }
@@ -2594,22 +2635,10 @@ async function isMessagesLimitReached(
     };
   }
 
+  // Credit-state and programmatic rate-limit checks live in `checkMessagesLimit`
+  // (the caller). Programmatic flows skip the per-seat workspace fair-use cap
+  // below, since they are gated by credits / pool balance instead.
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
-    const limitsResult = await checkProgrammaticUsageLimits(auth);
-    if (limitsResult.isErr()) {
-      return {
-        isLimitReached: true,
-        limitType: limitsResult.error.type,
-        message: limitsResult.error.message,
-      };
-    }
-
-    const programmaticUsageRateLimit =
-      await checkProgrammaticUsageRateLimit(auth);
-    if (programmaticUsageRateLimit.isLimitReached) {
-      return programmaticUsageRateLimit;
-    }
-
     return {
       isLimitReached: false,
       limitType: null,

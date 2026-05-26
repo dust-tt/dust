@@ -17,6 +17,7 @@ import {
   checkProgrammaticUsageLimits,
   isProgrammaticUsage,
 } from "@app/lib/api/programmatic_usage/tracking";
+import { isApiBlocked } from "@app/lib/metronome/user_block";
 import {
   addBackwardCompatibleConversationFields,
   addBackwardCompatibleConversationWithoutContentFields,
@@ -44,6 +45,7 @@ import { ConversationError } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isInteractiveContentType } from "@app/types/files";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import type {
   GetConversationsResponseType,
@@ -176,17 +178,36 @@ async function handler(
 
       if (message) {
         // Keep this before createConversation to avoid creating an empty conversation when the
-        // initial programmatic message is blocked.
+        // initial programmatic message is blocked. Credit-priced plans gate on the workspace
+        // pool (new system); legacy plans use the programmatic-credits check.
         if (isProgrammaticUsage(auth, { userMessageOrigin: origin })) {
-          const limitsResult = await checkProgrammaticUsageLimits(auth);
-          if (limitsResult.isErr()) {
-            return apiError(req, res, {
-              status_code: 429,
-              api_error: {
-                type: "rate_limit_error",
-                message: limitsResult.error.message,
-              },
-            });
+          const workspace = auth.getNonNullableWorkspace();
+          const plan = auth.subscription()?.plan;
+          if (plan && isCreditPricedPlan(plan)) {
+            if (
+              workspace.metronomeCustomerId &&
+              (await isApiBlocked(workspace.sId))
+            ) {
+              return apiError(req, res, {
+                status_code: 429,
+                api_error: {
+                  type: "rate_limit_error",
+                  message:
+                    "Your workspace has run out of credits. Please purchase more credits to continue.",
+                },
+              });
+            }
+          } else {
+            const limitsResult = await checkProgrammaticUsageLimits(auth);
+            if (limitsResult.isErr()) {
+              return apiError(req, res, {
+                status_code: 429,
+                api_error: {
+                  type: "rate_limit_error",
+                  message: limitsResult.error.message,
+                },
+              });
+            }
           }
         }
 
