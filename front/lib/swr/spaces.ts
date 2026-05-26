@@ -1,4 +1,4 @@
-import { useSpaceConversationsSummary } from "@app/hooks/conversations";
+import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   CursorPaginationParams,
@@ -994,7 +994,7 @@ export function useUpdateProjectMetadata({
     spaceId,
     disabled: true, // Needed just to mutate
   });
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
@@ -1136,57 +1136,6 @@ export function useUpdateProjectNotificationPreference({
   };
 }
 
-export function useLeaveProject({
-  owner,
-  spaceId,
-  spaceName,
-  userName,
-}: {
-  owner: LightWorkspaceType;
-  spaceId: string;
-  spaceName: string;
-  userName: string;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId,
-    disabled: true,
-  });
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
-
-  const doLeave = async (): Promise<boolean> => {
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/leave`,
-      { method: "POST" }
-    );
-
-    if (res.ok) {
-      void mutateSpaceInfoRegardlessOfQueryParams();
-      void mutateSpaceSummary();
-      sendNotification({
-        type: "success",
-        title: `${userName} left Pod ${spaceName}`,
-        description: "You have successfully left the Pod.",
-      });
-      return true;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Could not leave Pod",
-        description: `Error: ${errorData.message}`,
-      });
-      return false;
-    }
-  };
-
-  return doLeave;
-}
-
 export function useJoinProject({
   owner,
   spaceId,
@@ -1204,7 +1153,7 @@ export function useJoinProject({
     spaceId,
     disabled: true,
   });
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
@@ -1246,7 +1195,7 @@ export function useStarProject({
   spaceId: string | null;
 }) {
   const sendNotification = useSendNotification();
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId,
     options: { disabled: true },
   });

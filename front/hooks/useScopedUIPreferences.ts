@@ -5,8 +5,8 @@ import { z } from "zod";
 const SCOPED_UI_PREFERENCES_KEY_PREFIX = "scopedUIPreferences";
 
 const scopedUIPreferencesSchemaByScope = {
-  projectUI: z.object({
-    tab: z.enum(["conversations", "tasks", "files", "settings", "alpha"]),
+  podUi: z.object({
+    tab: z.enum(["conversations", "tasks", "files", "settings"]),
     conversationsFilter: z.enum(["all", "group", "with_me"]),
     tasksOwnerFilter: z
       .unknown()
@@ -21,8 +21,8 @@ export type PodPinnedBannerScopedPreferences = z.infer<
   (typeof scopedUIPreferencesSchemaByScope)["podPinnedBanner"]
 >;
 
-export type ProjectUIScopedPreferences = z.infer<
-  (typeof scopedUIPreferencesSchemaByScope)["projectUI"]
+export type PodUiScopedPreferences = z.infer<
+  (typeof scopedUIPreferencesSchemaByScope)["podUi"]
 >;
 
 export type ScopedUIPreferencesScope =
@@ -77,7 +77,7 @@ function writePersistedValue(storageKey: string, value: unknown) {
   }
 }
 
-export function useScopedUIPreferences<
+export function useScopedPodUiPreferences<
   TScope extends ScopedUIPreferencesScope,
 >({
   scope,

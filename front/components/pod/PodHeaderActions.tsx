@@ -1,5 +1,5 @@
 import { LeaveProjectDialog } from "@app/components/assistant/conversation/LeaveProjectDialog";
-import { useLeaveProjectDialog } from "@app/hooks/useLeaveProjectDialog";
+import { useLeavePodDialog } from "@app/hooks/useLeaveProjectDialog";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import type {
@@ -19,53 +19,51 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
-import { ProjectNotificationMenu } from "../ProjectNotificationMenu";
+import { ProjectNotificationMenu } from "../assistant/conversation/ProjectNotificationMenu";
 
-interface ProjectHeaderActionsProps {
+interface PodHeaderActionsProps {
   isMember: boolean;
   isRestricted: boolean;
   members: SpaceUserType[];
   owner: LightWorkspaceType;
-  spaceId: string;
-  spaceName: string;
+  podId: string;
+  podName: string;
   user: UserType;
 }
 
-export function ProjectHeaderActions({
+export function PodHeaderActions({
   isMember,
   isRestricted,
   members,
   owner,
-  spaceId,
-  spaceName,
+  podId,
+  podName,
   user,
-}: ProjectHeaderActionsProps) {
+}: PodHeaderActionsProps) {
   const router = useAppRouter();
 
   const handleLeaveSuccess = useCallback(() => {
     if (isRestricted) {
       void router.push(getConversationRoute(owner.sId));
     } else {
-      void router.push(getPodRoute(owner.sId, spaceId));
+      void router.push(getPodRoute(owner.sId, podId));
     }
-  }, [isRestricted, owner.sId, router, spaceId]);
+  }, [isRestricted, owner.sId, router, podId]);
 
-  const { leaveDialogProps, openLeaveDialog } = useLeaveProjectDialog({
+  const { leaveDialogProps, openLeaveDialog } = useLeavePodDialog({
     owner,
-    spaceId,
-    spaceName,
+    podId,
+    podName,
     isRestricted,
     userName: user.fullName,
     onSuccess: handleLeaveSuccess,
   });
 
-  const projectEditors = members.filter((member) => member.isEditor);
-  const isProjectEditor = projectEditors.some(
-    (member) => member.sId === user.sId
-  );
-  const canLeaveProject =
-    (isMember && !isProjectEditor) || // regular members can leave the project
-    (isProjectEditor && projectEditors.length > 1); // editors can leave if there's at least another editor
+  const podEditors = members.filter((member) => member.isEditor);
+  const isPodEditor = podEditors.some((member) => member.sId === user.sId);
+  const canLeavePod =
+    (isMember && !isPodEditor) || // regular members can leave the pod
+    (isPodEditor && podEditors.length > 1); // editors can leave if there's at least another editor
   return (
     <>
       <div className="flex items-center gap-2">
@@ -89,11 +87,11 @@ export function ProjectHeaderActions({
                 icon={MoreIcon}
                 variant="ghost"
                 size="sm"
-                tooltip="Project options"
+                tooltip="Pod options"
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent collisionPadding={8}>
-              {!canLeaveProject ? (
+              {!canLeavePod ? (
                 <DropdownTooltipTrigger
                   description="You are the last editor of this Pod and cannot leave it."
                   side="left"
@@ -112,7 +110,7 @@ export function ProjectHeaderActions({
                 />
               )}
               <ProjectNotificationMenu
-                activeSpaceId={spaceId}
+                activeSpaceId={podId}
                 owner={owner}
                 shouldWaitBeforeFetching={false}
               />

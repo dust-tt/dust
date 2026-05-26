@@ -1,6 +1,6 @@
-import { useSpaceConversationsSummary } from "@app/hooks/conversations";
+import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
-import { useCheckProjectName } from "@app/lib/swr/projects";
+import { useCheckProjectName } from "@app/lib/swr/pods";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { getPodRoute } from "@app/lib/utils/router";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
@@ -47,7 +47,7 @@ export function CreateProjectModal({
   const doCreate = useCreateSpace({ owner });
   const router = useAppRouter();
 
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });

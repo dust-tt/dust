@@ -11,8 +11,8 @@ import {
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
-  useSpaceConversations,
-  useSpaceConversationsSummary,
+  usePodConversations,
+  usePodConversationsSummary,
 } from "@app/hooks/conversations";
 import { useTaskDiffAnimations } from "@app/hooks/useTaskDiffAnimations";
 import { clientFetch } from "@app/lib/egress/client";
@@ -27,7 +27,7 @@ import {
   useProjectTasks,
   useStartProjectTaskConversation,
   useUpdateProjectTask,
-} from "@app/lib/swr/projects";
+} from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { BulkActionsBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/bulk-actions";
@@ -78,13 +78,14 @@ export function useProjectTasksPanelState({
   const confirm = useContext(ConfirmContext);
   const router = useAppRouter();
 
-  const { mutateConversations: mutateSpaceConversations } =
-    useSpaceConversations({
+  const { mutateConversations: mutateSpaceConversations } = usePodConversations(
+    {
       workspaceId: owner.sId,
-      spaceId,
+      podId: spaceId,
       options: { disabled: true },
-    });
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    }
+  );
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });

@@ -1,6 +1,6 @@
 import { clientEventSource } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
-import { useProjectFiles } from "@app/lib/swr/projects";
+import { useProjectFiles } from "@app/lib/swr/pods";
 import { emptyArray } from "@app/lib/swr/swr";
 import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";

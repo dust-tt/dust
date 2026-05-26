@@ -1,4 +1,4 @@
-import { useSeedInitialPodTasks } from "@app/lib/swr/projects";
+import { useSeedInitialPodTasks } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Card, CardGrid, CheckIcon, Icon, Spinner } from "@dust-tt/sparkle";
 

@@ -3,10 +3,12 @@ import {
   isProjectTasksListSwrKey,
   type TaskOwnerFilter,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
+import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { flattenProjectTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -932,4 +934,54 @@ export function useWorkspaceProjectTask({
     isWorkspaceProjectTaskError: !!error,
     mutateWorkspaceProjectTask: mutate,
   };
+}
+
+export function useLeavePod({
+  owner,
+  podId,
+  podName,
+  userName,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+  podName: string;
+  userName: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: podId,
+    disabled: true,
+  });
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
+
+  const doLeave = async (): Promise<boolean> => {
+    const res = await clientFetch(`/api/w/${owner.sId}/spaces/${podId}/leave`, {
+      method: "POST",
+    });
+
+    if (res.ok) {
+      void mutateSpaceInfoRegardlessOfQueryParams();
+      void mutateSpaceSummary();
+      sendNotification({
+        type: "success",
+        title: `${userName} left Pod ${podName}`,
+        description: "You have successfully left the Pod.",
+      });
+      return true;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Could not leave Pod",
+        description: `Error: ${errorData.message}`,
+      });
+      return false;
+    }
+  };
+
+  return doLeave;
 }

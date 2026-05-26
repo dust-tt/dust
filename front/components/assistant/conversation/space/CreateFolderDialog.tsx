@@ -1,4 +1,4 @@
-import { useCreateProjectFolder } from "@app/lib/swr/projects";
+import { useCreateProjectFolder } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,

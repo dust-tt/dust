@@ -1,6 +1,6 @@
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { SpaceConversationsPage } from "@app/components/pages/conversation/SpaceConversationsPage";
+import { PodPage } from "@app/components/pages/pod/PodPage";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
@@ -21,7 +21,7 @@ export const ProjectMainPage = () => {
       <BlockedActionsProvider owner={workspace}>
         <GenerationContextProvider>
           <ExtensionInputBarProvider workspace={workspace}>
-            <SpaceConversationsPage />
+            <PodPage />
           </ExtensionInputBarProvider>
         </GenerationContextProvider>
       </BlockedActionsProvider>

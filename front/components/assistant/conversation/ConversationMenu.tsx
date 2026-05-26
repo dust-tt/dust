@@ -9,7 +9,7 @@ import {
   useConversationParticipationOptions,
   useConversationUrlAccessMode,
   useJoinConversation,
-  useSpaceConversationsSummary,
+  usePodConversationsSummary,
 } from "@app/hooks/conversations";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useMoveConversationOutOfProject } from "@app/hooks/useMoveConversationOutOfProject";
@@ -234,7 +234,7 @@ export function ConversationMenu({
     },
   });
 
-  const { summary } = useSpaceConversationsSummary({
+  const { summary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: shouldWaitBeforeFetching || !hasFeature("projects") },
   });

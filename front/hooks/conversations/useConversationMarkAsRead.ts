@@ -1,3 +1,4 @@
+import { usePodConversationsSummary } from "@app/hooks/conversations/usePodConversations";
 import { clientFetch } from "@app/lib/egress/client";
 import logger from "@app/logger/logger";
 import type { PatchConversationsRequestBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
@@ -8,7 +9,6 @@ import type {
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import { useCallback, useEffect } from "react";
 import { useConversations } from "./useConversations";
-import { useSpaceConversationsSummary } from "./useSpaceConversations";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
 
@@ -24,7 +24,7 @@ export function useConversationMarkAsRead({
     options: { disabled: true },
   });
 
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId,
     options: {
       disabled: true,

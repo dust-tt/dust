@@ -19,9 +19,9 @@ import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDi
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
+  usePodConversationsSummary,
   useSearchPrivateConversations,
   useSearchProjectConversations,
-  useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useActivePodId } from "@app/hooks/useActivePodId";
@@ -459,7 +459,7 @@ export function AgentSidebarMenu({
     summary,
     isLoading: isSummaryLoading,
     mutate: mutateSpaceSummary,
-  } = useSpaceConversationsSummary({
+  } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: !hasSpaceConversations },
   });

@@ -4,7 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ProjectMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useConversation } from "@app/hooks/conversations";
-import { useSpaceConversations } from "@app/hooks/conversations/useSpaceConversations";
+import { usePodConversations } from "@app/hooks/conversations/usePodConversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
@@ -51,24 +51,25 @@ const ProjectListItem = memo(
       workspaceId: owner.sId,
     });
 
-    const { mutateConversations: mutateAllConversations } =
-      useSpaceConversations({
+    const { mutateConversations: mutateAllConversations } = usePodConversations(
+      {
         workspaceId: owner.sId,
-        spaceId: space.sId,
+        podId: space.sId,
         filter: "all",
         options: { disabled: true },
-      });
+      }
+    );
     const { mutateConversations: mutateWithMeConversations } =
-      useSpaceConversations({
+      usePodConversations({
         workspaceId: owner.sId,
-        spaceId: space.sId,
+        podId: space.sId,
         filter: "with_me",
         options: { disabled: true },
       });
     const { mutateConversations: mutateGroupConversations } =
-      useSpaceConversations({
+      usePodConversations({
         workspaceId: owner.sId,
-        spaceId: space.sId,
+        podId: space.sId,
         filter: "group",
         options: { disabled: true },
       });

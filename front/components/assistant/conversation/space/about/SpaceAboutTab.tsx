@@ -3,9 +3,9 @@ import { MembersTable } from "@app/components/assistant/conversation/space/about
 import { ProjectSettingsOptionLabel } from "@app/components/assistant/conversation/space/about/ProjectSettingsOptionLabel";
 import { SuggestedTasksGenerationTile } from "@app/components/assistant/conversation/space/conversations/project_tasks/SuggestedTasksGenerationTile";
 import { ConfirmContext } from "@app/components/Confirm";
-import { useSpaceConversationsSummary } from "@app/hooks/conversations";
+import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchiveProject } from "@app/hooks/useArchiveProject";
-import { useCheckProjectName } from "@app/lib/swr/projects";
+import { useCheckProjectName } from "@app/lib/swr/pods";
 import {
   useProjectMetadata,
   useSpaceInfo,
@@ -109,7 +109,7 @@ export function SpaceAboutTab({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
   });
 

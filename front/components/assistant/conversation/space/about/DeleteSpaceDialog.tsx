@@ -1,4 +1,4 @@
-import { useSpaceConversationsSummary } from "@app/hooks/conversations";
+import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceName } from "@app/lib/spaces";
 import { useDeleteSpace } from "@app/lib/swr/spaces";
@@ -30,7 +30,7 @@ export function DeleteSpaceDialog({ owner, space }: DeleteSpaceDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const doDelete = useDeleteSpace({ owner, force: true });
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });

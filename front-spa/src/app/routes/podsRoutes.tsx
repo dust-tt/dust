@@ -3,12 +3,9 @@ import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
 import { Navigate, useLocation, useParams } from "react-router-dom";
 
-const SpaceConversationsPage = withSuspense(
-  () =>
-    import(
-      "@dust-tt/front/components/pages/conversation/SpaceConversationsPage"
-    ),
-  "SpaceConversationsPage"
+const PodPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/pod/PodPage"),
+  "PodPage"
 );
 
 // Redirect legacy /conversation/space/:spaceId URLs
@@ -31,7 +28,7 @@ export const podsRoutes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <SpaceConversationsPage />,
+        element: <PodPage />,
       },
     ],
   },
