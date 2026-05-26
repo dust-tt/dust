@@ -61,6 +61,7 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Like any React hook, \`useFile\` must be called inside a React component at the top level (not in event handlers, loops, or conditions).
   - \`useFile()\` accepts either a file ID (e.g. \`"fil_abc123"\`, as found in \`<attachment id="fil_..." ...>\` tags) or a scoped file path (e.g. \`"conversation/report.csv"\`). Pass whichever you already have.
+  - File IDs, that will be used with \`useFile()\`, should be stored as non-breaking strings in the code, e.g store and use \`"fil_..."\` and NOT concatenation \`"fil_" + file.id\`
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
   - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
   - Always use \`papaparse\` to parse CSV files.
@@ -73,7 +74,7 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - \`captureScreenshot\` has to be imported from \`"@dust/react-hooks"\`.
   - The function takes an optional filename parameter and automatically downloads the screenshot as PNG.
   - Example: \`await captureScreenshot("my-chart.png")\` or simply \`await captureScreenshot()\` for default naming.
-\n+- Using image files from the conversation:
+- Using image files from the conversation:
   - Always load images via \`useFile()\` to obtain a \`File\` object — never reference images directly by URL/path or by copying the \`<attachment/>\` tag contents.
   - Create a local object URL from the \`File\` when rendering (e.g. \`const src = URL.createObjectURL(file)\`).
   - Use the resulting object URL for \`<img src={src} alt="..." />\` or as a background image; do not attempt to fetch remote images (no internet access).
