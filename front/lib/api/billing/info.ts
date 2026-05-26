@@ -3,7 +3,6 @@ import {
   getBillingStripeCustomerId,
   getStripeClient,
 } from "@app/lib/plans/stripe";
-import logger from "@app/logger/logger";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -124,10 +123,8 @@ function serializePaymentMethod(
 
 async function getAttachedPaymentMethod({
   stripeCustomerId,
-  workspaceId,
 }: {
   stripeCustomerId: string;
-  workspaceId: string;
 }): Promise<BillingPaymentMethod | null> {
   const stripe = getStripeClient();
   const paymentMethodTypes: Array<Stripe.PaymentMethodListParams.Type> = [
@@ -145,42 +142,23 @@ async function getAttachedPaymentMethod({
 
     const paymentMethod = paymentMethods.data[0];
     if (paymentMethod) {
-      logger.info(
-        {
-          workspaceId,
-          stripeCustomerId,
-          paymentMethodId: paymentMethod.id,
-          paymentMethodType: paymentMethod.type,
-        },
-        "[Billing info] Using attached Stripe payment method fallback"
-      );
       return serializePaymentMethod(paymentMethod);
     }
   }
 
-  logger.info(
-    { workspaceId, stripeCustomerId },
-    "[Billing info] No Stripe default or attached payment method found"
-  );
   return null;
 }
 
 async function getDefaultPaymentMethod({
   customer,
   stripeCustomerId,
-  workspaceId,
 }: {
   customer: Stripe.Customer;
   stripeCustomerId: string;
-  workspaceId: string;
 }): Promise<BillingPaymentMethod | null> {
   const defaultPaymentMethod = customer.invoice_settings.default_payment_method;
   if (!defaultPaymentMethod) {
-    logger.info(
-      { workspaceId, stripeCustomerId },
-      "[Billing info] Stripe customer has no invoice default payment method"
-    );
-    return getAttachedPaymentMethod({ stripeCustomerId, workspaceId });
+    return getAttachedPaymentMethod({ stripeCustomerId });
   }
 
   if (isExpandedPaymentMethod(defaultPaymentMethod)) {
@@ -235,7 +213,6 @@ export async function getWorkspaceBillingInfo(
       paymentMethod: await getDefaultPaymentMethod({
         customer,
         stripeCustomerId: stripeCustomerIdRes.value,
-        workspaceId: owner.sId,
       }),
     });
   } catch (error) {
