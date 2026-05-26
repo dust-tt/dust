@@ -51,7 +51,10 @@ describe("skill_management enable_skill tool", () => {
     mockGetFeatureFlags.mockResolvedValue(["sandbox_tools"]);
     mockEnsureSandboxReady.mockResolvedValue(
       new Ok({
-        loadSkillFiles: mockLoadSkillFiles,
+        sandbox: {
+          loadSkillFiles: mockLoadSkillFiles,
+        },
+        freshlyCreated: false,
       })
     );
     mockLoadSkillFiles.mockResolvedValue(

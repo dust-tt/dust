@@ -67,7 +67,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       return new Err(new MCPError(ensureResult.error.message));
     }
 
-    const sandbox = ensureResult.value;
+    const { sandbox } = ensureResult.value;
 
     let fileMessage: string | null = null;
     const fileLoadResult = await sandbox.loadSkillFiles(auth, skill);
