@@ -5,7 +5,6 @@ import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { seedInitialProjectTasksForProjectCreator } from "@app/lib/project_task/seed_initial_project_tasks";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -389,10 +388,8 @@ export async function createSpaceAndGroup(
   ),
   {
     ignoreWorkspaceLimit = false,
-    seedInitialTasks = true,
   }: {
     ignoreWorkspaceLimit?: boolean;
-    seedInitialTasks?: boolean;
   } = {}
 ): Promise<
   Result<
@@ -631,9 +628,6 @@ export async function createSpaceAndGroup(
         // The connector can be created later if needed
       }
 
-      if (seedInitialTasks) {
-        await seedInitialProjectTasksForProjectCreator(auth, space);
-      }
       void launchOrSignalProjectTodoWorkflow({
         workspaceId: owner.sId,
         spaceId: space.sId,

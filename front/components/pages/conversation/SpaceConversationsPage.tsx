@@ -285,6 +285,7 @@ export function SpaceConversationsPage() {
           onConversationFilterChange={handleConversationFilterChange}
           onSubmit={handleConversationCreation}
           onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
+          onNavigateToTasks={() => handleTabChange("tasks")}
         />
       </div>
     );
@@ -354,6 +355,7 @@ export function SpaceConversationsPage() {
             onConversationFilterChange={handleConversationFilterChange}
             onSubmit={handleConversationCreation}
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
+            onNavigateToTasks={() => handleTabChange("tasks")}
           />
         </TabsContent>
 

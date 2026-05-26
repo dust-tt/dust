@@ -10,6 +10,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 function deriveAccessMethod(auth: Authenticator): string {
@@ -181,7 +182,11 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
     options: Partial<OptionsMap<ResourceKey>>,
     sessionOrKeyAuth: A
   ) => {
-    const { spaceId } = req.query;
+    const spaceId = isString(req.query.spaceId)
+      ? req.query.spaceId
+      : isString(req.query.podId)
+        ? req.query.podId
+        : undefined;
 
     if (spaceId || options.space) {
       // Handling the case where `spaceId` is undefined to keep support for the

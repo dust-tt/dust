@@ -68,6 +68,7 @@ interface SpaceConversationsTabProps {
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, any>>;
   onOpenMembersPanel: () => void;
+  onNavigateToTasks: () => void;
 }
 
 export function SpaceConversationsTab({
@@ -84,6 +85,7 @@ export function SpaceConversationsTab({
   onConversationFilterChange,
   onSubmit,
   onOpenMembersPanel,
+  onNavigateToTasks,
 }: SpaceConversationsTabProps) {
   const { isEditor: isProjectEditor } = spaceInfo;
   const router = useAppRouter();
@@ -215,8 +217,11 @@ export function SpaceConversationsTab({
           {/* Suggestions for empty rooms */}
           {isProjectEmpty ? (
             <SpaceConversationsActions
+              owner={owner}
+              spaceId={spaceInfo.sId}
               isEditor={isProjectEditor}
               onOpenMembersPanel={onOpenMembersPanel}
+              onNavigateToTasks={onNavigateToTasks}
             />
           ) : (
             /* Space conversations section */

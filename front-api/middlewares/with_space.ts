@@ -14,6 +14,7 @@ interface WithSpaceOptions {
   requireCanReadOrAdministrate?: boolean;
   requireCanRead?: boolean;
   requireCanWrite?: boolean;
+  routeParam?: "spaceId" | "podId";
 }
 
 function hasPermission(
@@ -57,15 +58,17 @@ function deriveAccessMethod(auth: Authenticator): string {
  * Apply after the auth middleware so `ctx.get("auth")` is available.
  */
 export function withSpace(options: WithSpaceOptions) {
+  const routeParam = options.routeParam ?? "spaceId";
   return createMiddleware<SpaceCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
-    const spaceId = ctx.req.param("spaceId");
+    const spaceId = ctx.req.param(routeParam);
     if (!spaceId) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Invalid space id.",
+          message:
+            routeParam === "podId" ? "Invalid pod id." : "Invalid space id.",
         },
       });
     }

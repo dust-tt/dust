@@ -13,6 +13,7 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { PostSeedInitialPodTasksResponseBody } from "@app/pages/api/w/[wId]/pods/[podId]/tasks/seed";
 import type { GetWorkspaceProjectTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
 import type {
   GCSMountEntry,
@@ -40,7 +41,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { type Fetcher, useSWRConfig } from "swr";
 
 export function useProjectContextAttachments({
@@ -602,6 +603,64 @@ export function useMarkProjectTasksRead({
       // Silent — mark_read is best-effort.
     }
   }, [mutate, owner.sId, spaceId]);
+}
+
+export function useSeedInitialPodTasks({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutate } = useSWRConfig();
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const seedInitialPodTasks = useCallback(async (): Promise<
+    Result<ProjectTaskType[], Error>
+  > => {
+    setIsSeeding(true);
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${spaceId}/tasks/seed`,
+        { method: "POST" }
+      );
+
+      if (res.status === 409) {
+        await mutate((key) =>
+          isProjectTasksListSwrKey(key, owner.sId, spaceId)
+        );
+        return new Ok([]);
+      }
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to set up starter tasks",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const responseData: PostSeedInitialPodTasksResponseBody =
+        await res.json();
+      await mutate((key) => isProjectTasksListSwrKey(key, owner.sId, spaceId));
+      return new Ok(responseData.tasks);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to set up starter tasks",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    } finally {
+      setIsSeeding(false);
+    }
+  }, [mutate, owner.sId, sendNotification, spaceId]);
+
+  return { seedInitialPodTasks, isSeeding };
 }
 
 export function useCreateProjectTask({
