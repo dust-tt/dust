@@ -240,7 +240,7 @@ export async function runSandboxBashTool(
     return new Err(new MCPError(ensureResult.error.message));
   }
 
-  const sandbox = ensureResult.value;
+  const { sandbox } = ensureResult.value;
 
   const execId = generateExecId();
   const sandboxToken = await generateSandboxExecToken(auth, {
@@ -343,7 +343,7 @@ export async function addEgressDomainTool(
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
-  const sandbox = ensureResult.value;
+  const { sandbox } = ensureResult.value;
 
   const parsed = parseExactEgressDomain(domain);
   if (parsed.isErr()) {
