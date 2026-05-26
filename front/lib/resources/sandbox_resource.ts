@@ -646,12 +646,28 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
 
-      const result = await provider.sleep(sandbox.providerId, ctx);
-      if (result.isErr()) {
-        return result;
+      // Flip the DB to `pending_approval` BEFORE the provider sleep.
+      // If we slept first and the DB update then failed, we'd be stuck with
+      // a frozen SDK sandbox and a DB row saying "running" — ensureActive's
+      // `running` branch would skip wake-up and subsequent execs would hang
+      // against the frozen sandbox indefinitely. With DB first, a sleep
+      // failure leaves DB=pending_approval + SDK=running, which is the
+      // recoverable shape: ensureActive's pending_approval branch will wake
+      // the (still-running) sandbox on the next call, idempotently.
+      await sandbox.updateStatus("pending_approval", { ctx });
+
+      const sleepResult = await provider.sleep(sandbox.providerId, ctx);
+      if (sleepResult.isErr()) {
+        logger.error(
+          {
+            sandbox: sandbox.toLogJSON(),
+            err: sleepResult.error,
+          },
+          "Provider sleep failed after pending_approval DB update — sandbox left in recoverable pending_approval state."
+        );
+        return sleepResult;
       }
 
-      await sandbox.updateStatus("pending_approval", { ctx });
       logger.info(
         { sandbox: sandbox.toLogJSON() },
         "Sandbox paused for tool approval."

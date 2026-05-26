@@ -14,13 +14,18 @@ import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok, type Result } from "@app/types/shared/result";
 
+export interface EnsureSandboxReadyResult {
+  sandbox: SandboxResource;
+  freshlyCreated: boolean;
+}
+
 // /!\ All sandbox-touching tools must use this helper rather than calling
 // SandboxResource.ensureActive directly, otherwise the GCS FUSE mount and
 // egress forwarder bring-up will be skipped.
 export async function ensureSandboxReady(
   auth: Authenticator,
   conversation: ConversationType
-): Promise<Result<SandboxResource, Error>> {
+): Promise<Result<EnsureSandboxReadyResult, Error>> {
   const ensureResult = await SandboxResource.ensureActive(auth, conversation);
   if (ensureResult.isErr()) {
     return ensureResult;
@@ -87,5 +92,5 @@ export async function ensureSandboxReady(
     return ensureEgressResult;
   }
 
-  return new Ok(sandbox);
+  return new Ok({ sandbox, freshlyCreated });
 }

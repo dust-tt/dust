@@ -9,19 +9,19 @@ type PinPodBannerOptions = {
 
 export function usePinPodBanner({
   owner,
-  spaceId,
+  podId: podId,
   pinnedFramePath,
   isEditor,
 }: {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
   pinnedFramePath: string | null;
   isEditor: boolean;
 }) {
   const confirm = useContext(ConfirmContext);
   const updateProjectMetadata = useUpdateProjectMetadata({
     owner,
-    spaceId,
+    spaceId: podId,
   });
 
   const pinFrame = useCallback(

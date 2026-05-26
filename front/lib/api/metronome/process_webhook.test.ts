@@ -2,13 +2,8 @@ import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import {
   getMetronomeContractById,
   listMetronomeContracts,
-  unwrapMetronomeWebhook,
 } from "@app/lib/metronome/client";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
-import {
-  releaseMetronomeWebhookEvent,
-  tryClaimMetronomeWebhookEvent,
-} from "@app/lib/metronome/webhook_idempotency";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -20,24 +15,10 @@ import {
 } from "@app/temporal/scrub_workspace/client";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
-import type { WorkspaceType } from "@app/types/user";
 import type { ContractV2 } from "@metronome/sdk/resources";
-import { createResponse } from "node-mocks-http";
-import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import handler from "./webhook";
-
-vi.mock(import("@app/lib/api/config"), async (importOriginal) => {
-  const mod = await importOriginal();
-  return {
-    ...mod,
-    default: {
-      ...mod.default,
-      getMetronomeWebhookSecret: vi.fn().mockReturnValue("test-secret"),
-    },
-  };
-});
+import { processMetronomeWebhook } from "./process_webhook";
 
 vi.mock(import("@app/lib/metronome/client"), async (importOriginal) => {
   const actual = await importOriginal();
@@ -45,7 +26,6 @@ vi.mock(import("@app/lib/metronome/client"), async (importOriginal) => {
     ...actual,
     getMetronomeContractById: vi.fn(),
     listMetronomeContracts: vi.fn(),
-    unwrapMetronomeWebhook: vi.fn(),
   };
 });
 
@@ -56,11 +36,6 @@ vi.mock("@app/temporal/scrub_workspace/client", () => ({
 
 vi.mock("@app/lib/api/subscription", () => ({
   restoreWorkspaceAfterSubscription: vi.fn(),
-}));
-
-vi.mock("@app/lib/metronome/webhook_idempotency", () => ({
-  tryClaimMetronomeWebhookEvent: vi.fn(),
-  releaseMetronomeWebhookEvent: vi.fn(),
 }));
 
 const METRONOME_CUSTOMER_ID = "cust_test_xxx";
@@ -116,47 +91,24 @@ function contractEvent(
   };
 }
 
-/**
- * Build a request-like Readable carrying the JSON body, plus a response mock.
- * The webhook handler reads the raw body via `pipeline(req, collector)`, so
- * the request needs to be a real stream — node-mocks-http's request isn't.
- */
-function makeWebhookRequest(eventBody: Record<string, unknown>) {
-  const rawBody = Buffer.from(JSON.stringify(eventBody));
-  const stream = Readable.from([rawBody]) as Readable & {
-    method: string;
-    headers: Record<string, string>;
-    query: Record<string, string>;
-    cookies: Record<string, string>;
-    socket: { remoteAddress: string };
-  };
-  stream.method = "POST";
-  stream.headers = { "x-metronome-signature": "fake" };
-  stream.query = {};
-  stream.cookies = {};
-  stream.socket = { remoteAddress: "127.0.0.1" };
-  const res = createResponse();
-  return { req: stream as never, res };
-}
-
 async function setupMetronomeWorkspace(
   contractId: string,
   { stripeSubscriptionId = null }: { stripeSubscriptionId?: string | null } = {}
-): Promise<WorkspaceType> {
-  const workspace = await WorkspaceFactory.basic();
-  const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
-    .id;
+): Promise<WorkspaceResource> {
+  const lightWorkspace = await WorkspaceFactory.basic();
+  const workspace = (await WorkspaceResource.fetchById(lightWorkspace.sId))!;
   await WorkspaceResource.updateMetronomeCustomerId(
-    workspaceModelId,
+    workspace.id,
     METRONOME_CUSTOMER_ID
   );
-  const sub =
-    await SubscriptionResource.fetchActiveByWorkspaceModelId(workspaceModelId);
+  const sub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
   await sub!.markAsEnded("ended");
   await SubscriptionResource.makeNew(
     {
       sId: generateRandomModelSId(),
-      workspaceId: workspaceModelId,
+      workspaceId: workspace.id,
       planId: sub!.planId,
       status: "active",
       startDate: new Date(),
@@ -177,22 +129,12 @@ beforeEach(() => {
     new Ok({} as never)
   );
   vi.mocked(restoreWorkspaceAfterSubscription).mockResolvedValue(undefined);
-  // Default: every event is freshly claimed. Tests that exercise the
-  // duplicate path override this with `mockResolvedValueOnce(false)`.
-  vi.mocked(tryClaimMetronomeWebhookEvent).mockResolvedValue(true);
-  vi.mocked(releaseMetronomeWebhookEvent).mockResolvedValue(undefined);
 });
 
-/** Stub `unwrapMetronomeWebhook` to bypass signature verification. */
-function mockUnwrap(event: Record<string, unknown>) {
-  vi.mocked(unwrapMetronomeWebhook).mockReturnValue(event);
-}
-
-describe("Metronome webhook — contract.start", () => {
+describe("processMetronomeWebhook — contract.start", () => {
   it("does nothing when the new contract has no PLAN_CODE custom field", async () => {
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
-    mockUnwrap(event);
     vi.mocked(getMetronomeContractById).mockResolvedValue(
       new Ok({
         id: NEW_CONTRACT_ID,
@@ -202,10 +144,11 @@ describe("Metronome webhook — contract.start", () => {
       } as never)
     );
 
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(200);
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
 
     // Subscription is unchanged.
     const refreshed = await WorkspaceResource.fetchById(workspace.sId);
@@ -225,7 +168,6 @@ describe("Metronome webhook — contract.start", () => {
       stripeSubscriptionId: "sub_shadow_xxx",
     });
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
-    mockUnwrap(event);
     vi.mocked(getMetronomeContractById).mockResolvedValue(
       new Ok({
         id: NEW_CONTRACT_ID,
@@ -237,10 +179,11 @@ describe("Metronome webhook — contract.start", () => {
       } as never)
     );
 
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(200);
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
 
     const refreshed = await WorkspaceResource.fetchById(workspace.sId);
     const sub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
@@ -253,7 +196,6 @@ describe("Metronome webhook — contract.start", () => {
   it("does nothing when PLAN_CODE does not resolve to a Dust plan", async () => {
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
-    mockUnwrap(event);
     vi.mocked(getMetronomeContractById).mockResolvedValue(
       new Ok({
         id: NEW_CONTRACT_ID,
@@ -263,10 +205,11 @@ describe("Metronome webhook — contract.start", () => {
       } as never)
     );
 
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(200);
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
 
     const refreshed = await WorkspaceResource.fetchById(workspace.sId);
     const sub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
@@ -280,7 +223,6 @@ describe("Metronome webhook — contract.start", () => {
     await ensureEnterprisePlan();
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
-    mockUnwrap(event);
     vi.mocked(getMetronomeContractById).mockResolvedValue(
       new Ok({
         id: NEW_CONTRACT_ID,
@@ -290,10 +232,11 @@ describe("Metronome webhook — contract.start", () => {
       } as never)
     );
 
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(200);
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
 
     // Active subscription now points at the new contract id.
     const refreshed = await WorkspaceResource.fetchById(workspace.sId);
@@ -320,7 +263,6 @@ describe("Metronome webhook — contract.start", () => {
     await ensureEnterprisePlan();
     const workspace = await setupMetronomeWorkspace(NEW_CONTRACT_ID);
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
-    mockUnwrap(event);
     vi.mocked(getMetronomeContractById).mockResolvedValue(
       new Ok({
         id: NEW_CONTRACT_ID,
@@ -330,10 +272,11 @@ describe("Metronome webhook — contract.start", () => {
       } as never)
     );
 
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(200);
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
     expect(restoreWorkspaceAfterSubscription).not.toHaveBeenCalled();
 
     // Subscription still points at the same contract — no swap performed.
@@ -368,7 +311,6 @@ describe("Metronome webhook — contract.start", () => {
     );
 
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
-    mockUnwrap(event);
     vi.mocked(getMetronomeContractById).mockResolvedValue(
       new Ok({
         id: NEW_CONTRACT_ID,
@@ -378,10 +320,11 @@ describe("Metronome webhook — contract.start", () => {
       } as never)
     );
 
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(200);
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
 
     // Pending sub is now active.
     const refreshed = await WorkspaceResource.fetchById(workspace.sId);
@@ -403,11 +346,10 @@ describe("Metronome webhook — contract.start", () => {
   });
 });
 
-describe("Metronome webhook — contract.end", () => {
+describe("processMetronomeWebhook — contract.end", () => {
   it("skips scrub when an active successor contract exists on the customer", async () => {
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     const event = contractEvent("contract.end", OLD_CONTRACT_ID);
-    mockUnwrap(event);
     vi.mocked(listMetronomeContracts).mockResolvedValue(
       new Ok([
         {
@@ -423,10 +365,11 @@ describe("Metronome webhook — contract.end", () => {
       ] as never)
     );
 
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(200);
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
     expect(launchScheduleWorkspaceScrubWorkflow).not.toHaveBeenCalled();
 
     // Subscription left untouched — contract.start will swap it.
@@ -438,18 +381,18 @@ describe("Metronome webhook — contract.end", () => {
     expect(sub!.metronomeContractId).toBe(OLD_CONTRACT_ID);
   });
 
-  it("returns 500 and leaves the subscription untouched when the successor check fails", async () => {
+  it("returns Err and leaves the subscription untouched when the successor check fails", async () => {
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     const event = contractEvent("contract.end", OLD_CONTRACT_ID);
-    mockUnwrap(event);
     vi.mocked(listMetronomeContracts).mockResolvedValue(
       new Err(new Error("Metronome unavailable"))
     );
 
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(500);
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isErr()).toBe(true);
     expect(launchScheduleWorkspaceScrubWorkflow).not.toHaveBeenCalled();
 
     const refreshed = await WorkspaceResource.fetchById(workspace.sId);
@@ -461,9 +404,8 @@ describe("Metronome webhook — contract.end", () => {
   });
 
   it("scrubs the workspace when no successor contract exists", async () => {
-    await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     const event = contractEvent("contract.end", OLD_CONTRACT_ID);
-    mockUnwrap(event);
     vi.mocked(listMetronomeContracts).mockResolvedValue(
       new Ok([
         {
@@ -474,10 +416,11 @@ describe("Metronome webhook — contract.end", () => {
       ] as never)
     );
 
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(200);
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
     expect(launchScheduleWorkspaceScrubWorkflow).toHaveBeenCalledTimes(1);
   });
 
@@ -487,7 +430,6 @@ describe("Metronome webhook — contract.end", () => {
     // to the no-op branch and the scrub would never run.
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     const event = contractEvent("contract.end", OLD_CONTRACT_ID);
-    mockUnwrap(event);
     vi.mocked(listMetronomeContracts).mockResolvedValue(
       new Ok([
         {
@@ -501,76 +443,16 @@ describe("Metronome webhook — contract.end", () => {
       new Err(new Error("Temporal unavailable"))
     );
 
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(500);
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isErr()).toBe(true);
     const refreshed = await WorkspaceResource.fetchById(workspace.sId);
     const sub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
       refreshed!.id
     );
     expect(sub!.status).toBe("active");
     expect(sub!.metronomeContractId).toBe(OLD_CONTRACT_ID);
-  });
-});
-
-describe("Metronome webhook — idempotency", () => {
-  it("short-circuits to 200 without side effects when the event id has already been processed", async () => {
-    await ensureEnterprisePlan();
-    await setupMetronomeWorkspace(OLD_CONTRACT_ID);
-    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
-    mockUnwrap(event);
-    // Simulate a redelivery: the claim helper reports the id is already held.
-    vi.mocked(tryClaimMetronomeWebhookEvent).mockResolvedValueOnce(false);
-
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(200);
-    // No side effects: the handler returned before fetching the contract or
-    // touching the subscription.
-    expect(getMetronomeContractById).not.toHaveBeenCalled();
-    expect(restoreWorkspaceAfterSubscription).not.toHaveBeenCalled();
-    // We do not release the claim on the short-circuit path — the original
-    // delivery owns it.
-    expect(releaseMetronomeWebhookEvent).not.toHaveBeenCalled();
-  });
-
-  it("releases the claim when processing fails so a retry can reprocess", async () => {
-    await setupMetronomeWorkspace(OLD_CONTRACT_ID);
-    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
-    mockUnwrap(event);
-    // Force the contract fetch to fail — this is one of the 500-return paths.
-    vi.mocked(getMetronomeContractById).mockResolvedValue(
-      new Err(new Error("boom"))
-    );
-
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(500);
-    expect(releaseMetronomeWebhookEvent).toHaveBeenCalledWith(event.id);
-  });
-
-  it("does not release the claim on a successful run", async () => {
-    await ensureEnterprisePlan();
-    await setupMetronomeWorkspace(OLD_CONTRACT_ID);
-    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
-    mockUnwrap(event);
-    vi.mocked(getMetronomeContractById).mockResolvedValue(
-      new Ok({
-        id: NEW_CONTRACT_ID,
-        customer_id: METRONOME_CUSTOMER_ID,
-        starting_at: new Date().toISOString(),
-        custom_fields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
-      } as unknown as ContractV2)
-    );
-
-    const { req, res } = makeWebhookRequest(event);
-    await handler(req, res as never);
-
-    expect(res._getStatusCode()).toBe(200);
-    expect(tryClaimMetronomeWebhookEvent).toHaveBeenCalledWith(event.id);
-    expect(releaseMetronomeWebhookEvent).not.toHaveBeenCalled();
   });
 });

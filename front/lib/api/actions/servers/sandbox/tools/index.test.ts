@@ -251,7 +251,9 @@ describe("runSandboxBashTool", () => {
         ),
     };
 
-    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
 
     const result = await runSandboxBashTool(
       { command: "echo hello", description: "Run command" },
@@ -283,7 +285,9 @@ describe("runSandboxBashTool", () => {
       ),
     };
 
-    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
 
     const result = await runSandboxBashTool(
       { command: "echo token", description: "Run command" },
@@ -319,7 +323,9 @@ describe("runSandboxBashTool", () => {
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "ok", stderr: "" })),
     };
 
-    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
 
     const result = await runSandboxBashTool(
       { command: "echo ok", description: "Run command" },
@@ -358,7 +364,9 @@ describe("runSandboxBashTool", () => {
       ),
     };
 
-    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
 
     const result = await runSandboxBashTool(
       { command: "echo values", description: "Run command" },
@@ -393,7 +401,9 @@ describe("runSandboxBashTool", () => {
         ),
     };
 
-    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
 
     const result = await runSandboxBashTool(
       { command: "echo secret", description: "Run command" },
@@ -495,7 +505,9 @@ describe("addEgressDomainTool", () => {
       providerId: "provider-id",
       sId: "sandbox-id",
     };
-    mockEnsureSandboxReady.mockResolvedValue(new Ok(sandbox));
+    mockEnsureSandboxReady.mockResolvedValue(
+      new Ok({ sandbox, freshlyCreated: false })
+    );
 
     const result = await addEgressDomainTool(
       {
@@ -540,8 +552,11 @@ describe("addEgressDomainTool", () => {
   it("reports the domain as already allowed when nothing changed", async () => {
     mockEnsureSandboxReady.mockResolvedValue(
       new Ok({
-        providerId: "provider-id",
-        sId: "sandbox-id",
+        sandbox: {
+          providerId: "provider-id",
+          sId: "sandbox-id",
+        },
+        freshlyCreated: false,
       })
     );
     mockAddSandboxPolicyDomain.mockResolvedValue(
@@ -576,8 +591,11 @@ describe("addEgressDomainTool", () => {
   it("rejects wildcard domains before writing policy", async () => {
     mockEnsureSandboxReady.mockResolvedValue(
       new Ok({
-        providerId: "provider-id",
-        sId: "sandbox-id",
+        sandbox: {
+          providerId: "provider-id",
+          sId: "sandbox-id",
+        },
+        freshlyCreated: false,
       })
     );
 
@@ -636,8 +654,11 @@ describe("addEgressDomainTool", () => {
   it("surfaces sandbox policy helper errors", async () => {
     mockEnsureSandboxReady.mockResolvedValue(
       new Ok({
-        providerId: "provider-id",
-        sId: "sandbox-id",
+        sandbox: {
+          providerId: "provider-id",
+          sId: "sandbox-id",
+        },
+        freshlyCreated: false,
       })
     );
     mockAddSandboxPolicyDomain.mockResolvedValue(

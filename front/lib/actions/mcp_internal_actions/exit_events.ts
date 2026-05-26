@@ -2,6 +2,7 @@ import type {
   ToolAskUserQuestionEvent,
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
+  ToolPausedEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { Authenticator } from "@app/lib/auth";
@@ -46,6 +47,7 @@ export async function getExitOrPauseEvents(
     | ToolPersonalAuthRequiredEvent
     | ToolFileAuthRequiredEvent
     | ToolEarlyExitEvent
+    | ToolPausedEvent
   )[]
 > {
   const exitOutputItem = outputItems
@@ -82,8 +84,27 @@ export async function getExitOrPauseEvents(
           resumeState: state,
         });
 
-        // Yield the blocking events.
-        return blockingEvents;
+        // Forward any UI-facing blocking events the tool collected, plus a
+        // `tool_paused` sentinel. The sentinel keeps the pause-decision on
+        // the event channel even when `blockingEvents` is empty — the case
+        // for any future tool whose blocking event is published upstream
+        // out-of-band (e.g. sandbox bash, where the child's blocking event
+        // is published by `createSandboxChildAction` and never flows
+        // through bash's return). Without it, `runToolWithStreaming` would
+        // fall through to `markAsSucceeded` on an already-blocked action.
+        // Appended LAST so the for-await in `executeToolStreaming` processes
+        // every blocking event before the sentinel triggers the return.
+        return [
+          ...blockingEvents,
+          {
+            type: "tool_paused",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            conversationId: conversation.sId,
+            actionId: action.sId,
+          },
+        ];
       }
       case "tool_personal_auth_required": {
         const { provider, scope } = exitOutputItem;

@@ -3,7 +3,7 @@ import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileContent } from "@app/lib/swr/files";
-import { useProjectFiles } from "@app/lib/swr/pods";
+import { usePodFiles } from "@app/lib/swr/pods";
 import logger from "@app/logger/logger";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { WorkspaceType } from "@app/types/user";
@@ -26,18 +26,18 @@ const DEFAULT_POD_PINNED_BANNER_PREFERENCES = {
 
 interface PodPinnedBannerProps {
   owner: WorkspaceType;
-  spaceInfo: RichSpaceType;
+  podInfo: RichSpaceType;
 }
 
 function PodPinnedBannerFrame({
   owner,
-  spaceId,
+  podId,
   fileId,
   fileContent,
   vizUrl,
 }: {
   owner: WorkspaceType;
-  spaceId: string;
+  podId: string;
   fileId: string;
   fileContent: string;
   vizUrl: string;
@@ -55,7 +55,7 @@ function PodPinnedBannerFrame({
         identifier: `viz-banner-${fileId}`,
       }}
       conversationId={null}
-      spaceId={spaceId}
+      spaceId={podId}
       isInDrawer={true}
       ref={iframeRef}
     />
@@ -149,14 +149,14 @@ function PodPinnedBannerCollapsedAffordance({
   );
 }
 
-export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
+export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
   const { vizUrl } = useAuth();
-  const pinnedFramePath = spaceInfo.pinnedFramePath;
+  const pinnedFramePath = podInfo.pinnedFramePath;
 
   const { value: bannerPreferences, setValue: setBannerPreferences } =
     useScopedPodUiPreferences({
       scope: "podPinnedBanner",
-      resourceId: spaceInfo.sId,
+      resourceId: podInfo.sId,
       defaultValue: DEFAULT_POD_PINNED_BANNER_PREFERENCES,
     });
   const isCollapsed = bannerPreferences.collapsed;
@@ -172,14 +172,14 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
 
   const { unpinFrame } = usePinPodBanner({
     owner,
-    spaceId: spaceInfo.sId,
-    pinnedFramePath: spaceInfo.pinnedFramePath ?? null,
-    isEditor: spaceInfo.isEditor,
+    podId: podInfo.sId,
+    pinnedFramePath: podInfo.pinnedFramePath ?? null,
+    isEditor: podInfo.isEditor,
   });
 
-  const { files: projectFiles, isProjectFilesLoading } = useProjectFiles({
+  const { files: podFiles, isPodFilesLoading } = usePodFiles({
     owner,
-    spaceId: spaceInfo.sId,
+    podId: podInfo.sId,
     disabled: !pinnedFramePath,
   });
 
@@ -188,11 +188,11 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
       return null;
     }
     return (
-      projectFiles.find(
+      podFiles.find(
         (f) => !f.isDirectory && f.path === pinnedFramePath && f.fileId
       ) ?? null
     );
-  }, [pinnedFramePath, projectFiles]);
+  }, [pinnedFramePath, podFiles]);
 
   const fileId =
     pinnedFile && !pinnedFile.isDirectory ? pinnedFile.fileId : null;
@@ -200,21 +200,21 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
   useEffect(() => {
     if (
       pinnedFramePath &&
-      !isProjectFilesLoading &&
-      projectFiles.length > 0 &&
+      !isPodFilesLoading &&
+      podFiles.length > 0 &&
       !fileId
     ) {
       logger.warn(
-        { spaceId: spaceInfo.sId, pinnedFramePath },
+        { spaceId: podInfo.sId, pinnedFramePath },
         "Pinned Pod banner file not found; skipping render."
       );
     }
   }, [
     fileId,
-    isProjectFilesLoading,
+    isPodFilesLoading,
     pinnedFramePath,
-    projectFiles.length,
-    spaceInfo.sId,
+    podFiles.length,
+    podInfo.sId,
   ]);
 
   const { fileContent } = useFileContent({
@@ -249,7 +249,7 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
     return null;
   }
 
-  if (isProjectFilesLoading || (fileId && !fileContent)) {
+  if (isPodFilesLoading || (fileId && !fileContent)) {
     return (
       <div
         className="mb-4 flex h-16 items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night"
@@ -264,14 +264,14 @@ export function PodPinnedBanner({ owner, spaceInfo }: PodPinnedBannerProps) {
 
   const frameProps = {
     owner,
-    spaceId: spaceInfo.sId,
+    podId: podInfo.sId,
     fileId,
     fileContent,
     vizUrl,
   };
 
   const controlsProps = {
-    isEditor: spaceInfo.isEditor,
+    isEditor: podInfo.isEditor,
     onHide: hideBanner,
     onUnpin: handleUnpin,
     onToggleFullscreen: () => setIsFullscreen((prev) => !prev),

@@ -7,7 +7,6 @@ import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
-import { sessionAuth } from "@front-api/middlewares/session_auth";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetWorkspaceAuthContextResponseType = {
@@ -29,8 +28,6 @@ export type GetWorkspaceAuthContextResponseType = {
 // SPA can redirect to the correct region. We therefore use `sessionAuth`
 // (not `workspaceAuth`) and resolve the `Authenticator` inline.
 const app = sessionApp();
-
-app.use("*", sessionAuth);
 
 app.get(
   "/",

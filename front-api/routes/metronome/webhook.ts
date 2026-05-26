@@ -1,12 +1,12 @@
 import apiConfig from "@app/lib/api/config";
-import { processMetronomeWebhook } from "@app/lib/api/metronome/process_webhook";
 import { unwrapMetronomeWebhook } from "@app/lib/metronome/client";
-import { MetronomeWebhookEventSchema } from "@app/lib/metronome/webhook_events";
 import {
-  releaseMetronomeWebhookEvent,
-  tryClaimMetronomeWebhookEvent,
-} from "@app/lib/metronome/webhook_idempotency";
+  getCustomerIdFromEvent,
+  MetronomeWebhookEventSchema,
+} from "@app/lib/metronome/webhook_events";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import { launchMetronomeEventsWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { Hono } from "hono";
@@ -88,39 +88,45 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
 
   logger.info({ event, rawEvent }, "[Metronome Webhook] Event received");
 
-  // Idempotency: Metronome may redeliver the same event (network
-  // timeouts, our own 5xx, at-least-once delivery). Atomically claim
-  // `event.id` in Redis; a duplicate finds the key set and short-
-  // circuits to a no-op success. The claim is released on the failure
-  // path below (Err or thrown exception) so a retry can reprocess.
-  const claimed = await tryClaimMetronomeWebhookEvent(event.id);
-  if (!claimed) {
+  // Resolve the workspace before enqueueing — every event except
+  // `integration.issue` carries a customer_id. If the customer maps to
+  // no workspace (e.g. wrong region, customer scrubbed), ack and skip:
+  // spinning up a workflow just to no-op wastes a slot and clutters
+  // Temporal history.
+  const customerId = getCustomerIdFromEvent(event);
+  const workspace = customerId
+    ? await WorkspaceResource.fetchByMetronomeCustomerId(customerId)
+    : null;
+
+  if (!workspace) {
     logger.info(
-      { eventId: event.id, eventType: event.type },
-      "[Metronome Webhook] Event already processed (duplicate), skipping"
+      { eventId: event.id, eventType: event.type, customerId },
+      "[Metronome Webhook] No workspace mapped to customer, ack and skip"
     );
     return ctx.json({ success: true });
   }
 
-  let processingSucceeded = false;
-  try {
-    const result = await processMetronomeWebhook({ event });
-    if (result.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: result.error.message,
-        },
-      });
-    }
-    processingSucceeded = true;
-    return ctx.json({ success: true });
-  } finally {
-    if (!processingSucceeded) {
-      await releaseMetronomeWebhookEvent(event.id);
-    }
+  // Hand the event off to a Temporal workflow for durable processing.
+  // The workflow id is derived from event.id, so Metronome redeliveries
+  // (at-least-once delivery, retries on our own 5xx) hit
+  // `WorkflowExecutionAlreadyStartedError` and we ack 200 without
+  // re-running the work. Activity retries inside the workflow handle
+  // transient Metronome/DB failures.
+  const launchResult = await launchMetronomeEventsWorkflow({
+    event,
+    workspaceId: workspace.sId,
+  });
+  if (launchResult.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: launchResult.error.message,
+      },
+    });
   }
+
+  return ctx.json({ success: true });
 });
 
 export default app;

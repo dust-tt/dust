@@ -4,12 +4,12 @@ import {
 } from "@app/components/file_explorer/utils";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import type React from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Drop-target highlight for folder / go-up cards (owned by card wrappers, not FileExplorerItem). */
 export const fileExplorerDropActiveClasses = cn(
-  "ring-2 ring-primary-400 ring-inset dark:ring-primary-400-night",
-  "bg-primary-100 dark:bg-primary-100-night"
+  "ring-2 ring-highlight-400 ring-inset dark:ring-highlight-400-night",
+  "bg-highlight-100 dark:bg-highlight-100-night"
 );
 
 export function getFileExplorerDropSurfaceClassName(
@@ -51,6 +51,32 @@ export function canMoveFileToParentFolder(
   return (
     getCurrentParentRelativePath(fileScopedPath) !== targetParentRelativePath
   );
+}
+
+/** True for the lifetime of a file-explorer drag operation (dragstart → dragend/drop). */
+export function useIsFileExplorerDragging(): boolean {
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    const start = (e: DragEvent) => {
+      if (e.dataTransfer && hasFileExplorerDrag(e.dataTransfer)) {
+        setIsDragging(true);
+      }
+    };
+    const stop = () => setIsDragging(false);
+
+    document.addEventListener("dragstart", start);
+    document.addEventListener("dragend", stop);
+    document.addEventListener("drop", stop);
+
+    return () => {
+      document.removeEventListener("dragstart", start);
+      document.removeEventListener("dragend", stop);
+      document.removeEventListener("drop", stop);
+    };
+  }, []);
+
+  return isDragging;
 }
 
 export function useFileExplorerDropTarget({

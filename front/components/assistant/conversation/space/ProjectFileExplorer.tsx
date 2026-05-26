@@ -31,8 +31,8 @@ import { useMoveMountFile } from "@app/lib/swr/mount_files";
 import {
   useAddProjectContextContentNodes,
   useDeleteProjectFile,
+  usePodFiles,
   useProjectContextAttachments,
-  useProjectFiles,
   useRemoveProjectContextContentNodes,
 } from "@app/lib/swr/pods";
 import { useSpaceDataSourceViews, useSpaces } from "@app/lib/swr/spaces";
@@ -266,7 +266,7 @@ function ProjectFileExplorerContent({
   const isEditor = space.isEditor;
   const { togglePin, isPinned } = usePinPodBanner({
     owner,
-    spaceId: space.sId,
+    podId: space.sId,
     pinnedFramePath: space.pinnedFramePath ?? null,
     isEditor,
   });
@@ -326,11 +326,11 @@ function ProjectFileExplorerContent({
 
   const {
     files: projectGCSFiles,
-    isProjectFilesLoading,
-    refreshProjectFiles,
-  } = useProjectFiles({
+    isPodFilesLoading: isProjectFilesLoading,
+    refreshPodFiles: refreshProjectFiles,
+  } = usePodFiles({
     owner,
-    spaceId: space.sId,
+    podId: space.sId,
   });
 
   const refreshProjectKnowledge = useCallback(async () => {

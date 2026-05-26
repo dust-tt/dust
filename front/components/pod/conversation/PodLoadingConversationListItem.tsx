@@ -1,6 +1,6 @@
 import { LoadingBlock } from "@dust-tt/sparkle";
 
-export function SpaceLoadingConversationListItem() {
+export function PodLoadingConversationListItem() {
   return (
     <div className="flex flex-row gap-4 py-2">
       <LoadingBlock className="h-[36px] w-[36px] rounded-full" />

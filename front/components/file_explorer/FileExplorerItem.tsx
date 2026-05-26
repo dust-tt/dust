@@ -20,7 +20,6 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   ArrowDownOnSquareIcon,
-  ArrowLeftIcon,
   Button,
   CloudArrowLeftRightIcon,
   DropdownMenu,
@@ -258,42 +257,6 @@ function FileExplorerDropTargetWrapper({
         surfaceClassName: getFileExplorerDropSurfaceClassName(isDragOver),
       })}
     </div>
-  );
-}
-
-export interface FileExplorerGoUpCardProps {
-  parentLabel: string;
-  parentRelativePath: string;
-  viewMode: ViewMode;
-  onGoUp: () => void;
-  onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
-}
-
-export function FileExplorerGoUpCard({
-  parentLabel,
-  parentRelativePath,
-  viewMode,
-  onGoUp,
-  onMoveFileDrop,
-}: FileExplorerGoUpCardProps) {
-  return (
-    <FileExplorerDropTargetWrapper
-      disabled={!onMoveFileDrop}
-      onDrop={onMoveFileDrop}
-      parentRelativePath={parentRelativePath}
-    >
-      {({ surfaceClassName }) => (
-        <FileExplorerItem
-          kind="icon"
-          visual={ArrowLeftIcon}
-          viewMode={viewMode}
-          title="Back"
-          subtitle={`Browse "${parentLabel}"`}
-          surfaceClassName={surfaceClassName}
-          onOpen={onGoUp}
-        />
-      )}
-    </FileExplorerDropTargetWrapper>
   );
 }
 
