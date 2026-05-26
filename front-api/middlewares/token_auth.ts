@@ -22,8 +22,7 @@ export const tokenAuth = createMiddleware<SessionCtx>(async (ctx, next) => {
       status_code: 401,
       api_error: {
         type: bearerRes.error,
-        message:
-          "The request does not have valid authentication credentials.",
+        message: "The request does not have valid authentication credentials.",
       },
     });
   }
@@ -34,8 +33,7 @@ export const tokenAuth = createMiddleware<SessionCtx>(async (ctx, next) => {
       status_code: 401,
       api_error: {
         type: "not_authenticated",
-        message:
-          "The request does not have valid authentication credentials.",
+        message: "The request does not have valid authentication credentials.",
       },
     });
   }
