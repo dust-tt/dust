@@ -371,6 +371,34 @@ const { name, count } = validation.data;
 Reviewer: If you see new `io-ts` imports or codecs introduced by a PR, require the author to
 rewrite them in `zod`.
 
+### [GEN14] Avoid N+1 database calls
+
+Avoid database queries or database-only helpers inside loops, which would resolve in an unbounded
+number of SQL queries that will scale with the data (N+1 pattern).
+Also avoid them in `Promise.all` and `concurrentExecutor` if possible, they only make the queries
+run in parallel; they do not fix the N+1. Running too many SQL queries in parallel can quickly put
+pressure on our connection pool and even exhaust it.
+
+Prefer batching instead: fetch the related rows with one scoped query.
+
+Example:
+
+```
+// BAD: one user query per membership + unbounded Promise.all that take several exhaust the connection pool.
+const users = await Promise.all(
+  memberships.map((membership) =>
+    UserResource.fetchByModelId(membership.userId)
+  )
+);
+
+// GOOD: one query, then reconstruct by id.
+const users = await UserResource.fetchByModelIds(
+  memberships.map((membership) => membership.userId)
+);
+```
+
+Reviewer: If you detect a DB-backed helper or query inside a loop, ask the author to batch it.
+
 ## SECURITY
 
 ### [SEC1] No sensitive data outside of HTTP bodies or headers
