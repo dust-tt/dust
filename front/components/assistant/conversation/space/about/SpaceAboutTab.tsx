@@ -55,10 +55,10 @@ export function SpaceAboutTab({
     isEditor: isProjectEditor,
     isRestricted,
   } = space;
-  const isPublic = !isRestricted;
+  const isOpen = !isRestricted;
   const areWorkspaceOpenProjectsAllowed = areOpenProjectsAllowed(owner);
   const isPrivateProjectAndOpenProjectsDisallowed =
-    !areWorkspaceOpenProjectsAllowed && !isPublic;
+    !areWorkspaceOpenProjectsAllowed && !isOpen;
   const isVisibilityToggleDisabled =
     !isProjectEditor || isPrivateProjectAndOpenProjectsDisallowed;
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
@@ -170,10 +170,10 @@ export function SpaceAboutTab({
   }, [archiveProject, unarchiveProject, projectMetadata?.archivedAt]);
 
   const handleVisibilityToggle = useCallback(async () => {
-    const newIsPublic = !isPublic;
-    const title = newIsPublic ? "Switch to public?" : "Switch to restricted?";
-    const message = newIsPublic
-      ? "All workspace members will be able to join and see everything in this Pod — including existing conversations and files."
+    const newIsOpen = !isOpen;
+    const title = newIsOpen ? "Switch to open?" : "Switch to restricted?";
+    const message = newIsOpen
+      ? "All workspace members will be able to join and see everything in the Pod — including existing conversations and files."
       : "Access will be limited to invited members only.";
 
     const confirmed = await confirm({
@@ -189,7 +189,7 @@ export function SpaceAboutTab({
     const updated = await doUpdate(
       space,
       {
-        isRestricted: !newIsPublic,
+        isRestricted: !newIsOpen,
         memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
         editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
         managementMode: "manual",
@@ -197,7 +197,7 @@ export function SpaceAboutTab({
       },
       {
         title: "Successfully updated Pod visibility",
-        description: "Pod visibility was successfully updated.",
+        description: `Pod is now ${newIsOpen ? "open" : "restricted"}.`,
       }
     );
 
@@ -207,7 +207,7 @@ export function SpaceAboutTab({
   }, [
     confirm,
     doUpdate,
-    isPublic,
+    isOpen,
     projectMembers,
     space,
     mutateSpaceInfoRegardlessOfQueryParams,
@@ -318,7 +318,7 @@ export function SpaceAboutTab({
                       <div>
                         <SliderToggle
                           size="xs"
-                          selected={isPublic}
+                          selected={isOpen}
                           onClick={handleVisibilityToggle}
                           disabled
                         />
@@ -328,7 +328,7 @@ export function SpaceAboutTab({
                 ) : (
                   <SliderToggle
                     size="xs"
-                    selected={isPublic}
+                    selected={isOpen}
                     onClick={handleVisibilityToggle}
                     disabled={isVisibilityToggleDisabled}
                   />
