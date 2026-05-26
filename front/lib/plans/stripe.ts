@@ -613,55 +613,65 @@ export const createCustomerPortalSession = async ({
 }): Promise<string | null> => {
   const stripe = getStripeClient();
 
-  // Resolve the Stripe customer: prefer the Stripe subscription's customer
-  // when available; for Metronome-only billed workspaces (no Stripe sub),
-  // read the linked Stripe customer from the Metronome billing config.
-  let stripeCustomerId: string | null = null;
-
-  if (subscription.stripeSubscriptionId) {
-    const stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId
-    );
-    if (!stripeSubscription) {
-      throw new Error(
-        `No stripeSubscription found for the workspace: ${owner.sId}`
-      );
-    }
-    const customer = stripeSubscription.customer;
-    if (typeof customer !== "string") {
-      throw new Error(
-        `No stripeCustomerId found for the workspace: ${owner.sId}`
-      );
-    }
-    stripeCustomerId = customer;
-  } else if (owner.metronomeCustomerId) {
-    const result = await getMetronomeCustomerStripeCustomerId(
-      owner.metronomeCustomerId
-    );
-    if (result.isErr()) {
-      throw new Error(
-        `Failed to resolve Stripe customer for Metronome-only workspace ${owner.sId}: ${result.error.message}`
-      );
-    }
-    if (!result.value) {
-      throw new Error(
-        `No Stripe billing configuration found for Metronome customer of workspace ${owner.sId}`
-      );
-    }
-    stripeCustomerId = result.value;
-  } else {
+  const stripeCustomerIdRes = await getBillingStripeCustomerId({
+    owner,
+    subscription,
+  });
+  if (stripeCustomerIdRes.isErr()) {
+    throw stripeCustomerIdRes.error;
+  }
+  if (!stripeCustomerIdRes.value) {
     throw new Error(
       `No Stripe subscription or Metronome customer for the workspace: ${owner.sId}`
     );
   }
 
   const portalSession = await stripe.billingPortal.sessions.create({
-    customer: stripeCustomerId,
+    customer: stripeCustomerIdRes.value,
     return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription`,
   });
 
   return portalSession.url;
 };
+
+export async function getBillingStripeCustomerId({
+  owner,
+  subscription,
+}: {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+}): Promise<Result<string | null, Error>> {
+  if (subscription.stripeSubscriptionId) {
+    const stripeSubscription = await getStripeSubscription(
+      subscription.stripeSubscriptionId
+    );
+    if (!stripeSubscription) {
+      return new Err(
+        new Error(`No stripeSubscription found for workspace ${owner.sId}.`)
+      );
+    }
+
+    return new Ok(getCustomerId(stripeSubscription));
+  }
+
+  if (owner.metronomeCustomerId) {
+    const result = await getMetronomeCustomerStripeCustomerId(
+      owner.metronomeCustomerId
+    );
+    if (result.isErr()) {
+      return new Err(
+        new Error(
+          `Failed to resolve Stripe customer for Metronome workspace ` +
+            `${owner.sId}: ${result.error.message}`
+        )
+      );
+    }
+
+    return new Ok(result.value);
+  }
+
+  return new Ok(null);
+}
 
 /**
  * Calls the Stripe API to retrieve a product by its ID.
