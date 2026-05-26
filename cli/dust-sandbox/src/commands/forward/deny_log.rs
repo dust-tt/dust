@@ -261,7 +261,8 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{
-        append_deny_log, append_deny_log_line, rotated_deny_log_path, DenyLogEntry, DenyReason,
+        append_deny_log, append_deny_log_line, observe_deny_log_writes, rotated_deny_log_path,
+        DenyLogEntry, DenyReason,
     };
 
     #[tokio::test]
@@ -307,6 +308,30 @@ mod tests {
         assert_eq!(second["secret_name"], "OPENAI_API_KEY");
         assert_eq!(second["sni"], "api.openai.com");
         assert_eq!(second["host"], "evil.example");
+    }
+
+    #[tokio::test]
+    async fn write_observer_fires_after_content_is_readable() {
+        let tempdir = tempdir().expect("tempdir should be created");
+        let path = tempdir.path().join("deny.log");
+        let mut observer = observe_deny_log_writes(&path);
+        let write_path = path.clone();
+        let write =
+            tokio::spawn(async move { append_deny_log_line(&write_path, "visible\n", 64).await });
+
+        observer
+            .wait()
+            .await
+            .expect("observer should receive write notification");
+        let content = tokio::fs::read_to_string(&path)
+            .await
+            .expect("deny log should be readable after notification");
+        assert_eq!(content, "visible\n");
+
+        write
+            .await
+            .expect("append task should finish")
+            .expect("append should succeed");
     }
 
     #[tokio::test]
