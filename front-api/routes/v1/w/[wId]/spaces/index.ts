@@ -3,6 +3,8 @@ import type { SpaceType } from "@app/types/space";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
+import spaceId from "./[spaceId]";
+
 export type GetPublicSpacesResponseBody = {
   spaces: SpaceType[];
 };
@@ -10,6 +12,8 @@ export type GetPublicSpacesResponseBody = {
 // Mounted at /api/v1/w/:wId/spaces. publicApiAuth is applied by the parent
 // v1 workspace sub-app, so ctx.get("auth") is always available here.
 const app = publicApiApp();
+
+app.route("/:spaceId", spaceId);
 
 app.get("/", async (ctx): HandlerResult<GetPublicSpacesResponseBody> => {
   const auth = ctx.get("auth");
