@@ -304,6 +304,13 @@ export async function patchAgentConfigurationFromJSON(
   }
 
   const patch = parsed.data;
+  const {
+    model_id = agentConfiguration.model.modelId,
+    provider_id = agentConfiguration.model.providerId,
+    reasoning_effort = agentConfiguration.model.reasoningEffort,
+    response_format = agentConfiguration.model.responseFormat,
+    temperature = agentConfiguration.model.temperature,
+  } = patch.generation_settings ?? {};
   const assistant: PatchRequestBody = {
     name: agentConfiguration.name,
     description: agentConfiguration.description,
@@ -312,7 +319,14 @@ export async function patchAgentConfigurationFromJSON(
     pictureUrl: agentConfiguration.pictureUrl,
     status: agentConfiguration.status,
     scope: agentConfiguration.scope,
-    model: agentConfiguration.model,
+    model: {
+      ...agentConfiguration.model,
+      modelId: model_id,
+      providerId: provider_id,
+      temperature,
+      reasoningEffort: reasoning_effort,
+      responseFormat: response_format,
+    },
     actions: agentConfiguration.actions.filter(
       isServerSideMCPServerConfiguration
     ),
@@ -323,45 +337,18 @@ export async function patchAgentConfigurationFromJSON(
       sId: skill.sId,
     })),
     additionalRequestedSpaceIds: agentConfiguration.requestedSpaceIds,
+    ...(patch.agent?.handle ? { name: patch.agent.handle } : {}),
+    ...(patch.agent?.description
+      ? { description: patch.agent.description }
+      : {}),
+    ...(patch.agent?.avatar_url ? { pictureUrl: patch.agent.avatar_url } : {}),
+    ...(patch.agent?.scope ? { scope: patch.agent.scope } : {}),
+    ...(patch.instructions
+      ? { instructions: patch.instructions, instructionsHtml: null }
+      : {}),
   };
   let { authorModelId } = editorsResult.value;
   let skippedActions: SkippedAction[] = [];
-
-  if (patch.agent) {
-    if (patch.agent.handle) {
-      assistant.name = patch.agent.handle;
-    }
-    if (patch.agent.description) {
-      assistant.description = patch.agent.description;
-    }
-    if (patch.agent.avatar_url) {
-      assistant.pictureUrl = patch.agent.avatar_url;
-    }
-    if (patch.agent.scope) {
-      assistant.scope = patch.agent.scope;
-    }
-  }
-
-  if (patch.instructions) {
-    assistant.instructions = patch.instructions;
-    assistant.instructionsHtml = null;
-  }
-
-  const {
-    model_id = assistant.model.modelId,
-    provider_id = assistant.model.providerId,
-    reasoning_effort = assistant.model.reasoningEffort,
-    response_format = assistant.model.responseFormat,
-    temperature = assistant.model.temperature,
-  } = patch.generation_settings ?? {};
-  assistant.model = {
-    ...assistant.model,
-    modelId: model_id,
-    providerId: provider_id,
-    temperature,
-    reasoningEffort: reasoning_effort,
-    responseFormat: response_format,
-  };
 
   if (patch.tags) {
     const tagsResult = await resolveTags(auth, patch.tags);
