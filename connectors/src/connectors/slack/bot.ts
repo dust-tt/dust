@@ -1280,6 +1280,7 @@ async function answerMessage(
       visibility: "unlisted",
       message: messageReqBody,
       contentFragments: buildContentFragmentRes.value || undefined,
+      skipToolsValidation,
     });
     if (convRes.isErr()) {
       return buildSlackMessageError(convRes, "createConversation");
