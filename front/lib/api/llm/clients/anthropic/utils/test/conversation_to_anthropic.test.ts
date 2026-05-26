@@ -3,7 +3,10 @@ import { conversationMessages } from "@app/lib/api/llm/clients/anthropic/utils/t
 import { reasoningConversationMessages } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/conversation_messages/reasoning";
 import { inputMessages } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_input";
 import { reasoningInputMessages } from "@app/lib/api/llm/clients/anthropic/utils/test/fixtures/model_input/reasoning";
-import { describe, expect, it } from "vitest";
+import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/types/shared/utils/image_utils");
 
 describe("toMessage", () => {
   describe("user messages", () => {
@@ -88,6 +91,84 @@ describe("toMessage", () => {
           expect(block).not.toHaveProperty("cache_control");
         });
       }
+    });
+  });
+
+  describe("image_url in tool results", () => {
+    it("should return a text fallback when image fetch fails", async () => {
+      vi.mocked(trustedFetchImageBase64).mockRejectedValue(
+        new Error("Not Found")
+      );
+
+      const result = await toMessage(
+        {
+          role: "function",
+          name: "some_tool",
+          function_call_id: "call_1",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: "https://example.com/expired.png" },
+            },
+          ],
+        },
+        { isLast: false, omittedThinking: false, convertToBase64: true }
+      );
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "call_1",
+            content: [
+              { type: "text", text: "Attachment: image could not be loaded." },
+            ],
+          },
+        ],
+      });
+    });
+
+    it("should embed image as base64 when fetch succeeds", async () => {
+      vi.mocked(trustedFetchImageBase64).mockResolvedValue({
+        mediaType: "image/jpeg",
+        data: "base64data",
+      });
+
+      const result = await toMessage(
+        {
+          role: "function",
+          name: "some_tool",
+          function_call_id: "call_1",
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: "https://example.com/image.jpg" },
+            },
+          ],
+        },
+        { isLast: false, omittedThinking: false, convertToBase64: true }
+      );
+
+      expect(result).toEqual({
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "call_1",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/jpeg",
+                  data: "base64data",
+                },
+              },
+            ],
+          },
+        ],
+      });
     });
   });
 });
