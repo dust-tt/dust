@@ -1,7 +1,7 @@
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import {
   getInternalMCPServerIconByName,
-  getInternalMCPServerToolIcon,
+  getInternalMCPServerToolIconOverride,
   type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ToolsIcon } from "@dust-tt/sparkle";
@@ -27,7 +27,7 @@ export function getActionStepIcon(step: {
     return ToolsIcon;
   }
   const toolIcon = step.toolName
-    ? getInternalMCPServerToolIcon(step.internalMCPServerName, step.toolName)
+    ? getInternalMCPServerToolIconOverride(step.internalMCPServerName, step.toolName)
     : null;
   const iconName =
     toolIcon ?? getInternalMCPServerIconByName(step.internalMCPServerName);

@@ -1345,9 +1345,10 @@ export function getInternalMCPServerIconByName(
   return server.metadata.serverInfo.icon;
 }
 
-// Per-tool icon overrides defined in tool metadata. Falls back to the
-// server-level icon (via `getInternalMCPServerIconByName`) when null.
-export function getInternalMCPServerToolIcon(
+// Per-tool icon overrides defined in tool metadata. Returns null when the
+// tool has no override; the caller should fall back to the server-level icon
+// (via `getInternalMCPServerIconByName`).
+export function getInternalMCPServerToolIconOverride(
   name: InternalMCPServerNameType,
   toolName: string
 ): InternalAllowedIconType | null {
