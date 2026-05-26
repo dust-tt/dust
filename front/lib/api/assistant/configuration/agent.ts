@@ -719,8 +719,16 @@ export async function createAgentConfiguration(
       }
 
       if (status === "active") {
+        const tagResources = await TagResource.fetchByIds(
+          auth,
+          tags.map((tag) => tag.sId)
+        );
+        const tagResourceById = new Map(
+          tagResources.map((tagResource) => [tagResource.sId, tagResource])
+        );
+
         for (const tag of tags) {
-          const tagResource = await TagResource.fetchById(auth, tag.sId);
+          const tagResource = tagResourceById.get(tag.sId);
           if (tagResource) {
             if (
               !isBuilder(owner) &&
@@ -1411,8 +1419,15 @@ export async function restoreAgentConfiguration(
       auth,
       agentConfigurationId
     );
+    const editors = await UserResource.fetchByModelIds([
+      ...new Set(triggers.map((trigger) => trigger.editor)),
+    ]);
+    const editorByModelId = new Map(
+      editors.map((editor) => [editor.id, editor])
+    );
+
     for (const trigger of triggers) {
-      const editor = await UserResource.fetchByModelId(trigger.editor);
+      const editor = editorByModelId.get(trigger.editor);
       if (!editor) {
         logger.error(
           {
