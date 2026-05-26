@@ -252,17 +252,13 @@ describe("canAgentBeUsedInProjectConversation", () => {
     try {
       const user = auth.getNonNullableUser();
 
-      const openProjectRes = await createSpaceAndGroup(
-        auth,
-        {
-          name: `open solo ${faker.string.alphanumeric(10)}`,
-          isRestricted: false,
-          spaceKind: "project",
-          managementMode: "manual",
-          memberIds: [],
-        },
-        { seedInitialTasks: false }
-      );
+      const openProjectRes = await createSpaceAndGroup(auth, {
+        name: `open solo ${faker.string.alphanumeric(10)}`,
+        isRestricted: false,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
       if (openProjectRes.isErr()) {
         throw new Error(openProjectRes.error.message);
       }

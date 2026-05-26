@@ -215,7 +215,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether to seed the Pod with a set of starter tasks. Defaults to false when creating via the tool."
+          "Whether to seed the Pod with a set of starter tasks after creation. Defaults to false."
         ),
     },
     stake: "low",

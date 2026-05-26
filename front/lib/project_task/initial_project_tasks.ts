@@ -1,4 +1,4 @@
-/** Seeded when a project is created (UI/API via `createSpaceAndGroup`, or MCP `create_project`). */
+/** Seeded via POST /pods/:podId/tasks/seed (editors only). */
 export const PROJECT_MANAGER_AGENT_SID = "project_manager" as const;
 
 const NEXT_TASK_PROMPT =
@@ -9,25 +9,25 @@ export const INITIAL_PROJECT_TASKS: {
   agentInstructions: string;
 }[] = [
   {
-    text: "Set up the Pod description and goals",
+    text: "🎯 Set up the Pod description and goals",
     agentInstructions:
       "Help the user refine a short Pod description and clear goals. Use Pod tools to read or update Pod metadata if available. Propose concrete edits; keep the tone practical and brief.\n\n" +
       NEXT_TASK_PROMPT,
   },
   {
-    text: "Bring in knowledge from company data",
+    text: "📚 Bring in knowledge from company data",
     agentInstructions:
       "When it matches the Pod's purpose, do a substantive pass over company data (search / retrieval across workspace sources and connected systems—not just a single quick lookup). Synthesize what matters, cite where it came from, then help store it in Pod knowledge using Pod tools (files, uploads, or structured notes). Skip deep dives when context isn't needed yet.\n\n" +
       NEXT_TASK_PROMPT,
   },
   {
-    text: "Search for and add Pod members",
+    text: "👥 Search for and add Pod members",
     agentInstructions:
       "Help the user identify the right collaborators for this Pod. Use people search or directory tools to find candidates by name, role, team, or expertise. Once you have good candidates, mention them by name in the conversation using @mention — this will show the user a dialog to add them to the Pod directly from the conversation. If the user needs an alternative, link them to the Pod settings page by appending `#settings` to the Pod URL.\n\n" +
       NEXT_TASK_PROMPT,
   },
   {
-    text: "Build a list of initial tasks",
+    text: "📋 Build a list of initial tasks",
     agentInstructions:
       "Partner with the user to produce a practical starter backlog for this Pod: concrete next steps, early milestones, dependencies, and risks to watch. Keep items actionable; offer wording they can turn into tasks. This list shapes follow-on work—don't recycle these seeded items verbatim.\n\n" +
       NEXT_TASK_PROMPT,

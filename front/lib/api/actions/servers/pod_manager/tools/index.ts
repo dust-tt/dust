@@ -42,6 +42,7 @@ import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
+import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -640,17 +641,13 @@ export function createProjectManagerTools(
           );
         }
 
-        const createSpaceRes = await createSpaceAndGroup(
-          auth,
-          {
-            name: params.title,
-            isRestricted: params.visibility !== "open",
-            spaceKind: "project",
-            managementMode: "manual",
-            memberIds: [],
-          },
-          { seedInitialTasks: params.seedInitialTasks ?? false }
-        );
+        const createSpaceRes = await createSpaceAndGroup(auth, {
+          name: params.title,
+          isRestricted: params.visibility !== "open",
+          spaceKind: "project",
+          managementMode: "manual",
+          memberIds: [],
+        });
 
         if (createSpaceRes.isErr()) {
           const error = createSpaceRes.error;
@@ -716,6 +713,20 @@ export function createProjectManagerTools(
                 `Pod created but failed to add some members: ${addMembersRes.error.message}`,
                 { tracked: false }
               )
+            );
+          }
+        }
+
+        if (params.seedInitialTasks) {
+          const seedResult = await seedInitialPodTasks(auth, projectSpace);
+          if (
+            seedResult.isErr() &&
+            seedResult.error.code === "internal_error"
+          ) {
+            return new Err(
+              new MCPError("Pod created but failed to seed initial tasks.", {
+                tracked: false,
+              })
             );
           }
         }

@@ -115,6 +115,7 @@ function TaskMarkdownPopoverStartChrome({
       disabledReason="Reopen this task before starting work."
       isStarting={isStarting}
       isFirstOnboardingTask={false}
+      context="conversation"
       defaultGoToConversation={false}
       triggerClassName="shrink-0"
       triggerSize={triggerSize}

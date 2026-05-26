@@ -1,6 +1,7 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -28,6 +29,36 @@ export type ProjectTaskStartWorkingOptions = {
   goToConversation: boolean;
 };
 
+export type ProjectTaskStartWorkingContext = "tasks_page" | "conversation";
+
+function startRedirectMenuLabels(context: ProjectTaskStartWorkingContext): {
+  goToConversation: string;
+  stay: string;
+  ariaLabel: string;
+} {
+  switch (context) {
+    case "conversation":
+      return {
+        goToConversation: "Open task conversation",
+        stay: "Stay in this conversation",
+        ariaLabel: "After start: open task conversation or stay here",
+      };
+    case "tasks_page":
+      return {
+        goToConversation: "Redirect to conversation",
+        stay: "Stay on tasks",
+        ariaLabel: "After start: open conversation or stay on tasks",
+      };
+    default:
+      assertNeverAndIgnore(context);
+      return {
+        goToConversation: "Redirect to conversation",
+        stay: "Stay on tasks",
+        ariaLabel: "After start: open conversation or stay on tasks",
+      };
+  }
+}
+
 export function ProjectTaskStartWorkingDropdown({
   owner,
   taskSId,
@@ -38,6 +69,7 @@ export function ProjectTaskStartWorkingDropdown({
   isStarting,
   isFirstOnboardingTask = false,
   defaultGoToConversation = false,
+  context = "tasks_page",
   onOpenChange,
   onStart,
   triggerClassName,
@@ -53,6 +85,7 @@ export function ProjectTaskStartWorkingDropdown({
   isStarting: boolean;
   isFirstOnboardingTask?: boolean;
   defaultGoToConversation?: boolean;
+  context?: ProjectTaskStartWorkingContext;
   onOpenChange?: (open: boolean) => void;
   onStart: (options: ProjectTaskStartWorkingOptions) => Promise<void>;
   triggerClassName?: string;
@@ -83,6 +116,14 @@ export function ProjectTaskStartWorkingDropdown({
     }
   };
 
+  const handleDirectStart = async () => {
+    await onStart({
+      customMessage: undefined,
+      agentConfigurationId: undefined,
+      goToConversation: true,
+    });
+  };
+
   const handleConfirmStart = async () => {
     setStartMenuOpen(false);
     onOpenChange?.(false);
@@ -97,6 +138,8 @@ export function ProjectTaskStartWorkingDropdown({
     });
   };
 
+  const redirectMenuLabels = startRedirectMenuLabels(context);
+
   const startRedirectMenuItems = useMemo((): DropdownMenuItemProps[] => {
     const check = (
       <Icon
@@ -107,7 +150,7 @@ export function ProjectTaskStartWorkingDropdown({
     );
     return [
       {
-        label: "Redirect to conversation",
+        label: redirectMenuLabels.goToConversation,
         onSelect: (e: Event) => {
           e.preventDefault();
           setGoToConversationAfterStart(true);
@@ -115,7 +158,7 @@ export function ProjectTaskStartWorkingDropdown({
         endComponent: goToConversationAfterStart ? check : undefined,
       },
       {
-        label: "Stay on tasks",
+        label: redirectMenuLabels.stay,
         onSelect: (e: Event) => {
           e.preventDefault();
           setGoToConversationAfterStart(false);
@@ -123,7 +166,27 @@ export function ProjectTaskStartWorkingDropdown({
         endComponent: !goToConversationAfterStart ? check : undefined,
       },
     ];
-  }, [goToConversationAfterStart]);
+  }, [
+    goToConversationAfterStart,
+    redirectMenuLabels.goToConversation,
+    redirectMenuLabels.stay,
+  ]);
+
+  if (isFirstOnboardingTask && !disabled) {
+    return (
+      <Button
+        icon={PlayIcon}
+        size={triggerSize}
+        variant="outline"
+        className={triggerClassName}
+        isLoading={isStarting}
+        disabled={isStarting}
+        isPulsing={!isStarting}
+        tooltip="Start working on task"
+        onClick={() => void handleDirectStart()}
+      />
+    );
+  }
 
   const triggerButton = disabled ? (
     <Tooltip
@@ -218,7 +281,7 @@ export function ProjectTaskStartWorkingDropdown({
                     size="sm"
                     icon={ChevronDownIcon}
                     disabled={isStarting || !selectedStartAgent}
-                    aria-label="After start: open conversation or stay on tasks"
+                    aria-label={redirectMenuLabels.ariaLabel}
                   />
                 }
               />
