@@ -19,9 +19,9 @@ import {
   YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
 import {
-  getMetronomeClient,
   getMetronomeContractById,
   listMetronomeContracts,
+  setMetronomeContractCreditCustomFields,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
 import {
@@ -130,13 +130,20 @@ async function stampContractCreditType({
     }
   }
 
-  await getMetronomeClient().v1.customFields.setValues({
-    entity: "contract_credit",
-    entity_id: creditId,
-    custom_fields: {
+  const setResult = await setMetronomeContractCreditCustomFields({
+    creditId,
+    customFields: {
       [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: value,
     },
   });
+  if (setResult.isErr()) {
+    return new Err(
+      new ProcessMetronomeWebhookError(
+        "processing_failed",
+        `Error stamping contract credit custom field: ${setResult.error.message}`
+      )
+    );
+  }
   logger.info(
     { customerId, contractId, creditId, value, eventType },
     `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE`

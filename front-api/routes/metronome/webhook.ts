@@ -1,6 +1,6 @@
 import apiConfig from "@app/lib/api/config";
 import { processMetronomeWebhook } from "@app/lib/api/metronome/process_webhook";
-import { getMetronomeClient } from "@app/lib/metronome/client";
+import { unwrapMetronomeWebhook } from "@app/lib/metronome/client";
 import { MetronomeWebhookEventSchema } from "@app/lib/metronome/webhook_events";
 import {
   releaseMetronomeWebhookEvent,
@@ -53,8 +53,7 @@ app.post("/", async (ctx): HandlerResult<ResponseBody> => {
 
   let rawEvent: unknown;
   try {
-    const client = getMetronomeClient();
-    rawEvent = client.webhooks.unwrap(bodyString, headers, webhookSecret);
+    rawEvent = unwrapMetronomeWebhook(bodyString, headers, webhookSecret);
   } catch (err) {
     logger.error(
       { error: normalizeError(err) },

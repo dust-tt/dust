@@ -3,14 +3,15 @@ import {
   ceilToHourISO,
   createMetronomeContract,
   createMetronomeCustomer,
+  editMetronomeContract,
   ensureMetronomeStripeBillingConfig,
   findMetronomeCustomerByAlias,
   floorToHourISO,
-  getMetronomeClient,
   getMetronomeContractById,
   getMetronomeCustomerStripeCustomerId,
   listMetronomeContracts,
   scheduleMetronomeContractEnd,
+  setMetronomeContractCustomFields,
 } from "@app/lib/metronome/client";
 import {
   CURRENCY_TO_CREDIT_TYPE_ID,
@@ -928,8 +929,6 @@ export async function applyEnterpriseOverrides({
     `Applying enterprise overrides (${pricing.billingMode})`
   );
 
-  const client = getMetronomeClient();
-
   // Check existing contract state to avoid adding duplicate subscriptions/commits on re-runs.
   let subscriptionsToAdd = payload.add_subscriptions;
   let commitsToAdd = payload.recurring_commits;
@@ -938,11 +937,14 @@ export async function applyEnterpriseOverrides({
     (subscriptionsToAdd && subscriptionsToAdd.length > 0) ||
     (commitsToAdd && commitsToAdd.length > 0)
   ) {
-    const contractResponse = await client.v2.contracts.retrieve({
-      customer_id: metronomeCustomerId,
-      contract_id: contractId,
+    const contractResult = await getMetronomeContractById({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
     });
-    const contractData = contractResponse.data;
+    if (contractResult.isErr()) {
+      throw contractResult.error;
+    }
+    const contractData = contractResult.value;
 
     // Filter out subscriptions that already exist.
     if (subscriptionsToAdd && subscriptionsToAdd.length > 0) {
@@ -967,7 +969,7 @@ export async function applyEnterpriseOverrides({
     }
   }
 
-  await client.v2.contracts.edit({
+  const editResult = await editMetronomeContract({
     customer_id: metronomeCustomerId,
     contract_id: contractId,
     add_overrides: payload.overrides,
@@ -978,14 +980,19 @@ export async function applyEnterpriseOverrides({
       ? { add_recurring_commits: commitsToAdd }
       : {}),
   });
+  if (editResult.isErr()) {
+    throw editResult.error;
+  }
 
   // Set custom fields (MAU_TIERS, MAU_THRESHOLD) on the contract.
   if (payload.custom_fields) {
-    await client.v1.customFields.setValues({
-      entity: "contract",
-      entity_id: contractId,
-      custom_fields: payload.custom_fields,
+    const customFieldsResult = await setMetronomeContractCustomFields({
+      contractId,
+      customFields: payload.custom_fields,
     });
+    if (customFieldsResult.isErr()) {
+      throw customFieldsResult.error;
+    }
   }
 
   overrideLogger.info(

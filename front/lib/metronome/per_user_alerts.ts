@@ -1,15 +1,15 @@
-import type { MetronomeAlert } from "@app/lib/metronome/alerts";
 import {
   clearMetronomeAlert,
   findMetronomeAlert,
-  listMetronomeAlerts,
   upsertMetronomeAlert,
 } from "@app/lib/metronome/alerts";
+import { listMetronomeAlerts } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
 
 const USER_ID_GROUP_KEY = "user_id";
 
@@ -37,7 +37,7 @@ export async function getMetronomePerUserCap({
   metronomeCustomerId: string;
   workspaceId: string;
   userId: string;
-}): Promise<Result<MetronomeAlert | null, Error>> {
+}): Promise<Result<CustomerAlert | null, Error>> {
   return findMetronomeAlert({
     metronomeCustomerId,
     uniquenessKey: perUserAlertUniquenessKey(workspaceId, userId),
@@ -45,10 +45,9 @@ export async function getMetronomePerUserCap({
 }
 
 /**
- * List per-user caps for a workspace. Returns a `Map<userId, MetronomeAlert>`
+ * List per-user caps for a workspace. Returns a `Map<userId, CustomerAlert>`
  * built from all enabled alerts whose `uniqueness_key` matches the per-user
- * cap pattern for this workspace. Each entry exposes the current threshold
- * and Metronome evaluation state.
+ * cap pattern for this workspace.
  */
 export async function listMetronomePerUserCapsForWorkspace({
   metronomeCustomerId,
@@ -56,15 +55,15 @@ export async function listMetronomePerUserCapsForWorkspace({
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<Result<Map<string, MetronomeAlert>, Error>> {
+}): Promise<Result<Map<string, CustomerAlert>, Error>> {
   const prefix = perUserAlertUniquenessKeyPrefix(workspaceId);
-  const caps = new Map<string, MetronomeAlert>();
+  const caps = new Map<string, CustomerAlert>();
   try {
-    for await (const alert of listMetronomeAlerts({
+    for await (const entry of listMetronomeAlerts({
       customer_id: metronomeCustomerId,
       alert_statuses: ["ENABLED"],
     })) {
-      const key = alert.uniquenessKey;
+      const key = entry.alert.uniqueness_key;
       if (!key || !key.startsWith(prefix)) {
         continue;
       }
@@ -72,7 +71,7 @@ export async function listMetronomePerUserCapsForWorkspace({
       if (!userId) {
         continue;
       }
-      caps.set(userId, alert);
+      caps.set(userId, entry);
     }
     return new Ok(caps);
   } catch (err) {

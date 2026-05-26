@@ -1,8 +1,8 @@
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import {
-  getMetronomeClient,
   getMetronomeContractById,
   listMetronomeContracts,
+  unwrapMetronomeWebhook,
 } from "@app/lib/metronome/client";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import {
@@ -43,9 +43,9 @@ vi.mock(import("@app/lib/metronome/client"), async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    getMetronomeClient: vi.fn(),
     getMetronomeContractById: vi.fn(),
     listMetronomeContracts: vi.fn(),
+    unwrapMetronomeWebhook: vi.fn(),
   };
 });
 
@@ -183,11 +183,9 @@ beforeEach(() => {
   vi.mocked(releaseMetronomeWebhookEvent).mockResolvedValue(undefined);
 });
 
-/** Stub `getMetronomeClient().webhooks.unwrap` to bypass signature verification. */
+/** Stub `unwrapMetronomeWebhook` to bypass signature verification. */
 function mockUnwrap(event: Record<string, unknown>) {
-  vi.mocked(getMetronomeClient).mockReturnValue({
-    webhooks: { unwrap: vi.fn().mockReturnValue(event) },
-  } as never);
+  vi.mocked(unwrapMetronomeWebhook).mockReturnValue(event);
 }
 
 describe("Metronome webhook — contract.start", () => {

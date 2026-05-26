@@ -91,7 +91,7 @@ export async function getUserSpendLimit(
   if (!result.value) {
     return new Ok({ kind: "unlimited" });
   }
-  return new Ok({ kind: "limited", awuCredits: result.value.threshold });
+  return new Ok({ kind: "limited", awuCredits: result.value.alert.threshold });
 }
 
 /**

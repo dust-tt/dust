@@ -116,15 +116,22 @@ export async function handleAwuPoolSummaryRequest(
       // (via the `DUST_SEAT_TYPE` custom field) rather than a hardcoded list.
       const awuCreditTypeId = getCreditTypeAwuId();
       const activeContract = await getActiveContract(workspace.sId);
+      if (!activeContract) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Workspace is not configured for Metronome billing.",
+          },
+        });
+      }
       const productSeatTypes = await getProductSeatTypes();
-      const seatProductIds = activeContract
-        ? new Set(
-            getSeatTypesByProductIdFromContract(
-              activeContract,
-              productSeatTypes
-            ).keys()
-          )
-        : new Set<string>();
+      const seatProductIds = new Set(
+        getSeatTypesByProductIdFromContract(
+          activeContract,
+          productSeatTypes
+        ).keys()
+      );
       const awuBalances = balancesResult.value.filter(
         (entry) =>
           entry.access_schedule?.credit_type?.id === awuCreditTypeId &&

@@ -1,4 +1,4 @@
-import { getMetronomeClient } from "@app/lib/metronome/client";
+import { listMetronomeProducts } from "@app/lib/metronome/client";
 import { SEAT_TYPE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
@@ -23,8 +23,12 @@ import type { Subscription } from "@metronome/sdk/resources";
 async function fetchProductSeatTypes(): Promise<
   Record<string, MembershipSeatType>
 > {
+  const productsResult = await listMetronomeProducts();
+  if (productsResult.isErr()) {
+    throw productsResult.error;
+  }
   const result: Record<string, MembershipSeatType> = {};
-  for await (const product of getMetronomeClient().v1.contracts.products.list()) {
+  for (const product of productsResult.value) {
     const value = product.custom_fields?.[SEAT_TYPE_CUSTOM_FIELD_KEY];
     if (value && isMembershipSeatType(value)) {
       result[product.id] = value;
