@@ -79,9 +79,11 @@ export function makeFileAuthorizationError({
 export function makeMCPToolExit({
   message,
   isError,
+  reason,
 }: {
   message: string;
   isError: boolean;
+  reason?: EarlyExitOutputResourceType["reason"];
 }): SingleResourceToolOutput<EarlyExitOutputResourceType> {
   return {
     content: [
@@ -92,6 +94,7 @@ export function makeMCPToolExit({
           text: message,
           type: "tool_early_exit",
           isError,
+          ...(reason ? { reason } : {}),
           uri: "",
         },
       },

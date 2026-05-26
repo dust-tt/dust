@@ -27,6 +27,7 @@ import {
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
+  AgentMessageStatus,
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
@@ -44,6 +45,11 @@ const SUB_AGENT_FLUSH_INTERVAL_MS = 2 * DEFAULT_EVENT_FLUSH_INTERVAL_MS;
 const DEEP_CONVERSATION_FLUSH_INTERVAL_MS =
   10 * DEFAULT_EVENT_FLUSH_INTERVAL_MS;
 
+type AgentMessageStatusUpdate = Extract<
+  AgentMessageStatus,
+  "succeeded" | "cancelled" | "interrupted" | "gracefully_stopped"
+>;
+
 /**
  * Update in database as well as in-memory agent message.
  * Note that we are mutating the agentMessage object in memory and not returning a new object.
@@ -58,7 +64,7 @@ export async function updateAgentMessageDBAndMemory(
         update:
           | {
               type: "status";
-              status: "succeeded" | "cancelled" | "gracefully_stopped";
+              status: AgentMessageStatusUpdate;
             }
           | {
               type: "error";
@@ -300,7 +306,7 @@ export async function processEventForDatabase(
         conversation,
         update: {
           type: "status",
-          status: "cancelled",
+          status: event.status,
         },
       });
       break;
