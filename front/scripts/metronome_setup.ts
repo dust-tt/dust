@@ -1287,7 +1287,7 @@ const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
-  initial_quantity: 1,
+  initial_quantity: 0,
   proration: {
     is_prorated: true,
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
@@ -1301,7 +1301,7 @@ const LEGACY_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
   billing_frequency: "ANNUAL",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
-  initial_quantity: 1,
+  initial_quantity: 0,
   proration: {
     is_prorated: true,
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
@@ -1317,7 +1317,7 @@ const WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION: PackageSubscription = {
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
-  initial_quantity: 1,
+  initial_quantity: 0,
   proration: {
     is_prorated: true,
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
@@ -1329,7 +1329,7 @@ const WORKSPACE_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
   billing_frequency: "ANNUAL",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
-  initial_quantity: 1,
+  initial_quantity: 0,
   proration: {
     is_prorated: true,
     invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
