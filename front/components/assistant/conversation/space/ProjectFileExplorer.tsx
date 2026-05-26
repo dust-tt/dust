@@ -243,7 +243,11 @@ function ProjectFileExplorerContent({
   owner,
   space,
 }: ProjectFileExplorerProps) {
-  const [frameFileId, setFrameFileId] = useState<string | null>(null);
+  const [framePreview, setFramePreview] = useState<{
+    fileId: string;
+    path: string;
+    fileName: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentFolderPath, setCurrentFolderPath] = useState("");
   const [navigationResetKey, setNavigationResetKey] = useState(0);
@@ -685,9 +689,15 @@ function ProjectFileExplorerContent({
     <>
       <ProjectFrameSheet
         owner={owner}
-        fileId={frameFileId}
-        isOpen={frameFileId !== null}
-        onClose={() => setFrameFileId(null)}
+        fileId={framePreview?.fileId ?? null}
+        framePath={framePreview?.path ?? null}
+        fileName={framePreview?.fileName}
+        spaceId={space.sId}
+        pinnedFramePath={space.pinnedFramePath ?? null}
+        isEditor={isEditor}
+        isArchived={isArchived}
+        isOpen={framePreview !== null}
+        onClose={() => setFramePreview(null)}
       />
 
       <RenameFileDialog
@@ -754,7 +764,15 @@ function ProjectFileExplorerContent({
         onDelete={!isArchived ? onDelete : undefined}
         onMoveFile={!isArchived ? onMoveFile : undefined}
         onRename={!isArchived ? onRename : undefined}
-        onOpenInteractive={(entry) => setFrameFileId(entry.fileId)}
+        onOpenInteractive={(entry) => {
+          if (entry.fileId) {
+            setFramePreview({
+              fileId: entry.fileId,
+              path: entry.path,
+              fileName: entry.fileName,
+            });
+          }
+        }}
         getExtraFileMenuItems={getExtraFileMenuItems}
         toolbarExtraActions={addButton}
         isLoading={isLoading}
