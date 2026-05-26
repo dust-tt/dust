@@ -1,4 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
 /* eslint-disable dust/enforce-client-types-in-public-api */
 // Pass through to workOS, do not enforce return types.
 
@@ -7,7 +6,9 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { Context } from "hono";
+import { Hono } from "hono";
 
 const ALLOWED_CALLBACK_URL_PATTERNS: RegExp[] = [
   // Zendesk app: https://1073173.apps.zdusercontent.com/1073173/assets/<hash>/oauth-callback.html
@@ -28,31 +29,31 @@ const workosConfig = {
 /**
  * @ignoreswagger
  */
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  const { action } = req.query;
+
+// Mounted at /api/v1/auth/:action. Unauthenticated OAuth proxy endpoints.
+const app = new Hono();
+
+app.all("/", async (ctx) => {
+  const action = ctx.req.param("action");
 
   switch (action) {
     case "authorize":
-      return handleAuthorize(req, res);
+      return handleAuthorize(ctx);
     case "authenticate":
-      return handleAuthenticate(req, res);
+      return handleAuthenticate(ctx);
     case "callback":
-      return handleCallback(req, res);
+      return handleCallback(ctx);
     case "logout":
-      return handleLogout(req, res);
+      return handleLogout(ctx);
     default:
-      res.status(404).json({ error: "Action not found" });
+      return ctx.json({ error: "Action not found" }, 404);
   }
-}
+});
 
-async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
-  const { query } = req;
+async function handleAuthorize(ctx: Context) {
+  const query = ctx.req.query();
 
-  let workspaceId = undefined;
+  let workspaceId: string | undefined = undefined;
   if (
     typeof query.organization_id === "string" &&
     query.organization_id.startsWith("workspace-")
@@ -81,10 +82,10 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
       logger.error(
         `Workspace with sId ${workspaceId} does not have a WorkOS organization ID.`
       );
-      res.status(400).json({
-        error: "Workspace does not have a WorkOS organization ID",
-      });
-      return;
+      return ctx.json(
+        { error: "Workspace does not have a WorkOS organization ID" },
+        400
+      );
     }
 
     const connections = await getWorkOS().sso.listConnections({
@@ -110,61 +111,66 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   });
 
   const authorizeUrl = `https://${workosConfig.authorizeUri}?${params}`;
-  res.redirect(authorizeUrl);
+  return ctx.redirect(authorizeUrl);
 }
 
-async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
+async function handleAuthenticate(ctx: Context) {
   try {
+    const body = await ctx.req.parseBody();
+
     // eslint-disable-next-line no-restricted-globals
     const response = await fetch(`https://${workosConfig.authenticateUri}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        Origin: req.headers.origin || "",
+        Origin: ctx.req.header("origin") ?? "",
       },
       credentials: "include",
       body: new URLSearchParams({
-        ...req.body,
+        ...(body as Record<string, string>),
         client_id: workosConfig.clientId,
       }).toString(),
     });
     const data = await response.json();
-    res.status(response.status).json(data);
+    return ctx.json(
+      data as Record<string, unknown>,
+      response.status as 200 | 400 | 401 | 403 | 404 | 500
+    );
   } catch (error) {
-    logger.error({ error }, "Error in authenticate proxy");
-    res.status(500).json({ error: "Internal server error" });
+    logger.error({ error: normalizeError(error) }, "Error in authenticate proxy");
+    return ctx.json({ error: "Internal server error" }, 500);
   }
 }
 
-async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
-  const { query } = req;
+async function handleLogout(ctx: Context) {
+  const query = ctx.req.query();
   const params = new URLSearchParams({
     ...query,
     client_id: workosConfig.clientId,
   }).toString();
   const logoutUrl = `https://${workosConfig.logoutUri}?${params}`;
-  res.redirect(logoutUrl);
+  return ctx.redirect(logoutUrl);
 }
 
 /**
  * OAuth callback proxy for apps with dynamic redirect URIs.
  */
-async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
-  const { code, state, error, error_description } = req.query;
+async function handleCallback(ctx: Context) {
+  const query = ctx.req.query();
+  const { code, state, error, error_description } = query;
 
   if (!isString(state)) {
-    return res.status(400).json({ error: "Missing state parameter" });
+    return ctx.json({ error: "Missing state parameter" }, 400);
   }
 
   const callbackUrl = decodeClientState(state);
   if (!callbackUrl) {
-    return res.status(400).json({ error: "Invalid state parameter" });
+    return ctx.json({ error: "Invalid state parameter" }, 400);
   }
 
   // Validate the callback URL against allowed patterns
   if (!isAllowedCallbackUrl(callbackUrl)) {
-    return res.status(400).json({ error: "Invalid callback URL" });
+    return ctx.json({ error: "Invalid callback URL" }, 400);
   }
 
   const redirectUrl = new URL(callbackUrl);
@@ -175,15 +181,15 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     if (isString(error_description)) {
       redirectUrl.searchParams.set("error_description", error_description);
     }
-    return res.redirect(redirectUrl.toString());
+    return ctx.redirect(redirectUrl.toString());
   }
 
   if (!isString(code)) {
-    return res.status(400).json({ error: "Missing code parameter" });
+    return ctx.json({ error: "Missing code parameter" }, 400);
   }
 
   redirectUrl.searchParams.set("code", code);
-  return res.redirect(redirectUrl.toString());
+  return ctx.redirect(redirectUrl.toString());
 }
 
 function isAllowedCallbackUrl(url: string): boolean {
@@ -217,3 +223,5 @@ function decodeClientState(state: string): string | undefined {
     return undefined;
   }
 }
+
+export default app;
