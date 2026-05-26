@@ -37,12 +37,18 @@ vi.mock("@app/lib/utils/statsd", () => ({
   }),
 }));
 
-vi.mock("@app/lib/file_storage", () => ({
-  getWebhookRequestsBucket: () => ({
-    uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
-    uploadSmallRawContentToBucketAsNewFile: uploadWebhookPayloadMock,
-  }),
-}));
+vi.mock("@app/lib/file_storage", async () => {
+  const { fileStorageMock } = await import(
+    "@app/tests/utils/mocks/file_storage"
+  );
+  return {
+    ...fileStorageMock.mock(),
+    getWebhookRequestsBucket: () => ({
+      uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+      uploadSmallRawContentToBucketAsNewFile: uploadWebhookPayloadMock,
+    }),
+  };
+});
 
 vi.mock("@app/temporal/triggers/webhook_client", () => ({
   launchTriggersWorkflows: launchTriggersWorkflowsMock,
@@ -149,7 +155,7 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     const response = await postWebhook(
       workspace,
-      "webhook_source/nonexistent",
+      "whs_nonexistent",
       "any-secret",
       { any: "payload" }
     );
@@ -159,25 +165,27 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     expect(data.error.type).toBe("webhook_source_not_found");
   });
 
-  it("returns 404 on non-POST methods", async () => {
+  it("returns 401 on non-POST methods", async () => {
     const { workspace } = await createPublicApiMockRequest();
 
     const response = await honoApp.request(
-      `/api/v1/w/${workspace.sId}/triggers/hooks/webhook_source/whatever/any-secret`,
+      `/api/v1/w/${workspace.sId}/triggers/hooks/whs_whatever/any-secret`,
       {
         method: "GET",
       }
     );
 
-    // Hono returns 404 when no GET route is registered (vs. 405 in Next).
-    expect(response.status).toBe(404);
+    // Only POST is registered on the (unauthenticated) triggers sub-app, so a
+    // GET falls through to the authenticated /v1/w/:wId app, whose publicApiAuth
+    // rejects the missing credentials with 401 (vs. 405 in the Next handler).
+    expect(response.status).toBe(401);
   });
 
   it("returns 400 when content-type is not application/json", async () => {
     const { workspace } = await createPublicApiMockRequest();
 
     const response = await honoApp.request(
-      `/api/v1/w/${workspace.sId}/triggers/hooks/webhook_source/whatever/any-secret`,
+      `/api/v1/w/${workspace.sId}/triggers/hooks/whs_whatever/any-secret`,
       {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
