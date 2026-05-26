@@ -67,6 +67,34 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("Do not pass custom TLS trust settings");
   });
 
+  it("points at `dsbx env` for env-var discovery only when dsbx tools are enabled", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+
+    const withoutDsbxTools = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(withoutDsbxTools).not.toContain("dsbx env");
+    expect(withoutDsbxTools).toContain(
+      "Do not list available environment variable names just to enumerate" +
+        " what is configured."
+    );
+
+    await FeatureFlagFactory.basic(auth, "sandbox_dsbx_tools");
+
+    const withDsbxTools = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(withDsbxTools).toContain("`dsbx env`");
+    expect(withDsbxTools).toContain("the HTTPS domain(s) it is approved for");
+    expect(withDsbxTools).not.toContain(
+      "Do not list available environment variable names just to enumerate"
+    );
+  });
+
   it("hides agent egress request instructions until enabled", async () => {
     const {
       authenticator: auth,

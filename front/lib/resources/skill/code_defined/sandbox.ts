@@ -196,7 +196,27 @@ hangs or fails with TLS/DNS errors, check the \`<network_proxy_logs>\`
 block first; a denied egress is a possible cause.`;
 }
 
-function buildEnvironmentVariablesSection(): string {
+function buildEnvironmentVariablesSection({
+  hasDsbxTools,
+}: {
+  hasDsbxTools: boolean;
+}): string {
+  const discoveryParagraph = hasDsbxTools
+    ? `
+To see which \`DST_*\` and \`DSEC_*\` variables are configured for this
+workspace, run \`dsbx env\`. It lists each variable by name and, for every
+\`DSEC_*\` placeholder, the HTTPS domain(s) it is approved for. It never
+prints values, so it is safe to run before deciding which variable to use.
+Prefer \`dsbx env\` over guessing names or dumping the environment with
+\`env\` / \`printenv\` (those would just produce redacted output).
+`
+    : "";
+
+  const enumerationGuidance = hasDsbxTools
+    ? ""
+    : " Do not list available environment variable names just to enumerate" +
+      " what is configured.";
+
   return `#### Sandbox Environment Variables
 
 The sandbox may have workspace-configured environment variables available
@@ -210,7 +230,7 @@ There are two prefixes:
   intentionally not the real secret. Send it as an HTTPS request header to
   the domain approved for that secret; the egress proxy substitutes the real
   value on the wire.
-
+${discoveryParagraph}
 Hard rules for environment variables:
 
 - Never print, echo, \`cat\`, log, summarize, or otherwise disclose a
@@ -256,10 +276,9 @@ use the JDK that came with the sandbox image; do not install another JDK or
 override the trust store mid-session. If you ignore this, the usual symptom
 is a TLS error such as \`PKIX path building failed\`.
 
-If you need to confirm a variable is set, check whether it is non-empty
-without printing its content (e.g. \`[ -n "\$DST_FOO" ]\` or
-\`[ -n "\$DSEC_FOO" ]\` in bash). Do not list available environment variable
-names just to enumerate what is configured.
+If you need to confirm a specific variable is set, check whether it is
+non-empty without printing its content (e.g. \`[ -n "\$DST_FOO" ]\` or
+\`[ -n "\$DSEC_FOO" ]\` in bash).${enumerationGuidance}
 
 Bash tool output that contains a configured environment variable value is
 post-processed and replaced with a marker like \`«redacted: $FOO»\`. If you
@@ -274,7 +293,9 @@ async function buildSandboxInstructions(
   { hasDsbxTools, isProject }: { hasDsbxTools: boolean; isProject: boolean }
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
-  const environmentVariablesSection = buildEnvironmentVariablesSection();
+  const environmentVariablesSection = buildEnvironmentVariablesSection({
+    hasDsbxTools,
+  });
   const conversationFilesSection = buildConversationFilesSection();
   const projectFilesSection = isProject ? buildProjectFilesSection() : null;
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
