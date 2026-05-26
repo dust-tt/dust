@@ -9,6 +9,7 @@ import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
 import { runMentionsQueueWorker } from "@app/temporal/mentions_queue/worker";
+import { runMetronomeEventsWorker } from "@app/temporal/metronome_events_queue/worker";
 import { runNotificationsQueueWorker } from "@app/temporal/notifications_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runProjectTaskWorker } from "@app/temporal/project_task/worker";
@@ -38,6 +39,7 @@ export type WorkerName =
   | "labs"
   | "mentions_count"
   | "mentions_queue"
+  | "metronome_events_queue"
   | "notifications_queue"
   | "poke"
   | "production_checks"
@@ -63,6 +65,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   labs: runLabsTranscriptsWorker,
   mentions_count: runMentionsCountWorker,
   mentions_queue: runMentionsQueueWorker,
+  metronome_events_queue: runMetronomeEventsWorker,
   notifications_queue: runNotificationsQueueWorker,
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,

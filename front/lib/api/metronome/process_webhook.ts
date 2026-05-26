@@ -36,12 +36,11 @@ import {
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
-import { getCustomerIdFromEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
@@ -190,30 +189,11 @@ async function ensureWorkOSOrganizationForPaidPlan({
 
 export async function processMetronomeWebhook({
   event,
+  workspace,
 }: {
   event: MetronomeWebhookEvent;
+  workspace: WorkspaceResource;
 }): Promise<Result<undefined, ProcessMetronomeWebhookError>> {
-  // Resolve the workspace once for any event that carries a customer_id
-  // (every type except `integration.issue`). If the customer can't be
-  // mapped to a workspace, ack and stop — Metronome would otherwise
-  // retry-storm a payload we have nothing to do with.
-  const customerId = getCustomerIdFromEvent(event);
-  const workspace = customerId
-    ? await WorkspaceResource.fetchByMetronomeCustomerId(customerId)
-    : null;
-
-  if (!workspace) {
-    logger.info(
-      {
-        eventId: event.id,
-        eventType: event.type,
-        customerId,
-      },
-      "[Metronome Webhook] No workspace mapped to customer, ack and skip"
-    );
-    return new Ok(undefined);
-  }
-
   switch (event.type) {
     case "alerts.spend_threshold_reached": {
       // Two flavours land on this event type:
