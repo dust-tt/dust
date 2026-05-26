@@ -1,19 +1,17 @@
-// @migration-status: MIGRATED_TO_HONO
-
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import {
   getConversationFilesBasePath,
   parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
-import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 import path from "path";
+
+// Mounted at /api/v1/w/:wId/assistant/conversations/:cId/files.
+const app = publicApiApp();
 
 /**
  * @swagger
@@ -67,24 +65,13 @@ import path from "path";
  *       405:
  *         description: Method not supported.
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<never>>,
-  auth: Authenticator
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "Only GET method is supported.",
-      },
-    });
-  }
+app.get("/:rel{.+}", async (ctx) => {
+  const auth = ctx.get("auth");
+  const cId = ctx.req.param("cId") ?? "";
+  const rel = ctx.req.param("rel");
 
-  const { cId, rel } = req.query;
-  if (!isString(cId) || !Array.isArray(rel) || rel.length === 0) {
-    return apiError(req, res, {
+  if (!isString(rel) || rel.length === 0) {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -95,7 +82,7 @@ async function handler(
 
   const conversation = await ConversationResource.fetchById(auth, cId);
   if (!conversation) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "conversation_not_found",
@@ -106,9 +93,9 @@ async function handler(
 
   // Require a conversation-scoped path (e.g. `conversation/foo.pdf`), matching what the agent
   // file system tools surface. Bare relative paths and other scope prefixes are rejected.
-  const scoped = parseScopedFilePath(rel.join("/"));
+  const scoped = parseScopedFilePath(rel);
   if (!scoped || scoped.prefix !== "conversation") {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -123,7 +110,7 @@ async function handler(
     normalizedRelative.startsWith("..") ||
     normalizedRelative.startsWith("/")
   ) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -142,7 +129,7 @@ async function handler(
   const bucket = getPrivateUploadBucket();
   const contentTypeResult = await bucket.getFileContentType(mountFilePath);
   if (contentTypeResult.isErr()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -151,17 +138,29 @@ async function handler(
     });
   }
   const contentType = contentTypeResult.value ?? "application/octet-stream";
-  res.setHeader("Content-Type", contentType);
   const readStream = bucket.file(mountFilePath).createReadStream();
-  readStream.on("error", (err) => {
-    logger.error(
-      { err, mountFilePath },
-      "Error streaming conversation file (GCS)"
-    );
-    readStream.destroy();
-    res.end();
-  });
-  readStream.pipe(res);
-}
 
-export default withPublicAPIAuthentication(handler);
+  const webStream = new ReadableStream({
+    start(controller) {
+      readStream.on("data", (chunk) => controller.enqueue(chunk));
+      readStream.on("end", () => controller.close());
+      readStream.on("error", (err) => {
+        logger.error(
+          { err, mountFilePath },
+          "Error streaming conversation file (GCS)"
+        );
+        controller.error(err);
+      });
+    },
+    cancel() {
+      readStream.destroy();
+    },
+  });
+
+  return new Response(webStream, {
+    status: 200,
+    headers: { "Content-Type": contentType },
+  });
+});
+
+export default app;

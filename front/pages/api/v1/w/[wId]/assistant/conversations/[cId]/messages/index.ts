@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   isUserMessageContextValid,

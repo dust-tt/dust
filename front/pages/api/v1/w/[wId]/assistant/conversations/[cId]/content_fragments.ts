@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";

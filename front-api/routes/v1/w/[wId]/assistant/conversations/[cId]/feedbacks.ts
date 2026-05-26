@@ -1,14 +1,13 @@
-// @migration-status: MIGRATED_TO_HONO
-
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationFeedbacksForUser } from "@app/lib/api/assistant/feedback";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { GetFeedbacksResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+
+// Mounted at /api/v1/w/:wId/assistant/conversations/:cId/feedbacks.
+const app = publicApiApp();
 
 /**
  * @swagger
@@ -88,23 +87,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
  *       500:
  *         description: Internal server error
  */
-async function handler(
-  req: NextApiRequest,
+app.get("/", async (ctx): HandlerResult<GetFeedbacksResponseType> => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.param("cId") ?? "";
 
-  res: NextApiResponse<WithAPIErrorResponse<GetFeedbacksResponseType>>,
-  auth: Authenticator
-): Promise<void> {
-  if (!(typeof req.query.cId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
-
-  const conversationId = req.query.cId;
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
       auth,
@@ -112,56 +98,43 @@ async function handler(
     );
 
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const conversation = conversationRes.value;
 
-  switch (req.method) {
-    case "GET":
-      if (!auth.user()) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "user_authentication_required",
-            message: "You must be logged in as a user to access this resource.",
-          },
-        });
-      }
-
-      const feedbacksRes = await getConversationFeedbacksForUser(
-        auth,
-        conversation
-      );
-
-      if (feedbacksRes.isErr()) {
-        return apiErrorForConversation(req, res, feedbacksRes.error);
-      }
-
-      const feedbacks = feedbacksRes.value.map((feedback) => ({
-        messageId: feedback.messageId,
-        agentMessageId: feedback.agentMessageId,
-        userId: feedback.userId,
-        thumbDirection: feedback.thumbDirection,
-        content: feedback.content,
-        createdAt: feedback.createdAt.getTime(),
-        agentConfigurationId: feedback.agentConfigurationId,
-        agentConfigurationVersion: feedback.agentConfigurationVersion,
-        isConversationShared: feedback.isConversationShared,
-      }));
-
-      res.status(200).json({ feedbacks });
-      return;
-
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
+  if (!auth.user()) {
+    return apiError(ctx, {
+      status_code: 401,
+      api_error: {
+        type: "user_authentication_required",
+        message: "You must be logged in as a user to access this resource.",
+      },
+    });
   }
-}
 
-export default withPublicAPIAuthentication(handler);
+  const feedbacksRes = await getConversationFeedbacksForUser(
+    auth,
+    conversation
+  );
+
+  if (feedbacksRes.isErr()) {
+    return apiErrorForConversation(ctx, feedbacksRes.error);
+  }
+
+  const feedbacks = feedbacksRes.value.map((feedback) => ({
+    messageId: feedback.messageId,
+    agentMessageId: feedback.agentMessageId,
+    userId: feedback.userId,
+    thumbDirection: feedback.thumbDirection,
+    content: feedback.content,
+    createdAt: feedback.createdAt.getTime(),
+    agentConfigurationId: feedback.agentConfigurationId,
+    agentConfigurationVersion: feedback.agentConfigurationVersion,
+    isConversationShared: feedback.isConversationShared,
+  }));
+
+  return ctx.json({ feedbacks });
+});
+
+export default app;

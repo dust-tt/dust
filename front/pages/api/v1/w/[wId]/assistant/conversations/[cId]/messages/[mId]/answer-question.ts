@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 import { UserQuestionAnswerSchema } from "@app/lib/actions/types";
 import { registerUserAnswer } from "@app/lib/api/assistant/conversation/answer_user_question";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";

@@ -1,17 +1,19 @@
-// @migration-status: MIGRATED_TO_HONO
-
 import {
   parseMentionSelectParam,
   suggestionsOfMentions,
 } from "@app/lib/api/assistant/conversation/mention_suggestions";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
-import type { GetMentionSuggestionsResponseBodyType } from "@dust-tt/client";
-import { GetMentionSuggestionsRequestQuerySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import {
+  GetMentionSuggestionsRequestQuerySchema,
+  type GetMentionSuggestionsResponseBodyType,
+} from "@dust-tt/client";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+
+// Mounted at /api/v1/w/:wId/assistant/conversations/:cId/mentions/suggestions.
+const app = publicApiApp();
 
 /**
  * @swagger
@@ -82,59 +84,37 @@ import type { NextApiRequest, NextApiResponse } from "next";
  *       500:
  *         description: Internal Server Error.
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetMentionSuggestionsResponseBodyType>
-  >,
-  auth: Authenticator
-): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
+app.get(
+  "/",
+  validate("query", GetMentionSuggestionsRequestQuerySchema),
+  async (ctx): HandlerResult<GetMentionSuggestionsResponseBodyType> => {
+    const auth = ctx.get("auth");
+    const conversationId = ctx.req.param("cId") ?? "";
+
+    const conversationRes = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationRes) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
+        },
+      });
+    }
+
+    const { query, select: selectParam, current } = ctx.req.valid("query");
+
+    const suggestions = await suggestionsOfMentions(auth, {
+      query,
+      select: parseMentionSelectParam(selectParam),
+      current,
     });
+
+    return ctx.json({ suggestions });
   }
+);
 
-  if (!(typeof req.query.cId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
-
-  const conversationId = req.query.cId;
-
-  const conversationRes = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-  if (!conversationRes) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found",
-      },
-    });
-  }
-
-  const parsedQuery = GetMentionSuggestionsRequestQuerySchema.parse(req.query);
-  const { query, select: selectParam, current } = parsedQuery;
-
-  const suggestions = await suggestionsOfMentions(auth, {
-    query,
-    select: parseMentionSelectParam(selectParam),
-    current,
-  });
-
-  return res.status(200).json({ suggestions });
-}
-
-export default withPublicAPIAuthentication(handler);
+export default app;

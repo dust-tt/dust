@@ -1,28 +1,37 @@
-// @migration-status: MIGRATED_TO_HONO
-
 import {
   deleteMessageFeedback,
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { getActiveUserFromAuthOrEmail } from "@app/lib/api/user";
-import type { Authenticator } from "@app/lib/auth";
 import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { apiError } from "@app/logger/withlogging";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { getUserEmailFromHeaders } from "@app/types/user";
 import type { PostMessageFeedbackResponseType } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 export const MessageFeedbackRequestBodySchema = z.object({
   thumbDirection: z.enum(["up", "down"]),
   feedbackContent: z.string().nullish(),
   isConversationShared: z.boolean().optional(),
 });
+
+// Mounted at /api/v1/w/:wId/assistant/conversations/:cId/messages/:mId/feedbacks.
+const app = publicApiApp();
+
+function readHeaders(ctx: {
+  req: { raw: { headers: Headers } };
+}): Record<string, string | string[] | undefined> {
+  const headers: Record<string, string> = {};
+  ctx.req.raw.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+  return headers;
+}
 
 /**
  * @swagger
@@ -135,19 +144,113 @@ export const MessageFeedbackRequestBodySchema = z.object({
  *       404:
  *         description: Conversation, message or feedback not found
  */
-async function handler(
-  req: NextApiRequest,
+app.post(
+  "/",
+  validate("json", MessageFeedbackRequestBodySchema),
+  async (ctx): HandlerResult<PostMessageFeedbackResponseType> => {
+    const auth = ctx.get("auth");
+    const conversationId = ctx.req.param("cId") ?? "";
+    const messageId = ctx.req.param("mId") ?? "";
 
-  res: NextApiResponse<WithAPIErrorResponse<PostMessageFeedbackResponseType>>,
-  auth: Authenticator
-): Promise<void> {
+    const user = await getActiveUserFromAuthOrEmail(
+      auth,
+      getUserEmailFromHeaders(readHeaders(ctx))
+    );
+
+    if (!user) {
+      return apiError(ctx, {
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message:
+            "The user does not have an active session or is not authenticated.",
+        },
+      });
+    }
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+
+    if (!conversationResource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found.",
+        },
+      });
+    }
+
+    const messageRes = await conversationResource.getMessageById(
+      auth,
+      messageId
+    );
+
+    if (messageRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "message_not_found",
+          message:
+            "The message you're trying to give feedback to does not exist or is not accessible.",
+        },
+      });
+    }
+
+    const conversation = conversationResource.toJSON();
+    const body = ctx.req.valid("json");
+
+    const created = await upsertMessageFeedback(auth, {
+      messageId,
+      conversation,
+      user,
+      thumbDirection: body.thumbDirection,
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      content: body.feedbackContent || "",
+      isConversationShared: body.isConversationShared,
+    });
+
+    if (created.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Failed to upsert feedback",
+        },
+      });
+    }
+
+    await launchAgentMessageFeedbackWorkflow(auth, {
+      message: {
+        conversationId: conversation.sId,
+        agentMessageId: messageId,
+      },
+    });
+    await triggerAgentMessageFeedbackNotification(auth, {
+      conversationId: conversation.sId,
+      messageId,
+      agentConfigurationId: created.value.agentConfigurationId,
+      thumbDirection: body.thumbDirection,
+      feedbackId: created.value.feedbackId,
+    });
+    return ctx.json({ success: true });
+  }
+);
+
+app.delete("/", async (ctx): HandlerResult<PostMessageFeedbackResponseType> => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.param("cId") ?? "";
+  const messageId = ctx.req.param("mId") ?? "";
+
   const user = await getActiveUserFromAuthOrEmail(
     auth,
-    getUserEmailFromHeaders(req.headers)
+    getUserEmailFromHeaders(readHeaders(ctx))
   );
 
   if (!user) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "not_authenticated",
@@ -157,36 +260,13 @@ async function handler(
     });
   }
 
-  if (!(typeof req.query.cId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
-
-  if (!(typeof req.query.mId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `mId` (string) is required.",
-      },
-    });
-  }
-
-  const messageId = req.query.mId;
-
-  const conversationId = req.query.cId;
   const conversationResource = await ConversationResource.fetchById(
     auth,
     conversationId
   );
 
   if (!conversationResource) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "conversation_not_found",
@@ -198,7 +278,7 @@ async function handler(
   const messageRes = await conversationResource.getMessageById(auth, messageId);
 
   if (messageRes.isErr()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "message_not_found",
@@ -210,93 +290,29 @@ async function handler(
 
   const conversation = conversationResource.toJSON();
 
-  switch (req.method) {
-    case "POST":
-      const bodyValidation = MessageFeedbackRequestBodySchema.safeParse(
-        req.body
-      );
-      if (!bodyValidation.success) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
-          },
-        });
-      }
+  const deleted = await deleteMessageFeedback(auth, {
+    messageId,
+    conversation,
+    user,
+  });
 
-      const created = await upsertMessageFeedback(auth, {
-        messageId,
-        conversation,
-        user,
-        thumbDirection: bodyValidation.data.thumbDirection,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        content: bodyValidation.data.feedbackContent || "",
-        isConversationShared: bodyValidation.data.isConversationShared,
-      });
+  await launchAgentMessageFeedbackWorkflow(auth, {
+    message: {
+      conversationId: conversation.sId,
+      agentMessageId: messageId,
+    },
+  });
 
-      if (created.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Failed to upsert feedback",
-          },
-        });
-      }
-
-      await launchAgentMessageFeedbackWorkflow(auth, {
-        message: {
-          conversationId: conversation.sId,
-          agentMessageId: messageId,
-        },
-      });
-      await triggerAgentMessageFeedbackNotification(auth, {
-        conversationId: conversation.sId,
-        messageId,
-        agentConfigurationId: created.value.agentConfigurationId,
-        thumbDirection: bodyValidation.data.thumbDirection,
-        feedbackId: created.value.feedbackId,
-      });
-      res.status(200).json({ success: true });
-      return;
-
-    case "DELETE":
-      const deleted = await deleteMessageFeedback(auth, {
-        messageId,
-        conversation,
-        user,
-      });
-
-      await launchAgentMessageFeedbackWorkflow(auth, {
-        message: {
-          conversationId: conversation.sId,
-          agentMessageId: messageId,
-        },
-      });
-
-      if (deleted) {
-        res.status(200).json({ success: true });
-      }
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "The message you're trying to give feedback to does not exist.",
-        },
-      });
-
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, POST or DELETE is expected.",
-        },
-      });
+  if (deleted) {
+    return ctx.json({ success: true });
   }
-}
+  return apiError(ctx, {
+    status_code: 400,
+    api_error: {
+      type: "invalid_request_error",
+      message: "The message you're trying to give feedback to does not exist.",
+    },
+  });
+});
 
-export default withPublicAPIAuthentication(handler);
+export default app;
