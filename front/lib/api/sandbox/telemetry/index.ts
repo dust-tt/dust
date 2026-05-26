@@ -28,6 +28,8 @@ export async function startTelemetry(
     conversationId: conversation.sId,
   });
 
+  // /!\ DD_API_KEY must never appear literally in the command string;
+  // journalctl logs argv. Always interpolate from the envVars below.
   const result = await sandbox.exec(
     auth,
     `systemctl set-environment DD_HOST="$DD_HOST" DD_API_KEY="$DD_API_KEY" E2B_SANDBOX_ID="$E2B_SANDBOX_ID" CONVERSATION_ID="$CONVERSATION_ID" WORKSPACE_ID="$WORKSPACE_ID" && systemctl start fluent-bit`,
