@@ -10,6 +10,7 @@ import {
   getGCSPathFromScopedPath,
   getScopedPathFromGCSPath,
   listGCSMountFiles,
+  renameGCSMountDirectory,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
@@ -1002,15 +1003,102 @@ describe("renameGCSMountFile", () => {
   });
 });
 
+describe("renameGCSMountDirectory", () => {
+  let auth: Authenticator;
+  let workspaceId: string;
+  let copyFileMock: ReturnType<typeof vi.fn>;
+  let deleteByPrefixMock: ReturnType<typeof vi.fn>;
+  let dirExistsMock: ReturnType<typeof vi.fn>;
+  let getAllFilesByPrefixMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    copyFileMock = vi.fn().mockResolvedValue(undefined);
+    deleteByPrefixMock = vi.fn().mockResolvedValue(undefined);
+    dirExistsMock = vi.fn().mockResolvedValue([false]);
+
+    const { authenticator } = await createResourceTest({});
+    auth = authenticator;
+    workspaceId = auth.getNonNullableWorkspace().sId;
+
+    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    getAllFilesByPrefixMock = vi.fn().mockResolvedValue({
+      files: [
+        { name: `${prefix}archive/` },
+        { name: `${prefix}archive/report.pdf` },
+      ],
+    });
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      copyFile: copyFileMock,
+      deleteByPrefix: deleteByPrefixMock,
+      file: vi.fn().mockReturnValue({ exists: dirExistsMock }),
+      getAllFilesByPrefix: getAllFilesByPrefixMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+  });
+
+  it("moves all objects under the folder prefix and deletes the old prefix", async () => {
+    const result = await renameGCSMountDirectory(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeDirPath: "archive", newFolderName: "backup" }
+    );
+
+    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    const podsPrefix = `w/${workspaceId}/pods/proj123/files/`;
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.newRelativeDirPath).toBe("backup");
+    }
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${prefix}archive/`,
+      `${prefix}backup/`
+    );
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${prefix}archive/report.pdf`,
+      `${prefix}backup/report.pdf`
+    );
+    expect(deleteByPrefixMock).toHaveBeenCalledWith(`${prefix}archive/`);
+    expect(deleteByPrefixMock).toHaveBeenCalledWith(`${podsPrefix}archive/`);
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${prefix}backup/report.pdf`,
+      `${podsPrefix}backup/report.pdf`
+    );
+  });
+
+  it("returns Err when the destination folder already exists", async () => {
+    dirExistsMock.mockResolvedValue([true]);
+
+    const result = await renameGCSMountDirectory(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeDirPath: "archive", newFolderName: "backup" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(copyFileMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("deleteGCSMountFile", () => {
   let auth: Authenticator;
   let workspaceId: string;
   let deleteMock: ReturnType<typeof vi.fn>;
+  let deleteByPrefixMock: ReturnType<typeof vi.fn>;
+  let dirExistsMock: ReturnType<
+    typeof vi.fn<(path: string) => Promise<[boolean]>>
+  >;
+  let getAllFilesByPrefixMock: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     deleteMock = vi.fn().mockResolvedValue(undefined);
+    deleteByPrefixMock = vi.fn().mockResolvedValue(undefined);
+    dirExistsMock = vi.fn().mockResolvedValue([false]);
+    getAllFilesByPrefixMock = vi.fn().mockResolvedValue({ files: [] });
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
       delete: deleteMock,
+      deleteByPrefix: deleteByPrefixMock,
+      file: vi.fn((path: string) => ({ exists: () => dirExistsMock(path) })),
+      getAllFilesByPrefix: getAllFilesByPrefixMock,
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
     const { authenticator } = await createResourceTest({});
@@ -1074,6 +1162,26 @@ describe("deleteGCSMountFile", () => {
     );
 
     expect(deleteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("deletes a directory placeholder and its contents by prefix", async () => {
+    dirExistsMock.mockImplementation((path: string) => {
+      return Promise.resolve([path.endsWith("/")]);
+    });
+
+    const result = await deleteGCSMountFile(
+      auth,
+      { useCase: "project", projectId: "proj123" },
+      { relativeFilePath: "archive" }
+    );
+
+    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    const podsPrefix = `w/${workspaceId}/pods/proj123/files/`;
+
+    expect(result.isOk()).toBe(true);
+    expect(deleteByPrefixMock).toHaveBeenCalledWith(`${prefix}archive/`);
+    expect(deleteByPrefixMock).toHaveBeenCalledWith(`${podsPrefix}archive/`);
+    expect(deleteMock).not.toHaveBeenCalled();
   });
 });
 

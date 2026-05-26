@@ -265,6 +265,7 @@ export interface FileExplorerFolderCardProps {
   viewMode: ViewMode;
   onNavigate: (node: FileSystemTreeNode) => void;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
+  extraMenuItems?: FileExplorerMenuAction[];
 }
 
 export function FileExplorerFolderCard({
@@ -272,6 +273,7 @@ export function FileExplorerFolderCard({
   viewMode,
   onNavigate,
   onMoveFileDrop,
+  extraMenuItems,
 }: FileExplorerFolderCardProps) {
   const childCount = node.children.length;
   const subtitle =
@@ -297,6 +299,7 @@ export function FileExplorerFolderCard({
           subtitle={subtitle}
           surfaceClassName={surfaceClassName}
           onOpen={() => onNavigate(node)}
+          extraMenuItems={extraMenuItems}
         />
       )}
     </FileExplorerDropTargetWrapper>

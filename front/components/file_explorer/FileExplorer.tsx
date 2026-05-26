@@ -16,6 +16,7 @@ import type {
   FileExplorerMenuAction,
   FileExplorerSortMode,
   FileSystemTreeNode,
+  FolderEntry,
 } from "@app/components/file_explorer/types";
 import {
   buildFolderTree,
@@ -60,7 +61,7 @@ interface FileExplorerProps {
     parentRelativePath: string
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId) => void;
-  onRename?: (entry: FileEntry) => void;
+  onRename?: (entry: FileEntry | FolderEntry) => void;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
   ) => FileExplorerMenuAction[];
@@ -150,7 +151,7 @@ export function FileExplorer({
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
       const items: FileExplorerMenuAction[] =
         getExtraFileMenuItems?.(entry) ?? [];
-      if (onRename && entry.kind === "file") {
+      if (onRename && (entry.kind === "file" || entry.kind === "folder")) {
         items.push({
           label: "Rename",
           icon: PencilSquareIcon,
