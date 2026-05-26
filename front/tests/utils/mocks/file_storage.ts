@@ -80,6 +80,9 @@ class FileStorageMock {
       getSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
       uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
       uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+      uploadSmallRawContentToBucketAsNewFile: vi
+        .fn()
+        .mockResolvedValue(undefined),
       fetchFileContent: vi.fn().mockResolvedValue("mock content"),
       copyFile: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(undefined),

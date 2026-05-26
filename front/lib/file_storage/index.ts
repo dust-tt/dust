@@ -27,12 +27,26 @@ const GCS_COPY_MAX_RETRIES = 3;
 const GCS_COPY_BASE_DELAY_MS = 500;
 const GCS_MAX_RETRIES = 3; // Same as the SDK default.
 const GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX = /socket hang up/i;
+// GCS generations are object versions. Matching generation 0 means "create only
+// if the object does not already exist", which makes the create safe to retry.
+const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
 interface FileStorageOptions {
   useServiceAccount?: boolean;
 }
+
+type RawContentUpload = {
+  content: string;
+  contentType: AllSupportedFileContentType;
+  filePath: string;
+};
+
+type RawContentSaveOptions = Pick<
+  SaveOptions,
+  "preconditionOpts" | "resumable"
+>;
 
 function isRetryableGCSError(err: ApiError): boolean {
   return (
@@ -82,13 +96,30 @@ export class FileStorage {
     content,
     contentType,
     filePath,
-    saveOptions,
-  }: {
-    content: string;
-    contentType: AllSupportedFileContentType;
-    filePath: string;
-    saveOptions?: Pick<SaveOptions, "preconditionOpts" | "resumable">;
-  }) {
+  }: RawContentUpload) {
+    await this.saveRawContentToBucket({ content, contentType, filePath });
+  }
+
+  async uploadSmallRawContentToBucketAsNewFile({
+    content,
+    contentType,
+    filePath,
+  }: RawContentUpload) {
+    await this.saveRawContentToBucket(
+      { content, contentType, filePath },
+      {
+        resumable: false,
+        preconditionOpts: {
+          ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+        },
+      }
+    );
+  }
+
+  private async saveRawContentToBucket(
+    { content, contentType, filePath }: RawContentUpload,
+    saveOptions?: RawContentSaveOptions
+  ) {
     const gcsFile = this.file(filePath);
 
     const contentToSave = Buffer.from(stripNullBytes(content), "utf8");
