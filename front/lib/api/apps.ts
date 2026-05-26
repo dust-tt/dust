@@ -66,10 +66,16 @@ export async function checkAppsDeployment(
   apps: AppDeploymentCheck[]
 ): Promise<(AppDeploymentCheck & { deployed: boolean })[]> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const appResources = await AppResource.fetchByIds(auth, [
+    ...new Set(apps.map((appRequest) => appRequest.appId)),
+  ]);
+  const appById = new Map(appResources.map((app) => [app.sId, app]));
+
   return concurrentExecutor(
     apps,
     async (appRequest) => {
-      const app = await AppResource.fetchById(auth, appRequest.appId);
+      const app = appById.get(appRequest.appId);
       if (!app) {
         return { ...appRequest, deployed: false };
       }
