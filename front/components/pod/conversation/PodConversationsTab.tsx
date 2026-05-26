@@ -1,16 +1,16 @@
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
-import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
-import { SpaceLoadingConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceLoadingConversationListItem";
-import { PodPinnedBanner } from "@app/components/assistant/conversation/space/PodPinnedBanner";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
-import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
+import { PodConversationListItem } from "@app/components/pod/conversation/PodConversationListItem";
+import { PodConversationsActions } from "@app/components/pod/conversation/PodConversationsActions";
+import { PodJoinCTA } from "@app/components/pod/conversation/PodJoinCTA";
+import { PodLoadingConversationListItem } from "@app/components/pod/conversation/PodLoadingConversationListItem";
+import { PodPinnedBanner } from "@app/components/pod/conversation/PodPinnedBanner";
 import { usePodUnreadConversationIds } from "@app/hooks/conversations";
 import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
-import { useSearchConversations } from "@app/hooks/useSearchConversations";
+import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -49,7 +49,7 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
-interface SpaceConversationsTabProps {
+interface PodConversationsTabProps {
   owner: WorkspaceType;
   user: UserType;
   conversations: LightConversationType[];
@@ -57,8 +57,8 @@ interface SpaceConversationsTabProps {
   hasMore: boolean;
   loadMore: () => void;
   isLoadingMore: boolean;
-  spaceInfo: GetSpaceResponseBody["space"];
-  isSpaceEmpty: boolean;
+  podInfo: GetSpaceResponseBody["space"];
+  isPodEmpty: boolean;
   conversationFilter: PodConversationListFilter;
   onConversationFilterChange: (filter: PodConversationListFilter) => void;
   onSubmit: (
@@ -71,7 +71,7 @@ interface SpaceConversationsTabProps {
   onNavigateToTasks: () => void;
 }
 
-export function SpaceConversationsTab({
+export function PodConversationsTab({
   owner,
   user,
   conversations,
@@ -79,25 +79,25 @@ export function SpaceConversationsTab({
   hasMore,
   loadMore,
   isLoadingMore,
-  spaceInfo,
-  isSpaceEmpty,
+  podInfo,
+  isPodEmpty,
   conversationFilter,
   onConversationFilterChange,
   onSubmit,
   onOpenMembersPanel,
   onNavigateToTasks,
-}: SpaceConversationsTabProps) {
-  const { isEditor: isProjectEditor } = spaceInfo;
+}: PodConversationsTabProps) {
+  const { isEditor } = podInfo;
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
   const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
     owner,
-    spaceId: spaceInfo.sId,
+    podId: podInfo.sId,
   });
   const { unreadConversationIds } = usePodUnreadConversationIds({
     workspaceId: owner.sId,
-    podId: spaceInfo.sId,
+    podId: podInfo.sId,
   });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
@@ -119,9 +119,9 @@ export function SpaceConversationsTab({
     isSearchError,
     inputValue: searchText,
     setValue: setSearchText,
-  } = useSearchConversations({
+  } = useSearchPodConversations({
     workspaceId: owner.sId,
-    spaceId: spaceInfo.sId,
+    podId: podInfo.sId,
     limit: 10,
     initialSearchText: "",
   });
@@ -151,12 +151,10 @@ export function SpaceConversationsTab({
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
-  }, [user]);
+  }, [user.firstName]);
 
-  const isProjectEmpty = !isConversationsLoading && isSpaceEmpty;
-  const isFilteredEmpty =
-    !isConversationsLoading && !isSpaceEmpty && !hasHistory;
-  const isSingleMemberProject = spaceInfo.members.length === 1;
+  const isFilteredEmpty = !isConversationsLoading && !isPodEmpty && !hasHistory;
+  const isSingleMemberPod = podInfo.members.length === 1;
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
@@ -167,59 +165,59 @@ export function SpaceConversationsTab({
         <div
           className={cn(
             "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
-            isProjectEmpty && "h-full justify-center py-8"
+            isPodEmpty && "h-full justify-center py-8"
           )}
         >
           <div className="flex w-full flex-col gap-3">
-            <PodPinnedBanner owner={owner} spaceInfo={spaceInfo} />
+            <PodPinnedBanner owner={owner} podInfo={podInfo} />
             <div className="flex items-center gap-2">
               <h2
                 className={cn(
                   "heading-2xl text-foreground dark:text-foreground-night",
-                  spaceInfo.archivedAt &&
+                  podInfo.archivedAt &&
                     "text-muted-foreground dark:text-muted-foreground-night"
                 )}
               >
                 {greeting}
               </h2>
-              {spaceInfo.archivedAt && (
+              {podInfo.archivedAt && (
                 <Chip size="xs" color="rose" label="Archived" />
               )}
             </div>
-            {spaceInfo.archivedAt ? (
+            {podInfo.archivedAt ? (
               <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
                 <EmptyCTA
                   message="This Pod is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
                   action={null}
                 />
               </div>
-            ) : spaceInfo.isMember ? (
+            ) : podInfo.isMember ? (
               <InputBar
                 owner={owner}
                 user={user}
                 onSubmit={onSubmit}
-                draftKey={`space-${spaceInfo.sId}-new-conversation`}
-                space={spaceInfo}
+                draftKey={`space-${podInfo.sId}-new-conversation`}
+                space={podInfo}
                 disableAutoFocus={false}
-                placeholder={`Get work done in ${spaceInfo.name}`}
+                placeholder={`Get work done in ${podInfo.name}`}
               />
             ) : (
-              <ProjectJoinCTA
+              <PodJoinCTA
                 owner={owner}
-                spaceId={spaceInfo.sId}
-                spaceName={spaceInfo.name}
-                isRestricted={spaceInfo.isRestricted}
+                podId={podInfo.sId}
+                podName={podInfo.name}
+                isRestricted={podInfo.isRestricted}
                 userName={user.fullName}
               />
             )}
           </div>
 
           {/* Suggestions for empty rooms */}
-          {isProjectEmpty ? (
-            <SpaceConversationsActions
+          {isPodEmpty ? (
+            <PodConversationsActions
               owner={owner}
-              spaceId={spaceInfo.sId}
-              isEditor={isProjectEditor}
+              podId={podInfo.sId}
+              isEditor={isEditor}
               onOpenMembersPanel={onOpenMembersPanel}
               onNavigateToTasks={onNavigateToTasks}
             />
@@ -233,7 +231,7 @@ export function SpaceConversationsTab({
                       name="conversation-search"
                       value={searchText}
                       onChange={setSearchText}
-                      placeholder={`Search in ${spaceInfo.name}`}
+                      placeholder={`Search in ${podInfo.name}`}
                       open={isSearchPopoverOpen && searchText.trim().length > 0}
                       onOpenChange={setIsSearchPopoverOpen}
                       items={searchResults}
@@ -277,7 +275,7 @@ export function SpaceConversationsTab({
                   </div>
                 </div>
                 <div className="flex flex-row items-center justify-between gap-3">
-                  {!isSingleMemberProject && (
+                  {!isSingleMemberPod && (
                     <ButtonsSwitchList
                       key={conversationFilter}
                       defaultValue={conversationFilter}
@@ -321,7 +319,7 @@ export function SpaceConversationsTab({
                       </ListItemSection>
                       <ListGroup>
                         {Array.from({ length: 6 }).map((_, index) => (
-                          <SpaceLoadingConversationListItem key={index} />
+                          <PodLoadingConversationListItem key={index} />
                         ))}
                       </ListGroup>
                     </>
@@ -347,7 +345,7 @@ export function SpaceConversationsTab({
                             {dateConversations
                               .toSorted((a, b) => b.updated - a.updated)
                               .map((conversation) => (
-                                <SpaceConversationListItem
+                                <PodConversationListItem
                                   key={conversation.sId}
                                   conversation={conversation}
                                   owner={owner}

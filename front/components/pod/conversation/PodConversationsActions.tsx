@@ -4,21 +4,21 @@ import { Card, CardGrid, CheckIcon, Icon, Spinner } from "@dust-tt/sparkle";
 
 interface SpaceConversationsActionsProps {
   owner: LightWorkspaceType;
-  spaceId: string;
+  podId: string;
   isEditor: boolean;
   onOpenMembersPanel: () => void;
   onNavigateToTasks: () => void;
 }
 
-export function SpaceConversationsActions({
+export function PodConversationsActions({
   owner,
-  spaceId,
+  podId,
   isEditor,
   onNavigateToTasks,
 }: SpaceConversationsActionsProps) {
   const { seedInitialPodTasks, isSeeding } = useSeedInitialPodTasks({
     owner,
-    spaceId,
+    podId: podId,
   });
 
   const handleOnboardingClick = async () => {

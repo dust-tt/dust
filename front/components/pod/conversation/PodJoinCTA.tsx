@@ -1,25 +1,25 @@
-import { useJoinProject } from "@app/lib/swr/spaces";
+import { useJoinPod } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, EmptyCTA } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-interface ProjectJoinCTAProps {
+interface PodJoinCTAProps {
   owner: LightWorkspaceType;
-  spaceId: string;
-  spaceName: string;
+  podId: string;
+  podName: string;
   isRestricted: boolean;
   userName: string;
 }
 
-export function ProjectJoinCTA({
+export function PodJoinCTA({
   owner,
-  spaceId,
-  spaceName,
+  podId: podId,
+  podName: podName,
   isRestricted,
   userName,
-}: ProjectJoinCTAProps) {
+}: PodJoinCTAProps) {
   const [isJoining, setIsJoining] = useState(false);
-  const doJoin = useJoinProject({ owner, spaceId, spaceName, userName });
+  const doJoin = useJoinPod({ owner, podId, podName, userName });
 
   const handleJoin = async () => {
     setIsJoining(true);
@@ -35,7 +35,7 @@ export function ProjectJoinCTA({
 
   const action = isRestricted ? null : (
     <Button
-      label={isJoining ? "Joining..." : `Join the ${spaceName} Pod`}
+      label={isJoining ? "Joining..." : `Join the ${podName} Pod`}
       variant="highlight"
       onClick={handleJoin}
       disabled={isJoining}

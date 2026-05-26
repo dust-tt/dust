@@ -1136,57 +1136,6 @@ export function useUpdateProjectNotificationPreference({
   };
 }
 
-export function useJoinProject({
-  owner,
-  spaceId,
-  spaceName,
-  userName,
-}: {
-  owner: LightWorkspaceType;
-  spaceId: string;
-  spaceName: string;
-  userName: string;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId,
-    disabled: true,
-  });
-  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
-
-  const doJoin = async (): Promise<boolean> => {
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/join`,
-      { method: "POST" }
-    );
-
-    if (res.ok) {
-      void mutateSpaceInfoRegardlessOfQueryParams();
-      void mutateSpaceSummary();
-      sendNotification({
-        type: "success",
-        title: `${userName} joined Pod ${spaceName}`,
-        description: "You can now participate in conversations.",
-      });
-      return true;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Could not join Pod",
-        description: `Error: ${errorData.message}`,
-      });
-      return false;
-    }
-  };
-
-  return doJoin;
-}
-
 export function useStarProject({
   workspaceId,
   spaceId,

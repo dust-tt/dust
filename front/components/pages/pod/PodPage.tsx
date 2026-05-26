@@ -1,9 +1,9 @@
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
-import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
 import { SpaceTasksTab } from "@app/components/assistant/conversation/space/SpaceTasksTab";
+import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
 import { PodHeaderActions } from "@app/components/pod/PodHeaderActions";
 import {
   type PodConversationListFilter,
@@ -90,7 +90,7 @@ export function PodPage() {
     isConversationsLoading,
     mutateConversations,
     hasMore,
-    isEmpty: isSpaceEmpty,
+    isEmpty: isPodEmpty,
     loadMore,
     isLoadingMore,
   } = usePodConversations({
@@ -266,7 +266,7 @@ export function PodPage() {
   if (clientType === "extension") {
     return (
       <div className="flex h-full w-full flex-col">
-        <SpaceConversationsTab
+        <PodConversationsTab
           owner={owner}
           user={user}
           conversations={conversations}
@@ -274,8 +274,8 @@ export function PodPage() {
           hasMore={hasMore}
           loadMore={loadMore}
           isLoadingMore={isLoadingMore}
-          spaceInfo={podInfo}
-          isSpaceEmpty={isSpaceEmpty}
+          podInfo={podInfo}
+          isPodEmpty={isPodEmpty}
           conversationFilter={conversationFilter}
           onConversationFilterChange={handleConversationFilterChange}
           onSubmit={handleConversationCreation}
@@ -336,7 +336,7 @@ export function PodPage() {
         </div>
 
         <TabsContent value="conversations">
-          <SpaceConversationsTab
+          <PodConversationsTab
             owner={owner}
             user={user}
             conversations={conversations}
@@ -344,8 +344,8 @@ export function PodPage() {
             hasMore={hasMore}
             loadMore={loadMore}
             isLoadingMore={isLoadingMore}
-            spaceInfo={podInfo}
-            isSpaceEmpty={isSpaceEmpty}
+            podInfo={podInfo}
+            isPodEmpty={isPodEmpty}
             conversationFilter={conversationFilter}
             onConversationFilterChange={handleConversationFilterChange}
             onSubmit={handleConversationCreation}

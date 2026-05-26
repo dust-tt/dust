@@ -6,21 +6,21 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
-interface UseSearchConversationsParams {
+interface UseSearchPodConversationsParams {
   workspaceId: string;
-  spaceId: string;
+  podId: string;
   limit?: number;
   enabled?: boolean;
   initialSearchText?: string;
 }
 
-export function useSearchConversations({
+export function useSearchPodConversations({
   workspaceId,
-  spaceId,
+  podId,
   limit = 10,
   enabled = true,
   initialSearchText = "",
-}: UseSearchConversationsParams) {
+}: UseSearchPodConversationsParams) {
   const { fetcher } = useFetcher();
   const {
     debouncedValue: debouncedQuery,
@@ -37,12 +37,12 @@ export function useSearchConversations({
       enabled &&
       debouncedQuery.trim().length > 0 &&
       workspaceId &&
-      spaceId
+      podId
     );
-  }, [enabled, debouncedQuery, workspaceId, spaceId]);
+  }, [enabled, debouncedQuery, workspaceId, podId]);
 
   const searchKey = shouldFetch
-    ? `/api/w/${workspaceId}/spaces/${spaceId}/search_conversations?query=${encodeURIComponent(debouncedQuery)}&limit=${limit}`
+    ? `/api/w/${workspaceId}/spaces/${podId}/search_conversations?query=${encodeURIComponent(debouncedQuery)}&limit=${limit}`
     : null;
 
   const searchFetcher: Fetcher<SearchConversationsResponseBody> = fetcher;

@@ -11,12 +11,12 @@ import { useCallback, useState } from "react";
 
 interface useMarkAllConversationsAsReadParams {
   owner: WorkspaceType;
-  spaceId?: string;
+  podId?: string;
 }
 
 export function useMarkAllConversationsAsRead({
   owner,
-  spaceId,
+  podId,
 }: useMarkAllConversationsAsReadParams) {
   const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
   const sendNotification = useSendNotification();
@@ -25,21 +25,21 @@ export function useMarkAllConversationsAsRead({
     options: { disabled: true },
   });
 
-  const { mutate: mutateSpaceSummary } = usePodConversationsSummary({
+  const { mutate: mutatePodSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
 
-  const { mutateConversations: mutateSpaceConversations } = usePodConversations(
-    {
-      workspaceId: owner.sId,
-      podId: spaceId ?? null,
-    }
-  );
+  const { mutateConversations: mutatePodConversations } = usePodConversations({
+    workspaceId: owner.sId,
+    podId: podId ?? null,
+    options: { disabled: true },
+  });
 
   const { mutateUnreadConversationIds } = usePodUnreadConversationIds({
     workspaceId: owner.sId,
-    podId: spaceId ?? null,
+    podId: podId ?? null,
+    options: { disabled: true },
   });
 
   const markAllAsRead = useCallback(
@@ -94,8 +94,8 @@ export function useMarkAllConversationsAsRead({
           throw new Error("Failed to mark conversations as read");
         }
 
-        void mutateSpaceSummary();
-        void mutateSpaceConversations();
+        void mutatePodSummary();
+        void mutatePodConversations();
         void mutateUnreadConversationIds();
 
         sendNotification({
@@ -118,8 +118,8 @@ export function useMarkAllConversationsAsRead({
     [
       owner.sId,
       mutateConversations,
-      mutateSpaceSummary,
-      mutateSpaceConversations,
+      mutatePodSummary,
+      mutatePodConversations,
       sendNotification,
       mutateUnreadConversationIds,
     ]

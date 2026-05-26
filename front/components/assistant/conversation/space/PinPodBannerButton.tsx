@@ -25,7 +25,7 @@ export function PinPodBannerButton({
   const isMobile = useIsMobile();
   const { togglePin, isPinned } = usePinPodBanner({
     owner,
-    spaceId,
+    podId: spaceId,
     pinnedFramePath,
     isEditor,
   });
