@@ -193,6 +193,13 @@ const PostWorkspaceRequestBodySchema = z.union([
 
 const app = workspaceApp();
 
+app.use(
+  "/auth-context/*",
+  workspaceAuth({
+    doesNotRequireCanUseProduct: true,
+    allowMissingWorkspace: true,
+  })
+);
 app.route("/auth-context", authContext);
 
 app.use(
