@@ -7,6 +7,14 @@ import { Hono } from "hono";
 type AnyHono = Hono<any, any, any>;
 type Loader = () => Promise<AnyHono>;
 
+// Vitest's `vi.mock` hoisting patches the module registry for STATIC imports
+// only — dynamic `import()` calls (the whole point of lazy mounting) bypass
+// those mocks, so mocked-out helpers like `getSession` or sequelize CLS
+// transaction context aren't applied to lazily-loaded route modules. Under
+// `NODE_ENV=test` we therefore force eager loading so tests behave identically
+// to the production-bundle path (which esbuild inlines at build time anyway).
+const FORCE_EAGER = process.env.NODE_ENV === "test";
+
 // Strip the trailing colon-prefixed segment from a path pattern (if any).
 // "/w/:wId" -> "/w"; "/foo" -> "/foo". Used to find the literal portion of a
 // mount prefix that should be removed from the request URL before forwarding
@@ -40,7 +48,17 @@ export function lazyMount(
   parentMountPath: string,
   prefix: string,
   loader: Loader
-): void {
+): Promise<void> | void {
+  if (FORCE_EAGER) {
+    // Resolve the loader now and register a normal sub-app mount. Returns a
+    // promise so app.ts can `await` all registrations to complete before any
+    // request can be served. Tests use this path because vi.mock'd modules are
+    // not honored by dynamic imports.
+    return loader().then((inner) => {
+      parent.route(prefix, inner);
+    });
+  }
+
   let loaded: AnyHono | undefined;
   let loading: Promise<void> | undefined;
 

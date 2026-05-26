@@ -1,6 +1,7 @@
 {
   "extends": "../front/tsconfig.json",
   "compilerOptions": {
+    "target": "es2022",
     "paths": {
       "@app/*": ["../front/*"],
       "@front-api/*": ["./*"]
