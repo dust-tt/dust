@@ -3,12 +3,10 @@ import {
   getBillingStripeCustomerId,
   getStripeClient,
 } from "@app/lib/plans/stripe";
-import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
-import type { WorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
 
 export type BillingAddress = {
