@@ -1,3 +1,4 @@
+import { CONVERSATIONS_RETENTION_MIN_DAYS } from "@app/lib/conversations_retention";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -89,6 +90,9 @@ function getCacheKeyForWorkspace(workspaceId: string): string {
   return `cacheWithRedis-_fetchByIdUncached-workspace:sid:${workspaceId}`;
 }
 
+const INVALID_RETENTION_DAYS = CONVERSATIONS_RETENTION_MIN_DAYS - 1;
+const SHORT_RETENTION_DAYS = 30;
+
 describe("WorkspaceResource", () => {
   let workspace: WorkspaceType;
 
@@ -176,7 +180,7 @@ describe("WorkspaceResource", () => {
     it("should reject values below the minimum retention", async () => {
       const result = await WorkspaceResource.updateConversationsRetention(
         workspace.id,
-        59
+        INVALID_RETENTION_DAYS
       );
 
       expect(result.isErr()).toBe(true);
@@ -185,21 +189,24 @@ describe("WorkspaceResource", () => {
       expect(updated?.conversationsRetentionDays).toBeNull();
     });
 
-    it("should set retention days value", async () => {
+    it("should allow sub-60 retention days value", async () => {
       const result = await WorkspaceResource.updateConversationsRetention(
         workspace.id,
-        60
+        SHORT_RETENTION_DAYS
       );
 
       expect(result.isOk()).toBe(true);
 
       const updated = await WorkspaceResource.fetchById(workspace.sId);
-      expect(updated?.conversationsRetentionDays).toBe(60);
+      expect(updated?.conversationsRetentionDays).toBe(SHORT_RETENTION_DAYS);
     });
 
     it("should convert -1 to null", async () => {
       // First set a value
-      await WorkspaceResource.updateConversationsRetention(workspace.id, 60);
+      await WorkspaceResource.updateConversationsRetention(
+        workspace.id,
+        SHORT_RETENTION_DAYS
+      );
 
       // Then set -1 which should convert to null
       const result = await WorkspaceResource.updateConversationsRetention(
@@ -217,7 +224,7 @@ describe("WorkspaceResource", () => {
       const result = await WorkspaceResource.updateByModelIdAndCheckExistence(
         workspace.id,
         {
-          conversationsRetentionDays: 59,
+          conversationsRetentionDays: INVALID_RETENTION_DAYS,
         }
       );
 

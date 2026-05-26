@@ -907,7 +907,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       ) {
         return new Err(
           new Error(
-            `Conversation retention must be -1 or >= ${CONVERSATIONS_RETENTION_MIN_DAYS} days.`
+            `Conversation retention must be -1 or at least ${CONVERSATIONS_RETENTION_MIN_DAYS} day.`
           )
         );
       }

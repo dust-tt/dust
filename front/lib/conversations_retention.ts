@@ -1,6 +1,6 @@
 import isNumber from "lodash/isNumber";
 
-export const CONVERSATIONS_RETENTION_MIN_DAYS = 60;
+export const CONVERSATIONS_RETENTION_MIN_DAYS = 1;
 
 export const isValidConversationsRetentionDays = (
   retentionDays: string | number | boolean | object | undefined
