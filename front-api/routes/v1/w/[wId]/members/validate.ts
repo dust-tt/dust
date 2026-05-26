@@ -1,5 +1,4 @@
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { hasActiveMemberByEmail } from "@app/lib/api/workspace";
 import type { ValidateMemberResponseType } from "@dust-tt/client";
 import { ValidateMemberRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -21,33 +20,12 @@ app.post(
     const auth = ctx.get("auth");
     const { email } = ctx.req.valid("json");
 
-    const users = await UserResource.listByEmail(email);
-    const workspace = auth.getNonNullableWorkspace();
-
-    if (!users.length) {
-      return ctx.json({
-        valid: false,
-      });
-    }
-
-    // Check memberships for all users with this email until we find an active one
-    for (const user of users) {
-      const workspaceMembership =
-        await MembershipResource.getActiveMembershipOfUserInWorkspace({
-          user,
-          workspace,
-        });
-
-      if (workspaceMembership) {
-        return ctx.json({
-          valid: true,
-        });
-      }
-    }
-
-    return ctx.json({
-      valid: false,
+    const valid = await hasActiveMemberByEmail({
+      email,
+      workspace: auth.getNonNullableWorkspace(),
     });
+
+    return ctx.json({ valid });
   }
 );
 
