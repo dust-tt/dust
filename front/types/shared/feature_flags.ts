@@ -13,6 +13,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Route Claude model LLM calls through Vertex AI instead of the direct Anthropic API",
     stage: "dust_only",
   },
+  use_vertex_for_supported_models: {
+    description:
+      "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
+    stage: "dust_only",
+  },
   audit_logs: {
     description: "Enable audit log emission via WorkOS",
     stage: "dust_only",
