@@ -42,11 +42,15 @@ export async function recreateUserSearchIndex({
 
   let successCount = 0;
   let errorCount = 0;
+  const users = await UserResource.fetchByModelIds([
+    ...new Set(activeMemberships.map((m) => m.userId)),
+  ]);
+  const userByModelId = new Map(users.map((user) => [user.id, user]));
 
   await concurrentExecutor(
     activeMemberships,
     async (membership) => {
-      const user = await UserResource.fetchByModelId(membership.userId);
+      const user = userByModelId.get(membership.userId);
       if (!user) {
         localLogger.warn(
           {

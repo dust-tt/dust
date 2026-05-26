@@ -709,8 +709,6 @@ export async function processWebhookRequest(
 
   const launchResult = await launchTriggersWorkflows(auth, {
     filteredTriggers,
-    webhookSource,
-    body,
     webhookRequest,
   });
 

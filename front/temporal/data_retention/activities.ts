@@ -10,11 +10,12 @@ import { heartbeat } from "@temporalio/activity";
 
 const WORKSPACE_CONVERSATIONS_BATCH_SIZE = 200;
 const HEARTBEAT_RATE = 100;
+
 /**
  * Get workspace ids with conversations retention policy.
  */
 export async function getWorkspacesWithConversationsRetentionActivity(): Promise<
-  number[]
+  ModelId[]
 > {
   return WorkspaceResource.listModelIdsWithConversationsRetention();
 }
@@ -24,7 +25,7 @@ export async function getWorkspacesWithConversationsRetentionActivity(): Promise
  * We chunk the workspaces to avoid hitting the database with too many queries at once.
  */
 type PurgeConversationsBatchActivityReturnType = {
-  workspaceModelId: number;
+  workspaceModelId: ModelId;
   workspaceId: string;
   nbConversationsDeleted: number;
 };
@@ -32,12 +33,18 @@ type PurgeConversationsBatchActivityReturnType = {
 export async function purgeConversationsBatchActivity({
   workspaceIds,
 }: {
-  workspaceIds: number[];
+  workspaceIds: ModelId[];
 }): Promise<PurgeConversationsBatchActivityReturnType[]> {
   const res: PurgeConversationsBatchActivityReturnType[] = [];
+  const workspaces = await WorkspaceResource.fetchByModelIds([
+    ...new Set(workspaceIds),
+  ]);
+  const workspaceByModelId = new Map(
+    workspaces.map((workspace) => [workspace.id, workspace])
+  );
 
   for (const workspaceId of workspaceIds) {
-    const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
+    const workspace = workspaceByModelId.get(workspaceId);
     if (!workspace) {
       logger.error(
         { workspaceId },
