@@ -15,12 +15,15 @@ import { DataTypes } from "sequelize";
  * - paygCapCredits: PAYG cap on AWU consumption, in AWU credits. NULL means
  *   PAYG is disabled; any strictly-positive value enables it and drives the
  *   Metronome `spend_threshold_reached` alert on the workspace's customer.
+ * - disableCreditCapWarning: When true, the credit cap warning email to
+ *   workspace admins is suppressed. Default false (warning is sent).
  */
 export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsageConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare defaultDiscountPercent: number;
   declare paygCapCredits: number | null;
+  declare disableCreditCapWarning: boolean;
 }
 
 CreditUsageConfigurationModel.init(
@@ -57,6 +60,11 @@ CreditUsageConfigurationModel.init(
           }
         },
       },
+    },
+    disableCreditCapWarning: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

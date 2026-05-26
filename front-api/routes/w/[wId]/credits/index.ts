@@ -14,6 +14,7 @@ import membersSeats from "./members-seats";
 import membersUsage from "./members-usage";
 import metronomeBalances from "./metronome-balances";
 import purchase from "./purchase";
+import usageConfiguration from "./usage-configuration";
 
 // Mounted at /api/w/:wId/credits.
 const app = workspaceApp();
@@ -23,6 +24,7 @@ app.route("/members-seats", membersSeats);
 app.route("/members-usage", membersUsage);
 app.route("/metronome-balances", metronomeBalances);
 app.route("/purchase", purchase);
+app.route("/usage-configuration", usageConfiguration);
 
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");

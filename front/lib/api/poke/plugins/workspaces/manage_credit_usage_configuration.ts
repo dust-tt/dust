@@ -157,6 +157,7 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
         {
           defaultDiscountPercent,
           paygCapCredits: resolvedPaygCapCredits,
+          disableCreditCapWarning: false,
         }
       );
       if (createResult.isErr()) {
