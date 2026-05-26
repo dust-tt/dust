@@ -56,6 +56,8 @@ export async function getExitOrPauseEvents(
     switch (exitOutputItem.type) {
       case "tool_early_exit": {
         const { isError, reason, text } = exitOutputItem;
+        const eventIsError = reason === "user_cancellation" ? false : isError;
+
         return [
           {
             type: "tool_early_exit",
@@ -64,7 +66,7 @@ export async function getExitOrPauseEvents(
             conversationId: conversation.sId,
             messageId: agentMessage.sId,
             text: text,
-            isError: isError,
+            isError: eventIsError,
             reason,
           },
         ];

@@ -10,7 +10,7 @@ import type {
 import { describe, expect, it } from "vitest";
 
 describe("getExitOrPauseEvents", () => {
-  it("should propagate user cancellation early-exit reasons", async () => {
+  it("should normalize user cancellation early exits to non-errors", async () => {
     const output = makeMCPToolExit({
       message: "The tool execution was cancelled.",
       isError: true,
@@ -38,7 +38,7 @@ describe("getExitOrPauseEvents", () => {
       conversationId: "conversation-id",
       messageId: "agent-message-id",
       text: "The tool execution was cancelled.",
-      isError: true,
+      isError: false,
       reason: "user_cancellation",
     });
   });

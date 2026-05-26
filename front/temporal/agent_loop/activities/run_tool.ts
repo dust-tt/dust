@@ -256,17 +256,11 @@ async function executeToolStreaming(
 
         return { deferredEvents };
 
-      case "tool_early_exit": {
-        const isError =
-          event.reason === "user_cancellation" ? false : event.isError;
-
+      case "tool_early_exit":
         updateActiveObservation(
           {
-            output: {
-              status: "early_exit",
-              isError,
-            },
-            level: isError ? "ERROR" : "WARNING",
+            output: { status: "early_exit", isError: event.isError },
+            level: event.isError ? "ERROR" : "WARNING",
             statusMessage: event.text ?? "Early exit",
           },
           { asType: "tool" }
@@ -349,7 +343,6 @@ async function executeToolStreaming(
         });
 
         return { deferredEvents, shouldPauseAgentLoop: true };
-      }
 
       case "tool_personal_auth_required":
       case "tool_file_auth_required":

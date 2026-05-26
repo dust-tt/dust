@@ -201,7 +201,7 @@ export async function markAgentMessageAsFailed(
     conversation: ConversationWithoutContentType;
     error: ToolErrorEvent["error"];
   }
-): Promise<boolean> {
+): Promise<void> {
   await updateAgentMessageDBAndMemory(auth, {
     agentMessage,
     conversation,
@@ -210,8 +210,6 @@ export async function markAgentMessageAsFailed(
       error,
     },
   });
-
-  return agentMessage.status === "failed";
 }
 
 // Process database operations for agent events before publishing to Redis.
@@ -230,7 +228,7 @@ export async function processEventForDatabase(
     conversation: ConversationWithoutContentType;
     modelInteractionDurationMs?: number;
   }
-): Promise<boolean> {
+): Promise<void> {
   // If we have a model interaction duration, store it.
   if (modelInteractionDurationMs) {
     await updateAgentMessageDBAndMemory(auth, {
@@ -257,15 +255,11 @@ export async function processEventForDatabase(
   switch (event.type) {
     case "agent_error":
       // Store error in database.
-      if (
-        !(await markAgentMessageAsFailed(auth, {
-          agentMessage,
-          conversation,
-          error: event.error,
-        }))
-      ) {
-        return false;
-      }
+      await markAgentMessageAsFailed(auth, {
+        agentMessage,
+        conversation,
+        error: event.error,
+      });
 
       // Mark the conversation as errored.
       await ConversationResource.markHasError(auth, {
@@ -293,15 +287,11 @@ export async function processEventForDatabase(
       break;
 
     case "tool_error":
-      if (
-        !(await markAgentMessageAsFailed(auth, {
-          agentMessage,
-          conversation,
-          error: event.error,
-        }))
-      ) {
-        return false;
-      }
+      await markAgentMessageAsFailed(auth, {
+        agentMessage,
+        conversation,
+        error: event.error,
+      });
 
       // Mark the conversation as errored.
       await ConversationResource.markHasError(auth, {
@@ -353,8 +343,6 @@ export async function processEventForDatabase(
       isRunningAgentLoop: false,
     });
   }
-
-  return true;
 }
 
 // Process unread state for agent events before publishing to Redis.
