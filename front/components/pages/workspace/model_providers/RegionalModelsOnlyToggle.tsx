@@ -37,7 +37,7 @@ export function RegionalModelsOnlyToggle({
     updateWorkspaceRegionalModelsOnly,
     isUpdatingWorkspaceRegionalModelsOnly,
   } = useUpdateWorkspaceRegionalModelsOnly({ owner: workspace });
-  const { hasFeature, featureFlags } = useFeatureFlags();
+  const { hasFeature } = useFeatureFlags();
 
   if (!hasFeature("use_vertex_for_anthropic_models")) {
     return <></>;
