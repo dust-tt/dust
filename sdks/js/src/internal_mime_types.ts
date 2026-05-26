@@ -171,6 +171,7 @@ export const CONTENT_NODE_MIME_TYPES = {
       "CONVERSATION_FOLDER",
       "CONVERSATION_MESSAGES",
       "CONTEXT_FOLDER",
+      "MOUNT_FOLDER",
     ],
   }),
 };

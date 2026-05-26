@@ -1,3 +1,4 @@
+import { sortEntriesByScopedPathDepth } from "@connectors/connectors/dust_project/lib/mount_path_utils";
 import {
   deleteConversation,
   syncConversation,
@@ -5,6 +6,7 @@ import {
 import { syncProjectMetadata } from "@connectors/connectors/dust_project/lib/sync_metadata";
 import {
   deleteProjectMountFile,
+  syncProjectMountDirectory,
   syncProjectMountFile,
 } from "@connectors/connectors/dust_project/lib/sync_project_mount_files";
 import { launchDustProjectIncrementalSyncWorkflow } from "@connectors/connectors/dust_project/temporal/client";
@@ -23,6 +25,7 @@ import { DustProjectMountFileResource } from "@connectors/resources/dust_project
 import type { ModelId } from "@connectors/types";
 import { concurrentExecutor } from "@connectors/types";
 import type {
+  ProjectMountDirectoryEntryType,
   ProjectMountFileEntryType,
   ProjectMountListEntryType,
 } from "@dust-tt/client";
@@ -362,6 +365,12 @@ async function dustProjectConversationsGarbageCollectActivity({
   }
 }
 
+function isMountDirectoryEntry(
+  e: ProjectMountListEntryType
+): e is ProjectMountDirectoryEntryType {
+  return e.isDirectory;
+}
+
 function isMountFileEntry(
   e: ProjectMountListEntryType
 ): e is ProjectMountFileEntryType {
@@ -407,6 +416,9 @@ export async function dustProjectMountFilesFullSyncActivity({
     );
   }
 
+  const directoryEntries = sortEntriesByScopedPathDepth(
+    listRes.value.files.filter(isMountDirectoryEntry)
+  );
   const fileEntries = listRes.value.files.filter(isMountFileEntry);
   const fetchedPaths = new Set(fileEntries.map((e) => e.path));
 
@@ -428,6 +440,18 @@ export async function dustProjectMountFilesFullSyncActivity({
       { concurrency: 5 }
     );
   }
+
+  await concurrentExecutor(
+    directoryEntries,
+    async (entry) => {
+      await syncProjectMountDirectory({
+        dataSourceConfig,
+        projectId: configuration.projectId,
+        entry,
+      });
+    },
+    { concurrency: 3 }
+  );
 
   await concurrentExecutor(
     fileEntries,
@@ -489,15 +513,31 @@ export async function dustProjectMountFilesIncrementalSyncActivity({
     );
   }
 
+  const directoryEntries = sortEntriesByScopedPathDepth(
+    listRes.value.files.filter(isMountDirectoryEntry)
+  );
   const fileEntries = listRes.value.files.filter(isMountFileEntry);
 
   localLogger.info(
     {
       projectId: configuration.projectId,
+      directoryCount: directoryEntries.length,
       count: fileEntries.length,
       lastSourceUpdatedAt: maxSourceUpdatedAt,
     },
     "Fetched project mount files for incremental sync"
+  );
+
+  await concurrentExecutor(
+    directoryEntries,
+    async (entry) => {
+      await syncProjectMountDirectory({
+        dataSourceConfig,
+        projectId: configuration.projectId,
+        entry,
+      });
+    },
+    { concurrency: 3 }
   );
 
   await concurrentExecutor(
