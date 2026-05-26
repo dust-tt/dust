@@ -12,14 +12,15 @@ import { describe, expect, it } from "vitest";
 const PROJECT_ID = "spc_test123";
 
 describe("parseProjectScopedPath", () => {
-  it("strips the project scope prefix", () => {
-    expect(parseProjectScopedPath("project/reports/q1/summary.pdf")).toBe(
+  it("strips the pod scope prefix", () => {
+    expect(parseProjectScopedPath("pod/reports/q1/summary.pdf")).toBe(
       "reports/q1/summary.pdf"
     );
   });
 
-  it("returns null for non-project paths", () => {
+  it("returns null for non-pod paths", () => {
     expect(parseProjectScopedPath("conversation/file.pdf")).toBeNull();
+    expect(parseProjectScopedPath("project/file.pdf")).toBeNull();
   });
 });
 
