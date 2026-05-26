@@ -117,6 +117,8 @@ async fn append_deny_log_line(path: &Path, line: &str, max_bytes: u64) -> Result
     file.write_all(line.as_bytes())
         .await
         .with_context(|| format!("failed to write deny log {}", path.display()))?;
+    // Flush before notifying test waiters: the file is dropped after the notify,
+    // so its implicit drop-flush would race readers woken by the notify.
     file.flush()
         .await
         .with_context(|| format!("failed to flush deny log {}", path.display()))?;
