@@ -5,6 +5,7 @@ import {
   EGRESS_SECRETS_PATH,
   writeEgressSecretsFile,
 } from "@app/lib/api/sandbox/egress_secrets";
+import { writeSandboxEnvManifestFile } from "@app/lib/api/sandbox/env_manifest";
 import { SANDBOX_AGENT_PROXIED_UID } from "@app/lib/api/sandbox/image/types";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
@@ -450,6 +451,11 @@ export async function setupEgressForwarder(
   const secretsWriteResult = await writeEgressSecretsFile(auth, sandbox);
   if (secretsWriteResult.isErr()) {
     return secretsWriteResult;
+  }
+
+  const manifestWriteResult = await writeSandboxEnvManifestFile(auth, sandbox);
+  if (manifestWriteResult.isErr()) {
+    return manifestWriteResult;
   }
 
   if (restartExisting) {

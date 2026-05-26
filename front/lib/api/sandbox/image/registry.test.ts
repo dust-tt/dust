@@ -65,10 +65,10 @@ function expectContentInOrder(
 }
 
 describe("sandbox image registry", () => {
-  test("bumps the base image for the dsbx h2 rollout", () => {
+  test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.22",
+      tag: "0.8.23",
     });
   });
 

@@ -67,6 +67,19 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("Do not pass custom TLS trust settings");
   });
 
+  it("points at `dsbx env` for env-var discovery", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+
+    const instructions = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).toContain("`dsbx env`");
+    expect(instructions).toContain("the HTTPS domain(s) it is approved for");
+  });
+
   it("hides agent egress request instructions until enabled", async () => {
     const {
       authenticator: auth,

@@ -22,6 +22,8 @@ enum Commands {
     Resolve(commands::resolve::ResolveArgs),
     /// Report sandbox egress enforcement health as JSON
     Healthcheck(commands::healthcheck::HealthcheckArgs),
+    /// List sandbox environment variables and DSEC allowlists
+    Env(commands::env::EnvArgs),
     /// Interact with MCP servers and tools
     Tools {
         /// Emit the tool execution result as JSON (`{ content, isError }`)
@@ -57,6 +59,7 @@ async fn run() -> anyhow::Result<()> {
         Commands::Forward(args) => commands::cmd_forward(args).await?,
         Commands::Resolve(args) => commands::cmd_resolve(args).await?,
         Commands::Healthcheck(args) => commands::cmd_healthcheck(args)?,
+        Commands::Env(args) => commands::cmd_env(args)?,
         Commands::Tools {
             json,
             server_name,
