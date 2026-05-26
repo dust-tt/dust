@@ -1,5 +1,6 @@
 import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useUpdateWorkspaceRegionalModelsOnly } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -36,6 +37,11 @@ export function RegionalModelsOnlyToggle({
     updateWorkspaceRegionalModelsOnly,
     isUpdatingWorkspaceRegionalModelsOnly,
   } = useUpdateWorkspaceRegionalModelsOnly({ owner: workspace });
+  const { hasFeature } = useFeatureFlags();
+
+  if (!hasFeature("use_vertex_for_anthropic_models")) {
+    return <></>;
+  }
 
   const config = REGIONAL_MODELS_ONLY_TOGGLE_CONFIG[regionInfo.name];
 
