@@ -3,6 +3,7 @@ import {
   getBillingStripeCustomerId,
   getStripeClient,
 } from "@app/lib/plans/stripe";
+import logger from "@app/logger/logger";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -121,12 +122,65 @@ function serializePaymentMethod(
   }
 }
 
-async function getDefaultPaymentMethod(
-  customer: Stripe.Customer
-): Promise<BillingPaymentMethod | null> {
+async function getAttachedPaymentMethod({
+  stripeCustomerId,
+  workspaceId,
+}: {
+  stripeCustomerId: string;
+  workspaceId: string;
+}): Promise<BillingPaymentMethod | null> {
+  const stripe = getStripeClient();
+  const paymentMethodTypes: Array<Stripe.PaymentMethodListParams.Type> = [
+    "card",
+    "sepa_debit",
+    "us_bank_account",
+  ];
+
+  for (const type of paymentMethodTypes) {
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: stripeCustomerId,
+      type,
+      limit: 1,
+    });
+
+    const paymentMethod = paymentMethods.data[0];
+    if (paymentMethod) {
+      logger.info(
+        {
+          workspaceId,
+          stripeCustomerId,
+          paymentMethodId: paymentMethod.id,
+          paymentMethodType: paymentMethod.type,
+        },
+        "[Billing info] Using attached Stripe payment method fallback"
+      );
+      return serializePaymentMethod(paymentMethod);
+    }
+  }
+
+  logger.info(
+    { workspaceId, stripeCustomerId },
+    "[Billing info] No Stripe default or attached payment method found"
+  );
+  return null;
+}
+
+async function getDefaultPaymentMethod({
+  customer,
+  stripeCustomerId,
+  workspaceId,
+}: {
+  customer: Stripe.Customer;
+  stripeCustomerId: string;
+  workspaceId: string;
+}): Promise<BillingPaymentMethod | null> {
   const defaultPaymentMethod = customer.invoice_settings.default_payment_method;
   if (!defaultPaymentMethod) {
-    return null;
+    logger.info(
+      { workspaceId, stripeCustomerId },
+      "[Billing info] Stripe customer has no invoice default payment method"
+    );
+    return getAttachedPaymentMethod({ stripeCustomerId, workspaceId });
   }
 
   if (isExpandedPaymentMethod(defaultPaymentMethod)) {
@@ -178,7 +232,11 @@ export async function getWorkspaceBillingInfo(
         phone: customer.phone ?? null,
         address: serializeAddress(customer.address),
       },
-      paymentMethod: await getDefaultPaymentMethod(customer),
+      paymentMethod: await getDefaultPaymentMethod({
+        customer,
+        stripeCustomerId: stripeCustomerIdRes.value,
+        workspaceId: owner.sId,
+      }),
     });
   } catch (error) {
     return new Err(new Error(errorToString(error)));
