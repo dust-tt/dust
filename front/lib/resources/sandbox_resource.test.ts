@@ -49,7 +49,6 @@ vi.mock("@app/lib/lock", () => ({
   executeWithLock: mockExecuteWithLock,
 }));
 
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
@@ -527,7 +526,6 @@ describe("SandboxResource.ensureActive", () => {
           imageId: { imageName: "test-image", tag: "0.0.1" },
           envVars: {
             DST_API_TOKEN: "image-token",
-            DD_API_KEY: "image-dd-token",
             WORKSPACE_ID: "image-workspace-id",
           },
           network: { egress: "restricted" },
@@ -628,7 +626,6 @@ describe("SandboxResource.ensureActive", () => {
           NODE_EXTRA_CA_CERTS: "/run/dust/egress-ca.pem",
           DENO_CERT: "/run/dust/egress-ca.pem",
           DENO_TLS_CA_STORE: "system,mozilla",
-          DD_API_KEY: config.getDatadogApiKey() ?? "",
           CONVERSATION_ID: conversation.sId,
           WORKSPACE_ID: workspace.sId,
         }),
@@ -638,6 +635,13 @@ describe("SandboxResource.ensureActive", () => {
     expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
       "DST_SECRET_TOKEN"
     );
+    expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
+      "DD_API_KEY"
+    );
+    expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
+      "DD_HOST"
+    );
+    expect(mockProviderExec).not.toHaveBeenCalled();
   });
 
   it("records baseImage and version from the registered image on fresh create", async () => {
@@ -677,6 +681,7 @@ describe("SandboxResource.ensureActive", () => {
     expect(persisted?.baseImage).toBe("test-image");
     expect(persisted?.version).toBe("0.0.1");
     expect(persisted?.providerId).toBe("provider-id");
+    expect(mockProviderExec).not.toHaveBeenCalled();
   });
 
   it("destroys and recreates when killRequestedAt is set on the existing row", async () => {
