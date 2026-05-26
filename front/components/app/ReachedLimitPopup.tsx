@@ -3,6 +3,7 @@ import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -172,13 +173,16 @@ function getLimitPromptForCode(
       }
     }
 
-    case "credits_exhausted":
+    case "credits_exhausted": {
+      const creditsManagementHref = isCreditPricedPlan(subscription.plan)
+        ? `/w/${owner.sId}/usage`
+        : `/w/${owner.sId}/developers/credits-usage`;
       return {
         title: "Out of credits",
         validateLabel: isAdmin ? "Manage credits" : "Ok",
         onValidate: isAdmin
           ? () => {
-              void router.push(`/w/${owner.sId}/developers/credits-usage`);
+              void router.push(creditsManagementHref);
             }
           : undefined,
         children: (
@@ -192,6 +196,7 @@ function getLimitPromptForCode(
           </>
         ),
       };
+    }
 
     default:
       assertNeverAndIgnore(code);
