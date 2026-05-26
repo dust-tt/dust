@@ -13,7 +13,6 @@ import {
   BreadcrumbButton,
   BreadcrumbItem,
   BreadcrumbPage,
-  BreadcrumbSeparator,
   Button,
   cn,
 } from "@dust-tt/sparkle";
@@ -117,7 +116,14 @@ export function FileExplorerBreadcrumb({
                   />
                 )}
               </BreadcrumbDropZone>
-              {!isLast && <BreadcrumbSeparator />}
+              {!isLast && (
+                <span
+                  aria-hidden="true"
+                  className="select-none px-0.5 text-sm text-muted-foreground dark:text-muted-foreground-night"
+                >
+                  /
+                </span>
+              )}
             </BreadcrumbItem>
           );
         })}
