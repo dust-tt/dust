@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { BlockedAwaitingInputOutputResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   ToolDefinition,
   ToolHandlerExtra,
@@ -6,6 +7,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isSandboxResumeState } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
 import {
   buildAuditLogTarget,
@@ -28,20 +30,25 @@ import {
   toolManifestToJSON,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image";
-import { wrapCommand } from "@app/lib/api/sandbox/image/profile";
+import {
+  buildWaitAndCollectCommand,
+  wrapCommandWithCapture,
+} from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
 import { ensureSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
-const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
+const DEFAULT_EXEC_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24h
 const ADD_EGRESS_DOMAIN_TOOL_NAME = "add_egress_domain" as const;
 const REDACTION_MARKER_PREFIX = "«redacted:";
 const REDACTION_MARKER_SUFFIX = "»";
@@ -226,29 +233,81 @@ export async function runSandboxBashTool(
     workingDirectory?: string;
   },
   { auth, agentLoopContext }: ToolHandlerExtra
-): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
+): Promise<
+  Result<
+    Array<
+      | { type: "text"; text: string }
+      | {
+          type: "resource";
+          resource: BlockedAwaitingInputOutputResourceType;
+        }
+    >,
+    MCPError
+  >
+> {
   const conversation = agentLoopContext?.runContext?.conversation;
   const agentConfiguration = agentLoopContext?.runContext?.agentConfiguration;
   const agentMessage = agentLoopContext?.runContext?.agentMessage;
   const sandboxAction = agentLoopContext?.runContext?.currentAction;
-  if (!conversation || !agentConfiguration || !agentMessage || !sandboxAction) {
+  const stepContext = agentLoopContext?.runContext?.stepContext;
+  if (
+    !conversation ||
+    !agentConfiguration ||
+    !agentMessage ||
+    !sandboxAction ||
+    !stepContext
+  ) {
     return new Err(new MCPError("No conversation context available."));
   }
+
+  // Resume mode is entered when the parent bash action's step context carries
+  // an execId from a prior pause cycle. The original `sandbox.exec()` is
+  // either still running inside the (now-thawed) sandbox or has already
+  // finished and written the exit sentinel; we tail its output via
+  // `wait-and-collect` instead of re-running the command.
+  const resumeExecId = isSandboxResumeState(stepContext.resumeState)
+    ? stepContext.resumeState.execId
+    : null;
+  const isResumeMode = resumeExecId !== null;
 
   const ensureResult = await ensureSandboxReady(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
 
-  const { sandbox } = ensureResult.value;
+  const { sandbox, freshlyCreated } = ensureResult.value;
 
-  const execId = generateExecId();
+  // If we entered resume mode but the sandbox had to be created from scratch
+  // (the reaper transitioned the paused sandbox to sleeping and then deleted
+  // it, or the provider GC'd it), the original exec's tee output file is
+  // gone — `wait-and-collect` would loop forever. Fail clean so the agent
+  // can decide whether to retry.
+  if (isResumeMode && freshlyCreated) {
+    logger.error(
+      {
+        execId: resumeExecId,
+        conversationId: conversation.sId,
+        sandboxId: sandbox.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Sandbox bash resume failed: original sandbox was lost during approval wait"
+    );
+    return new Err(
+      new MCPError(
+        "Sandbox was lost during approval wait; original execution is unrecoverable."
+      )
+    );
+  }
+
+  const execId = resumeExecId ?? generateExecId();
   const sandboxToken = await generateSandboxExecToken(auth, {
     agentConfiguration,
     agentMessage,
     conversation,
     sandbox,
     execId,
+    // Token must outlive the longest plausible pause/resume cycle. Redis
+    // revocation list bounds the real lifetime.
     expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
     sandboxAction,
   });
@@ -258,16 +317,16 @@ export async function runSandboxBashTool(
 
   const providerId = agentConfiguration.model.providerId;
   const timeoutSec = timeoutMs ? Math.ceil(timeoutMs / 1000) : 60;
-  const wrappedCommand = wrapCommand(command, providerId, {
-    timeoutSec,
-  });
+  const commandToRun = isResumeMode
+    ? buildWaitAndCollectCommand(execId)
+    : wrapCommandWithCapture(command, execId, providerId, { timeoutSec });
 
   const sandboxAPIBase =
     isDevelopment() && config.getSandboxDevFrontHostName()
       ? `https://${config.getSandboxDevFrontHostName()}`
       : config.getApiBaseUrl();
 
-  const execResult = await sandbox.exec(auth, wrappedCommand, {
+  const execResult = await sandbox.exec(auth, commandToRun, {
     workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
     envVars: {
       DUST_SANDBOX_TOKEN: sandboxToken,
@@ -276,13 +335,53 @@ export async function runSandboxBashTool(
     user: "agent-proxied",
   });
 
+  // Server-driven pause: a blocked sandbox-child action triggers
+  // `pauseSandboxBashForBlockedChild`, which atomically flips this bash
+  // action's status from `running` → `blocked_child_action_input_required`
+  // and calls `betaPause`. We observe the result here by refetching the
+  // parent action. The execId is persisted by the generic
+  // `tool_blocked_awaiting_input` exit_events path, which reads `state`
+  // off the resource we return below.
+  const freshParent = await AgentMCPActionResource.fetchById(
+    auth,
+    sandboxAction.sId
+  );
+  const wasPaused =
+    freshParent?.status === "blocked_child_action_input_required";
+
   const durationMs = performance.now() - startMs;
   recordToolDuration(
     "bash",
     durationMs,
     metricsCtx,
-    execResult.isOk() ? "success" : "error"
+    wasPaused ? "paused" : execResult.isOk() ? "success" : "error"
   );
+
+  if (wasPaused) {
+    logger.info(
+      {
+        execId,
+        conversationId: conversation.sId,
+        sandboxId: sandbox.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Sandbox bash paused waiting for tool approval"
+    );
+
+    return new Ok([
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
+          type: "tool_blocked_awaiting_input" as const,
+          text: "Sandbox bash paused waiting for tool approval",
+          uri: "",
+          blockingEvents: [],
+          state: { execId },
+        },
+      },
+    ]);
+  }
 
   void revokeExecToken({ sbId: sandbox.sId, execId }).catch((err) =>
     logger.error({ error: err }, "Failed to revoke exec token")

@@ -90,6 +90,18 @@ export function isUserQuestionResumeState(
   return UserQuestionResumeStateSchema.safeParse(value).success;
 }
 
+const SandboxResumeStateSchema = z.object({
+  execId: z.string(),
+});
+
+export type SandboxResumeState = z.infer<typeof SandboxResumeStateSchema>;
+
+export function isSandboxResumeState(
+  value: unknown
+): value is SandboxResumeState {
+  return SandboxResumeStateSchema.safeParse(value).success;
+}
+
 export type StepContext = {
   citationsCount: number;
   citationsOffset: number;
