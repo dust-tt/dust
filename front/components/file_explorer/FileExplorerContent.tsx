@@ -11,6 +11,7 @@ import type {
   FileExplorerEntry,
   FileExplorerMenuAction,
   FileSystemTreeNode,
+  FolderEntry,
 } from "@app/components/file_explorer/types";
 import { isFileExplorerMovableFile } from "@app/components/file_explorer/utils";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -53,6 +54,11 @@ export function FileExplorerContent({
 }: FileExplorerContentProps) {
   const items = sortedNodes.map((node) => {
     if (node.isDirectory) {
+      const folderEntry: FolderEntry = {
+        kind: "folder",
+        path: `project/${node.path}`,
+        name: node.name,
+      };
       return (
         <FileExplorerFolderCard
           key={`dir:${node.path}`}
@@ -60,6 +66,7 @@ export function FileExplorerContent({
           viewMode={viewMode}
           onNavigate={onFolderNavigate}
           onMoveFileDrop={onMoveFileDrop}
+          extraMenuItems={getFileMenuItems?.(folderEntry)}
         />
       );
     }
@@ -93,6 +100,9 @@ export function FileExplorerContent({
             extraMenuItems={getFileMenuItems?.(entry)}
           />
         );
+
+      case "folder":
+        return null;
 
       default:
         assertNeverAndIgnore(entry);

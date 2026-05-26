@@ -9,6 +9,7 @@ import type {
   FileEntry,
   FileExplorerEntry,
   FileExplorerMenuAction,
+  FolderEntry,
 } from "@app/components/file_explorer/types";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import {
@@ -247,10 +248,11 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   const [navigationResetKey, setNavigationResetKey] = useState(0);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
-  const [fileToRename, setFileToRename] = useState<{
-    path: string;
-    fileName: string;
-  } | null>(null);
+  const [itemToRename, setItemToRename] = useState<
+    | { kind: "file"; path: string; name: string }
+    | { kind: "folder"; path: string; name: string }
+    | null
+  >(null);
   const [activeOverlay, setActiveOverlay] = useState<
     "companyData" | "noCompanyData" | null
   >(null);
@@ -474,6 +476,19 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
             await refreshPodContextAttachments();
           }
         }
+      } else if (entry.kind === "folder") {
+        const confirmed = await confirm({
+          title: "Delete folder?",
+          message: `Are you sure you want to delete "${entry.name}" and all its contents? This action cannot be undone.`,
+          validateLabel: "Delete",
+          validateVariant: "warning",
+        });
+        if (confirmed) {
+          const result = await deletePodFile(entry.path);
+          if (result.isOk()) {
+            await refreshPodFiles();
+          }
+        }
       } else {
         const confirmed = await confirm({
           title: "Delete file?",
@@ -498,8 +513,20 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     ]
   );
 
-  const onRename = useCallback((entry: FileEntry) => {
-    setFileToRename({ path: entry.path, fileName: entry.fileName });
+  const onRename = useCallback((entry: FileEntry | FolderEntry) => {
+    if (entry.kind === "file") {
+      setItemToRename({
+        kind: "file",
+        path: entry.path,
+        name: entry.fileName,
+      });
+    } else {
+      setItemToRename({
+        kind: "folder",
+        path: entry.path,
+        name: entry.name,
+      });
+    }
     setShowRenameDialog(true);
   }, []);
 
@@ -691,7 +718,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         onRenamed={() => void refreshPodFiles()}
         owner={owner}
         podId={pod.sId}
-        file={fileToRename}
+        item={itemToRename}
       />
 
       <CreateFolderDialog

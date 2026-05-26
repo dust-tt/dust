@@ -379,6 +379,76 @@ export async function renameGCSMountFile(
 }
 
 /**
+ * Rename a folder within a GCS mount point by moving all objects under its prefix.
+ * Does not touch FileResource records; callers are responsible for any DB sync.
+ */
+export async function renameGCSMountDirectory(
+  auth: Authenticator,
+  scope: GCSMountPoint,
+  {
+    relativeDirPath,
+    newFolderName,
+  }: { relativeDirPath: string; newFolderName: string }
+): Promise<Result<{ newRelativeDirPath: string }, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const prefix = resolvePrefix(owner, scope);
+  const normalized = relativeDirPath.replace(/^\/+|\/+$/g, "");
+  const lastSlash = normalized.lastIndexOf("/");
+  const parentDir = lastSlash >= 0 ? normalized.slice(0, lastSlash) : "";
+  const newRelativeDirPath = parentDir
+    ? `${parentDir}/${newFolderName}`
+    : newFolderName;
+
+  if (normalized === newRelativeDirPath) {
+    return new Ok({ newRelativeDirPath });
+  }
+
+  const oldDirPrefix = `${prefix}${normalized}/`;
+  const newDirPrefix = `${prefix}${newRelativeDirPath}/`;
+
+  const bucket = getPrivateUploadBucket();
+  const [newDirExists] = await bucket.file(newDirPrefix).exists();
+  if (newDirExists) {
+    return new Err(new GCSMountDirectoryAlreadyExistsError());
+  }
+
+  const { files: objects } = await bucket.getAllFilesByPrefix({
+    prefix: oldDirPrefix,
+  });
+
+  try {
+    for (const obj of objects) {
+      const destPath = obj.name.replace(oldDirPrefix, newDirPrefix);
+      if (destPath === obj.name) {
+        continue;
+      }
+      await bucket.copyFile(obj.name, destPath);
+    }
+    await bucket.deleteByPrefix(oldDirPrefix);
+
+    if (scope.useCase === "project") {
+      const podsPrefix = getPodFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: scope.projectId,
+      });
+      const oldPodsDirPrefix = `${podsPrefix}${normalized}/`;
+      for (const obj of objects) {
+        const newProjectsPath = obj.name.replace(oldDirPrefix, newDirPrefix);
+        const newPodsPath = toPodMountFilePath(newProjectsPath);
+        if (newPodsPath) {
+          await bucket.copyFile(newProjectsPath, newPodsPath);
+        }
+      }
+      await bucket.deleteByPrefix(oldPodsDirPrefix);
+    }
+
+    return new Ok({ newRelativeDirPath });
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
  * Generate a short-lived signed URL for a GCS mount file.
  * Validates that the path belongs to the expected scope before signing.
  */
@@ -526,10 +596,36 @@ export async function deleteGCSMountFile(
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
   const prefix = resolvePrefix(owner, scope);
-  const gcsPath = `${prefix}${relativeFilePath}`;
+  const normalized = relativeFilePath.replace(/^\/+|\/+$/g, "");
+  const gcsPath = `${prefix}${normalized}`;
+  const dirGcsPrefix = `${prefix}${normalized}/`;
 
   const bucket = getPrivateUploadBucket();
   try {
+    const [fileExists] = await bucket.file(gcsPath).exists();
+    if (!fileExists) {
+      const [dirPlaceholderExists] = await bucket.file(dirGcsPrefix).exists();
+      const { files: dirContents } = await bucket.getAllFilesByPrefix({
+        prefix: dirGcsPrefix,
+        pageSize: 1,
+      });
+      const isDirectoryDelete = dirPlaceholderExists || dirContents.length > 0;
+
+      if (isDirectoryDelete) {
+        await bucket.deleteByPrefix(dirGcsPrefix);
+
+        if (scope.useCase === "project") {
+          const podsPrefix = getPodFilesBasePath({
+            workspaceId: owner.sId,
+            projectId: scope.projectId,
+          });
+          await bucket.deleteByPrefix(`${podsPrefix}${normalized}/`);
+        }
+
+        return new Ok(undefined);
+      }
+    }
+
     await bucket.delete(gcsPath, { ignoreNotFound: true });
 
     // Mirror delete on the pods/ side for project files
@@ -538,7 +634,7 @@ export async function deleteGCSMountFile(
         workspaceId: owner.sId,
         projectId: scope.projectId,
       });
-      const podsGcsPath = `${podsPrefix}${relativeFilePath}`;
+      const podsGcsPath = `${podsPrefix}${normalized}`;
       await bucket.delete(podsGcsPath, { ignoreNotFound: true });
     }
 
