@@ -1067,7 +1067,7 @@ fn build_h2_upstream_request(
         .method(method)
         .uri(uri);
     for header in headers {
-        if should_strip_h2_upstream_header(&header.name) {
+        if is_common_bridge_stripped_header(&header.name) {
             continue;
         }
         let name = HeaderName::from_bytes(header.name.as_bytes())
@@ -1080,10 +1080,6 @@ fn build_h2_upstream_request(
     request
         .body(())
         .map_err(|_| H2RequestDeny::internal(DenyReason::MalformedHeaders))
-}
-
-fn should_strip_h2_upstream_header(name: &str) -> bool {
-    is_common_bridge_stripped_header(name)
 }
 
 async fn forward_h2_request_body(
@@ -1229,7 +1225,7 @@ fn sanitize_h2_response_head<B>(response: Response<B>) -> Result<Response<()>> {
     let (parts, _) = response.into_parts();
     let mut builder = Response::builder().status(parts.status);
     for (name, value) in &parts.headers {
-        if should_strip_h2_upstream_header(name.as_str()) {
+        if is_common_bridge_stripped_header(name.as_str()) {
             continue;
         }
         builder = builder.header(name, value);
@@ -1245,12 +1241,12 @@ fn filter_h2_header_map(headers: HeaderMap) -> HeaderMap {
     for (name, value) in headers {
         if let Some(name) = name {
             last_name = Some(name.clone());
-            if should_strip_h2_upstream_header(name.as_str()) {
+            if is_common_bridge_stripped_header(name.as_str()) {
                 continue;
             }
             filtered.append(name, value);
         } else if let Some(name) = &last_name {
-            if should_strip_h2_upstream_header(name.as_str()) {
+            if is_common_bridge_stripped_header(name.as_str()) {
                 continue;
             }
             filtered.append(name.clone(), value);
@@ -1392,7 +1388,8 @@ fn build_h1_request_head(
             append_h1_header_line(&mut header_bytes, header.name.as_bytes(), &header.value)?;
             continue;
         }
-        if should_strip_h1_bridge_header(&header.name)
+        if is_common_bridge_stripped_header(&header.name)
+            || header.name.eq_ignore_ascii_case(TE.as_str())
             || (use_chunked && header.name.eq_ignore_ascii_case(CONTENT_LENGTH.as_str()))
         {
             continue;
@@ -1533,10 +1530,6 @@ where
     Ok(())
 }
 
-fn should_strip_h1_bridge_header(name: &str) -> bool {
-    is_common_bridge_stripped_header(name) || name.eq_ignore_ascii_case("te")
-}
-
 fn connection_nominated_headers(headers: &[HeaderPart]) -> Result<HashSet<String>> {
     let mut nominated = HashSet::new();
     for header in headers {
@@ -1619,7 +1612,9 @@ fn build_h2_response_head(response_head: &H1ResponseHead) -> Result<Response<()>
     let mut response = Response::builder().status(response_head.status);
     let nominated_hop_headers = connection_nominated_headers(&response_head.headers)?;
     for header in &response_head.headers {
-        if should_strip_h1_bridge_header(header.name.as_str()) {
+        if is_common_bridge_stripped_header(header.name.as_str())
+            || header.name.eq_ignore_ascii_case(TE.as_str())
+        {
             continue;
         }
         if nominated_hop_headers.contains(&header.name.to_ascii_lowercase()) {
@@ -1854,7 +1849,9 @@ where
             .parse(&synthetic)
             .context("failed to parse h1 trailers")?;
         for header in request.headers.iter() {
-            if should_strip_h1_bridge_header(header.name) {
+            if is_common_bridge_stripped_header(header.name)
+                || header.name.eq_ignore_ascii_case(TE.as_str())
+            {
                 continue;
             }
             let name = HeaderName::from_bytes(header.name.as_bytes())
@@ -4195,7 +4192,7 @@ mod tests {
         };
         assert_h2_reset_reason(error, h2::Reason::INTERNAL_ERROR);
 
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"request_trailers_unsupported\""),
             "deny log should record request_trailers_unsupported, got: {deny_log_text}"
@@ -4252,7 +4249,7 @@ mod tests {
         };
         assert_h2_reset_reason(error, h2::Reason::INTERNAL_ERROR);
 
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"request_trailers_unsupported\""),
             "deny log should record request_trailers_unsupported, got: {deny_log_text}"
@@ -4522,7 +4519,7 @@ mod tests {
             .await
             .ok_or_else(|| anyhow!("allowed sibling did not reach upstream"))?;
         assert!(request_text.contains("GET /allowed HTTP/1.1\r\n"));
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(deny_log_text.contains("\"reason\":\"placeholder_on_non_allowed\""));
 
         drop(send_request);
@@ -4656,7 +4653,7 @@ mod tests {
             ":authority/SNI mismatch should reset"
         );
 
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"host_sni_mismatch\""),
             "deny log should record host_sni_mismatch, got: {deny_log_text}"
@@ -4709,7 +4706,7 @@ mod tests {
         };
         assert_h2_reset_reason(error, h2::Reason::PROTOCOL_ERROR);
 
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"malformed_headers\""),
             "deny log should record malformed_headers, got: {deny_log_text}"
@@ -4763,7 +4760,7 @@ mod tests {
         };
         assert_h2_reset_reason(error, h2::Reason::PROTOCOL_ERROR);
 
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"malformed_headers\""),
             "deny log should record malformed_headers, got: {deny_log_text}"
@@ -4809,7 +4806,7 @@ mod tests {
         let (response, _stream) = send_request.send_request(request, true)?;
         assert!(response.await.is_err(), "placeholder in :path should reset");
 
-        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref()).await?;
+        let deny_log_text = read_test_file_eventually(deny_log.as_ref()).await?;
         assert!(
             deny_log_text.contains("\"reason\":\"url_line_placeholder\""),
             "deny log should record url_line_placeholder, got: {deny_log_text}"

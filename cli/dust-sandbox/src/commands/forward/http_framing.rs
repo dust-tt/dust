@@ -55,11 +55,23 @@ pub(super) fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
         .position(|window| window == needle)
 }
 
+// Hop-by-hop headers we strip when re-serializing a bridged request or response.
+// Connection, Keep-Alive, Proxy-Connection, Transfer-Encoding, and Upgrade are
+// hop-by-hop per RFC 7230. Host is stripped because we re-set it from the
+// bridged authority.
+const COMMON_STRIPPED_HEADERS: &[&str] = &[
+    "connection",
+    "host",
+    "keep-alive",
+    "proxy-connection",
+    "transfer-encoding",
+    "upgrade",
+];
+
 pub(super) fn is_common_bridge_stripped_header(name: &str) -> bool {
-    matches!(
-        name.to_ascii_lowercase().as_str(),
-        "connection" | "host" | "keep-alive" | "proxy-connection" | "transfer-encoding" | "upgrade"
-    )
+    COMMON_STRIPPED_HEADERS
+        .iter()
+        .any(|stripped| name.eq_ignore_ascii_case(stripped))
 }
 
 #[cfg(test)]
