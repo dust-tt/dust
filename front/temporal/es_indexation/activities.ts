@@ -28,9 +28,9 @@ export async function indexUserSearchActivity({
   const { memberships } = await MembershipResource.getLatestMemberships({
     users: [user],
   });
-  const workspaces = await WorkspaceResource.fetchByModelIds(
-    [...new Set(memberships.map((m) => m.workspaceId))]
-  );
+  const workspaces = await WorkspaceResource.fetchByModelIds([
+    ...new Set(memberships.map((m) => m.workspaceId)),
+  ]);
   const workspaceByModelId = new Map(
     workspaces.map((workspace) => [workspace.id, workspace])
   );

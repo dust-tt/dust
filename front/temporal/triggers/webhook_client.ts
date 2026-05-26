@@ -1,7 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";

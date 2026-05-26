@@ -36,9 +36,9 @@ export async function purgeConversationsBatchActivity({
   workspaceIds: ModelId[];
 }): Promise<PurgeConversationsBatchActivityReturnType[]> {
   const res: PurgeConversationsBatchActivityReturnType[] = [];
-  const workspaces = await WorkspaceResource.fetchByModelIds(
-    [...new Set(workspaceIds)]
-  );
+  const workspaces = await WorkspaceResource.fetchByModelIds([
+    ...new Set(workspaceIds),
+  ]);
   const workspaceByModelId = new Map(
     workspaces.map((workspace) => [workspace.id, workspace])
   );
