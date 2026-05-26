@@ -28,6 +28,10 @@ import tApp from "./routes/t";
 import templatesApp from "./routes/templates";
 import userApp from "./routes/user";
 import publicApp from "./routes/v1";
+import vizApp from "./routes/v1/viz";
+import publicWorkspaceApp from "./routes/v1/w/[wId]";
+import publicWorkspaceAppsApp from "./routes/v1/w/[wId]/apps";
+import publicWorkspaceTriggersApp from "./routes/v1/w/[wId]/triggers";
 import workspaceApp from "./routes/w/[wId]";
 import workspaceJoinApp from "./routes/w/[wId]/join";
 import workosApp from "./routes/workos";
@@ -64,6 +68,15 @@ apiApp.route("/workspace-lookup", workspaceLookupApp);
 apiApp.route("/w/:wId/join", workspaceJoinApp);
 apiApp.route("/w/:wId", workspaceApp);
 apiApp.route("/v1", publicApp);
+// Viz endpoints authenticate via their own access token, not publicApiAuth.
+apiApp.route("/v1/viz", vizApp);
+// Triggers is mounted before the workspace app so it does not inherit
+// publicApiAuth (it uses its own URL secret-based authentication).
+apiApp.route("/v1/w/:wId/triggers", publicWorkspaceTriggersApp);
+// Apps is mounted before the workspace app so the run-app POST can use the
+// system-key-bypass auth variant instead of the default publicApiAuth.
+apiApp.route("/v1/w/:wId/apps", publicWorkspaceAppsApp);
+apiApp.route("/v1/w/:wId", publicWorkspaceApp);
 // Pre-stop uses a dynamic first segment (the secret) — register last so its
 // `/:preStopSecret/prestop` shape doesn't shadow any literal-prefixed routes
 // above.

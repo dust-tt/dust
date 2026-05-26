@@ -100,12 +100,18 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
  * `Authenticator` on the Hono context under `auth`. Mirrors
  * `withPublicAPIAuthentication` in `front/lib/api/auth_wrappers.ts`.
  *
- * The `allowSystemKeyBypassBuilderCheck` option from the original wrapper is
- * not yet ported — it is only used by `run_dust_app`, and we'll add it as a
- * factory variant when we migrate that endpoint.
+ * When `allowSystemKeyBypassBuilderCheck` is true, system keys bypass the
+ * `isUser()` check even if their role is downgraded via the X-Dust-Role
+ * header (the key must still belong to the target workspace). Mirrors the
+ * option of the same name on `withPublicAPIAuthentication` — used by
+ * `run_dust_app`.
  */
-export const publicApiAuth = createMiddleware<PublicApiCtx>(
-  async (ctx, next) => {
+function createPublicApiAuth({
+  allowSystemKeyBypassBuilderCheck = false,
+}: {
+  allowSystemKeyBypassBuilderCheck?: boolean;
+} = {}) {
+  return createMiddleware<PublicApiCtx>(async (ctx, next) => {
     const wId = ctx.req.param("wId");
     if (!wId) {
       return apiError(ctx, {
@@ -219,7 +225,15 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
       return apiError(ctx, workspaceError);
     }
 
-    if (!workspaceAuth.isUser()) {
+    // Authenticator created from a key carries the role assigned at key
+    // creation. System keys can bypass this check when
+    // allowSystemKeyBypassBuilderCheck is set (key must belong to workspace).
+    const owner = workspaceAuth.getNonNullableWorkspace();
+    const isSystemKeyAllowed =
+      allowSystemKeyBypassBuilderCheck &&
+      workspaceAuth.isSystemKey() &&
+      keyRes.value.workspaceId === owner.id;
+    if (!workspaceAuth.isUser() && !isSystemKeyAllowed) {
       return apiError(ctx, {
         status_code: 401,
         api_error: {
@@ -257,5 +271,12 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
     applyClientIp(workspaceAuth, headers);
     ctx.set("auth", workspaceAuth);
     await next();
-  }
-);
+  });
+}
+
+export const publicApiAuth = createPublicApiAuth();
+
+// Variant used by the run-app POST endpoint: system keys with a downgraded
+// role (via X-Dust-Role) are still trusted.
+export const publicApiAuthAllowSystemKeyBypassBuilderCheck =
+  createPublicApiAuth({ allowSystemKeyBypassBuilderCheck: true });

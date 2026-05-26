@@ -12,6 +12,7 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { setSSEHeaders } from "@front-api/middlewares/streaming";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { stream } from "hono/streaming";
@@ -101,11 +102,7 @@ app.get("/", async (ctx) => {
     reqQuery.limit = limitParam;
   }
 
-  ctx.header("Content-Type", "text/event-stream");
-  ctx.header("Cache-Control", "no-cache");
-  ctx.header("Connection", "keep-alive");
-  ctx.header("X-Accel-Buffering", "no");
-  ctx.header("Content-Encoding", "none");
+  setSSEHeaders(ctx);
 
   return stream(ctx, async (s) => {
     try {

@@ -1,21 +1,20 @@
-// @migration-status: MIGRATED_TO_HONO
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleSearch } from "@app/lib/api/search";
-import { initSSEResponse } from "@app/lib/api/sse";
-import type { Authenticator } from "@app/lib/auth";
 import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
-import { apiError } from "@app/logger/withlogging";
 import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { PostWorkspaceSearchResponseBodyType } from "@dust-tt/client";
 import { SearchRequestBodySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import { setSSEHeaders } from "@front-api/middlewares/streaming";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { stream } from "hono/streaming";
 import { fromError } from "zod-validation-error";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
@@ -33,152 +32,9 @@ interface UnifiedSearchStreamChunk {
   toolResults?: ToolSearchResult[];
 }
 
-async function handleStreamingSearch(
-  req: NextApiRequest,
-  res: NextApiResponse,
-  auth: Authenticator
-): Promise<void> {
-  const {
-    query,
-    limit: limitParam,
-    cursor,
-    viewType = "all",
-    spaceIds: spaceIdsParam,
-    includeDataSources = "true",
-    searchSourceUrls,
-    includeTools = "true",
-  } = req.query;
-
-  // Transform query parameters to match SearchRequestBodySchema format
-  const limit = isString(limitParam) ? parseInt(limitParam, 10) : 25;
-
-  // Validate limit range
-  if (isNaN(limit) || limit < 1 || limit > 100) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "limit must be a number between 1 and 100.",
-      },
-    });
-  }
-
-  const searchParamsInput = {
-    query: isString(query) ? query : undefined,
-    viewType: isString(viewType) ? viewType : "all",
-    spaceIds:
-      isString(spaceIdsParam) && spaceIdsParam.length > 0
-        ? spaceIdsParam.split(",")
-        : [],
-    includeDataSources: includeDataSources === "true",
-    limit,
-    searchSourceUrls: searchSourceUrls === "true" ? true : undefined,
-  };
-
-  // Validate using SearchRequestBodySchema
-  const r = SearchRequestBodySchema.safeParse(searchParamsInput);
-
-  if (r.error) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: fromError(r.error).toString(),
-      },
-    });
-  }
-
-  const searchParams = r.data;
-
-  try {
-    initSSEResponse(res);
-
-    // Create an AbortController to handle client disconnection
-    const controller = new AbortController();
-    const { signal } = controller;
-
-    // Handle client disconnection
-    req.on("close", () => {
-      controller.abort();
-    });
-
-    logger.info(
-      {
-        workspaceId: auth.workspace()?.sId,
-        params: searchParams,
-      },
-      "Search knowledge (streaming - v1 API)"
-    );
-
-    // First, stream knowledge results
-    const searchResult = await handleSearch(req.query, auth, searchParams);
-
-    if (searchResult.isErr()) {
-      return apiError(req, res, {
-        status_code: searchResult.error.status,
-        api_error: searchResult.error.error,
-      });
-    }
-
-    // If the client disconnected, stop streaming
-    if (signal.aborted) {
-      return;
-    }
-
-    // Send knowledge results
-    const knowledgeChunk: UnifiedSearchStreamChunk = {
-      knowledgeResults: searchResult.value,
-    };
-    res.write(`data: ${JSON.stringify(knowledgeChunk)}\n\n`);
-    // @ts-expect-error - We need it for streaming but it does not exist in the types.
-    res.flush();
-
-    // Stream tool results if enabled and not paginating
-    // Tool results are only included on the first page (no cursor)
-    if (
-      includeTools === "true" &&
-      !cursor &&
-      !signal.aborted &&
-      isString(searchParams.query)
-    ) {
-      for await (const results of streamToolFiles({
-        auth,
-        query: searchParams.query,
-        pageSize: searchParams.limit,
-      })) {
-        // If the client disconnected, stop streaming
-        if (signal.aborted) {
-          break;
-        }
-
-        const toolChunk: UnifiedSearchStreamChunk = {
-          toolResults: results,
-        };
-        res.write(`data: ${JSON.stringify(toolChunk)}\n\n`);
-        // @ts-expect-error - We need it for streaming but it does not exist in the types.
-        res.flush();
-      }
-    }
-
-    res.status(200).end();
-    return;
-  } catch (error) {
-    logger.error(
-      {
-        error,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-      },
-      "Error in unified search (v1 API)"
-    );
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: `Failed to search: ${error instanceof Error ? error.message : "Unknown error"}`,
-      },
-    });
-  }
-}
+// Mounted at /api/v1/w/:wId/search. publicApiAuth is applied by the parent
+// v1 workspace sub-app, so ctx.get("auth") is always available here.
+const app = publicApiApp();
 
 /**
  * @swagger
@@ -316,50 +172,151 @@ async function handleStreamingSearch(
  *       405:
  *         description: Method not allowed
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<PostWorkspaceSearchResponseBodyType>
-  >,
-  auth: Authenticator
-): Promise<void> {
-  // Support both GET (streaming) and POST (legacy) methods
-  if (req.method === "GET") {
-    return handleStreamingSearch(req, res, auth);
-  }
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
 
-  if (req.method !== "POST") {
-    return apiError(req, res, {
-      status_code: 405,
+  const {
+    query,
+    limit: limitParam,
+    cursor,
+    viewType = "all",
+    spaceIds: spaceIdsParam,
+    includeDataSources = "true",
+    searchSourceUrls,
+    includeTools = "true",
+  } = ctx.req.query();
+
+  // Transform query parameters to match SearchRequestBodySchema format
+  const limit = isString(limitParam) ? parseInt(limitParam, 10) : 25;
+
+  // Validate limit range
+  if (isNaN(limit) || limit < 1 || limit > 100) {
+    return apiError(ctx, {
+      status_code: 400,
       api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET or POST is expected.",
+        type: "invalid_request_error",
+        message: "limit must be a number between 1 and 100.",
       },
     });
   }
 
-  const r = SearchRequestBodySchema.safeParse(req.body);
+  const searchParamsInput = {
+    query: isString(query) ? query : undefined,
+    viewType: isString(viewType) ? viewType : "all",
+    spaceIds:
+      isString(spaceIdsParam) && spaceIdsParam.length > 0
+        ? spaceIdsParam.split(",")
+        : [],
+    includeDataSources: includeDataSources === "true",
+    limit,
+    searchSourceUrls: searchSourceUrls === "true" ? true : undefined,
+  };
+
+  // Validate using SearchRequestBodySchema
+  const r = SearchRequestBodySchema.safeParse(searchParamsInput);
 
   if (r.error) {
-    return apiError(req, res, {
+    return apiError(ctx, {
+      status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message: fromError(r.error).toString(),
       },
-      status_code: 400,
     });
   }
 
-  const searchResult = await handleSearch(req.query, auth, r.data);
+  const searchParams = r.data;
 
-  if (searchResult.isErr()) {
-    return apiError(req, res, {
-      status_code: searchResult.error.status,
-      api_error: searchResult.error.error,
-    });
+  setSSEHeaders(ctx);
+
+  return stream(ctx, async (s) => {
+    try {
+      logger.info(
+        {
+          workspaceId: auth.workspace()?.sId,
+          params: searchParams,
+        },
+        "Search knowledge (streaming - v1 API)"
+      );
+
+      // First, stream knowledge results
+      const searchResult = await handleSearch(
+        ctx.req.query(),
+        auth,
+        searchParams
+      );
+
+      if (searchResult.isErr()) {
+        // Write the error as an SSE event so the client can handle it.
+        await s.write(
+          `data: ${JSON.stringify({ error: searchResult.error })}\n\n`
+        );
+        return;
+      }
+
+      if (s.aborted) {
+        return;
+      }
+
+      // Send knowledge results
+      const knowledgeChunk: UnifiedSearchStreamChunk = {
+        knowledgeResults: searchResult.value,
+      };
+      await s.write(`data: ${JSON.stringify(knowledgeChunk)}\n\n`);
+
+      // Stream tool results if enabled and not paginating
+      // Tool results are only included on the first page (no cursor)
+      if (
+        includeTools === "true" &&
+        !cursor &&
+        !s.aborted &&
+        isString(searchParams.query)
+      ) {
+        for await (const results of streamToolFiles({
+          auth,
+          query: searchParams.query,
+          pageSize: searchParams.limit,
+        })) {
+          if (s.aborted) {
+            break;
+          }
+
+          const toolChunk: UnifiedSearchStreamChunk = {
+            toolResults: results,
+          };
+          await s.write(`data: ${JSON.stringify(toolChunk)}\n\n`);
+        }
+      }
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "Error in unified search (v1 API)"
+      );
+    }
+  });
+});
+
+app.post(
+  "/",
+  validate("json", SearchRequestBodySchema),
+  async (ctx): HandlerResult<PostWorkspaceSearchResponseBodyType> => {
+    const auth = ctx.get("auth");
+    const body = ctx.req.valid("json");
+
+    const searchResult = await handleSearch(ctx.req.query(), auth, body);
+
+    if (searchResult.isErr()) {
+      return apiError(ctx, {
+        status_code: searchResult.error.status,
+        api_error: searchResult.error.error,
+      });
+    }
+
+    return ctx.json(searchResult.value);
   }
+);
 
-  return res.status(200).json(searchResult.value);
-}
-
-export default withPublicAPIAuthentication(handler);
+export default app;

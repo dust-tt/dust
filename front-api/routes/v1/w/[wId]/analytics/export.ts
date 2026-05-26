@@ -1,4 +1,3 @@
-// @migration-status: MIGRATED_TO_HONO
 /**
  * @swagger
  * /api/v1/w/{wId}/analytics/export:
@@ -79,25 +78,23 @@
  *         description: Method not supported
  */
 
-import type { ExportTableData } from "@app/lib/api/analytics/export_tables";
 import {
   exportTable,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<string | ExportTableData["rows"]>>,
-  auth: Authenticator
-): Promise<void> {
+// Mounted at /api/v1/w/:wId/analytics/export. publicApiAuth is applied by the
+// parent v1 workspace sub-app, so ctx.get("auth") is always available here.
+const app = publicApiApp();
+
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+
   if (!auth.isKey()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
@@ -109,7 +106,7 @@ async function handler(
   // integrations have been migrated to admin keys. Builder is temporarily
   // accepted to avoid breaking current callers.
   if (!auth.isBuilder()) {
-    return apiError(req, res, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "insufficient_key_scope",
@@ -119,68 +116,66 @@ async function handler(
     });
   }
 
-  switch (req.method) {
-    case "GET": {
-      const { table, startDate, endDate, timezone, format } = req.query;
-      const q = GetAnalyticsExportRequestSchema.safeParse({
-        table,
-        startDate,
-        endDate,
-        timezone,
-        format,
-      });
-      if (!q.success) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid query parameters: ${q.error.message}`,
-          },
-        });
-      }
-
-      const owner = auth.getNonNullableWorkspace();
-      const result = await exportTable({
-        auth,
-        table: q.data.table,
-        startDate: q.data.startDate,
-        endDate: q.data.endDate,
-        timezone: q.data.timezone ?? "UTC",
-        owner,
-        includeHiddenAgents: auth.isKey(),
-      });
-
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: result.error.message,
-          },
-        });
-      }
-
-      if (q.data.format === "json") {
-        res.setHeader("Content-Type", "application/json");
-        return res.status(200).json(result.value.rows);
-      }
-
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="dust_${q.data.table}_${q.data.startDate}_${q.data.endDate}.csv"`
-      );
-      return res.status(200).send(stringifyExportTableAsCsv(result.value));
-    }
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
+  const q = GetAnalyticsExportRequestSchema.safeParse({
+    table: ctx.req.query("table"),
+    startDate: ctx.req.query("startDate"),
+    endDate: ctx.req.query("endDate"),
+    timezone: ctx.req.query("timezone"),
+    format: ctx.req.query("format"),
+  });
+  if (!q.success) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid query parameters: ${q.error.message}`,
+      },
+    });
   }
-}
 
-export default withPublicAPIAuthentication(handler);
+  const owner = auth.getNonNullableWorkspace();
+  const result = await exportTable({
+    auth,
+    table: q.data.table,
+    startDate: q.data.startDate,
+    endDate: q.data.endDate,
+    timezone: q.data.timezone ?? "UTC",
+    owner,
+    includeHiddenAgents: auth.isKey(),
+  });
+
+  if (result.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: result.error.message,
+      },
+    });
+  }
+
+  if (q.data.format === "json") {
+    return ctx.json(result.value.rows);
+  }
+
+  ctx.header("Content-Type", "text/csv");
+  ctx.header(
+    "Content-Disposition",
+    `attachment; filename="dust_${q.data.table}_${q.data.startDate}_${q.data.endDate}.csv"`
+  );
+  return ctx.body(stringifyExportTableAsCsv(result.value));
+});
+
+// Hono does not emit 405 for a matched path with an unsupported method, so we
+// register an explicit fallback to preserve the Next handler's behavior.
+app.all("/", (ctx) =>
+  apiError(ctx, {
+    status_code: 405,
+    api_error: {
+      type: "method_not_supported_error",
+      message: "The method passed is not supported, GET is expected.",
+    },
+  })
+);
+
+export default app;

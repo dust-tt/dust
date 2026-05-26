@@ -1,0 +1,44 @@
+import { getMembers } from "@app/lib/api/workspace";
+import type {
+  GetWorkspaceMembersResponseBody,
+  UserType,
+} from "@dust-tt/client";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+
+// Mounted at /api/v1/w/:wId/members. publicApiAuth is applied by the parent
+// v1 workspace sub-app, so ctx.get("auth") is always available here.
+const app = publicApiApp();
+
+/**
+ * @ignoreswagger
+ * Admin-only endpoint. Undocumented.
+ */
+app.get("/", async (ctx): HandlerResult<GetWorkspaceMembersResponseBody> => {
+  const auth = ctx.get("auth");
+
+  if (!auth.isAdmin()) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message: "Only users that are `admins` can access this endpoint.",
+      },
+    });
+  }
+
+  const { members: users } = await getMembers(auth, { activeOnly: true });
+
+  return ctx.json({
+    users: users.map(
+      (user): Pick<UserType, "sId" | "id" | "email"> => ({
+        sId: user.sId,
+        id: user.id,
+        email: user.email,
+      })
+    ),
+  });
+});
+
+export default app;
