@@ -1,4 +1,4 @@
-import { unauthedApp } from "../../middlewares/ctx";
+import { unauthedApp } from "@front-api/middlewares/ctx";
 import publicAuthActionApp from "./auth/[action]";
 import publicMeApp from "./me";
 import publicFramesTokenApp from "./public/frames/[token]";
