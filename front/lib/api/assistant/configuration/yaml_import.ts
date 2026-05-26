@@ -39,10 +39,10 @@ const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
   generation_settings: agentYAMLGenerationSettingsSchema.partial().optional(),
 });
 
-interface ResolvedEditors {
+type ResolvedEditors = {
   editors: PatchRequestBody["editors"];
-  authorId: ModelId;
-}
+  authorModelId: ModelId;
+};
 
 function resolveEditorUsers(
   auth: Authenticator,
@@ -68,7 +68,7 @@ function resolveEditorUsers(
     editors: resolvedEditorUsers.map((user) => ({
       sId: user.sId,
     })),
-    authorId: resolvedEditorUsers[0].id,
+    authorModelId: resolvedEditorUsers[0].id,
   });
 }
 
@@ -129,20 +129,20 @@ async function saveAgentConfigurationFromAssistant({
   auth,
   assistant,
   skippedActions,
-  authorId,
+  authorModelId,
   agentConfigurationId,
 }: {
   auth: Authenticator;
   assistant: PatchRequestBody;
   skippedActions: SkippedAction[];
-  authorId: ModelId;
+  authorModelId: ModelId;
   agentConfigurationId?: string;
 }): Promise<ImportResult> {
   const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
     auth,
     assistant,
     agentConfigurationId,
-    authorId,
+    authorId: authorModelId,
   });
 
   if (agentConfigurationRes.isErr()) {
@@ -228,7 +228,7 @@ async function importAgentConfiguration(
       name: action.name ?? "",
       reason,
     })),
-    authorId: editorsResult.value.authorId,
+    authorModelId: editorsResult.value.authorModelId,
     agentConfigurationId,
   });
 }
@@ -324,7 +324,7 @@ export async function patchAgentConfigurationFromJSON(
     })),
     additionalRequestedSpaceIds: agentConfiguration.requestedSpaceIds,
   };
-  let authorId = editorsResult.value.authorId;
+  let authorModelId = editorsResult.value.authorModelId;
   let skippedActions: SkippedAction[] = [];
 
   if (patch.agent) {
@@ -380,7 +380,7 @@ export async function patchAgentConfigurationFromJSON(
       return patchEditorsResult;
     }
     assistant.editors = patchEditorsResult.value.editors;
-    authorId = patchEditorsResult.value.authorId;
+    authorModelId = patchEditorsResult.value.authorModelId;
   }
 
   if (patch.toolset) {
@@ -422,7 +422,7 @@ export async function patchAgentConfigurationFromJSON(
     auth,
     assistant,
     skippedActions,
-    authorId,
+    authorModelId,
     agentConfigurationId: agentId,
   });
 }
