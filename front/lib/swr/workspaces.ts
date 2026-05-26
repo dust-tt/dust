@@ -8,6 +8,7 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
+import type { GetBillingInfoResponseBody } from "@app/lib/api/billing/info";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -726,6 +727,35 @@ export function useMetronomeInvoice({
     isMetronomeInvoiceLoading: !error && !data && !disabled,
     isMetronomeInvoiceError: error,
     mutateMetronomeInvoice: mutate,
+  };
+}
+
+export function useBillingInfo({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const billingInfoFetcher: Fetcher<GetBillingInfoResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/billing/info`,
+    billingInfoFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    }
+  );
+
+  return {
+    billingInfo: data?.billingInfo ?? null,
+    isBillingInfoLoading: !error && !data && !disabled,
+    isBillingInfoError: error,
+    isBillingInfoValidating: isValidating,
+    mutateBillingInfo: mutate,
   };
 }
 
