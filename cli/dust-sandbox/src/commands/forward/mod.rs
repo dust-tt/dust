@@ -1,6 +1,7 @@
 mod deny_log;
 mod handshake;
 mod http2_rewriter;
+mod http_framing;
 mod http_host;
 mod http_rewriter;
 mod original_dst;

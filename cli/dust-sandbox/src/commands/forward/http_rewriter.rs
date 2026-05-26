@@ -2,32 +2,26 @@ use std::collections::HashSet;
 use std::fmt;
 use std::io::ErrorKind;
 
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::egress_secrets::SecretTable;
 
 use super::deny_log::{DenyLogEntry, DenyReason};
+use super::http_framing::{
+    find_subslice, parse_chunk_size, MAX_HEADER_BLOCK_BYTES, MAX_HEADER_LINE_BYTES,
+    MAX_TRAILER_BLOCK_BYTES, READ_CHUNK_BYTES,
+};
 use super::rewrite_policy::{
     deny_entry, normalize_host, normalized_authority, rewrite_request_headers,
     validate_request_line_policy, Authority, HeaderPart, RequestParts,
     RewriteMode as HttpRewriteMode,
 };
 
-// Limits are intentionally generous compared to nginx/Apache defaults
-// (~8-32 KiB / ~100 headers). This rewriter sits in front of arbitrary
-// outbound HTTP traffic from the sandbox (curl, git, package managers,
-// browsers, anything), so the role of these limits is to bound our own
-// memory use and reject obviously-malformed traffic, not to enforce a
-// policy on what the destination accepts.
-const MAX_HEADER_BLOCK_BYTES: usize = 64 * 1024;
-const MAX_HEADER_LINE_BYTES: usize = 16 * 1024;
 const MAX_HEADERS: usize = 256;
-const READ_CHUNK_BYTES: usize = 8 * 1024;
 const NON_HTTP_FALLBACK_BYTES: usize = 4 * 1024;
 const MAX_CHUNK_LINE_BYTES: usize = 8 * 1024;
-const MAX_TRAILER_BLOCK_BYTES: usize = 64 * 1024;
 // Cap how many bytes we stage while waiting for a CRLF on the upstream
 // response status line. A real `HTTP/1.x NNN ...` line is well under a few
 // hundred bytes; well past that we treat the upstream as non-HTTP and stop
@@ -660,18 +654,6 @@ where
     }
 }
 
-fn parse_chunk_size(line: &[u8]) -> anyhow::Result<usize> {
-    let text = std::str::from_utf8(line).context("chunk line is not utf8")?;
-    let line_without_crlf = text
-        .strip_suffix("\r\n")
-        .ok_or_else(|| anyhow!("chunk line missing CRLF"))?;
-    let size_text = line_without_crlf
-        .split_once(';')
-        .map_or(line_without_crlf, |(size, _)| size)
-        .trim();
-    usize::from_str_radix(size_text, 16).context("invalid chunk size")
-}
-
 async fn copy_raw_client_to_upstream<R, W>(
     reader: &mut BufferedReader<'_, R>,
     upstream: &mut W,
@@ -890,12 +872,6 @@ fn looks_like_http_request_line(bytes: &[u8]) -> bool {
     parts.len() == 3
         && parts[0].bytes().all(|byte| byte.is_ascii_uppercase())
         && parts[2].starts_with("HTTP/")
-}
-
-fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack
-        .windows(needle.len())
-        .position(|window| window == needle)
 }
 
 #[cfg(test)]
