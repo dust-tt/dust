@@ -1355,9 +1355,8 @@ export function getInternalMCPServerToolIcon(
   if (!server) {
     return null;
   }
-  return (
-    server.metadata.tools.find((t) => t.name === toolName)?.icon ?? null
-  );
+  // O(n) on tools, n <= ~10 per server.
+  return server.metadata.tools.find((t) => t.name === toolName)?.icon ?? null;
 }
 
 export function getInternalMCPServerDisplayedAs(
