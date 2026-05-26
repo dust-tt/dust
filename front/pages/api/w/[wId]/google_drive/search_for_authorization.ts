@@ -3,7 +3,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import config from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
-import { getGoogleDriveClient } from "@app/lib/providers/google_drive/utils";
+import type { GoogleDriveAuthorizationSearchFile } from "@app/lib/providers/google_drive/search";
+import { searchDocumentsByName } from "@app/lib/providers/google_drive/search";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -18,15 +19,8 @@ const RequestBodySchema = z.object({
   fileName: z.string().min(1, "fileName is required"),
 });
 
-interface GoogleDriveFile {
-  fileId: string;
-  fileName: string;
-  mimeType: string;
-  webViewLink: string;
-}
-
 export interface SearchForAuthorizationResponseType {
-  files: GoogleDriveFile[];
+  files: GoogleDriveAuthorizationSearchFile[];
 }
 
 async function handler(
@@ -119,32 +113,9 @@ async function handler(
       }
 
       const accessToken = tokenRes.value.access_token;
-      const drive = getGoogleDriveClient(accessToken);
-
-      // Prevent query injection in Google Drive API search syntax.
-      const escapedFileName = fileName.replace(/'/g, "\\'");
-      const query = `name contains '${escapedFileName}' and (mimeType='application/vnd.google-apps.document' or mimeType='application/vnd.google-apps.spreadsheet') and trashed=false`;
 
       try {
-        const searchRes = await drive.files.list({
-          q: query,
-          pageSize: 10,
-          orderBy: "modifiedTime desc",
-          fields: "files(id, name, mimeType, webViewLink)",
-          includeItemsFromAllDrives: true,
-          supportsAllDrives: true,
-          corpora: "allDrives",
-        });
-
-        const files: GoogleDriveFile[] = (searchRes.data.files ?? []).map(
-          (file) => ({
-            fileId: file.id ?? "",
-            fileName: file.name ?? "",
-            mimeType: file.mimeType ?? "",
-            webViewLink: file.webViewLink ?? "",
-          })
-        );
-
+        const files = await searchDocumentsByName({ accessToken, fileName });
         return res.status(200).json({ files });
       } catch (err) {
         const error = normalizeError(err);
