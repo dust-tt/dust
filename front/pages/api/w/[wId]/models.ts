@@ -1,10 +1,7 @@
 // @migration-status: MIGRATED_TO_HONO
 
 /** @ignoreswagger */
-import {
-  REASONING_MODEL_CONFIGS,
-  USED_MODEL_CONFIGS,
-} from "@app/components/providers/model_configs";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { config as regionConfig } from "@app/lib/api/regions/config";
@@ -19,7 +16,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];
-  reasoningModels: ModelConfigurationType[];
 };
 
 async function handler(
@@ -44,18 +40,8 @@ async function handler(
         region,
         whitelistedProviders,
       });
-      const reasoningModels = filterCustomAvailableAndWhitelistedModels(
-        REASONING_MODEL_CONFIGS,
-        {
-          featureFlags,
-          plan,
-          owner,
-          region,
-          whitelistedProviders,
-        }
-      );
 
-      return res.status(200).json({ models, reasoningModels });
+      return res.status(200).json({ models });
 
     default:
       return apiError(req, res, {

@@ -1,7 +1,4 @@
-import {
-  REASONING_MODEL_CONFIGS,
-  USED_MODEL_CONFIGS,
-} from "@app/components/providers/model_configs";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
@@ -13,7 +10,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];
-  reasoningModels: ModelConfigurationType[];
 };
 
 // Mounted at /api/w/:wId/models.
@@ -37,18 +33,8 @@ app.get("/", async (ctx): HandlerResult<GetAvailableModelsResponseType> => {
     region,
     whitelistedProviders,
   });
-  const reasoningModels = filterCustomAvailableAndWhitelistedModels(
-    REASONING_MODEL_CONFIGS,
-    {
-      featureFlags,
-      plan,
-      owner,
-      region,
-      whitelistedProviders,
-    }
-  );
 
-  return ctx.json({ models, reasoningModels });
+  return ctx.json({ models });
 });
 
 export default app;

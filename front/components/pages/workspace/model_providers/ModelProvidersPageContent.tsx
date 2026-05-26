@@ -3,10 +3,7 @@ import { EmbeddingModelSelect } from "@app/components/pages/workspace/model_prov
 import { ProvidersConfigurationList } from "@app/components/pages/workspace/model_providers/ProvidersConfigurationList";
 import { ProvidersToggleList } from "@app/components/pages/workspace/model_providers/ProvidersToggleList";
 import { RegionalModelsOnlyToggle } from "@app/components/pages/workspace/model_providers/RegionalModelsOnlyToggle";
-import {
-  REASONING_MODEL_CONFIGS,
-  USED_MODEL_CONFIGS,
-} from "@app/components/providers/types";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { isModelCustomAvailable } from "@app/lib/assistant";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
@@ -41,10 +38,7 @@ export function ModelProvidersPageContent({
   const { regionInfo } = useRegionContext();
 
   // Filter models based on feature flags and build modelProviders dynamically
-  const filteredModels = uniqBy(
-    [...USED_MODEL_CONFIGS, ...REASONING_MODEL_CONFIGS],
-    (m) => m.modelId
-  ).filter(
+  const filteredModels = uniqBy(USED_MODEL_CONFIGS, (m) => m.modelId).filter(
     (model) =>
       !model.isLegacy &&
       isModelCustomAvailable(model, {
