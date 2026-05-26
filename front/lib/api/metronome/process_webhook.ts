@@ -352,13 +352,11 @@ export async function processMetronomeWebhook({
     case "alerts.usage_threshold_resolved":
     case "commit.archive":
     case "commit.create":
-    case "commit.edit":
     case "commit.segment.end":
     case "contract.archive":
     case "contract.create":
     case "contract.edit":
     case "credit.archive":
-    case "credit.edit":
     case "credit.segment.end":
     case "invoice.billing_provider_error":
     case "invoice.finalized":
@@ -453,13 +451,18 @@ export async function processMetronomeWebhook({
       break;
 
     // Fresh AWU credits / commits arriving (new period, contract switch,
-    // manual grant): reconcile the workspace pool credit state with the live
-    // AWU balance. Without this, a workspace stuck in `depleted` would
-    // never transition out — `low_remaining..._resolved` doesn't fire if
-    // no `low_remaining..._reached` was ever fired against the previous
-    // balance. Non-AWU segments (programmatic USD, EUR seat credits, etc.)
-    // are out of scope for the pool state machine and are skipped.
-    case "commit.segment.start": {
+    // manual grant) or being mutated (manual expiration, amount edit):
+    // reconcile the workspace pool credit state with the live AWU balance.
+    // Without this, a workspace stuck in `depleted` would never transition
+    // out — `low_remaining..._resolved` doesn't fire if no
+    // `low_remaining..._reached` was ever fired against the previous
+    // balance. Likewise, a manual expiration that empties the pool wouldn't
+    // transition to `depleted` because no alert was ever fired. Non-AWU
+    // segments (programmatic USD, EUR seat credits, etc.) are out of scope
+    // for the pool state machine and are skipped.
+    case "commit.segment.start":
+    case "commit.edit": {
+      const eventType = event.type;
       const customerId = event.customer_id;
       const contractId = event.contract_id;
       const commitId = event.commit_id;
@@ -474,8 +477,13 @@ export async function processMetronomeWebhook({
       });
       if (contractResult.isErr()) {
         logger.error(
-          { customerId, contractId, commitId, error: contractResult.error },
-          "[Metronome Webhook] commit.segment.start: failed to fetch contract"
+          {
+            customerId,
+            contractId,
+            commitId,
+            error: contractResult.error,
+          },
+          `[Metronome Webhook] ${eventType}: failed to fetch contract`
         );
         return new Err(
           new ProcessMetronomeWebhookError(
@@ -500,6 +508,50 @@ export async function processMetronomeWebhook({
         workspace,
         metronomeCustomerId: customerId,
       });
+      break;
+    }
+
+    case "credit.edit": {
+      const {
+        customer_id: customerId,
+        contract_id: contractId,
+        credit_id: creditId,
+      } = event;
+
+      if (!contractId) {
+        break;
+      }
+
+      const contractResult = await getMetronomeContractById({
+        metronomeCustomerId: customerId,
+        metronomeContractId: contractId,
+      });
+      if (contractResult.isErr()) {
+        logger.error(
+          { customerId, contractId, creditId, error: contractResult.error },
+          "[Metronome Webhook] credit.edit: failed to fetch contract"
+        );
+        return new Err(
+          new ProcessMetronomeWebhookError(
+            "processing_failed",
+            `Error fetching contract: ${contractResult.error.message}`
+          )
+        );
+      }
+
+      const credit = contractResult.value.credits?.find(
+        (c) => c.id === creditId
+      );
+      if (!credit) {
+        break;
+      }
+
+      if (credit.access_schedule?.credit_type?.id === getCreditTypeAwuId()) {
+        await syncPoolCreditStateFromBalance({
+          workspace,
+          metronomeCustomerId: customerId,
+        });
+      }
       break;
     }
 
