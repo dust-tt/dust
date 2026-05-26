@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DenyReason {
+pub(super) enum DenyReason {
     ProxyDenied,
     ProxyProtocolError,
     DomainExtractionFailed,
@@ -25,7 +25,7 @@ pub enum DenyReason {
 }
 
 impl DenyReason {
-    pub fn as_str(self) -> &'static str {
+    pub(super) fn as_str(self) -> &'static str {
         match self {
             Self::ProxyDenied => "proxy_denied",
             Self::ProxyProtocolError => "proxy_protocol_error",
@@ -46,17 +46,17 @@ impl DenyReason {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DenyLogEntry {
-    pub reason: DenyReason,
-    pub domain: Option<String>,
-    pub port: Option<u16>,
-    pub secret_name: Option<String>,
-    pub sni: Option<String>,
-    pub host: Option<String>,
+pub(super) struct DenyLogEntry {
+    pub(super) reason: DenyReason,
+    pub(super) domain: Option<String>,
+    pub(super) port: Option<u16>,
+    pub(super) secret_name: Option<String>,
+    pub(super) sni: Option<String>,
+    pub(super) host: Option<String>,
 }
 
 impl DenyLogEntry {
-    pub fn proxy(domain: &str, port: u16, reason: DenyReason) -> Self {
+    pub(super) fn proxy(domain: &str, port: u16, reason: DenyReason) -> Self {
         Self {
             reason,
             domain: (!domain.is_empty()).then(|| domain.to_string()),
@@ -67,7 +67,7 @@ impl DenyLogEntry {
         }
     }
 
-    pub fn mitm(
+    pub(super) fn mitm(
         reason: DenyReason,
         domain: Option<&str>,
         port: u16,
@@ -86,7 +86,7 @@ impl DenyLogEntry {
     }
 }
 
-pub async fn append_deny_log(path: &Path, entry: DenyLogEntry) -> Result<()> {
+pub(super) async fn append_deny_log(path: &Path, entry: DenyLogEntry) -> Result<()> {
     let mut file = tokio::fs::OpenOptions::new()
         .create(true)
         .append(true)

@@ -13,12 +13,12 @@ use tokio::net::TcpStream;
 const SO_ORIGINAL_DST: libc::c_int = 80;
 
 #[cfg(target_os = "linux")]
-pub fn resolve_original_dst(stream: &TcpStream) -> io::Result<SocketAddr> {
+pub(super) fn resolve_original_dst(stream: &TcpStream) -> io::Result<SocketAddr> {
     resolve_original_dst_linux(stream)
 }
 
 #[cfg(not(target_os = "linux"))]
-pub fn resolve_original_dst(stream: &TcpStream) -> io::Result<SocketAddr> {
+pub(super) fn resolve_original_dst(stream: &TcpStream) -> io::Result<SocketAddr> {
     stream.peer_addr()
 }
 

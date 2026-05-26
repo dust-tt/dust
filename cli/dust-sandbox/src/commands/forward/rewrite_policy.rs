@@ -59,13 +59,10 @@ pub(super) enum Authority<'a> {
     Explicit { value: &'a str },
 }
 
-#[allow(dead_code)]
 pub(super) struct ProcessedPolicyRequest {
-    pub host: String,
     pub headers: Vec<HeaderPart>,
 }
 
-#[allow(dead_code)]
 pub(super) fn process_request_policy(
     request: &RequestParts,
     authority: Authority<'_>,
@@ -76,7 +73,7 @@ pub(super) fn process_request_policy(
     let host = normalized_authority(request, authority, mode)?;
     let headers = rewrite_request_headers(request, &host, secret_table, mode)?;
 
-    Ok(ProcessedPolicyRequest { host, headers })
+    Ok(ProcessedPolicyRequest { headers })
 }
 
 pub(super) fn validate_request_line_policy(

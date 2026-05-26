@@ -23,7 +23,7 @@ const LEAF_CACHE_CAPACITY: usize = 256;
 pub(super) const H2_ALPN: &[u8] = b"h2";
 pub(super) const HTTP_1_1_ALPN: &[u8] = b"http/1.1";
 
-pub struct MitmCa {
+pub(super) struct MitmCa {
     ca_cert: Certificate,
     ca_key_pair: KeyPair,
     ca_cert_pem: String,
@@ -31,7 +31,7 @@ pub struct MitmCa {
 }
 
 impl MitmCa {
-    pub fn load_or_generate(cert_path: &Path, key_path: &Path) -> Result<Self> {
+    pub(super) fn load_or_generate(cert_path: &Path, key_path: &Path) -> Result<Self> {
         let cert_exists = cert_path
             .try_exists()
             .with_context(|| format!("failed to stat CA cert file {}", cert_path.display()))?;
@@ -59,7 +59,7 @@ impl MitmCa {
         }
     }
 
-    pub fn generate() -> Result<Self> {
+    pub(super) fn generate() -> Result<Self> {
         let params = Self::new_ca_params()?;
         let ca_key_pair = KeyPair::generate().context("failed to generate CA key pair")?;
         let ca_cert = params
@@ -71,7 +71,7 @@ impl MitmCa {
             ca_cert,
             ca_key_pair,
             ca_cert_pem,
-            leaf_cache: Mutex::new(Self::new_leaf_cache()),
+            leaf_cache: Mutex::new(Self::new_leaf_cache()?),
         })
     }
 
@@ -109,11 +109,11 @@ impl MitmCa {
             ca_cert,
             ca_key_pair,
             ca_cert_pem,
-            leaf_cache: Mutex::new(Self::new_leaf_cache()),
+            leaf_cache: Mutex::new(Self::new_leaf_cache()?),
         })
     }
 
-    pub async fn server_config_for(&self, sni: &str) -> Result<Arc<ServerConfig>> {
+    pub(super) async fn server_config_for(&self, sni: &str) -> Result<Arc<ServerConfig>> {
         // Idempotent. Keeps focused tests (e.g. `cargo test server_config_for`)
         // from panicking when no other test installed the provider first.
         let _ = rustls::crypto::ring::default_provider().install_default();
@@ -143,11 +143,10 @@ impl MitmCa {
         Ok(params)
     }
 
-    fn new_leaf_cache() -> LruCache<String, Arc<CertifiedKey>> {
-        let Some(capacity) = NonZeroUsize::new(LEAF_CACHE_CAPACITY) else {
-            unreachable!("leaf cache capacity must be non-zero");
-        };
-        LruCache::new(capacity)
+    fn new_leaf_cache() -> Result<LruCache<String, Arc<CertifiedKey>>> {
+        let capacity = NonZeroUsize::new(LEAF_CACHE_CAPACITY)
+            .context("leaf cache capacity must be non-zero")?;
+        Ok(LruCache::new(capacity))
     }
 
     fn write_persistent(&self, cert_path: &Path, key_path: &Path) -> Result<()> {
