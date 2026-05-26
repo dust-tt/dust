@@ -1,13 +1,10 @@
-// @migration-status: MIGRATED_TO_HONO
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import type { GetMCPServerViewsResponseType } from "@dust-tt/client";
 import { GetMCPServerViewsQuerySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 /**
  * @swagger
@@ -55,39 +52,29 @@ import type { NextApiRequest, NextApiResponse } from "next";
  *       500:
  *         description: Internal Server Error.
  */
-async function handler(
-  req: NextApiRequest,
+const app = publicApiApp();
 
-  res: NextApiResponse<WithAPIErrorResponse<GetMCPServerViewsResponseType>>,
-  auth: Authenticator,
-  { space }: { space: SpaceResource }
-): Promise<void> {
-  const { method } = req;
+app.get(
+  "/",
+  withSpace({ requireCanReadOrAdministrate: true }),
+  validate("query", GetMCPServerViewsQuerySchema),
+  async (ctx): HandlerResult<GetMCPServerViewsResponseType> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { includeAuto } = ctx.req.valid("query");
 
-  switch (method) {
-    case "GET": {
-      const { includeAuto } = GetMCPServerViewsQuerySchema.parse(req.query);
-
-      const mcpServerViews = await MCPServerViewResource.listBySpace(
-        auth,
-        space
-      );
-      return res.status(200).json({
-        success: true,
-        serverViews: mcpServerViews
-          .map((mcpServerView) => mcpServerView.toJSON())
-          .filter(
-            (s) =>
-              s.server.availability === "manual" ||
-              (includeAuto && s.server.availability === "auto")
-          ),
-      });
-    }
+    const mcpServerViews = await MCPServerViewResource.listBySpace(auth, space);
+    return ctx.json({
+      success: true,
+      serverViews: mcpServerViews
+        .map((mcpServerView) => mcpServerView.toJSON())
+        .filter(
+          (s) =>
+            s.server.availability === "manual" ||
+            (includeAuto && s.server.availability === "auto")
+        ),
+    });
   }
-}
-
-export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, {
-    space: { requireCanReadOrAdministrate: true },
-  })
 );
+
+export default app;

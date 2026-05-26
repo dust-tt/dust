@@ -1,15 +1,12 @@
-// @migration-status: MIGRATED_TO_HONO
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
-import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { DataSourceSearchResponseType } from "@dust-tt/client";
 import { DataSourceSearchQuerySchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
+import { withSpace } from "@front-api/middlewares/with_space";
 import { fromError } from "zod-validation-error";
 
 /**
@@ -147,88 +144,79 @@ import { fromError } from "zod-validation-error";
  *       405:
  *         description: Method not supported error
  */
-async function handler(
-  req: NextApiRequest,
+const app = publicApiApp();
 
-  res: NextApiResponse<WithAPIErrorResponse<DataSourceSearchResponseType>>,
-  auth: Authenticator,
-  { dataSourceView }: { dataSourceView: DataSourceViewResource }
-): Promise<void> {
-  if (!dataSourceView.canRead(auth)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
+app.get(
+  "/",
+  withSpace({ requireCanRead: true }),
+  withDataSourceView({ requireCanRead: true }),
+  async (ctx): HandlerResult<DataSourceSearchResponseType> => {
+    const auth = ctx.get("auth");
+    const dataSourceView = ctx.get("dataSourceView");
 
-  switch (req.method) {
-    case "GET": {
-      // I could not find a way to make the query params be an array if there is only one tag.
-      if (req.query.tags_in && typeof req.query.tags_in === "string") {
-        req.query.tags_in = [req.query.tags_in];
-      }
-      if (req.query.tags_not && typeof req.query.tags_not === "string") {
-        req.query.tags_not = [req.query.tags_not];
-      }
-      if (req.query.parents_in && typeof req.query.parents_in === "string") {
-        req.query.parents_in = [req.query.parents_in];
-      }
-      if (req.query.parents_not && typeof req.query.parents_not === "string") {
-        req.query.parents_not = [req.query.parents_not];
-      }
-
-      const r = DataSourceSearchQuerySchema.safeParse(req.query);
-
-      if (r.error) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: fromError(r.error).toString(),
-          },
-        });
-      }
-      const searchQuery = r.data;
-      const s = await handleDataSourceSearch({
-        auth,
-        searchQuery,
-        dataSource: dataSourceView.dataSource,
-        dataSourceView,
-      });
-      if (s.isErr()) {
-        switch (s.error.code) {
-          case "data_source_error":
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "data_source_error",
-                message: s.error.message,
-              },
-            });
-          default:
-            assertNever(s.error.code);
-        }
-      }
-
-      return res.status(200).json(s.value);
-    }
-
-    default:
-      return apiError(req, res, {
-        status_code: 405,
+    if (!dataSourceView.canRead(auth)) {
+      return apiError(ctx, {
+        status_code: 404,
         api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
         },
       });
-  }
-}
+    }
 
-export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, {
-    dataSourceView: { requireCanRead: true },
-  })
+    // Allow tags_in / tags_not / parents_in / parents_not as either a single
+    // string or an array of strings.
+    const rawQuery: Record<string, string | string[]> = {};
+    for (const [key, value] of Object.entries(ctx.req.query())) {
+      rawQuery[key] = value;
+    }
+    for (const key of [
+      "tags_in",
+      "tags_not",
+      "parents_in",
+      "parents_not",
+    ] as const) {
+      const all = ctx.req.queries(key);
+      if (all && all.length > 0) {
+        rawQuery[key] = all;
+      }
+    }
+
+    const r = DataSourceSearchQuerySchema.safeParse(rawQuery);
+
+    if (r.error) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: fromError(r.error).toString(),
+        },
+      });
+    }
+    const searchQuery = r.data;
+    const s = await handleDataSourceSearch({
+      auth,
+      searchQuery,
+      dataSource: dataSourceView.dataSource,
+      dataSourceView,
+    });
+    if (s.isErr()) {
+      switch (s.error.code) {
+        case "data_source_error":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "data_source_error",
+              message: s.error.message,
+            },
+          });
+        default:
+          assertNever(s.error.code);
+      }
+    }
+
+    return ctx.json(s.value);
+  }
 );
+
+export default app;

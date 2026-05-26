@@ -1,16 +1,15 @@
-// @migration-status: MIGRATED_TO_HONO
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
-import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { DataSourceViewResponseType } from "@dust-tt/client";
 import { PatchDataSourceViewRequestSchema } from "@dust-tt/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
+import { publicApiApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
+import { withSpace } from "@front-api/middlewares/with_space";
+
+import search from "./search";
 
 /**
  * @swagger
@@ -146,90 +145,85 @@ import { fromError } from "zod-validation-error";
  *       '405':
  *         description: Method not allowed
  */
+const app = publicApiApp();
 
-async function handler(
-  req: NextApiRequest,
+app.get(
+  "/",
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<DataSourceViewResponseType> => {
+    const auth = ctx.get("auth");
+    const dataSourceView = ctx.get("dataSourceView");
 
-  res: NextApiResponse<WithAPIErrorResponse<DataSourceViewResponseType>>,
-  auth: Authenticator,
-  { dataSourceView }: { dataSourceView: DataSourceViewResource }
-): Promise<void> {
-  if (!dataSourceView.canReadOrAdministrate(auth)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  switch (req.method) {
-    case "GET":
-      return res.status(200).json({
-        dataSourceView: dataSourceView.toJSON(),
-      });
-
-    case "PATCH": {
-      const parsing = PatchDataSourceViewRequestSchema.safeParse(req.body);
-
-      if (parsing.error) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: fromError(parsing.error).toString(),
-          },
-        });
-      }
-
-      const r = await handlePatchDataSourceView(
-        auth,
-        parsing.data,
-        dataSourceView
-      );
-      if (r.isErr()) {
-        switch (r.error.code) {
-          case "unauthorized":
-            return apiError(req, res, {
-              status_code: 401,
-              api_error: {
-                type: "workspace_auth_error",
-                message: r.error.message,
-              },
-            });
-          case "internal_error":
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: r.error.message,
-              },
-            });
-          default:
-            assertNever(r.error.code);
-        }
-      }
-
-      return res.status(200).json({
-        dataSourceView: r.value.toJSON(),
+    if (!dataSourceView.canReadOrAdministrate(auth)) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
       });
     }
 
-    default:
-      return apiError(req, res, {
-        status_code: 405,
+    return ctx.json({
+      dataSourceView: dataSourceView.toJSON(),
+    });
+  }
+);
+
+app.patch(
+  "/",
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({ requireCanReadOrAdministrate: true }),
+  validate("json", PatchDataSourceViewRequestSchema),
+  async (ctx): HandlerResult<DataSourceViewResponseType> => {
+    const auth = ctx.get("auth");
+    const dataSourceView = ctx.get("dataSourceView");
+
+    if (!dataSourceView.canReadOrAdministrate(auth)) {
+      return apiError(ctx, {
+        status_code: 404,
         api_error: {
-          type: "method_not_supported_error",
-          message:
-            "the method passed is not supported, GET or PATCH is expected.",
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
         },
       });
-  }
-}
+    }
 
-export default withPublicAPIAuthentication(
-  withResourceFetchingFromRoute(handler, {
-    dataSourceView: { requireCanReadOrAdministrate: true },
-  })
+    const r = await handlePatchDataSourceView(
+      auth,
+      ctx.req.valid("json"),
+      dataSourceView
+    );
+    if (r.isErr()) {
+      switch (r.error.code) {
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 401,
+            api_error: {
+              type: "workspace_auth_error",
+              message: r.error.message,
+            },
+          });
+        case "internal_error":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: r.error.message,
+            },
+          });
+        default:
+          assertNever(r.error.code);
+      }
+    }
+
+    return ctx.json({
+      dataSourceView: r.value.toJSON(),
+    });
+  }
 );
+
+app.route("/search", search);
+
+export default app;
