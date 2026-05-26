@@ -71,6 +71,7 @@ export type KnownModelLLMId =
   | "gemini-3.1-flash-lite-preview"
   | "gemini-3-pro-preview"
   | "gemini-3.1-pro-preview"
+  | "gemini-3.1-pro"
   | "gemini-3-flash-preview"
   | "gemini-3.5-flash"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
