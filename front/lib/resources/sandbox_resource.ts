@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
 import { deleteSandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
@@ -373,8 +372,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       ...httpsSecretEnvResult.value,
       ...imageEnvVars,
       ...SANDBOX_TRUST_ENV_VARS,
-      DD_API_KEY: config.getDatadogApiKey() ?? "",
-      DD_HOST: "http-intake.logs.datadoghq.eu",
       CONVERSATION_ID: conversation.sId,
       WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
     });
@@ -436,19 +433,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           baseImage: createConfig.imageId.imageName,
           version: createConfig.imageId.tag,
         });
-
-        const startTelemetry = await provider.exec(
-          createResult.value.providerId,
-          "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &",
-          undefined,
-          tracingOpts
-        );
-        if (startTelemetry.isErr()) {
-          logger.warn(
-            { error: startTelemetry.error.message },
-            "Failed to start fluent-bit telemetry"
-          );
-        }
 
         logger.info(
           { sandbox: sandbox.toLogJSON() },
@@ -573,19 +557,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             killRequestedAt: null,
           });
           freshlyCreated = true;
-
-          const startTelemetry = await provider.exec(
-            createResult.value.providerId,
-            "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &",
-            undefined,
-            tracingOpts
-          );
-          if (startTelemetry.isErr()) {
-            logger.warn(
-              { error: startTelemetry.error.message },
-              "Failed to start fluent-bit telemetry"
-            );
-          }
 
           logger.info(
             {
