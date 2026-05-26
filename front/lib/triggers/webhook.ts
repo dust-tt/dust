@@ -756,9 +756,11 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
       status,
     }
   );
+  const shouldFetchPayload =
+    isWebhookTrigger(trigger) && trigger.configuration.includePayload;
 
-  // Fetch payloads from GCS for each request
-  const bucket = getWebhookRequestsBucket();
+  // Fetch payloads from GCS for each request when the trigger is configured to keep them.
+  const bucket = shouldFetchPayload ? getWebhookRequestsBucket() : null;
   const requests = await Promise.all(
     webhookRequestTriggers.map(async (wrt) => {
       let payload:
@@ -767,28 +769,33 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
             body?: unknown;
           }
         | undefined;
+      const requestCanHavePayload =
+        wrt.status === "workflow_start_succeeded" ||
+        wrt.status === "workflow_start_failed";
 
-      const gcsPath = WebhookRequestResource.getGcsPath({
-        workspaceId: workspace.sId,
-        webhookSourceId: wrt.webhookRequest.webhookSourceId,
-        webRequestId: wrt.webhookRequest.id,
-      });
+      if (bucket && requestCanHavePayload) {
+        const gcsPath = WebhookRequestResource.getGcsPath({
+          workspaceId: workspace.sId,
+          webhookSourceId: wrt.webhookRequest.webhookSourceId,
+          webRequestId: wrt.webhookRequest.id,
+        });
 
-      try {
-        const file = bucket.file(gcsPath);
-        const [content] = await file.download();
-        if (content) {
-          payload = JSON.parse(content.toString());
+        try {
+          const file = bucket.file(gcsPath);
+          const [content] = await file.download();
+          if (content) {
+            payload = JSON.parse(content.toString());
+          }
+        } catch (error) {
+          logger.warn(
+            {
+              webhookRequestId: wrt.webhookRequest.id,
+              error: error instanceof Error ? error.message : String(error),
+            },
+            "Failed to fetch webhook request payload from GCS"
+          );
+          // Continue without payload if GCS fetch fails
         }
-      } catch (error) {
-        logger.warn(
-          {
-            webhookRequestId: wrt.webhookRequest.id,
-            error: error instanceof Error ? error.message : String(error),
-          },
-          "Failed to fetch webhook request payload from GCS"
-        );
-        // Continue without payload if GCS fetch fails
       }
 
       return {
