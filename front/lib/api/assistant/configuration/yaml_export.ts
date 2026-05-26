@@ -19,7 +19,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
@@ -49,7 +49,9 @@ function isExportableAgentConfiguration(
 export async function getExportableAgentConfiguration(
   auth: Authenticator,
   agentId: string
-): Promise<Result<ExportableAgentConfiguration, APIErrorWithStatusCode>> {
+): Promise<
+  Result<ExportableAgentConfiguration, APIErrorWithContentfulStatusCode>
+> {
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId,
     variant: "full",
@@ -82,7 +84,9 @@ export async function getAgentConfigurationYAMLContext(
   auth: Authenticator,
   agentId: string,
   { requireEditorGroup = false }: { requireEditorGroup?: boolean } = {}
-): Promise<Result<AgentConfigurationYAMLContext, APIErrorWithStatusCode>> {
+): Promise<
+  Result<AgentConfigurationYAMLContext, APIErrorWithContentfulStatusCode>
+> {
   const agentResult = await getExportableAgentConfiguration(auth, agentId);
   if (agentResult.isErr()) {
     return agentResult;
@@ -127,7 +131,7 @@ export async function getAgentConfigurationYAMLContext(
 export async function getAgentConfigurationAsYAMLConfig(
   auth: Authenticator,
   agentId: string
-): Promise<Result<AgentYAMLConfig, APIErrorWithStatusCode>> {
+): Promise<Result<AgentYAMLConfig, APIErrorWithContentfulStatusCode>> {
   const contextResult = await getAgentConfigurationYAMLContext(auth, agentId);
   if (contextResult.isErr()) {
     return contextResult;
@@ -250,7 +254,10 @@ export async function exportAgentConfigurationAsYAML(
   auth: Authenticator,
   agentId: string
 ): Promise<
-  Result<{ yamlContent: string; filename: string }, APIErrorWithStatusCode>
+  Result<
+    { yamlContent: string; filename: string },
+    APIErrorWithContentfulStatusCode
+  >
 > {
   const yamlConfigResult = await getAgentConfigurationAsYAMLConfig(
     auth,

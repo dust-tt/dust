@@ -14,7 +14,7 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -29,7 +29,7 @@ type ImportResult = Result<
     agentConfiguration: AgentConfigurationType;
     skippedActions: SkippedAction[];
   },
-  APIErrorWithStatusCode
+  APIErrorWithContentfulStatusCode
 >;
 
 type PatchRequestBody = PostOrPatchAgentConfigurationRequestBody["assistant"];
@@ -47,7 +47,7 @@ const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
 function resolveEditorUsers(
   auth: Authenticator,
   editorUsers: UserResource[]
-): Result<ResolvedEditors, APIErrorWithStatusCode> {
+): Result<ResolvedEditors, APIErrorWithContentfulStatusCode> {
   const uploadingUser = auth.user();
   const resolvedEditorUsers =
     uploadingUser && !editorUsers.some((u) => u.id === uploadingUser.id)
@@ -75,7 +75,7 @@ function resolveEditorUsers(
 async function resolveEditorUsersFromEmails(
   auth: Authenticator,
   editorEmails: string[]
-): Promise<Result<ResolvedEditors, APIErrorWithStatusCode>> {
+): Promise<Result<ResolvedEditors, APIErrorWithContentfulStatusCode>> {
   const fetchedEditors = await UserResource.listUserWithExactEmails(
     auth.getNonNullableWorkspace(),
     editorEmails
@@ -87,7 +87,7 @@ async function resolveEditorUsersFromEmails(
 async function resolveTags(
   auth: Authenticator,
   yamlTags: AgentYAMLConfig["tags"]
-): Promise<Result<PatchRequestBody["tags"], APIErrorWithStatusCode>> {
+): Promise<Result<PatchRequestBody["tags"], APIErrorWithContentfulStatusCode>> {
   const tagNames = yamlTags.map((t) => t.name);
   const resolvedTags = await TagResource.findByNames(auth, tagNames);
   const resolvedTagNames = new Set(resolvedTags.map((t) => t.name));
@@ -107,7 +107,7 @@ async function resolveTags(
 }
 
 async function ensureAgentConfigurationSavingEnabled(): Promise<
-  Result<void, APIErrorWithStatusCode>
+  Result<void, APIErrorWithContentfulStatusCode>
 > {
   const isSaveAgentConfigurationsDisabled =
     await KillSwitchResource.isKillSwitchEnabled("save_agent_configurations");
