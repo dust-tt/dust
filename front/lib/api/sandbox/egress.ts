@@ -578,12 +578,20 @@ export async function readNewDenyLogEntries(
   sandbox: SandboxResource
 ): Promise<Result<string[], Error>> {
   const command =
-    `_off=$(cat ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)} 2>/dev/null || echo 0); ` +
-    `_total=$(wc -l < ${shellEscape(EGRESS_DENY_LOG_PATH)} 2>/dev/null || echo 0); ` +
+    `_state=$(cat ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)} 2>/dev/null || true); ` +
+    `set -- $_state; ` +
+    `_off=\${1:-0}; _size_off=\${2:-0}; ` +
+    `case "$_off" in ''|*[!0-9]*) _off=0;; esac; ` +
+    `case "$_size_off" in ''|*[!0-9]*) _size_off=0;; esac; ` +
+    `if [ -f ${shellEscape(EGRESS_DENY_LOG_PATH)} ]; then ` +
+    `_total=$(wc -l < ${shellEscape(EGRESS_DENY_LOG_PATH)} | tr -d ' '); ` +
+    `_size=$(wc -c < ${shellEscape(EGRESS_DENY_LOG_PATH)} | tr -d ' '); ` +
+    `else _total=0; _size=0; fi; ` +
+    `if [ "$_total" -lt "$_off" ] || [ "$_size" -lt "$_size_off" ]; then _off=0; fi; ` +
     `if [ "$_total" -gt "$_off" ]; then ` +
     `tail -n +$((_off + 1)) ${shellEscape(EGRESS_DENY_LOG_PATH)} | head -n ${MAX_DENY_LOG_LINES_PER_EXEC}; ` +
     `fi; ` +
-    `echo "$_total" > ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)}`;
+    `echo "$_total $_size" > ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)}`;
 
   const result = await sandbox.exec(auth, command, {
     user: "root",

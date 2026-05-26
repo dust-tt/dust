@@ -1,3 +1,7 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Err, Ok } from "@app/types/shared/result";
 import jwt from "jsonwebtoken";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -309,6 +313,26 @@ describe("sandbox egress helpers", () => {
       auth,
       expect.stringContaining("dust-egress-denied.log"),
       { user: "root", timeoutMs: 2_000 }
+    );
+  });
+
+  it("resets the deny log offset when the log shrinks", async () => {
+    const sandbox = {
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await readNewDenyLogEntries(auth, sandbox as never);
+
+    expect(result.isOk()).toBe(true);
+    const command = sandbox.exec.mock.calls[0][1];
+    expect(command).toContain("set -- $_state;");
+    expect(command).toContain(
+      `if [ "$_total" -lt "$_off" ] || [ "$_size" -lt "$_size_off" ]; then _off=0; fi;`
+    );
+    expect(command).toContain(
+      `echo "$_total $_size" > '/tmp/.dust-egress-deny-offset'`
     );
   });
 
@@ -629,6 +653,120 @@ describe("sandbox egress helpers", () => {
       expect.objectContaining({ event: "egress.health_ok" }),
       expect.any(String)
     );
+  });
+
+  // The mocked tests above only assert the TS wrapper (stdout parsing, exec
+  // options). The actual offset tracking / cap / rotation reset lives in the
+  // shell command the function sends to the sandbox. This block runs that
+  // exact command through `sh -c` against tempfiles to exercise the real
+  // bash logic.
+  describe("readNewDenyLogEntries shell behavior", () => {
+    let denyLogDir: string;
+    let logPath: string;
+    let offsetPath: string;
+
+    beforeEach(() => {
+      denyLogDir = mkdtempSync(join(tmpdir(), "deny-log-"));
+      logPath = join(denyLogDir, "deny.log");
+      offsetPath = join(denyLogDir, "deny-offset");
+    });
+
+    afterEach(() => {
+      rmSync(denyLogDir, { recursive: true, force: true });
+    });
+
+    // Re-points the command's hardcoded log + offset paths at our tempfiles,
+    // then runs it through `sh -c` and returns the parsed lines. Each call
+    // mirrors what `readNewDenyLogEntries` does on the sandbox: parse stdout,
+    // drop blank lines, persist the new offset state.
+    async function runReader(): Promise<string[]> {
+      const sandbox = {
+        exec: vi.fn(async (_auth: unknown, command: string) => {
+          const rewritten = command
+            .replace(/'\/tmp\/dust-egress-denied\.log'/g, `'${logPath}'`)
+            .replace(/'\/tmp\/\.dust-egress-deny-offset'/g, `'${offsetPath}'`);
+          const result = spawnSync("sh", ["-c", rewritten], {
+            encoding: "utf8",
+          });
+          return new Ok({
+            exitCode: result.status ?? 0,
+            stdout: result.stdout,
+            stderr: result.stderr,
+          });
+        }),
+      };
+
+      const result = await readNewDenyLogEntries(auth, sandbox as never);
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw new Error("unreachable");
+      }
+      return result.value;
+    }
+
+    it("returns nothing when the deny log file does not exist", async () => {
+      expect(await runReader()).toEqual([]);
+    });
+
+    it("returns all entries on first read, then only new entries", async () => {
+      writeFileSync(logPath, "a denied\nb denied\n");
+      expect(await runReader()).toEqual(["a denied", "b denied"]);
+
+      writeFileSync(logPath, "a denied\nb denied\nc denied\n");
+      expect(await runReader()).toEqual(["c denied"]);
+    });
+
+    it("returns nothing on a second read when the log has not grown", async () => {
+      writeFileSync(logPath, "a denied\n");
+      expect(await runReader()).toEqual(["a denied"]);
+      expect(await runReader()).toEqual([]);
+    });
+
+    it("resets the offset and replays from the start when the log is truncated", async () => {
+      writeFileSync(logPath, "a denied\nb denied\n");
+      await runReader();
+
+      // Simulate rotation: file shrinks below the persisted offset.
+      writeFileSync(logPath, "x denied\n");
+      expect(await runReader()).toEqual(["x denied"]);
+    });
+
+    it("resets the offset when the log size shrinks but line count is unchanged", async () => {
+      writeFileSync(logPath, "long-line-a denied\nlong-line-b denied\n");
+      await runReader();
+
+      // Same line count, smaller bytes: still must reset.
+      writeFileSync(logPath, "a\nb\n");
+      expect(await runReader()).toEqual(["a", "b"]);
+    });
+
+    it("caps lines returned per call and drops the overflow", async () => {
+      // 50 lines in a single burst, cap is 20. Document that the overflow is
+      // dropped on this call AND not replayed on the next call (the offset
+      // is advanced to the file's total, not to "offset + cap").
+      const lines = Array.from({ length: 50 }, (_, i) => `line${i} denied`);
+      writeFileSync(logPath, lines.join("\n") + "\n");
+
+      const first = await runReader();
+      expect(first).toHaveLength(20);
+      expect(first[0]).toBe("line0 denied");
+      expect(first[19]).toBe("line19 denied");
+
+      // Overflow is gone, not queued for the next call.
+      expect(await runReader()).toEqual([]);
+    });
+
+    it("recovers from a malformed offset state file by resetting to zero", async () => {
+      writeFileSync(logPath, "a denied\nb denied\n");
+      writeFileSync(offsetPath, "garbage notanumber\n");
+      expect(await runReader()).toEqual(["a denied", "b denied"]);
+    });
+
+    it("recovers from an empty offset state file", async () => {
+      writeFileSync(logPath, "a denied\n");
+      writeFileSync(offsetPath, "");
+      expect(await runReader()).toEqual(["a denied"]);
+    });
   });
 
   describe("teardownInSandboxEgressRedirect", () => {

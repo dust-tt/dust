@@ -1,10 +1,17 @@
-use std::path::Path;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::Serialize;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use tokio::io::AsyncWriteExt;
+
+// Keep deny logging bounded on the sandbox writable mount. One previous
+// generation is retained as `<path>.1`; a single line larger than this cap can
+// still exceed the cap after rotation, but normal deny entries are tiny.
+const DENY_LOG_MAX_BYTES: u64 = 8 * 1024 * 1024;
+static DENY_LOG_WRITE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum DenyReason {
@@ -87,17 +94,73 @@ impl DenyLogEntry {
 }
 
 pub(super) async fn append_deny_log(path: &Path, entry: DenyLogEntry) -> Result<()> {
+    let line = format_deny_log_line(&entry)?;
+    append_deny_log_line(path, &line, DENY_LOG_MAX_BYTES).await
+}
+
+async fn append_deny_log_line(path: &Path, line: &str, max_bytes: u64) -> Result<()> {
+    let _guard = DENY_LOG_WRITE_LOCK.lock().await;
+    rotate_deny_log_if_needed(path, line.len() as u64, max_bytes).await?;
     let mut file = tokio::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(path)
         .await
         .with_context(|| format!("failed to open deny log {}", path.display()))?;
-    let line = format_deny_log_line(&entry)?;
     file.write_all(line.as_bytes())
         .await
         .with_context(|| format!("failed to write deny log {}", path.display()))?;
     Ok(())
+}
+
+async fn rotate_deny_log_if_needed(
+    path: &Path,
+    next_line_bytes: u64,
+    max_bytes: u64,
+) -> Result<()> {
+    let current_bytes = match tokio::fs::metadata(path).await {
+        Ok(metadata) => metadata.len(),
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(()),
+        Err(error) => {
+            return Err(error)
+                .with_context(|| format!("failed to stat deny log {}", path.display()));
+        }
+    };
+
+    if current_bytes.saturating_add(next_line_bytes) <= max_bytes {
+        return Ok(());
+    }
+
+    let rotated_path = rotated_deny_log_path(path);
+    match tokio::fs::remove_file(&rotated_path).await {
+        Ok(()) => {}
+        Err(error) if error.kind() == ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(error).with_context(|| {
+                format!(
+                    "failed to remove rotated deny log {}",
+                    rotated_path.display()
+                )
+            });
+        }
+    }
+    match tokio::fs::rename(path, &rotated_path).await {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error).with_context(|| {
+            format!(
+                "failed to rotate deny log {} to {}",
+                path.display(),
+                rotated_path.display()
+            )
+        }),
+    }
+}
+
+fn rotated_deny_log_path(path: &Path) -> PathBuf {
+    let mut rotated = path.as_os_str().to_os_string();
+    rotated.push(".1");
+    PathBuf::from(rotated)
 }
 
 #[derive(Serialize)]
@@ -129,10 +192,14 @@ fn format_deny_log_line(entry: &DenyLogEntry) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use serde_json::Value;
     use tempfile::tempdir;
 
-    use super::{append_deny_log, DenyLogEntry, DenyReason};
+    use super::{
+        append_deny_log, append_deny_log_line, rotated_deny_log_path, DenyLogEntry, DenyReason,
+    };
 
     #[tokio::test]
     async fn appends_json_deny_log_entries() {
@@ -177,5 +244,103 @@ mod tests {
         assert_eq!(second["secret_name"], "OPENAI_API_KEY");
         assert_eq!(second["sni"], "api.openai.com");
         assert_eq!(second["host"], "evil.example");
+    }
+
+    #[tokio::test]
+    async fn preserves_appends_below_cap() {
+        let tempdir = tempdir().expect("tempdir should be created");
+        let path = tempdir.path().join("deny.log");
+
+        append_deny_log_line(&path, "first\n", 64)
+            .await
+            .expect("first append should succeed");
+        append_deny_log_line(&path, "second\n", 64)
+            .await
+            .expect("second append should succeed");
+
+        let content = tokio::fs::read_to_string(&path)
+            .await
+            .expect("deny log should be readable");
+        assert_eq!(content, "first\nsecond\n");
+        assert!(
+            tokio::fs::metadata(rotated_deny_log_path(&path))
+                .await
+                .is_err(),
+            "rotation should not create a previous generation below cap"
+        );
+    }
+
+    #[tokio::test]
+    async fn rotates_when_append_crosses_cap() {
+        let tempdir = tempdir().expect("tempdir should be created");
+        let path = tempdir.path().join("deny.log");
+        let rotated_path = rotated_deny_log_path(&path);
+
+        append_deny_log_line(&path, "first\n", 12)
+            .await
+            .expect("first append should succeed");
+        append_deny_log_line(&path, "second\n", 12)
+            .await
+            .expect("second append should succeed");
+
+        let current = tokio::fs::read_to_string(&path)
+            .await
+            .expect("current deny log should be readable");
+        let rotated = tokio::fs::read_to_string(&rotated_path)
+            .await
+            .expect("rotated deny log should be readable");
+        assert_eq!(current, "second\n");
+        assert_eq!(rotated, "first\n");
+    }
+
+    #[tokio::test]
+    async fn concurrent_appends_near_cap_do_not_tear_lines() {
+        let tempdir = tempdir().expect("tempdir should be created");
+        let path = tempdir.path().join("deny.log");
+        let rotated_path = rotated_deny_log_path(&path);
+        append_deny_log_line(
+            &path,
+            "pppppppppppppppppppppppppppppppppppppppppppppppppp\n",
+            80,
+        )
+        .await
+        .expect("prefill append should succeed");
+
+        let first_path = path.clone();
+        let first = tokio::spawn(async move {
+            append_deny_log_line(&first_path, "line-a-aaaaaaaaaaaa\n", 80).await
+        });
+        let second_path = path.clone();
+        let second = tokio::spawn(async move {
+            append_deny_log_line(&second_path, "line-b-bbbbbbbbbbbb\n", 80).await
+        });
+
+        first
+            .await
+            .expect("first append task should finish")
+            .expect("first append should succeed");
+        second
+            .await
+            .expect("second append task should finish")
+            .expect("second append should succeed");
+
+        let current = tokio::fs::read_to_string(&path)
+            .await
+            .expect("current deny log should be readable");
+        let rotated = tokio::fs::read_to_string(&rotated_path)
+            .await
+            .expect("rotated deny log should be readable");
+        let observed = current.lines().chain(rotated.lines()).collect::<Vec<_>>();
+        let allowed = HashSet::from([
+            "pppppppppppppppppppppppppppppppppppppppppppppppppp",
+            "line-a-aaaaaaaaaaaa",
+            "line-b-bbbbbbbbbbbb",
+        ]);
+        assert!(
+            observed.iter().all(|line| allowed.contains(line)),
+            "observed torn or unexpected lines: {observed:?}"
+        );
+        assert!(observed.contains(&"line-a-aaaaaaaaaaaa"));
+        assert!(observed.contains(&"line-b-bbbbbbbbbbbb"));
     }
 }
