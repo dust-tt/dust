@@ -320,13 +320,17 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/developers/api-keys`,
           current: isCurrent("api_keys"),
         },
-        {
-          id: "credits_usage",
-          label: "Programmatic Usage",
-          icon: BoltIcon,
-          href: `/w/${owner.sId}/developers/credits-usage`,
-          current: isCurrent("credits_usage"),
-        },
+        ...(isCreditPricedPlan(subscription.plan)
+          ? []
+          : [
+              {
+                id: "credits_usage" as const,
+                label: "Programmatic Usage",
+                icon: BoltIcon,
+                href: `/w/${owner.sId}/developers/credits-usage`,
+                current: isCurrent("credits_usage"),
+              },
+            ]),
       ],
     });
 
