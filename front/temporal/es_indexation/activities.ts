@@ -28,12 +28,16 @@ export async function indexUserSearchActivity({
   const { memberships } = await MembershipResource.getLatestMemberships({
     users: [user],
   });
+  const workspaces = await WorkspaceResource.fetchByModelIds(
+    [...new Set(memberships.map((m) => m.workspaceId))]
+  );
+  const workspaceByModelId = new Map(
+    workspaces.map((workspace) => [workspace.id, workspace])
+  );
 
   // Process each membership
   for (const membership of memberships) {
-    const workspace = await WorkspaceResource.fetchByModelId(
-      membership.workspaceId
-    );
+    const workspace = workspaceByModelId.get(membership.workspaceId);
     if (!workspace) {
       logger.warn(
         { membershipId: membership.id, workspaceId: membership.workspaceId },

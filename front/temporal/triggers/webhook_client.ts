@@ -79,12 +79,17 @@ export async function launchTriggersWorkflows(
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const webhookRequestId = webhookRequest.id;
 
+  const users = await UserResource.fetchByModelIds([
+    ...new Set(filteredTriggers.map((trigger) => trigger.editor)),
+  ]);
+  const userByModelId = new Map(users.map((user) => [user.id, user]));
+
   // Launch all the triggers' workflows concurrently.
   await concurrentExecutor(
     filteredTriggers,
     async (trigger) => {
       // Get the trigger's user and create a new authenticator
-      const user = await UserResource.fetchByModelId(trigger.editor);
+      const user = userByModelId.get(trigger.editor);
 
       if (!user) {
         logger.error(
