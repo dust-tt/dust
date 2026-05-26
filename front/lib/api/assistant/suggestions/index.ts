@@ -1,9 +1,9 @@
+import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import { getBuilderDescriptionSuggestions } from "@app/lib/api/assistant/suggestions/description";
 import { getBuilderEmojiSuggestions } from "@app/lib/api/assistant/suggestions/emoji";
 import { getBuilderNameSuggestions } from "@app/lib/api/assistant/suggestions/name";
 import { getBuilderTagSuggestions } from "@app/lib/api/assistant/suggestions/tags";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   BuilderSuggestionInputType,

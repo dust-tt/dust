@@ -25,7 +25,7 @@
 //       - Key in dedupMap → upsertSource on existing task.
 //       - Not in dedupMap → makeNew + addSource.
 
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
+import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import {
   batchDeduplicateCandidates,

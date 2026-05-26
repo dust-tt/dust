@@ -1,0 +1,154 @@
+import type { Authenticator } from "@app/lib/auth";
+import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
+import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
+import {
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_FLASH_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
+} from "@app/types/assistant/models/google_ai_studio";
+import {
+  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
+  MISTRAL_SMALL_MODEL_CONFIG,
+} from "@app/types/assistant/models/mistral";
+import {
+  GPT_5_5_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
+import {
+  BYOK_MODEL_PROVIDER_IDS,
+  MODEL_PROVIDER_IDS,
+} from "@app/types/assistant/models/providers";
+import type {
+  ModelConfigurationType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
+import {
+  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
+} from "@app/types/assistant/models/xai";
+
+export function getWhitelistedProviders(
+  auth: Authenticator
+): Set<ModelProviderIdType> {
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
+  const whiteListedProviders = new Set<ModelProviderIdType>(
+    owner.whiteListedProviders ?? MODEL_PROVIDER_IDS
+  );
+
+  // noop never sees user data, always whitelisted.
+  whiteListedProviders.add("noop");
+
+  if (!plan.isByok) {
+    return whiteListedProviders;
+  }
+
+  // For BYOK_TRANSITIONING workspaces, we fall back on Dust-managed keys for BYOK providers when
+  // the customer hasn't configured their own. Whitelist all BYOK providers so they remain available
+  // even if not yet configured.
+  if (isByokTransitioningPlan(plan)) {
+    const allByokProviderIds = new Set<ModelProviderIdType>(
+      BYOK_MODEL_PROVIDER_IDS
+    );
+    allByokProviderIds.add("noop");
+
+    return allByokProviderIds;
+  }
+
+  const providersHealth = auth.providersHealth();
+
+  const configuredProviders = new Set(
+    Object.keys(providersHealth ?? {}) as ModelProviderIdType[]
+  );
+
+  // noop never needs credentials.
+  configuredProviders.add("noop");
+
+  return whiteListedProviders.intersection(configuredProviders);
+}
+
+export function isProviderWhitelisted(
+  auth: Authenticator,
+  providerId: ModelProviderIdType
+): boolean {
+  const whitelistedProviders = getWhitelistedProviders(auth);
+  return whitelistedProviders.has(providerId);
+}
+
+export function getFastestWhitelistedModel(
+  auth: Authenticator
+): ModelConfigurationType | null {
+  const whitelistedProviders = getWhitelistedProviders(auth);
+  if (whitelistedProviders.has("mistral")) {
+    return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  if (whitelistedProviders.has("google_ai_studio")) {
+    return GEMINI_2_5_FLASH_MODEL_CONFIG;
+  }
+  return _getSmallWhitelistedModel(whitelistedProviders);
+}
+
+export function getSmallWhitelistedModel(
+  auth: Authenticator,
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set()
+): ModelConfigurationType | null {
+  return _getSmallWhitelistedModel(
+    getWhitelistedProviders(auth).difference(excludeProviders)
+  );
+}
+
+export function getLargeWhitelistedModel(
+  auth: Authenticator,
+  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  { forBatch = false }: { forBatch?: boolean } = {}
+): ModelConfigurationType | null {
+  return _getLargeWhitelistedModel(
+    getWhitelistedProviders(auth).difference(excludeProviders),
+    { forBatch }
+  );
+}
+
+function _getSmallWhitelistedModel(
+  whitelistedProviders: Set<ModelProviderIdType>
+): ModelConfigurationType | null {
+  if (whitelistedProviders.has("openai")) {
+    return GPT_5_MINI_MODEL_CONFIG;
+  }
+  if (whitelistedProviders.has("anthropic")) {
+    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
+  }
+  if (whitelistedProviders.has("google_ai_studio")) {
+    return GEMINI_3_FLASH_MODEL_CONFIG;
+  }
+  if (whitelistedProviders.has("mistral")) {
+    return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  if (whitelistedProviders.has("xai")) {
+    return GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG;
+  }
+  return null;
+}
+
+const LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  GPT_5_5_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
+  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
+];
+
+function _getLargeWhitelistedModel(
+  whitelistedProviders: Set<ModelProviderIdType>,
+  { forBatch: hasBatch }: { forBatch?: boolean } = {}
+): ModelConfigurationType | null {
+  const compatibleModels = LARGE_MODEL_CONFIGS.filter(
+    (m) =>
+      whitelistedProviders.has(m.providerId) &&
+      (!hasBatch || m.supportsBatchProcessing)
+  );
+
+  return compatibleModels[0] ?? null;
+}

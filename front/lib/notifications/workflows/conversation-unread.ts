@@ -6,8 +6,8 @@ import {
   countConversationMessages,
   renderConversationAsText,
 } from "@app/lib/api/assistant/conversation/render_as_text";
+import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import config from "@app/lib/api/config";
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
   getAgentsDataRetention,

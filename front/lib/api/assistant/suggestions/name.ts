@@ -1,7 +1,7 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { getFastestWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
-import { getFastestWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { BuilderSuggestionInputType } from "@app/types/api/internal/assistant";

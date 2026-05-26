@@ -1,11 +1,11 @@
 /** @ignoreswagger */
 // @migration-status: MIGRATED_TO_HONO
 import { getBuilderJsonSchemaGenerator } from "@app/lib/api/assistant/json_schema_generator";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-} from "@app/lib/assistant";
+} from "@app/lib/api/assistant/models";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostBuilderGenerateSchemaRequestBodySchema } from "@app/types/api/internal/assistant";

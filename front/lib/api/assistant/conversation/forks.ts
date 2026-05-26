@@ -9,6 +9,7 @@ import { compactConversation } from "@app/lib/api/assistant/conversation/compact
 import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import {
@@ -16,7 +17,6 @@ import {
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import { getFileContent } from "@app/lib/api/files/utils";
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";

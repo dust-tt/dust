@@ -1,11 +1,11 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import { getLLM } from "@app/lib/api/llm";
 import { writeBatchUserMessages } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getLargeWhitelistedModelWithBatchMode } from "@app/lib/reinforcement/models";
 import {

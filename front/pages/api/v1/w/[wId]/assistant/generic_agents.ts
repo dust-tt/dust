@@ -3,8 +3,8 @@ import {
   assistantHandleIsValid,
   getAgentPictureUrl,
 } from "@app/lib/api/assistant/configuration/generic_agent_helpers";
+import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";

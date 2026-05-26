@@ -5,12 +5,10 @@ import {
   REASONING_MODEL_CONFIGS,
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/model_configs";
+import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import {
-  filterCustomAvailableAndWhitelistedModels,
-  getWhitelistedProviders,
-} from "@app/lib/assistant";
+import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";

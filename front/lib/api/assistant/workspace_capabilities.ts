@@ -4,12 +4,10 @@ import {
   getMcpServerViewDisplayName,
   isToolWithKnowledge,
 } from "@app/lib/actions/mcp_helper";
+import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import {
-  filterCustomAvailableAndWhitelistedModels,
-  getWhitelistedProviders,
-} from "@app/lib/assistant";
+import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";

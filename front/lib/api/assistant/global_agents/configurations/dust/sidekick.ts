@@ -10,7 +10,7 @@ import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
-} from "@app/lib/assistant";
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
