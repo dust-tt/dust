@@ -377,7 +377,8 @@ Avoid database queries or database-only helpers inside loops, which would resolv
 number of SQL queries that will scale with the data (N+1 pattern).
 Also avoid them in `Promise.all` and `concurrentExecutor` if possible, they only make the queries
 run in parallel; they do not fix the N+1. Running too many SQL queries in parallel can quickly put
-pressure on our connection pool and even exhaust it.
+pressure on our connection pool and even exhaust it. `concurrentExecutor` is a good fit for 
+interacting with external services that are beyond our control, not for database queries.
 
 Prefer batching instead: fetch the related rows with one scoped query.
 
