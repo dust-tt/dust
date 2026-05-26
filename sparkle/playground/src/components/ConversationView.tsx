@@ -36,7 +36,7 @@ import {
   SlackLogo,
   TableIcon,
 } from "@dust-tt/sparkle";
-import type { ActionCardState, BreadcrumbItem } from "@dust-tt/sparkle";
+import type { ActionCardState, BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   NewConversationActiveIndicator,
   NewConversationAgentMessage,
@@ -417,7 +417,7 @@ export function ConversationView({
     }
   }, [conversation.id, itemsToDisplay.length]);
 
-  const breadcrumbItems: BreadcrumbItem[] = [];
+  const breadcrumbItems: BreadcrumbsItem[] = [];
 
   if (showBackButton && projectTitle) {
     if (onBack) {

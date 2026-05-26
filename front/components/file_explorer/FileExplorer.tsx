@@ -1,10 +1,10 @@
 import { FileExplorerContent } from "@app/components/file_explorer/FileExplorerContent";
+import { canMoveFileToParentFolder } from "@app/components/file_explorer/fileExplorerDragDrop";
 import { FileExplorerFilters } from "@app/components/file_explorer/FileExplorerFilters";
 import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
+import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
 import { FileExplorerToolbar } from "@app/components/file_explorer/FileExplorerToolbar";
 import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
-import { canMoveFileToParentFolder } from "@app/components/file_explorer/fileExplorerDragDrop";
-import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
 import { MoveFileToFolderDialog } from "@app/components/file_explorer/MoveFileToFolderDialog";
 import type {
   ContentNodeEntry,
@@ -30,7 +30,6 @@ import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
 import {
-  type BreadcrumbItem,
   Breadcrumbs,
   Button,
   cn,
@@ -38,6 +37,7 @@ import {
   PencilSquareIcon,
   TrashIcon,
   XMarkIcon,
+  type BreadcrumbsItem,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -52,7 +52,7 @@ function FileExplorerBreadcrumb({
   onNavigate,
 }: FileExplorerBreadcrumbProps) {
   const segments = getFolderBreadcrumbSegments(currentFolderPath);
-  const items: BreadcrumbItem[] = [
+  const items: BreadcrumbsItem[] = [
     { label: ROOT_FOLDER_LABEL, onClick: () => onNavigate(-1) },
     ...segments.map((segment, i) => ({
       label: segment.label,

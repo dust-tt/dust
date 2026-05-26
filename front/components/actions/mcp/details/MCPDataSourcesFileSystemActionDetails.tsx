@@ -9,7 +9,7 @@ import {
   getVisualForContentNodeType,
 } from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types/core/utils";
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   ActionPinDistanceIcon,
   Breadcrumbs,
@@ -86,7 +86,7 @@ export function FilesystemPathDetails({
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { path } = filesystemPath || { path: [] };
 
-  const breadcrumbItems: BreadcrumbItem[] = path?.map((item) =>
+  const breadcrumbItems: BreadcrumbsItem[] = path?.map((item) =>
     item.sourceUrl
       ? {
           icon: getVisualForContentNodeType(item.nodeType),
