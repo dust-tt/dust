@@ -4,10 +4,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+HIVE_ENV_NAME=""
 
 if [[ "$REPO_ROOT" == */.hives/* ]]; then
   HIVE_ENV_NAME="${REPO_ROOT#*/.hives/}"
   HIVE_ENV_NAME="${HIVE_ENV_NAME%%/*}"
+elif [[ "$REPO_ROOT" == "$HOME"/dust-hive/* ]]; then
+  HIVE_ENV_NAME="${REPO_ROOT#"$HOME"/dust-hive/}"
+  HIVE_ENV_NAME="${HIVE_ENV_NAME%%/*}"
+fi
+
+if [[ -z "${TEST_FRONT_DATABASE_URI:-}" && -n "$HIVE_ENV_NAME" ]]; then
   HIVE_ENV_FILE="$HOME/.dust-hive/envs/$HIVE_ENV_NAME/env.sh"
 
   if [[ -f "$HIVE_ENV_FILE" ]]; then
