@@ -8,7 +8,7 @@ import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { ProjectType, SpaceType } from "@app/types/space";
+import type { PodType, SpaceType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -42,7 +42,7 @@ export type PostSpaceRequestBodyType = z.infer<
 >;
 
 export type GetSpacesResponseBody = {
-  spaces: (SpaceType | ProjectType)[];
+  spaces: (SpaceType | PodType)[];
 };
 
 export type PostSpacesResponseBody = {
@@ -75,7 +75,7 @@ app.get("/", async (ctx): HandlerResult<GetSpacesResponseBody> => {
   const projectSpaces = spaces.filter((s) => s.kind === "project");
 
   const nonProjectsJson: SpaceType[] = nonProjectSpaces.map((s) => s.toJSON());
-  const projectsJson: ProjectType[] = await enrichProjectsWithMetadata(
+  const projectsJson: PodType[] = await enrichProjectsWithMetadata(
     auth,
     projectSpaces
   );
