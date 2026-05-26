@@ -7,6 +7,7 @@ import {
   GEMINI_2_5_FLASH_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
+  GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_5_FLASH_MODEL_ID,
   GEMINI_3_FLASH_MODEL_ID,
@@ -26,6 +27,7 @@ export const GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS = [
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_PRO_MODEL_ID,
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
+  GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_FLASH_MODEL_ID,
   GEMINI_3_5_FLASH_MODEL_ID,
@@ -135,6 +137,13 @@ export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
   [GEMINI_3_1_FLASH_LITE_MODEL_ID]: {
     overwrites: {
       // Not required but strongly recommended by Google for Gemini 3+
+      temperature: 1,
+    },
+    thinkingConfig: POST_GEMINI_3_THINKING_CONFIG_MAPPING,
+  },
+  // Deprecated: superseded by gemini-3.1-flash-lite. Kept until existing agents are migrated.
+  [GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID]: {
+    overwrites: {
       temperature: 1,
     },
     thinkingConfig: POST_GEMINI_3_THINKING_CONFIG_MAPPING,
