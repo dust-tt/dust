@@ -13,6 +13,7 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { GetWorkspaceProjectTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
 import type {
   GCSMountEntry,
   GetSpaceFilesResponseBody,
@@ -840,5 +841,36 @@ export function useStartProjectTaskConversation({
       });
       return new Err(new Error(errorMessage));
     }
+  };
+}
+
+export function useWorkspaceProjectTask({
+  workspaceId,
+  taskSId,
+  disabled,
+}: {
+  workspaceId: string;
+  taskSId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const url =
+    !disabled && taskSId
+      ? `/api/w/${workspaceId}/project_tasks/${encodeURIComponent(taskSId)}`
+      : null;
+  const projectTaskFetcher: Fetcher<GetWorkspaceProjectTaskResponseBody> =
+    fetcher;
+
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
+    url,
+    projectTaskFetcher
+  );
+
+  return {
+    task: data?.task ?? null,
+    space: data?.space ?? null,
+    isWorkspaceProjectTaskLoading: !error && isLoading && !!url,
+    isWorkspaceProjectTaskError: !!error,
+    mutateWorkspaceProjectTask: mutate,
   };
 }

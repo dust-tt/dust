@@ -1,12 +1,18 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  PodTasksCreateTasksInputSchema,
+  PodTasksUpdateTasksInputSchema,
+} from "@app/lib/api/actions/servers/pod_tasks/types";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const POD_TASKS_SERVER_NAME = "pod_tasks" as const;
+export const CREATE_TASKS_TOOL_NAME = "create_tasks" as const;
+export const UPDATE_TASKS_TOOL_NAME = "update_tasks" as const;
 
 export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
   list_tasks: {
@@ -53,67 +59,7 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
   create_tasks: {
     description:
       "Create one or more new tasks at once in the Pod. Omitting userId (or null) creates an unassigned task unless the Pod has exactly one assignable member, in which case that member is assigned. Pass userId when a specific person should own the task.",
-    schema: {
-      creatorType: z
-        .enum(["user", "agent"])
-        .describe(
-          "Who is initiating the task creation? Use 'user' when the user explicitly asked for it."
-        ),
-      tasks: z
-        .array(
-          z.object({
-            text: z
-              .string()
-              .min(16)
-              .max(256)
-              .describe(
-                "The task description. Do not include the assignee's name — " +
-                  "the assignee is tracked separately via userId. Refer to the " +
-                  "assignee with 'you'/'your' pronouns when needed."
-              ),
-            userId: z
-              .union([z.string(), z.null()])
-              .optional()
-              .describe(
-                "Pod member's user sId to assign this task to. Omit userId entirely (or use null) for an unassigned task, unless the Pod has exactly one assignable member (then that member is assigned)."
-              ),
-            doneRationale: z
-              .string()
-              .optional()
-              .describe(
-                "The rationale for marking the task as done. Leave empty if the task should not be marked as done."
-              ),
-            sources: z
-              .array(
-                z.object({
-                  url: z
-                    .string()
-                    .url()
-                    .describe(
-                      "URL of a related source (e.g. Slack thread, GitHub issue, Notion page)"
-                    ),
-                  title: z
-                    .string()
-                    .describe("Human-readable title for the source"),
-                })
-              )
-              .optional()
-              .describe(
-                "Optional context sources to attach to this task when the agent can provide them"
-              ),
-          })
-        )
-        .min(1)
-        .max(30)
-        .describe("List of tasks to create (max 30)."),
-      dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-      ]
-        .optional()
-        .describe(
-          "Optional Pod to create the tasks in; falls back to the conversation's Pod."
-        ),
-    },
+    schema: PodTasksCreateTasksInputSchema.shape,
     stake: "low",
     displayLabels: {
       running: "Creating tasks",
@@ -147,45 +93,13 @@ export const POD_TASKS_TOOLS_METADATA = createToolsRecord({
       done: "Mark tasks as done",
     },
   },
-  update_task: {
-    description: "Update a task.",
-    schema: {
-      taskId: z.string().describe("The sId of the task."),
-      text: z
-        .string()
-        .min(16)
-        .max(256)
-        .optional()
-        .describe("The new task description."),
-      userId: z
-        .string()
-        .optional()
-        .describe(
-          "The sId of the user to assign the task to; must be a member of the Pod. Defaults to the current user."
-        ),
-      doneRationale: z
-        .string()
-        .optional()
-        .describe(
-          "The rationale for marking the task as done. Leave empty if the task should not be marked as done."
-        ),
-      status: z
-        .enum(["todo", "in_progress", "done"])
-        .optional()
-        .describe("The new task status. Defaults to the current status."),
-
-      dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-      ]
-        .optional()
-        .describe(
-          "Optional Pod to look up the task in; falls back to the conversation's Pod."
-        ),
-    },
+  update_tasks: {
+    description: "Update one or more existing tasks at once in the Pod.",
+    schema: PodTasksUpdateTasksInputSchema.shape,
     stake: "low",
     displayLabels: {
-      running: "Updating task",
-      done: "Update task",
+      running: "Updating tasks",
+      done: "Update tasks",
     },
   },
   start_task_agent: {

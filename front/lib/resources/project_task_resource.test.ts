@@ -6,6 +6,8 @@ import type { ProjectTaskModel } from "@app/lib/resources/storage/models/project
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { CreationAttributes } from "sequelize";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -66,6 +68,11 @@ describe("ProjectTaskResource", () => {
       expect(todo.userId).toBe(user.id);
       expect(todo.text).toBe("My todo");
       expect(todo.status).toBe("todo");
+      expect(todo.toJSON().user).toEqual({
+        sId: user.sId,
+        fullName: user.fullName(),
+        image: user.imageUrl,
+      });
     });
 
     it("should compute the same sId as modelIdToSId", async () => {
@@ -241,6 +248,38 @@ describe("ProjectTaskResource", () => {
       expect(updated.status).toBe("done");
       expect(updated.markedAsDoneByType).toBe("user");
       expect(updated.markedAsDoneByUserId).toBe(user.id);
+    });
+
+    it("should refresh assignee in toJSON after userId is updated", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+      expect(todo.toJSON().user?.sId).toBe(user.sId);
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+
+      const updated = await todo.updateWithVersion(auth, {
+        userId: otherUser.id,
+      });
+
+      expect(updated.toJSON().user).toEqual({
+        sId: otherUser.sId,
+        fullName: otherUser.fullName(),
+        image: otherUser.imageUrl,
+      });
+    });
+
+    it("should clear assignee in toJSON after userId is set to null", async () => {
+      const todo = await ProjectTaskResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      const updated = await todo.updateWithVersion(auth, { userId: null });
+
+      expect(updated.toJSON().user).toBeNull();
     });
   });
 

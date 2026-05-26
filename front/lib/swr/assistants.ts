@@ -1260,26 +1260,109 @@ export function useAgentDatasourceRetrievalDocuments({
   };
 }
 
+export type MemberDisplayInfo = {
+  fullName: string;
+  email: string | null;
+  image: string | null;
+};
+
+function buildMemberDetailsSwrKey(
+  workspaceId: string,
+  userIds: string[]
+): string | null {
+  const normalizedUserIds = [...new Set(userIds.filter(Boolean))].sort();
+  if (normalizedUserIds.length === 0) {
+    return null;
+  }
+  if (normalizedUserIds.length === 1) {
+    return `/api/w/${workspaceId}/members/${normalizedUserIds[0]}`;
+  }
+  const sIdsKey = normalizedUserIds.join(",");
+  return `/api/w/${workspaceId}/members/batch?sIds=${encodeURIComponent(sIdsKey)}`;
+}
+
 export function useMemberDetails({
   workspaceId,
-  userId,
+  userIds,
 }: {
   workspaceId: string;
-  userId: string | null;
+  userIds: string[];
 }) {
   const { fetcher } = useFetcher();
-  const userConfigurationFetcher: Fetcher<GetMemberResponseBody> = fetcher;
-
-  const { data, error, mutate, isValidating } = useSWRWithDefaults(
-    userId ? `/api/w/${workspaceId}/members/${userId}` : null,
-    userConfigurationFetcher
+  const normalizedUserIds = useMemo(
+    () => [...new Set(userIds.filter(Boolean))].sort(),
+    [userIds]
+  );
+  const swrKey = useMemo(
+    () => buildMemberDetailsSwrKey(workspaceId, normalizedUserIds),
+    [workspaceId, normalizedUserIds]
   );
 
+  const memberDetailsFetcher = useCallback(
+    async (
+      key: string
+    ): Promise<
+      | { kind: "single"; member: GetMemberResponseBody["member"] }
+      | { kind: "batch"; membersBySId: Record<string, MemberDisplayInfo> }
+    > => {
+      if (key.includes("/members/batch?")) {
+        const url = new URL(key, "https://dust.local");
+        const sIdsParam = url.searchParams.get("sIds");
+        if (!sIdsParam) {
+          return { kind: "batch", membersBySId: {} };
+        }
+
+        const membersBySId: Record<string, MemberDisplayInfo> = {};
+        for (const memberSId of sIdsParam.split(",")) {
+          try {
+            const response = (await fetcher(
+              `/api/w/${workspaceId}/members/${memberSId}`
+            )) as GetMemberResponseBody;
+
+            membersBySId[memberSId] = {
+              fullName: response.member.fullName,
+              email: response.member.email,
+              image: response.member.image,
+            };
+          } catch {
+            // Member lookup can fail for privacy or membership reasons.
+          }
+        }
+
+        return { kind: "batch", membersBySId };
+      }
+
+      const response = (await fetcher(key)) as GetMemberResponseBody;
+      return { kind: "single", member: response.member };
+    },
+    [fetcher, workspaceId]
+  );
+
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
+    swrKey,
+    memberDetailsFetcher
+  );
+
+  const userDetails = data?.kind === "single" ? data.member : undefined;
+  const membersBySId =
+    data?.kind === "batch"
+      ? data.membersBySId
+      : userDetails
+        ? {
+            [userDetails.id]: {
+              fullName: userDetails.fullName,
+              email: userDetails.email,
+              image: userDetails.image,
+            },
+          }
+        : {};
+
   return {
-    userDetails: data?.member,
-    isUserDetailsLoading: !error && !data && !!userId,
-    isUserDetailsError: error,
-    isUserConfigurationValidating: isValidating,
-    mutateUserConfiguration: mutate,
+    userDetails,
+    membersBySId,
+    isMembersLoading: !error && isLoading && !!swrKey,
+    isMembersError: error,
+    isMembersValidating: isValidating,
+    mutateMembers: mutate,
   };
 }
