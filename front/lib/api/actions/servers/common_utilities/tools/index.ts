@@ -2,6 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { COMMON_UTILITIES_TOOLS_METADATA } from "@app/lib/api/actions/servers/common_utilities/metadata";
+import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { compile } from "mathjs";
@@ -92,6 +93,40 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
         })
       );
     }
+  },
+
+  set_conversation_title: async ({ title }, { auth, agentLoopContext }) => {
+    const conversation =
+      agentLoopContext?.runContext?.conversation ??
+      agentLoopContext?.listToolsContext?.conversation;
+
+    if (!conversation) {
+      return new Err(
+        new MCPError(
+          "No conversation context available. This tool can only be used within a conversation."
+        )
+      );
+    }
+
+    const result = await updateConversationTitle(auth, {
+      conversationId: conversation.sId,
+      title,
+    });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to update conversation title: ${result.error.message}`
+        )
+      );
+    }
+
+    return new Ok([
+      {
+        type: "text",
+        text: `Conversation title updated to "${title}".`,
+      },
+    ]);
   },
 };
 

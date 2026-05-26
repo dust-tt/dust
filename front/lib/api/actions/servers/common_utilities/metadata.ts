@@ -88,6 +88,21 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
       done: "Calculate",
     },
   },
+  set_conversation_title: {
+    description:
+      "Update the title of the current conversation. Use this to give the conversation a descriptive name that summarizes its topic.",
+    schema: {
+      title: z
+        .string()
+        .min(1)
+        .describe("The new title for the current conversation."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Setting conversation title",
+      done: "Set conversation title",
+    },
+  },
 });
 
 export const COMMON_UTILITIES_SERVER = {
