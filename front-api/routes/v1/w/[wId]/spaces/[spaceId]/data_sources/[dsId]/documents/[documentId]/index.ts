@@ -32,8 +32,14 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import parents from "./parents";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+  documentId: z.string(),
+});
 
 /**
  * @swagger
@@ -263,82 +269,77 @@ import parents from "./parents";
  */
 const app = publicApiApp();
 
-app.get("/", async (ctx): HandlerResult<GetDocumentResponseType> => {
-  const auth = ctx.get("auth");
-  const dsId = ctx.req.param("dsId");
-  const documentId = ctx.req.param("documentId");
-  if (!dsId || !documentId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetDocumentResponseType> => {
+    const auth = ctx.get("auth");
+    const { dsId, documentId } = ctx.req.valid("param");
+
+    const dataSource = await DataSourceResource.fetchByNameOrId(
+      auth,
+      dsId,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_documents_document_get_or_upsert" }
+    );
+
+    const spaceId = await resolveLegacyDataSourceSpaceId(
+      auth,
+      ctx.req.param("spaceId"),
+      dataSource
+    );
+
+    if (
+      !dataSource ||
+      dataSource.space.sId !== spaceId ||
+      !dataSource.canRead(auth)
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    if (dataSource.space.kind === "conversations") {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "The space you're trying to access was not found",
+        },
+      });
+    }
+
+    const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
+    const docRes = await coreAPI.getDataSourceDocument({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      documentId,
+    });
+
+    if (docRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "data_source_error",
+          message: "There was an error retrieving the data source document.",
+          data_source_error: docRes.error,
+        },
+      });
+    }
+
+    return ctx.json({
+      document: docRes.value.document,
     });
   }
-
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "v1_data_sources_documents_document_get_or_upsert" }
-  );
-
-  const spaceId = await resolveLegacyDataSourceSpaceId(
-    auth,
-    ctx.req.param("spaceId"),
-    dataSource
-  );
-
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
-  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
-  const docRes = await coreAPI.getDataSourceDocument({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId,
-  });
-
-  if (docRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "data_source_error",
-        message: "There was an error retrieving the data source document.",
-        data_source_error: docRes.error,
-      },
-    });
-  }
-
-  return ctx.json({
-    document: docRes.value.document,
-  });
-});
+);
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostDataSourceDocumentRequestSchema),
   async (
     ctx
@@ -349,17 +350,7 @@ app.post(
     UpsertDocumentResponseType | { document: { document_id: string } }
   > => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId");
-    const documentId = ctx.req.param("documentId");
-    if (!dsId || !documentId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
+    const { dsId, documentId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
@@ -730,102 +721,96 @@ app.post(
   }
 );
 
-app.delete("/", async (ctx): HandlerResult<DeleteDocumentResponseType> => {
-  const auth = ctx.get("auth");
-  const dsId = ctx.req.param("dsId");
-  const documentId = ctx.req.param("documentId");
-  if (!dsId || !documentId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<DeleteDocumentResponseType> => {
+    const auth = ctx.get("auth");
+    const { dsId, documentId } = ctx.req.valid("param");
+
+    const dataSource = await DataSourceResource.fetchByNameOrId(
+      auth,
+      dsId,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_documents_document_get_or_upsert" }
+    );
+
+    const spaceId = await resolveLegacyDataSourceSpaceId(
+      auth,
+      ctx.req.param("spaceId"),
+      dataSource
+    );
+
+    if (
+      !dataSource ||
+      dataSource.space.sId !== spaceId ||
+      !dataSource.canRead(auth)
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    if (dataSource.space.kind === "conversations") {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "The space you're trying to access was not found",
+        },
+      });
+    }
+
+    if (dataSource.connectorId && !auth.isSystemKey()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You cannot delete a document from a managed data source.",
+        },
+      });
+    }
+
+    // To write we must have canWrite or be a systemAPIKey
+    if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You are not allowed to update data in this data source.",
+        },
+      });
+    }
+
+    const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
+    const delRes = await coreAPI.deleteDataSourceDocument({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      documentId,
+    });
+
+    if (delRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "There was an error deleting the document.",
+          data_source_error: delRes.error,
+        },
+      });
+    }
+
+    return ctx.json({
+      document: {
+        document_id: documentId,
       },
     });
   }
-
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "v1_data_sources_documents_document_get_or_upsert" }
-  );
-
-  const spaceId = await resolveLegacyDataSourceSpaceId(
-    auth,
-    ctx.req.param("spaceId"),
-    dataSource
-  );
-
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
-  if (dataSource.connectorId && !auth.isSystemKey()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message: "You cannot delete a document from a managed data source.",
-      },
-    });
-  }
-
-  // To write we must have canWrite or be a systemAPIKey
-  if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message: "You are not allowed to update data in this data source.",
-      },
-    });
-  }
-
-  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
-  const delRes = await coreAPI.deleteDataSourceDocument({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId,
-  });
-
-  if (delRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "There was an error deleting the document.",
-        data_source_error: delRes.error,
-      },
-    });
-  }
-
-  return ctx.json({
-    document: {
-      document_id: documentId,
-    },
-  });
-});
+);
 
 app.route("/parents", parents);
 

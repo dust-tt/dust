@@ -76,6 +76,11 @@ import { z } from "zod";
  */
 const app = publicApiApp();
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+  documentId: z.string(),
+});
+
 const PostParentsBodySchema = z.object({
   parents: z.array(z.string()),
   parent_id: z.string().nullable().optional(),
@@ -83,20 +88,11 @@ const PostParentsBodySchema = z.object({
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostParentsBodySchema),
   async (ctx): HandlerResult<PostParentsResponseType> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId");
-    const documentId = ctx.req.param("documentId");
-    if (!dsId || !documentId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
+    const { dsId, documentId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,

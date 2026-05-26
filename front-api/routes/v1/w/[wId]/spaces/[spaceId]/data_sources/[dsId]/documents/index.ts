@@ -81,6 +81,10 @@ const app = publicApiApp();
 
 app.route("/:documentId", documentId);
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
+
 const QuerySchema = z.object({
   limit: z.coerce.number().int().nonnegative().optional().default(10),
   offset: z.coerce.number().int().nonnegative().optional().default(0),
@@ -88,19 +92,11 @@ const QuerySchema = z.object({
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<GetDocumentsResponseType> => {
     const auth = ctx.get("auth");
-    const dsId = ctx.req.param("dsId");
-    if (!dsId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
+    const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,

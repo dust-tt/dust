@@ -9,9 +9,16 @@ import type { GetTableResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import parents from "./parents";
 import rows from "./rows";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+  tId: z.string(),
+});
 
 /**
  * @swagger
@@ -104,125 +111,109 @@ const app = publicApiApp();
 app.route("/parents", parents);
 app.route("/rows", rows);
 
-app.get("/", async (ctx): HandlerResult<GetTableResponseType> => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetTableResponseType> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
-  const dsId = ctx.req.param("dsId");
-  const tId = ctx.req.param("tId");
-  if (!dsId || !tId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
+    const { dsId, tId } = ctx.req.valid("param");
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "v1_data_sources_tables" }
-  );
+    const dataSource = await DataSourceResource.fetchByNameOrId(
+      auth,
+      dsId,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_tables" }
+    );
 
-  const spaceId = await resolveLegacyDataSourceSpaceId(
-    auth,
-    ctx.req.param("spaceId"),
-    dataSource
-  );
+    const spaceId = await resolveLegacyDataSourceSpaceId(
+      auth,
+      ctx.req.param("spaceId"),
+      dataSource
+    );
 
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const tableRes = await coreAPI.getTable({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    tableId: tId,
-  });
-  if (tableRes.isErr()) {
-    if (tableRes.error.code === "table_not_found") {
+    if (
+      !dataSource ||
+      dataSource.space.sId !== spaceId ||
+      !dataSource.canRead(auth)
+    ) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "table_not_found",
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    if (dataSource.space.kind === "conversations") {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "The space you're trying to access was not found",
+        },
+      });
+    }
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const tableRes = await coreAPI.getTable({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      tableId: tId,
+    });
+    if (tableRes.isErr()) {
+      if (tableRes.error.code === "table_not_found") {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "table_not_found",
+            message: "Failed to get table.",
+          },
+        });
+      }
+      logger.error(
+        {
+          dataSourceId: dataSource.sId,
+          workspaceId: owner.id,
+          error: tableRes.error,
+        },
+        "Failed to get table."
+      );
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
           message: "Failed to get table.",
         },
       });
     }
-    logger.error(
-      {
-        dataSourceId: dataSource.sId,
-        workspaceId: owner.id,
-        error: tableRes.error,
-      },
-      "Failed to get table."
-    );
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to get table.",
+
+    const { table } = tableRes.value;
+
+    return ctx.json({
+      table: {
+        name: table.name,
+        table_id: table.table_id,
+        description: table.description,
+        schema: table.schema,
+        timestamp: table.timestamp,
+        tags: table.tags,
+        parents: table.parents,
+        parent_id: table.parent_id,
+        mime_type: table.mime_type,
+        title: table.title,
       },
     });
   }
+);
 
-  const { table } = tableRes.value;
-
-  return ctx.json({
-    table: {
-      name: table.name,
-      table_id: table.table_id,
-      description: table.description,
-      schema: table.schema,
-      timestamp: table.timestamp,
-      tags: table.tags,
-      parents: table.parents,
-      parent_id: table.parent_id,
-      mime_type: table.mime_type,
-      title: table.title,
-    },
-  });
-});
-
-app.delete("/", async (ctx) => {
+app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
-  const dsId = ctx.req.param("dsId");
-  const tId = ctx.req.param("tId");
-  if (!dsId || !tId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
+  const { dsId, tId } = ctx.req.valid("param");
 
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,

@@ -13,6 +13,12 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+  fId: z.string(),
+});
 
 /**
  * @ignoreswagger
@@ -20,78 +26,73 @@ import { validate } from "@front-api/middlewares/validator";
  */
 const app = publicApiApp();
 
-app.get("/", async (ctx): HandlerResult<GetFolderResponseType> => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetFolderResponseType> => {
+    const auth = ctx.get("auth");
 
-  if (!auth.isSystemKey()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_oauth_token_error",
-        message: "Only system keys are allowed to use this endpoint.",
-      },
+    if (!auth.isSystemKey()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_oauth_token_error",
+          message: "Only system keys are allowed to use this endpoint.",
+        },
+      });
+    }
+
+    const { dsId, fId } = ctx.req.valid("param");
+
+    const dataSource = await DataSourceResource.fetchById(auth, dsId);
+    const spaceId = await resolveLegacyDataSourceSpaceId(
+      auth,
+      ctx.req.param("spaceId"),
+      dataSource
+    );
+
+    if (
+      !dataSource ||
+      dataSource.space.sId !== spaceId ||
+      dataSource.space.isConversations() ||
+      !dataSource.canReadOrAdministrate(auth)
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
+    const docRes = await coreAPI.getDataSourceFolder({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      folderId: fId,
+    });
+
+    if (docRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_error",
+          message: "There was an error retrieving the data source folder.",
+          data_source_error: docRes.error,
+        },
+      });
+    }
+
+    return ctx.json({
+      folder: docRes.value.folder,
     });
   }
-
-  const dsId = ctx.req.param("dsId");
-  const fId = ctx.req.param("fId");
-  if (!dsId || !fId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  const spaceId = await resolveLegacyDataSourceSpaceId(
-    auth,
-    ctx.req.param("spaceId"),
-    dataSource
-  );
-
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    dataSource.space.isConversations() ||
-    !dataSource.canReadOrAdministrate(auth)
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
-  const docRes = await coreAPI.getDataSourceFolder({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    folderId: fId,
-  });
-
-  if (docRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_error",
-        message: "There was an error retrieving the data source folder.",
-        data_source_error: docRes.error,
-      },
-    });
-  }
-
-  return ctx.json({
-    folder: docRes.value.folder,
-  });
-});
+);
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", UpsertDataSourceFolderRequestSchema),
   async (ctx): HandlerResult<UpsertFolderResponseType> => {
     const auth = ctx.get("auth");
@@ -106,17 +107,7 @@ app.post(
       });
     }
 
-    const dsId = ctx.req.param("dsId");
-    const fId = ctx.req.param("fId");
-    if (!dsId || !fId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
+    const { dsId, fId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
     const spaceId = await resolveLegacyDataSourceSpaceId(
@@ -242,87 +233,81 @@ app.post(
   }
 );
 
-app.delete("/", async (ctx): HandlerResult<DeleteFolderResponseType> => {
-  const auth = ctx.get("auth");
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<DeleteFolderResponseType> => {
+    const auth = ctx.get("auth");
 
-  if (!auth.isSystemKey()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_oauth_token_error",
-        message: "Only system keys are allowed to use this endpoint.",
+    if (!auth.isSystemKey()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_oauth_token_error",
+          message: "Only system keys are allowed to use this endpoint.",
+        },
+      });
+    }
+
+    const { dsId, fId } = ctx.req.valid("param");
+
+    const dataSource = await DataSourceResource.fetchById(auth, dsId);
+    const spaceId = await resolveLegacyDataSourceSpaceId(
+      auth,
+      ctx.req.param("spaceId"),
+      dataSource
+    );
+
+    if (
+      !dataSource ||
+      dataSource.space.sId !== spaceId ||
+      dataSource.space.isConversations() ||
+      !dataSource.canReadOrAdministrate(auth)
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    // To write we must have canWrite or be a systemAPIKey
+    if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You are not allowed to update data in this data source.",
+        },
+      });
+    }
+
+    const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
+    const delRes = await coreAPI.deleteDataSourceFolder({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      folderId: fId,
+    });
+
+    if (delRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "There was an error deleting the folder.",
+          data_source_error: delRes.error,
+        },
+      });
+    }
+
+    return ctx.json({
+      folder: {
+        folder_id: fId,
       },
     });
   }
-
-  const dsId = ctx.req.param("dsId");
-  const fId = ctx.req.param("fId");
-  if (!dsId || !fId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  const spaceId = await resolveLegacyDataSourceSpaceId(
-    auth,
-    ctx.req.param("spaceId"),
-    dataSource
-  );
-
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    dataSource.space.isConversations() ||
-    !dataSource.canReadOrAdministrate(auth)
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  // To write we must have canWrite or be a systemAPIKey
-  if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message: "You are not allowed to update data in this data source.",
-      },
-    });
-  }
-
-  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
-  const delRes = await coreAPI.deleteDataSourceFolder({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    folderId: fId,
-  });
-
-  if (delRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "There was an error deleting the folder.",
-        data_source_error: delRes.error,
-      },
-    });
-  }
-
-  return ctx.json({
-    folder: {
-      folder_id: fId,
-    },
-  });
-});
+);
 
 export default app;

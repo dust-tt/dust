@@ -7,6 +7,14 @@ import type { GetTableRowsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+  tId: z.string(),
+  rId: z.string(),
+});
 
 /**
  * @swagger
@@ -108,197 +116,183 @@ import { apiError } from "@front-api/middlewares/utils";
  */
 const app = publicApiApp();
 
-app.get("/", async (ctx): HandlerResult<GetTableRowsResponseType> => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetTableRowsResponseType> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
-  const dsId = ctx.req.param("dsId");
-  const tId = ctx.req.param("tId");
-  const rId = ctx.req.param("rId");
-  if (!dsId || !tId || !rId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
+    const { dsId, tId, rId } = ctx.req.valid("param");
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "v1_data_sources_tables_table_rows_row" }
-  );
-
-  const spaceId = await resolveLegacyDataSourceSpaceId(
-    auth,
-    ctx.req.param("spaceId"),
-    dataSource
-  );
-
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const rowRes = await coreAPI.getTableRow({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    tableId: tId,
-    rowId: rId,
-  });
-
-  if (rowRes.isErr()) {
-    logger.error(
-      {
-        dataSourceId: dataSource.sId,
-        workspaceId: owner.id,
-        tableId: tId,
-        rowId: rId,
-        error: rowRes.error,
-      },
-      "Failed to get row."
+    const dataSource = await DataSourceResource.fetchByNameOrId(
+      auth,
+      dsId,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_tables_table_rows_row" }
     );
 
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to get row.",
-      },
-    });
-  }
+    const spaceId = await resolveLegacyDataSourceSpaceId(
+      auth,
+      ctx.req.param("spaceId"),
+      dataSource
+    );
 
-  const { row } = rowRes.value;
-  return ctx.json({ row });
-});
-
-app.delete("/", async (ctx): HandlerResult<{ success: boolean }> => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
-
-  const dsId = ctx.req.param("dsId");
-  const tId = ctx.req.param("tId");
-  const rId = ctx.req.param("rId");
-  if (!dsId || !tId || !rId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "v1_data_sources_tables_table_rows_row" }
-  );
-
-  const spaceId = await resolveLegacyDataSourceSpaceId(
-    auth,
-    ctx.req.param("spaceId"),
-    dataSource
-  );
-
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
-  // To write we must have canWrite or be a systemAPIKey
-  if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message: "You are not allowed to update data in this data source.",
-      },
-    });
-  }
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const deleteRes = await coreAPI.deleteTableRow({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    tableId: tId,
-    rowId: rId,
-  });
-
-  if (deleteRes.isErr()) {
-    if (deleteRes.error.code === "table_not_found") {
+    if (
+      !dataSource ||
+      dataSource.space.sId !== spaceId ||
+      !dataSource.canRead(auth)
+    ) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "table_not_found",
-          message: "The table you requested was not found.",
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
         },
       });
     }
-    logger.error(
-      {
-        dataSourceId: dataSource.sId,
-        workspaceId: owner.id,
-        tableId: tId,
-        rowId: rId,
-        error: deleteRes.error,
-      },
-      "Failed to delete row."
+
+    if (dataSource.space.kind === "conversations") {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "The space you're trying to access was not found",
+        },
+      });
+    }
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const rowRes = await coreAPI.getTableRow({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      tableId: tId,
+      rowId: rId,
+    });
+
+    if (rowRes.isErr()) {
+      logger.error(
+        {
+          dataSourceId: dataSource.sId,
+          workspaceId: owner.id,
+          tableId: tId,
+          rowId: rId,
+          error: rowRes.error,
+        },
+        "Failed to get row."
+      );
+
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to get row.",
+        },
+      });
+    }
+
+    const { row } = rowRes.value;
+    return ctx.json({ row });
+  }
+);
+
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<{ success: boolean }> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
+
+    const { dsId, tId, rId } = ctx.req.valid("param");
+
+    const dataSource = await DataSourceResource.fetchByNameOrId(
+      auth,
+      dsId,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_tables_table_rows_row" }
     );
 
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to delete row.",
-      },
-    });
-  }
+    const spaceId = await resolveLegacyDataSourceSpaceId(
+      auth,
+      ctx.req.param("spaceId"),
+      dataSource
+    );
 
-  return ctx.json({ success: true });
-});
+    if (
+      !dataSource ||
+      dataSource.space.sId !== spaceId ||
+      !dataSource.canRead(auth)
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    if (dataSource.space.kind === "conversations") {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "The space you're trying to access was not found",
+        },
+      });
+    }
+
+    // To write we must have canWrite or be a systemAPIKey
+    if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You are not allowed to update data in this data source.",
+        },
+      });
+    }
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const deleteRes = await coreAPI.deleteTableRow({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      tableId: tId,
+      rowId: rId,
+    });
+
+    if (deleteRes.isErr()) {
+      if (deleteRes.error.code === "table_not_found") {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "table_not_found",
+            message: "The table you requested was not found.",
+          },
+        });
+      }
+      logger.error(
+        {
+          dataSourceId: dataSource.sId,
+          workspaceId: owner.id,
+          tableId: tId,
+          rowId: rId,
+          error: deleteRes.error,
+        },
+        "Failed to delete row."
+      );
+
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to delete row.",
+        },
+      });
+    }
+
+    return ctx.json({ success: true });
+  }
+);
 
 export default app;

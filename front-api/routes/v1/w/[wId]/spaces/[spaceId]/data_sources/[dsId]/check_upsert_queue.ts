@@ -5,6 +5,12 @@ import type { CheckUpsertQueueResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
 
 /**
  * @swagger
@@ -61,82 +67,77 @@ import { apiError } from "@front-api/middlewares/utils";
  */
 const app = publicApiApp();
 
-app.get("/", async (ctx): HandlerResult<CheckUpsertQueueResponseType> => {
-  const auth = ctx.get("auth");
-  const dsId = ctx.req.param("dsId");
-  if (!dsId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<CheckUpsertQueueResponseType> => {
+    const auth = ctx.get("auth");
+    const { dsId } = ctx.req.valid("param");
 
-  // Only allow system keys (connectors) to access this endpoint
-  if (!auth.isSystemKey()) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message: "Only system keys can check the upsert queue.",
-      },
-    });
-  }
+    // Only allow system keys (connectors) to access this endpoint
+    if (!auth.isSystemKey()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "Only system keys can check the upsert queue.",
+        },
+      });
+    }
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
-    origin: "v1_data_sources_check_upsert_queue",
-  });
-
-  if (!dataSource || !dataSource.canRead(auth)) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-
-  try {
-    const start = Date.now();
-    const runningCount = await checkRunningUpsertWorkflows({
-      workspaceId: owner.sId,
-      dataSourceId: dataSource.sId,
+    const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
+      origin: "v1_data_sources_check_upsert_queue",
     });
 
-    logger.info(
-      {
+    if (!dataSource || !dataSource.canRead(auth)) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    try {
+      const start = Date.now();
+      const runningCount = await checkRunningUpsertWorkflows({
         workspaceId: owner.sId,
         dataSourceId: dataSource.sId,
-        runningCount,
-        duration: Date.now() - start,
-      },
-      "[CheckUpsertQueue] Checked upsert queue status"
-    );
+      });
 
-    return ctx.json({ running_count: runningCount });
-  } catch (error) {
-    logger.error(
-      {
-        workspaceId: owner.sId,
-        dataSourceId: dataSource.sId,
-        error,
-      },
-      "[CheckUpsertQueue] Failed to check upsert queue"
-    );
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          dataSourceId: dataSource.sId,
+          runningCount,
+          duration: Date.now() - start,
+        },
+        "[CheckUpsertQueue] Checked upsert queue status"
+      );
 
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to check upsert queue.",
-      },
-    });
+      return ctx.json({ running_count: runningCount });
+    } catch (error) {
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          dataSourceId: dataSource.sId,
+          error,
+        },
+        "[CheckUpsertQueue] Failed to check upsert queue"
+      );
+
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to check upsert queue.",
+        },
+      });
+    }
   }
-});
+);
 
 export default app;

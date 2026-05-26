@@ -9,6 +9,12 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+  tId: z.string(),
+});
 
 /**
  * @ignoreswagger
@@ -18,6 +24,7 @@ const app = publicApiApp();
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PostTableParentsRequestSchema),
   async (ctx): HandlerResult<PostParentsResponseType> => {
     const auth = ctx.get("auth");
@@ -32,17 +39,7 @@ app.post(
       });
     }
 
-    const dsId = ctx.req.param("dsId");
-    const tId = ctx.req.param("tId");
-    if (!dsId || !tId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
+    const { dsId, tId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,

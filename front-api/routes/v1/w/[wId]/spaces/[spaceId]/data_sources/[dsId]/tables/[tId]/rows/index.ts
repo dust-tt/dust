@@ -18,6 +18,11 @@ import { z } from "zod";
 
 import rId from "./[rId]";
 
+const ParamsSchema = z.object({
+  dsId: z.string(),
+  tId: z.string(),
+});
+
 /**
  * @swagger
  * /api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/tables/{tId}/rows:
@@ -168,22 +173,13 @@ const QuerySchema = z.object({
 
 app.get(
   "/",
+  validate("param", ParamsSchema),
   validate("query", QuerySchema),
   async (ctx): HandlerResult<ListTableRowsResponseType> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
-    const dsId = ctx.req.param("dsId");
-    const tId = ctx.req.param("tId");
-    if (!dsId || !tId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
+    const { dsId, tId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
@@ -260,22 +256,13 @@ app.get(
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", UpsertTableRowsRequestSchema),
   async (ctx): HandlerResult<UpsertTableRowsResponseType> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
-    const dsId = ctx.req.param("dsId");
-    const tId = ctx.req.param("tId");
-    if (!dsId || !tId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
+    const { dsId, tId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,

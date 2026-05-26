@@ -18,8 +18,14 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
 import tId from "./[tId]";
 import csv from "./csv";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
 
 /**
  * @swagger
@@ -136,121 +142,108 @@ const app = publicApiApp();
 app.route("/csv", csv);
 app.route("/:tId", tId);
 
-app.get("/", async (ctx): HandlerResult<ListTablesResponseType> => {
-  const auth = ctx.get("auth");
-  const owner = auth.getNonNullableWorkspace();
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<ListTablesResponseType> => {
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
-  const dsId = ctx.req.param("dsId");
-  if (!dsId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
+    const { dsId } = ctx.req.valid("param");
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "v1_data_sources_tables" }
-  );
-
-  const spaceId = await resolveLegacyDataSourceSpaceId(
-    auth,
-    ctx.req.param("spaceId"),
-    dataSource
-  );
-
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  if (dataSource.space.kind === "conversations") {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "space_not_found",
-        message: "The space you're trying to access was not found",
-      },
-    });
-  }
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-  const tablesRes = await coreAPI.getTables({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-  });
-
-  if (tablesRes.isErr()) {
-    logger.error(
-      {
-        workspaceId: owner.id,
-        dataSourceId: dataSource.sId,
-        error: tablesRes.error,
-      },
-      "Failed to get tables."
+    const dataSource = await DataSourceResource.fetchByNameOrId(
+      auth,
+      dsId,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_tables" }
     );
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to retrieve tables.",
-        data_source_error: tablesRes.error,
-      },
+
+    const spaceId = await resolveLegacyDataSourceSpaceId(
+      auth,
+      ctx.req.param("spaceId"),
+      dataSource
+    );
+
+    if (
+      !dataSource ||
+      dataSource.space.sId !== spaceId ||
+      !dataSource.canRead(auth)
+    ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    if (dataSource.space.kind === "conversations") {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "The space you're trying to access was not found",
+        },
+      });
+    }
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+    const tablesRes = await coreAPI.getTables({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+    });
+
+    if (tablesRes.isErr()) {
+      logger.error(
+        {
+          workspaceId: owner.id,
+          dataSourceId: dataSource.sId,
+          error: tablesRes.error,
+        },
+        "Failed to get tables."
+      );
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to retrieve tables.",
+          data_source_error: tablesRes.error,
+        },
+      });
+    }
+
+    const { tables } = tablesRes.value;
+
+    return ctx.json({
+      tables: tables.map((table) => {
+        return {
+          name: table.name,
+          table_id: table.table_id,
+          description: table.description,
+          schema: table.schema,
+          timestamp: table.timestamp,
+          tags: table.tags,
+          parents: table.parents,
+          parent_id: table.parent_id,
+          mime_type: table.mime_type,
+          title: table.title,
+        };
+      }),
     });
   }
-
-  const { tables } = tablesRes.value;
-
-  return ctx.json({
-    tables: tables.map((table) => {
-      return {
-        name: table.name,
-        table_id: table.table_id,
-        description: table.description,
-        schema: table.schema,
-        timestamp: table.timestamp,
-        tags: table.tags,
-        parents: table.parents,
-        parent_id: table.parent_id,
-        mime_type: table.mime_type,
-        title: table.title,
-      };
-    }),
-  });
-});
+);
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", UpsertDatabaseTableRequestSchema),
   async (ctx): HandlerResult<UpsertTableResponseType> => {
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
-    const dsId = ctx.req.param("dsId");
-    if (!dsId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
+    const { dsId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchByNameOrId(
       auth,
