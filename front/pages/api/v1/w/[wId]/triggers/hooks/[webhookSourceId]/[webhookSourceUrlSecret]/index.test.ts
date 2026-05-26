@@ -1,8 +1,23 @@
 import { Authenticator } from "@app/lib/auth";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
-import { describe, expect, it, vi } from "vitest";
+import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
+import type { WorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const launchTriggersWorkflowsMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    isErr: () => false,
+  }))
+);
+
+const uploadWebhookPayloadMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue(undefined)
+);
 
 // Mock raw-body to return JSON.stringify(req.body) — the handler disables
 // Next.js body parsing and reads the stream via getRawBody.
@@ -32,15 +47,70 @@ vi.mock("@app/lib/utils/statsd", () => ({
 vi.mock("@app/lib/file_storage", () => ({
   getWebhookRequestsBucket: () => ({
     uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
-    uploadSmallRawContentToBucketAsNewFile: vi
-      .fn()
-      .mockResolvedValue(undefined),
+    uploadSmallRawContentToBucketAsNewFile: uploadWebhookPayloadMock,
   }),
+}));
+
+vi.mock("@app/temporal/triggers/webhook_client", () => ({
+  launchTriggersWorkflows: launchTriggersWorkflowsMock,
 }));
 
 import handler from ".";
 
+async function makeTriggerEditorAuth(workspace: WorkspaceType) {
+  const triggerEditor = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, triggerEditor, {
+    role: "builder",
+  });
+
+  return Authenticator.fromUserIdAndWorkspaceId(
+    triggerEditor.sId,
+    workspace.sId
+  );
+}
+
+async function createWebhookSourceAndTrigger(
+  workspace: WorkspaceType,
+  {
+    includePayload,
+    filter,
+  }: {
+    includePayload: boolean;
+    filter?: string;
+  }
+) {
+  const adminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  const triggerEditorAuth = await makeTriggerEditorAuth(workspace);
+  const { systemSpace } = await SpaceFactory.defaults(adminAuth);
+
+  const webhookSource = await new WebhookSourceFactory(workspace).create({
+    name: "Test Webhook Source",
+  });
+  const webhookSourceView = await new WebhookSourceViewFactory(
+    workspace
+  ).create(systemSpace, { webhookSourceId: webhookSource.sId });
+
+  await TriggerFactory.webhook(triggerEditorAuth, {
+    agentConfigurationId: "agent_test",
+    status: "enabled",
+    webhookSourceViewId: webhookSourceView.id,
+    configuration: {
+      includePayload,
+      ...(filter ? { filter } : {}),
+    },
+  });
+
+  return webhookSource;
+}
+
 describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUrlSecret]", () => {
+  beforeEach(() => {
+    launchTriggersWorkflowsMock.mockClear();
+    uploadWebhookPayloadMock.mockClear();
+  });
+
   it("returns 200 when workspace and webhook source exist", async () => {
     const { req, res, workspace } = await createPublicApiMockRequest({
       method: "POST",
@@ -225,6 +295,79 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true });
+  });
+
+  it("stores payload when a matched trigger includes payload", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    const webhookSource = await createWebhookSourceAndTrigger(workspace, {
+      includePayload: true,
+    });
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: webhookSource.sId,
+      webhookSourceUrlSecret: webhookSource.urlSecret,
+    };
+    req.body = { any: "payload" };
+    req.headers["content-type"] = "application/json";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(uploadWebhookPayloadMock).toHaveBeenCalledTimes(1);
+    expect(launchTriggersWorkflowsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not store payload when matched triggers do not include payload", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    const webhookSource = await createWebhookSourceAndTrigger(workspace, {
+      includePayload: false,
+    });
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: webhookSource.sId,
+      webhookSourceUrlSecret: webhookSource.urlSecret,
+    };
+    req.body = { any: "payload" };
+    req.headers["content-type"] = "application/json";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(uploadWebhookPayloadMock).not.toHaveBeenCalled();
+    expect(launchTriggersWorkflowsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not store payload when no triggers match", async () => {
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    const webhookSource = await createWebhookSourceAndTrigger(workspace, {
+      includePayload: true,
+      filter: '(eq "type" "wanted")',
+    });
+
+    req.query = {
+      wId: workspace.sId,
+      webhookSourceId: webhookSource.sId,
+      webhookSourceUrlSecret: webhookSource.urlSecret,
+    };
+    req.body = { type: "ignored" };
+    req.headers["content-type"] = "application/json";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(uploadWebhookPayloadMock).not.toHaveBeenCalled();
+    expect(launchTriggersWorkflowsMock).not.toHaveBeenCalled();
   });
 
   it("returns 400 when webhookSourceUrlSecret is undefined", async () => {

@@ -7,7 +7,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   HEADERS_ALLOWED_LIST,
   processWebhookRequest,
-  storePayloadInGCS,
 } from "@app/lib/triggers/webhook";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 
@@ -188,14 +187,6 @@ async function handler(
         isString(headers[key])
     ) as [string, string][] // Type assertion to satisfy TypeScript, we've already filtered to strings
   );
-
-  await storePayloadInGCS(auth, {
-    webhookSource,
-    webhookRequest,
-    headers: filteredHeaders,
-    body,
-    provider,
-  });
 
   const result = await processWebhookRequest(auth, {
     webhookSource: webhookSource,
