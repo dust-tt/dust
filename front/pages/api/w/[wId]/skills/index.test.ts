@@ -15,9 +15,8 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type {
-  SkillType,
   SkillWithoutInstructionsAndToolsType,
-  SkillWithRelationsType,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -65,7 +64,9 @@ describe("GET /api/w/[wId]/skills", () => {
     const data = res._getJSONData();
     expect(data).toHaveProperty("skills");
 
-    const skillNames = data.skills.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });
@@ -98,7 +99,9 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
 
-    const skillNames = data.skills.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
     expect(skillNames).toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
   });
@@ -119,7 +122,9 @@ describe("GET /api/w/[wId]/skills", () => {
     req.query = { wId: workspace.sId };
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
-    const allSkillIds = res._getJSONData().skills.map((s: SkillType) => s.sId);
+    const allSkillIds = res
+      ._getJSONData()
+      .skills.map((s: SkillWithoutInstructionsAndToolsType) => s.sId);
     expect(allSkillIds).toContain("frames");
     expect(allSkillIds).toContain(customSkill.sId);
 
@@ -136,7 +141,7 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(res2._getStatusCode()).toBe(200);
     const customOnlySIds = res2
       ._getJSONData()
-      .skills.map((s: SkillType) => s.sId);
+      .skills.map((s: SkillWithoutInstructionsAndToolsType) => s.sId);
     expect(customOnlySIds).not.toContain("frames");
     expect(customOnlySIds).toContain(customSkill.sId);
   });
@@ -169,7 +174,9 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
 
-    const skillNames = data.skills.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
     expect(skillNames).toContain("Suggested Skill");
     expect(skillNames).not.toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
@@ -195,7 +202,7 @@ describe("GET /api/w/[wId]/skills", () => {
       expect(res._getStatusCode()).toBe(200);
       const skillNames = res
         ._getJSONData()
-        .skills.map((s: SkillType) => s.name);
+        .skills.map((s: SkillWithoutInstructionsAndToolsType) => s.name);
       expect(skillNames).toContain(`Skill for ${role}`);
     }
   });
@@ -222,7 +229,9 @@ describe("GET /api/w/[wId]/skills", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const skillNames = res._getJSONData().skills.map((s: SkillType) => s.name);
+    const skillNames = res
+      ._getJSONData()
+      .skills.map((s: SkillWithoutInstructionsAndToolsType) => s.name);
     expect(skillNames).toContain("Accessible Skill");
     expect(skillNames).not.toContain("Restricted Skill");
   });
@@ -248,11 +257,13 @@ describe("GET /api/w/[wId]/skills", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const skillNames = res._getJSONData().skills.map((s: SkillType) => s.name);
+    const skillNames = res
+      ._getJSONData()
+      .skills.map((s: SkillWithoutInstructionsAndToolsType) => s.name);
     expect(skillNames).toContain("Skill In Restricted Space");
   });
 
-  it("should return skill summaries for viewType=summary", async () => {
+  it("should not return instructions or tools in skill list", async () => {
     const { req, res, workspace, auth, user } = await setupTest();
 
     const skill = await SkillFactory.create(auth, {
@@ -260,7 +271,7 @@ describe("GET /api/w/[wId]/skills", () => {
       userFacingDescription: "Shown in the capabilities picker",
     });
 
-    req.query = { ...req.query, wId: workspace.sId, viewType: "summary" };
+    req.query = { ...req.query, wId: workspace.sId };
 
     await handler(req, res);
 
@@ -295,7 +306,7 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(skillWithoutInstructionsAndTools).not.toHaveProperty("tools");
   });
 
-  it("should not fetch dynamic global instructions for viewType=summary", async () => {
+  it("should not fetch dynamic global instructions", async () => {
     const { req, res, workspace } = await setupTest();
 
     const fetchInstructionsSpy = vi.spyOn(
@@ -307,7 +318,6 @@ describe("GET /api/w/[wId]/skills", () => {
         ...req.query,
         wId: workspace.sId,
         globalSpaceOnly: "true",
-        viewType: "summary",
       };
 
       await handler(req, res);
@@ -362,7 +372,10 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find((s: SkillWithRelationsType) => s.sId === skillId);
+      .skills.find(
+        (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+          s.sId === skillId
+      );
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -399,7 +412,10 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     const skillResult = res
       ._getJSONData()
-      .skills.find((s: SkillWithRelationsType) => s.sId === "frames");
+      .skills.find(
+        (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+          s.sId === "frames"
+      );
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -435,7 +451,10 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find((s: SkillWithRelationsType) => s.sId === skillId);
+      .skills.find(
+        (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+          s.sId === skillId
+      );
 
     expect(skillResult).toMatchObject({
       relations: {
@@ -471,7 +490,9 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find((s: SkillType) => s.sId === skillId);
+      .skills.find(
+        (s: SkillWithoutInstructionsAndToolsType) => s.sId === skillId
+      );
 
     expect(skillResult).toBeDefined();
     expect(skillResult).not.toHaveProperty("usage");
@@ -517,7 +538,10 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
     });
     const skillResult = res
       ._getJSONData()
-      .skills.find((s: SkillWithRelationsType) => s.sId === skillId);
+      .skills.find(
+        (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+          s.sId === skillId
+      );
 
     expect(skillResult).toMatchObject({
       relations: {

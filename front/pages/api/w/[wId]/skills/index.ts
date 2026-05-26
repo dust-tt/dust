@@ -11,31 +11,25 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import {
-  SKILL_VIEWS,
-  type SkillType,
-  type SkillViewType,
-  type SkillWithoutInstructionsAndToolsType,
-  type SkillWithRelationsType,
+import type {
+  SkillType,
+  SkillWithoutInstructionsAndToolsType,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export type GetSkillsWithoutInstructionsAndToolsResponseBody = {
+export type GetSkillsResponseBody = {
   skills: SkillWithoutInstructionsAndToolsType[];
 };
 
-export type GetSkillsResponseBody = {
-  skills: SkillType[];
-};
-
 export type GetSkillsWithRelationsResponseBody = {
-  skills: SkillWithRelationsType[];
+  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
 };
 
 export type PostSkillResponseBody = {
@@ -45,10 +39,6 @@ export type PostSkillResponseBody = {
 const SkillStatusSchema = z
   .enum(["active", "archived", "suggested"])
   .optional();
-
-function isSkillViewType(value: string): value is SkillViewType {
-  return SKILL_VIEWS.some((skillViewType) => skillViewType === value);
-}
 
 // Schema for attached knowledge.
 export const AttachedKnowledgeSchema = z.object({
@@ -103,7 +93,6 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetSkillsWithoutInstructionsAndToolsResponseBody
       | GetSkillsResponseBody
       | GetSkillsWithRelationsResponseBody
       | PostSkillResponseBody
@@ -115,40 +104,10 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const {
-        withRelations,
-        status,
-        globalSpaceOnly,
-        onlyCustom,
-        isDefault,
-        viewType,
-      } = req.query;
-
-      let skillView: SkillViewType = "full";
-      if (viewType !== undefined) {
-        if (!isString(viewType) || !isSkillViewType(viewType)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Invalid viewType: ${viewType}. Expected "full" or "summary".`,
-            },
-          });
-        }
-
-        skillView = viewType;
-      }
-
-      if (withRelations === "true" && skillView === "summary") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "viewType=summary is incompatible with withRelations=true.",
-          },
-        });
-      }
+      // @deprecated viewType query param is ignored — instructions and tools
+      // are never returned from the list endpoint. Use GET /skills/:sId for full details.
+      const { withRelations, status, globalSpaceOnly, onlyCustom, isDefault } =
+        req.query;
 
       const statusValidation = SkillStatusSchema.safeParse(status);
       if (!statusValidation.success) {
@@ -167,8 +126,8 @@ async function handler(
         globalSpaceOnly: globalSpaceOnly === "true",
         onlyCustom: onlyCustom === "true",
         isDefault: isDefault === "true" ? true : undefined,
-        withInstructions: skillView !== "summary",
-        withTools: skillView === "full",
+        withInstructions: false,
+        withTools: false,
       });
 
       if (withRelations === "true") {
@@ -183,12 +142,18 @@ async function handler(
         const skillsWithRelations = await concurrentExecutor(
           skills,
           async (sc) => {
+            const {
+              instructions,
+              instructionsHtml,
+              tools,
+              ...skillWithoutInstructionsAndTools
+            } = sc.toJSON(auth);
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
             const editedByUser = await sc.fetchEditedByUser(auth);
 
             return {
-              ...sc.toJSON(auth),
+              ...skillWithoutInstructionsAndTools,
               relations: {
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
@@ -198,7 +163,7 @@ async function handler(
                     null)
                   : null,
               },
-            } satisfies SkillWithRelationsType;
+            } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
           },
           { concurrency: 10 }
         );
@@ -206,23 +171,17 @@ async function handler(
         return res.status(200).json({ skills: skillsWithRelations });
       }
 
-      if (skillView === "summary") {
-        return res.status(200).json({
-          skills: skills.map((sc) => {
-            const {
-              instructions,
-              instructionsHtml,
-              tools,
-              ...skillWithoutInstructionsAndTools
-            } = sc.toJSON(auth);
-
-            return skillWithoutInstructionsAndTools;
-          }),
-        });
-      }
-
       return res.status(200).json({
-        skills: skills.map((sc) => sc.toJSON(auth)),
+        skills: skills.map((sc) => {
+          const {
+            instructions,
+            instructionsHtml,
+            tools,
+            ...skillWithoutInstructionsAndTools
+          } = sc.toJSON(auth);
+
+          return skillWithoutInstructionsAndTools;
+        }),
       });
     }
 
