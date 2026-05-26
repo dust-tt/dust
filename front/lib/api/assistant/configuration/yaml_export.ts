@@ -31,11 +31,11 @@ export type ExportableAgentConfiguration = AgentConfigurationType & {
   status: "active";
 };
 
-interface AgentConfigurationYAMLContext {
+type AgentConfigurationYAMLContext = {
   agentConfiguration: ExportableAgentConfiguration;
   editorUsers: UserResource[];
   skills: SkillResource[];
-}
+};
 
 function isExportableAgentConfiguration(
   agentConfiguration: AgentConfigurationType
