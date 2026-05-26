@@ -248,6 +248,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.075,
     output: 0.3,
   },
+  "gemini-3.1-flash-lite": {
+    input: 0.25,
+    output: 1.5,
+    cache_read_input_tokens: 0.025,
+  },
+  // Deprecated: superseded by gemini-3.1-flash-lite. Kept for existing agent runs.
   "gemini-3.1-flash-lite-preview": {
     input: 0.25,
     output: 1.5,
