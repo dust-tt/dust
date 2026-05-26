@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
