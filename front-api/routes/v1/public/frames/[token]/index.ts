@@ -15,8 +15,10 @@ import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { resolveOptionalAuth } from "@front-api/routes/v1/public/frames/shared_auth";
 import { getCookie } from "hono/cookie";
+import { z } from "zod";
 
 import verifyCode from "./verify-code";
 import verifyEmail from "./verify-email";
@@ -27,20 +29,18 @@ import verifyEmail from "./verify-email";
  * Undocumented API endpoint to get a frame by its public share token.
  */
 
+const TokenParamSchema = z.object({
+  token: z.string().min(1),
+});
+
 // Mounted at /api/v1/public/frames/:token.
 const app = unauthedApp();
 
-app.get("/", async (ctx): HandlerResult<PublicFrameResponseBodyType> => {
-  const token = ctx.req.param("token");
-  if (!token) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing token parameter.",
-      },
-    });
-  }
+app.get(
+  "/",
+  validate("param", TokenParamSchema),
+  async (ctx): HandlerResult<PublicFrameResponseBodyType> => {
+  const { token } = ctx.req.valid("param");
 
   const result = await FileResource.fetchByShareToken(token);
   if (result.isErr()) {

@@ -16,6 +16,10 @@ import { z } from "zod";
 
 const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60; // 7 days.
 
+const TokenParamSchema = z.object({
+  token: z.string().min(1),
+});
+
 const VerifyCodeRequestBodySchema = z.object({
   email: z.string().email(),
   code: z
@@ -66,19 +70,10 @@ const app = unauthedApp();
 
 app.post(
   "/",
+  validate("param", TokenParamSchema),
   validate("json", VerifyCodeRequestBodySchema),
   async (ctx): HandlerResult<VerifyCodeResponseBody> => {
-    const token = ctx.req.param("token");
-    if (!token) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Missing token parameter.",
-        },
-      });
-    }
-
+    const { token } = ctx.req.valid("param");
     const { email: rawEmail, code } = ctx.req.valid("json");
     const email = rawEmail.toLowerCase().trim();
 

@@ -3,8 +3,8 @@ import { getSessionFromBearerToken } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { MeResponseType } from "@dust-tt/client";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
-import { Hono } from "hono";
 
 /**
  * @ignoreswagger
@@ -15,7 +15,7 @@ import { Hono } from "hono";
 // Mounted at /api/v1/me. Token-only authentication (bearer token required,
 // no workspace context). Mirrors withTokenAuthentication from
 // front/lib/api/auth_wrappers.ts.
-const app = new Hono();
+const app = unauthedApp();
 
 app.get("/", async (ctx): HandlerResult<MeResponseType> => {
   const authHeader = ctx.req.header("authorization");

@@ -11,6 +11,10 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+const TokenParamSchema = z.object({
+  token: z.string().min(1),
+});
+
 const VerifyEmailRequestBodySchema = z.object({
   email: z.string().email(),
 });
@@ -24,19 +28,10 @@ const app = unauthedApp();
 
 app.post(
   "/",
+  validate("param", TokenParamSchema),
   validate("json", VerifyEmailRequestBodySchema),
   async (ctx): HandlerResult<VerifyEmailResponseBody> => {
-    const token = ctx.req.param("token");
-    if (!token) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Missing token parameter.",
-        },
-      });
-    }
-
+    const { token } = ctx.req.valid("param");
     const { email: rawEmail } = ctx.req.valid("json");
     const email = rawEmail.toLowerCase().trim();
 

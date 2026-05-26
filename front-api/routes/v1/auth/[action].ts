@@ -7,8 +7,10 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import { unauthedApp } from "@front-api/middlewares/ctx";
+import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
-import { Hono } from "hono";
+import { z } from "zod";
 
 const ALLOWED_CALLBACK_URL_PATTERNS: RegExp[] = [
   // Zendesk app: https://1073173.apps.zdusercontent.com/1073173/assets/<hash>/oauth-callback.html
@@ -30,11 +32,15 @@ const workosConfig = {
  * @ignoreswagger
  */
 
-// Mounted at /api/v1/auth/:action. Unauthenticated OAuth proxy endpoints.
-const app = new Hono();
+const ActionParamSchema = z.object({
+  action: z.enum(["authorize", "authenticate", "callback", "logout"]),
+});
 
-app.all("/", async (ctx) => {
-  const action = ctx.req.param("action");
+// Mounted at /api/v1/auth/:action. Unauthenticated OAuth proxy endpoints.
+const app = unauthedApp();
+
+app.all("/", validate("param", ActionParamSchema), async (ctx) => {
+  const { action } = ctx.req.valid("param");
 
   switch (action) {
     case "authorize":
@@ -45,8 +51,6 @@ app.all("/", async (ctx) => {
       return handleCallback(ctx);
     case "logout":
       return handleLogout(ctx);
-    default:
-      return ctx.json({ error: "Action not found" }, 404);
   }
 });
 
