@@ -15,7 +15,7 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   ActionGitBranchIcon,
   ArrowLeftIcon,
@@ -70,7 +70,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const forkedFrom = conversation?.forkingData?.forkedFrom;
   const isMobileForkedConversation = isMobile && !!forkedFrom;
 
-  const breadcrumbItems: BreadcrumbItem[] = [];
+  const breadcrumbItems: BreadcrumbsItem[] = [];
 
   if (spaceId && spaceInfo) {
     breadcrumbItems.push({

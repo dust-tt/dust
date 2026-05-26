@@ -30,7 +30,7 @@ import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
 import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
 import {
-  type BreadcrumbItem,
+  type BreadcrumbsItem,
   Breadcrumbs,
   Button,
   cn,
@@ -52,7 +52,7 @@ function FileExplorerBreadcrumb({
   onNavigate,
 }: FileExplorerBreadcrumbProps) {
   const segments = getFolderBreadcrumbSegments(currentFolderPath);
-  const items: BreadcrumbItem[] = [
+  const items: BreadcrumbsItem[] = [
     { label: ROOT_FOLDER_LABEL, onClick: () => onNavigate(-1) },
     ...segments.map((segment, i) => ({
       label: segment.label,

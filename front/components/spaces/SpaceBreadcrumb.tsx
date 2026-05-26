@@ -5,7 +5,7 @@ import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   BoltIcon,
   Breadcrumbs,
@@ -56,7 +56,7 @@ export function SpaceBreadCrumbs({
       ];
     }
 
-    const items: BreadcrumbItem[] = [
+    const items: BreadcrumbsItem[] = [
       {
         icon: getSpaceIcon(space),
         label: getSpaceName(space),
