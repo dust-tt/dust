@@ -1,4 +1,8 @@
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
+import {
+  getActionStepIcon,
+  getCollapseAnimationStyle,
+} from "@app/components/assistant/conversation/actions/inline/utils";
 import { ThinkingStep } from "@app/components/assistant/conversation/actions/inline/ThinkingStep";
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -7,8 +11,6 @@ import {
   getPendingToolCallKey,
   type PendingToolCall,
 } from "@app/components/assistant/conversation/types";
-import { InternalActionIcons } from "@app/components/resources/resources_icons";
-import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
@@ -27,9 +29,7 @@ import {
   CheckIcon,
   ChevronRightIcon,
   cn,
-  GlobeAltIcon,
   Icon,
-  ToolsIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
@@ -65,16 +65,6 @@ function getTerminalLabel(status: LightAgentMessageType["status"]): string {
     default:
       return "Completed";
   }
-}
-
-function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
-  return {
-    gridTemplateRows: isCollapsed ? "0fr" : "1fr",
-    opacity: isCollapsed ? 0 : 1,
-    transition: isCollapsed
-      ? "grid-template-rows 280ms ease, opacity 280ms"
-      : "grid-template-rows 200ms ease-in",
-  };
 }
 
 /**
@@ -279,25 +269,16 @@ export function InlineActivitySteps({
                     </div>
                   );
                 case "action": {
-                  const actionIcon =
-                    step.internalMCPServerName === "sandbox" &&
-                    step.toolName === "add_egress_domain"
-                      ? GlobeAltIcon
-                      : step.internalMCPServerName
-                        ? InternalActionIcons[
-                            getInternalMCPServerIconByName(
-                              step.internalMCPServerName
-                            )
-                          ]
-                        : ToolsIcon;
-
                   return (
                     <div
                       key={step.id}
                       className="cursor-pointer"
                       onClick={() => openBreakdownPanel(step.actionId)}
                     >
-                      <TimelineRow icon={actionIcon} isLast={isLast}>
+                      <TimelineRow
+                        icon={getActionStepIcon(step)}
+                        isLast={isLast}
+                      >
                         <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
                           {step.label}
                           <Icon
