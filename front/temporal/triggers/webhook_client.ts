@@ -66,13 +66,9 @@ export async function launchTriggersWorkflows(
   auth: Authenticator,
   {
     filteredTriggers,
-    webhookSource,
-    body,
     webhookRequest,
   }: {
     filteredTriggers: WebhookTriggerType[];
-    webhookSource: WebhookSourceResource;
-    body: Record<string, unknown>;
     webhookRequest: WebhookRequestResource;
   }
 ): Promise<Result<void, Error>> {
