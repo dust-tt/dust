@@ -126,8 +126,7 @@ function serializePaymentMethod(
 async function getDefaultPaymentMethod(
   customer: Stripe.Customer
 ): Promise<BillingPaymentMethod | null> {
-  const defaultPaymentMethod =
-    customer.invoice_settings.default_payment_method;
+  const defaultPaymentMethod = customer.invoice_settings.default_payment_method;
   if (!defaultPaymentMethod) {
     return null;
   }

@@ -1,6 +1,6 @@
 import {
-  getWorkspaceBillingInfo,
   type GetBillingInfoResponseBody,
+  getWorkspaceBillingInfo,
 } from "@app/lib/api/billing/info";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
