@@ -1,4 +1,8 @@
 import {
+  activateCreditPricedFreePlan,
+  isMetronomeBillingEnabled,
+} from "@app/lib/api/subscription";
+import {
   activatePhoneTrial,
   isWorkspaceEligibleForTrial,
 } from "@app/lib/plans/trial";
@@ -51,7 +55,11 @@ app.post("/", async (ctx): HandlerResult<PostTrialVerifyResponseBody> => {
     });
   }
 
-  await activatePhoneTrial(auth);
+  if (await isMetronomeBillingEnabled(auth)) {
+    await activateCreditPricedFreePlan(auth);
+  } else {
+    await activatePhoneTrial(auth);
+  }
 
   return ctx.json({ success: true });
 });
