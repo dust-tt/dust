@@ -271,17 +271,14 @@ function truncateTextToLength(text: string, length: number) {
     : text;
 }
 
-// ---------------------------------------------------------------------------
-// Composable breadcrumb primitives
-// ---------------------------------------------------------------------------
+// Composable breadcrumb primitives.
 
-export function Breadcrumb({
-  children,
-  className,
-}: {
+interface BreadcrumbProps {
   children: React.ReactNode;
   className?: string;
-}) {
+}
+
+export function Breadcrumb({ children, className }: BreadcrumbProps) {
   return (
     <nav
       aria-label="Breadcrumb"
@@ -292,13 +289,12 @@ export function Breadcrumb({
   );
 }
 
-export function BreadcrumbItem({
-  children,
-  className,
-}: {
+interface BreadcrumbItemProps {
   children: React.ReactNode;
   className?: string;
-}) {
+}
+
+export function BreadcrumbItem({ children, className }: BreadcrumbItemProps) {
   return (
     <div className={cn("s-flex s-flex-row s-items-center", className)}>
       {children}
@@ -333,13 +329,12 @@ export function BreadcrumbButton({
   );
 }
 
-export function BreadcrumbPage({
-  children,
-  className,
-}: {
+interface BreadcrumbPageProps {
   children: React.ReactNode;
   className?: string;
-}) {
+}
+
+export function BreadcrumbPage({ children, className }: BreadcrumbPageProps) {
   return (
     <span
       aria-current="page"
