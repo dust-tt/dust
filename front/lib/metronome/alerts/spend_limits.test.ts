@@ -1,9 +1,9 @@
 import * as alerts from "@app/lib/metronome/alerts";
-import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import {
   getMetronomeDefaultUserCapAlert,
   upsertMetronomeDefaultUserCapAlert,
-} from "@app/lib/metronome/default_user_cap_alert";
+} from "@app/lib/metronome/alerts/spend_limits";
+import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { mockCustomerAlert } from "@app/tests/utils/mocks/metronome";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";

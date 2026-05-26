@@ -4,13 +4,13 @@ import {
   dispatchPerUserCapResolved,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
+import * as defaultUserCapAlert from "@app/lib/metronome/alerts/spend_limits";
+import * as perUserAlerts from "@app/lib/metronome/alerts/spend_limits";
 import {
   getMetronomeContractById,
   listMetronomeContracts,
 } from "@app/lib/metronome/client";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
-import * as defaultUserCapAlert from "@app/lib/metronome/default_user_cap_alert";
-import * as perUserAlerts from "@app/lib/metronome/per_user_alerts";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -59,22 +59,13 @@ vi.mock("@app/lib/api/metronome/credit_state_dispatcher", async () => {
   };
 });
 
-vi.mock("@app/lib/metronome/per_user_alerts", async () => {
-  const actual = await vi.importActual<typeof perUserAlerts>(
-    "@app/lib/metronome/per_user_alerts"
+vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
+  const actual = await vi.importActual<typeof defaultUserCapAlert>(
+    "@app/lib/metronome/alerts/spend_limits"
   );
   return {
     ...actual,
     getMetronomePerUserCap: vi.fn(),
-  };
-});
-
-vi.mock("@app/lib/metronome/default_user_cap_alert", async () => {
-  const actual = await vi.importActual<typeof defaultUserCapAlert>(
-    "@app/lib/metronome/default_user_cap_alert"
-  );
-  return {
-    ...actual,
     getMetronomeDefaultUserCapAlert: vi.fn(),
   };
 });

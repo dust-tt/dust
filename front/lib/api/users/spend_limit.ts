@@ -9,12 +9,12 @@ import {
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import { getMetronomeDefaultUserCapAlert } from "@app/lib/metronome/default_user_cap_alert";
 import {
   clearMetronomePerUserCapAlert,
+  getMetronomeDefaultUserCapAlert,
   getMetronomePerUserCap,
   upsertMetronomePerUserCapAlert,
-} from "@app/lib/metronome/per_user_alerts";
+} from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
