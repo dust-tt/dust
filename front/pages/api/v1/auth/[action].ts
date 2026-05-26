@@ -3,11 +3,11 @@
 // Pass through to workOS, do not enforce return types.
 
 import config from "@app/lib/api/config";
+import { getWorkOS } from "@app/lib/api/workos/client";
 import {
   decodeClientState,
   isAllowedCallbackUrl,
 } from "@app/lib/api/workos/oauth_state";
-import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
@@ -182,5 +182,3 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
   redirectUrl.searchParams.set("code", code);
   return res.redirect(redirectUrl.toString());
 }
-
-

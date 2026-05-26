@@ -2,11 +2,11 @@
 // Pass through to workOS, do not enforce return types.
 
 import config from "@app/lib/api/config";
+import { getWorkOS } from "@app/lib/api/workos/client";
 import {
   decodeClientState,
   isAllowedCallbackUrl,
 } from "@app/lib/api/workos/oauth_state";
-import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
