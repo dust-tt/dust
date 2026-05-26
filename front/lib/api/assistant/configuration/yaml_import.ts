@@ -44,7 +44,6 @@ const agentYAMLConfigPatchSchema = agentYAMLConfigSchema.partial().extend({
   generation_settings: agentYAMLGenerationSettingsSchema.partial().optional(),
 });
 
-
 function resolveEditorUsers(
   auth: Authenticator,
   editorUsers: UserResource[]
