@@ -2,8 +2,8 @@ import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getSessionFromBearerToken } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { MeResponseType } from "@dust-tt/client";
-import type { HandlerResult } from "@front-api/middlewares/utils";
 import { unauthedApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
 /**
