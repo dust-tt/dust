@@ -170,13 +170,9 @@ app.post(
       username: context.username,
     };
 
-    const headers: Record<string, string | string[] | undefined> = {};
-    ctx.req.raw.headers.forEach((value, key) => {
-      headers[key] = value;
-    });
     const validateUserMessageContextRes = isUserMessageContextValid(
       auth,
-      headers,
+      ctx.req.header(),
       messageContext
     );
     if (!validateUserMessageContextRes) {

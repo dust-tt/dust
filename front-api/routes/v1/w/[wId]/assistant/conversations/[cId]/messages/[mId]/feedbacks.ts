@@ -28,16 +28,6 @@ const ParamsSchema = z.object({
 // Mounted at /api/v1/w/:wId/assistant/conversations/:cId/messages/:mId/feedbacks.
 const app = publicApiApp();
 
-function readHeaders(ctx: {
-  req: { raw: { headers: Headers } };
-}): Record<string, string | string[] | undefined> {
-  const headers: Record<string, string> = {};
-  ctx.req.raw.headers.forEach((value, key) => {
-    headers[key] = value;
-  });
-  return headers;
-}
-
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/feedbacks:
@@ -159,7 +149,7 @@ app.post(
 
     const user = await getActiveUserFromAuthOrEmail(
       auth,
-      getUserEmailFromHeaders(readHeaders(ctx))
+      getUserEmailFromHeaders(ctx.req.header())
     );
 
     if (!user) {
@@ -253,7 +243,7 @@ app.delete(
 
     const user = await getActiveUserFromAuthOrEmail(
       auth,
-      getUserEmailFromHeaders(readHeaders(ctx))
+      getUserEmailFromHeaders(ctx.req.header())
     );
 
     if (!user) {
