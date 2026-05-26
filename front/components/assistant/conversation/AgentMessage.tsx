@@ -52,7 +52,6 @@ import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { showDebugTools } from "@app/lib/development";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -239,7 +238,7 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
-  const { hasFeature, featureFlags } = useFeatureFlags();
+  const { hasFeature } = useFeatureFlags();
   const isCollapsibleEnabled = hasFeature("collapsible_messages");
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
@@ -717,7 +716,7 @@ export function AgentMessage({
     !isAgentMessageHandingOver &&
     !isProjectArchived;
 
-  const canBranchConversation = showDebugTools(featureFlags) && shouldShowCopy;
+  const canBranchConversation = shouldShowCopy;
 
   const shouldShowFeedback =
     !isDeleted &&
