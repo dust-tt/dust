@@ -6,7 +6,10 @@ import {
 import { FireworksLLM } from "@app/lib/api/llm/clients/fireworks";
 import { isFireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
-import { isGoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
+import {
+  isGoogleAIStudioWhitelistedModelId,
+  isGoogleVertexWhitelistedModelId,
+} from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import { NoopLLM } from "@app/lib/api/llm/clients/noop";
@@ -114,8 +117,11 @@ export async function getLLM(
     !auth.getNonNullablePlan().isByok;
 
   if (isGoogleAIStudioWhitelistedModelId(modelId)) {
+    const useVertex =
+      useVertexPrerequisite && isGoogleVertexWhitelistedModelId(modelId);
+
     return new GoogleLLM(auth, {
-      useVertex: useVertexPrerequisite,
+      useVertex,
       credentials,
       getTraceInput,
       getTraceOutput,
