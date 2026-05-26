@@ -493,6 +493,7 @@ export interface WorkspaceMetadata {
   killSwitched?: WorkspaceKillSwitchValue;
   allowContentCreationFileSharing?: boolean;
   allowEmailAgents?: boolean;
+  emailBlacklistedAgentIds?: string[];
   allowVoiceTranscription?: boolean;
   allowOpenProjects?: boolean;
   allowManualProjectKnowledgeManagement?: boolean;

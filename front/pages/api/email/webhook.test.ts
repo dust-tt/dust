@@ -11,6 +11,11 @@ const {
   incomingFormMock,
   evaluateInboundAuthMock,
   parseSendgridDkimResultsMock,
+  getAgentConfigurationsForViewMock,
+  authenticatorFromUserIdAndWorkspaceIdMock,
+  buildAuditLogTargetMock,
+  emitAuditLogEventMock,
+  getAuditLogContextMock,
 } = vi.hoisted(() => {
   const formParseMock = vi.fn();
 
@@ -24,6 +29,11 @@ const {
     }),
     evaluateInboundAuthMock: vi.fn(),
     parseSendgridDkimResultsMock: vi.fn(),
+    getAgentConfigurationsForViewMock: vi.fn(),
+    authenticatorFromUserIdAndWorkspaceIdMock: vi.fn(),
+    buildAuditLogTargetMock: vi.fn(),
+    emitAuditLogEventMock: vi.fn(),
+    getAuditLogContextMock: vi.fn(),
   };
 });
 
@@ -40,6 +50,28 @@ vi.mock("@app/lib/api/assistant/email/inbound_auth", () => ({
   parseSendgridDkimResults: parseSendgridDkimResultsMock,
 }));
 
+vi.mock("@app/lib/api/assistant/configuration/views", () => ({
+  getAgentConfigurationsForView: getAgentConfigurationsForViewMock,
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", () => ({
+  buildAuditLogTarget: buildAuditLogTargetMock,
+  emitAuditLogEvent: emitAuditLogEventMock,
+  getAuditLogContext: getAuditLogContextMock,
+}));
+
+vi.mock("@app/lib/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/auth")>();
+
+  return {
+    ...actual,
+    Authenticator: {
+      ...actual.Authenticator,
+      fromUserIdAndWorkspaceId: authenticatorFromUserIdAndWorkspaceIdMock,
+    },
+  };
+});
+
 vi.mock("@app/lib/api/regions/config", () => ({
   config: {
     getCurrentRegion: vi.fn(() => "us-central1"),
@@ -54,11 +86,22 @@ vi.mock("@app/lib/api/regions/config", () => ({
 vi.mock("@app/lib/api/assistant/email/email_trigger", () => ({
   ASSISTANT_EMAIL_SUBDOMAIN: "dust.team",
   emailAssistantMatcher: vi.fn(),
+  getEmailBlacklistedAgentIds: vi.fn(),
   replyToEmail: vi.fn(),
   triggerFromEmail: vi.fn(),
   userAndWorkspaceFromEmail: vi.fn(),
 }));
 
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import {
+  emailAssistantMatcher,
+  getEmailBlacklistedAgentIds,
+  replyToEmail,
+  triggerFromEmail,
+  userAndWorkspaceFromEmail,
+} from "@app/lib/api/assistant/email/email_trigger";
+import { Authenticator } from "@app/lib/auth";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import handler, {
   type PostResponseBody,
   shouldRelayToOtherRegion,
@@ -91,6 +134,35 @@ function basicAuthHeader(secret: string): string {
 
 function relayAuthHeader(secret: string): string {
   return `Bearer ${secret}`;
+}
+
+function makeOk<T>(value: T) {
+  return {
+    isErr: () => false,
+    isOk: () => true,
+    value,
+  };
+}
+
+function makeErr(error: unknown) {
+  return {
+    error,
+    isErr: () => true,
+    isOk: () => false,
+  };
+}
+
+function makeAgentConfiguration({
+  name,
+  sId,
+}: {
+  name: string;
+  sId: string;
+}): LightAgentConfigurationType {
+  return {
+    name,
+    sId,
+  } as LightAgentConfigurationType;
 }
 
 const PARSED_EMAIL_FIELDS = {
@@ -193,6 +265,19 @@ describe("POST /api/email/webhook", () => {
 
     rawBodyMock.mockResolvedValue(rawBody);
     parseSendgridDkimResultsMock.mockReturnValue([]);
+    getAgentConfigurationsForViewMock.mockResolvedValue([]);
+    authenticatorFromUserIdAndWorkspaceIdMock.mockResolvedValue({
+      getNonNullableWorkspace: vi.fn(() => ({
+        sId: "workspace-1",
+      })),
+      user: vi.fn(() => ({
+        email: "sender@company.com",
+        sId: "user-1",
+      })),
+    });
+    buildAuditLogTargetMock.mockReturnValue({});
+    emitAuditLogEventMock.mockResolvedValue(undefined);
+    getAuditLogContextMock.mockReturnValue({});
     evaluateInboundAuthMock.mockReturnValue({
       authenticated: false,
       reason: "test",
@@ -364,5 +449,121 @@ describe("POST /api/email/webhook", () => {
     expect(formParseMock).toHaveBeenCalledTimes(1);
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true });
+  });
+
+  it("replies to blacklisted recipients but still triggers allowed agents", async () => {
+    process.env.IS_DEVELOPMENT = "true";
+
+    const blockedAgent = makeAgentConfiguration({
+      name: "Blocked",
+      sId: "agent-blocked",
+    });
+    const allowedAgent = makeAgentConfiguration({
+      name: "Allowed",
+      sId: "agent-allowed",
+    });
+    const workspace = {
+      id: 1,
+      metadata: {
+        allowEmailAgents: true,
+      },
+      sId: "workspace-1",
+    };
+    const auth = {
+      getNonNullableWorkspace: vi.fn(() => workspace),
+      user: vi.fn(() => ({
+        email: "sender@company.com",
+        sId: "user-1",
+      })),
+    };
+
+    formParseMock.mockResolvedValue([
+      {
+        ...PARSED_EMAIL_FIELDS,
+        headers: [
+          [
+            "From: Sender <sender@company.com>",
+            "To: blocked@dust.team, allowed@dust.team",
+            "Message-ID: <msg-1@example.com>",
+          ].join("\r\n"),
+        ],
+        envelope: [
+          JSON.stringify({
+            from: "bounce@company.com",
+            to: ["blocked@dust.team", "allowed@dust.team"],
+            cc: [],
+            bcc: [],
+          }),
+        ],
+      },
+      {},
+    ]);
+    evaluateInboundAuthMock.mockReturnValue({
+      authenticated: true,
+      reason: "test",
+      headerFromDomain: "company.com",
+      spfResult: "pass",
+      spfEnvelopeDomain: "company.com",
+      dkimEntries: [],
+    });
+    vi.mocked(userAndWorkspaceFromEmail).mockResolvedValue(
+      makeOk({
+        user: { sId: "user-1" },
+        workspace,
+      }) as never
+    );
+    vi.mocked(Authenticator.fromUserIdAndWorkspaceId).mockResolvedValue(
+      auth as never
+    );
+    vi.mocked(getEmailBlacklistedAgentIds).mockReturnValue(
+      makeOk(new Set(["agent-blocked"])) as never
+    );
+    vi.mocked(getAgentConfigurationsForView).mockResolvedValue([
+      blockedAgent,
+      allowedAgent,
+    ]);
+    vi.mocked(emailAssistantMatcher).mockImplementation(({ targetEmail }) => {
+      if (targetEmail === "blocked@dust.team") {
+        return makeErr({
+          type: "assistant_email_blacklisted",
+          message: "The agent 'Blocked' cannot be reached over email.",
+        }) as never;
+      }
+
+      return makeOk({
+        agentConfiguration: allowedAgent,
+      }) as never;
+    });
+    vi.mocked(triggerFromEmail).mockResolvedValue(
+      makeOk({
+        conversation: {
+          sId: "conversation-1",
+        },
+      }) as never
+    );
+
+    const { req, res } = createMocks<
+      NextApiRequestWithContext,
+      NextApiResponse<WithAPIErrorResponse<PostResponseBody>>
+    >({
+      method: "POST",
+      headers: {
+        authorization: basicAuthHeader(process.env.EMAIL_WEBHOOK_SECRET ?? ""),
+        "content-type": "multipart/form-data; boundary=boundary",
+      },
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(replyToEmail).toHaveBeenCalledTimes(1);
+    expect(triggerFromEmail).toHaveBeenCalledWith(auth, {
+      agentConfigurations: [allowedAgent],
+      email: expect.objectContaining({
+        sender: expect.objectContaining({
+          email: "sender@company.com",
+        }),
+      }),
+    });
   });
 });

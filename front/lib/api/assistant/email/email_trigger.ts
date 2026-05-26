@@ -237,10 +237,15 @@ export type EmailTriggerError = {
     | "workspace_not_found"
     | "email_agents_disabled"
     | "invalid_email_error"
+    | "invalid_email_blacklist_metadata"
     | "assistant_not_found"
+    | "assistant_email_blacklisted"
     | "message_creation_error";
   message: string;
 };
+
+export const EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY =
+  "emailBlacklistedAgentIds";
 
 function normalizeEmailAddress(email: string): string {
   return email.trim().toLowerCase();
@@ -418,6 +423,31 @@ export function buildEmailUserMessage({
     "You are in the recipients. Answer appropriately. Your full response will be emailed automatically as-is only to me, the sender above.",
   ].join("\n");
 }
+
+export function getEmailBlacklistedAgentIds({
+  metadata,
+}: Pick<LightWorkspaceType, "metadata">): Result<
+  Set<string>,
+  EmailTriggerError
+> {
+  if (!metadata || !(EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY in metadata)) {
+    return new Ok(new Set());
+  }
+
+  const value = metadata[EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY];
+
+  if (!Array.isArray(value) || !value.every(isString)) {
+    return new Err({
+      type: "invalid_email_blacklist_metadata",
+      message:
+        "Invalid Email Agents blacklist metadata for this workspace. " +
+        `Expected ${EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY} to be an array of agent configuration IDs.`,
+    });
+  }
+
+  return new Ok(new Set(value));
+}
+
 export async function userAndWorkspaceFromEmail({
   email,
 }: {
@@ -513,9 +543,11 @@ export async function userAndWorkspaceFromEmail({
 export function emailAssistantMatcher({
   targetEmail,
   allAgentConfigurations,
+  emailBlacklistedAgentIds,
 }: {
   targetEmail: string;
   allAgentConfigurations: LightAgentConfigurationType[];
+  emailBlacklistedAgentIds: Set<string>;
 }): Result<
   {
     agentConfiguration: LightAgentConfigurationType;
@@ -535,6 +567,13 @@ export function emailAssistantMatcher({
     });
   }
   const agentConfiguration = matchingAgents[0];
+
+  if (emailBlacklistedAgentIds.has(agentConfiguration.sId)) {
+    return new Err({
+      type: "assistant_email_blacklisted",
+      message: `The agent '${agentConfiguration.name}' cannot be reached over email.`,
+    });
+  }
 
   return new Ok({
     agentConfiguration,
