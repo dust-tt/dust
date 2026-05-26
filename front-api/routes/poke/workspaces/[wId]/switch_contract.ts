@@ -5,6 +5,7 @@ import {
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { MAX_PAYG_CAP_DOLLARS } from "@app/lib/api/poke/plugins/workspaces/manage_programmatic_usage_configuration";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
   ceilToHourISO,
   floorToHourISO,
@@ -32,6 +33,7 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -336,6 +338,24 @@ app.post(
         status_code: 502,
         api_error: { type: "internal_server_error", message: errorMessage },
       });
+    }
+
+    // Ensure the workspace has a WorkOS organization for any paid tier.
+    // Idempotent — `contract.start` webhook re-runs this as a safety net.
+    if (pkg.tier !== "free") {
+      const workosResult = await getOrCreateWorkOSOrganization(
+        renderLightWorkspaceType({ workspace: owner })
+      );
+      if (workosResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            metronomeContractId,
+            err: workosResult.error,
+          },
+          "[switch_contract] Failed to provision WorkOS organization"
+        );
+      }
     }
 
     const paygCapMicroUsd =
