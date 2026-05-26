@@ -617,6 +617,9 @@ const config = {
   getVertexAiProjectId: (): string => {
     return EnvironmentConfig.getEnvVariable("VERTEX_AI_PROJECT_ID");
   },
+  getDustWebhooksPublicUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DUST_WEBHOOKS_PUBLIC_URL");
+  },
 };
 
 export default config;

@@ -36,11 +36,16 @@ async function contentToPart(
   switch (content.type) {
     case "text":
       return { text: content.text };
-    case "image_url":
+    case "image_url": {
       // Google only accepts images as base64 inline data
-      const { mediaType, data } = await trustedFetchImageBase64(
-        content.image_url.url
-      );
+      let fetchResult: Awaited<ReturnType<typeof trustedFetchImageBase64>>;
+      try {
+        fetchResult = await trustedFetchImageBase64(content.image_url.url);
+      } catch {
+        return { text: "Attachment: image could not be loaded." };
+      }
+
+      const { mediaType, data } = fetchResult;
 
       if (!GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES.includes(mediaType)) {
         throw new EventError(
@@ -63,6 +68,7 @@ async function contentToPart(
           data,
         },
       };
+    }
     default:
       assertNever(content);
   }
@@ -90,16 +96,31 @@ async function functionMessageToResponses(
             name: message.name,
             id: message.function_call_id,
           };
-        case "image_url":
-          const { mediaType, data } = await trustedFetchImageBase64(
-            c.image_url.url
-          );
+        case "image_url": {
+          let fetchResult: Awaited<ReturnType<typeof trustedFetchImageBase64>>;
+          try {
+            fetchResult = await trustedFetchImageBase64(c.image_url.url);
+          } catch {
+            return {
+              response: { output: "Attachment: image could not be loaded." },
+              name: message.name,
+              id: message.function_call_id,
+            };
+          }
 
           return {
-            parts: [{ inlineData: { data, mimeType: mediaType } }],
+            parts: [
+              {
+                inlineData: {
+                  data: fetchResult.data,
+                  mimeType: fetchResult.mediaType,
+                },
+              },
+            ],
             name: message.name,
             id: message.function_call_id,
           };
+        }
         default:
           assertNever(c);
       }
