@@ -175,3 +175,40 @@ export async function isUserBlocked(
 
   return state.userCapBlocked || state.workspacePoolDepleted;
 }
+
+// Workspace-pool-only read for API calls (no per-user cap).
+export async function isApiBlocked(workspaceId: string): Promise<boolean> {
+  const poolDepleted = await runOnRedis(
+    { origin: REDIS_ORIGIN },
+    async (client) => client.get(buildWorkspacePoolDepletedKey(workspaceId))
+  );
+
+  if (isBlockFlag(poolDepleted)) {
+    return poolDepleted === BLOCKED_FLAG;
+  }
+
+  logger.info(
+    {
+      workspaceId,
+      workspacePoolCacheHit: false,
+    },
+    "[MetronomeUserBlock] Cache miss during API blocked check, falling back to DB"
+  );
+
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.warn(
+      { workspaceId },
+      "[MetronomeUserBlock] Workspace not found during API blocked cache read-through fallback"
+    );
+    return false;
+  }
+
+  const workspacePoolDepleted = workspace.poolCreditState === "depleted";
+  await setFlag(
+    buildWorkspacePoolDepletedKey(workspaceId),
+    workspacePoolDepleted ? "1" : "0"
+  );
+
+  return workspacePoolDepleted;
+}
