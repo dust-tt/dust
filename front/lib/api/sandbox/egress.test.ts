@@ -16,6 +16,7 @@ const {
   mockLoggerInfo,
   mockLoggerWarn,
   mockLookup,
+  mockWriteSandboxEnvManifestFile,
   mockWriteEgressSecretsFile,
 } = vi.hoisted(() => ({
   mockGetEgressProxyHost: vi.fn(),
@@ -27,6 +28,7 @@ const {
   mockLoggerInfo: vi.fn(),
   mockLoggerWarn: vi.fn(),
   mockLookup: vi.fn(),
+  mockWriteSandboxEnvManifestFile: vi.fn(),
   mockWriteEgressSecretsFile: vi.fn(),
 }));
 
@@ -49,6 +51,10 @@ vi.mock("@app/lib/api/regions/config", () => ({
 vi.mock("@app/lib/api/sandbox/egress_secrets", () => ({
   EGRESS_SECRETS_PATH: "/run/dust/egress-secrets.json",
   writeEgressSecretsFile: mockWriteEgressSecretsFile,
+}));
+
+vi.mock("@app/lib/api/sandbox/env_manifest", () => ({
+  writeSandboxEnvManifestFile: mockWriteSandboxEnvManifestFile,
 }));
 
 vi.mock("@app/logger/logger", () => ({
@@ -109,6 +115,7 @@ describe("sandbox egress helpers", () => {
   const auth = {
     getNonNullableWorkspace: () => ({ sId: "workspace-id" }),
   } as never;
+  const conversation = { sId: "conversation-id" } as never;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -121,7 +128,21 @@ describe("sandbox egress helpers", () => {
     mockGetCurrentRegion.mockReturnValue("europe-west1");
     mockLookup.mockResolvedValue({ address: "203.0.113.10", family: 4 });
     mockWriteEgressSecretsFile.mockResolvedValue(new Ok(undefined));
+    mockWriteSandboxEnvManifestFile.mockResolvedValue(new Ok(undefined));
   });
+
+  function setup(sandbox: unknown) {
+    return setupEgressForwarder(auth, sandbox as never, conversation);
+  }
+
+  function ensure(sandbox: unknown, opts: { wokeFromSleep: boolean }) {
+    return ensureSandboxEgressOnExec(
+      auth,
+      sandbox as never,
+      conversation,
+      opts
+    );
+  }
 
   it("mints a proxy JWT bound to the provider sandbox id", () => {
     const token = mintEgressJwt("provider-sandbox-id", "workspace-id");
@@ -165,7 +186,7 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
-    const result = await setupEgressForwarder(auth, sandbox as never);
+    const result = await setup(sandbox);
 
     expect(result).toEqual(new Ok(undefined));
     expect(mockLookup).toHaveBeenCalledWith("eu.sandbox-egress.dust.tt", {
@@ -183,6 +204,11 @@ describe("sandbox egress helpers", () => {
       { user: "root" }
     );
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      conversation
+    );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,
@@ -278,9 +304,7 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
-    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
-      wokeFromSleep: false,
-    });
+    const result = await ensure(sandbox, { wokeFromSleep: false });
 
     expect(result).toEqual(new Ok(undefined));
     expect(mockLoggerWarn).toHaveBeenCalledWith(
@@ -361,7 +385,7 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValue(new Err(new Error("sandbox command failed"))),
     };
 
-    const result = await setupEgressForwarder(auth, sandbox as never);
+    const result = await setup(sandbox);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -383,11 +407,34 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
-    const result = await setupEgressForwarder(auth, sandbox as never);
+    const result = await setup(sandbox);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toContain("secrets write failed");
+    }
+    expect(sandbox.exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces failures from writing the environment manifest file", async () => {
+    mockWriteSandboxEnvManifestFile.mockResolvedValue(
+      new Err(new Error("manifest write failed"))
+    );
+
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await setup(sandbox);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("manifest write failed");
     }
     expect(sandbox.exec).toHaveBeenCalledTimes(1);
   });
@@ -413,7 +460,7 @@ describe("sandbox egress helpers", () => {
         ),
     };
 
-    const result = await setupEgressForwarder(auth, sandbox as never);
+    const result = await setup(sandbox);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -441,12 +488,15 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
-    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
-      wokeFromSleep: true,
-    });
+    const result = await ensure(sandbox, { wokeFromSleep: true });
 
     expect(result).toEqual(new Ok(undefined));
     expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      conversation
+    );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,
@@ -477,9 +527,7 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
-    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
-      wokeFromSleep: false,
-    });
+    const result = await ensure(sandbox, { wokeFromSleep: false });
 
     expect(result).toEqual(new Ok(undefined));
     expect(sandbox.exec).toHaveBeenCalledTimes(2);
@@ -507,9 +555,7 @@ describe("sandbox egress helpers", () => {
       ),
     };
 
-    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
-      wokeFromSleep: false,
-    });
+    const result = await ensure(sandbox, { wokeFromSleep: false });
 
     expect(result.isErr()).toBe(true);
     expect(mockLoggerWarn).toHaveBeenCalledWith(
@@ -534,9 +580,7 @@ describe("sandbox egress helpers", () => {
       ),
     };
 
-    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
-      wokeFromSleep: false,
-    });
+    const result = await ensure(sandbox, { wokeFromSleep: false });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -571,9 +615,7 @@ describe("sandbox egress helpers", () => {
       ),
     };
 
-    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
-      wokeFromSleep: false,
-    });
+    const result = await ensure(sandbox, { wokeFromSleep: false });
 
     expect(result.isErr()).toBe(true);
     expect(mockLoggerWarn).toHaveBeenCalledWith(
@@ -615,9 +657,7 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
-    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
-      wokeFromSleep: false,
-    });
+    const result = await ensure(sandbox, { wokeFromSleep: false });
 
     expect(result).toEqual(new Ok(undefined));
     expect(sandbox.exec).toHaveBeenNthCalledWith(
@@ -643,9 +683,7 @@ describe("sandbox egress helpers", () => {
         ),
     };
 
-    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
-      wokeFromSleep: false,
-    });
+    const result = await ensure(sandbox, { wokeFromSleep: false });
 
     expect(result).toEqual(new Ok(undefined));
     expect(sandbox.exec).toHaveBeenCalledTimes(1);

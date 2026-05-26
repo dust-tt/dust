@@ -5,12 +5,14 @@ import {
   EGRESS_SECRETS_PATH,
   writeEgressSecretsFile,
 } from "@app/lib/api/sandbox/egress_secrets";
+import { writeSandboxEnvManifestFile } from "@app/lib/api/sandbox/env_manifest";
 import { SANDBOX_AGENT_PROXIED_UID } from "@app/lib/api/sandbox/image/types";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -291,12 +293,13 @@ export async function checkEgressForwarderHealth(
 // the network policy chosen in getSandboxImage().
 export async function prepareSandboxEgressBeforeMount(
   auth: Authenticator,
-  sandbox: SandboxResource
+  sandbox: SandboxResource,
+  conversation: ConversationType
 ): Promise<Result<void, Error>> {
   if (config.getSandboxDevUnrestrictedEgress()) {
     return teardownInSandboxEgressRedirect(auth, sandbox);
   }
-  return setupEgressForwarder(auth, sandbox);
+  return setupEgressForwarder(auth, sandbox, conversation);
 }
 
 // Egress check that runs after GCS mounts on every exec: in prod, verifies
@@ -306,6 +309,7 @@ export async function prepareSandboxEgressBeforeMount(
 export async function ensureSandboxEgressOnExec(
   auth: Authenticator,
   sandbox: SandboxResource,
+  conversation: ConversationType,
   { wokeFromSleep }: { wokeFromSleep: boolean }
 ): Promise<Result<void, Error>> {
   if (config.getSandboxDevUnrestrictedEgress()) {
@@ -324,7 +328,9 @@ export async function ensureSandboxEgressOnExec(
       },
       "Sandbox woke from sleep, re-running full egress setup"
     );
-    return setupEgressForwarder(auth, sandbox, { restartExisting: true });
+    return setupEgressForwarder(auth, sandbox, conversation, {
+      restartExisting: true,
+    });
   }
 
   const healthResult = await checkEgressForwarderHealth(auth, sandbox);
@@ -343,7 +349,9 @@ export async function ensureSandboxEgressOnExec(
       { ...baseLogContext, event: "egress.health_fail" },
       "Sandbox egress forwarder port not listening, restarting"
     );
-    return setupEgressForwarder(auth, sandbox, { restartExisting: true });
+    return setupEgressForwarder(auth, sandbox, conversation, {
+      restartExisting: true,
+    });
   }
 
   if (!resolverOk || !nftablesOk) {
@@ -406,6 +414,7 @@ export async function teardownInSandboxEgressRedirect(
 export async function setupEgressForwarder(
   auth: Authenticator,
   sandbox: SandboxResource,
+  conversation: ConversationType,
   { restartExisting = false }: { restartExisting?: boolean } = {}
 ): Promise<Result<void, Error>> {
   const logContext = {
@@ -450,6 +459,15 @@ export async function setupEgressForwarder(
   const secretsWriteResult = await writeEgressSecretsFile(auth, sandbox);
   if (secretsWriteResult.isErr()) {
     return secretsWriteResult;
+  }
+
+  const manifestWriteResult = await writeSandboxEnvManifestFile(
+    auth,
+    sandbox,
+    conversation
+  );
+  if (manifestWriteResult.isErr()) {
+    return manifestWriteResult;
   }
 
   if (restartExisting) {

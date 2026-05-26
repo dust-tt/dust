@@ -34,7 +34,11 @@ export async function ensureSandboxReady(
   // in the dsbx CA. Mounting (gcsfuse and friends) can make HTTPS calls that
   // read the trust bundle, so the path has to be valid first.
   if (freshlyCreated) {
-    const prepResult = await prepareSandboxEgressBeforeMount(auth, sandbox);
+    const prepResult = await prepareSandboxEgressBeforeMount(
+      auth,
+      sandbox,
+      conversation
+    );
     if (prepResult.isErr()) {
       return prepResult;
     }
@@ -80,9 +84,14 @@ export async function ensureSandboxReady(
     }
   }
 
-  const ensureEgressResult = await ensureSandboxEgressOnExec(auth, sandbox, {
-    wokeFromSleep,
-  });
+  const ensureEgressResult = await ensureSandboxEgressOnExec(
+    auth,
+    sandbox,
+    conversation,
+    {
+      wokeFromSleep,
+    }
+  );
   if (ensureEgressResult.isErr()) {
     return ensureEgressResult;
   }
