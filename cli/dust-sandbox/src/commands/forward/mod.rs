@@ -1,6 +1,6 @@
 mod deny_log;
 mod handshake;
-mod http2_rewriter;
+mod http2;
 mod http_framing;
 mod http_host;
 mod http_rewriter;
@@ -32,7 +32,7 @@ use crate::egress_secrets::SecretTable;
 
 use self::deny_log::{append_deny_log, DenyLogEntry, DenyReason};
 use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
-use self::http2_rewriter::{
+use self::http2::{
     run_h2_to_upstream_bridge, BoxedAsyncReadWrite, H2UpstreamKey, H2UpstreamPool, OpenUpstream,
     OpenedUpstream, UpstreamProtocol,
 };
