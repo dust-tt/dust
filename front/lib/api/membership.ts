@@ -11,6 +11,7 @@ import {
   getProductSeatTypes,
 } from "@app/lib/metronome/seat_types";
 import {
+  classifySeatChange,
   hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
@@ -475,14 +476,11 @@ export async function updateMembershipSeatAndTrack({
     });
   }
 
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
   const contract = await getActiveContract(workspace.sId);
   const hasSeatSubscription = contract
     ? await hasContractSeatSubscription(contract)
     : false;
-  if (!subscription?.metronomeContractId || !contract || !hasSeatSubscription) {
+  if (!contract || !hasSeatSubscription) {
     // Workspace is on Metronome but the active contract has no seat
     // subscription — apply the DB change without touching Metronome.
     if (previousSeatType !== newSeatType) {
@@ -500,11 +498,10 @@ export async function updateMembershipSeatAndTrack({
     });
   }
 
-  const syncResult = await syncSeatCount({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    contractId: subscription.metronomeContractId,
-    workspace,
+  const productSeatTypes = await getProductSeatTypes();
+  const outcome = classifySeatChange({
     contract,
+    productSeatTypes,
     change: {
       userId: user.sId,
       previousSeatType,
@@ -513,6 +510,65 @@ export async function updateMembershipSeatAndTrack({
         ? { seatType: scheduledRow.seatType, at: scheduledRow.startAt }
         : undefined,
     },
+  });
+  if (!outcome) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        previousSeatType,
+        newSeatType,
+      },
+      "[Metronome] Cannot defer seat transition — no next billing period on contract"
+    );
+    return new Err({ type: "metronome_error" });
+  }
+
+  // Apply the DB write *before* syncing Metronome. `syncSeatCount` reads
+  // active + scheduled-future memberships and reconciles Metronome to match
+  // — no `change` plumbing required.
+  let scheduledSeatChangeAt: Date | undefined;
+  let resultingActiveSeatType: MembershipSeatType = previousSeatType;
+  switch (outcome.kind) {
+    case "noop":
+      break;
+    case "cancelled":
+      await membership.cancelScheduledSeatChange({ user, workspace, author });
+      break;
+    case "immediate":
+      // Drop any pending future row first so `syncSeatCount` doesn't try
+      // to reconcile a stale scheduled segment.
+      if (scheduledRow) {
+        await membership.cancelScheduledSeatChange({ user, workspace, author });
+      }
+      await membership.updateMembershipSeat({
+        user,
+        workspace,
+        newSeatType,
+        author,
+      });
+      resultingActiveSeatType = newSeatType;
+      break;
+    case "deferred":
+      // `scheduleSeatChange` already destroys any prior pending row.
+      await membership.scheduleSeatChange({
+        user,
+        workspace,
+        newSeatType,
+        scheduledAt: outcome.at,
+        author,
+      });
+      scheduledSeatChangeAt = outcome.at;
+      break;
+    default:
+      return assertNever(outcome);
+  }
+
+  const syncResult = await syncSeatCount({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    contractId: contract.id,
+    workspace,
+    contract,
   });
   if (syncResult.isErr()) {
     logger.error(
@@ -528,49 +584,9 @@ export async function updateMembershipSeatAndTrack({
     return new Err({ type: "metronome_error" });
   }
 
-  const outcome = syncResult.value.change;
-  if (!outcome || outcome.kind === "noop") {
-    return new Ok({
-      previousSeatType,
-      newSeatType,
-      scheduledSeatChangeAt: undefined,
-    });
-  }
-
-  switch (outcome.kind) {
-    case "deferred":
-      await membership.scheduleSeatChange({
-        user,
-        workspace,
-        newSeatType,
-        scheduledAt: outcome.at,
-        author,
-      });
-      return new Ok({
-        previousSeatType,
-        newSeatType: previousSeatType,
-        scheduledSeatChangeAt: outcome.at,
-      });
-    case "cancelled":
-      await membership.cancelScheduledSeatChange({ user, workspace, author });
-      return new Ok({
-        previousSeatType,
-        newSeatType: previousSeatType,
-        scheduledSeatChangeAt: undefined,
-      });
-    case "immediate":
-      await membership.updateMembershipSeat({
-        user,
-        workspace,
-        newSeatType,
-        author,
-      });
-      return new Ok({
-        previousSeatType,
-        newSeatType,
-        scheduledSeatChangeAt: undefined,
-      });
-    default:
-      return assertNever(outcome);
-  }
+  return new Ok({
+    previousSeatType,
+    newSeatType: resultingActiveSeatType,
+    scheduledSeatChangeAt,
+  });
 }

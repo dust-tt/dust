@@ -1048,18 +1048,21 @@ interface SubscriptionSeatsHistoryResponse {
 }
 
 /**
- * Fetch the currently assigned seat IDs on a SEAT_BASED subscription. Returns
- * the seat IDs in the schedule segment that covers `now` — i.e. the live
- * state.
+ * Fetch the assigned seat IDs on a SEAT_BASED subscription at `coveringDate`
+ * (defaults to now).
  */
 export async function getMetronomeSubscriptionAssignedSeatIds({
   metronomeCustomerId,
   contractId,
   subscriptionId,
+  coveringDate,
 }: {
   metronomeCustomerId: string;
   contractId: string;
   subscriptionId: string;
+  // Defaults to `now`. Pass a future date to read the assignments projected
+  // at that point in time.
+  coveringDate?: Date;
 }): Promise<Result<string[], Error>> {
   try {
     const response =
@@ -1070,12 +1073,12 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
             customer_id: metronomeCustomerId,
             contract_id: contractId,
             subscription_id: subscriptionId,
-            covering_date: new Date().toISOString(),
+            covering_date: (coveringDate ?? new Date()).toISOString(),
           },
         }
       );
-    // History is returned ascending by starting_at; take the last entry for the
-    // current live state (earlier entries are stale schedule segments).
+    // History is returned ascending by starting_at; take the last entry to
+    // get the segment active at `coveringDate` (earlier entries are stale).
     return new Ok(
       response.data[response.data.length - 1]?.assigned_seat_ids ?? []
     );

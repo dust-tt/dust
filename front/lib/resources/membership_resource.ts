@@ -251,6 +251,41 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     };
   }
 
+  /**
+   * Return memberships whose `startAt` is strictly in the future for the given
+   * workspace — i.e. scheduled seat-type changes that haven't taken effect yet.
+   *
+   * Pairs with `scheduleSeatChange`, which writes exactly one future row per
+   * user (it destroys any prior future row first), so the result is at most
+   * one row per user. The "previous" seat type for each future row lives on
+   * the currently-active membership for that user.
+   *
+   * Used by `syncSeatCount` to reconcile Metronome's future-dated seat
+   * segments with the DB state.
+   */
+  static async getScheduledFutureMemberships({
+    workspace,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<MembershipResource[]> {
+    const rows = await MembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        startAt: { [Op.gt]: new Date() },
+      },
+      include: [{ model: UserModel, required: true }],
+      transaction,
+    });
+    return rows.map(
+      (row) =>
+        new MembershipResource(MembershipModel, row.get(), {
+          user: row.user?.get(),
+        })
+    );
+  }
+
   static async getLatestMemberships({
     users,
     workspace,

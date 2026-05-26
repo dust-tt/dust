@@ -6,7 +6,6 @@ import {
 } from "@app/lib/metronome/client";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
-  classifySeatTransition,
   getAwuAllocationForSeatType,
   getProductSeatTypes,
   getSeatTypeForSubscription,
@@ -73,13 +72,11 @@ async function fetchCachedContract({
 }
 
 /**
- * Per-user seat-type change that the caller wants to apply atomically with
- * the bulk sync. `syncSeatCount` decides whether to apply this immediately
- * or defer it to the next billing period based on the allocation comparison
- * — the caller doesn't make that decision.
+ * Per-user seat-type change request. Used as input to `classifySeatChange`.
  *
- * `pendingScheduledChange` lets the caller surface an existing future-scheduled
- * change so syncSeatCount can cancel it (or supersede it) in Metronome.
+ * `pendingScheduledChange` is the existing future-dated row for this user
+ * (if any). It influences the classifier's output: re-selecting one's
+ * current seat with a pending change pending → `cancelled`.
  */
 export type SeatChangeRequest = {
   userId: string;
@@ -92,16 +89,20 @@ export type SeatChangeRequest = {
 };
 
 /**
- * Result returned by `syncSeatCount` when a `change` was passed. Tells the
- * caller what DB state to write next:
+ * Result returned by `classifySeatChange`. Tells the caller what DB state to
+ * write next:
  *
  * - `noop`: no change required.
- * - `cancelled`: a previously-scheduled change was cancelled (caller should
- *   drop its DB future row).
- * - `immediate`: the user is now on `newSeatType` (caller should update
- *   the active row in place).
- * - `deferred`: the transition was scheduled in Metronome (caller should
- *   close the active row at `at` and insert a future row).
+ * - `cancelled`: a previously-scheduled change should be cancelled (caller
+ *   drops its DB future row via `cancelScheduledSeatChange`).
+ * - `immediate`: the user should be moved to `newSeatType` right now (caller
+ *   updates the active row in place via `updateMembershipSeat`; if a pending
+ *   future row exists it should be cancelled first).
+ * - `deferred`: the transition should be scheduled at `at` (caller calls
+ *   `scheduleSeatChange`, which already replaces any pending future row).
+ *
+ * Once the DB is in the desired state, the caller invokes `syncSeatCount`
+ * to reconcile Metronome with the DB.
  */
 export type SeatChangeOutcome =
   | { kind: "noop" }
@@ -110,21 +111,87 @@ export type SeatChangeOutcome =
   | { kind: "deferred"; at: Date };
 
 /**
- * Sync the Metronome seat subscription state to the current active
- * memberships. Always sets the absolute state per subscription — safe
- * against race conditions.
+ * Pure classifier. Decides what DB write the caller should make, based on
+ * the contract's allocations and any existing pending future change. Does
+ * not call Metronome; reconciliation is `syncSeatCount`'s job.
  *
- * When a per-user `change` is provided, the function also handles that
- * transition generically. The scheduling decision is based purely on the
- * allocation comparison resolved from the contract's recurring credits:
+ * Branches:
+ * - Same seat as current: `cancelled` if a pending future change exists,
+ *   else `noop`.
+ * - New allocation ≥ previous: `immediate` (the user gains/keeps access
+ *   right away).
+ * - New allocation < previous: `deferred` at the next billing-period start
+ *   so the user keeps the richer access through the period they already
+ *   paid for. Returns `undefined` when the contract has no next billing
+ *   period to anchor the deferred transition to.
+ */
+export function classifySeatChange({
+  contract,
+  productSeatTypes,
+  change,
+}: {
+  contract: CachedContract;
+  productSeatTypes: Map<string, MembershipSeatType>;
+  change: SeatChangeRequest;
+}): SeatChangeOutcome | undefined {
+  const { previousSeatType, newSeatType, pendingScheduledChange } = change;
+
+  // Selecting the current seat. Either a no-op or — if there's a pending
+  // future change — a cancellation of that pending change.
+  if (previousSeatType === newSeatType) {
+    return pendingScheduledChange ? { kind: "cancelled" } : { kind: "noop" };
+  }
+
+  const previousAllocation = getAwuAllocationForSeatType(
+    contract,
+    previousSeatType,
+    productSeatTypes
+  );
+  const newAllocation = getAwuAllocationForSeatType(
+    contract,
+    newSeatType,
+    productSeatTypes
+  );
+  if (newAllocation >= previousAllocation) {
+    return { kind: "immediate" };
+  }
+
+  // Downgrade — defer to the start of the next billing period so the user
+  // keeps the richer access they've already paid for. Billing-period
+  // boundaries aren't anchored to midnight on the contract, so ceil to
+  // midnight UTC to match how the invoice timestamp is displayed.
+  const nextStartingAt = (contract.subscriptions ?? [])
+    .map((s) => s.billing_periods?.next?.starting_at)
+    .find((d) => d !== undefined);
+  if (!nextStartingAt) {
+    return undefined;
+  }
+  const date = new Date(nextStartingAt);
+  const floored = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+  );
+  const at =
+    floored.getTime() < date.getTime()
+      ? new Date(floored.getTime() + 24 * 60 * 60 * 1000)
+      : floored;
+  return { kind: "deferred", at };
+}
+
+/**
+ * Sync the Metronome seat subscription state to the DB. Reads the current
+ * active memberships AND any scheduled future memberships, and reconciles
+ * Metronome's seat assignments at every relevant timestamp (now + each
+ * unique scheduled `startAt`).
  *
- * - new allocation ≥ previous → applied immediately
- * - new allocation < previous → scheduled at the next billing period start
- *   so the user keeps the richer access they already paid for
+ * Always sets the absolute state per subscription — safe against race
+ * conditions and idempotent on replay. No knowledge of specific seat-type
+ * names is baked in: adding a new tier flows through as long as its
+ * product carries the `DUST_SEAT_TYPE` custom field.
  *
- * No knowledge of specific seat-type names (pro / max / free / …) is
- * baked in: adding a new seat tier in Metronome flows through as long as
- * the product carries the `DUST_SEAT_TYPE` custom field.
+ * Deferred transitions are written to Metronome with a future `starting_at`;
+ * Metronome flips the segment automatically when the date is reached, so no
+ * scheduler is required on our side. Re-running this sync at any point is
+ * a no-op once Metronome and DB agree.
  *
  * Called from:
  * - membership create/revoke/update hooks
@@ -137,15 +204,16 @@ export async function syncSeatCount({
   workspace,
   startingAt,
   contract,
-  change,
 }: {
   metronomeCustomerId: string;
   contractId: string;
   workspace: LightWorkspaceType;
+  // Forced `starting_at` for the "now" reconciliation. Most callers leave it
+  // undefined (uses Metronome's default, i.e. immediately). Scheduled future
+  // segments always use their own `startAt` regardless of this value.
   startingAt?: string;
   contract?: CachedContract;
-  change?: SeatChangeRequest;
-}): Promise<Result<{ change?: SeatChangeOutcome }, Error>> {
+}): Promise<Result<undefined, Error>> {
   let resolvedContract: CachedContract;
   if (contract) {
     resolvedContract = contract;
@@ -182,144 +250,167 @@ export async function syncSeatCount({
     return new Err(new Error("No seat subscription found on contract"));
   }
 
-  const subscriptionIdBySeatType = new Map<MembershipSeatType, string>();
-  for (const { sub, seatType } of seatSubscriptions) {
-    if (sub.id) {
-      subscriptionIdBySeatType.set(seatType, sub.id);
+  // Read current + future DB state. Future memberships are scheduled seat
+  // transitions: each row has `startAt > now` and represents the seat
+  // type the user will be on from `startAt` forward. The companion "current"
+  // row (with `endAt = startAt`) still appears in `getActiveMemberships`.
+  const [{ memberships: activeMemberships }, futureMemberships] =
+    await Promise.all([
+      MembershipResource.getActiveMemberships({ workspace }),
+      MembershipResource.getScheduledFutureMemberships({ workspace }),
+    ]);
+
+  // userSId → current seat type (the seat they are on right now).
+  const currentSeatByUserSId = new Map<string, MembershipSeatType>();
+  for (const m of activeMemberships) {
+    const userSId = m.user?.sId;
+    if (userSId) {
+      currentSeatByUserSId.set(userSId, m.seatType);
     }
   }
 
-  // ---------------------------------------------------------------------
-  // Per-user transition mode. The caller's DB row hasn't been updated yet
-  // (the outcome we return drives that), so the bulk reconciliation below
-  // would read stale DB state and reverse the change. Skip the bulk pass
-  // entirely — bulk callers (creation/revocation/provisioning) don't pass
-  // a `change`.
-  // ---------------------------------------------------------------------
-  if (change) {
-    const outcome = await applySingleSeatChange({
-      metronomeCustomerId,
-      contractId,
-      workspace,
-      contract: resolvedContract,
-      productSeatTypes,
-      subscriptionIdBySeatType,
-      change,
-    });
-    if (outcome.isErr()) {
-      return new Err(outcome.error);
-    }
-    return new Ok({ change: outcome.value });
-  }
-
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace,
-  });
-
-  const sIdsBySeatType = new Map<MembershipSeatType, string[]>();
-  for (const m of memberships) {
-    const userId = m.user?.sId;
-    if (!userId) {
-      continue;
-    }
-
-    const bucket = sIdsBySeatType.get(m.seatType);
-    if (bucket) {
-      bucket.push(userId);
-    } else {
-      sIdsBySeatType.set(m.seatType, [userId]);
+  type ScheduledChange = {
+    userSId: string;
+    newSeatType: MembershipSeatType;
+    at: Date;
+  };
+  const scheduledChanges: ScheduledChange[] = [];
+  for (const m of futureMemberships) {
+    const userSId = m.user?.sId;
+    if (userSId) {
+      scheduledChanges.push({
+        userSId,
+        newSeatType: m.seatType,
+        at: m.startAt,
+      });
     }
   }
 
   // Surface memberships whose seat type has no matching subscription on the
-  // contract — these will not be billed.
+  // contract — those users will not be billed.
   const coveredSeatTypes = new Set(
     seatSubscriptions.map(({ seatType }) => seatType)
   );
-  for (const [seatType, sIds] of sIdsBySeatType) {
-    if (coveredSeatTypes.has(seatType)) {
-      continue;
+  const uncoveredUsersBySeatType = new Map<MembershipSeatType, string[]>();
+  for (const [userSId, seatType] of currentSeatByUserSId) {
+    if (!coveredSeatTypes.has(seatType)) {
+      const bucket = uncoveredUsersBySeatType.get(seatType) ?? [];
+      bucket.push(userSId);
+      uncoveredUsersBySeatType.set(seatType, bucket);
     }
+  }
+  for (const [seatType, userSIds] of uncoveredUsersBySeatType) {
     logger.warn(
       {
         workspaceId: workspace.sId,
         contractId,
         seatType,
-        memberCount: sIds.length,
-        userIds: sIds,
+        memberCount: userSIds.length,
+        userIds: userSIds,
       },
       "[Metronome] Memberships with seat type not covered by any contract subscription — they will not be billed"
     );
   }
 
+  // Compute the set of timestamps we need to reconcile: "now" plus each
+  // unique scheduled `at` (in ascending order, so we never overwrite a
+  // later segment with an earlier one).
+  const scheduledTimestampsMs = Array.from(
+    new Set(scheduledChanges.map((c) => c.at.getTime()))
+  ).sort((a, b) => a - b);
+
+  // Compute the desired seat type per user at a given timestamp, by walking
+  // scheduled changes from earliest up to (and including) `tMs`.
+  const seatTypeAt = (
+    userSId: string,
+    tMs: number
+  ): MembershipSeatType | undefined => {
+    let seatType = currentSeatByUserSId.get(userSId);
+    for (const c of scheduledChanges) {
+      if (c.userSId === userSId && c.at.getTime() <= tMs) {
+        seatType = c.newSeatType;
+      }
+    }
+    return seatType;
+  };
+
+  // Returns desired sIds for `subSeatType` at `tMs`. Includes users whose
+  // currently-active row maps to `subSeatType` AND who have not (yet)
+  // scheduled themselves off it by `tMs`, plus users who scheduled
+  // themselves onto it.
+  const allUserSIds = new Set<string>([
+    ...currentSeatByUserSId.keys(),
+    ...scheduledChanges.map((c) => c.userSId),
+  ]);
+  const desiredSIdsAt = (
+    subSeatType: MembershipSeatType,
+    tMs: number
+  ): string[] => {
+    const sIds: string[] = [];
+    for (const userSId of allUserSIds) {
+      if (seatTypeAt(userSId, tMs) === subSeatType) {
+        sIds.push(userSId);
+      }
+    }
+    return sIds;
+  };
+
   for (const { sub, seatType } of seatSubscriptions) {
     const subscriptionId = sub.id!;
-    const sIds = sIdsBySeatType.get(seatType) ?? [];
     const quantityMode = sub.quantity_management_mode ?? "QUANTITY_ONLY";
 
     if (quantityMode === "SEAT_BASED") {
-      const currentResult = await getMetronomeSubscriptionAssignedSeatIds({
+      // Now segment.
+      const nowResult = await reconcileSeatBasedSegment({
         metronomeCustomerId,
         contractId,
         subscriptionId,
+        seatType,
+        desiredSIds: desiredSIdsAt(seatType, Date.now()),
+        startingAt,
+        workspaceId: workspace.sId,
       });
-      if (currentResult.isErr()) {
-        return new Err(currentResult.error);
+      if (nowResult.isErr()) {
+        return new Err(nowResult.error);
       }
 
-      const desired = new Set(sIds);
-      const current = new Set(currentResult.value);
-      const addSeatIds = sIds.filter((id) => !current.has(id));
-      const removeSeatIds = currentResult.value.filter(
-        (id) => !desired.has(id)
-      );
-
-      if (addSeatIds.length === 0 && removeSeatIds.length === 0) {
-        continue;
-      }
-
-      logger.info(
-        {
-          workspaceId: workspace.sId,
+      // Future segments, one per unique scheduled timestamp.
+      for (const tMs of scheduledTimestampsMs) {
+        const at = new Date(tMs);
+        const futureResult = await reconcileSeatBasedSegment({
+          metronomeCustomerId,
           contractId,
           subscriptionId,
           seatType,
-          addCount: addSeatIds.length,
-          removeCount: removeSeatIds.length,
-        },
-        "[Metronome] Updating seat-based subscription assignments"
-      );
-
-      const updateResult = await updateSubscriptionSeats({
-        metronomeCustomerId,
-        contractId,
-        fromSubscriptionId: subscriptionId,
-        addSeatIds,
-        removeSeatIds,
-        addUnassignedSeats: removeSeatIds.length,
-        removeUnassignedSeats: addSeatIds.length,
-        startingAt,
-      });
-      if (updateResult.isErr()) {
-        return new Err(updateResult.error);
+          desiredSIds: desiredSIdsAt(seatType, tMs),
+          startingAt: at.toISOString(),
+          coveringDate: at,
+          workspaceId: workspace.sId,
+        });
+        if (futureResult.isErr()) {
+          return new Err(futureResult.error);
+        }
       }
     } else {
+      // QUANTITY_ONLY: only sync the "now" total. Scheduled changes within
+      // a quantity-only seat tier are not modeled — they're rare in practice
+      // (free / unlimited tiers) and Metronome doesn't bill them per-seat.
+      const nowQuantity = desiredSIdsAt(seatType, Date.now()).length;
       logger.info(
         {
           workspaceId: workspace.sId,
           contractId,
           subscriptionId,
           seatType,
-          quantity: sIds.length,
+          quantity: nowQuantity,
         },
         "[Metronome] Updating seat quantity"
       );
-
       const updateResult = await updateSubscriptionQuantity({
         metronomeCustomerId,
         contractId,
         subscriptionId,
-        quantity: sIds.length,
+        quantity: nowQuantity,
         startingAt,
       });
       if (updateResult.isErr()) {
@@ -328,148 +419,77 @@ export async function syncSeatCount({
     }
   }
 
-  return new Ok({});
+  return new Ok(undefined);
 }
 
 /**
- * Apply a single-user seat-type change in Metronome. Classifies the
- * transition generically (`classifySeatTransition`) and applies one of:
- * - cancel a pending scheduled change (when user re-selects their current
- *   seat or supersedes a prior schedule)
- * - immediate add/move
- * - deferred move at the next billing period
- *
- * No knowledge of specific seat-type names is required — the decision is
- * driven entirely by the allocations resolved from the contract.
+ * Reconcile one SEAT_BASED segment for a single subscription. Reads the
+ * current assignment from Metronome at `coveringDate` (defaults to now) and
+ * applies only the delta. Idempotent against repeated invocations.
  */
-async function applySingleSeatChange({
+async function reconcileSeatBasedSegment({
   metronomeCustomerId,
   contractId,
-  workspace,
-  contract,
-  productSeatTypes,
-  subscriptionIdBySeatType,
-  change,
+  subscriptionId,
+  seatType,
+  desiredSIds,
+  startingAt,
+  coveringDate,
+  workspaceId,
 }: {
   metronomeCustomerId: string;
   contractId: string;
-  workspace: LightWorkspaceType;
-  contract: CachedContract;
-  productSeatTypes: Map<string, MembershipSeatType>;
-  subscriptionIdBySeatType: Map<MembershipSeatType, string>;
-  change: SeatChangeRequest;
-}): Promise<Result<SeatChangeOutcome, Error>> {
-  const { userId, previousSeatType, newSeatType, pendingScheduledChange } =
-    change;
+  subscriptionId: string;
+  seatType: MembershipSeatType;
+  desiredSIds: string[];
+  startingAt?: string;
+  coveringDate?: Date;
+  workspaceId: string;
+}): Promise<Result<void, Error>> {
+  const currentResult = await getMetronomeSubscriptionAssignedSeatIds({
+    metronomeCustomerId,
+    contractId,
+    subscriptionId,
+    coveringDate,
+  });
+  if (currentResult.isErr()) {
+    return new Err(currentResult.error);
+  }
 
-  // Helper to schedule the inverse Metronome move that effectively cancels
-  // a previously-scheduled change at the same date.
-  async function cancelPendingInMetronome(pending: {
-    seatType: MembershipSeatType;
-    at: Date;
-  }): Promise<Result<void, Error>> {
-    const fromSubId = subscriptionIdBySeatType.get(pending.seatType);
-    const toSubId = subscriptionIdBySeatType.get(previousSeatType);
-    if (!fromSubId || !toSubId) {
-      return new Err(
-        new Error(
-          `Missing subscription IDs to cancel scheduled change ${pending.seatType} → ${previousSeatType}`
-        )
-      );
-    }
-    return updateSubscriptionSeats({
-      metronomeCustomerId,
+  const desired = new Set(desiredSIds);
+  const current = new Set(currentResult.value);
+  const addSeatIds = desiredSIds.filter((id) => !current.has(id));
+  const removeSeatIds = currentResult.value.filter((id) => !desired.has(id));
+
+  if (addSeatIds.length === 0 && removeSeatIds.length === 0) {
+    return new Ok(undefined);
+  }
+
+  logger.info(
+    {
+      workspaceId,
       contractId,
-      fromSubscriptionId: fromSubId,
-      toSubscriptionId: toSubId,
-      addSeatIds: [userId],
-      removeSeatIds: [userId],
-      startingAt: pending.at.toISOString(),
-    });
-  }
-
-  // Selecting the current seat with a pending change → cancellation.
-  if (previousSeatType === newSeatType) {
-    if (!pendingScheduledChange) {
-      return new Ok({ kind: "noop" });
-    }
-    const cancelResult = await cancelPendingInMetronome(pendingScheduledChange);
-    if (cancelResult.isErr()) {
-      logger.error(
-        { workspaceId: workspace.sId, userId, error: cancelResult.error },
-        "[Metronome] Failed to cancel scheduled seat change"
-      );
-      return new Err(cancelResult.error);
-    }
-    return new Ok({ kind: "cancelled" });
-  }
-
-  const plan = classifySeatTransition(
-    contract,
-    productSeatTypes,
-    previousSeatType,
-    newSeatType
+      subscriptionId,
+      seatType,
+      addCount: addSeatIds.length,
+      removeCount: removeSeatIds.length,
+      startingAt,
+    },
+    "[Metronome] Updating seat-based subscription assignments"
   );
-  if (!plan) {
-    return new Err(
-      new Error(
-        `Cannot defer seat transition ${previousSeatType} → ${newSeatType}: no next billing period found on contract`
-      )
-    );
-  }
-  if (plan.kind === "noop") {
-    return new Ok({ kind: "noop" });
-  }
 
-  // If a pending change is being superseded, cancel it first so the contract
-  // ends up with exactly one scheduled state.
-  if (pendingScheduledChange) {
-    const cancelResult = await cancelPendingInMetronome(pendingScheduledChange);
-    if (cancelResult.isErr()) {
-      logger.error(
-        { workspaceId: workspace.sId, userId, error: cancelResult.error },
-        "[Metronome] Failed to supersede pending scheduled change"
-      );
-      return new Err(cancelResult.error);
-    }
+  const updateResult = await updateSubscriptionSeats({
+    metronomeCustomerId,
+    contractId,
+    fromSubscriptionId: subscriptionId,
+    addSeatIds,
+    removeSeatIds,
+    startingAt,
+  });
+  if (updateResult.isErr()) {
+    return new Err(updateResult.error);
   }
-
-  const fromSubId = subscriptionIdBySeatType.get(previousSeatType);
-  const toSubId = subscriptionIdBySeatType.get(newSeatType);
-  if (!toSubId) {
-    return new Err(
-      new Error(`No subscription found for seat type: ${newSeatType}`)
-    );
-  }
-
-  const startingAt =
-    plan.kind === "deferred" ? plan.at.toISOString() : undefined;
-
-  // No `fromSubId` happens when the previous seat type isn't actually a
-  // billed seat on this contract (e.g. legacy workspace seats). Treat as
-  // an additive move.
-  const result = fromSubId
-    ? await updateSubscriptionSeats({
-        metronomeCustomerId,
-        contractId,
-        fromSubscriptionId: fromSubId,
-        toSubscriptionId: toSubId,
-        addSeatIds: [userId],
-        removeSeatIds: [userId],
-        startingAt,
-      })
-    : await updateSubscriptionSeats({
-        metronomeCustomerId,
-        contractId,
-        fromSubscriptionId: toSubId,
-        addSeatIds: [userId],
-        startingAt,
-      });
-  if (result.isErr()) {
-    return new Err(result.error);
-  }
-
-  return new Ok(plan);
+  return new Ok(undefined);
 }
 
 export type SeatData = {
