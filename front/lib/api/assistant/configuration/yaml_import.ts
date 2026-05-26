@@ -324,7 +324,7 @@ export async function patchAgentConfigurationFromJSON(
     })),
     additionalRequestedSpaceIds: agentConfiguration.requestedSpaceIds,
   };
-  let authorModelId = editorsResult.value.authorModelId;
+  let { authorModelId } = editorsResult.value;
   let skippedActions: SkippedAction[] = [];
 
   if (patch.agent) {
