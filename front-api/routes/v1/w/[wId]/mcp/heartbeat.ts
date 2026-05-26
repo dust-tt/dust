@@ -6,6 +6,9 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
+// Mounted at /api/v1/w/:wId/mcp/heartbeat.
+const app = publicApiApp();
+
 /**
  * @swagger
  * /api/v1/w/{wId}/mcp/heartbeat:
@@ -60,10 +63,6 @@ import { validate } from "@front-api/middlewares/validator";
  *       404:
  *         description: Not Found. MCP server not registered or expired.
  */
-
-// Mounted at /api/v1/w/:wId/mcp/heartbeat.
-const app = publicApiApp();
-
 app.post(
   "/",
   validate("json", PublicHeartbeatMCPRequestBodySchema),

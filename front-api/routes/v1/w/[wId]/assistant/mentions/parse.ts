@@ -5,6 +5,9 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
+// Mounted at /api/v1/w/:wId/assistant/mentions/parse.
+const app = publicApiApp();
+
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/mentions/parse:
@@ -57,10 +60,6 @@ import { validate } from "@front-api/middlewares/validator";
  *       500:
  *         description: Internal Server Error.
  */
-
-// Mounted at /api/v1/w/:wId/assistant/mentions/parse.
-const app = publicApiApp();
-
 app.post(
   "/",
   validate("json", ParseMentionsRequestBodySchema),

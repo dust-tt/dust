@@ -9,6 +9,9 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
+// Mounted at /api/v1/w/:wId/mcp/register.
+const app = publicApiApp();
+
 /**
  * @swagger
  * /api/v1/w/{wId}/mcp/register:
@@ -62,10 +65,6 @@ import { validate } from "@front-api/middlewares/validator";
  *       403:
  *         description: Forbidden. User does not have access to the workspace.
  */
-
-// Mounted at /api/v1/w/:wId/mcp/register.
-const app = publicApiApp();
-
 app.post(
   "/",
   validate("json", PublicRegisterMCPRequestBodySchema),
