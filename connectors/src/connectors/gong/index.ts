@@ -358,8 +358,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           const views = await fetchPermissionProfileViews(connector);
           return new Ok(JSON.stringify(views));
         } catch (err) {
-          if (err instanceof GongAPIError && (err.status === 401 || err.status === 403 || err.status === 404)) {
-            return new Ok(JSON.stringify([]))
+          if (
+            err instanceof GongAPIError &&
+            (err.status === 401 || err.status === 403 || err.status === 404)
+          ) {
+            return new Ok(JSON.stringify([]));
           }
 
           throw err;
