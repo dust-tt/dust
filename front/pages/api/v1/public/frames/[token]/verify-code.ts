@@ -141,7 +141,8 @@ async function handler(
     });
   }
 
-  await createFrameSession(res, workspace, { email });
+  const cookie = await createFrameSession(workspace, { email });
+  res.setHeader("Set-Cookie", [cookie]);
 
   return res.status(200).json({ success: true });
 }
