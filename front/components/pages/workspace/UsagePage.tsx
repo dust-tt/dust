@@ -167,10 +167,11 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const { awuPurchaseInfo, isAwuPurchaseInfoLoading } = useAwuPurchaseInfo({
-    workspaceId: owner.sId,
-    disabled: !showBuyCreditDialog,
-  });
+  const { awuPurchaseInfo, isAwuPurchaseInfoLoading, isAwuPurchaseInfoError } =
+    useAwuPurchaseInfo({
+      workspaceId: owner.sId,
+      disabled: !showBuyCreditDialog,
+    });
 
   const { membersUsage, isMembersUsageLoading } = useMembersUsage({
     workspaceId: owner.sId,
@@ -232,6 +233,7 @@ export function UsagePage() {
         workspaceId={owner.sId}
         awuPurchaseInfo={awuPurchaseInfo}
         isAwuPurchaseInfoLoading={isAwuPurchaseInfoLoading}
+        isAwuPurchaseInfoError={!!isAwuPurchaseInfoError}
         currentBalanceCredits={currentBalanceCredits}
       />
 

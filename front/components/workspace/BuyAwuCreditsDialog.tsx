@@ -97,6 +97,7 @@ interface BuyAwuCreditsDialogProps {
   workspaceId: string;
   awuPurchaseInfo: AwuPurchaseInfo | null;
   isAwuPurchaseInfoLoading: boolean;
+  isAwuPurchaseInfoError: boolean;
   currentBalanceCredits?: number;
 }
 
@@ -107,6 +108,7 @@ export function BuyAwuCreditsDialog({
   workspaceId,
   awuPurchaseInfo,
   isAwuPurchaseInfoLoading,
+  isAwuPurchaseInfoError,
   currentBalanceCredits,
 }: BuyAwuCreditsDialogProps) {
   const [amountInput, setAmountInput] = useState<string>("");
@@ -506,6 +508,48 @@ export function BuyAwuCreditsDialog({
   // just-created Metronome commit would otherwise flip it to
   // `pending_purchase` and bump the user off the success screen.
   const isPurchaseInFlight = purchaseState !== "idle";
+
+  if (!isPurchaseInFlight && isAwuPurchaseInfoError) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
+            <DialogDescription>
+              We couldn't load your purchase information.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Icon
+                visual={XCircleIcon}
+                size="lg"
+                className="text-warning-500"
+              />
+              <p className="text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Something went wrong while loading your top-up options. Please
+                try again in a moment, or{" "}
+                <a
+                  href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20unable%20to%20load`}
+                  className="text-action-500 hover:underline"
+                >
+                  contact support
+                </a>{" "}
+                if the issue persists.
+              </p>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: onClose,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   // Cannot purchase: legacy plan.
   if (
